@@ -18,6 +18,12 @@ struct DebugPage: View {
                     }
                 }
             }
+
+            Section("订阅") {
+                NavigationLink(destination: SubscriptionDebugView()) {
+                    Label("订阅状态与测试", systemImage: "creditcard")
+                }
+            }
         }
         .navigationTitle("Debug")
     }

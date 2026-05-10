@@ -8,6 +8,8 @@
 
 /* Begin PBXFileReference section */
 		022975612FAFD68E00F94B3A /* sprout.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = sprout.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A100000100F94B3A00000001 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
+		A100000200F94B3A00000002 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -46,8 +48,19 @@
 			isa = PBXGroup;
 			children = (
 				022975632FAFD68E00F94B3A /* sprout */,
+				A100000300F94B3A00000003 /* Config */,
 				022975622FAFD68E00F94B3A /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		A100000300F94B3A00000003 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				A100000100F94B3A00000001 /* Debug.xcconfig */,
+				A100000200F94B3A00000002 /* Release.xcconfig */,
+			);
+			name = Config;
+			path = Config;
 			sourceTree = "<group>";
 		};
 		022975622FAFD68E00F94B3A /* Products */ = {
@@ -250,6 +263,7 @@
 		};
 		022975722FAFD68F00F94B3A /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = A100000100F94B3A00000001 /* Debug.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -312,6 +326,7 @@
 		};
 		022975732FAFD68F00F94B3A /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = A100000200F94B3A00000002 /* Release.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
