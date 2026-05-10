@@ -14,12 +14,12 @@ struct BottomCapsuleBar: View {
 
     private let sideSize: CGFloat = 52
     private let pillH: CGFloat = 52
-    private let hPad: CGFloat = 20
+    private let hPad: CGFloat = 20      // collapsed pill bar margin
+    private let cardHPad: CGFloat = 10  // expanded card outer margin
     private let cardRadius: CGFloat = 28
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            // Dimmed backdrop when open
             if isOpen {
                 Color.black.opacity(0.15)
                     .ignoresSafeArea()
@@ -29,7 +29,6 @@ struct BottomCapsuleBar: View {
 
             VStack(spacing: 0) {
                 Spacer()
-
                 if #available(iOS 26.0, *) {
                     ios26Bar
                 } else {
@@ -42,19 +41,14 @@ struct BottomCapsuleBar: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
     }
 
-    // MARK: iOS 26 — liquid glass with GlassEffectContainer morph
+    // MARK: iOS 26 — liquid glass
 
     @available(iOS 26.0, *)
     private var ios26Bar: some View {
-        GlassEffectContainer {
-            if isOpen {
-                cardBody
-                    .glassEffect(.regular, in: RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
-                    .matchedGeometryEffect(id: "bar", in: morphSpace)
-                    .padding(.horizontal, hPad)
-                    .onAppear { inputFocused = true }
-            } else {
-                HStack(spacing: 10) {
+        ZStack(alignment: .bottom) {
+            // Camera / plus — outside container so they never compete as morph targets
+            if !isOpen {
+                HStack {
                     Button { onCameraTapped() } label: {
                         Image(systemName: "camera.fill")
                             .font(.system(size: 18, weight: .medium))
@@ -63,15 +57,7 @@ struct BottomCapsuleBar: View {
                     }
                     .glassEffect(.regular, in: Circle())
 
-                    Button { open() } label: {
-                        Text("记录一下…")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: pillH)
-                    }
-                    .glassEffect(.regular, in: Capsule())
-                    .matchedGeometryEffect(id: "bar", in: morphSpace)
+                    Spacer()
 
                     Button { onAddTapped() } label: {
                         Image(systemName: "plus")
@@ -82,6 +68,65 @@ struct BottomCapsuleBar: View {
                     .glassEffect(.regular, in: Circle())
                 }
                 .padding(.horizontal, hPad)
+                .transition(.opacity)
+            }
+
+            // Container: pill ↔ (close circle + card + send circle)
+            // All three open-state glass elements morph together with the pill.
+            GlassEffectContainer {
+                if isOpen {
+                    let trimmed = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    VStack(spacing: 8) {
+                        // Close + send — glass circles that morph with the card
+                        HStack {
+                            Button { close() } label: {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 32, height: 32)
+                            }
+                            .glassEffect(.regular, in: Circle())
+
+                            Spacer()
+
+                            Button {
+                                guard !trimmed.isEmpty else { return }
+                                onSend(trimmed)
+                                close()
+                            } label: {
+                                Image(systemName: "arrow.up")
+                                    .font(.system(size: 15, weight: .bold))
+                                    .foregroundStyle(trimmed.isEmpty ? AnyShapeStyle(Color.secondary)
+                                                                     : AnyShapeStyle(Color.white))
+                                    .frame(width: 32, height: 32)
+                            }
+                            .glassEffect(
+                                trimmed.isEmpty ? .regular : .regular.tint(Color.accentColor),
+                                in: Circle()
+                            )
+                            .disabled(trimmed.isEmpty)
+                        }
+                        .padding(.horizontal, cardHPad + 4)
+
+                        // Card content — anchors the matchedGeometryEffect for pill↔card morph
+                        cardInputContent
+                            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
+                            .matchedGeometryEffect(id: "bar", in: morphSpace)
+                            .padding(.horizontal, cardHPad)
+                    }
+                    .onAppear { inputFocused = true }
+                } else {
+                    Button { open() } label: {
+                        Text("点击输入  长按语音")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: pillH)
+                    }
+                    .glassEffect(.regular, in: Capsule())
+                    .matchedGeometryEffect(id: "bar", in: morphSpace)
+                    .padding(.horizontal, hPad + sideSize + 10)
+                }
             }
         }
     }
@@ -91,23 +136,57 @@ struct BottomCapsuleBar: View {
     private var fallbackBar: some View {
         Group {
             if isOpen {
-                cardBody
-                    .background(.ultraThinMaterial,
-                                 in: RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
-                            .stroke(.white.opacity(0.25), lineWidth: 0.5)
-                    )
-                    .shadow(color: .black.opacity(0.12), radius: 24, x: 0, y: 8)
-                    .padding(.horizontal, hPad)
-                    .onAppear { inputFocused = true }
-                    .transition(.scale(scale: 0.92, anchor: .bottom).combined(with: .opacity))
+                let trimmed = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+                VStack(spacing: 8) {
+                    // Close + send above the card, material circles (adaptive dark mode)
+                    HStack {
+                        Button { close() } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 32, height: 32)
+                                .background(.regularMaterial, in: Circle())
+                        }
+
+                        Spacer()
+
+                        Button {
+                            guard !trimmed.isEmpty else { return }
+                            onSend(trimmed)
+                            close()
+                        } label: {
+                            Image(systemName: "arrow.up")
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundStyle(.white)
+                                .frame(width: 32, height: 32)
+                                .background(
+                                    trimmed.isEmpty ? AnyShapeStyle(Color.secondary.opacity(0.3))
+                                                   : AnyShapeStyle(Color.accentColor),
+                                    in: Circle()
+                                )
+                        }
+                        .disabled(trimmed.isEmpty)
+                    }
+                    .padding(.horizontal, cardHPad + 4)
+
+                    cardInputContent
+                        .background(.ultraThinMaterial,
+                                     in: RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
+                                .stroke(.white.opacity(0.25), lineWidth: 0.5)
+                        )
+                        .shadow(color: .black.opacity(0.12), radius: 24, x: 0, y: 8)
+                        .padding(.horizontal, cardHPad)
+                }
+                .onAppear { inputFocused = true }
+                .transition(.scale(scale: 0.92, anchor: .bottom).combined(with: .opacity))
             } else {
                 HStack(spacing: 10) {
                     fallbackCircleBtn(icon: "camera.fill") { onCameraTapped() }
 
                     Button { open() } label: {
-                        Text("记录一下…")
+                        Text("点击输入  长按语音")
                             .font(.system(size: 15, weight: .medium))
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity)
@@ -138,24 +217,10 @@ struct BottomCapsuleBar: View {
         .shadow(color: .black.opacity(0.08), radius: 12)
     }
 
-    // MARK: Card body (shared between iOS 26 + fallback)
+    // MARK: Card input content (shared)
 
-    private var cardBody: some View {
+    private var cardInputContent: some View {
         VStack(spacing: 0) {
-            // Top row: close
-            HStack {
-                Button { close() } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 28, height: 28)
-                        .background(.secondary.opacity(0.12), in: Circle())
-                }
-                Spacer()
-            }
-            .padding(.bottom, 10)
-
-            // Text input
             TextField("今天想记录什么？", text: $inputText, axis: .vertical)
                 .font(.system(size: 16))
                 .lineLimit(3...8)
@@ -164,41 +229,18 @@ struct BottomCapsuleBar: View {
             Divider()
                 .padding(.vertical, 12)
 
-            // Toolbar row
-            HStack(spacing: 0) {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 2) {
-                        toolbarBtn("mic")
-                        toolbarBtn("photo")
-                        toolbarBtn("camera")
-                        toolbarBtn("location")
-                        toolbarBtn("music.note")
-                        toolbarBtn("link")
-                    }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 2) {
+                    toolbarBtn("mic")
+                    toolbarBtn("photo")
+                    toolbarBtn("camera")
+                    toolbarBtn("location")
+                    toolbarBtn("music.note")
+                    toolbarBtn("link")
                 }
-
-                Spacer(minLength: 8)
-
-                let trimmed = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
-                Button {
-                    guard !trimmed.isEmpty else { return }
-                    onSend(trimmed)
-                    close()
-                } label: {
-                    Image(systemName: "arrow.up")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 36, height: 36)
-                        .background(
-                            trimmed.isEmpty ? AnyShapeStyle(Color.secondary.opacity(0.3))
-                                           : AnyShapeStyle(Color.accentColor),
-                            in: Circle()
-                        )
-                }
-                .disabled(trimmed.isEmpty)
             }
         }
-        .padding(16)
+        .padding(14)
     }
 
     @ViewBuilder

@@ -42,8 +42,11 @@ struct TopNavigationBar: View {
             Spacer()
 
             Button(action: onProfileTapped) {
-                Image(systemName: "person.circle.fill")
-                    .font(.system(size: 28))
+                Image(systemName: "person")
+                    .font(.system(size: 22, weight: .medium))
+                    .foregroundColor(.primary)
+                    .frame(width: 36, height: 36)
+                    .background(.ultraThinMaterial, in: Circle())
             }
         }
         .padding(.horizontal, 16)

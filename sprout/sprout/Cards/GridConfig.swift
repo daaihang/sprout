@@ -53,7 +53,7 @@ struct CardSize: Equatable {
     }
 
     func height(columnWidth: CGFloat) -> CGFloat {
-        columnWidth * CGFloat(units)
+        columnWidth * CGFloat(units) + GridConfig.columnSpacing * CGFloat(units - 1)
     }
 
     // Computed size based on a default screen width

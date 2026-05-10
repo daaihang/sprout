@@ -1,7 +1,7 @@
 {
   "color-space-for-untagged-svg-colors" : "display-p3",
   "fill" : {
-    "automatic-gradient" : "srgb:0.69759,0.98132,0.59773,1.00000",
+    "automatic-gradient" : "srgb:0.68689,0.96000,0.59377,1.00000",
     "orientation" : {
       "start" : {
         "x" : 0.5,
@@ -36,7 +36,7 @@
               }
             }
           ],
-          "glass" : false,
+          "glass" : true,
           "image-name" : "%E8%B5%84%E6%BA%90+3.svg",
           "name" : "%E8%B5%84%E6%BA%90+3",
           "position" : {
@@ -46,7 +46,19 @@
               113.99100921645038
             ]
           }
-        },
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    },
+    {
+      "layers" : [
         {
           "blend-mode-specializations" : [
             {
@@ -60,7 +72,7 @@
           "fill-specializations" : [
             {
               "value" : {
-                "solid" : "srgb:0.58219,0.92560,0.57553,0.89568"
+                "solid" : "srgb:0.70980,1.00000,0.60784,1.00000"
               }
             },
             {
@@ -86,7 +98,19 @@
               146.31142236258097
             ]
           }
-        },
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    },
+    {
+      "layers" : [
         {
           "blend-mode" : "darken",
           "fill-specializations" : [
@@ -108,6 +132,7 @@
               }
             }
           ],
+          "glass" : true,
           "image-name" : "%E8%B5%84%E6%BA%90+4.svg",
           "name" : "%E8%B5%84%E6%BA%90+4",
           "position" : {

@@ -7,7 +7,7 @@ struct QuoteCard: View {
         Text("QuoteCard \(sizeName)")
             .font(.system(size: 14, weight: .medium))
             .foregroundColor(.secondary)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(width: size.width, height: size.height)
             .cardBackground()
     }
 
