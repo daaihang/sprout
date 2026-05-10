@@ -1,22 +1,41 @@
 import SwiftUI
 
-// MARK: - Bottom Capsule Bar
+// MARK: - BottomCapsuleBar
 
 struct BottomCapsuleBar: View {
     @Binding var isOpen: Bool
-    var onCameraTapped: () -> Void = {}
-    var onAddTapped: () -> Void = {}
+
+    // Callbacks
+    var onAction: (ComposerActionType) -> Void = { _ in }
+    var onRemoveAttachment: (ComposerAttachmentKey) -> Void = { _ in }
     var onSend: (String) -> Void = { _ in }
 
-    @State private var inputText = ""
+    // Current attachments — read-only display
+    var attachments: ComposerAttachments = .init()
+
+    // Voice recording service
+    var speechRecognizer: SpeechRecognizer? = nil
+    var onAudioCaptured: (Data?) -> Void = { _ in }
+
+    // MARK: Internal state
+    @State private var inputText: String = ""
     @FocusState private var inputFocused: Bool
     @Namespace private var morphSpace
 
-    private let sideSize: CGFloat = 52
-    private let pillH: CGFloat = 52
-    private let hPad: CGFloat = 20      // collapsed pill bar margin
-    private let cardHPad: CGFloat = 10  // expanded card outer margin
+    // Voice recording
+    @State private var isVoiceRecording = false
+    @State private var voiceLevels: [Float] = Array(repeating: 0.02, count: 24)
+    @State private var levelTimer: Timer?
+    @State private var pressStart: Date? = nil
+    @State private var longPressTriggered = false
+
+    private let sideSize:  CGFloat = 52
+    private let pillH:     CGFloat = 52
+    private let hPad:      CGFloat = 20
+    private let cardHPad:  CGFloat = 10
     private let cardRadius: CGFloat = 28
+
+    // MARK: Body
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -38,6 +57,7 @@ struct BottomCapsuleBar: View {
             .padding(.bottom, 20)
         }
         .animation(.spring(duration: 0.45, bounce: 0.2), value: isOpen)
+        .animation(.spring(duration: 0.35, bounce: 0.1), value: isVoiceRecording)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
     }
 
@@ -46,10 +66,10 @@ struct BottomCapsuleBar: View {
     @available(iOS 26.0, *)
     private var ios26Bar: some View {
         ZStack(alignment: .bottom) {
-            // Camera / plus — outside container so they never compete as morph targets
-            if !isOpen {
+            // Side buttons — only in collapsed state
+            if !isOpen && !isVoiceRecording {
                 HStack {
-                    Button { onCameraTapped() } label: {
+                    Button { onAction(.camera) } label: {
                         Image(systemName: "camera.fill")
                             .font(.system(size: 18, weight: .medium))
                             .foregroundStyle(.primary)
@@ -59,7 +79,7 @@ struct BottomCapsuleBar: View {
 
                     Spacer()
 
-                    Button { onAddTapped() } label: {
+                    Button { onAction(.addCard) } label: {
                         Image(systemName: "plus")
                             .font(.system(size: 18, weight: .medium))
                             .foregroundStyle(.primary)
@@ -71,13 +91,11 @@ struct BottomCapsuleBar: View {
                 .transition(.opacity)
             }
 
-            // Container: pill ↔ (close circle + card + send circle)
-            // All three open-state glass elements morph together with the pill.
             GlassEffectContainer {
                 if isOpen {
                     let trimmed = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let canSend = !trimmed.isEmpty || !attachments.isEmpty
                     VStack(spacing: 8) {
-                        // Close + send — glass circles that morph with the card
                         HStack {
                             Button { close() } label: {
                                 Image(systemName: "xmark")
@@ -90,55 +108,51 @@ struct BottomCapsuleBar: View {
                             Spacer()
 
                             Button {
-                                guard !trimmed.isEmpty else { return }
+                                guard canSend else { return }
                                 onSend(trimmed)
                                 close()
                             } label: {
                                 Image(systemName: "arrow.up")
                                     .font(.system(size: 15, weight: .bold))
-                                    .foregroundStyle(trimmed.isEmpty ? AnyShapeStyle(Color.secondary)
-                                                                     : AnyShapeStyle(Color.white))
+                                    .foregroundStyle(canSend ? .white : .secondary)
                                     .frame(width: 32, height: 32)
                             }
                             .glassEffect(
-                                trimmed.isEmpty ? .regular : .regular.tint(Color.accentColor),
+                                canSend ? .regular.tint(Color.accentColor) : .regular,
                                 in: Circle()
                             )
-                            .disabled(trimmed.isEmpty)
+                            .disabled(!canSend)
                         }
                         .padding(.horizontal, cardHPad + 4)
 
-                        // Card content — anchors the matchedGeometryEffect for pill↔card morph
                         cardInputContent
                             .glassEffect(.regular, in: RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
                             .matchedGeometryEffect(id: "bar", in: morphSpace)
                             .padding(.horizontal, cardHPad)
                     }
                     .onAppear { inputFocused = true }
+                } else if isVoiceRecording {
+                    voiceRecordingOverlay
+                        .padding(.horizontal, hPad)
+                        .transition(.scale(scale: 0.95, anchor: .bottom).combined(with: .opacity))
                 } else {
-                    Button { open() } label: {
-                        Text("点击输入  长按语音")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: pillH)
-                    }
-                    .glassEffect(.regular, in: Capsule())
-                    .matchedGeometryEffect(id: "bar", in: morphSpace)
-                    .padding(.horizontal, hPad + sideSize + 10)
+                    pillButton
+                        .glassEffect(.regular, in: Capsule())
+                        .matchedGeometryEffect(id: "bar", in: morphSpace)
+                        .padding(.horizontal, hPad + sideSize + 10)
                 }
             }
         }
     }
 
-    // MARK: Fallback — ultraThinMaterial (iOS 18)
+    // MARK: Fallback — ultraThinMaterial (iOS 18 / 19)
 
     private var fallbackBar: some View {
         Group {
             if isOpen {
                 let trimmed = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+                let canSend = !trimmed.isEmpty || !attachments.isEmpty
                 VStack(spacing: 8) {
-                    // Close + send above the card, material circles (adaptive dark mode)
                     HStack {
                         Button { close() } label: {
                             Image(systemName: "xmark")
@@ -147,11 +161,9 @@ struct BottomCapsuleBar: View {
                                 .frame(width: 32, height: 32)
                                 .background(.regularMaterial, in: Circle())
                         }
-
                         Spacer()
-
                         Button {
-                            guard !trimmed.isEmpty else { return }
+                            guard canSend else { return }
                             onSend(trimmed)
                             close()
                         } label: {
@@ -160,12 +172,13 @@ struct BottomCapsuleBar: View {
                                 .foregroundStyle(.white)
                                 .frame(width: 32, height: 32)
                                 .background(
-                                    trimmed.isEmpty ? AnyShapeStyle(Color.secondary.opacity(0.3))
-                                                   : AnyShapeStyle(Color.accentColor),
+                                    canSend
+                                        ? AnyShapeStyle(Color.accentColor)
+                                        : AnyShapeStyle(Color.secondary.opacity(0.3)),
                                     in: Circle()
                                 )
                         }
-                        .disabled(trimmed.isEmpty)
+                        .disabled(!canSend)
                     }
                     .padding(.horizontal, cardHPad + 4)
 
@@ -181,25 +194,25 @@ struct BottomCapsuleBar: View {
                 }
                 .onAppear { inputFocused = true }
                 .transition(.scale(scale: 0.92, anchor: .bottom).combined(with: .opacity))
-            } else {
-                HStack(spacing: 10) {
-                    fallbackCircleBtn(icon: "camera.fill") { onCameraTapped() }
 
-                    Button { open() } label: {
-                        Text("点击输入  长按语音")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: pillH)
-                    }
-                    .background(.ultraThinMaterial, in: Capsule())
-                    .overlay(Capsule().stroke(.white.opacity(0.25), lineWidth: 0.5))
-                    .shadow(color: .black.opacity(0.08), radius: 12)
+            } else if isVoiceRecording {
+                voiceRecordingOverlay
+                    .padding(.horizontal, hPad)
                     .transition(.scale(scale: 0.95, anchor: .bottom).combined(with: .opacity))
 
-                    fallbackCircleBtn(icon: "plus") { onAddTapped() }
+            } else {
+                HStack(spacing: 10) {
+                    fallbackCircleBtn(icon: "camera.fill") { onAction(.camera) }
+
+                    pillButton
+                        .background(.ultraThinMaterial, in: Capsule())
+                        .overlay(Capsule().stroke(.white.opacity(0.25), lineWidth: 0.5))
+                        .shadow(color: .black.opacity(0.08), radius: 12)
+
+                    fallbackCircleBtn(icon: "plus") { onAction(.addCard) }
                 }
                 .padding(.horizontal, hPad)
+                .transition(.scale(scale: 0.95, anchor: .bottom).combined(with: .opacity))
             }
         }
     }
@@ -217,7 +230,54 @@ struct BottomCapsuleBar: View {
         .shadow(color: .black.opacity(0.08), radius: 12)
     }
 
-    // MARK: Card input content (shared)
+    // MARK: Pill button (shared tap + long-press logic)
+
+    private var pillButton: some View {
+        Text("点击输入  长按语音")
+            .font(.system(size: 15, weight: .medium))
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity)
+            .frame(height: pillH)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        // Start timing on first call
+                        if pressStart == nil {
+                            pressStart = Date()
+                            longPressTriggered = false
+                            // After 0.4 s, begin voice recording
+                            Task {
+                                try? await Task.sleep(for: .milliseconds(400))
+                                guard pressStart != nil, !longPressTriggered else { return }
+                                longPressTriggered = true
+                                startVoiceMode()
+                            }
+                        }
+                        // Cancel if dragged far left during recording
+                        if isVoiceRecording && value.translation.width < -60 {
+                            cancelVoice()
+                        }
+                    }
+                    .onEnded { value in
+                        let waRecording = isVoiceRecording
+                        if waRecording {
+                            if value.translation.width < -60 {
+                                cancelVoice()
+                            } else {
+                                commitVoice()
+                            }
+                        } else if !longPressTriggered {
+                            // Short tap → open composer
+                            open()
+                        }
+                        pressStart = nil
+                        longPressTriggered = false
+                    }
+            )
+    }
+
+    // MARK: Card input content (shared between iOS 26 and fallback)
 
     private var cardInputContent: some View {
         VStack(spacing: 0) {
@@ -229,14 +289,57 @@ struct BottomCapsuleBar: View {
             Divider()
                 .padding(.vertical, 12)
 
+            // Toolbar action buttons
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 2) {
-                    toolbarBtn("mic")
-                    toolbarBtn("photo")
-                    toolbarBtn("camera")
-                    toolbarBtn("location")
-                    toolbarBtn("music.note")
-                    toolbarBtn("link")
+                    toolbarBtn("mic")        { startVoiceMode() }
+                    toolbarBtn("photo")      { onAction(.photo) }
+                    toolbarBtn("camera")     { onAction(.camera) }
+                    toolbarBtn("location")   { onAction(.location) }
+                    toolbarBtn("music.note") { onAction(.music) }
+                    toolbarBtn("link")       { onAction(.link) }
+                }
+            }
+
+            // Attachment chips (shown when attachments are present)
+            if !attachments.isEmpty {
+                Divider()
+                    .padding(.top, 8)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        if let mood = attachments.mood {
+                            AttachmentChip(prefix: mood.emoji, label: mood.label) {
+                                onRemoveAttachment(.mood)
+                            }
+                        }
+                        if !attachments.photos.isEmpty {
+                            AttachmentChip(prefix: "📷", label: "\(attachments.photos.count)张照片") {
+                                onRemoveAttachment(.photo)
+                            }
+                        }
+                        if let loc = attachments.locationData {
+                            AttachmentChip(prefix: "📍", label: loc.locationName.isEmpty ? "位置" : loc.locationName) {
+                                onRemoveAttachment(.location)
+                            }
+                        }
+                        if let music = attachments.music {
+                            AttachmentChip(prefix: "🎵", label: music.trackName.isEmpty ? "音乐" : music.trackName) {
+                                onRemoveAttachment(.music)
+                            }
+                        }
+                        if attachments.todos != nil {
+                            AttachmentChip(prefix: "✅", label: "待办") {
+                                onRemoveAttachment(.todo)
+                            }
+                        }
+                        if attachments.audioData != nil {
+                            AttachmentChip(prefix: "🎙", label: "语音") {
+                                onRemoveAttachment(.audio)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 2)
+                    .padding(.top, 8)
                 }
             }
         }
@@ -244,8 +347,8 @@ struct BottomCapsuleBar: View {
     }
 
     @ViewBuilder
-    private func toolbarBtn(_ icon: String) -> some View {
-        Button {} label: {
+    private func toolbarBtn(_ icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: 18))
                 .foregroundStyle(.secondary)
@@ -253,16 +356,144 @@ struct BottomCapsuleBar: View {
         }
     }
 
+    // MARK: Voice recording overlay
+
+    private var voiceRecordingOverlay: some View {
+        VStack(spacing: 12) {
+            // Waveform bars
+            HStack(alignment: .center, spacing: 3) {
+                ForEach(0 ..< voiceLevels.count, id: \.self) { i in
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Color.red.opacity(0.8))
+                        .frame(width: 4, height: CGFloat(voiceLevels[i]) * 44 + 4)
+                        .animation(.linear(duration: 0.05), value: voiceLevels[i])
+                }
+            }
+            .frame(height: 52)
+
+            Text(durationString)
+                .font(.system(size: 14, weight: .medium).monospacedDigit())
+                .foregroundStyle(.primary)
+
+            HStack {
+                Text("← 左滑取消")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text("松开发送")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 16)
+        .frame(maxWidth: .infinity)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
+                .stroke(Color.red.opacity(0.3), lineWidth: 1)
+        )
+    }
+
+    private var durationString: String {
+        let t = Int(speechRecognizer?.recordingDuration ?? 0)
+        return String(format: "%02d:%02d", t / 60, t % 60)
+    }
+
+    // MARK: Voice helpers
+
+    private func startVoiceMode() {
+        guard let sr = speechRecognizer else { return }
+        guard !isVoiceRecording else { return }
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        withAnimation(.spring(duration: 0.35, bounce: 0.1)) { isVoiceRecording = true }
+        sr.startRecording()
+        // Start waveform update timer
+        levelTimer?.invalidate()
+        levelTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [self] _ in
+            Task { @MainActor in
+                updateVoiceLevels()
+            }
+        }
+    }
+
+    private func cancelVoice() {
+        guard isVoiceRecording else { return }
+        UINotificationFeedbackGenerator().notificationOccurred(.error)
+        speechRecognizer?.stopRecording()
+        stopLevelTimer()
+        withAnimation(.spring(duration: 0.3)) { isVoiceRecording = false }
+        voiceLevels = Array(repeating: 0.02, count: 24)
+    }
+
+    private func commitVoice() {
+        guard isVoiceRecording, let sr = speechRecognizer else { return }
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        sr.stopRecording()
+        stopLevelTimer()
+        let text  = sr.recognizedText
+        let audio = sr.audioData
+        withAnimation(.spring(duration: 0.3)) { isVoiceRecording = false }
+        voiceLevels = Array(repeating: 0.02, count: 24)
+        // Populate text field and open composer
+        if !text.isEmpty { inputText = text }
+        onAudioCaptured(audio)
+        open()
+    }
+
+    private func stopLevelTimer() {
+        levelTimer?.invalidate()
+        levelTimer = nil
+    }
+
+    @MainActor
+    private func updateVoiceLevels() {
+        let level = speechRecognizer?.audioLevel ?? 0
+        var levels = voiceLevels
+        levels.removeFirst()
+        levels.append(level)
+        voiceLevels = levels
+    }
+
+    // MARK: Open / Close
+
     private func open() {
         withAnimation(.spring(duration: 0.45, bounce: 0.2)) { isOpen = true }
     }
 
     private func close() {
         inputFocused = false
-        inputText = ""
+        inputText    = ""
         withAnimation(.spring(duration: 0.4, bounce: 0.1)) { isOpen = false }
     }
 }
+
+// MARK: - AttachmentChip
+
+private struct AttachmentChip: View {
+    let prefix: String
+    let label:  String
+    let onRemove: () -> Void
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(prefix + " " + label)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+            Button(action: onRemove) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(.regularMaterial, in: Capsule())
+    }
+}
+
+// MARK: - Preview
 
 #Preview {
     ZStack {
@@ -274,7 +505,6 @@ struct BottomCapsuleBar: View {
             startPoint: .topLeading, endPoint: .bottomTrailing
         )
         .ignoresSafeArea()
-
         BottomCapsuleBar(isOpen: .constant(false))
     }
 }
