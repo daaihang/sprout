@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct TodoItem: Identifiable {
+struct TodoItem: Identifiable, Codable {
     var id: UUID = UUID()
     var text: String
     var isDone: Bool = false
