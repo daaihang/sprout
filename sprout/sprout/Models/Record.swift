@@ -26,6 +26,13 @@ final class Record {
     /// Primary card type for dashboard display.
     /// Values: "text" | "quote" | "emotion" | "weather" | "activity" | "todo" | "photo" | "music" | "link" | "map"
     var cardType: String = "text"
+    /// Weather extended fields (replaces hardcoded defaults in RecordMapper)
+    var feelsLike: Double? = nil
+    var humidity: Int? = nil
+    var weatherHigh: Double? = nil
+    var weatherLow: Double? = nil
+    /// User-preferred display height in grid units (1 / 2 / 4). Default 4 = full-size card.
+    var cardUnits: Int = 4
 
     @Relationship(deleteRule: .cascade) var mediaCards: [MediaCard]? = nil
     @Relationship(deleteRule: .nullify) var mentionedPeople: [Person]? = nil

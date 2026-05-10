@@ -1,30 +1,33 @@
 // ContentView.swift — 心泉 Today 主页
-// 网格卡片布局 + 底部工具栏
+// 日期导航 + 每日卡片网格 + 底部工具栏
 
 import SwiftUI
 import SwiftData
-import MapKit
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Record.createdAt, order: .reverse) private var records: [Record]
 
     @State private var isShowingAccountSheet = false
     @State private var isBarOpen = false
+    @State private var selectedDate: Date = Calendar.current.startOfDay(for: Date())
+    @State private var showDatePicker = false
+    @State private var insertionEdge: Edge = .trailing   // tracks swipe direction for transition
     @Environment(\.colorScheme) private var colorScheme
 
     // MARK: Body
 
     var body: some View {
         NavigationStack {
-            ZStack(alignment: .top) {
+            ZStack(alignment: .bottom) {
                 pageBackground.ignoresSafeArea()
 
-                ScrollView(showsIndicators: false) {
-                    CardGridView(items: gridItems)
-                        .padding(.top, 24)
-                        .padding(.bottom, 96)
-                }
+                // Daily card grid — re-created when selectedDate changes
+                DailyView(date: selectedDate)
+                    .id(selectedDate)
+                    .transition(.asymmetric(
+                        insertion: .move(edge: insertionEdge),
+                        removal:   .move(edge: insertionEdge == .leading ? .trailing : .leading)
+                    ))
 
                 BottomCapsuleBar(
                     isOpen: $isBarOpen,
@@ -36,18 +39,12 @@ struct ContentView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Menu {
-                        Button { } label: {
-                            Label("看板", systemImage: "square.grid.2x2")
-                        }
-                        Button { } label: {
-                            Label("日历", systemImage: "calendar")
-                        }
-                    } label: {
+                    Button { showDatePicker.toggle() } label: {
                         HStack(spacing: 4) {
-                            Text("今日")
-                                .font(.body)
+                            Text(formattedDateLabel(selectedDate))
+                                .font(.body.weight(.medium))
                                 .foregroundColor(.primary)
+                                .contentTransition(.numericText())
                             Image(systemName: "chevron.down")
                                 .font(.caption.weight(.semibold))
                                 .foregroundColor(.secondary)
@@ -62,39 +59,51 @@ struct ContentView: View {
                     }
                 }
             }
+            // Swipe left/right to change date
+            .gesture(
+                DragGesture(minimumDistance: 40)
+                    .onEnded { value in
+                        if value.translation.width < -40 {
+                            navigateDay(by: -1)   // swipe left → previous day
+                        } else if value.translation.width > 40 {
+                            navigateDay(by: +1)   // swipe right → next day
+                        }
+                    }
+            )
         }
-        .sheet(isPresented: $isShowingAccountSheet) {
-            AccountManagementSheet()
+        .animation(.spring(duration: 0.35, bounce: 0.1), value: selectedDate)
+        .sheet(isPresented: $isShowingAccountSheet) { AccountManagementSheet() }
+        .sheet(isPresented: $showDatePicker) {
+            DatePickerSheet(selectedDate: $selectedDate)
+                .presentationDetents([.medium])
         }
     }
 
-    // MARK: Grid items
+    // MARK: Date navigation
 
-    /// Maps persisted Records to dashboard cards via RecordMapper.
-    /// Falls back to static placeholder cards when the database is empty.
-    private var gridItems: [GridItem] {
-        if records.isEmpty {
-            return placeholderItems
+    private func navigateDay(by delta: Int) {
+        let cal  = Calendar.current
+        let next = cal.date(byAdding: .day, value: delta, to: selectedDate)!
+        let today = cal.startOfDay(for: Date())
+        guard next <= today else { return }
+
+        // delta < 0 = going to earlier date → new view comes from the LEFT (past is on the left)
+        insertionEdge = delta < 0 ? .leading : .trailing
+        withAnimation(.spring(duration: 0.35, bounce: 0.1)) {
+            selectedDate = next
         }
-        return records
-            .flatMap { RecordMapper.allCards(record: $0) }
-            .map { info in
-                GridItem(
-                    card: AnyView(
-                        NavigationLink(
-                            destination: RecordDetailView(
-                                record: info.record,
-                                focusedSection: info.focusedSection
-                            )
-                        ) {
-                            info.cardView
-                        }
-                        .buttonStyle(.plain)
-                    ),
-                    columns: info.columns,
-                    units: info.units
-                )
-            }
+    }
+
+    private func formattedDateLabel(_ date: Date) -> String {
+        let cal   = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        if cal.isDate(date, inSameDayAs: today) { return "今日" }
+        let yesterday = cal.date(byAdding: .day, value: -1, to: today)!
+        if cal.isDate(date, inSameDayAs: yesterday) { return "昨天" }
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "zh_CN")
+        f.dateFormat = "M月d日 · EEE"
+        return f.string(from: date)
     }
 
     // MARK: Record creation
@@ -106,52 +115,37 @@ struct ContentView: View {
         let record = Record()
         record.body = trimmed
 
-        // Detect special content in the text
+        // Assign createdAt to the selected date
+        let cal   = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        if cal.isDate(selectedDate, inSameDayAs: today) {
+            // Today: use the actual current time
+            record.createdAt = Date()
+        } else {
+            // Past day: place at end of that day so it sorts near top
+            let dayEnd = cal.date(byAdding: .day, value: 1, to: selectedDate)!
+            record.createdAt = dayEnd.addingTimeInterval(-1)
+        }
+        record.updatedAt = record.createdAt
+
         let parsed = RecordParser.parseBody(trimmed)
         record.cardType = RecordParser.primaryCardType(body: trimmed, parsed: parsed)
 
-        // Create MediaCard entries for detected links
         var mediaCards: [MediaCard] = []
-
         for url in parsed.appleMusicURLs {
-            let m = MediaCard()
-            m.type = "music"
+            let m = MediaCard(); m.type = "music"
             m.url = url.absoluteString
             m.title = url.lastPathComponent.replacingOccurrences(of: "-", with: " ")
-            mediaCards.append(m)
-            modelContext.insert(m)
+            mediaCards.append(m); modelContext.insert(m)
         }
-
         for url in parsed.regularURLs {
-            let m = MediaCard()
-            m.type = "link"
+            let m = MediaCard(); m.type = "link"
             m.url = url.absoluteString
             m.title = url.host ?? url.absoluteString
-            mediaCards.append(m)
-            modelContext.insert(m)
+            mediaCards.append(m); modelContext.insert(m)
         }
-
         modelContext.insert(record)
-
-        // Associate media cards after insertion (SwiftData requires objects to exist first)
-        if !mediaCards.isEmpty {
-            record.mediaCards = mediaCards
-        }
-    }
-
-    // MARK: Placeholder (shown when no records exist)
-
-    private var placeholderItems: [GridItem] {
-        [
-            GridItem(card: AnyView(QuoteCard_4x2()),    columns: 4, units: 2),
-            GridItem(card: AnyView(WeatherCard_4x1()),  columns: 4, units: 1),
-            GridItem(card: AnyView(LinkCard_4x2()),     columns: 4, units: 2),
-            GridItem(card: AnyView(ActivityCard_4x2()), columns: 4, units: 2),
-            GridItem(card: AnyView(MusicCard_4x2()),    columns: 4, units: 2),
-            GridItem(card: AnyView(EmotionCard_4x1()),  columns: 4, units: 1),
-            GridItem(card: AnyView(TodoCard_4x4()),     columns: 4, units: 4),
-            GridItem(card: AnyView(PhotoCard_4x4()),    columns: 4, units: 4),
-        ]
+        if !mediaCards.isEmpty { record.mediaCards = mediaCards }
     }
 
     // MARK: Background
@@ -178,6 +172,43 @@ struct ContentView: View {
         }
     }
 }
+
+// MARK: - DatePickerSheet
+
+private struct DatePickerSheet: View {
+    @Binding var selectedDate: Date
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            VStack {
+                DatePicker(
+                    "选择日期",
+                    selection: $selectedDate,
+                    in: ...Calendar.current.startOfDay(for: Date()),
+                    displayedComponents: .date
+                )
+                .datePickerStyle(.graphical)
+                .padding()
+                .onChange(of: selectedDate) { _, new in
+                    // Normalise to start-of-day so DailyView query stays clean
+                    let norm = Calendar.current.startOfDay(for: new)
+                    if norm != selectedDate { selectedDate = norm }
+                }
+            }
+            .navigationTitle("选择日期")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("完成") { dismiss() }
+                        .fontWeight(.semibold)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Preview
 
 #Preview {
     ContentView()
