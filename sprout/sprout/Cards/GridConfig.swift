@@ -74,13 +74,38 @@ struct CardSize: Equatable {
     static let w4h4 = CardSize(columns: 4, units: 4)
 }
 
-// MARK: - Card Modifier
+// MARK: - Card Background Modifier
+
+private struct CardBackgroundModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        let radius = GridConfig.cardCornerRadius
+        content
+            // Light: near-opaque white  |  Dark: elevated system surface (#1C1C1E)
+            .background(
+                colorScheme == .dark
+                    ? Color(UIColor.secondarySystemBackground).opacity(0.92)
+                    : Color.white.opacity(0.90)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+            // Light: subtle drop shadow  |  Dark: none (invisible on dark bg) + hairline border instead
+            .shadow(
+                color: colorScheme == .dark ? .clear : .black.opacity(0.055),
+                radius: 12, x: 0, y: 4
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .stroke(
+                        colorScheme == .dark ? Color.white.opacity(0.07) : Color.clear,
+                        lineWidth: 0.5
+                    )
+            )
+    }
+}
 
 extension View {
     func cardBackground() -> some View {
-        self
-            .background(Color.white.opacity(0.90))
-            .clipShape(RoundedRectangle(cornerRadius: GridConfig.cardCornerRadius, style: .continuous))
-            .shadow(color: .black.opacity(0.055), radius: 12, x: 0, y: 4)
+        modifier(CardBackgroundModifier())
     }
 }
