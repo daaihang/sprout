@@ -85,7 +85,7 @@ struct SubscriptionDebugView: View {
             if manager.isLoading {
                 HStack { Spacer(); ProgressView(); Spacer() }
             } else if manager.availablePackages.isEmpty {
-                Text("未加载套餐 — 点击下方"刷新套餐"")
+                Text("未加载套餐 — 点击下方「刷新套餐」")
                     .foregroundStyle(.secondary)
                     .font(.caption)
             } else {
