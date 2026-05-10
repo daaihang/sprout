@@ -54,6 +54,13 @@ struct CardDebugView: View {
     @State private var showMusicSheet = false
     @State private var musicService = MusicService()
 
+    @State private var quoteData = QuoteCardData()
+    @State private var weatherData = WeatherCardData()
+    @State private var activityData = ActivityCardData()
+    @State private var emotionData: EmotionCardData? = nil
+    @State private var todoData = TodoCardData()
+    @State private var newTodoText = ""
+
     private var photoCardSizes: [GridItem] {
         [
             GridItem(card: AnyView(PhotoCard_4x2(data: debugData)), columns: 4, units: 2),
@@ -83,6 +90,50 @@ struct CardDebugView: View {
         ]
     }
 
+    private var quoteCardSizes: [GridItem] {
+        let d: QuoteCardData? = quoteData.isEmpty ? nil : quoteData
+        return [
+            GridItem(card: AnyView(QuoteCard_4x1(data: d)), columns: 4, units: 1),
+            GridItem(card: AnyView(QuoteCard_4x2(data: d)), columns: 4, units: 2),
+            GridItem(card: AnyView(QuoteCard_4x4(data: d)), columns: 4, units: 4),
+        ]
+    }
+
+    private var weatherCardSizes: [GridItem] {
+        let d: WeatherCardData? = weatherData.isEmpty ? nil : weatherData
+        return [
+            GridItem(card: AnyView(WeatherCard_4x1(data: d)), columns: 4, units: 1),
+            GridItem(card: AnyView(WeatherCard_4x2(data: d)), columns: 4, units: 2),
+            GridItem(card: AnyView(WeatherCard_4x4(data: d)), columns: 4, units: 4),
+        ]
+    }
+
+    private var activityCardSizes: [GridItem] {
+        let d: ActivityCardData? = activityData.isEmpty ? nil : activityData
+        return [
+            GridItem(card: AnyView(ActivityCard_4x1(data: d)), columns: 4, units: 1),
+            GridItem(card: AnyView(ActivityCard_4x2(data: d)), columns: 4, units: 2),
+            GridItem(card: AnyView(ActivityCard_4x4(data: d)), columns: 4, units: 4),
+        ]
+    }
+
+    private var emotionCardSizes: [GridItem] {
+        [
+            GridItem(card: AnyView(EmotionCard_4x1(data: emotionData)), columns: 4, units: 1),
+            GridItem(card: AnyView(EmotionCard_4x2(data: emotionData)), columns: 4, units: 2),
+            GridItem(card: AnyView(EmotionCard_4x4(data: emotionData)), columns: 4, units: 4),
+        ]
+    }
+
+    private var todoCardSizes: [GridItem] {
+        let d: TodoCardData? = todoData.isEmpty ? nil : todoData
+        return [
+            GridItem(card: AnyView(TodoCard_4x1(data: d)), columns: 4, units: 1),
+            GridItem(card: AnyView(TodoCard_4x2(data: d)), columns: 4, units: 2),
+            GridItem(card: AnyView(TodoCard_4x4(data: d)), columns: 4, units: 4),
+        ]
+    }
+
     private var otherCardSizes: [GridItem] {
         [
             GridItem(card: AnyView(cardView(for: "4x1")), columns: 4, units: 1),
@@ -106,7 +157,12 @@ struct CardDebugView: View {
                 case "PhotoCard": return photoCardSizes
                 case "MapCard": return mapCardSizes
                 case "LinkCard": return linkCardSizes
-                case "MusicCard": return musicCardSizes
+                case "MusicCard":    return musicCardSizes
+                case "QuoteCard":   return quoteCardSizes
+                case "WeatherCard": return weatherCardSizes
+                case "ActivityCard":return activityCardSizes
+                case "EmotionCard": return emotionCardSizes
+                case "TodoCard":    return todoCardSizes
                 default: return otherCardSizes
                 }
             }()
@@ -121,6 +177,16 @@ struct CardDebugView: View {
                 linkDebugControlsSection
             } else if cardType == "MusicCard" {
                 musicDebugControlsSection
+            } else if cardType == "QuoteCard" {
+                quoteDebugControlsSection
+            } else if cardType == "WeatherCard" {
+                weatherDebugControlsSection
+            } else if cardType == "ActivityCard" {
+                activityDebugControlsSection
+            } else if cardType == "EmotionCard" {
+                emotionDebugControlsSection
+            } else if cardType == "TodoCard" {
+                todoDebugControlsSection
             }
         }
         .navigationTitle(cardType)
@@ -332,26 +398,6 @@ struct CardDebugView: View {
     @ViewBuilder
     private func cardView(for size: String) -> some View {
         switch (cardType, size) {
-        case ("QuoteCard",    "4x1"): QuoteCard_4x1()
-        case ("QuoteCard",    "4x2"): QuoteCard_4x2()
-        case ("QuoteCard",    "4x4"): QuoteCard_4x4()
-        case ("WeatherCard",  "4x1"): WeatherCard_4x1()
-        case ("WeatherCard",  "4x2"): WeatherCard_4x2()
-        case ("WeatherCard",  "4x4"): WeatherCard_4x4()
-        case ("LinkCard",     "4x2"): LinkCard_4x2()
-        case ("LinkCard",     "4x4"): LinkCard_4x4()
-        case ("ActivityCard", "4x1"): ActivityCard_4x1()
-        case ("ActivityCard", "4x2"): ActivityCard_4x2()
-        case ("ActivityCard", "4x4"): ActivityCard_4x4()
-        case ("MusicCard",    "4x1"): MusicCard_4x1()
-        case ("MusicCard",    "4x2"): MusicCard_4x2()
-        case ("MusicCard",    "4x4"): MusicCard_4x4()
-        case ("EmotionCard",  "4x1"): EmotionCard_4x1()
-        case ("EmotionCard",  "4x2"): EmotionCard_4x2()
-        case ("EmotionCard",  "4x4"): EmotionCard_4x4()
-        case ("TodoCard",     "4x1"): TodoCard_4x1()
-        case ("TodoCard",     "4x2"): TodoCard_4x2()
-        case ("TodoCard",     "4x4"): TodoCard_4x4()
         default: EmptyView()
         }
     }
@@ -474,6 +520,307 @@ struct CardDebugView: View {
             .padding(.bottom, 32)
         }
     }
+
+    // MARK: - Quote Debug
+
+    @ViewBuilder
+    private var quoteDebugControlsSection: some View {
+        let presets: [(String, String)] = [
+            ("不积跬步，无以至千里；不积小流，无以成江海。", "荀子"),
+            ("纸上得来终觉浅，绝知此事要躬行。", "陆游"),
+            ("宝剑锋从磨砺出，梅花香自苦寒来。", ""),
+            ("苟利国家生死以，岂因祸福避趋之。", "林则徐"),
+        ]
+        VStack(alignment: .leading, spacing: 16) {
+            Text("调试控件").font(.headline).padding(.horizontal, 16)
+            VStack(spacing: 12) {
+                TextEditor(text: $quoteData.quote)
+                    .frame(height: 80)
+                    .padding(8)
+                    .background(Color(.systemGray6))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .overlay(
+                        Group {
+                            if quoteData.quote.isEmpty {
+                                Text("语录内容").foregroundStyle(.secondary).padding(12)
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                                    .allowsHitTesting(false)
+                            }
+                        }
+                    )
+                TextField("作者", text: $quoteData.author).textFieldStyle(.roundedBorder)
+                TextField("出处（如《论语》）", text: $quoteData.source).textFieldStyle(.roundedBorder)
+                Text("预设语录").font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                LazyVGrid(columns: [SwiftUI.GridItem(.flexible()), SwiftUI.GridItem(.flexible())], spacing: 8) {
+                    ForEach(presets, id: \.0) { quote, author in
+                        Button {
+                            quoteData.quote = quote
+                            quoteData.author = author
+                        } label: {
+                            Text(quote)
+                                .font(.system(size: 10))
+                                .lineLimit(2)
+                                .multilineTextAlignment(.leading)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(8)
+                                .background(Color.accentColor.opacity(0.08))
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                        }
+                        .foregroundStyle(.primary)
+                    }
+                }
+                if !quoteData.isEmpty {
+                    Button("清除数据") { quoteData = QuoteCardData() }.foregroundColor(.red)
+                }
+            }
+            .padding(.horizontal, 16).padding(.bottom, 32)
+        }
+    }
+
+    // MARK: - Weather Debug
+
+    @ViewBuilder
+    private var weatherDebugControlsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("调试控件").font(.headline).padding(.horizontal, 16)
+            VStack(spacing: 12) {
+                TextField("城市名称", text: $weatherData.location).textFieldStyle(.roundedBorder)
+                HStack {
+                    Text("温度")
+                    Spacer()
+                    Stepper("\(Int(weatherData.temperature))°C", value: $weatherData.temperature, in: -40...50)
+                }
+                HStack {
+                    Text("体感温度")
+                    Spacer()
+                    Stepper("\(Int(weatherData.feelsLike))°C", value: $weatherData.feelsLike, in: -40...50)
+                }
+                HStack {
+                    Text("最高 / 最低")
+                    Spacer()
+                    Stepper("H:\(Int(weatherData.high))°", value: $weatherData.high, in: -40...50)
+                    Stepper("L:\(Int(weatherData.low))°", value: $weatherData.low, in: -40...50)
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("湿度 \(weatherData.humidity)%").font(.caption).foregroundStyle(.secondary)
+                    Slider(value: Binding(get: { Double(weatherData.humidity) }, set: { weatherData.humidity = Int($0) }), in: 0...100, step: 5)
+                }
+                Text("天气状况").font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                LazyVGrid(columns: Array(repeating: SwiftUI.GridItem(.flexible()), count: 4), spacing: 8) {
+                    ForEach(WeatherCondition.allCases, id: \.self) { condition in
+                        Button {
+                            weatherData.condition = condition
+                        } label: {
+                            VStack(spacing: 4) {
+                                Image(systemName: condition.sfSymbol)
+                                    .font(.system(size: 20))
+                                    .foregroundStyle(condition.color)
+                                    .symbolRenderingMode(.multicolor)
+                                Text(condition.label).font(.system(size: 9)).lineLimit(1)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                            .background(weatherData.condition == condition ? Color.accentColor.opacity(0.12) : Color(.systemGray6))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                        }
+                        .foregroundStyle(.primary)
+                    }
+                }
+                if !weatherData.isEmpty {
+                    Button("清除数据") { weatherData = WeatherCardData() }.foregroundColor(.red)
+                }
+            }
+            .padding(.horizontal, 16).padding(.bottom, 32)
+        }
+    }
+
+    // MARK: - Activity Debug
+
+    @ViewBuilder
+    private var activityDebugControlsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("调试控件").font(.headline).padding(.horizontal, 16)
+            VStack(spacing: 12) {
+                Text("运动类型").font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                LazyVGrid(columns: Array(repeating: SwiftUI.GridItem(.flexible()), count: 4), spacing: 8) {
+                    ForEach(ActivityType.allCases, id: \.self) { type in
+                        Button {
+                            activityData.type = type
+                        } label: {
+                            VStack(spacing: 4) {
+                                Image(systemName: type.sfSymbol)
+                                    .font(.system(size: 18))
+                                    .foregroundStyle(type.color)
+                                Text(type.label).font(.system(size: 9)).lineLimit(1)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                            .background(activityData.type == type ? Color.accentColor.opacity(0.12) : Color(.systemGray6))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                        }
+                        .foregroundStyle(.primary)
+                    }
+                }
+                HStack {
+                    Text("数值")
+                    Spacer()
+                    Stepper("\(activityData.formattedValue) \(activityData.type.defaultUnit)", value: $activityData.value, in: 0...50000, step: activityData.type == .steps ? 500 : 0.5)
+                }
+                HStack {
+                    Text("目标")
+                    Spacer()
+                    Stepper(activityData.goal > 0 ? "\(activityData.goal.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", activityData.goal) : String(format: "%.1f", activityData.goal))" : "不设目标", value: $activityData.goal, in: 0...50000, step: activityData.type == .steps ? 1000 : 1)
+                }
+                HStack {
+                    Text("时长")
+                    Spacer()
+                    Stepper(activityData.durationMinutes > 0 ? "\(activityData.durationMinutes) min" : "不记录", value: $activityData.durationMinutes, in: 0...300, step: 5)
+                }
+                HStack(spacing: 8) {
+                    ForEach([
+                        ("步数 8500", { activityData = ActivityCardData(type: .steps, value: 8500, goal: 10000) }),
+                        ("跑步 5km", { activityData = ActivityCardData(type: .running, value: 5.2, goal: 5, durationMinutes: 32) }),
+                        ("睡眠 7.5h", { activityData = ActivityCardData(type: .sleep, value: 7.5, goal: 8, durationMinutes: 450) }),
+                    ], id: \.0) { label, action in
+                        Button(label) { action() }
+                            .font(.caption)
+                            .padding(.horizontal, 10).padding(.vertical, 6)
+                            .background(Color.accentColor.opacity(0.1))
+                            .clipShape(Capsule())
+                    }
+                }
+                if !activityData.isEmpty {
+                    Button("清除数据") { activityData = ActivityCardData() }.foregroundColor(.red)
+                }
+            }
+            .padding(.horizontal, 16).padding(.bottom, 32)
+        }
+    }
+
+    // MARK: - Emotion Debug
+
+    @ViewBuilder
+    private var emotionDebugControlsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("调试控件").font(.headline).padding(.horizontal, 16)
+            VStack(spacing: 12) {
+                Text("选择心情").font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                LazyVGrid(columns: Array(repeating: SwiftUI.GridItem(.flexible()), count: 3), spacing: 10) {
+                    ForEach(MoodType.allCases, id: \.self) { mood in
+                        Button {
+                            if emotionData == nil { emotionData = EmotionCardData() }
+                            emotionData?.mood = mood
+                        } label: {
+                            VStack(spacing: 4) {
+                                Text(mood.emoji).font(.system(size: 26))
+                                Text(mood.label).font(.system(size: 10))
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(emotionData?.mood == mood ? mood.color.opacity(0.15) : Color(.systemGray6))
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(emotionData?.mood == mood ? mood.color.opacity(0.4) : Color.clear, lineWidth: 1.5)
+                            )
+                        }
+                        .foregroundStyle(.primary)
+                    }
+                }
+                if emotionData != nil {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("强度 \(emotionData?.intensity ?? 3)/5").font(.caption).foregroundStyle(.secondary)
+                        HStack(spacing: 12) {
+                            ForEach(1...5, id: \.self) { i in
+                                Button {
+                                    emotionData?.intensity = i
+                                } label: {
+                                    Circle()
+                                        .fill((emotionData?.intensity ?? 0) >= i ? (emotionData?.mood.color ?? .accentColor) : Color(.systemGray4))
+                                        .frame(width: 28, height: 28)
+                                }
+                            }
+                            Spacer()
+                        }
+                    }
+                    TextField("备注（可选）", text: Binding(
+                        get: { emotionData?.note ?? "" },
+                        set: { emotionData?.note = $0 }
+                    ))
+                    .textFieldStyle(.roundedBorder)
+                    Button("清除数据") { emotionData = nil }.foregroundColor(.red)
+                }
+            }
+            .padding(.horizontal, 16).padding(.bottom, 32)
+        }
+    }
+
+    // MARK: - Todo Debug
+
+    @ViewBuilder
+    private var todoDebugControlsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("调试控件").font(.headline).padding(.horizontal, 16)
+            VStack(spacing: 12) {
+                TextField("清单标题（可选）", text: $todoData.title).textFieldStyle(.roundedBorder)
+                HStack(spacing: 8) {
+                    TextField("添加事项", text: $newTodoText)
+                        .textFieldStyle(.roundedBorder)
+                        .submitLabel(.done)
+                        .onSubmit { addTodoItem() }
+                    Button("添加") { addTodoItem() }
+                        .disabled(newTodoText.isEmpty)
+                }
+                if !todoData.items.isEmpty {
+                    VStack(spacing: 0) {
+                        ForEach(todoData.items) { item in
+                            HStack(spacing: 10) {
+                                Button {
+                                    if let idx = todoData.items.firstIndex(where: { $0.id == item.id }) {
+                                        todoData.items[idx].isDone.toggle()
+                                    }
+                                } label: {
+                                    Image(systemName: item.isDone ? "checkmark.square.fill" : "square")
+                                        .foregroundStyle(item.isDone ? .green : .secondary)
+                                }
+                                Text(item.text)
+                                    .font(.system(size: 14))
+                                    .strikethrough(item.isDone)
+                                    .foregroundStyle(item.isDone ? .secondary : .primary)
+                                    .lineLimit(1)
+                                Spacer()
+                                Button {
+                                    todoData.items.removeAll { $0.id == item.id }
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                                }
+                            }
+                            .padding(.vertical, 8)
+                            Divider()
+                        }
+                    }
+                    .padding(.horizontal, 4)
+                    Text("\(todoData.doneCount)/\(todoData.totalCount) 已完成")
+                        .font(.caption).foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                    Button("清除数据") {
+                        todoData = TodoCardData()
+                        newTodoText = ""
+                    }.foregroundColor(.red)
+                }
+            }
+            .padding(.horizontal, 16).padding(.bottom, 32)
+        }
+    }
+
+    private func addTodoItem() {
+        let trimmed = newTodoText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        withAnimation { todoData.items.append(TodoItem(text: trimmed)) }
+        newTodoText = ""
+    }
+
+    // MARK: - Music Auth Helpers
 
     private var musicAuthStatusText: String {
         switch musicService.authorizationStatus {
