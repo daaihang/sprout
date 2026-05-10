@@ -1,6 +1,7 @@
 import SwiftUI
 import PhotosUI
 import MapKit
+import MusicKit
 
 struct DebugPage: View {
     var body: some View {
@@ -49,6 +50,10 @@ struct CardDebugView: View {
     @State private var newLinkTitle: String = ""
     @State private var newLinkDescription: String = ""
 
+    @State private var musicData: MusicCardData = MusicCardData()
+    @State private var showMusicSheet = false
+    @State private var musicService = MusicService()
+
     private var photoCardSizes: [GridItem] {
         [
             GridItem(card: AnyView(PhotoCard_4x2(data: debugData)), columns: 4, units: 2),
@@ -67,6 +72,14 @@ struct CardDebugView: View {
         [
             GridItem(card: AnyView(LinkCard_4x2(data: linkData)), columns: 4, units: 2),
             GridItem(card: AnyView(LinkCard_4x4(data: linkData)), columns: 4, units: 4),
+        ]
+    }
+
+    private var musicCardSizes: [GridItem] {
+        [
+            GridItem(card: AnyView(MusicCard_4x1(data: musicData.isEmpty ? nil : musicData, onTap: { showMusicSheet = true })), columns: 4, units: 1),
+            GridItem(card: AnyView(MusicCard_4x2(data: musicData.isEmpty ? nil : musicData, onTap: { showMusicSheet = true })), columns: 4, units: 2),
+            GridItem(card: AnyView(MusicCard_4x4(data: musicData.isEmpty ? nil : musicData, onTap: { showMusicSheet = true })), columns: 4, units: 4),
         ]
     }
 
@@ -93,6 +106,7 @@ struct CardDebugView: View {
                 case "PhotoCard": return photoCardSizes
                 case "MapCard": return mapCardSizes
                 case "LinkCard": return linkCardSizes
+                case "MusicCard": return musicCardSizes
                 default: return otherCardSizes
                 }
             }()
@@ -105,11 +119,16 @@ struct CardDebugView: View {
                 mapDebugControlsSection
             } else if cardType == "LinkCard" {
                 linkDebugControlsSection
+            } else if cardType == "MusicCard" {
+                musicDebugControlsSection
             }
         }
         .navigationTitle(cardType)
         .sheet(isPresented: $showMapSheet) {
             MapCardSheet(data: $mapData)
+        }
+        .sheet(isPresented: $showMusicSheet) {
+            MusicCardSheet(data: $musicData, musicService: musicService)
         }
     }
 
@@ -334,6 +353,151 @@ struct CardDebugView: View {
         case ("TodoCard",     "4x2"): TodoCard_4x2()
         case ("TodoCard",     "4x4"): TodoCard_4x4()
         default: EmptyView()
+        }
+    }
+
+    @ViewBuilder
+    private var musicDebugControlsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("调试控件")
+                .font(.headline)
+                .padding(.horizontal, 16)
+
+            VStack(spacing: 12) {
+                HStack {
+                    Label(musicAuthStatusText, systemImage: musicAuthStatusIcon)
+                        .foregroundColor(musicAuthStatusColor)
+                        .font(.subheadline)
+                    Spacer()
+                    if musicService.authorizationStatus == .notDetermined {
+                        Button("请求权限") {
+                            Task { await musicService.requestAuthorization() }
+                        }
+                        .font(.caption)
+                        .buttonStyle(.bordered)
+                    } else if musicService.authorizationStatus == .denied {
+                        Button("打开设置") {
+                            if let url = URL(string: UIApplication.openSettingsURLString) {
+                                UIApplication.shared.open(url)
+                            }
+                        }
+                        .font(.caption)
+                        .buttonStyle(.bordered)
+                    }
+                }
+                .padding(.horizontal, 16)
+
+                Divider().padding(.horizontal, 16)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("正在播放")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 16)
+
+                    if let nowPlaying = musicService.nowPlayingData {
+                        HStack(spacing: 12) {
+                            Group {
+                                if let artwork = nowPlaying.albumArtwork {
+                                    Image(uiImage: artwork)
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fill)
+                                } else {
+                                    Color.gray.opacity(0.2)
+                                        .overlay(Image(systemName: "music.note").foregroundColor(.secondary))
+                                }
+                            }
+                            .frame(width: 48, height: 48)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(nowPlaying.trackName)
+                                    .font(.subheadline).fontWeight(.medium)
+                                    .lineLimit(1)
+                                Text(nowPlaying.artistName)
+                                    .font(.caption).foregroundColor(.secondary)
+                                    .lineLimit(1)
+                            }
+                            Spacer()
+                            Button {
+                                withAnimation { musicData = nowPlaying }
+                            } label: {
+                                Image(systemName: "plus.circle.fill")
+                                    .font(.title2)
+                                    .foregroundColor(.accentColor)
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                    } else {
+                        HStack {
+                            Image(systemName: "music.note.slash").foregroundColor(.secondary)
+                            Text("暂无正在播放的音乐")
+                                .font(.subheadline).foregroundColor(.secondary)
+                        }
+                        .padding(.horizontal, 16)
+                    }
+                }
+
+                Divider().padding(.horizontal, 16)
+
+                Button {
+                    showMusicSheet = true
+                } label: {
+                    Label("搜索并添加音乐", systemImage: "magnifyingglass")
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(Color.accentColor.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .padding(.horizontal, 16)
+
+                Button {
+                    Task { await musicService.refreshNowPlaying() }
+                } label: {
+                    Label("刷新正在播放", systemImage: "arrow.clockwise")
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(Color.accentColor.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .padding(.horizontal, 16)
+                .disabled(musicService.authorizationStatus != .authorized)
+
+                if !musicData.isEmpty {
+                    Button("清除数据") {
+                        withAnimation { musicData = MusicCardData() }
+                    }
+                    .foregroundColor(.red)
+                    .padding(.horizontal, 16)
+                }
+            }
+            .padding(.bottom, 32)
+        }
+    }
+
+    private var musicAuthStatusText: String {
+        switch musicService.authorizationStatus {
+        case .authorized: return "MusicKit 已授权"
+        case .denied: return "MusicKit 已拒绝"
+        case .notDetermined: return "MusicKit 未授权"
+        case .restricted: return "MusicKit 受限"
+        @unknown default: return "MusicKit 未知状态"
+        }
+    }
+
+    private var musicAuthStatusIcon: String {
+        switch musicService.authorizationStatus {
+        case .authorized: return "checkmark.circle.fill"
+        case .denied: return "xmark.circle.fill"
+        default: return "questionmark.circle.fill"
+        }
+    }
+
+    private var musicAuthStatusColor: Color {
+        switch musicService.authorizationStatus {
+        case .authorized: return .green
+        case .denied: return .red
+        default: return .orange
         }
     }
 }

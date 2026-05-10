@@ -3,178 +3,184 @@ import MusicKit
 
 struct MusicCardSheet: View {
     @Binding var data: MusicCardData
+    var musicService: MusicService
     @Environment(\.dismiss) private var dismiss
 
     @State private var searchText = ""
-    @State private var searchResults: [Song] = []
+    @State private var songResults: [Song] = []
+    @State private var albumResults: [Album] = []
     @State private var isSearching = false
     @State private var isLoadingURL = false
     @State private var errorMessage: String?
-    @State private var authorizationStatus: MusicAuthorization.Status = .notDetermined
+    @State private var searchTask: Task<Void, Never>?
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                searchBarSection
-                    .padding()
-
-                if let error = errorMessage {
-                    errorView(error)
-                } else if isLoadingURL {
-                    loadingView
-                } else if searchResults.isEmpty && searchText.isEmpty {
-                    emptyStateView
-                } else if searchResults.isEmpty {
-                    noResultsView
-                } else {
-                    resultsList
+            Group {
+                switch musicService.authorizationStatus {
+                case .denied, .restricted:
+                    deniedView
+                default:
+                    contentList
                 }
-
-                Spacer()
             }
             .navigationTitle("添加音乐")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") {
-                        dismiss()
-                    }
+                    Button("取消") { dismiss() }
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    if !searchResults.isEmpty {
-                        Button("完成") {
-                            dismiss()
+            }
+        }
+        .task {
+            if musicService.authorizationStatus == .notDetermined {
+                await musicService.requestAuthorization()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var contentList: some View {
+        List {
+            Section {
+                HStack {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(.secondary)
+                    TextField("粘贴链接或搜索歌曲、专辑、歌手", text: $searchText)
+                        .textFieldStyle(.plain)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                        .submitLabel(.search)
+                        .onSubmit { performSearch(searchText) }
+                        .onChange(of: searchText) { _, newValue in
+                            scheduleSearch(newValue)
                         }
+                    if isSearching || isLoadingURL {
+                        ProgressView().scaleEffect(0.8)
+                    } else if !searchText.isEmpty {
+                        Button {
+                            searchText = ""
+                            songResults = []
+                            albumResults = []
+                            errorMessage = nil
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }
-        }
-        .onAppear {
-            checkAuthorization()
-        }
-    }
 
-    @ViewBuilder
-    private var searchBarSection: some View {
-        VStack(spacing: 12) {
-            HStack {
-                Image(systemName: "magnifyingglass")
-                    .foregroundColor(.secondary)
-                TextField("粘贴链接或搜索歌曲、专辑、歌手", text: $searchText)
-                    .textFieldStyle(.plain)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
-                    .submitLabel(.search)
-                    .onSubmit {
-                        performSearch()
+            if let nowPlaying = musicService.nowPlayingData, searchText.isEmpty {
+                Section("正在播放") {
+                    nowPlayingRow(nowPlaying)
+                }
+            }
+
+            if let error = errorMessage {
+                Section {
+                    Label(error, systemImage: "exclamationmark.triangle")
+                        .foregroundColor(.orange)
+                        .font(.subheadline)
+                }
+            }
+
+            if !songResults.isEmpty {
+                Section("歌曲") {
+                    ForEach(songResults, id: \.id) { song in
+                        Button { selectSong(song) } label: {
+                            songRow(song)
+                        }
+                        .buttonStyle(.plain)
                     }
-                if !searchText.isEmpty {
-                    Button {
-                        searchText = ""
-                        searchResults = []
-                        errorMessage = nil
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
+                }
+            }
+
+            if !albumResults.isEmpty {
+                Section("专辑") {
+                    ForEach(albumResults, id: \.id) { album in
+                        Button { selectAlbum(album) } label: {
+                            albumRow(album)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+
+            if searchText.isEmpty && musicService.nowPlayingData == nil && songResults.isEmpty {
+                Section {
+                    VStack(spacing: 12) {
+                        Image(systemName: "music.note.list")
+                            .font(.system(size: 36))
+                            .foregroundColor(.secondary.opacity(0.5))
+                        Text("粘贴 Apple Music 链接\n或输入歌曲、专辑名称")
+                            .font(.subheadline)
                             .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
                     }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 24)
                 }
-                if isSearching {
-                    ProgressView()
-                        .scaleEffect(0.8)
-                }
+                .listRowBackground(Color.clear)
             }
-            .padding(12)
-            .background(Color(.systemGray6))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-
-            Text("粘贴 Apple Music 链接或输入搜索关键词")
-                .font(.caption)
-                .foregroundColor(.secondary)
         }
     }
 
     @ViewBuilder
-    private var emptyStateView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "music.note.list")
+    private var deniedView: some View {
+        VStack(spacing: 20) {
+            Spacer()
+            Image(systemName: "music.note.slash")
                 .font(.system(size: 48))
-                .foregroundColor(.secondary.opacity(0.5))
-            Text("搜索音乐")
+                .foregroundColor(.secondary)
+            Text("需要音乐权限")
                 .font(.headline)
-                .foregroundColor(.secondary)
-            Text("粘贴 Apple Music 链接或输入歌曲、专辑、歌手名称")
-                .font(.subheadline)
-                .foregroundColor(.secondary.opacity(0.7))
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
-        }
-        .padding(.top, 60)
-    }
-
-    @ViewBuilder
-    private var noResultsView: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 36))
-                .foregroundColor(.secondary.opacity(0.5))
-            Text("未找到结果")
-                .font(.headline)
-                .foregroundColor(.secondary)
-        }
-        .padding(.top, 60)
-    }
-
-    @ViewBuilder
-    private var loadingView: some View {
-        VStack(spacing: 16) {
-            ProgressView()
-                .scaleEffect(1.2)
-            Text("正在加载...")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-        }
-        .padding(.top, 60)
-    }
-
-    @ViewBuilder
-    private func errorView(_ message: String) -> some View {
-        VStack(spacing: 12) {
-            Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 36))
-                .foregroundColor(.orange)
-            Text(message)
+            Text("请在设置中允许访问 Apple Music")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
-        }
-        .padding(.top, 60)
-    }
-
-    @ViewBuilder
-    private var resultsList: some View {
-        ScrollView {
-            LazyVStack(spacing: 0) {
-                ForEach(searchResults, id: \.id) { song in
-                    Button {
-                        selectSong(song)
-                    } label: {
-                        songRow(song)
-                    }
-                    Divider()
+            Button("打开设置") {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
                 }
             }
-            .background(Color(.systemGray6))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .padding(.horizontal)
+            .buttonStyle(.borderedProminent)
+            Spacer()
+        }
+        .padding()
+    }
+
+    @ViewBuilder
+    private func nowPlayingRow(_ nowPlaying: MusicCardData) -> some View {
+        HStack(spacing: 12) {
+            artworkImageView(image: nowPlaying.albumArtwork, size: 48)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(nowPlaying.trackName)
+                    .font(.system(size: 15, weight: .medium))
+                    .lineLimit(1)
+                Text(nowPlaying.artistName)
+                    .font(.system(size: 13))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+            }
+            Spacer()
+            Button {
+                data = nowPlaying
+                dismiss()
+            } label: {
+                Image(systemName: "plus.circle.fill")
+                    .font(.title2)
+                    .foregroundColor(.accentColor)
+            }
+            .buttonStyle(.plain)
         }
     }
 
     @ViewBuilder
     private func songRow(_ song: Song) -> some View {
         HStack(spacing: 12) {
-            artworkView(for: song)
-
+            artworkView(artwork: song.artwork, size: 48)
             VStack(alignment: .leading, spacing: 2) {
                 Text(song.title)
                     .font(.system(size: 15, weight: .medium))
@@ -191,26 +197,41 @@ struct MusicCardSheet: View {
                         .lineLimit(1)
                 }
             }
-
             Spacer()
-
             Image(systemName: "chevron.right")
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 12)
     }
 
     @ViewBuilder
-    private func artworkView(for song: Song) -> some View {
-        let size: CGFloat = 50
+    private func albumRow(_ album: Album) -> some View {
+        HStack(spacing: 12) {
+            artworkView(artwork: album.artwork, size: 48)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(album.title)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+                Text(album.artistName)
+                    .font(.system(size: 13))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+            }
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private func artworkView(artwork: Artwork?, size: CGFloat) -> some View {
         Group {
-            if let artwork = song.artwork {
-                AsyncImage(url: artwork.url(width: Int(size * 2), height: Int(size * 2))) { image in
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
+            if let artwork = artwork,
+               let url = artwork.url(width: Int(size * 2), height: Int(size * 2)) {
+                AsyncImage(url: url) { image in
+                    image.resizable().aspectRatio(contentMode: .fill)
                 } placeholder: {
                     artworkPlaceholder
                 }
@@ -219,7 +240,22 @@ struct MusicCardSheet: View {
             } else {
                 artworkPlaceholder
                     .frame(width: size, height: size)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func artworkImageView(image: UIImage?, size: CGFloat) -> some View {
+        Group {
+            if let image = image {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: size, height: size)
                     .clipShape(RoundedRectangle(cornerRadius: 6))
+            } else {
+                artworkPlaceholder
+                    .frame(width: size, height: size)
             }
         }
     }
@@ -228,29 +264,29 @@ struct MusicCardSheet: View {
     private var artworkPlaceholder: some View {
         RoundedRectangle(cornerRadius: 6)
             .fill(Color.gray.opacity(0.2))
-            .overlay(
-                Image(systemName: "music.note")
-                    .foregroundColor(.secondary)
-            )
+            .overlay(Image(systemName: "music.note").foregroundColor(.secondary))
     }
 
-    private func checkAuthorization() {
-        authorizationStatus = MusicAuthorization.currentStatus
-        if authorizationStatus == .notDetermined {
-            Task {
-                let status = await MusicAuthorization.request()
-                await MainActor.run {
-                    authorizationStatus = status
-                }
-            }
+    private func scheduleSearch(_ query: String) {
+        searchTask?.cancel()
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            songResults = []
+            albumResults = []
+            errorMessage = nil
+            return
+        }
+        searchTask = Task {
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled else { return }
+            performSearch(trimmed)
         }
     }
 
-    private func performSearch() {
-        let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    private func performSearch(_ query: String) {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-
-        if let url = URL(string: trimmed), AppleMusicLinkParser.shared.isAppleMusicURL(trimmed) {
+        if AppleMusicLinkParser.shared.isAppleMusicURL(trimmed), let url = URL(string: trimmed) {
             loadFromURL(url)
         } else {
             searchMusicCatalog(query: trimmed)
@@ -260,77 +296,80 @@ struct MusicCardSheet: View {
     private func loadFromURL(_ url: URL) {
         isLoadingURL = true
         errorMessage = nil
-        searchResults = []
-
+        songResults = []
+        albumResults = []
         Task {
             do {
                 let musicData = try await AppleMusicLinkParser.shared.fetchSongDetails(from: url)
-                await MainActor.run {
-                    data = musicData
-                    isLoadingURL = false
-                    dismiss()
-                }
+                data = musicData
+                isLoadingURL = false
+                dismiss()
             } catch {
-                await MainActor.run {
-                    errorMessage = "无法加载音乐: \(error.localizedDescription)"
-                    isLoadingURL = false
-                }
+                errorMessage = "无法加载音乐: \(error.localizedDescription)"
+                isLoadingURL = false
             }
         }
     }
 
     private func searchMusicCatalog(query: String) {
-        guard authorizationStatus == .authorized else {
-            errorMessage = "需要音乐库访问权限"
+        guard musicService.authorizationStatus == .authorized else {
+            errorMessage = "需要音乐库访问权限，请先授权"
             return
         }
-
         isSearching = true
         errorMessage = nil
-
         Task {
             do {
                 var request = MusicCatalogSearchRequest(term: query, types: [Song.self, Album.self])
-                request.limit = 15
-
+                request.limit = 10
                 let response = try await request.response()
-                await MainActor.run {
-                    searchResults = response.songs.map { $0 }
-                    isSearching = false
-                }
+                songResults = response.songs.map { $0 }
+                albumResults = response.albums.map { $0 }
+                isSearching = false
             } catch {
-                await MainActor.run {
-                    errorMessage = "搜索失败: \(error.localizedDescription)"
-                    isSearching = false
-                }
+                errorMessage = "搜索失败: \(error.localizedDescription)"
+                isSearching = false
             }
         }
     }
 
     private func selectSong(_ song: Song) {
-        var artwork: UIImage?
-        if let artworkAsset = song.artwork {
-            let size = CGSize(width: 300, height: 300)
-            if let url = artworkAsset.url(width: Int(size.width), height: Int(size.height)) {
-                Task {
-                    if let (imageData, _) = try? await URLSession.shared.data(from: url),
-                       let image = UIImage(data: imageData) {
-                        await MainActor.run {
-                            data.albumArtwork = image
-                        }
-                    }
-                }
+        Task {
+            var artwork: UIImage? = nil
+            if let artworkAsset = song.artwork,
+               let url = artworkAsset.url(width: 300, height: 300),
+               let (imageData, _) = try? await URLSession.shared.data(from: url) {
+                artwork = UIImage(data: imageData)
             }
+            data = MusicCardData(
+                trackName: song.title,
+                artistName: song.artistName,
+                albumName: song.albumTitle ?? "",
+                albumArtwork: artwork,
+                appleMusicURL: song.url,
+                isPlaying: false
+            )
+            dismiss()
         }
+    }
 
-        data = MusicCardData(
-            trackName: song.title,
-            artistName: song.artistName,
-            albumName: song.albumTitle ?? "",
-            albumArtwork: nil,
-            appleMusicURL: song.url,
-            isPlaying: false
-        )
-        dismiss()
+    private func selectAlbum(_ album: Album) {
+        Task {
+            var artwork: UIImage? = nil
+            if let artworkAsset = album.artwork,
+               let url = artworkAsset.url(width: 300, height: 300),
+               let (imageData, _) = try? await URLSession.shared.data(from: url) {
+                artwork = UIImage(data: imageData)
+            }
+            data = MusicCardData(
+                trackName: album.title,
+                artistName: album.artistName,
+                albumName: album.title,
+                albumArtwork: artwork,
+                appleMusicURL: album.url,
+                isPlaying: false
+            )
+            dismiss()
+        }
     }
 }
