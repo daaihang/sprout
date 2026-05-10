@@ -1,0 +1,78 @@
+{
+  "identifier" : "sprout-storekit-config",
+  "nonConsumableProducts" : [],
+  "nonRenewingSubscriptionProducts" : [],
+  "products" : [],
+  "settings" : {
+    "_timeSyncEnabled" : false,
+    "askToBuyEnabled" : false,
+    "failTransactionsEnabled" : false,
+    "storefront" : "CHN",
+    "locale" : "zh_CN"
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "grow-group",
+      "localizations" : [],
+      "name" : "Grow 计划",
+      "products" : [
+        {
+          "adHocOfferCodes" : [],
+          "displayPrice" : "6.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "grow_monthly",
+          "introductoryOffer" : {
+            "displayPrice" : "0.00",
+            "offerIdentifier" : "free_trial_7d",
+            "offerMode" : "freeTrial",
+            "periodCount" : 1,
+            "periodUnit" : "WEEK"
+          },
+          "localizations" : [
+            {
+              "description" : "每月订阅 Grow 计划，解锁 AI 分析、关系图谱等全部功能。",
+              "displayName" : "Grow 月度计划",
+              "locale" : "zh_CN"
+            }
+          ],
+          "productID" : "com.speculolabs.sprout.grow.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Grow Monthly",
+          "subscriptionGroupID" : "grow-group",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOfferCodes" : [],
+          "displayPrice" : "49.99",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "grow_yearly",
+          "introductoryOffer" : {
+            "displayPrice" : "0.00",
+            "offerIdentifier" : "free_trial_7d",
+            "offerMode" : "freeTrial",
+            "periodCount" : 1,
+            "periodUnit" : "WEEK"
+          },
+          "localizations" : [
+            {
+              "description" : "年度订阅 Grow 计划，享受最优惠价格，相当于每月约 4.17 元。",
+              "displayName" : "Grow 年度计划",
+              "locale" : "zh_CN"
+            }
+          ],
+          "productID" : "com.speculolabs.sprout.grow.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Grow Yearly",
+          "subscriptionGroupID" : "grow-group",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

@@ -1,20 +1,23 @@
-//
-//  sproutApp.swift
-//  sprout
-//
-//  Created by z14 on 10/05/26.
-//
-
 import SwiftUI
 import SwiftData
 
 @main
 struct sproutApp: App {
+    @State private var subscriptionManager = SubscriptionManager()
+
     var sharedModelContainer: ModelContainer = {
-        let schema = Schema([Item.self])
+        let schema = Schema([
+            Record.self,
+            Person.self,
+            Decision.self,
+            MediaCard.self,
+            DailyQuestion.self,
+            Activity.self,
+        ])
         let modelConfiguration = ModelConfiguration(
             schema: schema,
-            isStoredInMemoryOnly: false
+            isStoredInMemoryOnly: false,
+            cloudKitDatabase: .automatic
         )
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
@@ -26,6 +29,7 @@ struct sproutApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environment(subscriptionManager)
         }
         .modelContainer(sharedModelContainer)
     }

@@ -1,0 +1,19 @@
+import Foundation
+import SwiftData
+
+@Model
+final class Activity {
+    var id: UUID = UUID()
+    var createdAt: Date = Date()
+    var type: String = "custom"
+    var name: String = ""
+    var value: Double? = nil
+    var unit: String? = nil
+    var durationMinutes: Int? = nil
+    var note: String? = nil
+    var sourceIdentifier: String? = nil
+
+    @Relationship(inverse: \Record.activity) var record: Record? = nil
+
+    init() {}
+}
