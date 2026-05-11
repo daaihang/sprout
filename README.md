@@ -77,6 +77,7 @@ The backend lives in `server/` and can be deployed to Fly.io.
 - Repo-level Fly config: [fly.toml](/Users/z14/Documents/sprout/fly.toml)
 - Container build: [server/Dockerfile](/Users/z14/Documents/sprout/server/Dockerfile)
 - Deployment notes: [server/DEPLOY_FLY.md](/Users/z14/Documents/sprout/server/DEPLOY_FLY.md)
+- Fly working directory: repo root (`/Users/z14/Documents/sprout`)
 
 Default deployment mode is conservative:
 
@@ -84,8 +85,13 @@ Default deployment mode is conservative:
 - `AI_PROVIDER=mock`
 - `DEV_AUTH_ENABLED=false`
 - SQLite persisted on a Fly volume at `/data/sprout.db`
+- Physical iPhones/iPads should use `https://sprout-god7g.fly.dev`
+
+Fly Managed Postgres is not used here. If the Fly dashboard only shows database options, create a regular Fly Volume with `fly volumes create` instead of selecting Managed Postgres.
 
 To switch to live AI, set Fly secrets/envs for `AI_MODE=live`, choose `AI_PROVIDER=anthropic` or `openai_compatible`, then provide `AI_MODEL` and `AI_API_KEY`. For OpenAI-compatible vendors, also set `AI_BASE_URL` when the endpoint differs from OpenAI's default.
+
+Backend changes should be committed and pushed to `origin/main` after each update so the Fly deployment stays in sync.
 
 ## Known Follow-ups
 

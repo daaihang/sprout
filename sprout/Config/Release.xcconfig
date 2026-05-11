@@ -7,3 +7,6 @@ REVENUECAT_ENTITLEMENT_FALLBACK_IDS = sprout_grow,grow
 REVENUECAT_OFFERING_ID = sprout_grow
 REVENUECAT_MONTHLY_PRODUCT_ID = com.speculolabs.sprout.grow.monthly
 REVENUECAT_YEARLY_PRODUCT_ID = com.speculolabs.sprout.grow.yearly
+MORY_API_SCHEME = https
+MORY_API_HOST = sprout-god7g.fly.dev
+MORY_API_PORT =

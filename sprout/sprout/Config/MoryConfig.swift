@@ -40,4 +40,36 @@ enum MoryConfig {
     static let entitlementID = string(for: "REVENUECAT_ENTITLEMENT_ID", fallback: "Sprout Grow")
     static let entitlementFallbackIDs = stringList(for: "REVENUECAT_ENTITLEMENT_FALLBACK_IDS")
     static let offeringID = string(for: "REVENUECAT_OFFERING_ID", fallback: "sprout_grow")
+    static var apiBaseURL: String {
+        let scheme = string(for: "MORY_API_SCHEME", fallback: "http")
+        let host = string(for: "MORY_API_HOST", fallback: "127.0.0.1")
+        let port = string(for: "MORY_API_PORT", fallback: "8080")
+
+        if !isRunningOnSimulator, isLocalhost(host) {
+            return "https://sprout-god7g.fly.dev"
+        }
+
+        guard !scheme.isEmpty, !host.isEmpty else {
+            return "http://127.0.0.1:8080"
+        }
+
+        if port.isEmpty {
+            return "\(scheme)://\(host)"
+        }
+
+        return "\(scheme)://\(host):\(port)"
+    }
+
+    private static var isRunningOnSimulator: Bool {
+        #if targetEnvironment(simulator)
+        return true
+        #else
+        return false
+        #endif
+    }
+
+    private static func isLocalhost(_ host: String) -> Bool {
+        let normalized = host.lowercased()
+        return normalized == "localhost" || normalized == "127.0.0.1" || normalized == "::1"
+    }
 }
