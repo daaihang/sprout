@@ -3,23 +3,25 @@ import SwiftUI
 struct CardGridView: View {
     let items: [GridItem]
 
-    @State private var containerWidth: CGFloat = CardSize.defaultScreenWidth
+    @State private var containerWidth: CGFloat = 393
+
+    private var layoutSignature: [String] {
+        items.map { "\($0.recordID.uuidString)-\($0.columns)x\($0.units)" }
+    }
 
     var body: some View {
-        let unitW         = GridConfig.unitWidth(screenWidth: containerWidth)
-        let spacing       = GridConfig.columnSpacing
-        let gridCols      = GridConfig.adaptiveColumnCount(screenWidth: containerWidth)
-        let waterfallCols = max(1, gridCols / 4)
-        let colWidth      = unitW * 4 + spacing * 3
+        let gridCols = GridConfig.adaptiveColumnCount(screenWidth: containerWidth)
+        let gridWidth = GridConfig.gridWidth(screenWidth: containerWidth)
 
-        WaterfallLayout(
-            items: items,
-            columnCount: waterfallCols,
-            columnWidth: colWidth,
-            unitWidth: unitW,
-            spacing: spacing
-        )
-        .frame(maxWidth: .infinity, alignment: .center)
+        StickerGridLayout(columns: gridCols) {
+            ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                editableCard(item: item, index: index)
+            }
+        }
+        .frame(width: gridWidth)
+        .padding(.horizontal, GridConfig.horizontalPadding)
+        .padding(.vertical, 20)
+        .animation(.spring(duration: 0.38, bounce: 0.2), value: layoutSignature)
         .background(
             GeometryReader { geo in
                 Color.clear
@@ -28,92 +30,92 @@ struct CardGridView: View {
             }
         )
     }
-}
 
-struct WaterfallLayout: View {
-    let items: [GridItem]
-    let columnCount: Int
-    let columnWidth: CGFloat
-    let unitWidth: CGFloat
-    let spacing: CGFloat
+    @ViewBuilder
+    private func editableCard(item: GridItem, index: Int) -> some View {
+        let span = item.span
+        CardContainerView(
+            container: CardContainer(
+                id: item.id,
+                span: span,
+                rotationDegrees: stickerRotation(for: item.id),
+                scale: stickerScale(for: item.id),
+                zIndex: index,
+                content: item.card
+            )
+        )
+        .layoutValue(key: StickerGridSpanKey.self, value: span)
+        .contentShape(RoundedRectangle(cornerRadius: GridConfig.cardCornerRadius, style: .continuous))
+        .contextMenu {
+            ForEach(item.availableSpans, id: \.self) { span in
+                Button {
+                    item.onResize(span)
+                } label: {
+                    Label(
+                        "\(span.widthColumns)×\(span.heightUnits)",
+                        systemImage: item.span == span ? "checkmark.circle.fill" : "rectangle.expand.vertical"
+                    )
+                }
+            }
 
-    var body: some View {
-        let positions = computePositions()
+            Divider()
 
-        ZStack(alignment: .topLeading) {
-            ForEach(items.indices, id: \.self) { index in
-                let pos = positions[index]
-                items[index].card
-                    .frame(width: columnWidth, height: pos.height)
-                    .offset(x: pos.x, y: pos.y)
+            Button(role: .destructive) {
+                item.onDelete()
+            } label: {
+                Label(localizedString("common.delete", default: "Delete"), systemImage: "trash")
             }
         }
-        .frame(width: totalWidth, height: computeTotalHeight(), alignment: .topLeading)
-    }
-
-    private var totalWidth: CGFloat {
-        columnWidth * CGFloat(columnCount) + spacing * CGFloat(columnCount - 1)
-    }
-
-    private struct Position {
-        var x: CGFloat
-        var y: CGFloat
-        var height: CGFloat
-    }
-
-    private func cardHeight(for item: GridItem) -> CGFloat {
-        // 包含行间距：N 单位高度 = N×unitWidth + (N-1)×spacing
-        // 使 N 张 4×1 叠放高度 = 一张 4×N 高度
-        unitWidth * CGFloat(item.units) + spacing * CGFloat(item.units - 1)
-    }
-
-    private func computePositions() -> [Position] {
-        var positions: [Position] = []
-        var colHeights = Array(repeating: CGFloat(0), count: columnCount)
-
-        for item in items {
-            let col = colHeights.enumerated().min(by: { $0.element < $1.element })?.offset ?? 0
-            let h   = cardHeight(for: item)
-            positions.append(Position(
-                x: CGFloat(col) * (columnWidth + spacing),
-                y: colHeights[col],
-                height: h
-            ))
-            colHeights[col] += h + spacing
-        }
-
-        return positions
-    }
-
-    private func computeTotalHeight() -> CGFloat {
-        var colHeights = Array(repeating: CGFloat(0), count: columnCount)
-
-        for item in items {
-            let col = colHeights.enumerated().min(by: { $0.element < $1.element })?.offset ?? 0
-            colHeights[col] += cardHeight(for: item) + spacing
-        }
-
-        return (colHeights.max() ?? 0) - spacing
     }
 }
 
 struct GridItem: Identifiable {
-    let id = UUID()
+    let id: String
+    let recordID: UUID
     let card: AnyView
-    let columns: Int
-    let units: Int
+    let columns: Int   // 2, 4, 6, 8
+    let units: Int     // 1, 2, 4
+    let availableSpans: [ContainerSpan]
+    let onResize: (ContainerSpan) -> Void
+    let onDelete: () -> Void
+
+    init(
+        id: String = UUID().uuidString,
+        recordID: UUID = UUID(),
+        card: AnyView,
+        columns: Int,
+        units: Int,
+        availableSpans: [ContainerSpan] = [],
+        onResize: @escaping (ContainerSpan) -> Void = { _ in },
+        onDelete: @escaping () -> Void = {}
+    ) {
+        self.id = id
+        self.recordID = recordID
+        self.card = card
+        self.columns = columns
+        self.units = units
+        self.availableSpans = availableSpans.isEmpty
+            ? [ContainerSpan(widthColumns: columns, heightUnits: units)]
+            : availableSpans
+        self.onResize = onResize
+        self.onDelete = onDelete
+    }
+
+    var span: ContainerSpan {
+        ContainerSpan(widthColumns: columns, heightUnits: units)
+    }
 }
 
 #Preview {
     ScrollView(showsIndicators: false) {
         CardGridView(items: [
-            GridItem(card: AnyView(QuoteCard_4x2()),    columns: 4, units: 2),
-            GridItem(card: AnyView(WeatherCard_4x1()),  columns: 4, units: 1),
-            GridItem(card: AnyView(ActivityCard_4x2()), columns: 4, units: 2),
-            GridItem(card: AnyView(MusicCard_4x1()),    columns: 4, units: 1),
-            GridItem(card: AnyView(EmotionCard_4x1()),  columns: 4, units: 1),
-            GridItem(card: AnyView(TodoCard_4x4()),     columns: 4, units: 4),
-            GridItem(card: AnyView(PhotoCard_4x4()),    columns: 4, units: 4),
+            GridItem(card: AnyView(QuoteCard()), columns: 4, units: 2, availableSpans: availableSpans(for: "quote"), onResize: { _ in }, onDelete: {}),
+            GridItem(card: AnyView(WeatherCard()), columns: 4, units: 1, availableSpans: availableSpans(for: "weather"), onResize: { _ in }, onDelete: {}),
+            GridItem(card: AnyView(ActivityCard()), columns: 4, units: 2, availableSpans: availableSpans(for: "activity"), onResize: { _ in }, onDelete: {}),
+            GridItem(card: AnyView(MusicCard()), columns: 4, units: 1, availableSpans: availableSpans(for: "music"), onResize: { _ in }, onDelete: {}),
+            GridItem(card: AnyView(EmotionCard()), columns: 4, units: 1, availableSpans: availableSpans(for: "emotion"), onResize: { _ in }, onDelete: {}),
+            GridItem(card: AnyView(TodoCard()), columns: 4, units: 4, availableSpans: availableSpans(for: "todo"), onResize: { _ in }, onDelete: {}),
+            GridItem(card: AnyView(PhotoCard()), columns: 4, units: 4, availableSpans: availableSpans(for: "photo"), onResize: { _ in }, onDelete: {}),
         ])
         .padding(.vertical, 20)
     }

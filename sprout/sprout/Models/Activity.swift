@@ -12,6 +12,10 @@ final class Activity {
     var durationMinutes: Int? = nil
     var note: String? = nil
     var sourceIdentifier: String? = nil
+    var completedAt: Date? = nil
+    var goal: Double? = nil
+    var isCompleted: Bool = false
+    var updatedAt: Date = Date()
 
     @Relationship(inverse: \Record.activity) var record: Record? = nil
 

@@ -2,6 +2,7 @@ import SwiftUI
 import MusicKit
 
 struct MusicCardSheet: View {
+    @Environment(AppLocalization.self) private var localization
     @Binding var data: MusicCardData
     var musicService: MusicService
     @Environment(\.dismiss) private var dismiss
@@ -24,11 +25,11 @@ struct MusicCardSheet: View {
                     contentList
                 }
             }
-            .navigationTitle("添加音乐")
+            .navigationTitle(t("card.music.sheet.title", "Add Music"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") { dismiss() }
+                    Button(t("common.cancel", "Cancel")) { dismiss() }
                 }
             }
         }
@@ -46,7 +47,7 @@ struct MusicCardSheet: View {
                 HStack {
                     Image(systemName: "magnifyingglass")
                         .foregroundColor(.secondary)
-                    TextField("粘贴链接或搜索歌曲、专辑、歌手", text: $searchText)
+                    TextField(t("card.music.sheet.search_placeholder", "Paste a link or search songs, albums, artists"), text: $searchText)
                         .textFieldStyle(.plain)
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
@@ -73,7 +74,7 @@ struct MusicCardSheet: View {
             }
 
             if let nowPlaying = musicService.nowPlayingData, searchText.isEmpty {
-                Section("正在播放") {
+                Section(t("card.music.sheet.now_playing", "Now Playing")) {
                     nowPlayingRow(nowPlaying)
                 }
             }
@@ -87,7 +88,7 @@ struct MusicCardSheet: View {
             }
 
             if !songResults.isEmpty {
-                Section("歌曲") {
+                Section(t("card.music.sheet.songs", "Songs")) {
                     ForEach(songResults, id: \.id) { song in
                         Button { selectSong(song) } label: {
                             songRow(song)
@@ -98,7 +99,7 @@ struct MusicCardSheet: View {
             }
 
             if !albumResults.isEmpty {
-                Section("专辑") {
+                Section(t("card.music.sheet.albums", "Albums")) {
                     ForEach(albumResults, id: \.id) { album in
                         Button { selectAlbum(album) } label: {
                             albumRow(album)
@@ -114,7 +115,7 @@ struct MusicCardSheet: View {
                         Image(systemName: "music.note.list")
                             .font(.system(size: 36))
                             .foregroundColor(.secondary.opacity(0.5))
-                        Text("粘贴 Apple Music 链接\n或输入歌曲、专辑名称")
+                        Text(t("card.music.sheet.empty", "Paste an Apple Music link\nor enter a song or album name"))
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
@@ -134,13 +135,13 @@ struct MusicCardSheet: View {
             Image(systemName: "music.note.slash")
                 .font(.system(size: 48))
                 .foregroundColor(.secondary)
-            Text("需要音乐权限")
+            Text(t("card.music.sheet.permission_title", "Music Access Needed"))
                 .font(.headline)
-            Text("请在设置中允许访问 Apple Music")
+            Text(t("card.music.sheet.permission_message", "Allow Apple Music access in Settings"))
                 .font(.subheadline)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
-            Button("打开设置") {
+            Button(t("common.open_settings", "Open Settings")) {
                 if let url = URL(string: UIApplication.openSettingsURLString) {
                     UIApplication.shared.open(url)
                 }
@@ -154,7 +155,7 @@ struct MusicCardSheet: View {
     @ViewBuilder
     private func nowPlayingRow(_ nowPlaying: MusicCardData) -> some View {
         HStack(spacing: 12) {
-            artworkImageView(image: nowPlaying.albumArtwork, size: 48)
+            artworkImageView(url: nowPlaying.albumArtworkURL, size: 48)
             VStack(alignment: .leading, spacing: 2) {
                 Text(nowPlaying.trackName)
                     .font(.system(size: 15, weight: .medium))
@@ -245,14 +246,16 @@ struct MusicCardSheet: View {
     }
 
     @ViewBuilder
-    private func artworkImageView(image: UIImage?, size: CGFloat) -> some View {
+    private func artworkImageView(url: URL?, size: CGFloat) -> some View {
         Group {
-            if let image = image {
-                Image(uiImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: size, height: size)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
+            if let url = url {
+                AsyncImage(url: url) { image in
+                    image.resizable().aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    artworkPlaceholder
+                }
+                .frame(width: size, height: size)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
             } else {
                 artworkPlaceholder
                     .frame(width: size, height: size)
@@ -305,7 +308,7 @@ struct MusicCardSheet: View {
                 isLoadingURL = false
                 dismiss()
             } catch {
-                errorMessage = "无法加载音乐: \(error.localizedDescription)"
+                errorMessage = t("card.music.sheet.error.load", "Unable to load music: %@", error.localizedDescription)
                 isLoadingURL = false
             }
         }
@@ -313,7 +316,7 @@ struct MusicCardSheet: View {
 
     private func searchMusicCatalog(query: String) {
         guard musicService.authorizationStatus == .authorized else {
-            errorMessage = "需要音乐库访问权限，请先授权"
+            errorMessage = t("card.music.sheet.error.permission", "Music library access is required. Please allow it first.")
             return
         }
         isSearching = true
@@ -327,25 +330,27 @@ struct MusicCardSheet: View {
                 albumResults = response.albums.map { $0 }
                 isSearching = false
             } catch {
-                errorMessage = "搜索失败: \(error.localizedDescription)"
+                errorMessage = t("card.music.sheet.error.search", "Search failed: %@", error.localizedDescription)
                 isSearching = false
             }
         }
     }
 
+    private func t(_ key: String, _ defaultValue: String, _ arguments: CVarArg...) -> String {
+        localization.string(key, default: defaultValue, arguments: arguments)
+    }
+
     private func selectSong(_ song: Song) {
         Task {
-            var artwork: UIImage? = nil
-            if let artworkAsset = song.artwork,
-               let url = artworkAsset.url(width: 300, height: 300),
-               let (imageData, _) = try? await URLSession.shared.data(from: url) {
-                artwork = UIImage(data: imageData)
+            var artworkURL: URL? = nil
+            if let artworkAsset = song.artwork {
+                artworkURL = artworkAsset.url(width: 300, height: 300)
             }
             data = MusicCardData(
                 trackName: song.title,
                 artistName: song.artistName,
                 albumName: song.albumTitle ?? "",
-                albumArtwork: artwork,
+                albumArtworkURL: artworkURL,
                 appleMusicURL: song.url,
                 isPlaying: false
             )
@@ -355,17 +360,15 @@ struct MusicCardSheet: View {
 
     private func selectAlbum(_ album: Album) {
         Task {
-            var artwork: UIImage? = nil
-            if let artworkAsset = album.artwork,
-               let url = artworkAsset.url(width: 300, height: 300),
-               let (imageData, _) = try? await URLSession.shared.data(from: url) {
-                artwork = UIImage(data: imageData)
+            var artworkURL: URL? = nil
+            if let artworkAsset = album.artwork {
+                artworkURL = artworkAsset.url(width: 300, height: 300)
             }
             data = MusicCardData(
                 trackName: album.title,
                 artistName: album.artistName,
                 albumName: album.title,
-                albumArtwork: artwork,
+                albumArtworkURL: artworkURL,
                 appleMusicURL: album.url,
                 isPlaying: false
             )

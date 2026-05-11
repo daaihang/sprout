@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		A100000400F94B3A00000004 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = A100000500F94B3A00000005 /* RevenueCat */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		022975612FAFD68E00F94B3A /* sprout.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = sprout.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A100000100F94B3A00000001 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
@@ -38,6 +42,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A100000400F94B3A00000004 /* RevenueCat in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -53,22 +58,21 @@
 			);
 			sourceTree = "<group>";
 		};
-		A100000300F94B3A00000003 /* Config */ = {
-			isa = PBXGroup;
-			children = (
-				A100000100F94B3A00000001 /* Debug.xcconfig */,
-				A100000200F94B3A00000002 /* Release.xcconfig */,
-			);
-			name = Config;
-			path = Config;
-			sourceTree = "<group>";
-		};
 		022975622FAFD68E00F94B3A /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				022975612FAFD68E00F94B3A /* sprout.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		A100000300F94B3A00000003 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				A100000100F94B3A00000001 /* Debug.xcconfig */,
+				A100000200F94B3A00000002 /* Release.xcconfig */,
+			);
+			path = Config;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -91,6 +95,7 @@
 			);
 			name = sprout;
 			packageProductDependencies = (
+				A100000500F94B3A00000005 /* RevenueCat */,
 			);
 			productName = sprout;
 			productReference = 022975612FAFD68E00F94B3A /* sprout.app */;
@@ -120,6 +125,9 @@
 			);
 			mainGroup = 022975582FAFD68E00F94B3A;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				0266DE752FB0D51C00B40980 /* XCRemoteSwiftPackageReference "purchases-ios" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 022975622FAFD68E00F94B3A /* Products */;
 			projectDirPath = "";
@@ -159,7 +167,7 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = sprout/sprout.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = 5Q43XZCDJ5;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -169,7 +177,7 @@
 				INFOPLIST_FILE = sprout/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Sprout;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_NSFaceIDUsageDescription = "";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "用于安全地验证您的身份";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "用于语音转文字功能";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "用于语音转文字功能";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -214,7 +222,7 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = sprout/sprout.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = 5Q43XZCDJ5;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -224,7 +232,7 @@
 				INFOPLIST_FILE = sprout/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Sprout;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_NSFaceIDUsageDescription = "";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "用于安全地验证您的身份";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "用于语音转文字功能";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "用于语音转文字功能";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -401,6 +409,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		0266DE752FB0D51C00B40980 /* XCRemoteSwiftPackageReference "purchases-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/RevenueCat/purchases-ios";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.72.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A100000500F94B3A00000005 /* RevenueCat */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 0266DE752FB0D51C00B40980 /* XCRemoteSwiftPackageReference "purchases-ios" */;
+			productName = RevenueCat;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 022975592FAFD68E00F94B3A /* Project object */;
 }

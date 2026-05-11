@@ -19,15 +19,15 @@ enum MoodType: String, CaseIterable {
 
     var label: String {
         switch self {
-        case .happy:    return "开心"
-        case .excited:  return "兴奋"
-        case .grateful: return "感恩"
-        case .calm:     return "平静"
-        case .confused: return "困惑"
-        case .anxious:  return "焦虑"
-        case .sad:      return "难过"
-        case .tired:    return "疲惫"
-        case .angry:    return "生气"
+        case .happy:    return localizedString("mood.happy", default: "Happy")
+        case .excited:  return localizedString("mood.excited", default: "Excited")
+        case .grateful: return localizedString("mood.grateful", default: "Grateful")
+        case .calm:     return localizedString("mood.calm", default: "Calm")
+        case .confused: return localizedString("mood.confused", default: "Confused")
+        case .anxious:  return localizedString("mood.anxious", default: "Anxious")
+        case .sad:      return localizedString("mood.sad", default: "Sad")
+        case .tired:    return localizedString("mood.tired", default: "Tired")
+        case .angry:    return localizedString("mood.angry", default: "Angry")
         }
     }
 
@@ -53,49 +53,49 @@ struct EmotionCardData {
 }
 
 struct EmotionCard: View {
-    let size: CardSize
     var data: EmotionCardData?
     var onTap: (() -> Void)?
 
     var body: some View {
         Group {
             if let data {
-                contentView(data)
+                GeometryReader { geo in
+                    contentView(data, metrics: CardLayoutMetrics(containerSize: geo.size))
+                }
             } else {
                 placeholderView
             }
         }
-        .frame(width: size.width, height: size.height)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .cardBackground()
         .onTapGesture { onTap?() }
     }
 
     @ViewBuilder
-    private func contentView(_ data: EmotionCardData) -> some View {
-        if size == .w4h1 {
+    private func contentView(_ data: EmotionCardData, metrics: CardLayoutMetrics) -> some View {
+        if metrics.isCompactHeight {
             HStack(spacing: 10) {
                 Text(data.mood.emoji)
-                    .font(.system(size: 28))
+                    .font(.system(size: metrics.isCompactWidth ? 22 : 28))
                 VStack(alignment: .leading, spacing: 1) {
                     Text(data.mood.label)
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: metrics.isCompactWidth ? 12 : 14, weight: .semibold))
                         .foregroundStyle(.primary)
-                    intensityDots(data.intensity, color: data.mood.color, dotSize: 5)
+                    intensityDots(data.intensity, color: data.mood.color, dotSize: metrics.isCompactWidth ? 4 : 5)
                 }
                 Spacer()
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-        } else if size == .w4h2 {
+            .padding(metrics.isCompactWidth ? 10 : 14)
+        } else if metrics.isMediumHeight {
             HStack(alignment: .top, spacing: 12) {
                 Text(data.mood.emoji)
-                    .font(.system(size: 42))
+                    .font(.system(size: metrics.isWideWidth ? 44 : 38))
                 VStack(alignment: .leading, spacing: 6) {
                     Text(data.mood.label)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: metrics.isWideWidth ? 17 : 15, weight: .semibold))
                         .foregroundStyle(.primary)
-                    intensityDots(data.intensity, color: data.mood.color, dotSize: 7)
-                    if !data.note.isEmpty {
+                    intensityDots(data.intensity, color: data.mood.color, dotSize: metrics.isWideWidth ? 8 : 6)
+                    if !data.note.isEmpty && !metrics.isCompactWidth {
                         Text(data.note)
                             .font(.system(size: 11))
                             .foregroundStyle(.secondary)
@@ -104,20 +104,20 @@ struct EmotionCard: View {
                 }
                 Spacer()
             }
-            .padding(14)
+            .padding(metrics.isWideWidth ? 16 : 14)
         } else {
             ZStack {
                 data.mood.color.opacity(0.08)
                 VStack(alignment: .leading, spacing: 0) {
                     Text(data.mood.emoji)
-                        .font(.system(size: 56))
+                        .font(.system(size: metrics.isWideWidth ? 60 : 52))
                     Spacer()
                     Text(data.mood.label)
-                        .font(.system(size: 20, weight: .semibold))
+                        .font(.system(size: metrics.isWideWidth ? 20 : 18, weight: .semibold))
                         .foregroundStyle(.primary)
-                    intensityDots(data.intensity, color: data.mood.color, dotSize: 9)
+                    intensityDots(data.intensity, color: data.mood.color, dotSize: metrics.isWideWidth ? 9 : 8)
                         .padding(.top, 6)
-                    if !data.note.isEmpty {
+                    if !data.note.isEmpty && metrics.isWideWidth {
                         Text(data.note)
                             .font(.system(size: 13))
                             .foregroundStyle(.secondary)
@@ -145,43 +145,13 @@ struct EmotionCard: View {
 
     @ViewBuilder
     private var placeholderView: some View {
-        VStack(spacing: size == .w4h1 ? 4 : 8) {
+        VStack(spacing: 8) {
             Text("😊")
-                .font(.system(size: size == .w4h1 ? 22 : 34))
+                .font(.system(size: 28))
                 .opacity(0.4)
-            if size != .w4h1 {
-                Text("点击记录心情")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+            Text(localizedString("mood.placeholder", default: "Tap to log an emotion"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
-}
-
-struct EmotionCard_4x1: View {
-    var data: EmotionCardData?
-    var onTap: (() -> Void)?
-    var body: some View { EmotionCard(size: .w4h1, data: data, onTap: onTap) }
-}
-
-struct EmotionCard_4x2: View {
-    var data: EmotionCardData?
-    var onTap: (() -> Void)?
-    var body: some View { EmotionCard(size: .w4h2, data: data, onTap: onTap) }
-}
-
-struct EmotionCard_4x4: View {
-    var data: EmotionCardData?
-    var onTap: (() -> Void)?
-    var body: some View { EmotionCard(size: .w4h4, data: data, onTap: onTap) }
-}
-
-#Preview {
-    VStack(spacing: 12) {
-        EmotionCard_4x1(data: EmotionCardData(mood: .happy, intensity: 4))
-        EmotionCard_4x2(data: EmotionCardData(mood: .calm, note: "今天状态不错，感觉很平静。", intensity: 3))
-        EmotionCard_4x4(data: EmotionCardData(mood: .grateful, note: "感谢今天遇到的每一件小事，生活真的很美好。值得珍惜。", intensity: 5))
-    }
-    .frame(width: 393)
-    .padding()
 }

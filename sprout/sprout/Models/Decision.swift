@@ -11,6 +11,7 @@ final class Decision {
     var status: String = "pending"
     var decidedAt: Date? = nil
     var reviewAt: Date? = nil
+    var updatedAt: Date = Date()
 
     @Relationship(inverse: \Record.linkedDecisions) var records: [Record]? = nil
 

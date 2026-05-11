@@ -2,6 +2,7 @@ import SwiftUI
 import PhotosUI
 import MapKit
 import MusicKit
+import SwiftData
 
 struct DebugPage: View {
     var body: some View {
@@ -32,10 +33,14 @@ struct DebugPage: View {
     private let cardTypes = [
         "QuoteCard", "WeatherCard", "LinkCard", "ActivityCard",
         "MusicCard", "EmotionCard", "TodoCard", "PhotoCard", "MapCard",
+        "AudioCard", "PeopleCard", "TodayInHistoryCard",
+        "BookCard", "FilmCard",
     ]
 }
 
 struct CardDebugView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \DashboardSystemCardConfig.dashboardOrder, order: .forward) private var systemConfigs: [DashboardSystemCardConfig]
     let cardType: String
 
     @State private var debugData: PhotoCardData = PhotoCardData()
@@ -56,114 +61,187 @@ struct CardDebugView: View {
 
     @State private var quoteData = QuoteCardData()
     @State private var weatherData = WeatherCardData()
+    @State private var weatherService = WeatherDataService()
+    @State private var isFetchingWeather = false
     @State private var activityData = ActivityCardData()
     @State private var emotionData: EmotionCardData? = nil
     @State private var todoData = TodoCardData()
     @State private var newTodoText = ""
+    @State private var bookData = BookCardData()
+    @State private var filmData = FilmCardData()
+    @State private var audioData = AudioCardData(
+        title: "晨间散步录音",
+        audioData: makeSampleAudioData(),
+        transcriptPreview: "今天的风很轻，路边的树影在晃，突然觉得这个早晨很值得被记住。",
+        durationText: "00:02"
+    )
+    @State private var peopleData = PeopleCardData(
+        people: [
+            PersonCardItem(name: "Alice", nickname: "A", relationship: "Friend", mentionCount: 8),
+            PersonCardItem(name: "Bob", relationship: "Colleague", mentionCount: 5),
+        ]
+    )
+    @State private var newPersonName = ""
+    @State private var newPersonNickname = ""
+    @State private var newPersonRelationship = ""
+    @State private var todayInHistoryData = TodayInHistoryCardData(
+        monthDayLabel: "May 11",
+        entries: []
+    )
 
-    private var photoCardSizes: [GridItem] {
+    private var photoCardSamples: [GridItem] {
         [
-            GridItem(card: AnyView(PhotoCard_4x2(data: debugData)), columns: 4, units: 2),
-            GridItem(card: AnyView(PhotoCard_4x4(data: debugData)), columns: 4, units: 4),
+            GridItem(card: AnyView(PhotoCard(data: debugData)), columns: 4, units: 2),
+            GridItem(card: AnyView(PhotoCard(data: debugData)), columns: 4, units: 4),
         ]
     }
 
-    private var mapCardSizes: [GridItem] {
+    private var mapCardSamples: [GridItem] {
         [
-            GridItem(card: AnyView(MapCard_4x2(data: mapData, onTap: { showMapSheet = true })), columns: 4, units: 2),
-            GridItem(card: AnyView(MapCard_4x4(data: mapData, onTap: { showMapSheet = true })), columns: 4, units: 4),
+            GridItem(card: AnyView(MapCard(data: mapData, onTap: { showMapSheet = true })), columns: 4, units: 2),
+            GridItem(card: AnyView(MapCard(data: mapData, onTap: { showMapSheet = true })), columns: 4, units: 4),
         ]
     }
 
-    private var linkCardSizes: [GridItem] {
+    private var linkCardSamples: [GridItem] {
         [
-            GridItem(card: AnyView(LinkCard_4x2(data: linkData)), columns: 4, units: 2),
-            GridItem(card: AnyView(LinkCard_4x4(data: linkData)), columns: 4, units: 4),
+            GridItem(card: AnyView(LinkCard(data: linkData)), columns: 4, units: 2),
+            GridItem(card: AnyView(LinkCard(data: linkData)), columns: 4, units: 4),
         ]
     }
 
-    private var musicCardSizes: [GridItem] {
+    private var musicCardSamples: [GridItem] {
         [
-            GridItem(card: AnyView(MusicCard_4x1(data: musicData.isEmpty ? nil : musicData, onTap: { showMusicSheet = true })), columns: 4, units: 1),
-            GridItem(card: AnyView(MusicCard_4x2(data: musicData.isEmpty ? nil : musicData, onTap: { showMusicSheet = true })), columns: 4, units: 2),
-            GridItem(card: AnyView(MusicCard_4x4(data: musicData.isEmpty ? nil : musicData, onTap: { showMusicSheet = true })), columns: 4, units: 4),
+            GridItem(card: AnyView(MusicCard(data: musicData.isEmpty ? nil : musicData, onTap: { showMusicSheet = true })), columns: 4, units: 1),
+            GridItem(card: AnyView(MusicCard(data: musicData.isEmpty ? nil : musicData, onTap: { showMusicSheet = true })), columns: 4, units: 2),
+            GridItem(card: AnyView(MusicCard(data: musicData.isEmpty ? nil : musicData, onTap: { showMusicSheet = true })), columns: 4, units: 4),
         ]
     }
 
-    private var quoteCardSizes: [GridItem] {
+    private var quoteCardSamples: [GridItem] {
         let d: QuoteCardData? = quoteData.isEmpty ? nil : quoteData
         return [
-            GridItem(card: AnyView(QuoteCard_4x1(data: d)), columns: 4, units: 1),
-            GridItem(card: AnyView(QuoteCard_4x2(data: d)), columns: 4, units: 2),
-            GridItem(card: AnyView(QuoteCard_4x4(data: d)), columns: 4, units: 4),
+            GridItem(card: AnyView(QuoteCard(data: d)), columns: 4, units: 1),
+            GridItem(card: AnyView(QuoteCard(data: d)), columns: 4, units: 2),
+            GridItem(card: AnyView(QuoteCard(data: d)), columns: 4, units: 4),
         ]
     }
 
-    private var weatherCardSizes: [GridItem] {
+    private var weatherCardSamples: [GridItem] {
         let d: WeatherCardData? = weatherData.isEmpty ? nil : weatherData
         return [
-            GridItem(card: AnyView(WeatherCard_4x1(data: d)), columns: 4, units: 1),
-            GridItem(card: AnyView(WeatherCard_4x2(data: d)), columns: 4, units: 2),
-            GridItem(card: AnyView(WeatherCard_4x4(data: d)), columns: 4, units: 4),
+            GridItem(card: AnyView(WeatherCard(data: d)), columns: 4, units: 1),
+            GridItem(card: AnyView(WeatherCard(data: d)), columns: 4, units: 2),
+            GridItem(card: AnyView(WeatherCard(data: d)), columns: 4, units: 4),
         ]
     }
 
-    private var activityCardSizes: [GridItem] {
+    private var activityCardSamples: [GridItem] {
         let d: ActivityCardData? = activityData.isEmpty ? nil : activityData
         return [
-            GridItem(card: AnyView(ActivityCard_4x1(data: d)), columns: 4, units: 1),
-            GridItem(card: AnyView(ActivityCard_4x2(data: d)), columns: 4, units: 2),
-            GridItem(card: AnyView(ActivityCard_4x4(data: d)), columns: 4, units: 4),
+            GridItem(card: AnyView(ActivityCard(data: d)), columns: 4, units: 1),
+            GridItem(card: AnyView(ActivityCard(data: d)), columns: 4, units: 2),
+            GridItem(card: AnyView(ActivityCard(data: d)), columns: 4, units: 4),
         ]
     }
 
-    private var emotionCardSizes: [GridItem] {
+    private var emotionCardSamples: [GridItem] {
         [
-            GridItem(card: AnyView(EmotionCard_4x1(data: emotionData)), columns: 4, units: 1),
-            GridItem(card: AnyView(EmotionCard_4x2(data: emotionData)), columns: 4, units: 2),
-            GridItem(card: AnyView(EmotionCard_4x4(data: emotionData)), columns: 4, units: 4),
+            GridItem(card: AnyView(EmotionCard(data: emotionData)), columns: 4, units: 1),
+            GridItem(card: AnyView(EmotionCard(data: emotionData)), columns: 4, units: 2),
+            GridItem(card: AnyView(EmotionCard(data: emotionData)), columns: 4, units: 4),
         ]
     }
 
-    private var todoCardSizes: [GridItem] {
+    private var todoCardSamples: [GridItem] {
         let d: TodoCardData? = todoData.isEmpty ? nil : todoData
         return [
-            GridItem(card: AnyView(TodoCard_4x1(data: d)), columns: 4, units: 1),
-            GridItem(card: AnyView(TodoCard_4x2(data: d)), columns: 4, units: 2),
-            GridItem(card: AnyView(TodoCard_4x4(data: d)), columns: 4, units: 4),
+            GridItem(card: AnyView(TodoCard(data: d)), columns: 4, units: 1),
+            GridItem(card: AnyView(TodoCard(data: d)), columns: 4, units: 2),
+            GridItem(card: AnyView(TodoCard(data: d)), columns: 4, units: 4),
         ]
     }
 
-    private var otherCardSizes: [GridItem] {
+    private var bookCardSamples: [GridItem] {
+        let d: BookCardData? = bookData.isEmpty ? nil : bookData
+        return [
+            GridItem(card: AnyView(BookCard(data: d)), columns: 4, units: 1),
+            GridItem(card: AnyView(BookCard(data: d)), columns: 4, units: 2),
+            GridItem(card: AnyView(BookCard(data: d)), columns: 4, units: 4),
+        ]
+    }
+
+    private var filmCardSamples: [GridItem] {
+        let d: FilmCardData? = filmData.isEmpty ? nil : filmData
+        return [
+            GridItem(card: AnyView(FilmCard(data: d)), columns: 4, units: 1),
+            GridItem(card: AnyView(FilmCard(data: d)), columns: 4, units: 2),
+            GridItem(card: AnyView(FilmCard(data: d)), columns: 4, units: 4),
+        ]
+    }
+
+    private var audioCardSamples: [GridItem] {
+        let d: AudioCardData? = audioData.isEmpty ? nil : audioData
+        return [
+            GridItem(card: AnyView(AudioCard(data: d)), columns: 4, units: 1),
+            GridItem(card: AnyView(AudioCard(data: d)), columns: 4, units: 2),
+            GridItem(card: AnyView(AudioCard(data: d)), columns: 6, units: 4),
+        ]
+    }
+
+    private var peopleCardSamples: [GridItem] {
+        let d: PeopleCardData? = peopleData.isEmpty ? nil : peopleData
+        return [
+            GridItem(card: AnyView(PeopleCard(data: d)), columns: 2, units: 1),
+            GridItem(card: AnyView(PeopleCard(data: d)), columns: 4, units: 2),
+            GridItem(card: AnyView(PeopleCard(data: d)), columns: 6, units: 4),
+        ]
+    }
+
+    private var todayInHistoryCardSamples: [GridItem] {
+        let d: TodayInHistoryCardData? = todayInHistoryData.isEmpty ? nil : todayInHistoryData
+        return [
+            GridItem(card: AnyView(TodayInHistoryCard(data: d)), columns: 4, units: 1),
+            GridItem(card: AnyView(TodayInHistoryCard(data: d)), columns: 4, units: 2),
+            GridItem(card: AnyView(TodayInHistoryCard(data: d)), columns: 8, units: 4),
+        ]
+    }
+
+    private var otherCardSamples: [GridItem] {
         [
-            GridItem(card: AnyView(cardView(for: "4x1")), columns: 4, units: 1),
-            GridItem(card: AnyView(cardView(for: "4x2")), columns: 4, units: 2),
-            GridItem(card: AnyView(cardView(for: "4x4")), columns: 4, units: 4),
+            GridItem(card: AnyView(EmptyView()), columns: 4, units: 1),
+            GridItem(card: AnyView(EmptyView()), columns: 4, units: 2),
+            GridItem(card: AnyView(EmptyView()), columns: 4, units: 4),
         ]
     }
 
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(cardType == "PhotoCard" || cardType == "MapCard" || cardType == "LinkCard" ? "4×2 · 4×4" : "4×1 · 4×2 · 4×4")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 16)
+            Text("自适应预览")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 16)
             }
             .padding(.top, 12)
 
             let items: [GridItem] = {
                 switch cardType {
-                case "PhotoCard": return photoCardSizes
-                case "MapCard": return mapCardSizes
-                case "LinkCard": return linkCardSizes
-                case "MusicCard":    return musicCardSizes
-                case "QuoteCard":   return quoteCardSizes
-                case "WeatherCard": return weatherCardSizes
-                case "ActivityCard":return activityCardSizes
-                case "EmotionCard": return emotionCardSizes
-                case "TodoCard":    return todoCardSizes
-                default: return otherCardSizes
+                case "PhotoCard": return photoCardSamples
+                case "MapCard": return mapCardSamples
+                case "LinkCard": return linkCardSamples
+                case "MusicCard":    return musicCardSamples
+                case "QuoteCard":   return quoteCardSamples
+                case "WeatherCard": return weatherCardSamples
+                case "ActivityCard":return activityCardSamples
+                case "EmotionCard": return emotionCardSamples
+                case "TodoCard":    return todoCardSamples
+                case "AudioCard": return audioCardSamples
+                case "PeopleCard": return peopleCardSamples
+                case "TodayInHistoryCard": return todayInHistoryCardSamples
+                case "BookCard":    return bookCardSamples
+                case "FilmCard":    return filmCardSamples
+                default: return otherCardSamples
                 }
             }()
             CardGridView(items: items)
@@ -187,9 +265,24 @@ struct CardDebugView: View {
                 emotionDebugControlsSection
             } else if cardType == "TodoCard" {
                 todoDebugControlsSection
+            } else if cardType == "AudioCard" {
+                audioDebugControlsSection
+            } else if cardType == "PeopleCard" {
+                peopleDebugControlsSection
+            } else if cardType == "TodayInHistoryCard" {
+                todayInHistoryDebugControlsSection
+            } else if cardType == "BookCard" {
+                bookDebugControlsSection
+            } else if cardType == "FilmCard" {
+                filmDebugControlsSection
             }
         }
         .navigationTitle(cardType)
+        .onAppear {
+            if todayInHistoryData.entries.isEmpty {
+                todayInHistoryData = makeTodayInHistorySample(entryCount: 3)
+            }
+        }
         .sheet(isPresented: $showMapSheet) {
             MapCardSheet(data: $mapData)
         }
@@ -294,15 +387,11 @@ struct CardDebugView: View {
 
                 Button {
                     if let url = URL(string: newLinkURL), !newLinkURL.isEmpty {
-                        var item = LinkItem(url: url, title: newLinkTitle, description: newLinkDescription)
-                        fetchFavicon(for: item) { image in
-                            if let image = image {
-                                item.iconImage = image
-                            }
-                            DispatchQueue.main.async {
-                                withAnimation {
-                                    linkData.links.append(item)
-                                }
+                        let item = LinkItem(url: url, title: newLinkTitle, description: newLinkDescription)
+                        // iconURL is computed automatically from domain
+                        DispatchQueue.main.async {
+                            withAnimation {
+                                linkData.links.append(item)
                             }
                         }
                         newLinkURL = ""
@@ -375,30 +464,22 @@ struct CardDebugView: View {
 
     private func loadImages(from items: [PhotosPickerItem]) {
         guard !items.isEmpty else {
-            debugData.images = []
+            debugData.imagesData = []
             return
         }
 
         isLoadingImages = true
         Task {
-            var loadedImages: [UIImage] = []
+            var loadedData: [Data] = []
             for item in items {
-                if let data = try? await item.loadTransferable(type: Data.self),
-                   let image = UIImage(data: data) {
-                    loadedImages.append(image)
+                if let data = try? await item.loadTransferable(type: Data.self) {
+                    loadedData.append(data)
                 }
             }
             await MainActor.run {
-                debugData.images = loadedImages
+                debugData.imagesData = loadedData
                 isLoadingImages = false
             }
-        }
-    }
-
-    @ViewBuilder
-    private func cardView(for size: String) -> some View {
-        switch (cardType, size) {
-        default: EmptyView()
         }
     }
 
@@ -444,10 +525,13 @@ struct CardDebugView: View {
                     if let nowPlaying = musicService.nowPlayingData {
                         HStack(spacing: 12) {
                             Group {
-                                if let artwork = nowPlaying.albumArtwork {
-                                    Image(uiImage: artwork)
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fill)
+                                if let artworkURL = nowPlaying.albumArtworkURL {
+                                    AsyncImage(url: artworkURL) { image in
+                                        image.resizable().aspectRatio(contentMode: .fill)
+                                    } placeholder: {
+                                        Color.gray.opacity(0.2)
+                                            .overlay(ProgressView())
+                                    }
                                 } else {
                                     Color.gray.opacity(0.2)
                                         .overlay(Image(systemName: "music.note").foregroundColor(.secondary))
@@ -584,6 +668,31 @@ struct CardDebugView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("调试控件").font(.headline).padding(.horizontal, 16)
             VStack(spacing: 12) {
+                // 获取天气按钮
+                Button {
+                    isFetchingWeather = true
+                    Task {
+                        if let location = weatherService.getCurrentLocation() {
+                            do {
+                                let data = try await weatherService.fetchWeather(for: location)
+                                weatherData = data
+                            } catch {
+                                print("Weather fetch error: \(error)")
+                            }
+                        }
+                        isFetchingWeather = false
+                    }
+                } label: {
+                    Label(isFetchingWeather ? "正在获取..." : "获取当前天气", systemImage: "cloud.sun.fill")
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(Color.accentColor.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .disabled(isFetchingWeather)
+
+                Divider().padding(.horizontal, 4)
+
                 TextField("城市名称", text: $weatherData.location).textFieldStyle(.roundedBorder)
                 HStack {
                     Text("温度")
@@ -631,6 +740,210 @@ struct CardDebugView: View {
                 }
             }
             .padding(.horizontal, 16).padding(.bottom, 32)
+        }
+    }
+
+    @ViewBuilder
+    private var audioDebugControlsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("调试控件").font(.headline).padding(.horizontal, 16)
+            VStack(spacing: 12) {
+                TextField("标题", text: $audioData.title)
+                    .textFieldStyle(.roundedBorder)
+
+                TextEditor(text: $audioData.transcriptPreview)
+                    .frame(height: 100)
+                    .padding(8)
+                    .background(Color(.systemGray6))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                TextField("时长文本", text: $audioData.durationText)
+                    .textFieldStyle(.roundedBorder)
+
+                HStack(spacing: 8) {
+                    Button("短录音") {
+                        audioData.audioData = makeSampleAudioData(duration: 1.2, frequency: 520)
+                        audioData.durationText = "00:01"
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button("长录音") {
+                        audioData.audioData = makeSampleAudioData(duration: 4.8, frequency: 760)
+                        audioData.durationText = "00:05"
+                    }
+                    .buttonStyle(.bordered)
+                }
+
+                Button("清空转写") {
+                    audioData.transcriptPreview = ""
+                }
+                .buttonStyle(.bordered)
+
+                Button("清除数据") {
+                    audioData = AudioCardData()
+                }
+                .foregroundColor(.red)
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 32)
+        }
+    }
+
+    @ViewBuilder
+    private var peopleDebugControlsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("调试控件").font(.headline).padding(.horizontal, 16)
+            VStack(spacing: 12) {
+                TextField("姓名", text: $newPersonName).textFieldStyle(.roundedBorder)
+                TextField("昵称", text: $newPersonNickname).textFieldStyle(.roundedBorder)
+                TextField("关系", text: $newPersonRelationship).textFieldStyle(.roundedBorder)
+
+                Button {
+                    let item = PersonCardItem(
+                        name: newPersonName,
+                        nickname: newPersonNickname,
+                        relationship: newPersonRelationship,
+                        mentionCount: Int.random(in: 1...12)
+                    )
+                    peopleData.people.append(item)
+                    newPersonName = ""
+                    newPersonNickname = ""
+                    newPersonRelationship = ""
+                } label: {
+                    Label("添加人物", systemImage: "plus")
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(Color.accentColor.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .disabled(newPersonName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                HStack(spacing: 8) {
+                    Button("单人预设") {
+                        peopleData = PeopleCardData(
+                            people: [PersonCardItem(name: "Mia", relationship: "Sister", mentionCount: 7)]
+                        )
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button("多人预设") {
+                        peopleData = PeopleCardData(
+                            people: [
+                                PersonCardItem(name: "Mia", relationship: "Sister", mentionCount: 7),
+                                PersonCardItem(name: "David", relationship: "Colleague", mentionCount: 4),
+                                PersonCardItem(name: "Nora", relationship: "Friend", mentionCount: 9),
+                                PersonCardItem(name: "Leo", relationship: "Partner", mentionCount: 12),
+                            ]
+                        )
+                    }
+                    .buttonStyle(.bordered)
+                }
+
+                if !peopleData.people.isEmpty {
+                    ForEach(peopleData.people) { person in
+                        HStack {
+                            Text(person.displayName)
+                            Spacer()
+                            Button {
+                                peopleData.people.removeAll { $0.id == person.id }
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.red)
+                            }
+                        }
+                    }
+                }
+
+                Button("清除数据") {
+                    peopleData = PeopleCardData()
+                }
+                .foregroundColor(.red)
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 32)
+        }
+    }
+
+    @ViewBuilder
+    private var todayInHistoryDebugControlsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("调试控件").font(.headline).padding(.horizontal, 16)
+            VStack(spacing: 12) {
+                TextField("月日标签", text: $todayInHistoryData.monthDayLabel)
+                    .textFieldStyle(.roundedBorder)
+
+                Divider().padding(.vertical, 4)
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("系统卡配置").font(.caption).foregroundStyle(.secondary)
+                    if let config = todayInHistorySystemConfig {
+                        Toggle("启用首页往年今日卡", isOn: binding(for: config, keyPath: \.isEnabled))
+
+                        HStack {
+                            Text("宽度 \(config.widthColumns)")
+                            Spacer()
+                            Stepper("", value: binding(for: config, keyPath: \.widthColumns), in: 4...8, step: 2)
+                                .labelsHidden()
+                        }
+
+                        HStack {
+                            Text("高度 \(config.heightUnits)")
+                            Spacer()
+                            Picker("高度", selection: allowedHeightBinding(for: config)) {
+                                Text("1").tag(1)
+                                Text("2").tag(2)
+                                Text("4").tag(4)
+                            }
+                            .pickerStyle(.segmented)
+                            .frame(width: 132)
+                        }
+
+                        HStack {
+                            Text("排序 \(Int(config.dashboardOrder))")
+                            Spacer()
+                            Stepper("", value: binding(for: config, keyPath: \.dashboardOrder), in: -20_000...20_000, step: 100)
+                                .labelsHidden()
+                        }
+                    } else {
+                        Button {
+                            createTodayInHistorySystemConfig()
+                        } label: {
+                            Label("创建系统卡配置", systemImage: "plus")
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(Color.accentColor.opacity(0.1))
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                        }
+                    }
+                }
+
+                HStack(spacing: 8) {
+                    Button("1 条") {
+                        todayInHistoryData = makeTodayInHistorySample(entryCount: 1)
+                    }
+                    .buttonStyle(.bordered)
+                    Button("3 条") {
+                        todayInHistoryData = makeTodayInHistorySample(entryCount: 3)
+                    }
+                    .buttonStyle(.bordered)
+                    Button("6 条") {
+                        todayInHistoryData = makeTodayInHistorySample(entryCount: 6)
+                    }
+                    .buttonStyle(.bordered)
+                }
+
+                Button("无历史记录") {
+                    todayInHistoryData = TodayInHistoryCardData(monthDayLabel: "May 11", entries: [])
+                }
+                .buttonStyle(.bordered)
+
+                Button("清除数据") {
+                    todayInHistoryData = TodayInHistoryCardData(monthDayLabel: "May 11", entries: [])
+                }
+                .foregroundColor(.red)
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 32)
         }
     }
 
@@ -755,6 +1068,67 @@ struct CardDebugView: View {
         }
     }
 
+    private func makeTodayInHistorySample(entryCount: Int) -> TodayInHistoryCardData {
+        let calendar = Calendar.current
+        let currentYear = calendar.component(.year, from: Date())
+        let records = (0..<entryCount).map { index -> Record in
+            let record = Record()
+            let yearsAgo = index + 1
+            record.createdAt = calendar.date(byAdding: .year, value: -yearsAgo, to: Date()) ?? Date()
+            record.body = [
+                "那天在公园里拍到了很好看的光影。",
+                "第一次去了新的咖啡馆，记住了窗边的位置。",
+                "和老朋友散步，聊了很久。",
+                "完成了一个重要项目，晚上吃了庆祝晚餐。",
+                "在路上听到喜欢的歌，突然很开心。",
+                "整理旧照片时想起了很多事情。",
+            ][index % 6]
+            record.cardType = "text"
+            return record
+        }
+
+        return TodayInHistoryCardData(
+            monthDayLabel: "May 11",
+            entries: records.map { TodayInHistoryEntry(record: $0, referenceYear: currentYear) }
+        )
+    }
+
+    private var todayInHistorySystemConfig: DashboardSystemCardConfig? {
+        systemConfigs.first(where: { $0.kind == DashboardSystemCardConfig.todayInHistoryKind })
+    }
+
+    private func createTodayInHistorySystemConfig() {
+        let config = DashboardSystemCardConfig(
+            kind: DashboardSystemCardConfig.todayInHistoryKind,
+            isEnabled: true,
+            widthColumns: 4,
+            heightUnits: 2,
+            dashboardOrder: -10_000
+        )
+        modelContext.insert(config)
+    }
+
+    private func binding<Value>(for object: DashboardSystemCardConfig, keyPath: ReferenceWritableKeyPath<DashboardSystemCardConfig, Value>) -> Binding<Value> {
+        Binding(
+            get: { object[keyPath: keyPath] },
+            set: { object[keyPath: keyPath] = $0 }
+        )
+    }
+
+    private func allowedHeightBinding(for object: DashboardSystemCardConfig) -> Binding<Int> {
+        Binding(
+            get: {
+                if [1, 2, 4].contains(object.heightUnits) {
+                    return object.heightUnits
+                }
+                return sizeLimits(for: DashboardSystemCardConfig.todayInHistoryKind)
+                    .clamped(span: object.span)
+                    .heightUnits
+            },
+            set: { object.heightUnits = $0 }
+        )
+    }
+
     // MARK: - Todo Debug
 
     @ViewBuilder
@@ -818,6 +1192,96 @@ struct CardDebugView: View {
         guard !trimmed.isEmpty else { return }
         withAnimation { todoData.items.append(TodoItem(text: trimmed)) }
         newTodoText = ""
+    }
+
+    // MARK: - Book Debug
+
+    @ViewBuilder
+    private var bookDebugControlsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("调试控件").font(.headline).padding(.horizontal, 16)
+            VStack(spacing: 12) {
+                TextField("书名", text: $bookData.title).textFieldStyle(.roundedBorder)
+                TextField("作者", text: $bookData.author).textFieldStyle(.roundedBorder)
+                TextField("类型（如：文学/科幻）", text: Binding(
+                    get: { bookData.genre ?? "" },
+                    set: { bookData.genre = $0.isEmpty ? nil : $0 }
+                )).textFieldStyle(.roundedBorder)
+                if let progress = bookData.progress {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("进度 \(Int(progress * 100))%")
+                            .font(.caption).foregroundStyle(.secondary)
+                        Slider(value: Binding(get: { progress }, set: { bookData.progress = $0 }), in: 0...1)
+                    }
+                } else {
+                    Button("设置阅读进度") { bookData.progress = 0 }
+                        .font(.caption)
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("评分").font(.caption).foregroundStyle(.secondary)
+                    HStack(spacing: 8) {
+                        ForEach(1...5, id: \.self) { star in
+                            Button {
+                                bookData.rating = star
+                            } label: {
+                                Image(systemName: (bookData.rating ?? 0) >= star ? "star.fill" : "star")
+                                    .font(.system(size: 22))
+                                    .foregroundStyle((bookData.rating ?? 0) >= star ? .orange : .secondary.opacity(0.3))
+                            }
+                        }
+                    }
+                }
+                if !bookData.isEmpty {
+                    Button("清除数据") { bookData = BookCardData() }.foregroundColor(.red)
+                }
+            }
+            .padding(.horizontal, 16).padding(.bottom, 32)
+        }
+    }
+
+    // MARK: - Film Debug
+
+    @ViewBuilder
+    private var filmDebugControlsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("调试控件").font(.headline).padding(.horizontal, 16)
+            VStack(spacing: 12) {
+                TextField("电影名称", text: $filmData.title).textFieldStyle(.roundedBorder)
+                TextField("年份", text: $filmData.year).textFieldStyle(.roundedBorder)
+                TextField("导演", text: Binding(
+                    get: { filmData.director ?? "" },
+                    set: { filmData.director = $0.isEmpty ? nil : $0 }
+                )).textFieldStyle(.roundedBorder)
+                TextField("类型（如：动作/科幻）", text: Binding(
+                    get: { filmData.genre ?? "" },
+                    set: { filmData.genre = $0.isEmpty ? nil : $0 }
+                )).textFieldStyle(.roundedBorder)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("评分").font(.caption).foregroundStyle(.secondary)
+                    HStack(spacing: 8) {
+                        ForEach(1...5, id: \.self) { star in
+                            Button {
+                                filmData.rating = Double(star)
+                            } label: {
+                                Image(systemName: (filmData.rating ?? 0) >= Double(star) ? "star.fill" : "star")
+                                    .font(.system(size: 22))
+                                    .foregroundStyle((filmData.rating ?? 0) >= Double(star) ? .orange : .secondary.opacity(0.3))
+                            }
+                        }
+                        if let rating = filmData.rating {
+                            Text(String(format: "%.1f", rating))
+                                .font(.system(size: 14, weight: .medium))
+                        }
+                    }
+                }
+                Toggle("已看过", isOn: $filmData.isWatched)
+                    .padding(.horizontal, 4)
+                if !filmData.isEmpty {
+                    Button("清除数据") { filmData = FilmCardData() }.foregroundColor(.red)
+                }
+            }
+            .padding(.horizontal, 16).padding(.bottom, 32)
+        }
     }
 
     // MARK: - Music Auth Helpers

@@ -1,4 +1,9 @@
 // Release build — RevenueCat Production API key
 // Replace the placeholder below with your actual key from:
 //   app.revenuecat.com → Project Settings → API Keys → Public key (Live)
-REVENUECAT_API_KEY = appl_REPLACE_WITH_YOUR_PRODUCTION_KEY
+REVENUECAT_API_KEY = appl_ATQeTSoCTdXSTdBAjJIRxECkCDS
+REVENUECAT_ENTITLEMENT_ID = Sprout Grow
+REVENUECAT_ENTITLEMENT_FALLBACK_IDS = sprout_grow,grow
+REVENUECAT_OFFERING_ID = sprout_grow
+REVENUECAT_MONTHLY_PRODUCT_ID = com.speculolabs.sprout.grow.monthly
+REVENUECAT_YEARLY_PRODUCT_ID = com.speculolabs.sprout.grow.yearly

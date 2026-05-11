@@ -7,9 +7,12 @@ import SwiftData
 /// Owns a @Query filtered to [startOfDay, endOfDay) so the grid automatically
 /// updates when records are added, deleted, or modified (e.g. cardUnits change).
 struct DailyView: View {
+    @Environment(AppLocalization.self) private var localization
+    @Environment(\.modelContext) private var modelContext
     let date: Date
 
     @Query private var records: [Record]
+    @Query(sort: \DashboardSystemCardConfig.dashboardOrder, order: .forward) private var systemConfigs: [DashboardSystemCardConfig]
 
     init(date: Date) {
         let cal   = Calendar.current
@@ -26,36 +29,163 @@ struct DailyView: View {
 
     var body: some View {
         ScrollView(showsIndicators: false) {
-            if records.isEmpty {
+            if gridItems.isEmpty {
                 EmptyDayView(date: date)
                     .padding(.top, 80)
             } else {
-                CardGridView(items: gridItems)
+                CardGridView(
+                    items: gridItems
+                )
                     .padding(.top, 24)
                     .padding(.bottom, 96)
             }
         }
+        .task {
+            ensureTodayInHistoryConfig()
+        }
     }
 
     private var gridItems: [GridItem] {
-        records
-            .flatMap { RecordMapper.allCards(record: $0) }
-            .map { info in
-                GridItem(
-                    card: AnyView(CardWrapper(info: info)),
-                    columns: info.columns,
-                    units: info.units
+        let recordItems: [(order: Double, item: GridItem)] = orderedRecords.enumerated().flatMap { index, record in
+            let baseOrder = normalizedOrder(for: record) + Double(index) * 0.001
+            return RecordMapper.allCards(record: record).enumerated().map { cardIndex, info in
+                let spans = availableSpans(for: info.cardType)
+                return (
+                    order: baseOrder + Double(cardIndex) * 0.0001,
+                    item: GridItem(
+                        id: info.id,
+                        recordID: info.record.id,
+                        card: AnyView(CardWrapper(info: info)),
+                        columns: info.columns,
+                        units: info.units,
+                        availableSpans: spans,
+                        onResize: { span in
+                            resizeCard(info, to: span)
+                        },
+                        onDelete: {
+                            modelContext.delete(info.record)
+                        }
+                    )
                 )
             }
+        }
+
+        let systemItems = systemGridEntries
+        return (systemItems + recordItems).sorted { $0.order < $1.order }.map(\.item)
+    }
+
+    private var systemGridEntries: [(order: Double, item: GridItem)] {
+        guard let config = todayInHistoryConfig,
+              let memoryData = todayInHistoryData
+        else { return [] }
+
+        let span = sizeLimits(for: DashboardSystemCardConfig.todayInHistoryKind).clamped(span: config.span)
+        return [
+            (
+                order: config.dashboardOrder,
+                item: GridItem(
+                    id: "system-\(DashboardSystemCardConfig.todayInHistoryKind)",
+                    recordID: UUID(uuidString: "00000000-0000-0000-0000-000000000001") ?? UUID(),
+                    card: AnyView(
+                        NavigationLink(
+                            destination: TodayInHistoryDetailView(selectedDate: date, entries: memoryData.entries)
+                        ) {
+                            TodayInHistoryCard(data: memoryData)
+                        }
+                        .buttonStyle(.plain)
+                    ),
+                    columns: span.widthColumns,
+                    units: span.heightUnits,
+                    availableSpans: availableSpans(for: DashboardSystemCardConfig.todayInHistoryKind),
+                    onResize: { newSpan in
+                        config.setSpan(newSpan)
+                    },
+                    onDelete: {
+                        config.isEnabled = false
+                    }
+                )
+            )
+        ]
+    }
+
+    private var orderedRecords: [Record] {
+        records.sorted {
+            normalizedOrder(for: $0) < normalizedOrder(for: $1)
+        }
+    }
+
+    private func normalizedOrder(for record: Record) -> Double {
+        record.dashboardOrder == 0 ? record.createdAt.timeIntervalSince1970 : record.dashboardOrder
+    }
+
+    private func resizeCard(_ info: DashboardCardInfo, to span: ContainerSpan) {
+        let siblingCards = RecordMapper.allCards(record: info.record)
+        for sibling in siblingCards where !info.record.hasDashboardContainerSpanOverride(for: sibling.spanKey) {
+            let currentSpan = ContainerSpan(widthColumns: sibling.columns, heightUnits: sibling.units)
+            info.record.setDashboardContainerSpan(currentSpan, for: sibling.spanKey)
+        }
+
+        info.record.setDashboardContainerSpan(span, for: info.spanKey)
+    }
+
+    private var todayInHistoryConfig: DashboardSystemCardConfig? {
+        if let existing = systemConfigs.first(where: { $0.kind == DashboardSystemCardConfig.todayInHistoryKind }) {
+            if existing.isEnabled { return existing }
+            return nil
+        }
+
+        return nil
+    }
+
+    private var todayInHistoryData: TodayInHistoryCardData? {
+        let calendar = Calendar.current
+        let currentYear = calendar.component(.year, from: date)
+        let matching = allRecordsForSameMonthDay()
+            .filter { calendar.component(.year, from: $0.createdAt) < currentYear }
+            .sorted { $0.createdAt > $1.createdAt }
+
+        guard !matching.isEmpty else { return nil }
+
+        let monthDay = localization.templateDateString(from: date, template: "MMMM d")
+        return TodayInHistoryCardData(
+            monthDayLabel: monthDay,
+            entries: matching.map { TodayInHistoryEntry(record: $0, referenceYear: currentYear) }
+        )
+    }
+
+    private func allRecordsForSameMonthDay() -> [Record] {
+        let month = Calendar.current.component(.month, from: date)
+        let day = Calendar.current.component(.day, from: date)
+        let descriptor = FetchDescriptor<Record>(
+            sortBy: [SortDescriptor(\Record.createdAt, order: .reverse)]
+        )
+        let all = (try? modelContext.fetch(descriptor)) ?? []
+        return all.filter {
+            let createdMonth = Calendar.current.component(.month, from: $0.createdAt)
+            let createdDay = Calendar.current.component(.day, from: $0.createdAt)
+            return createdMonth == month && createdDay == day
+        }
+    }
+
+    private func ensureTodayInHistoryConfig() {
+        guard systemConfigs.first(where: { $0.kind == DashboardSystemCardConfig.todayInHistoryKind }) == nil else {
+            return
+        }
+        let created = DashboardSystemCardConfig(
+            kind: DashboardSystemCardConfig.todayInHistoryKind,
+            isEnabled: true,
+            widthColumns: 4,
+            heightUnits: 2,
+            dashboardOrder: -10_000
+        )
+        modelContext.insert(created)
     }
 }
 
 // MARK: - CardWrapper
 
-/// Wraps a single DashboardCardInfo with NavigationLink and a long-press context menu
-/// for resizing the card (persisted via record.cardUnits).
+/// Wraps a single DashboardCardInfo with NavigationLink.
 struct CardWrapper: View {
-    @Environment(\.modelContext) private var modelContext
     let info: DashboardCardInfo
 
     var body: some View {
@@ -68,54 +198,13 @@ struct CardWrapper: View {
             info.cardView
         }
         .buttonStyle(.plain)
-        .contextMenu {
-            Label("调整卡片尺寸", systemImage: "arrow.up.left.and.arrow.down.right")
-                .font(.subheadline.weight(.semibold))
-
-            Divider()
-
-            Button {
-                resize(to: 4)
-            } label: {
-                Label("大卡片  4×4", systemImage: "square.fill")
-            }
-
-            Button {
-                resize(to: 2)
-            } label: {
-                Label("中等  4×2", systemImage: "rectangle.fill")
-            }
-
-            Button {
-                resize(to: 1)
-            } label: {
-                Label("窄条  4×1", systemImage: "minus.rectangle.fill")
-            }
-
-            Divider()
-
-            Button(role: .destructive) {
-                deleteRecord()
-            } label: {
-                Label("删除记录", systemImage: "trash")
-            }
-        }
-        .contentShape(.contextMenuPreview,
-                      RoundedRectangle(cornerRadius: 20, style: .continuous))
-    }
-
-    private func resize(to units: Int) {
-        info.record.cardUnits = units
-    }
-
-    private func deleteRecord() {
-        modelContext.delete(info.record)
     }
 }
 
 // MARK: - EmptyDayView
 
 struct EmptyDayView: View {
+    @Environment(AppLocalization.self) private var localization
     let date: Date
 
     var body: some View {
@@ -128,10 +217,10 @@ struct EmptyDayView: View {
                 Text(dateLabel)
                     .font(.headline)
                     .foregroundStyle(.primary)
-                Text("还没有记录")
+                Text(t("content.empty.title", "No entries yet"))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                Text("点击下方输入框开始今天的第一条")
+                Text(t("content.empty.subtitle", "Use the input bar below to add your first entry today"))
                     .font(.caption)
                     .foregroundStyle(.secondary.opacity(0.7))
                     .multilineTextAlignment(.center)
@@ -144,10 +233,13 @@ struct EmptyDayView: View {
     private var dateLabel: String {
         let cal   = Calendar.current
         let today = cal.startOfDay(for: Date())
-        if cal.isDate(date, inSameDayAs: today) { return "今天" }
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "zh_CN")
-        f.dateFormat = "M月d日 · EEEE"
-        return f.string(from: date)
+        if cal.isDate(date, inSameDayAs: today) {
+            return t("content.date.today", "Today")
+        }
+        return localization.templateDateString(from: date, template: "MMM d EEEE")
+    }
+
+    private func t(_ key: String, _ defaultValue: String, _ arguments: CVarArg...) -> String {
+        localization.string(key, default: defaultValue, arguments: arguments)
     }
 }

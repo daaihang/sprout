@@ -25,16 +25,26 @@ struct MapCardData {
 }
 
 struct MapCard: View {
-    let size: CardSize
     var data: MapCardData?
     var onTap: (() -> Void)?
 
     @State private var mapImage: UIImage?
     @State private var isLoading = false
+    @State private var snapshotSize: CGSize = .zero
 
     var body: some View {
-        cardContent
-            .frame(width: size.width, height: size.height)
+        GeometryReader { geo in
+            cardContent(size: geo.size)
+                .onAppear {
+                    updateSnapshotSize(geo.size)
+                    generateSnapshot()
+                }
+                .onChange(of: geo.size) { _, newSize in
+                    updateSnapshotSize(newSize)
+                    generateSnapshot()
+                }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
             .cardBackground()
             .onTapGesture {
                 onTap?()
@@ -42,14 +52,11 @@ struct MapCard: View {
             .onChange(of: data?.coordinate) { _, _ in
                 generateSnapshot()
             }
-            .onAppear {
-                generateSnapshot()
-            }
     }
 
     @ViewBuilder
-    private var cardContent: some View {
-        if let coordinate = data?.coordinate {
+    private func cardContent(size: CGSize) -> some View {
+        if data?.coordinate != nil {
             ZStack {
                 if let image = mapImage {
                     Image(uiImage: image)
@@ -58,7 +65,7 @@ struct MapCard: View {
                         .frame(width: size.width, height: size.height)
                         .clipped()
 
-                    pinOverlay
+                    pinOverlay(size: size)
                 } else if isLoading {
                     Color.gray.opacity(0.2)
                     ProgressView()
@@ -79,7 +86,7 @@ struct MapCard: View {
                 Image(systemName: "map")
                     .font(.system(size: 28))
                     .foregroundColor(.secondary.opacity(0.5))
-                Text("点击选择地点")
+                Text(localizedString("card.map.placeholder", default: "Tap to choose a place"))
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -87,21 +94,25 @@ struct MapCard: View {
     }
 
     @ViewBuilder
-    private var pinOverlay: some View {
-        GeometryReader { _ in
-            let pinX = size == .w4h2 ? size.width * 2 / 3 : size.width / 2
-            let pinY = size == .w4h2 ? size.height / 2 : size.height * 2 / 5
-            Image(systemName: "mappin")
-                .font(.system(size: 24, weight: .bold))
-                .foregroundColor(.red)
-                .shadow(color: .black.opacity(0.5), radius: 2, x: 0, y: 1)
-                .position(x: pinX, y: pinY)
-        }
+    private func pinOverlay(size: CGSize) -> some View {
+        let metrics = CardLayoutMetrics(containerSize: size)
+        let pinX = metrics.isLandscape ? size.width * 0.62 : size.width * 0.5
+        let pinY = metrics.isLandscape ? size.height * 0.5 : size.height * 0.42
+
+        Image(systemName: "mappin")
+            .font(.system(size: 24, weight: .bold))
+            .foregroundColor(.red)
+            .shadow(color: .black.opacity(0.5), radius: 2, x: 0, y: 1)
+            .position(x: pinX, y: pinY)
     }
 
     private func generateSnapshot() {
         guard let coordinate = data?.coordinate else {
             mapImage = nil
+            return
+        }
+
+        guard snapshotSize.width > 0, snapshotSize.height > 0 else {
             return
         }
 
@@ -113,7 +124,7 @@ struct MapCard: View {
             latitudinalMeters: 300,
             longitudinalMeters: 300
         )
-        options.size = CGSize(width: size.width * 2, height: size.height * 2)
+        options.size = CGSize(width: snapshotSize.width * 2, height: snapshotSize.height * 2)
         options.mapType = .mutedStandard
 
         let snapshotter = MKMapSnapshotter(options: options)
@@ -126,32 +137,8 @@ struct MapCard: View {
             }
         }
     }
-}
 
-struct MapCard_4x2: View {
-    var data: MapCardData?
-    var onTap: (() -> Void)?
-    var body: some View { MapCard(size: .w4h2, data: data, onTap: onTap) }
-}
-
-struct MapCard_4x4: View {
-    var data: MapCardData?
-    var onTap: (() -> Void)?
-    var body: some View { MapCard(size: .w4h4, data: data, onTap: onTap) }
-}
-
-#Preview {
-    VStack(spacing: 12) {
-        MapCard_4x2(data: MapCardData(
-            coordinate: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
-            locationName: "San Francisco",
-            descriptionText: "Test location"
-        ))
-        MapCard_4x4(data: MapCardData(
-            coordinate: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
-            locationName: "San Francisco",
-            descriptionText: "Test location"
-        ))
+    private func updateSnapshotSize(_ size: CGSize) {
+        snapshotSize = size
     }
-    .frame(width: 400)
 }

@@ -4,6 +4,7 @@ import RevenueCat
 #endif
 
 struct SubscriptionDebugView: View {
+    @Environment(AppLocalization.self) private var localization
     @Environment(SubscriptionManager.self) private var manager
     @State private var purchaseError: String? = nil
 
@@ -12,7 +13,7 @@ struct SubscriptionDebugView: View {
             statusSection
             packagesSection
             if let err = purchaseError ?? manager.errorMessage {
-                Section("错误") {
+                Section(t("common.error", "Error")) {
                     Text(err)
                         .font(.caption)
                         .foregroundStyle(.red)
@@ -21,22 +22,22 @@ struct SubscriptionDebugView: View {
             actionsSection
             configSection
         }
-        .navigationTitle("订阅调试")
+        .navigationTitle(t("subscription.debug.title", "Subscription Debug"))
         .task { await manager.loadOfferings() }
     }
 
     // MARK: - Sections
 
     private var statusSection: some View {
-        Section("订阅状态") {
+        Section(t("subscription.debug.section.status", "Subscription Status")) {
             HStack {
                 Label(
-                    manager.isSubscribed ? "已订阅" : "未订阅",
+                    manager.isSubscribed ? t("subscription.debug.status.subscribed", "Subscribed") : t("subscription.debug.status.not_subscribed", "Not Subscribed"),
                     systemImage: manager.isSubscribed ? "checkmark.seal.fill" : "xmark.seal"
                 )
                 .foregroundStyle(manager.isSubscribed ? .green : .secondary)
                 Spacer()
-                Text(manager.isSubscribed ? "是" : "否")
+                Text(manager.isSubscribed ? t("common.yes", "Yes") : t("common.no", "No"))
                     .font(.system(size: 13))
                     .foregroundStyle(.secondary)
             }
@@ -50,24 +51,24 @@ struct SubscriptionDebugView: View {
         if let info = manager.customerInfo {
             let subs = info.activeSubscriptions
             HStack {
-                Text("活跃订阅")
+                Text(t("subscription.debug.row.active_subscriptions", "Active Subscriptions"))
                 Spacer()
-                Text(subs.isEmpty ? "无" : subs.joined(separator: ", "))
+                Text(subs.isEmpty ? t("common.none", "None") : subs.joined(separator: ", "))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
             }
-            if let entitlement = info.entitlements[MoryConfig.entitlementID] {
+            if let entitlement = resolvedEntitlement(from: info) {
                 HStack {
-                    Text("Grow 权益")
+                    Text(t("subscription.debug.row.grow_entitlement", "Grow Entitlement"))
                     Spacer()
-                    Text(entitlement.isActive ? "活跃" : "未活跃")
+                    Text(entitlement.isActive ? t("subscription.debug.status.active", "Active") : t("subscription.debug.status.inactive", "Inactive"))
                         .foregroundStyle(entitlement.isActive ? .green : .orange)
                         .font(.caption)
                 }
                 if let expiry = entitlement.expirationDate {
                     HStack {
-                        Text("到期时间")
+                        Text(t("subscription.debug.row.expiration_date", "Expiration Date"))
                         Spacer()
                         Text(expiry, style: .date)
                             .font(.caption)
@@ -81,11 +82,11 @@ struct SubscriptionDebugView: View {
 
     @ViewBuilder
     private var packagesSection: some View {
-        Section("可用套餐 (RevenueCat)") {
+        Section(t("subscription.debug.section.packages", "Available Packages (RevenueCat)")) {
             if manager.isLoading {
                 HStack { Spacer(); ProgressView(); Spacer() }
             } else if manager.availablePackages.isEmpty {
-                Text("未加载套餐 — 点击下方「刷新套餐」")
+                Text(t("subscription.debug.empty_packages", "No packages loaded. Tap Refresh Packages below."))
                     .foregroundStyle(.secondary)
                     .font(.caption)
             } else {
@@ -102,7 +103,7 @@ struct SubscriptionDebugView: View {
                         Text(pkg.storeProduct.productIdentifier)
                             .font(.caption2)
                             .foregroundStyle(.tertiary)
-                        Button("购买") {
+                        Button(t("common.purchase", "Purchase")) {
                             Task {
                                 do {
                                     try await manager.purchase(package: pkg)
@@ -123,25 +124,42 @@ struct SubscriptionDebugView: View {
     }
 
     private var actionsSection: some View {
-        Section("操作") {
-            Button("刷新套餐") { Task { await manager.loadOfferings() } }
+        Section(t("subscription.debug.section.actions", "Actions")) {
+            Button(t("common.refresh_packages", "Refresh Packages")) { Task { await manager.loadOfferings() } }
                 .disabled(manager.isLoading)
-            Button("恢复购买") { Task { await manager.restorePurchases() } }
+            Button(t("common.restore_purchases", "Restore Purchases")) { Task { await manager.restorePurchases() } }
                 .disabled(manager.isLoading)
-            Button("刷新用户状态") { Task { await manager.refreshCustomerInfo() } }
+            Button(t("subscription.debug.refresh_customer", "Refresh Customer Status")) { Task { await manager.refreshCustomerInfo() } }
                 .disabled(manager.isLoading)
         }
     }
 
     private var configSection: some View {
-        Section("配置信息 (Debug)") {
+        Section(t("subscription.debug.section.config", "Config (Debug)")) {
             let key = MoryConfig.revenueCatAPIKey
-            infoRow("API Key 前缀", value: key.count > 12 ? String(key.prefix(12)) + "…" : key)
-            infoRow("Entitlement ID",  value: MoryConfig.entitlementID)
-            infoRow("月度 Product ID", value: MoryConfig.ProductID.monthlyGrow)
-            infoRow("年度 Product ID", value: MoryConfig.ProductID.yearlyGrow)
+            infoRow(t("subscription.debug.row.api_key_prefix", "API Key Prefix"), value: key.count > 12 ? String(key.prefix(12)) + "…" : key)
+            infoRow(t("subscription.debug.row.entitlement_id", "Entitlement ID"), value: MoryConfig.entitlementID)
+            infoRow(t("subscription.debug.row.offering_id", "Offering ID"), value: MoryConfig.offeringID)
+            infoRow(t("subscription.debug.row.monthly_product_id", "Monthly Product ID"), value: MoryConfig.ProductID.monthlyGrow)
+            infoRow(t("subscription.debug.row.yearly_product_id", "Yearly Product ID"), value: MoryConfig.ProductID.yearlyGrow)
         }
     }
+
+    #if canImport(RevenueCat)
+    private func resolvedEntitlement(from info: CustomerInfo) -> EntitlementInfo? {
+        if let exact = info.entitlements[MoryConfig.entitlementID] {
+            return exact
+        }
+
+        for fallbackID in MoryConfig.entitlementFallbackIDs {
+            if let fallback = info.entitlements[fallbackID] {
+                return fallback
+            }
+        }
+
+        return nil
+    }
+    #endif
 
     private func infoRow(_ label: String, value: String) -> some View {
         HStack {
@@ -153,6 +171,10 @@ struct SubscriptionDebugView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
         }
+    }
+
+    private func t(_ key: String, _ defaultValue: String, _ arguments: CVarArg...) -> String {
+        localization.string(key, default: defaultValue, arguments: arguments)
     }
 }
 

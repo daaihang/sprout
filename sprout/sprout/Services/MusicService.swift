@@ -1,6 +1,5 @@
 import Foundation
 import MusicKit
-import UIKit
 import Observation
 
 @Observable
@@ -35,16 +34,15 @@ final class MusicService {
             return
         }
         let isPlaying = SystemMusicPlayer.shared.state.playbackStatus == .playing
-        var artwork: UIImage? = nil
-        if let artworkAsset = song.artwork,
-           let url = artworkAsset.url(width: 300, height: 300) {
-            artwork = await loadImage(from: url)
+        var artworkURL: URL? = nil
+        if let artworkAsset = song.artwork {
+            artworkURL = artworkAsset.url(width: 300, height: 300)
         }
         nowPlayingData = MusicCardData(
             trackName: song.title,
             artistName: song.artistName,
             albumName: song.albumTitle ?? "",
-            albumArtwork: artwork,
+            albumArtworkURL: artworkURL,
             appleMusicURL: song.url,
             isPlaying: isPlaying
         )
@@ -60,10 +58,5 @@ final class MusicService {
                 }
             }
         }
-    }
-
-    private func loadImage(from url: URL) async -> UIImage? {
-        guard let (data, _) = try? await URLSession.shared.data(from: url) else { return nil }
-        return UIImage(data: data)
     }
 }

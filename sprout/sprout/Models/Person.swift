@@ -19,3 +19,26 @@ final class Person {
 
     init() {}
 }
+
+extension Person {
+    var displayName: String {
+        let trimmedNickname = (nickname ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmedNickname.isEmpty ? name : trimmedNickname
+    }
+
+    var secondaryLabel: String {
+        let trimmedRelationship = (relationship ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedRelationship.isEmpty { return trimmedRelationship }
+        let trimmedNickname = (nickname ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedNickname.isEmpty && trimmedNickname != name { return name }
+        return ""
+    }
+
+    var initials: String {
+        let components = name
+            .split(whereSeparator: { $0 == " " || $0 == "-" })
+            .prefix(2)
+            .map { String($0.prefix(1)) }
+        return components.isEmpty ? String(name.prefix(1)).uppercased() : components.joined().uppercased()
+    }
+}

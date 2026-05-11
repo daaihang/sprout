@@ -1,6 +1,5 @@
 import Foundation
 import MusicKit
-import UIKit
 
 enum AppleMusicLinkType {
     case song(id: String)
@@ -91,19 +90,17 @@ final class AppleMusicLinkParser {
             throw NSError(domain: "AppleMusicLinkParser", code: 3, userInfo: [NSLocalizedDescriptionKey: "Song not found"])
         }
 
-        var artwork: UIImage?
+        var artworkURL: URL?
         if let artworkAsset = song.artwork {
             let size = CGSize(width: 300, height: 300)
-            if let url = artworkAsset.url(width: Int(size.width), height: Int(size.height)) {
-                artwork = await loadImage(from: url)
-            }
+            artworkURL = artworkAsset.url(width: Int(size.width), height: Int(size.height))
         }
 
         return MusicCardData(
             trackName: song.title,
             artistName: song.artistName,
             albumName: song.albumTitle ?? "",
-            albumArtwork: artwork,
+            albumArtworkURL: artworkURL,
             appleMusicURL: song.url,
             isPlaying: false
         )
@@ -118,12 +115,10 @@ final class AppleMusicLinkParser {
             throw NSError(domain: "AppleMusicLinkParser", code: 4, userInfo: [NSLocalizedDescriptionKey: "Album not found"])
         }
 
-        var artwork: UIImage?
+        var artworkURL: URL?
         if let artworkAsset = album.artwork {
             let size = CGSize(width: 300, height: 300)
-            if let url = artworkAsset.url(width: Int(size.width), height: Int(size.height)) {
-                artwork = await loadImage(from: url)
-            }
+            artworkURL = artworkAsset.url(width: Int(size.width), height: Int(size.height))
         }
 
         let artistName = album.artistName
@@ -132,19 +127,9 @@ final class AppleMusicLinkParser {
             trackName: album.title,
             artistName: artistName,
             albumName: album.title,
-            albumArtwork: artwork,
+            albumArtworkURL: artworkURL,
             appleMusicURL: album.url,
             isPlaying: false
         )
-    }
-
-    @MainActor
-    private func loadImage(from url: URL) async -> UIImage? {
-        do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            return UIImage(data: data)
-        } catch {
-            return nil
-        }
     }
 }

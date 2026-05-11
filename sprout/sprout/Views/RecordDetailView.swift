@@ -9,6 +9,7 @@ import MapKit
 /// so tapping a MusicCard opens this view with music at the top, while tapping
 /// a QuoteCard shows the text first. All content still follows below.
 struct RecordDetailView: View {
+    @Environment(AppLocalization.self) private var localization
     let record: Record
     var focusedSection: RecordSection = .text
 
@@ -28,12 +29,14 @@ struct RecordDetailView: View {
         let media = record.mediaCards ?? []
         if media.contains(where: { $0.type == "photo" })  { sections.append(.photo) }
         if media.contains(where: { $0.type == "music" })  { sections.append(.music) }
+        if media.contains(where: { $0.type == "audio" })  { sections.append(.audio) }
         if media.contains(where: { $0.type == "link" })   { sections.append(.link) }
         if record.latitude != nil                         { sections.append(.map) }
         if record.activity?.value != nil                  { sections.append(.activity) }
         if record.mood != nil                             { sections.append(.emotion) }
         if record.weather != nil                          { sections.append(.weather) }
         if media.contains(where: { $0.type == "todo" })  { sections.append(.todo) }
+        if !(record.mentionedPeople ?? []).isEmpty       { sections.append(.people) }
         if !record.body.isEmpty                           { sections.append(.text) }
         return sections
     }
@@ -59,7 +62,7 @@ struct RecordDetailView: View {
     private var navigationTitle: String {
         if !record.body.isEmpty { return String(record.body.prefix(24)) }
         if let loc = record.location, !loc.isEmpty { return loc }
-        return "记录"
+        return t("detail.navigation.record", "Entry")
     }
 
     // MARK: Section dispatcher
@@ -72,10 +75,14 @@ struct RecordDetailView: View {
         case .weather:  weatherSection
         case .photo:    photoSection
         case .music:    musicSection
+        case .audio:    audioSection
         case .link:     linkSection
         case .activity: activitySection
         case .map:      mapSection
         case .todo:     todoSection
+        case .people:   peopleSection
+        case .todayInHistory:
+            EmptyView()
         }
     }
 
@@ -85,7 +92,7 @@ struct RecordDetailView: View {
         let author = record.tagValue(for: "author")
         let source = record.tagValue(for: "source")
         return VStack(alignment: .leading, spacing: 8) {
-            SectionLabel(icon: "text.alignleft", title: "正文")
+            SectionLabel(icon: "text.alignleft", title: t("detail.section.body", "Body"))
             Text(record.body)
                 .font(.body)
                 .foregroundStyle(.primary)
@@ -109,7 +116,7 @@ struct RecordDetailView: View {
         if let moodStr = record.mood, let mood = MoodType(rawValue: moodStr) {
             let intensity = record.intensity ?? 3
             VStack(alignment: .leading, spacing: 10) {
-                SectionLabel(icon: "face.smiling", title: "心情")
+                SectionLabel(icon: "face.smiling", title: t("detail.section.emotion", "Emotion"))
                 HStack(spacing: 14) {
                     Text(mood.emoji).font(.system(size: 48))
                     VStack(alignment: .leading, spacing: 6) {
@@ -136,7 +143,7 @@ struct RecordDetailView: View {
         if let weatherStr = record.weather, let condition = WeatherCondition(rawValue: weatherStr) {
             let temp = record.temperature ?? 20
             VStack(alignment: .leading, spacing: 10) {
-                SectionLabel(icon: "cloud.sun.fill", title: "天气")
+                SectionLabel(icon: "cloud.sun.fill", title: t("detail.section.weather", "Weather"))
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("\(Int(temp))°")
@@ -145,6 +152,11 @@ struct RecordDetailView: View {
                         if let loc = record.location, !loc.isEmpty {
                             Label(loc, systemImage: "location.fill")
                                 .font(.caption).foregroundStyle(.secondary)
+                        }
+                        if let observedAt = record.weatherObservedAt {
+                            Label(observedAt.formatted(date: .abbreviated, time: .shortened), systemImage: "clock")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
                     }
                     Spacer()
@@ -168,7 +180,7 @@ struct RecordDetailView: View {
                 m.imageData.flatMap { UIImage(data: $0) }
             }
             VStack(alignment: .leading, spacing: 10) {
-                SectionLabel(icon: "photo.on.rectangle.angled", title: "照片")
+                SectionLabel(icon: "photo.on.rectangle.angled", title: t("detail.section.photos", "Photos"))
                 if images.isEmpty {
                     RoundedRectangle(cornerRadius: 12)
                         .fill(Color.secondary.opacity(0.1))
@@ -210,12 +222,21 @@ struct RecordDetailView: View {
     private var musicSection: some View {
         if let m = (record.mediaCards ?? []).first(where: { $0.type == "music" }) {
             let artwork: UIImage? = m.thumbnailData.flatMap { UIImage(data: $0) }
+            let artworkURL = m.artworkURLString.flatMap(URL.init(string:))
             VStack(alignment: .leading, spacing: 10) {
-                SectionLabel(icon: "music.note", title: "音乐")
+                SectionLabel(icon: "music.note", title: t("detail.section.music", "Music"))
                 HStack(spacing: 14) {
                     Group {
                         if let img = artwork {
                             Image(uiImage: img).resizable().aspectRatio(contentMode: .fill)
+                        } else if let artworkURL {
+                            AsyncImage(url: artworkURL) { image in
+                                image.resizable().aspectRatio(contentMode: .fill)
+                            } placeholder: {
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color.secondary.opacity(0.15))
+                                    .overlay(ProgressView())
+                            }
                         } else {
                             RoundedRectangle(cornerRadius: 10)
                                 .fill(Color.secondary.opacity(0.15))
@@ -229,10 +250,16 @@ struct RecordDetailView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 10))
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(m.title ?? "未知曲目").font(.headline).lineLimit(2)
+                        Text(m.title ?? t("detail.music.unknown_track", "Unknown Track")).font(.headline).lineLimit(2)
                         Text(m.caption ?? "").font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                        if let albumName = m.albumName, !albumName.isEmpty {
+                            Text(albumName)
+                                .font(.caption)
+                                .foregroundStyle(.secondary.opacity(0.8))
+                                .lineLimit(1)
+                        }
                         if let urlStr = m.url, let url = URL(string: urlStr) {
-                            Link("在 Apple Music 中打开", destination: url).font(.caption)
+                            Link(t("detail.music.open_apple_music", "Open in Apple Music"), destination: url).font(.caption)
                         }
                     }
                     Spacer()
@@ -245,11 +272,31 @@ struct RecordDetailView: View {
     // MARK: - Links
 
     @ViewBuilder
+    private var audioSection: some View {
+        if let audio = (record.mediaCards ?? []).first(where: { $0.type == "audio" }) {
+            VStack(alignment: .leading, spacing: 10) {
+                SectionLabel(icon: "waveform", title: t("detail.section.audio", "Voice"))
+                AudioCard(
+                    data: AudioCardData(
+                        title: audio.title ?? "",
+                        audioData: audio.audioData,
+                        transcriptPreview: audio.caption ?? "",
+                        durationText: audioDurationString(from: audio.audioData),
+                        capturedAt: audio.capturedAt ?? record.createdAt
+                    )
+                )
+                .frame(height: 180)
+            }
+            .detailCard()
+        }
+    }
+
+    @ViewBuilder
     private var linkSection: some View {
         let links = (record.mediaCards ?? []).filter { $0.type == "link" }
         if !links.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                SectionLabel(icon: "link", title: "链接")
+                SectionLabel(icon: "link", title: t("detail.section.links", "Links"))
                 ForEach(links) { m in
                     if let urlStr = m.url, let url = URL(string: urlStr) {
                         HStack(spacing: 12) {
@@ -284,6 +331,47 @@ struct RecordDetailView: View {
     // MARK: - Activity
 
     @ViewBuilder
+    private var peopleSection: some View {
+        let people = record.mentionedPeople ?? []
+        if !people.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                SectionLabel(icon: "person.2.fill", title: t("detail.section.people", "People"))
+                ForEach(people, id: \.id) { person in
+                    HStack(spacing: 12) {
+                        Circle()
+                            .fill(Color.accentColor.opacity(0.14))
+                            .frame(width: 40, height: 40)
+                            .overlay(
+                                Text(person.initials)
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(Color.accentColor)
+                            )
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(person.displayName)
+                                .font(.subheadline.weight(.semibold))
+                            if !person.secondaryLabel.isEmpty {
+                                Text(person.secondaryLabel)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        Spacer()
+
+                        if person.mentionCount > 0 {
+                            Text("\(person.mentionCount)x")
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+            .detailCard()
+        }
+    }
+
+    @ViewBuilder
     private var activitySection: some View {
         if let act = record.activity, let value = act.value {
             let actType = ActivityType(rawValue: act.type) ?? .steps
@@ -309,11 +397,11 @@ struct RecordDetailView: View {
                         }
                     }
                     .frame(height: 8)
-                    Text("目标 \(Int(goal)) · \(Int(progress * 100))%")
+                    Text(t("detail.activity.goal_progress", "Goal %d · %d%%", Int(goal), Int(progress * 100)))
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 if let dur = act.durationMinutes, dur > 0 {
-                    Label("\(dur) 分钟", systemImage: "clock")
+                    Label(t("detail.activity.duration_minutes", "%d min", dur), systemImage: "clock")
                         .font(.subheadline).foregroundStyle(.secondary)
                 }
             }
@@ -327,7 +415,7 @@ struct RecordDetailView: View {
     private var mapSection: some View {
         if let lat = record.latitude, let lng = record.longitude {
             VStack(alignment: .leading, spacing: 10) {
-                SectionLabel(icon: "map.fill", title: "位置")
+                SectionLabel(icon: "map.fill", title: t("detail.section.location", "Location"))
                 MapSnapshotView(
                     coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lng)
                 )
@@ -361,7 +449,7 @@ struct RecordDetailView: View {
                     }
                 }
                 let doneCount = payload.items.filter(\.isDone).count
-                Text("\(doneCount)/\(payload.items.count) 已完成")
+                Text(t("detail.todo.completed", "%d/%d completed", doneCount, payload.items.count))
                     .font(.caption).foregroundStyle(.secondary).padding(.top, 4)
             }
             .detailCard()
@@ -376,7 +464,7 @@ struct RecordDetailView: View {
               let items = try? JSONDecoder().decode([TodoItem].self, from: raw),
               !items.isEmpty
         else { return nil }
-        return (m.title ?? "待办", items)
+        return (m.title ?? t("detail.todo.default_title", "To-Do"), items)
     }
 
     // MARK: - Metadata footer
@@ -412,9 +500,11 @@ struct RecordDetailView: View {
     }
 
     private func formattedDate(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.dateFormat = "M月d日 HH:mm"
-        return f.string(from: date)
+        localization.templateDateString(from: date, template: "MMM d HH:mm")
+    }
+
+    private func t(_ key: String, _ defaultValue: String, _ arguments: CVarArg...) -> String {
+        localization.string(key, default: defaultValue, arguments: arguments)
     }
 }
 

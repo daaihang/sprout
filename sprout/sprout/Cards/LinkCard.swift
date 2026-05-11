@@ -1,19 +1,14 @@
 import SwiftUI
-import UIKit
 
 struct LinkItem: Identifiable, Equatable {
     let id = UUID()
     var url: URL
     var title: String
     var description: String
-    var iconImage: UIImage?
+    var iconURL: URL?
 
     var domain: String {
         url.host ?? url.absoluteString
-    }
-
-    var iconURL: URL? {
-        URL(string: "https://www.google.com/s2/favicons?domain=\(domain)&sz=64")
     }
 
     static func == (lhs: LinkItem, rhs: LinkItem) -> Bool {
@@ -30,33 +25,39 @@ struct LinkCardData: Equatable {
 }
 
 struct LinkCard: View {
-    let size: CardSize
     var data: LinkCardData?
 
     var body: some View {
         cardContent
-            .frame(width: size.width, height: size.height)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .cardBackground()
     }
 
     @ViewBuilder
     private var cardContent: some View {
         if let data = data, !data.links.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                if data.links.count == 1 {
-                    singleLinkContent(data.links[0])
-                } else {
-                    multiLinkContent(data.links)
-                }
+            GeometryReader { geo in
+                let metrics = CardLayoutMetrics(containerSize: geo.size)
+                contentView(data, metrics: metrics)
             }
-            .padding(12)
         } else {
             placeholderContent
         }
     }
 
     @ViewBuilder
-    private func singleLinkContent(_ link: LinkItem) -> some View {
+    private func contentView(_ data: LinkCardData, metrics: CardLayoutMetrics) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if data.links.count == 1 {
+                singleLinkContent(data.links[0], metrics: metrics)
+            } else {
+                multiLinkContent(data.links, metrics: metrics)
+            }
+        }
+        .padding(metrics.isCompactHeight ? 10 : 12)
+    }
+
+    private func singleLinkContent(_ link: LinkItem, metrics: CardLayoutMetrics) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
                 linkIcon(for: link, size: 16)
@@ -64,14 +65,14 @@ struct LinkCard: View {
                 Text(link.title.isEmpty ? link.domain : link.title)
                     .font(.subheadline)
                     .fontWeight(.semibold)
-                    .lineLimit(size == .w4h2 ? 1 : 2)
+                    .lineLimit(metrics.isTallHeight || metrics.isWideWidth ? 2 : 1)
             }
 
             if !link.description.isEmpty {
                 Text(link.description)
                     .font(.caption)
                     .foregroundColor(.secondary)
-                    .lineLimit(size == .w4h2 ? 1 : 3)
+                    .lineLimit(metrics.isTallHeight || metrics.isWideWidth ? 3 : 1)
             }
 
             Text(link.domain)
@@ -82,10 +83,11 @@ struct LinkCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    @ViewBuilder
-    private func multiLinkContent(_ links: [LinkItem]) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            ForEach(links.prefix(size == .w4h2 ? 2 : 4)) { link in
+    private func multiLinkContent(_ links: [LinkItem], metrics: CardLayoutMetrics) -> some View {
+        let maxItems = metrics.isTallHeight ? 4 : (metrics.isWideWidth ? 3 : 2)
+
+        return VStack(alignment: .leading, spacing: 6) {
+            ForEach(links.prefix(maxItems)) { link in
                 HStack(spacing: 6) {
                     linkIcon(for: link, size: 12)
 
@@ -96,8 +98,8 @@ struct LinkCard: View {
                 }
             }
 
-            if links.count > (size == .w4h2 ? 2 : 4) {
-                Text("+\(links.count - (size == .w4h2 ? 2 : 4)) more")
+            if links.count > maxItems {
+                Text(localizedString("card.link.more", default: "+%d more", arguments: [links.count - maxItems]))
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
@@ -105,18 +107,27 @@ struct LinkCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    @ViewBuilder
     private func linkIcon(for link: LinkItem, size: CGFloat) -> some View {
-        if let iconImage = link.iconImage {
-            Image(uiImage: iconImage)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
+        if let iconURL = link.iconURL {
+            return AnyView(
+                AsyncImage(url: iconURL) { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                } placeholder: {
+                    Image(systemName: "link")
+                        .font(.system(size: size))
+                        .foregroundColor(.accentColor)
+                }
                 .frame(width: size, height: size)
-        } else {
+            )
+        }
+
+        return AnyView(
             Image(systemName: "link")
                 .font(.system(size: size))
                 .foregroundColor(.accentColor)
-        }
+        )
     }
 
     @ViewBuilder
@@ -127,33 +138,10 @@ struct LinkCard: View {
                 Image(systemName: "link")
                     .font(.system(size: 28))
                     .foregroundColor(.secondary.opacity(0.5))
-                Text("点击添加链接")
+                Text(localizedString("card.link.placeholder", default: "Tap to add a link"))
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
         }
     }
-}
-
-struct LinkCard_4x2: View {
-    var data: LinkCardData?
-    var body: some View { LinkCard(size: .w4h2, data: data) }
-}
-
-struct LinkCard_4x4: View {
-    var data: LinkCardData?
-    var body: some View { LinkCard(size: .w4h4, data: data) }
-}
-
-#Preview {
-    VStack(spacing: 12) {
-        LinkCard_4x2(data: LinkCardData(links: [
-            LinkItem(url: URL(string: "https://example.com")!, title: "Example Site", description: "This is an example description")
-        ]))
-        LinkCard_4x4(data: LinkCardData(links: [
-            LinkItem(url: URL(string: "https://apple.com")!, title: "Apple", description: "Apple official website"),
-            LinkItem(url: URL(string: "https://google.com")!, title: "Google", description: "Google search")
-        ]))
-    }
-    .frame(width: 400)
 }

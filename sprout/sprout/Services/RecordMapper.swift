@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 import MapKit
 
 // MARK: - RecordSection
@@ -7,7 +6,7 @@ import MapKit
 /// Identifies a content section within a Record.
 /// Used as the "entry angle" when navigating from a dashboard card to the detail view.
 enum RecordSection: String, Hashable, CaseIterable {
-    case text, emotion, weather, photo, music, link, activity, map, todo
+    case text, emotion, weather, photo, music, link, activity, map, todo, audio, people, todayInHistory
 }
 
 // MARK: - DashboardCardInfo
@@ -15,12 +14,16 @@ enum RecordSection: String, Hashable, CaseIterable {
 /// A single card to be rendered on the home dashboard.
 /// Multiple DashboardCardInfos can originate from the same Record.
 struct DashboardCardInfo: Identifiable {
-    let id = UUID()
+    let id: String
+    /// Stable per-container key within the parent record, for example "photo" or "text".
+    let spanKey: String
+    /// Concrete card type for this dashboard container.
+    let cardType: String
     /// The parent Record — same instance shared across all cards from that record.
     let record: Record
     /// Which section of the record this card represents (determines what's shown at top in detail view).
     let focusedSection: RecordSection
-    /// Grid column span (always 4 — full-width cards).
+    /// Grid column span (2/4/6/8 based on card type limits).
     let columns: Int
     /// Grid height in units derived from record.cardUnits (1/2/4).
     let units: Int
@@ -34,42 +37,84 @@ enum RecordMapper {
 
     /// Derives up to 4 dashboard cards from a single Record.
     /// Cards are ordered by visual importance (richest media first).
-    /// All cards share the same `units` height coming from `record.cardUnits`.
+    /// Per-container size overrides are resolved by `spanKey`.
+    /// Falls back to legacy record-level size when no per-container override exists.
     static func allCards(record: Record) -> [DashboardCardInfo] {
         var cards: [DashboardCardInfo] = []
-        let u = record.cardUnits  // user-preferred height; 4 by default
+        
+        func resolvedSpan(for cardType: String, key: String) -> ContainerSpan {
+            record.dashboardContainerSpan(for: key, cardType: cardType)
+        }
+
+        func cardInfo(
+            suffix: String,
+            type: String,
+            section: RecordSection,
+            cardView: AnyView
+        ) -> DashboardCardInfo {
+            let span = resolvedSpan(for: type, key: suffix)
+            return DashboardCardInfo(
+                id: "\(record.id.uuidString)-\(suffix)",
+                spanKey: suffix,
+                cardType: type,
+                record: record,
+                focusedSection: section,
+                columns: span.widthColumns,
+                units: span.heightUnits,
+                cardView: cardView
+            )
+        }
 
         // ── Photos ────────────────────────────────────────────────────────────
         let photoMedia = (record.mediaCards ?? []).filter { $0.type == "photo" }
         if !photoMedia.isEmpty {
-            let images = photoMedia.compactMap { m -> UIImage? in
-                guard let d = m.imageData else { return nil }
-                return UIImage(data: d)
+            let imagesData = photoMedia.compactMap { m -> Data? in
+                m.imageData
             }
             let location = photoMedia.first?.locationName ?? record.location ?? ""
-            let data = PhotoCardData(images: images, locationName: location, descriptionText: "")
-            cards.append(DashboardCardInfo(
-                record: record, focusedSection: .photo,
-                columns: 4, units: u,
-                cardView: AnyView(PhotoCard(size: CardSize(columns: 4, units: u),
-                                            data: images.isEmpty ? nil : data))
+            let data = PhotoCardData(imagesData: imagesData, locationName: location, descriptionText: "")
+            cards.append(cardInfo(
+                suffix: "photo",
+                type: "photo",
+                section: .photo,
+                cardView: AnyView(PhotoCard(data: imagesData.isEmpty ? nil : data))
             ))
         }
 
         // ── Music ─────────────────────────────────────────────────────────────
         if let m = (record.mediaCards ?? []).first(where: { $0.type == "music" }) {
-            let artwork: UIImage? = m.thumbnailData.flatMap { UIImage(data: $0) }
             let data = MusicCardData(
                 trackName: m.title ?? "",
                 artistName: m.caption ?? "",
-                albumName: "",
-                albumArtwork: artwork,
+                albumName: m.albumName ?? "",
+                albumArtworkURL: m.artworkURLString.flatMap(URL.init(string:)),
                 appleMusicURL: m.url.flatMap { URL(string: $0) }
             )
-            cards.append(DashboardCardInfo(
-                record: record, focusedSection: .music,
-                columns: 4, units: u,
-                cardView: AnyView(MusicCard(size: CardSize(columns: 4, units: u), data: data))
+            cards.append(cardInfo(
+                suffix: "music",
+                type: "music",
+                section: .music,
+                cardView: AnyView(MusicCard(data: data))
+            ))
+        }
+
+        // ── Audio ─────────────────────────────────────────────────────────────
+        if let m = (record.mediaCards ?? []).first(where: { $0.type == "audio" }) {
+            cards.append(cardInfo(
+                suffix: "audio",
+                type: "audio",
+                section: .audio,
+                cardView: AnyView(
+                    AudioCard(
+                        data: AudioCardData(
+                            title: m.title ?? "",
+                            audioData: m.audioData,
+                            transcriptPreview: m.caption ?? "",
+                            durationText: audioDurationString(from: m.audioData),
+                            capturedAt: m.capturedAt ?? record.createdAt
+                        )
+                    )
+                )
             ))
         }
 
@@ -81,11 +126,11 @@ enum RecordMapper {
                 return LinkItem(url: url, title: m.title ?? urlStr, description: m.caption ?? "")
             }
             if !items.isEmpty {
-                cards.append(DashboardCardInfo(
-                    record: record, focusedSection: .link,
-                    columns: 4, units: u,
-                    cardView: AnyView(LinkCard(size: CardSize(columns: 4, units: u),
-                                               data: LinkCardData(links: items)))
+                cards.append(cardInfo(
+                    suffix: "link",
+                    type: "link",
+                    section: .link,
+                    cardView: AnyView(LinkCard(data: LinkCardData(links: items)))
                 ))
             }
         }
@@ -96,10 +141,11 @@ enum RecordMapper {
                 coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lng),
                 locationName: record.location ?? ""
             )
-            cards.append(DashboardCardInfo(
-                record: record, focusedSection: .map,
-                columns: 4, units: u,
-                cardView: AnyView(MapCard(size: CardSize(columns: 4, units: u), data: data))
+            cards.append(cardInfo(
+                suffix: "map",
+                type: "map",
+                section: .map,
+                cardView: AnyView(MapCard(data: data))
             ))
         }
 
@@ -112,20 +158,22 @@ enum RecordMapper {
                 goal: act.goal ?? 0,
                 durationMinutes: act.durationMinutes ?? 0
             )
-            cards.append(DashboardCardInfo(
-                record: record, focusedSection: .activity,
-                columns: 4, units: u,
-                cardView: AnyView(ActivityCard(size: CardSize(columns: 4, units: u), data: data))
+            cards.append(cardInfo(
+                suffix: "activity",
+                type: "activity",
+                section: .activity,
+                cardView: AnyView(ActivityCard(data: data))
             ))
         }
 
         // ── Emotion ───────────────────────────────────────────────────────────
         if let moodStr = record.mood, let mood = MoodType(rawValue: moodStr) {
             let data = EmotionCardData(mood: mood, note: "", intensity: record.intensity ?? 3)
-            cards.append(DashboardCardInfo(
-                record: record, focusedSection: .emotion,
-                columns: 4, units: u,
-                cardView: AnyView(EmotionCard(size: CardSize(columns: 4, units: u), data: data))
+            cards.append(cardInfo(
+                suffix: "emotion",
+                type: "emotion",
+                section: .emotion,
+                cardView: AnyView(EmotionCard(data: data))
             ))
         }
 
@@ -134,17 +182,26 @@ enum RecordMapper {
             let temp = record.temperature ?? 20
             let data = WeatherCardData(
                 location: record.location ?? "",
+                coordinate: {
+                    if let latitude = record.latitude, let longitude = record.longitude {
+                        return CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+                    }
+                    return nil
+                }(),
                 temperature: temp,
                 feelsLike: record.feelsLike ?? (temp - 2),
                 condition: condition,
                 humidity: record.humidity ?? 60,
                 high: record.weatherHigh ?? (temp + 3),
-                low: record.weatherLow ?? (temp - 3)
+                low: record.weatherLow ?? (temp - 3),
+                observedAt: record.weatherObservedAt,
+                source: WeatherSnapshotSource(rawValue: record.weatherSource ?? "") ?? .manual
             )
-            cards.append(DashboardCardInfo(
-                record: record, focusedSection: .weather,
-                columns: 4, units: u,
-                cardView: AnyView(WeatherCard(size: CardSize(columns: 4, units: u), data: data))
+            cards.append(cardInfo(
+                suffix: "weather",
+                type: "weather",
+                section: .weather,
+                cardView: AnyView(WeatherCard(data: data))
             ))
         }
 
@@ -157,12 +214,30 @@ enum RecordMapper {
                 todoData.items = items
             }
             if !todoData.isEmpty {
-                cards.append(DashboardCardInfo(
-                    record: record, focusedSection: .todo,
-                    columns: 4, units: u,
-                    cardView: AnyView(TodoCard(size: CardSize(columns: 4, units: u), data: todoData))
+                cards.append(cardInfo(
+                    suffix: "todo",
+                    type: "todo",
+                    section: .todo,
+                    cardView: AnyView(TodoCard(data: todoData))
                 ))
             }
+        }
+
+        // ── People ────────────────────────────────────────────────────────────
+        let mentionedPeople = record.mentionedPeople ?? []
+        if !mentionedPeople.isEmpty {
+            cards.append(cardInfo(
+                suffix: "people",
+                type: "people",
+                section: .people,
+                cardView: AnyView(
+                    PeopleCard(
+                        data: PeopleCardData(
+                            people: mentionedPeople.map { PersonCardItem(person: $0) }
+                        )
+                    )
+                )
+            ))
         }
 
         // ── Text / Quote ──────────────────────────────────────────────────────
@@ -172,10 +247,11 @@ enum RecordMapper {
                 author: record.tagValue(for: "author"),
                 source: record.tagValue(for: "source")
             )
-            cards.append(DashboardCardInfo(
-                record: record, focusedSection: .text,
-                columns: 4, units: u,
-                cardView: AnyView(QuoteCard(size: CardSize(columns: 4, units: u), data: data))
+            cards.append(cardInfo(
+                suffix: "text",
+                type: "text",
+                section: .text,
+                cardView: AnyView(QuoteCard(data: data))
             ))
         }
 

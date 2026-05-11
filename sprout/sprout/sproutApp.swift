@@ -3,9 +3,17 @@ import SwiftData
 
 @main
 struct sproutApp: App {
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var localization = AppLocalization.shared
     @State private var subscriptionManager = SubscriptionManager()
 
     var sharedModelContainer: ModelContainer = {
+        #if targetEnvironment(simulator)
+        let cloudKitDatabase: ModelConfiguration.CloudKitDatabase = .none
+        #else
+        let cloudKitDatabase: ModelConfiguration.CloudKitDatabase = .automatic
+        #endif
+
         let schema = Schema([
             Record.self,
             Person.self,
@@ -13,11 +21,12 @@ struct sproutApp: App {
             MediaCard.self,
             DailyQuestion.self,
             Activity.self,
+            DashboardSystemCardConfig.self,
         ])
         let modelConfiguration = ModelConfiguration(
             schema: schema,
             isStoredInMemoryOnly: false,
-            cloudKitDatabase: .automatic
+            cloudKitDatabase: cloudKitDatabase
         )
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
@@ -29,8 +38,14 @@ struct sproutApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environment(\.locale, localization.locale)
+                .environment(localization)
                 .environment(subscriptionManager)
         }
         .modelContainer(sharedModelContainer)
+        .onChange(of: scenePhase) { _, newPhase in
+            guard newPhase == .active else { return }
+            localization.refreshIfNeeded()
+        }
     }
 }

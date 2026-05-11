@@ -6,8 +6,8 @@ import SwiftData
 import PhotosUI
 
 struct ContentView: View {
+    @Environment(AppLocalization.self) private var localization
     @Environment(\.modelContext) private var modelContext
-
     // MARK: UI State
     @State private var isShowingAccountSheet = false
     @State private var isBarOpen             = false
@@ -29,7 +29,9 @@ struct ContentView: View {
     @State private var showPhotosPicker   = false
     @State private var showMusicSheet     = false
     @State private var showLocationSheet  = false
+    @State private var showPeopleSheet    = false
     @State private var showVoiceToast     = false
+    @AppStorage("homeDisplayMode") private var homeDisplayModeRawValue = HomeDisplayMode.dashboard.rawValue
 
     // Pending binding data for attachment sheets
     @State private var pendingMusicData    = MusicCardData()
@@ -43,27 +45,15 @@ struct ContentView: View {
             ZStack(alignment: .bottom) {
                 pageBackground.ignoresSafeArea()
 
-                // Daily card grid — re-created when selectedDate changes
-                DailyView(date: selectedDate)
-                    .id(selectedDate)
-                    .transition(.asymmetric(
-                        insertion: .move(edge: insertionEdge),
-                        removal:   .move(edge: insertionEdge == .leading ? .trailing : .leading)
-                    ))
-
-                BottomCapsuleBar(
-                    isOpen:               $isBarOpen,
-                    onAction:             handleComposerAction,
-                    onRemoveAttachment:   removeAttachment,
-                    onSend:               { text in insertRecord(body: text) },
-                    attachments:          composerAttachments,
-                    speechRecognizer:     speechRecognizer,
-                    onAudioCaptured:      { data in composerAttachments.audioData = data }
+                HomeModeContentView(
+                    displayMode: homeDisplayMode,
+                    selectedDate: selectedDate,
+                    insertionEdge: insertionEdge
                 )
 
                 // Voice toast overlay
                 if showVoiceToast {
-                    Text("🎙 即将推出")
+                    Text(localization.string("content.voice_coming_soon", default: "Voice input coming soon", table: "Content"))
                         .font(.subheadline.weight(.medium))
                         .padding(.horizontal, 20)
                         .padding(.vertical, 10)
@@ -74,48 +64,50 @@ struct ContentView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                 }
             }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button { showDatePicker.toggle() } label: {
-                        HStack(spacing: 4) {
-                            Text(formattedDateLabel(selectedDate))
-                                .font(.body.weight(.medium))
-                                .foregroundColor(.primary)
-                                .contentTransition(.numericText())
-                            Image(systemName: "chevron.down")
-                                .font(.caption.weight(.semibold))
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { isShowingAccountSheet = true } label: {
-                        Image(systemName: "person")
-                            .font(.system(size: 22, weight: .medium))
-                            .foregroundColor(.primary)
-                    }
-                }
+            .overlay(alignment: .bottom) {
+                BottomCapsuleBar(
+                    isOpen:               $isBarOpen,
+                    onAction:             handleComposerAction,
+                    onRemoveAttachment:   removeAttachment,
+                    onSend:               { text in insertRecord(body: text) },
+                    attachments:          composerAttachments,
+                    speechRecognizer:     speechRecognizer,
+                    onAudioCaptured:      { data in composerAttachments.audioData = data }
+                )
+                .ignoresSafeArea(.keyboard)
+                .zIndex(10)
             }
-            // Swipe left/right to change date
-            // Left = forward (newer), right = backward (older) — matches iOS Calendar convention
-            .gesture(
-                DragGesture(minimumDistance: 40)
-                    .onEnded { value in
-                        if value.translation.width < -40 {
-                            navigateDay(by: +1)   // swipe left → next day (forward)
-                        } else if value.translation.width > 40 {
-                            navigateDay(by: -1)   // swipe right → previous day (backward)
-                        }
+            .navigationTitle(" ")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar {
+                HomeToolbarContent(
+                    dateLabel: formattedDateLabel(selectedDate),
+                    displayMode: homeDisplayMode,
+                    showRecordsLabel: localization.string("content.mode.show_records", default: "Show raw records"),
+                    showCardsLabel: localization.string("content.mode.show_cards", default: "Show card grid"),
+                    onDateTap: {
+                        HapticFeedback.light()
+                        showDatePicker.toggle()
+                    },
+                    onModeToggle: {
+                        HapticFeedback.light()
+                        toggleHomeDisplayMode()
+                    },
+                    onProfileTap: {
+                        HapticFeedback.light()
+                        isShowingAccountSheet = true
                     }
-            )
+                )
+            }
+            .modifier(HomeDaySwipeModifier(isEnabled: homeDisplayMode == .dashboard, onNavigateDay: navigateDay))
         }
         .animation(.spring(duration: 0.35, bounce: 0.1), value: selectedDate)
         .animation(.spring(duration: 0.3), value: showVoiceToast)
         // MARK: Sheets
         .sheet(isPresented: $isShowingAccountSheet) { AccountManagementSheet() }
         .sheet(isPresented: $showDatePicker) {
-            DatePickerSheet(selectedDate: $selectedDate)
+            HomeDatePickerSheet(selectedDate: $selectedDate)
                 .presentationDetents([.medium])
         }
         .sheet(isPresented: $showAddCardSheet) {
@@ -154,6 +146,9 @@ struct ContentView: View {
                     }
                 }
         }
+        .sheet(isPresented: $showPeopleSheet) {
+            PeoplePickerSheet(selectedPeople: $composerAttachments.people)
+        }
         // MARK: onChange
         .onChange(of: isBarOpen) { _, newValue in
             // Clear transient attachments when the composer bar closes
@@ -178,6 +173,10 @@ struct ContentView: View {
         }
     }
 
+    private var homeDisplayMode: HomeDisplayMode {
+        HomeDisplayMode(rawValue: homeDisplayModeRawValue) ?? .dashboard
+    }
+
     // MARK: Date navigation
 
     private func navigateDay(by delta: Int) {
@@ -189,22 +188,30 @@ struct ContentView: View {
         // Both in the same withAnimation for a single render transaction.
         // delta > 0 → going forward (newer) → insertion from trailing (right)
         // delta < 0 → going backward (older) → insertion from leading (left)
+        HapticFeedback.selection()
         withAnimation(.spring(duration: 0.35, bounce: 0.1)) {
             insertionEdge = delta > 0 ? .trailing : .leading
             selectedDate  = next
         }
     }
 
+    private func toggleHomeDisplayMode() {
+        homeDisplayModeRawValue = homeDisplayMode == .dashboard
+            ? HomeDisplayMode.rawRecords.rawValue
+            : HomeDisplayMode.dashboard.rawValue
+    }
+
     private func formattedDateLabel(_ date: Date) -> String {
         let cal   = Calendar.current
         let today = cal.startOfDay(for: Date())
-        if cal.isDate(date, inSameDayAs: today) { return "今日" }
+        if cal.isDate(date, inSameDayAs: today) {
+            return localization.string("content.date.today", default: "Today", table: "Content")
+        }
         let yesterday = cal.date(byAdding: .day, value: -1, to: today)!
-        if cal.isDate(date, inSameDayAs: yesterday) { return "昨天" }
-        let f = DateFormatter()
-        f.locale     = Locale(identifier: "zh_CN")
-        f.dateFormat = "M月d日 · EEE"
-        return f.string(from: date)
+        if cal.isDate(date, inSameDayAs: yesterday) {
+            return localization.string("content.date.yesterday", default: "Yesterday", table: "Content")
+        }
+        return localization.templateDateString(from: date, template: "MMM d EEE")
     }
 
     // MARK: Composer action handler
@@ -219,8 +226,12 @@ struct ContentView: View {
             showPhotosPicker = true
         case .location:
             showLocationSheet = true
+        case .people:
+            openPeoplePicker()
         case .music:
             showMusicSheet = true
+        case .link:
+            break   // RecordParser handles URLs typed in the text field
         case .voice:
             // Handled internally by BottomCapsuleBar long-press gesture.
             // This case is reached only if something calls onAction(.voice) externally.
@@ -229,8 +240,6 @@ struct ContentView: View {
                 try? await Task.sleep(for: .seconds(2))
                 showVoiceToast = false
             }
-        case .link:
-            break   // RecordParser handles URLs typed in the text field
         }
     }
 
@@ -242,6 +251,7 @@ struct ContentView: View {
         case .music:    composerAttachments.music         = nil
         case .todo:     composerAttachments.todos         = nil
         case .audio:    composerAttachments.audioData     = nil
+        case .people:   composerAttachments.people        = []
         }
     }
 
@@ -257,6 +267,7 @@ struct ContentView: View {
             ? Date()
             : cal.date(byAdding: .day, value: 1, to: selectedDate)!.addingTimeInterval(-1)
         record.updatedAt = record.createdAt
+        record.dashboardOrder = record.createdAt.timeIntervalSince1970
 
         let m = MediaCard()
         m.type          = "photo"
@@ -283,6 +294,7 @@ struct ContentView: View {
             ? Date()
             : cal.date(byAdding: .day, value: 1, to: selectedDate)!.addingTimeInterval(-1)
         record.updatedAt = record.createdAt
+        record.dashboardOrder = record.createdAt.timeIntervalSince1970
 
         // Parse body for URLs
         let parsed = RecordParser.parseBody(trimmed)
@@ -296,6 +308,13 @@ struct ContentView: View {
             record.latitude  = loc.coordinate?.latitude
             record.longitude = loc.coordinate?.longitude
             record.location  = loc.locationName.isEmpty ? nil : loc.locationName
+        }
+        if !composerAttachments.people.isEmpty {
+            record.mentionedPeople = composerAttachments.people
+            for person in composerAttachments.people {
+                person.lastMentionedAt = record.createdAt
+                person.mentionCount += 1
+            }
         }
 
         // Build media cards
@@ -317,13 +336,12 @@ struct ContentView: View {
         // Music from picker
         if let music = composerAttachments.music {
             let m = MediaCard()
-            m.type    = "music"
-            m.url     = music.appleMusicURL?.absoluteString
-            m.title   = music.trackName
-            m.caption = music.artistName
-            if let img = music.albumArtwork {
-                m.thumbnailData = img.jpegData(compressionQuality: 0.8)
-            }
+            m.type             = "music"
+            m.url              = music.appleMusicURL?.absoluteString
+            m.title            = music.trackName
+            m.caption          = music.artistName
+            m.albumName        = music.albumName.isEmpty ? nil : music.albumName
+            m.artworkURLString = music.albumArtworkURL?.absoluteString
             modelContext.insert(m)
             mediaCards.append(m)
         }
@@ -345,7 +363,9 @@ struct ContentView: View {
             let m = MediaCard()
             m.type      = "audio"
             m.audioData = audioData
-            m.title     = "语音 \(shortTimeLabel())"
+            m.title     = localization.string("content.audio.title", default: "Voice %@", arguments: [shortTimeLabel()])
+            m.caption   = trimmed.isEmpty ? speechRecognizer.recognizedText : trimmed
+            m.capturedAt = record.createdAt
             modelContext.insert(m)
             mediaCards.append(m)
         }
@@ -353,9 +373,10 @@ struct ContentView: View {
         // Apple Music URLs parsed from typed text
         for url in parsed.appleMusicURLs {
             let m = MediaCard()
-            m.type  = "music"
-            m.url   = url.absoluteString
-            m.title = url.lastPathComponent.replacingOccurrences(of: "-", with: " ")
+            m.type             = "music"
+            m.url              = url.absoluteString
+            m.title            = url.lastPathComponent.replacingOccurrences(of: "-", with: " ")
+            m.artworkURLString = nil
             modelContext.insert(m)
             mediaCards.append(m)
         }
@@ -385,7 +406,8 @@ struct ContentView: View {
         if composerAttachments.todos != nil              { return "todo"    }
         if composerAttachments.locationData != nil       { return "map"     }
         if composerAttachments.mood != nil               { return "emotion" }
-        if composerAttachments.audioData != nil          { return "text"    }
+        if composerAttachments.audioData != nil          { return "audio"   }
+        if !composerAttachments.people.isEmpty           { return "people"  }
         if !parsed.appleMusicURLs.isEmpty                { return "music"   }
         if !parsed.regularURLs.isEmpty                   { return "link"    }
         return "text"
@@ -393,9 +415,13 @@ struct ContentView: View {
 
     private func shortTimeLabel() -> String {
         let f = DateFormatter()
-        f.locale     = Locale(identifier: "zh_CN")
-        f.dateFormat = "HH:mm"
+        f.locale = localization.locale
+        f.setLocalizedDateFormatFromTemplate("HH:mm")
         return f.string(from: Date())
+    }
+
+    private func openPeoplePicker() {
+        showPeopleSheet = true
     }
 
     // MARK: Background
@@ -423,43 +449,18 @@ struct ContentView: View {
     }
 }
 
-// MARK: - DatePickerSheet
-
-private struct DatePickerSheet: View {
-    @Binding var selectedDate: Date
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            VStack {
-                DatePicker(
-                    "选择日期",
-                    selection: $selectedDate,
-                    in: ...Calendar.current.startOfDay(for: Date()),
-                    displayedComponents: .date
-                )
-                .datePickerStyle(.graphical)
-                .padding()
-                .onChange(of: selectedDate) { _, new in
-                    let norm = Calendar.current.startOfDay(for: new)
-                    if norm != selectedDate { selectedDate = norm }
-                }
-            }
-            .navigationTitle("选择日期")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("完成") { dismiss() }
-                        .fontWeight(.semibold)
-                }
-            }
-        }
-    }
-}
-
 // MARK: - Preview
 
 #Preview {
     ContentView()
-        .modelContainer(for: [Record.self, MediaCard.self, Activity.self], inMemory: true)
+        .modelContainer(
+            for: [
+                Record.self,
+                MediaCard.self,
+                Activity.self,
+                Person.self,
+                DashboardSystemCardConfig.self,
+            ],
+            inMemory: true
+        )
 }

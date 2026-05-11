@@ -1,12 +1,14 @@
 import SwiftUI
 import SwiftData
 import PhotosUI
+import CoreLocation
 
 // MARK: - AddCardSheet
 
 /// Sheet presented by the "+" button.
 /// Creates standalone Records (independent of the text composer).
 struct AddCardSheet: View {
+    @Environment(AppLocalization.self) private var localization
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss)      private var dismiss
 
@@ -23,6 +25,9 @@ struct AddCardSheet: View {
     @State private var emotionData  = EmotionCardData()
     @State private var weatherData  = WeatherCardData()
     @State private var todoData     = TodoCardData(title: "")
+    @StateObject private var weatherService = WeatherDataService()
+    @State private var isFetchingWeatherSnapshot = false
+    @State private var weatherFetchError: String?
 
     // Sheets for types that re-use existing pickers
     @State private var musicData        = MusicCardData()
@@ -50,13 +55,13 @@ struct AddCardSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(step == .grid ? "取消" : "返回") {
+                    Button(step == .grid ? t("common.cancel", "Cancel") : t("common.back", "Back")) {
                         if step == .grid { dismiss() } else { step = .grid }
                     }
                 }
                 if step != .grid {
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("保存") { confirmCurrentStep() }
+                        Button(t("common.save", "Save")) { confirmCurrentStep() }
                             .fontWeight(.semibold)
                     }
                 }
@@ -103,12 +108,12 @@ struct AddCardSheet: View {
 
     private var gridView: some View {
         let types: [(label: String, icon: String, color: Color, action: () -> Void)] = [
-            ("照片",  "photo.on.rectangle.angled", .blue,   { showPhotosPicker   = true }),
-            ("心情",  "face.smiling",              .orange, { step = .emotion }),
-            ("天气",  "cloud.sun.fill",             .yellow, { step = .weather }),
-            ("地点",  "location.fill",              .red,    { showLocationSheet  = true }),
-            ("待办",  "checklist",                  .green,  { step = .todo }),
-            ("音乐",  "music.note",                 .purple, { showMusicSheet     = true }),
+            (t("add_card.type.photo", "Photo"),  "photo.on.rectangle.angled", .blue,   { showPhotosPicker   = true }),
+            (t("add_card.type.emotion", "Emotion"),  "face.smiling",              .orange, { step = .emotion }),
+            (t("add_card.type.weather", "Weather"),  "cloud.sun.fill",             .yellow, { step = .weather }),
+            (t("add_card.type.location", "Location"),  "location.fill",              .red,    { showLocationSheet  = true }),
+            (t("add_card.type.todo", "To-Do"),  "checklist",                  .green,  { step = .todo }),
+            (t("add_card.type.music", "Music"),  "music.note",                 .purple, { showMusicSheet     = true }),
         ]
         return ScrollView {
             LazyVGrid(
@@ -168,12 +173,12 @@ struct AddCardSheet: View {
                 }
                 .padding(.vertical, 8)
             } header: {
-                Text("心情")
+                Text(t("add_card.emotion.section", "Emotion"))
             }
 
             Section {
                 HStack(spacing: 16) {
-                    Text("强度")
+                    Text(t("add_card.emotion.intensity", "Intensity"))
                         .font(.subheadline)
                     Spacer()
                     HStack(spacing: 10) {
@@ -192,10 +197,10 @@ struct AddCardSheet: View {
             }
 
             Section {
-                TextField("备注（可选）", text: $emotionData.note, axis: .vertical)
+                TextField(t("add_card.emotion.note_placeholder", "Notes (optional)"), text: $emotionData.note, axis: .vertical)
                     .lineLimit(2...5)
             } header: {
-                Text("备注")
+                Text(t("add_card.emotion.note", "Notes"))
             }
         }
     }
@@ -205,71 +210,61 @@ struct AddCardSheet: View {
     private var weatherEditorView: some View {
         List {
             Section {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
-                        ForEach(WeatherCondition.allCases, id: \.self) { cond in
-                            Button { weatherData.condition = cond } label: {
-                                VStack(spacing: 4) {
-                                    Image(systemName: cond.sfSymbol)
-                                        .font(.system(size: 26))
-                                        .foregroundStyle(cond.color)
-                                        .symbolRenderingMode(.multicolor)
-                                    Text(cond.label)
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                }
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 8)
-                                .background(
-                                    weatherData.condition == cond
-                                        ? cond.color.opacity(0.15)
-                                        : Color.clear,
-                                    in: RoundedRectangle(cornerRadius: 10)
-                                )
-                            }
-                            .buttonStyle(.plain)
+                Button {
+                    Task { await loadCurrentWeatherSnapshot(force: true) }
+                } label: {
+                    HStack(spacing: 12) {
+                        if isFetchingWeatherSnapshot {
+                            ProgressView()
+                        } else {
+                            Image(systemName: "location.fill")
+                                .foregroundStyle(.blue)
+                        }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(isFetchingWeatherSnapshot ? t("add_card.weather.loading", "Fetching weather for your current location") : t("add_card.weather.use_current", "Use current location weather"))
+                            Text(t("add_card.weather.snapshot_hint", "Save it as a weather snapshot for this entry"))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
                     }
-                    .padding(.vertical, 4)
                 }
-            } header: {
-                Text("天气状况")
+                .disabled(isFetchingWeatherSnapshot)
+
+                if let weatherFetchError, !weatherFetchError.isEmpty {
+                    Text(weatherFetchError)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+            } footer: {
+                Text(t("add_card.weather.footer", "Weather cards can only be filled from your current location automatically."))
             }
 
-            Section {
-                Stepper(
-                    "温度：\(Int(weatherData.temperature))°C",
-                    value: $weatherData.temperature,
-                    in: -40...60,
-                    step: 1
-                )
-                Stepper(
-                    "最高：\(Int(weatherData.high))°C",
-                    value: $weatherData.high,
-                    in: -40...60,
-                    step: 1
-                )
-                Stepper(
-                    "最低：\(Int(weatherData.low))°C",
-                    value: $weatherData.low,
-                    in: -40...60,
-                    step: 1
-                )
-                Stepper(
-                    "湿度：\(weatherData.humidity)%",
-                    value: $weatherData.humidity,
-                    in: 0...100,
-                    step: 5
-                )
-            } header: {
-                Text("气象数据")
-            }
+            if weatherData.observedAt != nil {
+                Section(t("add_card.weather.snapshot", "Weather Snapshot")) {
+                    HStack {
+                        Label(weatherData.condition.label, systemImage: weatherData.condition.sfSymbol)
+                            .foregroundStyle(weatherData.condition.color)
+                        Spacer()
+                        Text("\(Int(weatherData.temperature))°C")
+                            .fontWeight(.semibold)
+                    }
 
-            Section {
-                TextField("城市 / 地点名称", text: $weatherData.location)
-            } header: {
-                Text("地点")
+                    LabeledContent(t("add_card.weather.location", "Location"), value: weatherData.location.isEmpty ? t("weather.current_location", "Current Location") : weatherData.location)
+                    LabeledContent(t("add_card.weather.feels_like", "Feels Like"), value: "\(Int(weatherData.feelsLike))°C")
+                    LabeledContent(t("add_card.weather.humidity", "Humidity"), value: "\(weatherData.humidity)%")
+                    LabeledContent(t("add_card.weather.high_low", "High / Low"), value: "\(Int(weatherData.high))° / \(Int(weatherData.low))°")
+
+                    if let observedAt = weatherData.observedAt {
+                        LabeledContent(t("add_card.weather.observed_at", "Fetched At"), value: observedAt.formatted(date: .abbreviated, time: .shortened))
+                    }
+                }
             }
+        }
+        .task {
+            await loadCurrentWeatherSnapshot(force: false)
+        }
+        .onChange(of: weatherService.authorizationStatus) { _, _ in
+            Task { await loadCurrentWeatherSnapshot(force: false) }
         }
     }
 
@@ -278,7 +273,7 @@ struct AddCardSheet: View {
     private var todoEditorView: some View {
         List {
             Section {
-                TextField("清单标题（可选）", text: $todoData.title)
+                TextField(t("add_card.todo.title_placeholder", "List title (optional)"), text: $todoData.title)
             }
 
             Section {
@@ -290,7 +285,7 @@ struct AddCardSheet: View {
                                 .foregroundStyle(item.isDone ? .green : .secondary)
                                 .font(.title3)
                         }
-                        TextField("待办事项", text: $item.text)
+                        TextField(t("add_card.todo.item_placeholder", "To-do item"), text: $item.text)
                     }
                 }
                 .onDelete { todoData.items.remove(atOffsets: $0) }
@@ -298,11 +293,11 @@ struct AddCardSheet: View {
                 Button {
                     todoData.items.append(TodoItem(text: ""))
                 } label: {
-                    Label("添加项目", systemImage: "plus.circle.fill")
+                    Label(t("add_card.todo.add_item", "Add Item"), systemImage: "plus.circle.fill")
                         .foregroundStyle(Color.accentColor)
                 }
             } header: {
-                Text("待办项")
+                Text(t("add_card.todo.section", "To-Do Items"))
             }
         }
     }
@@ -311,10 +306,10 @@ struct AddCardSheet: View {
 
     private var navTitle: String {
         switch step {
-        case .grid:    return "新建卡片"
-        case .emotion: return "记录心情"
-        case .weather: return "记录天气"
-        case .todo:    return "创建待办"
+        case .grid:    return t("add_card.nav.grid", "New Card")
+        case .emotion: return t("add_card.nav.emotion", "Log Emotion")
+        case .weather: return t("add_card.nav.weather", "Log Weather")
+        case .todo:    return t("add_card.nav.todo", "Create To-Do")
         }
     }
 
@@ -337,6 +332,12 @@ struct AddCardSheet: View {
             : cal.date(byAdding: .day, value: 1, to: selectedDate)!.addingTimeInterval(-1)
         record.updatedAt = record.createdAt
         record.cardType  = cardType
+        record.dashboardOrder = record.createdAt.timeIntervalSince1970
+
+        // Set default size based on card type limits
+        let limits = cardSizeLimits[cardType] ?? CardSizeLimits(minWidth: 4, maxWidth: 4, minHeight: 1, maxHeight: 4)
+        record.cardWidthColumns = limits.defaultSpan.widthColumns
+        record.cardUnits = limits.defaultSpan.heightUnits
 
         switch cardType {
 
@@ -355,6 +356,10 @@ struct AddCardSheet: View {
             record.weatherHigh = weatherData.high
             record.weatherLow  = weatherData.low
             record.location    = weatherData.location.isEmpty ? nil : weatherData.location
+            record.latitude    = weatherData.coordinate?.latitude
+            record.longitude   = weatherData.coordinate?.longitude
+            record.weatherObservedAt = weatherData.observedAt ?? record.createdAt
+            record.weatherSource = weatherData.source.rawValue
             modelContext.insert(record)
             dismiss()
 
@@ -368,13 +373,12 @@ struct AddCardSheet: View {
 
         case "music":
             let m = MediaCard()
-            m.type    = "music"
-            m.url     = musicData.appleMusicURL?.absoluteString
-            m.title   = musicData.trackName
-            m.caption = musicData.artistName
-            if let img = musicData.albumArtwork {
-                m.thumbnailData = img.jpegData(compressionQuality: 0.8)
-            }
+            m.type             = "music"
+            m.url              = musicData.appleMusicURL?.absoluteString
+            m.title            = musicData.trackName
+            m.caption          = musicData.artistName
+            m.albumName        = musicData.albumName.isEmpty ? nil : musicData.albumName
+            m.artworkURLString = musicData.albumArtworkURL?.absoluteString
             modelContext.insert(m)
             modelContext.insert(record)
             record.mediaCards = [m]
@@ -414,5 +418,38 @@ struct AddCardSheet: View {
             modelContext.insert(record)
             dismiss()
         }
+    }
+
+    @MainActor
+    private func loadCurrentWeatherSnapshot(force: Bool) async {
+        guard step == .weather else { return }
+        if isFetchingWeatherSnapshot { return }
+        if !force && weatherData.observedAt != nil { return }
+
+        weatherFetchError = nil
+
+        if !weatherService.hasUsableAuthorization() {
+            weatherService.requestLocationPermission()
+            weatherFetchError = t("add_card.weather.error.permission", "Allow location access to fill in current weather automatically")
+            return
+        }
+
+        guard let location = weatherService.getCurrentLocation() else {
+            weatherFetchError = t("add_card.weather.error.unavailable", "Current location is unavailable right now. Try again shortly.")
+            return
+        }
+
+        isFetchingWeatherSnapshot = true
+        defer { isFetchingWeatherSnapshot = false }
+
+        do {
+            weatherData = try await weatherService.fetchWeather(for: location)
+        } catch {
+            weatherFetchError = weatherService.errorMessage(for: error)
+        }
+    }
+
+    private func t(_ key: String, _ defaultValue: String, _ arguments: CVarArg...) -> String {
+        localization.string(key, default: defaultValue, arguments: arguments)
     }
 }

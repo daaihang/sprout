@@ -24,15 +24,29 @@ final class Record {
     var progress: Double? = nil
     var appleMusicURL: String? = nil
     /// Primary card type for dashboard display.
-    /// Values: "text" | "quote" | "emotion" | "weather" | "activity" | "todo" | "photo" | "music" | "link" | "map"
+    /// Values: "text" | "quote" | "emotion" | "weather" | "activity" | "todo" | "photo" | "music" | "link" | "map" | "audio" | "people" | "today_in_history"
     var cardType: String = "text"
     /// Weather extended fields (replaces hardcoded defaults in RecordMapper)
     var feelsLike: Double? = nil
     var humidity: Int? = nil
     var weatherHigh: Double? = nil
     var weatherLow: Double? = nil
+    /// Timestamp for the captured weather snapshot.
+    var weatherObservedAt: Date? = nil
+    /// Source of the weather snapshot, for example "current_location_auto" or "manual".
+    var weatherSource: String? = nil
     /// User-preferred display height in grid units (1 / 2 / 4). Default 4 = full-size card.
     var cardUnits: Int = 4
+    /// User-preferred display width in grid columns (2 / 4 / 6 / 8). Default 4 = full-width card.
+    var cardWidthColumns: Int = 4
+    /// Per-dashboard-container span overrides keyed by card suffix, stored as JSON.
+    var dashboardCardSpanOverridesData: Data? = nil
+    /// Dashboard ordering rank. Lower values appear earlier.
+    var dashboardOrder: Double = 0
+
+    var containerSpan: ContainerSpan {
+        ContainerSpan(widthColumns: cardWidthColumns, heightUnits: cardUnits)
+    }
 
     @Relationship(deleteRule: .cascade) var mediaCards: [MediaCard]? = nil
     @Relationship(deleteRule: .nullify) var mentionedPeople: [Person]? = nil
@@ -41,4 +55,44 @@ final class Record {
     @Relationship(deleteRule: .nullify) var dailyQuestion: DailyQuestion? = nil
 
     init() {}
+}
+
+private struct StoredDashboardCardSpan: Codable {
+    let widthColumns: Int
+    let heightUnits: Int
+}
+
+extension Record {
+    private var dashboardCardSpanOverrides: [String: StoredDashboardCardSpan] {
+        get {
+            guard let dashboardCardSpanOverridesData else { return [:] }
+            return (try? JSONDecoder().decode([String: StoredDashboardCardSpan].self, from: dashboardCardSpanOverridesData)) ?? [:]
+        }
+        set {
+            dashboardCardSpanOverridesData = try? JSONEncoder().encode(newValue)
+        }
+    }
+
+    func dashboardContainerSpan(for key: String, cardType: String) -> ContainerSpan {
+        if let stored = dashboardCardSpanOverrides[key] {
+            return sizeLimits(for: cardType).clamped(
+                span: ContainerSpan(widthColumns: stored.widthColumns, heightUnits: stored.heightUnits)
+            )
+        }
+
+        return sizeLimits(for: cardType).clamped(span: containerSpan)
+    }
+
+    func hasDashboardContainerSpanOverride(for key: String) -> Bool {
+        dashboardCardSpanOverrides[key] != nil
+    }
+
+    func setDashboardContainerSpan(_ span: ContainerSpan, for key: String) {
+        var overrides = dashboardCardSpanOverrides
+        overrides[key] = StoredDashboardCardSpan(
+            widthColumns: span.widthColumns,
+            heightUnits: span.heightUnits
+        )
+        dashboardCardSpanOverrides = overrides
+    }
 }

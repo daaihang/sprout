@@ -18,11 +18,26 @@ enum MoryConfig {
         return key
     }
 
-    enum ProductID {
-        static let monthlyGrow = "com.speculolabs.sprout.grow.monthly"
-        static let yearlyGrow  = "com.speculolabs.sprout.grow.yearly"
+    private static func string(for key: String, fallback: String = "") -> String {
+        guard let value = Bundle.main.infoDictionary?[key] as? String, !value.isEmpty else {
+            return fallback
+        }
+        return value
     }
 
-    static let entitlementID = "grow"
-    static let offeringID    = "default"
+    private static func stringList(for key: String) -> [String] {
+        string(for: key)
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+    }
+
+    enum ProductID {
+        static let monthlyGrow = string(for: "REVENUECAT_MONTHLY_PRODUCT_ID", fallback: "com.speculolabs.sprout.grow.monthly")
+        static let yearlyGrow  = string(for: "REVENUECAT_YEARLY_PRODUCT_ID", fallback: "com.speculolabs.sprout.grow.yearly")
+    }
+
+    static let entitlementID = string(for: "REVENUECAT_ENTITLEMENT_ID", fallback: "Sprout Grow")
+    static let entitlementFallbackIDs = stringList(for: "REVENUECAT_ENTITLEMENT_FALLBACK_IDS")
+    static let offeringID = string(for: "REVENUECAT_OFFERING_ID", fallback: "sprout_grow")
 }

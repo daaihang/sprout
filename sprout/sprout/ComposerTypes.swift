@@ -9,6 +9,7 @@ enum ComposerActionType {
     case camera     // camera capture (quick or toolbar)
     case photo      // photo library picker
     case location   // location sheet
+    case people     // people sheet
     case music      // music sheet
     case voice      // voice recording (handled internally by the bar)
     case link       // URL — RecordParser already handles typed URLs; no sheet needed
@@ -18,7 +19,7 @@ enum ComposerActionType {
 
 /// Identifies which attachment to remove when a chip's × button is tapped.
 enum ComposerAttachmentKey {
-    case mood, photo, location, music, todo, audio
+    case mood, photo, location, music, todo, audio, people
 }
 
 // MARK: - ComposerAttachments
@@ -33,6 +34,7 @@ struct ComposerAttachments {
     var music: MusicCardData? = nil
     var todos: TodoCardData? = nil
     var audioData: Data? = nil
+    var people: [Person] = []
 
     var isEmpty: Bool {
         mood == nil
@@ -41,6 +43,7 @@ struct ComposerAttachments {
             && music == nil
             && todos == nil
             && audioData == nil
+            && people.isEmpty
     }
 
     mutating func clear() { self = ComposerAttachments() }

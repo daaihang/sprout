@@ -1,36 +1,39 @@
 import SwiftUI
-import UIKit
 import MapKit
+import PhotosUI
 
 struct PhotoCardData {
-    var images: [UIImage]
+    var imagesData: [Data]
     var locationName: String
     var descriptionText: String
     var locationCoordinate: CLLocationCoordinate2D?
     var aiDescription: String?
 
     init(
-        images: [UIImage] = [],
+        imagesData: [Data] = [],
         locationName: String = "",
         descriptionText: String = "",
         locationCoordinate: CLLocationCoordinate2D? = nil,
         aiDescription: String? = nil
     ) {
-        self.images = images
+        self.imagesData = imagesData
         self.locationName = locationName
         self.descriptionText = descriptionText
         self.locationCoordinate = locationCoordinate
         self.aiDescription = aiDescription
     }
+
+    var images: [UIImage] {
+        imagesData.compactMap { UIImage(data: $0) }
+    }
 }
 
 struct PhotoCard: View {
-    let size: CardSize
     var data: PhotoCardData?
 
     var body: some View {
         cardContent
-            .frame(width: size.width, height: size.height)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .cardBackground()
     }
 
@@ -39,7 +42,7 @@ struct PhotoCard: View {
         if let data = data, !data.images.isEmpty {
             GeometryReader { geometry in
                 ZStack(alignment: .bottomLeading) {
-                    imageSection(images: data.images, size: geometry.size)
+                    imageSection(images: data.images, containerSize: geometry.size)
                     infoOverlay(data: data)
                 }
             }
@@ -56,7 +59,7 @@ struct PhotoCard: View {
                 Image(systemName: "photo")
                     .font(.system(size: 28))
                     .foregroundColor(.secondary.opacity(0.5))
-                Text("点击添加照片")
+                Text(localizedString("card.photo.placeholder", default: "Tap to add a photo"))
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -64,19 +67,20 @@ struct PhotoCard: View {
     }
 
     @ViewBuilder
-    private func imageSection(images: [UIImage], size: CGSize) -> some View {
+    private func imageSection(images: [UIImage], containerSize: CGSize) -> some View {
         let hasMultiple = images.count > 1
+        let metrics = CardLayoutMetrics(containerSize: containerSize)
 
         ZStack {
             if hasMultiple {
-                ForEach(0..<3, id: \.self) { i in
-                    let offsetX = CGFloat(3 - i) * -6
-                    let offsetY = CGFloat(3 - i) * -4
+                ForEach(0..<(metrics.isTallHeight ? 3 : 2), id: \.self) { i in
+                    let offsetX = CGFloat(2 - i) * -6
+                    let offsetY = CGFloat(2 - i) * -4
                     let opacity = 1.0 - Double(i) * 0.25
                     Image(uiImage: images[0])
                         .resizable()
                         .aspectRatio(contentMode: .fill)
-                        .frame(width: size.width, height: size.height, alignment: .center)
+                        .frame(width: containerSize.width, height: containerSize.height, alignment: .center)
                         .offset(x: offsetX, y: offsetY)
                         .opacity(opacity)
                         .mask(
@@ -91,7 +95,7 @@ struct PhotoCard: View {
                         Image(uiImage: image)
                             .resizable()
                             .aspectRatio(contentMode: .fill)
-                            .frame(width: size.width, height: size.height, alignment: .center)
+                            .frame(width: containerSize.width, height: containerSize.height, alignment: .center)
                             .clipped()
                     }
                 }
@@ -132,7 +136,7 @@ struct PhotoCard: View {
                     .font(.caption)
                     .fontWeight(hasLocation ? .regular : .bold)
                     .foregroundColor(.white)
-                    .lineLimit(1)
+                    .lineLimit(2)
                     .shadow(color: .black.opacity(0.5), radius: 2, x: 0, y: 1)
             }
         }
@@ -146,30 +150,4 @@ struct PhotoCard: View {
             )
         )
     }
-}
-
-struct PhotoCard_4x2: View {
-    var data: PhotoCardData?
-    var body: some View { PhotoCard(size: .w4h2, data: data) }
-}
-
-struct PhotoCard_4x4: View {
-    var data: PhotoCardData?
-    var body: some View { PhotoCard(size: .w4h4, data: data) }
-}
-
-#Preview {
-    VStack(spacing: 12) {
-        PhotoCard_4x2(data: PhotoCardData(
-            images: [],
-            locationName: "",
-            descriptionText: ""
-        ))
-        PhotoCard_4x4(data: PhotoCardData(
-            images: [],
-            locationName: "",
-            descriptionText: ""
-        ))
-    }
-    .frame(width: 400)
 }

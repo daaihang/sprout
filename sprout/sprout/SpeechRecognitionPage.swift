@@ -29,7 +29,6 @@ final class SpeechRecognizer {
     func requestAuthorization() async {
         // Microphone
         if #available(iOS 17.0, *) {
-            let micStatus = AVAudioApplication.requestRecordPermission
             await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
                 AVAudioApplication.requestRecordPermission { _ in cont.resume() }
             }

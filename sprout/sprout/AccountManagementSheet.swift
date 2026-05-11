@@ -2,6 +2,9 @@ import SwiftUI
 
 struct AccountManagementSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
+    @Environment(AppLocalization.self) private var localization
+    @Environment(SubscriptionManager.self) private var subscriptionManager
 
     @State private var pushTime = Date()
     @State private var showTimePicker = false
@@ -19,7 +22,7 @@ struct AccountManagementSheet: View {
                             .foregroundStyle(.blue)
 
                         VStack(spacing: 4) {
-                            Text("用户名")
+                            Text(t("account.profile.username", "Username"))
                                 .font(.system(size: 20, weight: .semibold))
 
                             Text("user@example.com")
@@ -27,12 +30,12 @@ struct AccountManagementSheet: View {
                                 .foregroundColor(.secondary)
                         }
 
-                        Text("Pro 订阅")
+                        Text(subscriptionManager.isSubscribed ? t("account.profile.grow_active", "Grow Active") : t("account.profile.free", "Free"))
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(.white)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 4)
-                            .background(Color.orange)
+                            .background(subscriptionManager.isSubscribed ? Color.green : Color.secondary)
                             .clipShape(Capsule())
                     }
                     .frame(maxWidth: .infinity)
@@ -41,9 +44,9 @@ struct AccountManagementSheet: View {
                 .listRowBackground(Color.clear)
 
                 // MARK: - 个人设置
-                Section("个人设置") {
+                Section(t("account.section.personal", "Personal Settings")) {
                     HStack {
-                        SettingsRow(icon: "bell", iconColor: .red, title: "每日一问推送", detail: pushTimeString)
+                        SettingsRow(icon: "bell", iconColor: .red, title: t("account.row.daily_prompt", "Daily Prompt Time"), detail: pushTimeString)
                     }
                     .contentShape(Rectangle())
                     .onTapGesture {
@@ -51,60 +54,80 @@ struct AccountManagementSheet: View {
                     }
 
                     HStack {
-                        SettingsRow(icon: "person.2", iconColor: .orange, title: "关系提醒间隔", detail: "\(reminderInterval)天")
+                        SettingsRow(icon: "person.2", iconColor: .orange, title: t("account.row.relationship_interval", "Relationship Reminder Interval"), detail: reminderIntervalString)
                     }
                     .contentShape(Rectangle())
                     .onTapGesture {
                         showReminderPicker = true
                     }
 
-                    SettingsRow(icon: "globe", iconColor: .blue, title: "记录语言", detail: "中文")
-                    SettingsRow(icon: "moon", iconColor: .indigo, title: "深色模式", detail: "跟随系统")
+                    HStack {
+                        SettingsRow(icon: "globe", iconColor: .blue, title: t("account.row.app_language", "App Language"), detail: localization.currentLanguage.nativeDisplayName)
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        openSystemSettings()
+                    }
+
+                    SettingsRow(icon: "moon", iconColor: .indigo, title: t("account.row.appearance", "Appearance"), detail: t("common.follow_system", "Follow System"))
                 }
 
                 // MARK: - 隐私与安全
-                Section("隐私与安全") {
-                    SettingsRow(icon: "faceid", iconColor: .green, title: "Face ID / Touch ID 锁")
-                    SettingsRow(icon: "square.and.arrow.up", iconColor: .gray, title: "数据导出 (JSON)")
+                Section(t("account.section.privacy", "Privacy & Security")) {
+                    SettingsRow(icon: "faceid", iconColor: .green, title: t("account.row.biometric_lock", "Face ID / Touch ID Lock"))
+                    SettingsRow(icon: "square.and.arrow.up", iconColor: .gray, title: t("account.row.export_json", "Export Data (JSON)"))
                 }
 
                 // MARK: - 订阅
-                Section("订阅") {
-                    HStack {
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.green.opacity(0.15))
-                            .frame(width: 44, height: 44)
-                            .overlay(
-                                Image(systemName: "leaf.fill")
-                                    .font(.system(size: 18))
-                                    .foregroundColor(.green)
+                Section(t("account.section.subscription", "Subscription")) {
+                    NavigationLink(destination: SubscriptionPaywallView()) {
+                        HStack {
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.green.opacity(0.15))
+                                .frame(width: 44, height: 44)
+                                .overlay(
+                                    Image(systemName: "leaf.fill")
+                                        .font(.system(size: 18))
+                                        .foregroundColor(.green)
                             )
 
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Grow 计划")
-                                .font(.system(size: 15, weight: .medium))
-                            Text("到期日：2025年12月31日")
-                                .font(.system(size: 12))
-                                .foregroundColor(.secondary)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(t("subscription.plan.grow", "Grow Plan"))
+                                    .font(.system(size: 15, weight: .medium))
+                                Text(subscriptionStatusDetail)
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                            }
+
+                            Spacer()
+
+                            Text(subscriptionStatusLabel)
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(subscriptionManager.isSubscribed ? .green : .secondary)
                         }
-
-                        Spacer()
-
-                        Text("活跃中")
-                            .font(.system(size: 12))
-                            .foregroundColor(.green)
+                        .padding(.vertical, 4)
                     }
-                    .padding(.vertical, 4)
+
+                    Button(t("common.restore_purchases", "Restore Purchases")) {
+                        Task { await subscriptionManager.restorePurchases() }
+                    }
+                    .disabled(subscriptionManager.isLoading)
+
+                    if let errorMessage = subscriptionManager.errorMessage, !errorMessage.isEmpty {
+                        Text(errorMessage)
+                            .font(.system(size: 12))
+                            .foregroundColor(.red)
+                    }
                 }
 
                 // MARK: - 关于 + 反馈
-                Section("关于 + 反馈") {
-                    SettingsRow(icon: "info.circle", iconColor: .gray, title: "版本号", detail: "1.0.5")
-                    NavigationLink(destination: Text("评分页面")) {
-                        SettingsRow(icon: "star", iconColor: .yellow, title: "给 Mory 评分")
+                Section(t("account.section.about", "About & Feedback")) {
+                    SettingsRow(icon: "info.circle", iconColor: .gray, title: t("account.row.version", "Version"), detail: "1.0.5")
+                    NavigationLink(destination: Text(t("account.placeholder.rate", "Rating Screen"))) {
+                        SettingsRow(icon: "star", iconColor: .yellow, title: t("account.row.rate", "Rate Sprout"))
                     }
-                    NavigationLink(destination: Text("反馈页面")) {
-                        SettingsRow(icon: "envelope", iconColor: .orange, title: "发送反馈")
+                    NavigationLink(destination: Text(t("account.placeholder.feedback", "Feedback Screen"))) {
+                        SettingsRow(icon: "envelope", iconColor: .orange, title: t("account.row.feedback", "Send Feedback"))
                     }
                 }
 
@@ -118,81 +141,145 @@ struct AccountManagementSheet: View {
                                 .frame(width: 28, height: 28)
                                 .background(Color.purple)
                                 .clipShape(RoundedRectangle(cornerRadius: 6))
-                            Text("Debug")
+                            Text(t("common.debug", "Debug"))
                         }
                     }
                 }
 
                 // MARK: - 退出登录
                 Section {
-                    Button("退出登录") {
+                    Button(t("account.row.logout", "Log Out")) {
                         // logout action
                     }
                     .foregroundColor(.red)
                 }
             }
-            .navigationTitle("账户")
+            .navigationTitle(t("account.title", "Account"))
             .navigationBarTitleDisplayMode(.inline)
+            .task {
+                await subscriptionManager.refreshCustomerInfo()
+                await subscriptionManager.loadOfferings()
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("完成") { dismiss() }
+                    Button(t("common.done", "Done")) { dismiss() }
                 }
             }
             .sheet(isPresented: $showTimePicker) {
                 NavigationStack {
                     VStack {
-                        DatePicker("选择时间", selection: $pushTime, displayedComponents: .hourAndMinute)
+                        DatePicker(t("account.sheet.daily_prompt", "Daily Prompt Time"), selection: $pushTime, displayedComponents: .hourAndMinute)
                             .datePickerStyle(.wheel)
                             .labelsHidden()
                     }
-                    .navigationTitle("每日一问推送时间")
+                    .navigationTitle(t("account.sheet.daily_prompt", "Daily Prompt Time"))
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .topBarTrailing) {
-                            Button("完成") { showTimePicker = false }
+                            Button(t("common.done", "Done")) { showTimePicker = false }
                         }
                     }
                 }
                 .presentationDetents([.height(300)])
             }
-            .confirmationDialog("关系提醒间隔", isPresented: $showReminderPicker) {
-                Button("7 天") { reminderInterval = 7 }
-                Button("14 天") { reminderInterval = 14 }
-                Button("30 天") { reminderInterval = 30 }
-                Button("取消", role: .cancel) { }
+            .confirmationDialog(t("account.dialog.relationship_title", "Relationship Reminder Interval"), isPresented: $showReminderPicker) {
+                Button(t("account.reminder.days", "%d days", 7)) { reminderInterval = 7 }
+                Button(t("account.reminder.days", "%d days", 14)) { reminderInterval = 14 }
+                Button(t("account.reminder.days", "%d days", 30)) { reminderInterval = 30 }
+                Button(t("common.cancel", "Cancel"), role: .cancel) { }
             }
         }
     }
 
     private var pushTimeString: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm"
-        return formatter.string(from: pushTime)
+        localization.shortTimeString(from: pushTime)
+    }
+
+    private var reminderIntervalString: String {
+        t("account.reminder.days", "%d days", reminderInterval)
+    }
+
+    private var subscriptionStatusLabel: String {
+        subscriptionManager.isSubscribed
+            ? t("subscription.status.active", "Active")
+            : t("subscription.status.upgrade", "Upgrade")
+    }
+
+    private var subscriptionStatusDetail: String {
+        if subscriptionManager.isSubscribed {
+            if let date = subscriptionManager.expirationDate {
+                return t("subscription.status.expires", "Expires %@",
+                         localization.longDateString(from: date))
+            }
+            if let kind = subscriptionManager.currentPackageKind {
+                return t("subscription.status.plan_active", "%@ active", planName(for: kind))
+            }
+            return t("subscription.status.active_generic", "Subscription active")
+        }
+
+        if let yearly = subscriptionManager.summary(for: .yearly) {
+            return t("subscription.status.yearly_price", "Yearly %@%@", yearly.price, periodLabel(for: .yearly))
+        }
+
+        if let monthly = subscriptionManager.summary(for: .monthly) {
+            return t("subscription.status.monthly_price", "Monthly %@%@", monthly.price, periodLabel(for: .monthly))
+        }
+
+        return t("subscription.status.supports_both", "Supports monthly and yearly subscriptions")
+    }
+
+    private func planName(for kind: SubscriptionManager.PackageKind) -> String {
+        switch kind {
+        case .monthly:
+            return t("subscription.plan.monthly", "Monthly")
+        case .yearly:
+            return t("subscription.plan.yearly", "Yearly")
+        }
+    }
+
+    private func periodLabel(for kind: SubscriptionManager.PackageKind) -> String {
+        switch kind {
+        case .monthly:
+            return t("subscription.period.month", "/ month")
+        case .yearly:
+            return t("subscription.period.year", "/ year")
+        }
+    }
+
+    private func openSystemSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        openURL(url)
+    }
+
+    private func t(_ key: String, _ defaultValue: String, _ arguments: CVarArg...) -> String {
+        localization.string(key, default: defaultValue, arguments: arguments)
     }
 }
 
 // MARK: - MemoryOverviewSection
 
 struct MemoryOverviewSection: View {
+    @Environment(AppLocalization.self) private var localization
+
     var body: some View {
         Section {
             VStack(alignment: .leading, spacing: 16) {
                 // 标题
                 HStack {
-                    Text("我的记忆概览")
+                    Text(localization.string("account.memory.title", default: "Memory Overview"))
                         .font(.system(size: 18, weight: .semibold))
                     Spacer()
-                    Text("你已经用 Mory 记录了 128 天")
+                    Text(localization.string("account.memory.days_recorded", default: "You have recorded with Sprout for %d days", arguments: [128]))
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
                 }
 
                 // 统计数字
                 HStack(spacing: 12) {
-                    StatCard(value: "128", label: "记录天数", icon: "calendar")
-                    StatCard(value: "365", label: "总记录数", icon: "doc.text")
-                    StatCard(value: "12", label: "人物数", icon: "person.2")
-                    StatCard(value: "8", label: "决策数", icon: "flag")
+                    StatCard(value: "128", label: localization.string("account.memory.card.days", default: "Days Recorded"), icon: "calendar")
+                    StatCard(value: "365", label: localization.string("account.memory.card.records", default: "Total Records"), icon: "doc.text")
+                    StatCard(value: "12", label: localization.string("account.memory.card.people", default: "People"), icon: "person.2")
+                    StatCard(value: "8", label: localization.string("account.memory.card.decisions", default: "Decisions"), icon: "flag")
                 }
 
                 // Year in Pixels 热力图
@@ -240,12 +327,13 @@ struct StatCard: View {
 // MARK: - YearInPixelsGrid
 
 struct YearInPixelsGrid: View {
+    @Environment(AppLocalization.self) private var localization
     private let columns = 52 // 52 weeks
     private let rows = 7 // 7 days
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("今年的热力图")
+            Text(localization.string("account.memory.heatmap", default: "This Year's Heatmap"))
                 .font(.system(size: 12, weight: .medium))
                 .foregroundColor(.secondary)
 
@@ -267,18 +355,19 @@ struct YearInPixelsGrid: View {
 // MARK: - BadgeWallView
 
 struct BadgeWallView: View {
+    @Environment(AppLocalization.self) private var localization
     private let badges = [
-        ("🎯", "第一次记录", true),
-        ("🔥", "连续30天", true),
-        ("👥", "记住10个人", true),
-        ("⭐", "完成100条记录", false),
-        ("🏆", "年度用户", false),
-        ("🌟", "里程碑达成", false),
+        ("🎯", "account.badge.first_record", "First Record", true),
+        ("🔥", "account.badge.streak_30", "30-Day Streak", true),
+        ("👥", "account.badge.remember_10_people", "Remember 10 People", true),
+        ("⭐", "account.badge.records_100", "100 Records", false),
+        ("🏆", "account.badge.yearly_user", "Yearly User", false),
+        ("🌟", "account.badge.milestone", "Milestone Reached", false),
     ]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("成就徽章")
+            Text(localization.string("account.badges.title", default: "Achievements"))
                 .font(.system(size: 12, weight: .medium))
                 .foregroundColor(.secondary)
 
@@ -288,14 +377,14 @@ struct BadgeWallView: View {
                         VStack(spacing: 4) {
                             Text(badge.0)
                                 .font(.system(size: 28))
-                                .opacity(badge.2 ? 1.0 : 0.35)
+                                .opacity(badge.3 ? 1.0 : 0.35)
 
-                            Text(badge.1)
+                            Text(localization.string(badge.1, default: badge.2))
                                 .font(.system(size: 10))
-                                .foregroundColor(badge.2 ? .primary : .secondary)
+                                .foregroundColor(badge.3 ? .primary : .secondary)
                         }
                         .frame(width: 60, height: 60)
-                        .background(badge.2 ? Color.blue.opacity(0.10) : Color.gray.opacity(0.08))
+                        .background(badge.3 ? Color.blue.opacity(0.10) : Color.gray.opacity(0.08))
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
                 }
@@ -307,11 +396,12 @@ struct BadgeWallView: View {
 // MARK: - TopPeopleRowView
 
 struct TopPeopleRowView: View {
+    @Environment(AppLocalization.self) private var localization
     private let topPeople = ["A", "B", "C", "D", "E"]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("最常提到的人")
+            Text(localization.string("account.people.title", default: "Most Mentioned People"))
                 .font(.system(size: 12, weight: .medium))
                 .foregroundColor(.secondary)
 
@@ -333,7 +423,7 @@ struct TopPeopleRowView: View {
 
                 Spacer()
 
-                Text("查看全部")
+                Text(localization.string("common.view_all", default: "View All"))
                     .font(.system(size: 12))
                     .foregroundColor(.blue)
             }
