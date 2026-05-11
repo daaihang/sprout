@@ -1,37 +1,48 @@
-app = "sprout-server"
-primary_region = "nrt"
+# fly.toml app configuration file generated for sprout-god7g on 2026-05-11T20:03:18Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'sprout-god7g'
+primary_region = 'nrt'
 
 [build]
-  dockerfile = "server/Dockerfile"
+  dockerfile = 'server/Dockerfile'
 
 [env]
-  APP_ENV = "production"
-  PORT = "8080"
-  SQLITE_PATH = "/data/sprout.db"
-  DEV_AUTH_ENABLED = "false"
-  SUBSCRIPTION_MODE = "mock"
-  AI_MODE = "mock"
-  AI_PROVIDER = "mock"
+  AI_MODE = 'mock'
+  AI_PROVIDER = 'mock'
+  APP_ENV = 'production'
+  DEV_AUTH_ENABLED = 'false'
+  PORT = '8080'
+  SQLITE_PATH = '/data/sprout.db'
+  SUBSCRIPTION_MODE = 'mock'
 
-[mounts]
-  source = "sprout_data"
-  destination = "/data"
+[[mounts]]
+  source = 'sprout_data'
+  destination = '/data'
 
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = "stop"
+  auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0
 
   [http_service.concurrency]
-    type = "connections"
+    type = 'connections'
     hard_limit = 25
     soft_limit = 20
 
   [[http_service.checks]]
-    grace_period = "10s"
-    interval = "15s"
-    method = "GET"
-    path = "/healthz"
-    timeout = "5s"
+    interval = '15s'
+    timeout = '5s'
+    grace_period = '10s'
+    method = 'GET'
+    path = '/healthz'
+
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 256
