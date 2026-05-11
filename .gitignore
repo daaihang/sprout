@@ -11,3 +11,9 @@ xcuserdata/
 # Build
 build/
 DerivedData/
+
+# Go / backend local artifacts
+server/.idea/
+server/*.db
+server/*.db-shm
+server/*.db-wal

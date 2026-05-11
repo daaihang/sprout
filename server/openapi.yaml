@@ -1,0 +1,243 @@
+openapi: 3.1.0
+info:
+  title: Sprout Server API
+  version: 0.2.0
+  description: Pure backend API for Sprout journaling services.
+servers:
+  - url: http://localhost:8080
+paths:
+  /healthz:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: Server is healthy
+  /metrics:
+    get:
+      summary: Lightweight text metrics
+      responses:
+        "200":
+          description: Text metrics response
+  /auth/apple:
+    post:
+      summary: Verify Apple identity token and issue JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                identity_token:
+                  type: string
+                nonce:
+                  type: string
+      responses:
+        "200":
+          description: JWT issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid Apple identity token
+  /auth/refresh:
+    post:
+      summary: Refresh JWT
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Refreshed JWT
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+  /api/records/analyze:
+    post:
+      summary: Analyze a journal record
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyzeRequest"
+      responses:
+        "200":
+          description: Structured analyze response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyzeResponseEnvelope"
+  /api/subscription/verify:
+    get:
+      summary: Verify subscription tier for current user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Subscription status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubscriptionStatus"
+  /api/push/register:
+    post:
+      summary: Register or update APNs push token
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [device_id, apns_token, timezone]
+              properties:
+                device_id:
+                  type: string
+                apns_token:
+                  type: string
+                timezone:
+                  type: string
+                has_question_ready:
+                  type: boolean
+      responses:
+        "200":
+          description: Registration succeeded
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    AuthResponse:
+      type: object
+      required: [access_token, expires_at, user, mode]
+      properties:
+        access_token:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+        mode:
+          type: string
+        user:
+          type: object
+          required: [id, tier]
+          properties:
+            id:
+              type: string
+            tier:
+              type: string
+    AnalyzeRequest:
+      type: object
+      required: [record]
+      properties:
+        record:
+          type: object
+          required: [content]
+          properties:
+            id:
+              type: string
+            content:
+              type: string
+            created_at:
+              type: string
+            tags:
+              type: array
+              items:
+                type: string
+        persons:
+          type: array
+          items:
+            type: object
+            required: [name]
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              relationship:
+                type: string
+              last_mentioned_at:
+                type: string
+    AnalyzeResponseEnvelope:
+      type: object
+      properties:
+        tags:
+          type: array
+          items:
+            type: string
+        emotion:
+          type: object
+          properties:
+            label:
+              type: string
+            intensity:
+              type: integer
+            confidence:
+              type: number
+        persons:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              action:
+                type: string
+              person_id:
+                type: string
+              confidence:
+                type: number
+        new_media:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+              title:
+                type: string
+              creator:
+                type: string
+              search_hint:
+                type: string
+        insight:
+          type: string
+        follow_up:
+          anyOf:
+            - type: "null"
+            - type: object
+              properties:
+                question:
+                  type: string
+                expires_at:
+                  type: string
+        meta:
+          type: object
+          properties:
+            provider:
+              type: string
+            model:
+              type: string
+            usage:
+              type: object
+              properties:
+                input_tokens:
+                  type: integer
+                output_tokens:
+                  type: integer
+    SubscriptionStatus:
+      type: object
+      properties:
+        user_id:
+          type: string
+        tier:
+          type: string
+        source:
+          type: string

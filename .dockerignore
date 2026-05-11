@@ -1,0 +1,13 @@
+.git
+.claude
+.DS_Store
+**/.DS_Store
+**/*.xcuserstate
+sprout/build
+sprout/DerivedData
+sprout/SourcePackages
+sprout/.idea
+server/.idea
+server/sprout.db
+server/sprout.db-shm
+server/sprout.db-wal
