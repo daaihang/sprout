@@ -54,12 +54,6 @@
 	<string>We use speech recognition for voice-to-text input.</string>
 	<key>REVENUECAT_API_KEY</key>
 	<string>$(REVENUECAT_API_KEY)</string>
-	<key>MORY_API_SCHEME</key>
-	<string>$(MORY_API_SCHEME)</string>
-	<key>MORY_API_HOST</key>
-	<string>$(MORY_API_HOST)</string>
-	<key>MORY_API_PORT</key>
-	<string>$(MORY_API_PORT)</string>
 	<key>MORY_API_BASE_URL</key>
 	<string>$(MORY_API_BASE_URL)</string>
 	<key>REVENUECAT_ENTITLEMENT_ID</key>
