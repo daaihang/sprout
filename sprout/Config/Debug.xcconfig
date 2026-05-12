@@ -1,9 +1,12 @@
-// Debug build — RevenueCat Sandbox API key
+// Debug build — RevenueCat public SDK key
 // Replace the placeholder below with your actual key from:
-//   app.revenuecat.com → Project Settings → API Keys → Sandbox / Public key
-REVENUECAT_API_KEY = test_BQqiPIvgSZisacBEOkCchFvybOs
+//   app.revenuecat.com → Project Settings → API Keys → Public key
+REVENUECAT_API_KEY = appl_ATQeTSoCTdXSTdBAjJIRxECkCDS
 REVENUECAT_ENTITLEMENT_ID = Sprout Grow
 REVENUECAT_ENTITLEMENT_FALLBACK_IDS = sprout_grow,grow
 REVENUECAT_OFFERING_ID = sprout_grow
 REVENUECAT_MONTHLY_PRODUCT_ID = com.speculolabs.sprout.grow.monthly
 REVENUECAT_YEARLY_PRODUCT_ID = com.speculolabs.sprout.grow.yearly
+MORY_API_SCHEME = https
+MORY_API_HOST = sprout-god7g.fly.dev
+MORY_API_PORT =
