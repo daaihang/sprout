@@ -230,9 +230,7 @@ struct RecordDetailView: View {
                         if let img = artwork {
                             Image(uiImage: img).resizable().aspectRatio(contentMode: .fill)
                         } else if let artworkURL {
-                            AsyncImage(url: artworkURL) { image in
-                                image.resizable().aspectRatio(contentMode: .fill)
-                            } placeholder: {
+                            CachedRemoteImage(url: artworkURL, contentMode: .fill) {
                                 RoundedRectangle(cornerRadius: 10)
                                     .fill(Color.secondary.opacity(0.15))
                                     .overlay(ProgressView())

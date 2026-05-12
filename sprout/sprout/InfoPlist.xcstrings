@@ -1,233 +1,449 @@
 {
-  "sourceLanguage" : "en",
-  "strings" : {
-    "CFBundleDisplayName" : {
-      "comment" : "Bundle display name",
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Sprout"
+  "sourceLanguage": "en",
+  "strings": {
+    "CFBundleDisplayName": {
+      "comment": "Bundle display name",
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Sprout"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sprout"
+          }
+        },
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sprout"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sprout"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sprout"
           }
         }
       }
     },
-    "CFBundleName" : {
-      "comment" : "Bundle name",
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "sprout"
+    "CFBundleName": {
+      "comment": "Bundle name",
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "sprout"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sprout"
+          }
+        },
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sprout"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sprout"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sprout"
           }
         }
       }
     },
-    "NSAppleMusicUsageDescription" : {
-      "comment" : "Permission prompt for Apple Music library access.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "We use your music library to show the song that is playing."
+    "NSAppleMusicUsageDescription": {
+      "comment": "Permission prompt for Apple Music library access.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We use your music library to show the song that is playing."
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "再生中の曲を表示するために、ミュージックライブラリへのアクセスを使用します。"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "再生中の曲を表示するために、ミュージックライブラリへのアクセスを使用します。"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "我们需要访问你的音乐资料库，以显示当前正在播放的歌曲。"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我们需要访问你的音乐资料库，以显示当前正在播放的歌曲。"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "我們需要存取你的音樂資料庫，以顯示目前正在播放的歌曲。"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我們需要存取你的音樂資料庫，以顯示目前正在播放的歌曲。"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nous utilisons votre bibliothèque musicale pour afficher la chanson en cours de lecture."
+          }
+        },
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usamos tu biblioteca de música para mostrar la canción que se está reproduciendo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Мы используем вашу музыкальную библиотеку, чтобы показать играющую песню."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "재생 중인 노래를 표시하기 위해 음악 라이브러리를 사용합니다."
           }
         }
       }
     },
-    "NSFaceIDUsageDescription" : {
-      "comment" : "Permission prompt for Face ID authentication.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "We use Face ID to verify your identity securely."
+    "NSFaceIDUsageDescription": {
+      "comment": "Permission prompt for Face ID authentication.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We use Face ID to verify your identity securely."
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "安全に本人確認を行うために Face ID を使用します。"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "安全に本人確認を行うために Face ID を使用します。"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "我们会使用 Face ID 安全地验证你的身份。"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我们会使用 Face ID 安全地验证你的身份。"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "我們會使用 Face ID 安全地驗證你的身分。"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我們會使用 Face ID 安全地驗證你的身分。"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nous utilisons Face ID pour vérifier votre identité de manière sécurisée."
+          }
+        },
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usamos Face ID para verificar tu identidad de forma segura."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Мы используем Face ID для безопасной проверки вашей личности."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Face ID를 사용하여 신원을 안전하게 확인합니다."
           }
         }
       }
     },
-    "NSLocationAlwaysAndWhenInUseUsageDescription" : {
-      "comment" : "Permission prompt for location access.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "We use your location to show places on the map."
+    "NSLocationAlwaysAndWhenInUseUsageDescription": {
+      "comment": "Permission prompt for location access.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We use your location to show places on the map."
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "地図上に場所を表示するために、位置情報を使用します。"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "地図上に場所を表示するために、位置情報を使用します。"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "我们需要获取你的位置，以便在地图上显示地点。"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我们需要获取你的位置，以便在地图上显示地点。"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "我們需要取得你的位置，以便在地圖上顯示地點。"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我們需要取得你的位置，以便在地圖上顯示地點。"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nous utilisons votre position pour afficher des lieux sur la carte."
+          }
+        },
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usamos tu ubicación para mostrar lugares en el mapa."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Мы используем ваше местоположение, чтобы показывать места на карте."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지도에 장소를 표시하기 위해您的位置를 사용합니다."
           }
         }
       }
     },
-    "NSLocationWhenInUseUsageDescription" : {
-      "comment" : "Permission prompt for location access while using the app.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "We use your location to show places on the map."
+    "NSLocationWhenInUseUsageDescription": {
+      "comment": "Permission prompt for location access while using the app.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We use your location to show places on the map."
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "地図上に場所を表示するために、位置情報を使用します。"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "地図上に場所を表示するために、位置情報を使用します。"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "我们需要获取你的位置，以便在地图上显示地点。"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我们需要获取你的位置，以便在地图上显示地点。"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "我們需要取得你的位置，以便在地圖上顯示地點。"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我們需要取得你的位置，以便在地圖上顯示地點。"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nous utilisons votre position pour afficher des lieux sur la carte."
+          }
+        },
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usamos tu ubicación para mostrar lugares en el mapa."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Мы используем ваше местоположение, чтобы показывать места на карте."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지도에 장소를 표시하기 위해您的位置를 사용합니다."
           }
         }
       }
     },
-    "NSMicrophoneUsageDescription" : {
-      "comment" : "Permission prompt for microphone access.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "We use your microphone for voice-to-text input."
+    "NSMicrophoneUsageDescription": {
+      "comment": "Permission prompt for microphone access.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We use your microphone for voice-to-text input."
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "音声をテキストに変換するために、マイクを使用します。"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音声をテキストに変換するために、マイクを使用します。"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "我们需要使用你的麦克风来进行语音转文字。"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我们需要使用你的麦克风来进行语音转文字。"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "我們需要使用你的麥克風來進行語音轉文字。"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我們需要使用你的麥克風來進行語音轉文字。"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nous utilisons votre microphone pour la saisie vocale."
+          }
+        },
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usamos tu micrófono para entrada de voz a texto."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Мы используем ваш микрофон для ввода голоса в текст."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "음성 텍스트 입력을 위해 마이크를 사용합니다."
           }
         }
       }
     },
-    "NSPhotoLibraryUsageDescription" : {
-      "comment" : "Permission prompt for photo library access.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "We use your photos so you can attach them to cards."
+    "NSPhotoLibraryUsageDescription": {
+      "comment": "Permission prompt for photo library access.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We use your photos so you can attach them to cards."
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "カードに添付できるように、写真ライブラリへのアクセスを使用します。"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "カードに添付できるように、写真ライブラリへのアクセスを使用します。"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "我们需要访问你的照片，以便将其添加到卡片中。"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我们需要访问你的照片，以便将其添加到卡片中。"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "我們需要存取你的照片，以便將其加入卡片中。"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我們需要存取你的照片，以便將其加入卡片中。"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nous utilisons vos photos afin que vous puissiez les joindre aux cartes."
+          }
+        },
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usamos tus fotos para que puedas adjuntarlas a las tarjetas."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Мы используем ваши фото, чтобы вы могли прикреплять их к карточкам."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사진을 카드에 첨부할 수 있도록 사진을 사용합니다."
           }
         }
       }
     },
-    "NSSpeechRecognitionUsageDescription" : {
-      "comment" : "Permission prompt for speech recognition access.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "We use speech recognition for voice-to-text input."
+    "NSSpeechRecognitionUsageDescription": {
+      "comment": "Permission prompt for speech recognition access.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We use speech recognition for voice-to-text input."
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "音声をテキストに変換するために、音声認識を使用します。"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音声をテキストに変換するために、音声認識を使用します。"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "我们需要使用语音识别来进行语音转文字。"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我们需要使用语音识别来进行语音转文字。"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "我們需要使用語音辨識來進行語音轉文字。"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我們需要使用語音辨識來進行語音轉文字。"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nous utilisons la reconnaissance vocale pour la saisie voix-texte."
+          }
+        },
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usamos el reconocimiento de voz para entrada de voz a texto."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Мы используем распознавание речи для ввода голоса в текст."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "음성 텍스트 입력을 위해 음성 인식을 사용합니다."
           }
         }
       }
     }
   },
-  "version" : "1.0"
+  "version": "1.0"
 }

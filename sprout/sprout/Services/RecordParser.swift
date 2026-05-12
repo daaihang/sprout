@@ -14,15 +14,16 @@ struct ParsedContent {
 // MARK: - RecordParser
 
 enum RecordParser {
+    private static let linkDetector: NSDataDetector? = try? NSDataDetector(
+        types: NSTextCheckingResult.CheckingType.link.rawValue
+    )
 
     /// Scans a text body and returns detected special content.
     /// Currently detects Apple Music URLs and generic web links.
     static func parseBody(_ text: String) -> ParsedContent {
         var result = ParsedContent()
 
-        guard let detector = try? NSDataDetector(
-            types: NSTextCheckingResult.CheckingType.link.rawValue
-        ) else { return result }
+        guard let detector = linkDetector else { return result }
 
         let range = NSRange(text.startIndex..., in: text)
         let matches = detector.matches(in: text, options: [], range: range)

@@ -57,90 +57,37 @@ struct EmotionCard: View {
     var onTap: (() -> Void)?
 
     var body: some View {
-        Group {
-            if let data {
-                GeometryReader { geo in
-                    contentView(data, metrics: CardLayoutMetrics(containerSize: geo.size))
-                }
-            } else {
-                placeholderView
-            }
+        AdaptiveCardRoot(content: emotionContent) {
+            placeholderView
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .cardBackground()
         .onTapGesture { onTap?() }
     }
 
-    @ViewBuilder
-    private func contentView(_ data: EmotionCardData, metrics: CardLayoutMetrics) -> some View {
-        if metrics.isCompactHeight {
-            HStack(spacing: 10) {
-                Text(data.mood.emoji)
-                    .font(.system(size: metrics.isCompactWidth ? 22 : 28))
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(data.mood.label)
-                        .font(.system(size: metrics.isCompactWidth ? 12 : 14, weight: .semibold))
-                        .foregroundStyle(.primary)
-                    intensityDots(data.intensity, color: data.mood.color, dotSize: metrics.isCompactWidth ? 4 : 5)
-                }
-                Spacer()
-            }
-            .padding(metrics.isCompactWidth ? 10 : 14)
-        } else if metrics.isMediumHeight {
-            HStack(alignment: .top, spacing: 12) {
-                Text(data.mood.emoji)
-                    .font(.system(size: metrics.isWideWidth ? 44 : 38))
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(data.mood.label)
-                        .font(.system(size: metrics.isWideWidth ? 17 : 15, weight: .semibold))
-                        .foregroundStyle(.primary)
-                    intensityDots(data.intensity, color: data.mood.color, dotSize: metrics.isWideWidth ? 8 : 6)
-                    if !data.note.isEmpty && !metrics.isCompactWidth {
-                        Text(data.note)
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                    }
-                }
-                Spacer()
-            }
-            .padding(metrics.isWideWidth ? 16 : 14)
-        } else {
-            ZStack {
-                data.mood.color.opacity(0.08)
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(data.mood.emoji)
-                        .font(.system(size: metrics.isWideWidth ? 60 : 52))
-                    Spacer()
-                    Text(data.mood.label)
-                        .font(.system(size: metrics.isWideWidth ? 20 : 18, weight: .semibold))
-                        .foregroundStyle(.primary)
-                    intensityDots(data.intensity, color: data.mood.color, dotSize: metrics.isWideWidth ? 9 : 8)
-                        .padding(.top, 6)
-                    if !data.note.isEmpty && metrics.isWideWidth {
-                        Text(data.note)
-                            .font(.system(size: 13))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(4)
-                            .padding(.top, 8)
-                    }
-                    Spacer()
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(16)
-            }
-        }
-    }
+    private var emotionContent: AdaptiveCardContent? {
+        guard let data else { return nil }
 
-    @ViewBuilder
-    private func intensityDots(_ intensity: Int, color: Color, dotSize: CGFloat) -> some View {
-        HStack(spacing: 4) {
-            ForEach(1...5, id: \.self) { i in
-                Circle()
-                    .fill(i <= intensity ? color : color.opacity(0.2))
-                    .frame(width: dotSize, height: dotSize)
-            }
-        }
+        let intensityText = localizedString(
+            "mood.intensity",
+            default: "Intensity %d/5",
+            arguments: [data.intensity]
+        )
+
+        return AdaptiveCardContent(
+            preferredLayout: data.note.isEmpty ? .metricFocus : .stackedInfo,
+            accent: data.mood.color,
+            visual: .emoji(data.mood.emoji, tint: data.mood.color),
+            title: data.mood.label,
+            subtitle: intensityText,
+            body: data.note.isEmpty ? nil : data.note,
+            badge: AdaptiveCardBadge(text: "\(data.intensity)/5", systemImage: "sparkles"),
+            progress: AdaptiveCardProgress(
+                value: Double(data.intensity) / 5,
+                label: localizedString("mood.intensity_label", default: "Intensity"),
+                trailingText: "\(data.intensity)/5"
+            )
+        )
     }
 
     @ViewBuilder

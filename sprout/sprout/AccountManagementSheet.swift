@@ -1,176 +1,222 @@
 import SwiftUI
 
 struct AccountManagementSheet: View {
+    private enum Route: Hashable {
+        case subscription
+        case rate
+        case about
+        case debug
+        case backendInteraction
+    }
+
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
     @Environment(AppLocalization.self) private var localization
     @Environment(SubscriptionManager.self) private var subscriptionManager
+    @Environment(AuthSessionManager.self) private var authSession
+    @Environment(BiometricLockManager.self) private var biometricLock
 
-    @State private var pushTime = Date()
+    @AppStorage("account.nickname") private var nickname = ""
+    @AppStorage("account.daily_prompt_time") private var dailyPromptTime = Date().timeIntervalSince1970
+    @AppStorage("account.relationship_reminder_interval") private var reminderInterval = 30
+
     @State private var showTimePicker = false
-    @State private var reminderInterval = 30
     @State private var showReminderPicker = false
+    @State private var navigationPath: [Route] = []
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             List {
-                // MARK: - 用户信息头部
                 Section {
-                    VStack(spacing: 12) {
-                        Image(systemName: "person.crop.circle.fill")
-                            .font(.system(size: 72))
-                            .foregroundStyle(.blue)
+                    profileRow
 
-                        VStack(spacing: 4) {
-                            Text(t("account.profile.username", "Username"))
-                                .font(.system(size: 20, weight: .semibold))
+                    nicknameRow
 
-                            Text("user@example.com")
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
+                    LabeledContentWithIcon(
+                        icon: loginMethodIcon,
+                        tint: loginMethodTint,
+                        title: t("account.row.login_method", "Login Method")
+                    ) {
+                        Text(loginMethodTitle)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    NavigationLink(value: Route.subscription) {
+                        LabeledContentWithIcon(icon: "leaf.fill", tint: .green, title: t("account.row.subscription", "Subscription")) {
+                            Text(subscriptionDisplayName)
+                                .foregroundStyle(.secondary)
                         }
-
-                        Text(subscriptionManager.isSubscribed ? t("account.profile.grow_active", "Grow Active") : t("account.profile.free", "Free"))
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 4)
-                            .background(subscriptionManager.isSubscribed ? Color.green : Color.secondary)
-                            .clipShape(Capsule())
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 20)
-                }
-                .listRowBackground(Color.clear)
-
-                // MARK: - 个人设置
-                Section(t("account.section.personal", "Personal Settings")) {
-                    HStack {
-                        SettingsRow(icon: "bell", iconColor: .red, title: t("account.row.daily_prompt", "Daily Prompt Time"), detail: pushTimeString)
-                    }
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        showTimePicker = true
                     }
 
-                    HStack {
-                        SettingsRow(icon: "person.2", iconColor: .orange, title: t("account.row.relationship_interval", "Relationship Reminder Interval"), detail: reminderIntervalString)
-                    }
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        showReminderPicker = true
-                    }
-
-                    HStack {
-                        SettingsRow(icon: "globe", iconColor: .blue, title: t("account.row.app_language", "App Language"), detail: localization.currentLanguage.nativeDisplayName)
-                    }
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        openSystemSettings()
-                    }
-
-                    SettingsRow(icon: "moon", iconColor: .indigo, title: t("account.row.appearance", "Appearance"), detail: t("common.follow_system", "Follow System"))
-                }
-
-                // MARK: - 隐私与安全
-                Section(t("account.section.privacy", "Privacy & Security")) {
-                    SettingsRow(icon: "faceid", iconColor: .green, title: t("account.row.biometric_lock", "Face ID / Touch ID Lock"))
-                    SettingsRow(icon: "square.and.arrow.up", iconColor: .gray, title: t("account.row.export_json", "Export Data (JSON)"))
-                }
-
-                // MARK: - 订阅
-                Section(t("account.section.subscription", "Subscription")) {
-                    NavigationLink(destination: SubscriptionPaywallView()) {
-                        HStack {
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color.green.opacity(0.15))
-                                .frame(width: 44, height: 44)
-                                .overlay(
-                                    Image(systemName: "leaf.fill")
-                                        .font(.system(size: 18))
-                                        .foregroundColor(.green)
-                            )
-
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(t("subscription.plan.grow", "Grow Plan"))
-                                    .font(.system(size: 15, weight: .medium))
-                                Text(subscriptionStatusDetail)
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.secondary)
-                            }
-
-                            Spacer()
-
-                            Text(subscriptionStatusLabel)
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(subscriptionManager.isSubscribed ? .green : .secondary)
-                        }
-                        .padding(.vertical, 4)
-                    }
-
-                    Button(t("common.restore_purchases", "Restore Purchases")) {
+                    Button {
                         Task { await subscriptionManager.restorePurchases() }
+                    } label: {
+                        HStack(spacing: 12) {
+                            rowIcon("arrow.clockwise.circle.fill", tint: .mint)
+                            Text(t("common.restore_purchases", "Restore Purchases"))
+                        }
                     }
                     .disabled(subscriptionManager.isLoading)
 
-                    if let errorMessage = subscriptionManager.errorMessage, !errorMessage.isEmpty {
-                        Text(errorMessage)
-                            .font(.system(size: 12))
-                            .foregroundColor(.red)
-                    }
-                }
-
-                // MARK: - 关于 + 反馈
-                Section(t("account.section.about", "About & Feedback")) {
-                    SettingsRow(icon: "info.circle", iconColor: .gray, title: t("account.row.version", "Version"), detail: "1.0.5")
-                    NavigationLink(destination: Text(t("account.placeholder.rate", "Rating Screen"))) {
-                        SettingsRow(icon: "star", iconColor: .yellow, title: t("account.row.rate", "Rate Sprout"))
-                    }
-                    NavigationLink(destination: Text(t("account.placeholder.feedback", "Feedback Screen"))) {
-                        SettingsRow(icon: "envelope", iconColor: .orange, title: t("account.row.feedback", "Send Feedback"))
-                    }
-                }
-
-                // MARK: - Debug
-                Section {
-                    NavigationLink(destination: DebugPage()) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "ant")
-                                .font(.system(size: 16))
-                                .foregroundColor(.white)
-                                .frame(width: 28, height: 28)
-                                .background(Color.purple)
-                                .clipShape(RoundedRectangle(cornerRadius: 6))
-                            Text(t("common.debug", "Debug"))
+                    if let upgradeTitle {
+                        NavigationLink(value: Route.subscription) {
+                            HStack(spacing: 12) {
+                                rowIcon("sparkles", tint: .pink)
+                                Text(upgradeTitle)
+                            }
                         }
                     }
                 }
 
-                // MARK: - 退出登录
-                Section {
-                    Button(t("account.row.logout", "Log Out")) {
-                        // logout action
+                Section(t("account.section.personal", "Personal Settings")) {
+                    Button {
+                        showTimePicker = true
+                    } label: {
+                        SettingsDisclosureRow(
+                            icon: "bell.fill",
+                            tint: .red,
+                            title: t("account.row.daily_prompt", "Daily Prompt Time"),
+                            value: pushTimeString
+                        )
                     }
-                    .foregroundColor(.red)
+                    .foregroundStyle(.primary)
+
+                    Button {
+                        showReminderPicker = true
+                    } label: {
+                        SettingsDisclosureRow(
+                            icon: "person.2.fill",
+                            tint: .orange,
+                            title: t("account.row.relationship_interval", "Relationship Reminder Interval"),
+                            value: reminderIntervalString
+                        )
+                    }
+                    .foregroundStyle(.primary)
+
+                    Button {
+                        openSystemSettings()
+                    } label: {
+                        SettingsDisclosureRow(
+                            icon: "globe",
+                            tint: .blue,
+                            title: t("account.row.app_language", "App Language"),
+                            value: localization.currentLanguage.nativeDisplayName
+                        )
+                    }
+                    .foregroundStyle(.primary)
+
+                    SettingsStaticValueRow(
+                        icon: "moon.fill",
+                        tint: .indigo,
+                        title: t("account.row.appearance", "Appearance"),
+                        value: t("common.follow_system", "Follow System")
+                    )
+                }
+
+                Section {
+                    if biometricLock.isAvailable {
+                        Toggle(isOn: biometricBinding) {
+                            LabeledContentWithIcon(
+                                icon: biometricLock.biometricKind.iconName,
+                                tint: .green,
+                                title: biometricLock.biometricKind.settingsTitle
+                            ) {
+                                EmptyView()
+                            }
+                        }
+                    }
+
+                    Button {} label: {
+                        HStack(spacing: 12) {
+                            rowIcon("square.and.arrow.up", tint: .gray)
+                            Text(t("account.row.export_json", "Export Data (JSON)"))
+                        }
+                    }
+                    .foregroundStyle(.primary)
+                } header: {
+                    Text(t("account.section.privacy", "Privacy & Security"))
+                } footer: {
+                    if let errorMessage = biometricLock.lastErrorMessage, !errorMessage.isEmpty {
+                        Text(errorMessage)
+                            .foregroundStyle(.red)
+                    }
+                }
+
+                Section(t("account.section.about", "About")) {
+                    LabeledContentWithIcon(icon: "info.circle.fill", tint: .gray, title: t("account.row.version", "Version")) {
+                        Text(appVersion)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    NavigationLink(value: Route.rate) {
+                        IconTitleRow(icon: "star.fill", tint: .yellow, title: t("account.row.rate", "Rate Sprout"))
+                    }
+
+                    NavigationLink(value: Route.about) {
+                        IconTitleRow(icon: "info.bubble.fill", tint: .orange, title: t("account.row.feedback", "About"))
+                    }
+                }
+
+                Section {
+                    NavigationLink(value: Route.debug) {
+                        IconTitleRow(icon: "ant.fill", tint: .purple, title: t("common.debug", "Debug"))
+                    }
+
+                    NavigationLink(value: Route.backendInteraction) {
+                        IconTitleRow(icon: "arrow.triangle.branch", tint: .teal, title: t("common.backend.title", "前后端交互"))
+                    }
+                }
+
+                Section {
+                    Button(t("account.row.logout", "Log Out"), role: .destructive) {
+                        authSession.signOut()
+                        dismiss()
+                    }
                 }
             }
+            .listStyle(.insetGrouped)
+            .interactiveDismissDisabled(!navigationPath.isEmpty)
             .navigationTitle(t("account.title", "Account"))
             .navigationBarTitleDisplayMode(.inline)
+            .navigationDestination(for: Route.self) { route in
+                switch route {
+                case .subscription:
+                    SubscriptionPaywallView()
+                case .rate:
+                    Text(t("account.placeholder.rate", "Rating Screen"))
+                case .about:
+                    Text(t("account.placeholder.feedback", "About Screen"))
+                case .debug:
+                    DebugPage()
+                case .backendInteraction:
+                    BackendInteractionDebugView()
+                }
+            }
             .task {
                 await subscriptionManager.refreshCustomerInfo()
                 await subscriptionManager.loadOfferings()
             }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(t("common.done", "Done")) { dismiss() }
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 15, weight: .semibold))
+                    }
+                    .accessibilityLabel(t("common.close", "Close"))
                 }
             }
             .sheet(isPresented: $showTimePicker) {
                 NavigationStack {
                     VStack {
-                        DatePicker(t("account.sheet.daily_prompt", "Daily Prompt Time"), selection: $pushTime, displayedComponents: .hourAndMinute)
-                            .datePickerStyle(.wheel)
-                            .labelsHidden()
+                        DatePicker(
+                            t("account.sheet.daily_prompt", "Daily Prompt Time"),
+                            selection: promptTimeBinding,
+                            displayedComponents: .hourAndMinute
+                        )
+                        .datePickerStyle(.wheel)
+                        .labelsHidden()
                     }
                     .navigationTitle(t("account.sheet.daily_prompt", "Daily Prompt Time"))
                     .navigationBarTitleDisplayMode(.inline)
@@ -182,39 +228,160 @@ struct AccountManagementSheet: View {
                 }
                 .presentationDetents([.height(300)])
             }
-            .confirmationDialog(t("account.dialog.relationship_title", "Relationship Reminder Interval"), isPresented: $showReminderPicker) {
+            .confirmationDialog(
+                t("account.dialog.relationship_title", "Relationship Reminder Interval"),
+                isPresented: $showReminderPicker
+            ) {
                 Button(t("account.reminder.days", "%d days", 7)) { reminderInterval = 7 }
                 Button(t("account.reminder.days", "%d days", 14)) { reminderInterval = 14 }
                 Button(t("account.reminder.days", "%d days", 30)) { reminderInterval = 30 }
-                Button(t("common.cancel", "Cancel"), role: .cancel) { }
+                Button(t("common.cancel", "Cancel"), role: .cancel) {}
             }
         }
     }
 
+    private var profileRow: some View {
+        HStack(spacing: 16) {
+            Image(systemName: "person.crop.circle.fill")
+                .font(.system(size: 48))
+                .foregroundStyle(.secondary)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(displayNickname)
+                    .font(.headline)
+
+                HStack(spacing: 8) {
+                    rowIcon("person.crop.circle.badge.checkmark", tint: .black.opacity(0.75))
+                    Text(t("account.row.signed_in", "Signed in"))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var biometricBinding: Binding<Bool> {
+        Binding(
+            get: { biometricLock.isEnabled },
+            set: { newValue in
+                Task {
+                    _ = await biometricLock.setEnabled(newValue)
+                }
+            }
+        )
+    }
+
+    private var nicknameRow: some View {
+        NavigationLink {
+            Form {
+                TextField(t("account.row.nickname_placeholder", "Enter nickname"), text: $nickname)
+                    .textInputAutocapitalization(.words)
+            }
+            .navigationTitle(t("account.row.nickname", "Nickname"))
+            .navigationBarTitleDisplayMode(.inline)
+        } label: {
+            SettingsDisclosureRow(
+                icon: "person.text.rectangle",
+                tint: .blue,
+                title: t("account.row.nickname", "Nickname"),
+                value: displayNickname
+            )
+        }
+    }
+
+    private var promptTimeBinding: Binding<Date> {
+        Binding(
+            get: { Date(timeIntervalSince1970: dailyPromptTime) },
+            set: { dailyPromptTime = $0.timeIntervalSince1970 }
+        )
+    }
+
+    private var displayNickname: String {
+        let trimmed = nickname.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? t("account.profile.default_name", "Sprout User") : trimmed
+    }
+
+    private var loginMethodTitle: String {
+        switch normalizedLoginMethod {
+        case "apple":
+            return t("account.login.apple", "Apple")
+        case "google":
+            return t("account.login.google", "Google")
+        case "email":
+            return t("account.login.email", "Email")
+        default:
+            return t("account.row.login_method", "Login Method")
+        }
+    }
+
+    private var loginMethodIcon: String {
+        switch normalizedLoginMethod {
+        case "apple":
+            return "apple.logo"
+        case "google":
+            return "globe"
+        case "email":
+            return "envelope.fill"
+        default:
+            return "person.badge.key.fill"
+        }
+    }
+
+    private var normalizedLoginMethod: String {
+        let mode = authSession.currentSession?.mode.lowercased() ?? ""
+        switch mode {
+        case "development_stub", "apple":
+            return "apple"
+        case "google":
+            return "google"
+        case "email":
+            return "email"
+        default:
+            return ""
+        }
+    }
+
+    private var appVersion: String {
+        let short = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
+        return "\(short) (\(build))"
+    }
+
+    private var loginMethodTint: Color {
+        switch normalizedLoginMethod {
+        case "apple":
+            return .black.opacity(0.75)
+        case "google":
+            return .blue
+        case "email":
+            return .green
+        default:
+            return .gray
+        }
+    }
+
     private var pushTimeString: String {
-        localization.shortTimeString(from: pushTime)
+        localization.shortTimeString(from: Date(timeIntervalSince1970: dailyPromptTime))
     }
 
     private var reminderIntervalString: String {
         t("account.reminder.days", "%d days", reminderInterval)
     }
 
-    private var subscriptionStatusLabel: String {
-        subscriptionManager.isSubscribed
-            ? t("subscription.status.active", "Active")
-            : t("subscription.status.upgrade", "Upgrade")
-    }
-
-    private var subscriptionStatusDetail: String {
+    private var subscriptionDisplayName: String {
         if subscriptionManager.isSubscribed {
-            if let date = subscriptionManager.expirationDate {
-                return t("subscription.status.expires", "Expires %@",
-                         localization.longDateString(from: date))
-            }
-            if let kind = subscriptionManager.currentPackageKind {
-                return t("subscription.status.plan_active", "%@ active", planName(for: kind))
+            if let packageKind = subscriptionManager.currentPackageKind {
+                return planName(for: packageKind)
             }
             return t("subscription.status.active_generic", "Subscription active")
+        }
+        return t("account.profile.free", "Free")
+    }
+
+    private var upgradeTitle: String? {
+        if subscriptionManager.isSubscribed {
+            return nil
         }
 
         if let yearly = subscriptionManager.summary(for: .yearly) {
@@ -225,7 +392,7 @@ struct AccountManagementSheet: View {
             return t("subscription.status.monthly_price", "Monthly %@%@", monthly.price, periodLabel(for: .monthly))
         }
 
-        return t("subscription.status.supports_both", "Supports monthly and yearly subscriptions")
+        return t("subscription.status.upgrade", "Upgrade")
     }
 
     private func planName(for kind: SubscriptionManager.PackageKind) -> String {
@@ -251,216 +418,115 @@ struct AccountManagementSheet: View {
         openURL(url)
     }
 
+    private func rowIcon(_ systemName: String, tint: Color) -> some View {
+        Image(systemName: systemName)
+            .font(.system(size: 16))
+            .foregroundStyle(.white)
+            .frame(width: 28, height: 28)
+            .background(tint)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+
     private func t(_ key: String, _ defaultValue: String, _ arguments: CVarArg...) -> String {
         localization.string(key, default: defaultValue, arguments: arguments)
     }
 }
 
-// MARK: - MemoryOverviewSection
-
-struct MemoryOverviewSection: View {
-    @Environment(AppLocalization.self) private var localization
-
-    var body: some View {
-        Section {
-            VStack(alignment: .leading, spacing: 16) {
-                // 标题
-                HStack {
-                    Text(localization.string("account.memory.title", default: "Memory Overview"))
-                        .font(.system(size: 18, weight: .semibold))
-                    Spacer()
-                    Text(localization.string("account.memory.days_recorded", default: "You have recorded with Sprout for %d days", arguments: [128]))
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                }
-
-                // 统计数字
-                HStack(spacing: 12) {
-                    StatCard(value: "128", label: localization.string("account.memory.card.days", default: "Days Recorded"), icon: "calendar")
-                    StatCard(value: "365", label: localization.string("account.memory.card.records", default: "Total Records"), icon: "doc.text")
-                    StatCard(value: "12", label: localization.string("account.memory.card.people", default: "People"), icon: "person.2")
-                    StatCard(value: "8", label: localization.string("account.memory.card.decisions", default: "Decisions"), icon: "flag")
-                }
-
-                // Year in Pixels 热力图
-                YearInPixelsGrid()
-
-                // 成就徽章墙
-                BadgeWallView()
-
-                // Top 人物
-                TopPeopleRowView()
-            }
-            .padding(.vertical, 8)
-        }
-    }
-}
-
-// MARK: - StatCard
-
-struct StatCard: View {
-    let value: String
-    let label: String
+private struct LabeledContentWithIcon<Content: View>: View {
     let icon: String
-
-    var body: some View {
-        VStack(spacing: 4) {
-            Image(systemName: icon)
-                .font(.system(size: 14))
-                .foregroundColor(.blue.opacity(0.70))
-
-            Text(value)
-                .font(.system(size: 20, weight: .bold))
-                .foregroundColor(.primary)
-
-            Text(label)
-                .font(.system(size: 10))
-                .foregroundColor(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 8)
-        .background(Color.gray.opacity(0.08))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-    }
-}
-
-// MARK: - YearInPixelsGrid
-
-struct YearInPixelsGrid: View {
-    @Environment(AppLocalization.self) private var localization
-    private let columns = 52 // 52 weeks
-    private let rows = 7 // 7 days
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(localization.string("account.memory.heatmap", default: "This Year's Heatmap"))
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.secondary)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHGrid(rows: Array(repeating: SwiftUI.GridItem(.fixed(6)), count: rows), spacing: 2) {
-                    ForEach(0..<365, id: \.self) { index in
-                        let intensity = Double.random(in: 0...1)
-                        RoundedRectangle(cornerRadius: 1)
-                            .fill(intensity > 0.7 ? Color.green : (intensity > 0.3 ? Color.green.opacity(0.5) : Color.gray.opacity(0.2)))
-                            .frame(width: 6, height: 6)
-                    }
-                }
-            }
-            .frame(height: 20)
-        }
-    }
-}
-
-// MARK: - BadgeWallView
-
-struct BadgeWallView: View {
-    @Environment(AppLocalization.self) private var localization
-    private let badges = [
-        ("🎯", "account.badge.first_record", "First Record", true),
-        ("🔥", "account.badge.streak_30", "30-Day Streak", true),
-        ("👥", "account.badge.remember_10_people", "Remember 10 People", true),
-        ("⭐", "account.badge.records_100", "100 Records", false),
-        ("🏆", "account.badge.yearly_user", "Yearly User", false),
-        ("🌟", "account.badge.milestone", "Milestone Reached", false),
-    ]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(localization.string("account.badges.title", default: "Achievements"))
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.secondary)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    ForEach(badges, id: \.0) { badge in
-                        VStack(spacing: 4) {
-                            Text(badge.0)
-                                .font(.system(size: 28))
-                                .opacity(badge.3 ? 1.0 : 0.35)
-
-                            Text(localization.string(badge.1, default: badge.2))
-                                .font(.system(size: 10))
-                                .foregroundColor(badge.3 ? .primary : .secondary)
-                        }
-                        .frame(width: 60, height: 60)
-                        .background(badge.3 ? Color.blue.opacity(0.10) : Color.gray.opacity(0.08))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                    }
-                }
-            }
-        }
-    }
-}
-
-// MARK: - TopPeopleRowView
-
-struct TopPeopleRowView: View {
-    @Environment(AppLocalization.self) private var localization
-    private let topPeople = ["A", "B", "C", "D", "E"]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(localization.string("account.people.title", default: "Most Mentioned People"))
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.secondary)
-
-            HStack(spacing: -8) {
-                ForEach(topPeople.prefix(5), id: \.self) { name in
-                    Circle()
-                        .fill(Color.blue.opacity(0.20 + Double.random(in: 0...0.3)))
-                        .frame(width: 32, height: 32)
-                        .overlay(
-                            Text(String(name.prefix(1)))
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.blue)
-                        )
-                        .overlay(
-                            Circle()
-                                .stroke(Color.white, lineWidth: 2)
-                        )
-                }
-
-                Spacer()
-
-                Text(localization.string("common.view_all", default: "View All"))
-                    .font(.system(size: 12))
-                    .foregroundColor(.blue)
-            }
-        }
-    }
-}
-
-// MARK: - SettingsRow
-
-struct SettingsRow: View {
-    let icon: String
-    let iconColor: Color
+    let tint: Color
     let title: String
-    var detail: String? = nil
+    @ViewBuilder let content: () -> Content
 
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 16))
-                .foregroundColor(.white)
+                .foregroundStyle(.white)
                 .frame(width: 28, height: 28)
-                .background(iconColor)
+                .background(tint)
                 .clipShape(RoundedRectangle(cornerRadius: 6))
 
             Text(title)
 
             Spacer()
 
-            if let detail = detail {
-                Text(detail)
-                    .font(.system(size: 13))
-                    .foregroundColor(.secondary)
-            } else {
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
+            content()
+        }
+    }
+}
+
+private struct IconTitleRow: View {
+    let icon: String
+    let tint: Color
+    let title: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 16))
+                .foregroundStyle(.white)
+                .frame(width: 28, height: 28)
+                .background(tint)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+
+            Text(title)
+        }
+    }
+}
+
+private struct SettingsDisclosureRow: View {
+    let icon: String
+    let tint: Color
+    let title: String
+    let value: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 16))
+                .foregroundStyle(.white)
+                .frame(width: 28, height: 28)
+                .background(tint)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+
+            Text(title)
+
+            Spacer()
+
+            Text(value)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.tertiary)
+        }
+    }
+}
+
+private struct SettingsStaticValueRow: View {
+    let icon: String
+    let tint: Color
+    let title: String
+    let value: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 16))
+                .foregroundStyle(.white)
+                .frame(width: 28, height: 28)
+                .background(tint)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+
+            Text(title)
+
+            Spacer()
+
+            Text(value)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
         }
     }
 }

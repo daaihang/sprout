@@ -6,7 +6,9 @@ struct CardGridView: View {
     @State private var containerWidth: CGFloat = 393
 
     private var layoutSignature: [String] {
-        items.map { "\($0.recordID.uuidString)-\($0.columns)x\($0.units)" }
+        items.map {
+            "\($0.recordID.uuidString)-\($0.columns)x\($0.units)-r\($0.rotationDegrees)-s\($0.scale)"
+        }
     }
 
     var body: some View {
@@ -38,8 +40,8 @@ struct CardGridView: View {
             container: CardContainer(
                 id: item.id,
                 span: span,
-                rotationDegrees: stickerRotation(for: item.id),
-                scale: stickerScale(for: item.id),
+                rotationDegrees: item.rotationDegrees,
+                scale: item.scale,
                 zIndex: index,
                 content: item.card
             )
@@ -75,6 +77,8 @@ struct GridItem: Identifiable {
     let card: AnyView
     let columns: Int   // 2, 4, 6, 8
     let units: Int     // 1, 2, 4
+    let rotationDegrees: Double
+    let scale: Double
     let availableSpans: [ContainerSpan]
     let onResize: (ContainerSpan) -> Void
     let onDelete: () -> Void
@@ -85,6 +89,8 @@ struct GridItem: Identifiable {
         card: AnyView,
         columns: Int,
         units: Int,
+        rotationDegrees: Double? = nil,
+        scale: Double? = nil,
         availableSpans: [ContainerSpan] = [],
         onResize: @escaping (ContainerSpan) -> Void = { _ in },
         onDelete: @escaping () -> Void = {}
@@ -94,6 +100,8 @@ struct GridItem: Identifiable {
         self.card = card
         self.columns = columns
         self.units = units
+        self.rotationDegrees = rotationDegrees ?? stickerRotation(for: id)
+        self.scale = scale ?? stickerScale(for: id)
         self.availableSpans = availableSpans.isEmpty
             ? [ContainerSpan(widthColumns: columns, heightUnits: units)]
             : availableSpans

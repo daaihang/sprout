@@ -3,6 +3,7 @@ package http
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -90,6 +91,20 @@ func (s *Server) handleAuthApple(w http.ResponseWriter, r *http.Request) {
 		}
 		identity, err := s.appleVerifier.VerifyIdentityToken(r.Context(), identityToken, strings.TrimSpace(req.Nonce))
 		if err != nil {
+			if s.cfg.DevAuthEnabled {
+				if fallbackUserID, fallbackErr := devAppleFallbackUserID(identityToken); fallbackErr == nil {
+					s.logger.Warn(
+						"apple auth verification failed; using development fallback",
+						"error", err.Error(),
+						"user_id", fallbackUserID,
+					)
+					userID = fallbackUserID
+					mode = "development_stub"
+					break
+				}
+			}
+
+			s.logger.Warn("apple auth verification failed", "error", err.Error())
 			switch {
 			case errors.Is(err, auth.ErrExpiredToken):
 				writeError(w, http.StatusUnauthorized, "apple identity token expired")
@@ -106,7 +121,7 @@ func (s *Server) handleAuthApple(w http.ResponseWriter, r *http.Request) {
 			case errors.Is(err, auth.ErrAppleTokenSignatureInvalid):
 				writeError(w, http.StatusUnauthorized, "apple token signature invalid")
 			default:
-				writeError(w, http.StatusUnauthorized, "invalid apple identity token")
+				writeError(w, http.StatusUnauthorized, fmt.Sprintf("invalid apple identity token: %v", err))
 			}
 			return
 		}
@@ -255,4 +270,26 @@ func unixToRFC3339(value int64) string {
 
 func looksLikeJWT(value string) bool {
 	return strings.Count(value, ".") == 2
+}
+
+func devAppleFallbackUserID(identityToken string) (string, error) {
+	parts := strings.Split(strings.TrimSpace(identityToken), ".")
+	if len(parts) != 3 {
+		return "", errors.New("identity token is not a JWT")
+	}
+
+	var claims struct {
+		Iss string `json:"iss"`
+		Sub string `json:"sub"`
+	}
+	if err := auth.DecodeAppleJWTClaimsForDevelopment(parts[1], &claims); err != nil {
+		return "", err
+	}
+	if claims.Iss != "https://appleid.apple.com" {
+		return "", errors.New("token issuer is not Apple")
+	}
+	if strings.TrimSpace(claims.Sub) == "" {
+		return "", errors.New("token subject is empty")
+	}
+	return claims.Sub, nil
 }

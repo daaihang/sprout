@@ -2,6 +2,38 @@ import SwiftUI
 import AVFoundation
 import Combine
 
+private enum AudioDurationCache {
+    static let queue = DispatchQueue(label: "AudioDurationCache.queue")
+    static var storage: [Int: String] = [:]
+}
+
+private final class AudioDurationResolver {
+    static let shared = AudioDurationResolver()
+
+    func string(for audioData: Data?) -> String {
+        guard let audioData else {
+            return ""
+        }
+
+        let signature = audioData.hashValue
+        if let cached = AudioDurationCache.queue.sync(execute: { AudioDurationCache.storage[signature] }) {
+            return cached
+        }
+
+        let resolved: String
+        if let player = try? AVAudioPlayer(data: audioData) {
+            resolved = formatAudioDuration(player.duration)
+        } else {
+            resolved = ""
+        }
+
+        AudioDurationCache.queue.sync {
+            AudioDurationCache.storage[signature] = resolved
+        }
+        return resolved
+    }
+}
+
 struct AudioCardData {
     var title: String = ""
     var audioData: Data? = nil
@@ -198,10 +230,7 @@ func formatAudioDuration(_ value: TimeInterval) -> String {
 }
 
 func audioDurationString(from audioData: Data?) -> String {
-    guard let audioData, let player = try? AVAudioPlayer(data: audioData) else {
-        return ""
-    }
-    return formatAudioDuration(player.duration)
+    AudioDurationResolver.shared.string(for: audioData)
 }
 
 func makeSampleAudioData(duration: TimeInterval = 2.4, frequency: Double = 660) -> Data {

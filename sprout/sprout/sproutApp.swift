@@ -6,6 +6,8 @@ struct sproutApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @State private var localization = AppLocalization.shared
     @State private var subscriptionManager = SubscriptionManager()
+    @State private var authSessionManager = AuthSessionManager()
+    @State private var biometricLockManager = BiometricLockManager()
 
     var sharedModelContainer: ModelContainer = {
         #if targetEnvironment(simulator)
@@ -37,15 +39,26 @@ struct sproutApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            AuthGateView()
                 .environment(\.locale, localization.locale)
                 .environment(localization)
                 .environment(subscriptionManager)
+                .environment(authSessionManager)
+                .environment(biometricLockManager)
         }
         .modelContainer(sharedModelContainer)
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }
             localization.refreshIfNeeded()
+            Task {
+                await authSessionManager.refreshSessionIfNeeded()
+                await biometricLockManager.authenticateIfNeeded()
+            }
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .background {
+                biometricLockManager.lock()
+            }
         }
     }
 }

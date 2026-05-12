@@ -75,75 +75,54 @@ struct ActivityCard: View {
     var onTap: (() -> Void)?
 
     var body: some View {
-        Group {
-            if let data, !data.isEmpty {
-                GeometryReader { geo in
-                    contentView(data, metrics: CardLayoutMetrics(containerSize: geo.size))
-                }
-            } else {
-                placeholderView
-            }
+        AdaptiveCardRoot(content: activityContent) {
+            placeholderView
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .cardBackground()
         .onTapGesture { onTap?() }
     }
 
-    private func contentView(_ data: ActivityCardData, metrics: CardLayoutMetrics) -> some View {
-        VStack(alignment: .leading, spacing: metrics.isCompactHeight ? 4 : 8) {
-            HStack(spacing: 8) {
-                Image(systemName: data.type.sfSymbol)
-                    .font(.system(size: metrics.isCompactHeight ? 16 : 18))
-                    .foregroundStyle(data.type.color)
-                Text(data.type.label)
-                    .font(.system(size: metrics.isCompactHeight ? 12 : 13, weight: .medium))
-                    .foregroundStyle(.secondary)
-                Spacer()
-                if data.durationMinutes > 0 && !metrics.isCompactWidth {
-                    Text("\(data.durationMinutes) min")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                }
-            }
+    private var activityContent: AdaptiveCardContent? {
+        guard let data, !data.isEmpty else { return nil }
 
-            Spacer(minLength: 0)
-
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(data.formattedValue)
-                    .font(.system(size: metrics.isWideWidth ? 56 : (metrics.isMediumHeight ? 38 : 26), weight: .semibold, design: .rounded))
-                    .foregroundStyle(.primary)
-                Text(data.type.defaultUnit)
-                    .font(.system(size: metrics.isWideWidth ? 18 : 14))
-                    .foregroundStyle(.secondary)
-                    .offset(y: -4)
-            }
-
-            if data.goal > 0 {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Text(localizedString("activity.goal", default: "Goal"))
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Text("\(Int(data.progress * 100))%")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(data.type.color)
-                    }
-                    GeometryReader { geo in
-                        ZStack(alignment: .leading) {
-                            RoundedRectangle(cornerRadius: 3)
-                                .fill(data.type.color.opacity(0.15))
-                                .frame(height: 6)
-                            RoundedRectangle(cornerRadius: 3)
-                                .fill(data.type.color)
-                                .frame(width: geo.size.width * data.progress, height: 6)
-                        }
-                    }
-                    .frame(height: 6)
-                }
-            }
+        var meta: [AdaptiveCardMetaItem] = []
+        if data.durationMinutes > 0 {
+            meta.append(
+                AdaptiveCardMetaItem(
+                    systemImage: "timer",
+                    text: localizedString("activity.duration", default: "%d min", arguments: [data.durationMinutes])
+                )
+            )
         }
-        .padding(metrics.isCompactHeight ? 12 : 16)
+        if data.goal > 0 {
+            meta.append(
+                AdaptiveCardMetaItem(
+                    systemImage: "target",
+                    text: localizedString("activity.goal_progress", default: "%d%% goal", arguments: [Int(data.progress * 100)]),
+                    tint: data.type.color
+                )
+            )
+        }
+
+        return AdaptiveCardContent(
+            preferredLayout: .metricFocus,
+            accent: data.type.color,
+            visual: .symbol(data.type.sfSymbol, tint: data.type.color, renderingMode: .palette),
+            title: data.type.label,
+            subtitle: data.durationMinutes > 0 ? localizedString("activity.duration", default: "%d min", arguments: [data.durationMinutes]) : nil,
+            metric: AdaptiveCardMetric(
+                value: data.formattedValue,
+                unit: data.type.defaultUnit,
+                caption: data.goal > 0 ? localizedString("activity.goal", default: "Goal") : nil
+            ),
+            progress: data.goal > 0 ? AdaptiveCardProgress(
+                value: data.progress,
+                label: localizedString("activity.goal", default: "Goal"),
+                trailingText: "\(Int(data.progress * 100))%"
+            ) : nil,
+            metaItems: meta
+        )
     }
 
     private var placeholderView: some View {

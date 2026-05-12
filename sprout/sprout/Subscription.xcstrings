@@ -1,1891 +1,3451 @@
 {
-  "sourceLanguage" : "en",
-  "strings" : {
-    "paywall.action.renew" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Change or Renew"
+  "sourceLanguage": "en",
+  "strings": {
+    "paywall.action.renew": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change or Renew"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "変更または更新"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "変更または更新"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "切换或续订"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "切换或续订"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "切換或續訂"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "切換或續訂"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Changer ou renouveler"
+          }
+        },
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiar o renovar"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Изменить или продлить"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "변경 또는 갱신"
+          }
+        }
+      }
+    },
+    "paywall.action.subscribe": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subscribe Now"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今すぐ登録"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "立即开通"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "立即開通"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "S'abonner maintenant"
+          }
+        },
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suscribirse ahora"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подписаться сейчас"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지금 구독"
+          }
+        }
+      }
+    },
+    "paywall.badge.best_value": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Best Value"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最もお得"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更划算"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更划算"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meilleur rapport qualité-prix"
+          }
+        },
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mejor valor"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Лучшее предложение"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "최고의 가치"
+          }
+        }
+      }
+    },
+    "paywall.debug.api_key": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API Key"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API キー"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API Key"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API Key"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clé API"
+          }
+        },
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clave API"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API ключ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API 키"
+          }
+        }
+      }
+    },
+    "paywall.debug.entitlement": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entitlement"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "権利"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entitlement"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entitlement"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Droit"
+          }
+        },
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Derecho"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Право"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "권한"
+          }
+        }
+      }
+    },
+    "paywall.debug.fallbacks": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fallbacks"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フォールバック"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fallbacks"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fallbacks"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solutions de secours"
+          }
+        },
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alternativas"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запасные варианты"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "대안"
+          }
+        }
+      }
+    },
+    "paywall.debug.loaded_packages": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loaded Packages"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "読み込まれたプラン"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loaded Packages"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loaded Packages"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paquets chargés"
+          }
+        },
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paquetes cargados"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Загруженные пакеты"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로드된 패키지"
+          }
+        }
+      }
+    },
+    "paywall.debug.loaded_product_ids": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loaded Product IDs"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "読み込まれた Product ID"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loaded Product IDs"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loaded Product IDs"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "IDs de produits chargés"
+          }
+        },
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "IDs de productos cargados"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Загруженные ID продуктов"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로드된 상품 ID"
+          }
+        }
+      }
+    },
+    "paywall.debug.monthly_id": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Monthly ID"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "月額 ID"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Monthly ID"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Monthly ID"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID mensuel"
+          }
+        },
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID mensual"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Месячный ID"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "월간 ID"
+          }
+        }
+      }
+    },
+    "paywall.debug.offering": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Offering"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "オファリング"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Offering"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Offering"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Offre"
+          }
+        },
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oferta"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Предложение"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오퍼링"
+          }
+        }
+      }
+    },
+    "paywall.debug.selected_kind": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selected Kind"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択中"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selected Kind"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selected Kind"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Type sélectionné"
+          }
+        },
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tipo seleccionado"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выбранный тип"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택된 종류"
+          }
+        }
+      }
+    },
+    "paywall.debug.yearly_id": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yearly ID"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "年額 ID"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yearly ID"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yearly ID"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID annuel"
+          }
+        },
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID anual"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Годовой ID"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "연간 ID"
+          }
+        }
+      }
+    },
+    "paywall.feature.ai.subtitle": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deeper summaries and analysis of your records."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "記録の要約と分析をより深く行えます。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更完整的内容理解与总结。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更完整的內容理解與總結。"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Des résumés et analyses plus approfondis de vos enregistrements."
+          }
+        },
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resúmenes y análisis más profundos de tus registros."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Более глубокие сводки и анализ ваших записей."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기록에 대한 심층적인 요약 및 분석."
+          }
+        }
+      }
+    },
+    "paywall.feature.ai.title": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI Insights"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI インサイト"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI 分析"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI 分析"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aperçus IA"
+          }
+        },
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Perspectivas de IA"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI инсайты"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI 인사이트"
+          }
+        }
+      }
+    },
+    "paywall.feature.relationships.subtitle": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "See connections between people and events."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "人物や出来事のつながりを確認できます。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看人物和事件之间的连接。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看人物和事件之間的連結。"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voir les connexions entre les personnes et les événements."
+          }
+        },
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ver conexiones entre personas y eventos."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Видеть связи между людьми и событиями."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사람과 사건 사이의 연결을 확인하세요."
+          }
+        }
+      }
+    },
+    "paywall.feature.relationships.title": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relationship Map"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "関係マップ"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关系图谱"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "關係圖譜"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carte des relations"
+          }
+        },
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mapa de relaciones"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Карта отношений"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "관계 맵"
+          }
+        }
+      }
+    },
+    "paywall.feature.review.subtitle": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review your records by topic and time."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "テーマや時間で記録を見返せます。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按主题和时间回看你的记录。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按主題和時間回看你的記錄。"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revoyez vos enregistrements par sujet et par temps."
+          }
+        },
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisa tus registros por tema y tiempo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Просматривайте свои записи по темам и времени."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "주제와 시간별로 기록을 검토하세요."
+          }
+        }
+      }
+    },
+    "paywall.feature.review.title": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Advanced Review"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "詳細レビュー"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "高级回顾"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "高級回顧"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revue avancée"
+          }
+        },
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisión avanzada"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Расширенный просмотр"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "고급 검토"
+          }
+        }
+      }
+    },
+    "paywall.footnote": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subscriptions renew automatically until canceled in App Store settings. Restore purchases works with the same Apple ID."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サブスクリプションは App Store の設定で解約するまで自動更新されます。購入の復元は同じ Apple ID で利用できます。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "订阅会自动续费，可在 App Store 账户设置中随时取消。恢复购买适用于同一 Apple ID。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "訂閱會自動續訂，可在 App Store 帳戶設定中隨時取消。恢復購買適用於同一 Apple ID。"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les abonnements se renouvellent automatiquement jusqu'à annulation dans les paramètres de l'App Store. La restauration des achats fonctionne avec le même Apple ID."
+          }
+        },
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las suscripciones se renuevan automáticamente hasta que se cancelen en la configuración de App Store. Restaurar compras funciona con el mismo Apple ID."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подписки автоматически продлеваются до отмены в настройках App Store. Восстановление покупок работает с тем же Apple ID."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "구독은 App Store 설정에서 취소할 때까지 자동으로 갱신됩니다. 구매 복원은 동일한 Apple ID로 작동합니다."
+          }
+        }
+      }
+    },
+    "paywall.hero.pill.ai": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI Insights"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI インサイト"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI 分析"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI 分析"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aperçus IA"
+          }
+        },
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Perspectivas de IA"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI инсайты"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI 인사이트"
+          }
+        }
+      }
+    },
+    "paywall.hero.pill.relationships": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relationship Map"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "関係マップ"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关系图谱"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "關係圖譜"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carte des relations"
+          }
+        },
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mapa de relaciones"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Карта отношений"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "관계 맵"
+          }
+        }
+      }
+    },
+    "paywall.hero.pill.review": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Advanced Review"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "詳細レビュー"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "高级回顾"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "高級回顧"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revue avancée"
+          }
+        },
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisión avanzada"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Расширенный просмотр"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "고급 검토"
+          }
         }
       }
     },
-    "paywall.action.subscribe" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Subscribe Now"
+    "paywall.hero.subtitle": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unlock monthly and yearly subscriptions and manage advanced features in one place."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "月額と年額のサブスクリプションを解放し、高度な機能をまとめて管理できます。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "解锁月订阅和年订阅，统一管理你的高级能力与恢复购买。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "解鎖月訂閱和年訂閱，統一管理你的進階能力與恢復購買。"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Débloquez les abonnements mensuels et annuels et gérez les fonctionnalités avancées à un seul endroit."
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "今すぐ登録"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desbloquea suscripciones mensuales y anuales y gestiona funciones avanzadas en un solo lugar."
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "立即开通"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Разблокируйте месячные и годовые подписки и управляйте расширенными функциями в одном месте."
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "立即開通"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "월간 및 연간 구독을 잠금 해제하고 고급 기능을 한 곳에서 관리하세요."
           }
         }
       }
     },
-    "paywall.badge.best_value" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Best Value"
+    "paywall.packages.empty": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No subscription packages loaded yet."
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "最もお得"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "まだサブスクリプションプランが読み込まれていません。"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "更划算"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂未加载到订阅套餐"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "更划算"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尚未載入訂閱方案"
           }
-        }
-      }
-    },
-    "paywall.debug.api_key" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "API Key"
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun paquet d'abonnement chargé pour le moment."
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "API キー"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aún no se han cargado paquetes de suscripción."
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "API Key"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пакеты подписки пока не загружены."
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "API Key"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아직 로드된 구독 패키지 없음."
           }
         }
       }
     },
-    "paywall.debug.entitlement" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Entitlement"
+    "paywall.plan.current": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Current Plan"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "権利"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在のプラン"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Entitlement"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前方案"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Entitlement"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目前方案"
           }
-        }
-      }
-    },
-    "paywall.debug.fallbacks" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fallbacks"
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan actuel"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "フォールバック"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan actual"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fallbacks"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Текущий план"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fallbacks"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 플랜"
           }
         }
       }
     },
-    "paywall.debug.loaded_packages" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Loaded Packages"
+    "paywall.section.choose_plan": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a Plan"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "読み込まれたプラン"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プランを選ぶ"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Loaded Packages"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择方案"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Loaded Packages"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選擇方案"
           }
-        }
-      }
-    },
-    "paywall.debug.loaded_product_ids" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Loaded Product IDs"
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisir un plan"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "読み込まれた Product ID"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elegir un plan"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Loaded Product IDs"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выбрать план"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Loaded Product IDs"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "플랜 선택"
           }
         }
       }
     },
-    "paywall.debug.monthly_id" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Monthly ID"
+    "paywall.section.features": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Included Features"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "月額 ID"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "含まれる機能"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Monthly ID"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "包含权益"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Monthly ID"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "包含權益"
           }
-        }
-      }
-    },
-    "paywall.debug.offering" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Offering"
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fonctionnalités incluses"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "オファリング"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Funciones incluidas"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Offering"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Включённые функции"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Offering"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "포함된 기능"
           }
         }
       }
     },
-    "paywall.debug.selected_kind" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Selected Kind"
+    "paywall.title": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Upgrade to Grow"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "選択中"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grow にアップグレード"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Selected Kind"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "升级 Grow"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Selected Kind"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "升級 Grow"
           }
-        }
-      }
-    },
-    "paywall.debug.yearly_id" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Yearly ID"
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passer à Grow"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "年額 ID"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualizar a Grow"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Yearly ID"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перейти на Grow"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Yearly ID"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grow로 업그레이드"
           }
         }
       }
     },
-    "paywall.feature.ai.subtitle" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deeper summaries and analysis of your records."
+    "subscription.debug.empty_packages": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No packages loaded. Tap Refresh Packages below."
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "記録の要約と分析をより深く行えます。"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プランが読み込まれていません。下の「プランを更新」をタップしてください。"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "更完整的内容理解与总结。"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未加载套餐 — 点击下方「刷新套餐」"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "更完整的內容理解與總結。"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尚未載入方案 — 點擊下方「重新整理方案」"
           }
-        }
-      }
-    },
-    "paywall.feature.ai.title" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "AI Insights"
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun paquet chargé. Appuyez sur Actualiser les paquets ci-dessous."
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "AI インサイト"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay paquetes cargados. Toca Actualizar paquetes a continuación."
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "AI 分析"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пакеты не загружены. Нажмите Обновить пакеты ниже."
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "AI 分析"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로드된 패키지 없음. 아래에서 패키지 새로고침을 탭하세요."
           }
         }
       }
     },
-    "paywall.feature.relationships.subtitle" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "See connections between people and events."
+    "subscription.debug.refresh_customer": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refresh Customer Status"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "人物や出来事のつながりを確認できます。"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "顧客状態を更新"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "查看人物和事件之间的连接。"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "刷新用户状态"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "查看人物和事件之間的連結。"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新整理使用者狀態"
           }
-        }
-      }
-    },
-    "paywall.feature.relationships.title" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Relationship Map"
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualiser le statut client"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "関係マップ"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualizar estado del cliente"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "关系图谱"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обновить статус клиента"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "關係圖譜"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "고객 상태 새로고침"
           }
         }
       }
     },
-    "paywall.feature.review.subtitle" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Review your records by topic and time."
+    "subscription.debug.row.active_subscriptions": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Active Subscriptions"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "テーマや時間で記録を見返せます。"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有効なサブスクリプション"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "按主题和时间回看你的记录。"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "活跃订阅"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "按主題和時間回看你的記錄。"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "啟用中的訂閱"
           }
-        }
-      }
-    },
-    "paywall.feature.review.title" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Advanced Review"
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abonnements actifs"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "詳細レビュー"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suscripciones activas"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "高级回顾"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Активные подписки"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "高級回顧"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "활성 구독"
           }
         }
       }
     },
-    "paywall.footnote" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Subscriptions renew automatically until canceled in App Store settings. Restore purchases works with the same Apple ID."
+    "subscription.debug.row.api_key_prefix": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API Key Prefix"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "サブスクリプションは App Store の設定で解約するまで自動更新されます。購入の復元は同じ Apple ID で利用できます。"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API キー接頭辞"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "订阅会自动续费，可在 App Store 账户设置中随时取消。恢复购买适用于同一 Apple ID。"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API Key 前缀"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "訂閱會自動續訂，可在 App Store 帳戶設定中隨時取消。恢復購買適用於同一 Apple ID。"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API Key 前綴"
           }
-        }
-      }
-    },
-    "paywall.hero.pill.ai" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "AI Insights"
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Préfixe de clé API"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "AI インサイト"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prefijo de clave API"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "AI 分析"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Префикс API ключа"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "AI 分析"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API 키 접두사"
           }
         }
       }
     },
-    "paywall.hero.pill.relationships" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Relationship Map"
+    "subscription.debug.row.entitlement_id": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entitlement ID"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "関係マップ"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "権利 ID"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "关系图谱"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entitlement ID"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "關係圖譜"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entitlement ID"
           }
-        }
-      }
-    },
-    "paywall.hero.pill.review" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Advanced Review"
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID de droit"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "詳細レビュー"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID de derecho"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "高级回顾"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID права"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "高級回顧"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "권한 ID"
           }
         }
       }
     },
-    "paywall.hero.subtitle" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Unlock monthly and yearly subscriptions and manage advanced features in one place."
+    "subscription.debug.row.expiration_date": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expiration Date"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "月額と年額のサブスクリプションを解放し、高度な機能をまとめて管理できます。"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有効期限"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "解锁月订阅和年订阅，统一管理你的高级能力与恢复购买。"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "到期时间"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "解鎖月訂閱和年訂閱，統一管理你的進階能力與恢復購買。"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "到期時間"
           }
-        }
-      }
-    },
-    "paywall.packages.empty" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No subscription packages loaded yet."
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Date d'expiration"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "まだサブスクリプションプランが読み込まれていません。"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fecha de expiración"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "暂未加载到订阅套餐"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Дата истечения"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "尚未載入訂閱方案"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "만료 날짜"
           }
         }
       }
     },
-    "paywall.plan.current" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Current Plan"
+    "subscription.debug.row.grow_entitlement": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grow Entitlement"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "現在のプラン"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grow 権利"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "当前方案"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grow 权益"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "目前方案"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grow 權益"
           }
-        }
-      }
-    },
-    "paywall.section.choose_plan" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choose a Plan"
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Droit Grow"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "プランを選ぶ"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Derecho Grow"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "选择方案"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Право Grow"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "選擇方案"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grow 권한"
           }
         }
       }
     },
-    "paywall.section.features" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Included Features"
+    "subscription.debug.row.monthly_product_id": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Monthly Product ID"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "含まれる機能"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "月額 Product ID"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "包含权益"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "月度 Product ID"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "包含權益"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "月度 Product ID"
           }
-        }
-      }
-    },
-    "paywall.title" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Upgrade to Grow"
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID de produit mensuel"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Grow にアップグレード"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID de producto mensual"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "升级 Grow"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID месячного продукта"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "升級 Grow"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "월간 상품 ID"
           }
         }
       }
     },
-    "subscription.debug.empty_packages" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No packages loaded. Tap Refresh Packages below."
+    "subscription.debug.row.offering_id": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Offering ID"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "プランが読み込まれていません。下の「プランを更新」をタップしてください。"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "オファリング ID"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "未加载套餐 — 点击下方「刷新套餐」"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Offering ID"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "尚未載入方案 — 點擊下方「重新整理方案」"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Offering ID"
           }
-        }
-      }
-    },
-    "subscription.debug.refresh_customer" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Refresh Customer Status"
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID de l'offre"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "顧客状態を更新"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID de oferta"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "刷新用户状态"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID предложения"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "重新整理使用者狀態"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오퍼링 ID"
           }
         }
       }
     },
-    "subscription.debug.row.active_subscriptions" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Active Subscriptions"
+    "subscription.debug.row.yearly_product_id": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yearly Product ID"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "有効なサブスクリプション"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "年額 Product ID"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "活跃订阅"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "年度 Product ID"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "啟用中的訂閱"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "年度 Product ID"
           }
-        }
-      }
-    },
-    "subscription.debug.row.api_key_prefix" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "API Key Prefix"
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID de produit annuel"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "API キー接頭辞"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID de producto anual"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "API Key 前缀"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID годового продукта"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "API Key 前綴"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "연간 상품 ID"
           }
         }
       }
     },
-    "subscription.debug.row.entitlement_id" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Entitlement ID"
+    "subscription.debug.section.actions": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actions"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "権利 ID"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "操作"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Entitlement ID"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "操作"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Entitlement ID"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "操作"
           }
-        }
-      }
-    },
-    "subscription.debug.row.expiration_date" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Expiration Date"
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actions"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "有効期限"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acciones"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "到期时间"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Действия"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "到期時間"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "작업"
           }
         }
       }
     },
-    "subscription.debug.row.grow_entitlement" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Grow Entitlement"
+    "subscription.debug.section.config": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Config (Debug)"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Grow 権利"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "設定 (デバッグ)"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Grow 权益"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "配置信息 (Debug)"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Grow 權益"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "設定資訊 (Debug)"
           }
-        }
-      }
-    },
-    "subscription.debug.row.monthly_product_id" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Monthly Product ID"
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Config (Débogage)"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "月額 Product ID"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configuración (Depuración)"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "月度 Product ID"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Конфиг (Отладка)"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "月度 Product ID"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "설정 (디버그)"
           }
         }
       }
     },
-    "subscription.debug.row.offering_id" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Offering ID"
+    "subscription.debug.section.packages": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Available Packages (RevenueCat)"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "オファリング ID"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "利用可能なプラン (RevenueCat)"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Offering ID"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可用套餐 (RevenueCat)"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Offering ID"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可用方案 (RevenueCat)"
           }
-        }
-      }
-    },
-    "subscription.debug.row.yearly_product_id" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Yearly Product ID"
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paquets disponibles (RevenueCat)"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "年額 Product ID"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paquetes disponibles (RevenueCat)"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "年度 Product ID"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Доступные пакеты (RevenueCat)"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "年度 Product ID"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사용 가능한 패키지 (RevenueCat)"
           }
         }
       }
     },
-    "subscription.debug.section.actions" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Actions"
+    "subscription.debug.section.status": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subscription Status"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "操作"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サブスクリプション状態"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "操作"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "订阅状态"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "操作"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "訂閱狀態"
           }
-        }
-      }
-    },
-    "subscription.debug.section.config" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Config (Debug)"
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Statut de l'abonnement"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "設定 (デバッグ)"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estado de suscripción"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "配置信息 (Debug)"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Статус подписки"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "設定資訊 (Debug)"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "구독 상태"
           }
         }
       }
     },
-    "subscription.debug.section.packages" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Available Packages (RevenueCat)"
+    "subscription.debug.status.active": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Active"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "利用可能なプラン (RevenueCat)"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有効"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "可用套餐 (RevenueCat)"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "活跃"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "可用方案 (RevenueCat)"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "啟用中"
           }
-        }
-      }
-    },
-    "subscription.debug.section.status" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Subscription Status"
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actif"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "サブスクリプション状態"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activo"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "订阅状态"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Активный"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "訂閱狀態"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "활성"
           }
         }
       }
     },
-    "subscription.debug.status.active" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Active"
+    "subscription.debug.status.inactive": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inactive"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "有効"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無効"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "活跃"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未活跃"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "啟用中"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未啟用"
           }
-        }
-      }
-    },
-    "subscription.debug.status.inactive" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Inactive"
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inactif"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "無効"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inactivo"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "未活跃"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Неактивный"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "未啟用"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "비활성"
           }
         }
       }
     },
-    "subscription.debug.status.not_subscribed" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Not Subscribed"
+    "subscription.debug.status.not_subscribed": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not Subscribed"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未登録"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未订阅"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未訂閱"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non abonné"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "未登録"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No suscrito"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "未订阅"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не подписан"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "未訂閱"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "구독 안 함"
           }
         }
       }
     },
-    "subscription.debug.status.subscribed" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Subscribed"
+    "subscription.debug.status.subscribed": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subscribed"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "登録済み"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已订阅"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已訂閱"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abonné"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "登録済み"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suscrito"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "已订阅"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подписан"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "已訂閱"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "구독함"
           }
         }
       }
     },
-    "subscription.debug.title" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Subscription Debug"
+    "subscription.debug.title": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subscription Debug"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サブスクリプションデバッグ"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "订阅调试"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "訂閱除錯"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Débogage d'abonnement"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "サブスクリプションデバッグ"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Depuración de suscripción"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "订阅调试"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отладка подписки"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "訂閱除錯"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "구독 디버그"
           }
         }
       }
     },
-    "subscription.error.offering_not_found" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "RevenueCat offering not found: %@"
+    "subscription.error.offering_not_found": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RevenueCat offering not found: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RevenueCat のオファリングが見つかりません: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未找到 RevenueCat Offering: %@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "找不到 RevenueCat Offering：%@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Offre RevenueCat introuvable: %@"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "RevenueCat のオファリングが見つかりません: %@"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oferta de RevenueCat no encontrada: %@"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "未找到 RevenueCat Offering: %@"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Предложение RevenueCat не найдено: %@"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "找不到 RevenueCat Offering：%@"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RevenueCat 오퍼링을 찾을 수 없습니다: %@"
           }
         }
       }
     },
-    "subscription.error.package_not_found" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The selected subscription package could not be found."
+    "subscription.error.package_not_found": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The selected subscription package could not be found."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択したサブスクリプションプランが見つかりません。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未找到对应的订阅套餐"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "找不到對應的訂閱方案"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le paquet d'abonnement sélectionné est introuvable."
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "選択したサブスクリプションプランが見つかりません。"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo encontrar el paquete de suscripción seleccionado."
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "未找到对应的订阅套餐"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выбранный пакет подписки не найден."
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "找不到對應的訂閱方案"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 구독 패키지를 찾을 수 없습니다."
           }
         }
       }
     },
-    "subscription.error.sdk_missing" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "RevenueCat SDK is not installed."
+    "subscription.error.sdk_missing": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RevenueCat SDK is not installed."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RevenueCat SDK がインストールされていません。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RevenueCat SDK not installed"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RevenueCat SDK 尚未安裝"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le SDK RevenueCat n'est pas installé."
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "RevenueCat SDK がインストールされていません。"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El SDK de RevenueCat no está instalado."
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "RevenueCat SDK not installed"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SDK RevenueCat не установлен."
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "RevenueCat SDK 尚未安裝"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RevenueCat SDK가 설치되어 있지 않습니다."
           }
         }
       }
     },
-    "subscription.period.month" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "/ month"
+    "subscription.period.month": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "/ month"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "/ 月"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "/ 月"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "/ 月"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "/ mois"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "/ 月"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "/ mes"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "/ 月"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "/ месяц"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "/ 月"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "/ 월"
           }
         }
       }
     },
-    "subscription.period.year" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "/ year"
+    "subscription.period.year": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "/ year"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "/ 年"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "/ 年"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "/ 年"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "/ an"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "/ 年"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "/ año"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "/ 年"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "/ год"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "/ 年"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "/ 년"
           }
         }
       }
     },
-    "subscription.plan.grow" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Grow Plan"
+    "subscription.plan.grow": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grow Plan"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grow プラン"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grow 计划"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grow 方案"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan Grow"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Grow プラン"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan Grow"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Grow 计划"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "План Grow"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Grow 方案"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grow 플랜"
           }
         }
       }
     },
-    "subscription.plan.monthly" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Monthly"
+    "subscription.plan.monthly": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Monthly"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "月額"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "月订阅"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "月訂閱"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mensuel"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "月額"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mensual"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "月订阅"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Месячный"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "月訂閱"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "월간"
           }
         }
       }
     },
-    "subscription.plan.yearly" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Yearly"
+    "subscription.plan.yearly": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yearly"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "年額"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "年订阅"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "年訂閱"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annuel"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "年額"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anual"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "年订阅"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Годовой"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "年訂閱"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "연간"
           }
         }
       }
     },
-    "subscription.status.active" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Active"
+    "subscription.status.active": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Active"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有効"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "活跃中"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "啟用中"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actif"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "有効"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activo"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "活跃中"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Активный"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "啟用中"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "활성"
           }
         }
       }
     },
-    "subscription.status.active_generic" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Subscription active"
+    "subscription.status.active_generic": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subscription active"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サブスクリプションは有効です"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "订阅已生效"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "訂閱已生效"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abonnement actif"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "サブスクリプションは有効です"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suscripción activa"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "订阅已生效"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подписка активна"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "訂閱已生效"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "구독 활성"
           }
         }
       }
     },
-    "subscription.status.expires" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Expires %@"
+    "subscription.status.expires": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expires %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ に終了"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "到期日：%@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "到期日：%@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expire %@"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ に終了"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expira %@"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "到期日：%@"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Истекает %@"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "到期日：%@"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@에 만료"
           }
         }
       }
     },
-    "subscription.status.monthly_price" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Monthly %@%@"
+    "subscription.status.monthly_price": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Monthly %@%@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "月額 %@%@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "月订阅 %@%@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "月訂閱 %@%@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mensuel %@%@"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "月額 %@%@"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mensual %@%@"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "月订阅 %@%@"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Месячный %@%@"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "月訂閱 %@%@"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "월간 %@%@"
           }
         }
       }
     },
-    "subscription.status.plan_active" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ active"
+    "subscription.status.plan_active": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ active"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ が有効"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 已生效"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 已生效"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ actif"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ が有効"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ activo"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ 已生效"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ активен"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ 已生效"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 활성"
           }
         }
       }
     },
-    "subscription.status.supports_both" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Supports monthly and yearly subscriptions"
+    "subscription.status.supports_both": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supports monthly and yearly subscriptions"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "月額と年額の両方を利用できます"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "支持月订阅和年订阅"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "支援月訂閱和年訂閱"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prend en charge les abonnements mensuels et annuels"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "月額と年額の両方を利用できます"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Admite suscripciones mensuales y anuales"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "支持月订阅和年订阅"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поддерживает месячные и годовые подписки"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "支援月訂閱和年訂閱"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "월간 및 연간 구독 지원"
           }
         }
       }
     },
-    "subscription.status.upgrade" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Upgrade"
+    "subscription.status.upgrade": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Upgrade"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アップグレード"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "去开通"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "前往開通"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Améliorer"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "アップグレード"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mejorar"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "去开通"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Улучшить"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "前往開通"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "업그레이드"
           }
         }
       }
     },
-    "subscription.status.yearly_price" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Yearly %@%@"
+    "subscription.status.yearly_price": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yearly %@%@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "年額 %@%@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "年订阅 %@%@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "年訂閱 %@%@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annuel %@%@"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "年額 %@%@"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anual %@%@"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "年订阅 %@%@"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Годовой %@%@"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "年訂閱 %@%@"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "연간 %@%@"
           }
         }
       }
     },
-    "subscription.summary.monthly_subtitle" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Billed monthly, cancel anytime."
+    "subscription.summary.monthly_subtitle": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Billed monthly, cancel anytime."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "月ごとに請求され、いつでも解約できます。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按月订阅，支持随时取消"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按月訂閱，支援隨時取消"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Facturé mensuellement, annulable à tout moment."
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "月ごとに請求され、いつでも解約できます。"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Facturado mensualmente, cancela en cualquier momento."
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "按月订阅，支持随时取消"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Оплата ежемесячно, отмена в любое время."
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "按月訂閱，支援隨時取消"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "월별 결제, 언제든지 취소 가능."
           }
         }
       }
     },
-    "subscription.summary.yearly_subtitle" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pay once for the year and save more."
+    "subscription.summary.yearly_subtitle": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pay once for the year and save more."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "年額をまとめて支払い、さらにお得になります。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一次支付全年，价格更优"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一次支付全年，價格更優"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Payez une fois pour l'année et économisez plus."
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "年額をまとめて支払い、さらにお得になります。"
+        "es-419": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paga una vez por el año y ahorra más."
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "一次支付全年，价格更优"
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Платите один раз за год и сэкономьте больше."
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "一次支付全年，價格更優"
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1년 비용을 한 번에 결제하고 더 절약하세요."
           }
         }
       }
     }
   },
-  "version" : "1.0"
+  "version": "1.0"
 }

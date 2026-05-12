@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct FloatingInputBar: View {
+    @Environment(AppLocalization.self) private var localization
     @Binding var text: String
     @Binding var isShowingSheet: Bool
     @FocusState var isFocused: Bool
@@ -9,7 +10,7 @@ struct FloatingInputBar: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            TextField("记录...", text: $text)
+            TextField(t("content.floating_input.placeholder", "Write something..."), text: $text)
                 .focused($isFocused)
                 .padding(.horizontal, 20)
                 .padding(.vertical, 14)
@@ -45,6 +46,10 @@ struct FloatingInputBar: View {
         .onAppear {
             isFocused = true
         }
+    }
+
+    private func t(_ key: String, _ defaultValue: String, _ arguments: CVarArg...) -> String {
+        localization.string(key, default: defaultValue, arguments: arguments)
     }
 }
 

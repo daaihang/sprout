@@ -217,14 +217,8 @@ struct WeatherCard: View {
     @State private var weatherErrorMessage: String?
 
     var body: some View {
-        Group {
-            if let displayData = cardData ?? data, !displayData.isEmpty {
-                GeometryReader { geo in
-                    contentView(displayData, metrics: CardLayoutMetrics(containerSize: geo.size))
-                }
-            } else {
-                placeholderView
-            }
+        AdaptiveCardRoot(content: weatherContent) {
+            placeholderView
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .cardBackground()
@@ -272,170 +266,49 @@ struct WeatherCard: View {
         return Calendar.current.isDateInToday(observedAt)
     }
 
-    @ViewBuilder
-    private func contentView(_ data: WeatherCardData, metrics: CardLayoutMetrics) -> some View {
-        if metrics.isCompactHeight {
-            compactContent(data, metrics: metrics)
-        } else if metrics.isMediumHeight || metrics.isCompactWidth {
-            mediumContent(data, metrics: metrics)
+    private var weatherContent: AdaptiveCardContent? {
+        guard let data = cardData ?? data, !data.isEmpty else { return nil }
+
+        var meta = [
+            AdaptiveCardMetaItem(
+                systemImage: "thermometer.medium",
+                text: localizedString("weather.feels_like", default: "Feels like %d°", arguments: [Int(data.feelsLike)])
+            ),
+            AdaptiveCardMetaItem(systemImage: "humidity.fill", text: "\(data.humidity)%"),
+            AdaptiveCardMetaItem(systemImage: "arrow.up.arrow.down", text: data.highLowString)
+        ]
+
+        if let liveSummary = data.liveSummary {
+            meta.append(AdaptiveCardMetaItem(systemImage: "dot.radiowaves.left.and.right", text: liveSummary, tint: data.condition.color))
+        }
+
+        let footer: String?
+        if let weatherErrorMessage {
+            footer = weatherErrorMessage
+        } else if let observedAt = data.observedAt {
+            footer = localizedString(
+                "weather.observed_at",
+                default: "Captured at %@",
+                arguments: [observedAt.formatted(date: .omitted, time: .shortened)]
+            )
         } else {
-            expandedContent(data, metrics: metrics)
+            footer = nil
         }
-    }
 
-    private func compactContent(_ data: WeatherCardData, metrics: CardLayoutMetrics) -> some View {
-        HStack(alignment: .center, spacing: 10) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(compactLocationText(for: data))
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(data.tempString)
-                        .font(.system(size: metrics.isCompactWidth ? 24 : 28, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.primary)
-                    Text(data.condition.label)
-                        .font(.system(size: 10))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-            }
-
-            Spacer(minLength: 8)
-
-            Image(systemName: data.condition.sfSymbol)
-                .font(.system(size: metrics.isCompactWidth ? 22 : 26))
-                .foregroundStyle(data.condition.color)
-                .symbolRenderingMode(.multicolor)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-    }
-
-    private func mediumContent(_ data: WeatherCardData, metrics: CardLayoutMetrics) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .top, spacing: 10) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(compactLocationText(for: data))
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                    Text(data.condition.label)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-
-                Spacer(minLength: 8)
-
-                Image(systemName: data.condition.sfSymbol)
-                    .font(.system(size: metrics.isWideWidth ? 32 : 28))
-                    .foregroundStyle(data.condition.color)
-                    .symbolRenderingMode(.multicolor)
-            }
-
-            HStack(alignment: .lastTextBaseline, spacing: 8) {
-                Text(data.tempString)
-                    .font(.system(size: metrics.isWideWidth ? 46 : 38, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.primary)
-
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(data.highLowString)
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(.secondary)
-                    Text(localizedString("weather.feels_like", default: "Feels like %d°", arguments: [Int(data.feelsLike)]))
-                        .font(.system(size: 10))
-                        .foregroundStyle(.secondary.opacity(0.88))
-                }
-            }
-
-            if let liveSummary = data.liveSummary {
-                Text(liveSummary)
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-        }
-        .padding(14)
-    }
-
-    private func expandedContent(_ data: WeatherCardData, metrics: CardLayoutMetrics) -> some View {
-        VStack(alignment: .leading, spacing: 9) {
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(data.location.isEmpty ? localizedString("weather.current_location", default: "Current Location") : data.location)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                    Text(data.condition.label)
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer(minLength: 12)
-
-                VStack(alignment: .trailing, spacing: 4) {
-                    Image(systemName: data.condition.sfSymbol)
-                        .font(.system(size: metrics.isWideWidth ? 50 : 38))
-                        .foregroundStyle(data.condition.color)
-                        .symbolRenderingMode(.multicolor)
-                    Text(data.highLowString)
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            Text(data.tempString)
-                .font(.system(size: metrics.isWideWidth ? 62 : 50, weight: .semibold, design: .rounded))
-                .foregroundStyle(.primary)
-
-            HStack(spacing: 14) {
-                compactMetric(systemImage: "thermometer.medium", text: localizedString("weather.feels_like", default: "Feels like %d°", arguments: [Int(data.feelsLike)]))
-                compactMetric(systemImage: "humidity.fill", text: "\(data.humidity)%")
-                Spacer(minLength: 0)
-            }
-
-            if let liveSummary = data.liveSummary {
-                Text(liveSummary)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-
-            if let observedAt = data.observedAt {
-                Text(localizedString("weather.observed_at", default: "Captured at %@", arguments: [observedAt.formatted(date: .omitted, time: .shortened)]))
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary.opacity(0.82))
-                    .lineLimit(1)
-            }
-
-            if let weatherErrorMessage {
-                Text(weatherErrorMessage)
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary.opacity(0.8))
-                    .lineLimit(2)
-            }
-        }
-        .padding(16)
-    }
-
-    private func compactMetric(systemImage: String, text: String) -> some View {
-        Label {
-            Text(text)
-        } icon: {
-            Image(systemName: systemImage)
-        }
-        .font(.system(size: 11))
-        .foregroundStyle(.secondary)
-    }
-
-    private func compactLocationText(for data: WeatherCardData) -> String {
-        let base = data.location.isEmpty ? localizedString("weather.current_location", default: "Current Location") : data.location
-        if base.count <= 10 {
-            return base
-        }
-        return String(base.prefix(10))
+        return AdaptiveCardContent(
+            preferredLayout: .metricFocus,
+            accent: data.condition.color,
+            visual: .symbol(data.condition.sfSymbol, tint: data.condition.color, renderingMode: .multicolor),
+            title: data.location.isEmpty ? localizedString("weather.current_location", default: "Current Location") : data.location,
+            subtitle: data.condition.label,
+            metric: AdaptiveCardMetric(
+                value: data.tempString,
+                caption: data.highLowString,
+                accessibilityLabel: localizedString("weather.temperature", default: "%d degrees", arguments: [Int(data.temperature)])
+            ),
+            metaItems: meta,
+            footer: footer
+        )
     }
 
     private var placeholderView: some View {

@@ -63,13 +63,46 @@ private struct StoredDashboardCardSpan: Codable {
 }
 
 extension Record {
+    private enum DashboardCardSpanOverridesCache {
+        static var storage: [ObjectIdentifier: CacheEntry] = [:]
+
+        struct CacheEntry {
+            let data: Data?
+            let overrides: [String: StoredDashboardCardSpan]
+        }
+    }
+
     private var dashboardCardSpanOverrides: [String: StoredDashboardCardSpan] {
         get {
-            guard let dashboardCardSpanOverridesData else { return [:] }
-            return (try? JSONDecoder().decode([String: StoredDashboardCardSpan].self, from: dashboardCardSpanOverridesData)) ?? [:]
+            let identifier = ObjectIdentifier(self)
+            let cached = DashboardCardSpanOverridesCache.storage[identifier]
+            if cached?.data == dashboardCardSpanOverridesData {
+                return cached?.overrides ?? [:]
+            }
+
+            let overrides: [String: StoredDashboardCardSpan]
+            if let dashboardCardSpanOverridesData {
+                overrides = (try? JSONDecoder().decode(
+                    [String: StoredDashboardCardSpan].self,
+                    from: dashboardCardSpanOverridesData
+                )) ?? [:]
+            } else {
+                overrides = [:]
+            }
+
+            DashboardCardSpanOverridesCache.storage[identifier] = DashboardCardSpanOverridesCache.CacheEntry(
+                data: dashboardCardSpanOverridesData,
+                overrides: overrides
+            )
+            return overrides
         }
         set {
-            dashboardCardSpanOverridesData = try? JSONEncoder().encode(newValue)
+            let encoded = try? JSONEncoder().encode(newValue)
+            dashboardCardSpanOverridesData = encoded
+            DashboardCardSpanOverridesCache.storage[ObjectIdentifier(self)] = DashboardCardSpanOverridesCache.CacheEntry(
+                data: encoded,
+                overrides: newValue
+            )
         }
     }
 

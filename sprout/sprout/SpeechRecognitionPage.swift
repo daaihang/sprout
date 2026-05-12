@@ -185,6 +185,7 @@ struct PulsingModifier: ViewModifier {
 // MARK: - SpeechRecognitionPage (debug/standalone)
 
 struct SpeechRecognitionPage: View {
+    @Environment(AppLocalization.self) private var localization
     @State private var recognizer = SpeechRecognizer()
 
     var body: some View {
@@ -192,12 +193,12 @@ struct SpeechRecognitionPage: View {
             VStack(spacing: 24) {
                 // 转写结果卡片
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("转写结果")
+                    Text(t("content.speech.result", "Transcript"))
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(.secondary)
 
                     if recognizer.recognizedText.isEmpty {
-                        Text("点击开始录音")
+                        Text(t("content.speech.empty", "Tap to start recording"))
                             .font(.system(size: 17))
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -216,7 +217,7 @@ struct SpeechRecognitionPage: View {
                                 .fill(Color.red)
                                 .frame(width: 8, height: 8)
                                 .modifier(PulsingModifier())
-                            Text("正在录音…  \(durationString)")
+                            Text(t("content.speech.recording", "Recording… %@", durationString))
                                 .font(.system(size: 14))
                                 .foregroundStyle(.red)
                         }
@@ -236,12 +237,12 @@ struct SpeechRecognitionPage: View {
                             .font(.subheadline)
                         Spacer()
                         if recognizer.authorizationStatus == .notDetermined {
-                            Button("请求权限") {
+                            Button(t("common.request_permission", "Request Permission")) {
                                 Task { await recognizer.requestAuthorization() }
                             }
                             .font(.caption).buttonStyle(.bordered)
                         } else if recognizer.authorizationStatus == .denied {
-                            Button("打开设置") {
+                            Button(t("common.open_settings", "Open Settings")) {
                                 if let url = URL(string: UIApplication.openSettingsURLString) {
                                     UIApplication.shared.open(url)
                                 }
@@ -260,7 +261,9 @@ struct SpeechRecognitionPage: View {
                             else { recognizer.startRecording() }
                         } label: {
                             Label(
-                                recognizer.isRecording ? "结束" : "开始录音",
+                                recognizer.isRecording
+                                    ? t("content.speech.stop", "Stop")
+                                    : t("content.speech.start", "Start Recording"),
                                 systemImage: recognizer.isRecording ? "stop.fill" : "mic.fill"
                             )
                             .font(.system(size: 16, weight: .medium))
@@ -273,7 +276,7 @@ struct SpeechRecognitionPage: View {
                         .disabled(recognizer.authorizationStatus != .authorized)
 
                         Button { recognizer.clearText() } label: {
-                            Label("清空", systemImage: "trash")
+                            Label(t("common.clear", "Clear"), systemImage: "trash")
                                 .font(.system(size: 16, weight: .medium))
                                 .foregroundStyle(.red)
                                 .frame(maxWidth: .infinity)
@@ -287,7 +290,7 @@ struct SpeechRecognitionPage: View {
             }
             .padding()
         }
-        .navigationTitle("语音转文字")
+        .navigationTitle(t("content.speech.title", "Speech to Text"))
         .navigationBarTitleDisplayMode(.inline)
         .task { await recognizer.requestAuthorization() }
     }
@@ -299,11 +302,11 @@ struct SpeechRecognitionPage: View {
 
     private var authStatusText: String {
         switch recognizer.authorizationStatus {
-        case .notDetermined: return "未授权"
-        case .denied:        return "已拒绝"
-        case .restricted:    return "受限制"
-        case .authorized:    return "已授权"
-        @unknown default:    return "未知"
+        case .notDetermined: return t("content.speech.auth.not_determined", "Not Authorized")
+        case .denied:        return t("content.speech.auth.denied", "Denied")
+        case .restricted:    return t("content.speech.auth.restricted", "Restricted")
+        case .authorized:    return t("content.speech.auth.authorized", "Authorized")
+        @unknown default:    return t("content.speech.auth.unknown", "Unknown")
         }
     }
 
@@ -321,6 +324,10 @@ struct SpeechRecognitionPage: View {
         case .denied, .restricted:  return .red
         default:                    return .orange
         }
+    }
+
+    private func t(_ key: String, _ defaultValue: String, _ arguments: CVarArg...) -> String {
+        localization.string(key, default: defaultValue, arguments: arguments)
     }
 }
 

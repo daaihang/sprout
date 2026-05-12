@@ -4,6 +4,7 @@ import SwiftData
 struct PeoplePickerSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Environment(AppLocalization.self) private var localization
     @Query(sort: \Person.mentionCount, order: .reverse) private var people: [Person]
 
     @Binding var selectedPeople: [Person]
@@ -26,9 +27,9 @@ struct PeoplePickerSheet: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("已选择") {
+                Section(t("content.people_picker.section.selected", "Selected")) {
                     if selectedPeople.isEmpty {
-                        Text("还没有选择人物")
+                        Text(t("content.people_picker.empty.selected", "No people selected yet"))
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(selectedPeople, id: \.id) { person in
@@ -37,25 +38,25 @@ struct PeoplePickerSheet: View {
                     }
                 }
 
-                Section("快速新建") {
-                    TextField("姓名", text: $newPersonName)
-                    TextField("昵称（可选）", text: $newPersonNickname)
-                    TextField("关系（可选）", text: $newPersonRelationship)
+                Section(t("content.people_picker.section.quick_create", "Quick Create")) {
+                    TextField(t("content.people_picker.field.name", "Name"), text: $newPersonName)
+                    TextField(t("content.people_picker.field.nickname_optional", "Nickname (Optional)"), text: $newPersonNickname)
+                    TextField(t("content.people_picker.field.relationship_optional", "Relationship (Optional)"), text: $newPersonRelationship)
 
                     Button {
-                        createAndSelectPerson()
-                    } label: {
-                        Label("新建并选择", systemImage: "plus")
-                    }
-                    .disabled(newPersonName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    createAndSelectPerson()
+                } label: {
+                    Label(t("content.people_picker.action.create_select", "Create and Select"), systemImage: "plus")
                 }
+                .disabled(newPersonName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
 
-                Section("人物列表") {
-                    if filteredPeople.isEmpty {
-                        Text("没有找到人物")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(filteredPeople, id: \.id) { person in
+            Section(t("content.people_picker.section.list", "People")) {
+                if filteredPeople.isEmpty {
+                    Text(t("content.people_picker.empty.search", "No people found"))
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(filteredPeople, id: \.id) { person in
                             personRow(person, selected: isSelected(person))
                                 .contentShape(Rectangle())
                                 .onTapGesture {
@@ -65,15 +66,15 @@ struct PeoplePickerSheet: View {
                     }
                 }
             }
-            .searchable(text: $searchText, prompt: "搜索人物")
-            .navigationTitle("选择人物")
+            .searchable(text: $searchText, prompt: t("content.people_picker.search", "Search people"))
+            .navigationTitle(t("content.people_picker.title", "Select People"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("取消") { dismiss() }
+                    Button(t("common.cancel", "Cancel")) { dismiss() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("完成") { dismiss() }
+                    Button(t("common.done", "Done")) { dismiss() }
                 }
             }
         }
@@ -137,5 +138,9 @@ struct PeoplePickerSheet: View {
     private func trimmedOrNil(_ value: String) -> String? {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private func t(_ key: String, _ defaultValue: String, _ arguments: CVarArg...) -> String {
+        localization.string(key, default: defaultValue, arguments: arguments)
     }
 }

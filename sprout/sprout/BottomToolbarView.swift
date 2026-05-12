@@ -1,17 +1,21 @@
 import SwiftUI
 import Speech
 
+
 // MARK: - BottomCapsuleBar
 
 struct BottomCapsuleBar: View {
     @Environment(AppLocalization.self) private var localization
     @Environment(\.colorScheme) private var colorScheme
     @Binding var isOpen: Bool
+    @Binding var inputText: String
+    var focusRequestToken: Int = 0
 
     // Callbacks
     var onAction: (ComposerActionType) -> Void = { _ in }
     var onRemoveAttachment: (ComposerAttachmentKey) -> Void = { _ in }
     var onSend: (String) -> Void = { _ in }
+    var onExpandToFullscreen: () -> Void = {}
 
     // Current attachments — read-only display
     var attachments: ComposerAttachments = .init()
@@ -21,8 +25,9 @@ struct BottomCapsuleBar: View {
     var onAudioCaptured: (Data?) -> Void = { _ in }
 
     // MARK: Internal state
-    @State private var inputText: String = ""
     @FocusState private var inputFocused: Bool
+    @Namespace private var morphSpace
+    
     // Voice recording
     @State private var voiceCaptureState: VoiceCaptureState = .idle
     @State private var voiceLevels: [Float] = Array(repeating: 0.02, count: 24)
@@ -47,6 +52,7 @@ struct BottomCapsuleBar: View {
     private let recordingCardSpacing: CGFloat = 18
     private let transcriptionMinHeight: CGFloat = 48
     private let transcriptionMaxHeight: CGFloat = 108
+    private let fullscreenButtonSize: CGFloat = 40
 
     private enum VoiceCaptureState {
         case idle
@@ -69,6 +75,7 @@ struct BottomCapsuleBar: View {
     private var trimmedInputText: String { inputText.trimmingCharacters(in: .whitespacesAndNewlines) }
     private var canSendComposer: Bool { !trimmedInputText.isEmpty || !attachments.isEmpty }
     private var showsComposerControls: Bool { isOpen }
+    private var showsBackdropOverlay: Bool { isOpen || isVoiceRecording }
     private var recognizedText: String { speechRecognizer?.recognizedText ?? "" }
     private var trimmedRecognizedText: String { recognizedText.trimmingCharacters(in: .whitespacesAndNewlines) }
     private var hasRecognizedText: Bool { !trimmedRecognizedText.isEmpty }
@@ -107,13 +114,16 @@ struct BottomCapsuleBar: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .bottom) {
-                if isOpen {
+                if showsBackdropOverlay {
                     Rectangle()
                         .fill(.ultraThinMaterial)
                         .overlay(composerBackdropTint)
                         .ignoresSafeArea()
-                        .onTapGesture { close() }
                         .transition(.opacity)
+                        .onTapGesture {
+                            guard isOpen else { return }
+                            close()
+                        }
                 }
 
                 VStack(spacing: 0) {
@@ -135,6 +145,12 @@ struct BottomCapsuleBar: View {
             .animation(.spring(duration: 0.45, bounce: 0.2), value: isOpen)
             .animation(.spring(duration: 0.45, bounce: 0.2), value: voiceCaptureState)
             .animation(.spring(duration: 0.32, bounce: 0.14), value: isClosingComposer)
+            .onChange(of: focusRequestToken) { _, _ in
+                guard isOpen else { return }
+                Task { @MainActor in
+                    inputFocused = true
+                }
+            }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         }
     }
@@ -230,7 +246,6 @@ struct BottomCapsuleBar: View {
                             .scaleEffect(isPillPressed ? 0.972 : 1.0, anchor: .center)
                             .animation(pillPressAnimation, value: isPillPressed)
                             .zIndex(2)
-                        }
                     }
                 }
             }
@@ -301,17 +316,10 @@ struct BottomCapsuleBar: View {
             Divider()
                 .padding(.vertical, 12)
 
-            // Toolbar action buttons
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 2) {
-                    toolbarBtn("mic")        { startVoiceMode(initialState: .locked) }
-                    toolbarBtn("photo")      { onAction(.photo) }
-                    toolbarBtn("camera")     { onAction(.camera) }
-                    toolbarBtn("location")   { onAction(.location) }
-                    toolbarBtn("person.2")   { onAction(.people) }
-                    toolbarBtn("music.note") { onAction(.music) }
-                    toolbarBtn("link")       { onAction(.link) }
-                }
+            HStack(spacing: 10) {
+                ComposerActionToolbar(items: composerActionToolbarItems, style: .card)
+
+                expandButton
             }
 
             // Attachment chips (shown when attachments are present)
@@ -365,6 +373,35 @@ struct BottomCapsuleBar: View {
             }
         }
         .padding(14)
+    }
+
+    @ViewBuilder
+    private var expandButton: some View {
+        Button {
+            HapticFeedback.light()
+            inputFocused = false
+            onExpandToFullscreen()
+        } label: {
+            Image(systemName: "arrow.up.left.and.arrow.down.right")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: fullscreenButtonSize, height: fullscreenButtonSize)
+                .background(expandButtonBackground)
+        }
+        .accessibilityLabel(t("toolbar.action.fullscreen", "Open Fullscreen Composer"))
+    }
+
+    @ViewBuilder
+    private var expandButtonBackground: some View {
+        if #available(iOS 26.0, *) {
+            Circle()
+                .fill(.clear)
+                .glassEffect(.regular, in: Circle())
+        } else {
+            Circle()
+                .fill(.regularMaterial)
+                .overlay(Circle().stroke(.white.opacity(0.25), lineWidth: 0.5))
+        }
     }
 
     @available(iOS 26.0, *)
@@ -443,17 +480,37 @@ struct BottomCapsuleBar: View {
         .onAppear { inputFocused = true }
     }
 
-    @ViewBuilder
-    private func toolbarBtn(_ icon: String, action: @escaping () -> Void) -> some View {
-        Button {
-            HapticFeedback.light()
-            action()
-        } label: {
-            Image(systemName: icon)
-                .font(.system(size: 18))
-                .foregroundStyle(.secondary)
-                .frame(width: 40, height: 40)
-        }
+    private var composerActionToolbarItems: [ComposerActionToolbarItem] {
+        [
+            .init(id: "voice", icon: "mic", accessibilityLabel: t("toolbar.action.voice", "Voice")) {
+                HapticFeedback.light()
+                startVoiceMode(initialState: .locked)
+            },
+            .init(id: "photo", icon: "photo", accessibilityLabel: "Photo Library") {
+                HapticFeedback.light()
+                onAction(.photo)
+            },
+            .init(id: "camera", icon: "camera", accessibilityLabel: "Camera") {
+                HapticFeedback.light()
+                onAction(.camera)
+            },
+            .init(id: "location", icon: "location", accessibilityLabel: "Location") {
+                HapticFeedback.light()
+                onAction(.location)
+            },
+            .init(id: "people", icon: "person.2", accessibilityLabel: "People") {
+                HapticFeedback.light()
+                onAction(.people)
+            },
+            .init(id: "music", icon: "music.note", accessibilityLabel: "Music") {
+                HapticFeedback.light()
+                onAction(.music)
+            },
+            .init(id: "link", icon: "link", accessibilityLabel: "Link") {
+                HapticFeedback.light()
+                onAction(.link)
+            }
+        ]
     }
 
     // MARK: Voice recording overlay
@@ -468,10 +525,10 @@ struct BottomCapsuleBar: View {
                     RoundedRectangle(cornerRadius: 2)
                         .fill((isVoiceLocked || isDraggingToContinue) ? Color.green.opacity(0.82) : Color.red.opacity(0.82))
                         .frame(width: 4, height: CGFloat(voiceLevels[i]) * 44 + 4)
-                        .animation(.linear(duration: 0.05), value: voiceLevels[i])
                 }
             }
             .frame(height: 52)
+            .animation(.linear(duration: 0.08), value: voiceLevels)
 
             Text(durationString)
                 .font(.system(size: 14, weight: .medium).monospacedDigit())
@@ -884,11 +941,11 @@ struct BottomCapsuleBar: View {
     private func close() {
         isPillPressed = false
         isClosingComposer = true
+        inputFocused = false
         withAnimation(.spring(duration: 0.4, bounce: 0.1)) { isOpen = false }
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(420))
             guard !isOpen else { return }
-            inputFocused = false
             inputText = ""
             isClosingComposer = false
         }
@@ -909,7 +966,7 @@ private struct VoiceTranscriptionHeightPreferenceKey: PreferenceKey {
 
 // MARK: - AttachmentChip
 
-private struct AttachmentChip: View {
+struct AttachmentChip: View {
     let prefix: String
     let label:  String
     let onRemove: () -> Void
@@ -944,6 +1001,6 @@ private struct AttachmentChip: View {
             startPoint: .topLeading, endPoint: .bottomTrailing
         )
         .ignoresSafeArea()
-        BottomCapsuleBar(isOpen: .constant(false))
+        BottomCapsuleBar(isOpen: .constant(false), inputText: .constant(""))
     }
 }

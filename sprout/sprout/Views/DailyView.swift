@@ -10,11 +10,12 @@ struct DailyView: View {
     @Environment(AppLocalization.self) private var localization
     @Environment(\.modelContext) private var modelContext
     let date: Date
+    let topContentInset: CGFloat
 
     @Query private var records: [Record]
     @Query(sort: \DashboardSystemCardConfig.dashboardOrder, order: .forward) private var systemConfigs: [DashboardSystemCardConfig]
 
-    init(date: Date) {
+    init(date: Date, topContentInset: CGFloat = 0) {
         let cal   = Calendar.current
         let start = cal.startOfDay(for: date)
         let end   = cal.date(byAdding: .day, value: 1, to: start)!
@@ -25,21 +26,29 @@ struct DailyView: View {
             sort: \Record.createdAt, order: .reverse
         )
         self.date = date
+        self.topContentInset = topContentInset
     }
 
     var body: some View {
         ScrollView(showsIndicators: false) {
+            HomePullToOpenProbe()
+
             if gridItems.isEmpty {
                 EmptyDayView(date: date)
-                    .padding(.top, 80)
+                    .frame(minHeight: 520)
             } else {
                 CardGridView(
                     items: gridItems
                 )
-                    .padding(.top, 24)
-                    .padding(.bottom, 96)
             }
         }
+        .background {
+            HomeBackgroundView()
+                .ignoresSafeArea()
+        }
+        .contentMargins(.top, topContentInset, for: .scrollContent)
+        .contentMargins(.bottom, 104, for: .scrollContent)
+        .ignoresSafeArea(.container, edges: .bottom)
         .task {
             ensureTodayInHistoryConfig()
         }
@@ -154,16 +163,24 @@ struct DailyView: View {
     }
 
     private func allRecordsForSameMonthDay() -> [Record] {
-        let month = Calendar.current.component(.month, from: date)
-        let day = Calendar.current.component(.day, from: date)
-        let descriptor = FetchDescriptor<Record>(
+        let calendar = Calendar.current
+        let currentYear = calendar.component(.year, from: date)
+        let month = calendar.component(.month, from: date)
+        let day = calendar.component(.day, from: date)
+        let end = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: date)) ?? date
+
+        var descriptor = FetchDescriptor<Record>(
+            predicate: #Predicate<Record> { record in
+                record.createdAt < end
+            },
             sortBy: [SortDescriptor(\Record.createdAt, order: .reverse)]
         )
-        let all = (try? modelContext.fetch(descriptor)) ?? []
-        return all.filter {
-            let createdMonth = Calendar.current.component(.month, from: $0.createdAt)
-            let createdDay = Calendar.current.component(.day, from: $0.createdAt)
-            return createdMonth == month && createdDay == day
+        descriptor.fetchLimit = 2048
+        let candidates = (try? modelContext.fetch(descriptor)) ?? []
+        return candidates.filter {
+            calendar.component(.month, from: $0.createdAt) == month
+                && calendar.component(.day, from: $0.createdAt) == day
+                && calendar.component(.year, from: $0.createdAt) < currentYear
         }
     }
 
@@ -175,7 +192,7 @@ struct DailyView: View {
             kind: DashboardSystemCardConfig.todayInHistoryKind,
             isEnabled: true,
             widthColumns: 4,
-            heightUnits: 2,
+            heightUnits: 4,
             dashboardOrder: -10_000
         )
         modelContext.insert(created)
@@ -226,7 +243,7 @@ struct EmptyDayView: View {
                     .multilineTextAlignment(.center)
             }
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.horizontal, 40)
     }
 

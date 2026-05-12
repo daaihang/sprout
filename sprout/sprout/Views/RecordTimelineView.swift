@@ -4,11 +4,16 @@ import UIKit
 
 struct RecordTimelineView: View {
     @Environment(AppLocalization.self) private var localization
-    @Query(sort: \Record.createdAt, order: .reverse) private var records: [Record]
+    @Environment(\.modelContext) private var modelContext
 
     let selectedDate: Date
 
     @State private var hasPerformedInitialScroll = false
+    @State private var records: [Record] = []
+    @State private var fetchLimit = 120
+    @State private var isLoadingMore = false
+
+    private let fetchBatchSize = 120
 
     private var daySections: [RecordDaySection] {
         let calendar = Calendar.current
@@ -31,48 +36,125 @@ struct RecordTimelineView: View {
     }
 
     var body: some View {
-        ScrollViewReader { proxy in
-            ScrollView(showsIndicators: false) {
-                if daySections.isEmpty {
-                    emptyState
-                        .padding(.top, 88)
-                        .padding(.horizontal, 24)
-                        .padding(.bottom, 120)
-                } else {
-                    LazyVStack(alignment: .leading, spacing: 18, pinnedViews: [.sectionHeaders]) {
+        ZStack {
+            HomeBackgroundView()
+                .ignoresSafeArea()
+
+            if daySections.isEmpty {
+                emptyState
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 120)
+            } else {
+                ScrollViewReader { proxy in
+                    List {
                         ForEach(daySections) { section in
-                            Section {
-                                VStack(spacing: 10) {
-                                    ForEach(section.records) { record in
-                                        RecordTimelineRow(record: record)
-                                    }
+                            Section(sectionTitle(for: section.id)) {
+                                ForEach(Array(section.records.enumerated()), id: \.element.id) { index, record in
+                                    RecordTimelineRow(record: record)
+                                        .id(record.id)
+                                        .listRowBackground(Color.clear)
+                                        .task {
+                                            await loadMoreIfNeeded(currentRecord: record, sectionIndex: index)
+                                        }
                                 }
-                                .id(section.id)
-                            } header: {
-                                sectionHeader(for: section.id)
                             }
+                            .listRowBackground(Color.clear)
+                            .id(sectionAnchorID(for: section))
                         }
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 18)
-                    .padding(.bottom, 104)
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                    .background(Color.clear)
+                    .containerBackground(.clear, for: .navigation)
+                    .contentMargins(.bottom, 104, for: .scrollContent)
+                    .task {
+                        await reloadRecords()
+                    }
+                    .task(id: sectionIDs) {
+                        guard !hasPerformedInitialScroll, !daySections.isEmpty else { return }
+                        hasPerformedInitialScroll = true
+                        await scroll(to: selectedDate, using: proxy, animated: false)
+                    }
+                    .onChange(of: selectedDate) { _, newValue in
+                        Task {
+                            await ensureVisibleWindow(for: newValue)
+                            await scroll(to: newValue, using: proxy, animated: true)
+                        }
+                    }
                 }
             }
-            .task(id: sectionIDs) {
-                guard !hasPerformedInitialScroll, !daySections.isEmpty else { return }
-                hasPerformedInitialScroll = true
-                await scroll(to: selectedDate, using: proxy, animated: false)
-            }
-            .onChange(of: selectedDate) { _, newValue in
-                Task {
-                    await scroll(to: newValue, using: proxy, animated: true)
-                }
+        }
+        .overlay {
+            ClearAncestorBackgroundView(clearDescendantScrollViews: true)
+                .allowsHitTesting(false)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: ModelContext.didSave)) { _ in
+            Task {
+                await reloadRecords()
             }
         }
     }
 
+    @MainActor
+    private func reloadRecords() async {
+        records = fetchRecords(limit: fetchLimit)
+    }
+
+    @MainActor
+    private func ensureVisibleWindow(for date: Date) async {
+        let targetDay = Calendar.current.startOfDay(for: date)
+        guard !records.isEmpty else {
+            await reloadRecords()
+            return
+        }
+
+        while !records.isEmpty,
+              records.last?.createdAt ?? .distantPast > targetDay,
+              hasMoreRecords
+        {
+            fetchLimit += fetchBatchSize
+            records = fetchRecords(limit: fetchLimit)
+        }
+    }
+
+    @MainActor
+    private func loadMoreIfNeeded(currentRecord: Record, sectionIndex: Int) async {
+        guard !isLoadingMore,
+              hasMoreRecords,
+              isNearWindowEnd(record: currentRecord, sectionIndex: sectionIndex)
+        else {
+            return
+        }
+
+        isLoadingMore = true
+        fetchLimit += fetchBatchSize
+        records = fetchRecords(limit: fetchLimit)
+        isLoadingMore = false
+    }
+
+    private func isNearWindowEnd(record: Record, sectionIndex: Int) -> Bool {
+        guard let lastSection = daySections.last else { return false }
+        guard Calendar.current.isDate(lastSection.id, inSameDayAs: Calendar.current.startOfDay(for: record.createdAt)) else {
+            return false
+        }
+        return sectionIndex >= max(lastSection.records.count - 12, 0)
+    }
+
+    private var hasMoreRecords: Bool {
+        records.count >= fetchLimit
+    }
+
+    private func fetchRecords(limit: Int) -> [Record] {
+        var descriptor = FetchDescriptor<Record>(
+            sortBy: [SortDescriptor(\Record.createdAt, order: .reverse)]
+        )
+        descriptor.fetchLimit = limit
+        return (try? modelContext.fetch(descriptor)) ?? []
+    }
+
     private func scroll(to date: Date, using proxy: ScrollViewProxy, animated: Bool) async {
-        guard let target = targetSectionDate(for: date) else { return }
+        guard let target = targetScrollID(for: date) else { return }
 
         try? await Task.sleep(for: .milliseconds(50))
         await MainActor.run {
@@ -86,36 +168,21 @@ struct RecordTimelineView: View {
         }
     }
 
-    private func targetSectionDate(for requestedDate: Date) -> Date? {
+    private func targetScrollID(for requestedDate: Date) -> String? {
         guard !daySections.isEmpty else { return nil }
 
         let targetDay = Calendar.current.startOfDay(for: requestedDate)
-        if daySections.contains(where: { Calendar.current.isDate($0.id, inSameDayAs: targetDay) }) {
-            return targetDay
+        if let exactSection = daySections.first(where: { Calendar.current.isDate($0.id, inSameDayAs: targetDay) }) {
+            return sectionAnchorID(for: exactSection)
         }
 
         return daySections.min {
             abs($0.id.timeIntervalSince(targetDay)) < abs($1.id.timeIntervalSince(targetDay))
-        }?.id
+        }.map(sectionAnchorID(for:))
     }
 
-    private func sectionHeader(for date: Date) -> some View {
-        ZStack {
-            Rectangle()
-                .fill(.clear)
-                .frame(maxWidth: .infinity)
-
-            HStack {
-                Text(sectionTitle(for: date))
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(.ultraThinMaterial, in: Capsule())
-                Spacer()
-            }
-            .padding(.vertical, 4)
-        }
+    private func sectionAnchorID(for section: RecordDaySection) -> String {
+        "record-day-\(section.id.timeIntervalSinceReferenceDate)"
     }
 
     private var emptyState: some View {
@@ -159,7 +226,6 @@ private struct RecordDaySection: Identifiable {
 
 private struct RecordTimelineRow: View {
     @Environment(AppLocalization.self) private var localization
-    @Environment(\.colorScheme) private var colorScheme
 
     let record: Record
 
@@ -203,18 +269,8 @@ private struct RecordTimelineRow: View {
 
                 Spacer(minLength: 0)
             }
-            .padding(14)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(colorScheme == .dark ? Color.white.opacity(0.06) : Color.black.opacity(0.04), lineWidth: 0.5)
-            )
-            .shadow(
-                color: colorScheme == .dark ? .clear : .black.opacity(0.05),
-                radius: 10, x: 0, y: 4
-            )
+            .padding(.vertical, 4)
         }
-        .buttonStyle(.plain)
     }
 
     private var preferredFocusedSection: RecordSection {

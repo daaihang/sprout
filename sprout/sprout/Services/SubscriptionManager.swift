@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import StoreKit
 
 #if canImport(RevenueCat)
 import RevenueCat
@@ -25,7 +26,8 @@ final class SubscriptionManager {
         let kind: PackageKind
         let title: String
         let price: String
-        let package: Package
+        let productID: String
+        let package: Package?
 
         var id: String { kind.rawValue }
     }
@@ -39,6 +41,12 @@ final class SubscriptionManager {
     var currentPackageKind: PackageKind? = nil
     var expirationDate: Date? = nil
     var loadedProductIDs: [String] = []
+    private var storeKitProductsByID: [String: Product] = [:]
+    private let productConfigurationHint = AppLocalization.shared.string(
+        "subscription.error.products_configuration_hint",
+        default: "No subscription products could be loaded. On a real device, confirm these product IDs exist in App Store Connect, are approved for the current environment, and are also added to the RevenueCat offering.",
+        table: "Subscription"
+    )
 
     init() {
         configure()
@@ -50,6 +58,15 @@ final class SubscriptionManager {
         #else
         Purchases.logLevel = .error
         #endif
+
+        guard !MoryConfig.revenueCatAPIKey.isEmpty else {
+            errorMessage = AppLocalization.shared.string(
+                "subscription.error.api_key_missing",
+                default: "RevenueCat API key is missing.",
+                table: "Subscription"
+            )
+            return
+        }
 
         Purchases.configure(withAPIKey: MoryConfig.revenueCatAPIKey)
 
@@ -66,8 +83,31 @@ final class SubscriptionManager {
 
         do {
             let offerings = try await Purchases.shared.offerings()
-            let targetOffering = offerings.offering(identifier: MoryConfig.offeringID)
+            let targetOffering =
+                offerings.offering(identifier: MoryConfig.offeringID)
+                ?? offerings.current
+                ?? offerings.all.values.sorted(by: { $0.identifier < $1.identifier }).first
             let packages = targetOffering?.availablePackages ?? []
+            if !packages.isEmpty {
+                applyRevenueCatPackages(packages)
+                if let customerInfo {
+                    await reconcileSubscriptionState(with: customerInfo)
+                } else {
+                    _ = await refreshStoreKitEntitlements()
+                }
+                return
+            }
+
+            if await loadStoreKitProducts() {
+                if let customerInfo {
+                    await reconcileSubscriptionState(with: customerInfo)
+                } else {
+                    _ = await refreshStoreKitEntitlements()
+                }
+                return
+            }
+
+            clearPackages()
             if targetOffering == nil {
                 errorMessage = AppLocalization.shared.string(
                     "subscription.error.offering_not_found",
@@ -75,30 +115,52 @@ final class SubscriptionManager {
                     table: "Subscription",
                     arguments: [MoryConfig.offeringID]
                 )
-            }
-            availablePackages = packages
-            loadedProductIDs = packages.map { $0.storeProduct.productIdentifier }
-            packageSummaries = packages.compactMap(makeSummary(for:)).sorted { lhs, rhs in
-                lhs.kind.sortOrder < rhs.kind.sortOrder
-            }
-            if let customerInfo {
-                apply(customerInfo)
+            } else {
+                errorMessage = productsUnavailableMessage(
+                    AppLocalization.shared.string(
+                        "subscription.error.products_unavailable",
+                        default: "No subscription products are available.",
+                        table: "Subscription"
+                    )
+                )
             }
         } catch {
-            errorMessage = error.localizedDescription
+            if await loadStoreKitProducts() {
+                if let customerInfo {
+                    await reconcileSubscriptionState(with: customerInfo)
+                } else {
+                    _ = await refreshStoreKitEntitlements()
+                }
+            } else {
+                clearPackages()
+                errorMessage = productsUnavailableMessage(error.localizedDescription)
+            }
         }
     }
 
     func refreshCustomerInfo() async {
         do {
-            apply(try await Purchases.shared.customerInfo())
+            await reconcileSubscriptionState(with: try await Purchases.shared.customerInfo())
         } catch {
-            errorMessage = error.localizedDescription
+            if await refreshStoreKitEntitlements() {
+                errorMessage = nil
+            } else {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
     func purchase(kind: PackageKind) async throws {
-        guard let package = package(for: kind) else {
+        if let package = package(for: kind) {
+            try await purchase(package: package)
+            return
+        }
+
+        if storeKitProduct(for: kind) == nil {
+            _ = await loadStoreKitProducts()
+        }
+
+        guard let product = storeKitProduct(for: kind) else {
             errorMessage = AppLocalization.shared.string(
                 "subscription.error.package_not_found",
                 default: "The selected subscription package could not be found.",
@@ -106,7 +168,8 @@ final class SubscriptionManager {
             )
             return
         }
-        try await purchase(package: package)
+
+        try await purchase(product: product)
     }
 
     func purchase(package: Package) async throws {
@@ -115,7 +178,7 @@ final class SubscriptionManager {
         errorMessage = nil
 
         let result = try await Purchases.shared.purchase(package: package)
-        apply(result.customerInfo)
+        await reconcileSubscriptionState(with: result.customerInfo)
     }
 
     func restorePurchases() async {
@@ -124,9 +187,15 @@ final class SubscriptionManager {
         errorMessage = nil
 
         do {
-            apply(try await Purchases.shared.restorePurchases())
+            await reconcileSubscriptionState(with: try await Purchases.shared.restorePurchases())
         } catch {
-            errorMessage = error.localizedDescription
+            do {
+                try await AppStore.sync()
+                _ = await refreshStoreKitEntitlements()
+                errorMessage = nil
+            } catch {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
@@ -138,6 +207,13 @@ final class SubscriptionManager {
         packageSummaries.first(where: { $0.kind == kind })
     }
 
+    private func reconcileSubscriptionState(with info: CustomerInfo) async {
+        apply(info)
+        if !isSubscribed {
+            _ = await refreshStoreKitEntitlements()
+        }
+    }
+
     private func apply(_ info: CustomerInfo) {
         customerInfo = info
 
@@ -147,7 +223,7 @@ final class SubscriptionManager {
 
         let activeProductIDs = Set(info.activeSubscriptions)
         currentPackageKind = packageSummaries
-            .first(where: { activeProductIDs.contains($0.package.storeProduct.productIdentifier) })?
+            .first(where: { activeProductIDs.contains($0.productID) })?
             .kind
 
         if currentPackageKind == nil {
@@ -176,7 +252,20 @@ final class SubscriptionManager {
             kind: kind,
             title: package.storeProduct.localizedTitle,
             price: package.localizedPriceString,
+            productID: package.storeProduct.productIdentifier,
             package: package
+        )
+    }
+
+    private func makeSummary(for product: Product) -> PackageSummary? {
+        guard let kind = packageKind(forProductID: product.id) else { return nil }
+
+        return PackageSummary(
+            kind: kind,
+            title: product.displayName,
+            price: product.displayPrice,
+            productID: product.id,
+            package: nil
         )
     }
 
@@ -185,14 +274,163 @@ final class SubscriptionManager {
     }
 
     private func packageKind(forProductID productID: String?) -> PackageKind? {
-        switch productID {
-        case MoryConfig.ProductID.monthlyGrow:
+        guard let productID else { return nil }
+
+        if productID == MoryConfig.ProductID.monthlyGrow {
             return .monthly
-        case MoryConfig.ProductID.yearlyGrow:
-            return .yearly
-        default:
-            return nil
         }
+
+        if productID == MoryConfig.ProductID.yearlyGrow {
+            return .yearly
+        }
+
+        let normalized = productID.lowercased()
+
+        if normalized.contains("month") {
+            return .monthly
+        }
+
+        if normalized.contains("year") || normalized.contains("annual") {
+            return .yearly
+        }
+
+        return nil
+    }
+
+    private func applyRevenueCatPackages(_ packages: [Package]) {
+        availablePackages = packages
+        loadedProductIDs = packages.map { $0.storeProduct.productIdentifier }
+        packageSummaries = packages.compactMap(makeSummary(for:)).sorted { lhs, rhs in
+            lhs.kind.sortOrder < rhs.kind.sortOrder
+        }
+        errorMessage = nil
+    }
+
+    private func clearPackages() {
+        availablePackages = []
+        loadedProductIDs = []
+        packageSummaries = []
+    }
+
+    private func productsUnavailableMessage(_ message: String) -> String {
+        message + "\n\n" + productConfigurationHint
+    }
+
+    @discardableResult
+    private func loadStoreKitProducts() async -> Bool {
+        let productIDs = Set([
+            MoryConfig.ProductID.monthlyGrow,
+            MoryConfig.ProductID.yearlyGrow
+        ].filter { !$0.isEmpty })
+
+        guard !productIDs.isEmpty else {
+            clearPackages()
+            return false
+        }
+
+        do {
+            let products = try await Product.products(for: Array(productIDs))
+            storeKitProductsByID = Dictionary(uniqueKeysWithValues: products.map { ($0.id, $0) })
+            loadedProductIDs = products.map(\.id)
+            packageSummaries = products.compactMap(makeSummary(for:)).sorted { lhs, rhs in
+                lhs.kind.sortOrder < rhs.kind.sortOrder
+            }
+            availablePackages = []
+            if packageSummaries.isEmpty {
+                errorMessage = productsUnavailableMessage(
+                    AppLocalization.shared.string(
+                        "subscription.error.products_unavailable",
+                        default: "No subscription products are available.",
+                        table: "Subscription"
+                    )
+                )
+            } else {
+                errorMessage = nil
+            }
+            return !packageSummaries.isEmpty
+        } catch {
+            clearPackages()
+            return false
+        }
+    }
+
+    private func storeKitProduct(for kind: PackageKind) -> Product? {
+        switch kind {
+        case .monthly:
+            return storeKitProductsByID[MoryConfig.ProductID.monthlyGrow]
+        case .yearly:
+            return storeKitProductsByID[MoryConfig.ProductID.yearlyGrow]
+        }
+    }
+
+    private func purchase(product: Product) async throws {
+        isLoading = true
+        defer { isLoading = false }
+        errorMessage = nil
+
+        let result = try await product.purchase()
+
+        switch result {
+        case .success(let verification):
+            let transaction = try verified(verification)
+            await transaction.finish()
+            _ = await refreshStoreKitEntitlements()
+        case .pending:
+            break
+        case .userCancelled:
+            break
+        @unknown default:
+            break
+        }
+    }
+
+    private func verified<T>(_ result: StoreKit.VerificationResult<T>) throws -> T {
+        switch result {
+        case .verified(let value):
+            return value
+        case .unverified(_, let error):
+            throw error
+        }
+    }
+
+    @discardableResult
+    private func refreshStoreKitEntitlements() async -> Bool {
+        var activeProductIDs = Set<String>()
+        var latestExpiration: Date? = nil
+
+        for await result in Transaction.currentEntitlements {
+            guard case .verified(let transaction) = result else { continue }
+            guard transaction.revocationDate == nil else { continue }
+
+            activeProductIDs.insert(transaction.productID)
+
+            if let expiration = transaction.expirationDate {
+                latestExpiration = max(latestExpiration ?? expiration, expiration)
+            }
+        }
+
+        if !activeProductIDs.isEmpty {
+            isSubscribed = true
+            expirationDate = latestExpiration
+
+            if activeProductIDs.contains(MoryConfig.ProductID.yearlyGrow) {
+                currentPackageKind = .yearly
+            } else if activeProductIDs.contains(MoryConfig.ProductID.monthlyGrow) {
+                currentPackageKind = .monthly
+            } else {
+                currentPackageKind = activeProductIDs
+                    .compactMap(packageKind(forProductID:))
+                    .sorted(by: { $0.sortOrder < $1.sortOrder })
+                    .first
+            }
+
+            return true
+        }
+
+        isSubscribed = false
+        expirationDate = nil
+        currentPackageKind = nil
+        return false
     }
 
 }

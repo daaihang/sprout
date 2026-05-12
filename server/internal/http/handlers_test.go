@@ -3,6 +3,7 @@ package http
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -144,6 +145,50 @@ func TestUnauthorizedAnalyze(t *testing.T) {
 	}
 }
 
+func TestAuthAppleDevelopmentFallbackAcceptsAppleJWTWhenVerificationFails(t *testing.T) {
+	store, err := db.NewSQLiteStore(":memory:")
+	if err != nil {
+		t.Fatalf("new sqlite store: %v", err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+
+	server := NewServer(Dependencies{
+		Config: config.Config{
+			AppEnv:           "test",
+			DevAuthEnabled:   true,
+			DefaultTier:      "seed",
+			SubscriptionMode: "mock",
+		},
+		Logger:        slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Authenticator: auth.NewAuthenticator("secret", "issuer", 24*time.Hour),
+		AppleVerifier: failingAppleVerifier{err: auth.ErrAppleAudienceMismatch},
+		AIProvider:    ai.NewMockProvider(),
+		Subscription:  subscription.NewService("mock", "seed"),
+		PushTokens:    store,
+	})
+
+	body := `{"identity_token":"` + fakeAppleJWT(t, "apple-user-123") + `","nonce":"nonce"}`
+	req := httptest.NewRequest(http.MethodPost, "/auth/apple", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	server.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d, body = %s", rec.Code, rec.Body.String())
+	}
+
+	var resp authResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode auth response: %v", err)
+	}
+	if resp.User.ID != "apple-user-123" {
+		t.Fatalf("expected fallback user id, got %q", resp.User.ID)
+	}
+	if resp.Mode != "development_stub" {
+		t.Fatalf("expected development_stub mode, got %q", resp.Mode)
+	}
+}
+
 func TestMetricsAndRequestID(t *testing.T) {
 	store, err := db.NewSQLiteStore(":memory:")
 	if err != nil {
@@ -220,4 +265,23 @@ func issueDevToken(t *testing.T, server *Server, body string) string {
 		t.Fatalf("decode auth response: %v", err)
 	}
 	return resp.AccessToken
+}
+
+type failingAppleVerifier struct {
+	err error
+}
+
+func (v failingAppleVerifier) VerifyIdentityToken(_ context.Context, _, _ string) (auth.AppleIdentity, error) {
+	return auth.AppleIdentity{}, v.err
+}
+
+func fakeAppleJWT(t *testing.T, sub string) string {
+	t.Helper()
+
+	headerJSON := `{"alg":"ES256","kid":"test","typ":"JWT"}`
+	claimsJSON := `{"iss":"https://appleid.apple.com","aud":"com.speculolabs.sprout","exp":4102444800,"sub":"` + sub + `"}`
+
+	return base64.RawURLEncoding.EncodeToString([]byte(headerJSON)) + "." +
+		base64.RawURLEncoding.EncodeToString([]byte(claimsJSON)) + "." +
+		base64.RawURLEncoding.EncodeToString([]byte("signature"))
 }

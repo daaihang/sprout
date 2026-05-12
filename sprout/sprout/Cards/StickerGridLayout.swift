@@ -128,13 +128,6 @@ struct StickerGridLayout: Layout {
     }
 
     private func normalizedSpan(_ span: ContainerSpan) -> ContainerSpan {
-        ContainerSpan(
-            widthColumns: nearest(span.widthColumns, values: [2, 4, 6, 8]),
-            heightUnits: nearest(span.heightUnits, values: [1, 2, 4])
-        )
-    }
-
-    private func nearest(_ value: Int, values: [Int]) -> Int {
-        values.min(by: { abs($0 - value) < abs($1 - value) }) ?? value
+        sharedCardSizeLimits.clamped(span: span)
     }
 }

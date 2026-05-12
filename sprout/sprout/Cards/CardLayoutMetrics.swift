@@ -13,4 +13,22 @@ struct CardLayoutMetrics {
 
     var isLandscape: Bool { containerSize.width >= containerSize.height * 1.15 }
     var isPortrait: Bool { containerSize.height > containerSize.width * 1.15 }
+
+    var shortSide: CGFloat { min(containerSize.width, containerSize.height) }
+    var longSide: CGFloat { max(containerSize.width, containerSize.height) }
+    var aspectRatio: CGFloat {
+        guard containerSize.height > 0 else { return 1 }
+        return containerSize.width / containerSize.height
+    }
+
+    var recommendedInset: CGFloat {
+        max(10, min(18, shortSide * 0.12))
+    }
+
+    var contentSize: CGSize {
+        CGSize(
+            width: max(containerSize.width - recommendedInset * 2, 0),
+            height: max(containerSize.height - recommendedInset * 2, 0)
+        )
+    }
 }

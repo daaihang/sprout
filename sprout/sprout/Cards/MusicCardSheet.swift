@@ -231,9 +231,7 @@ struct MusicCardSheet: View {
         Group {
             if let artwork = artwork,
                let url = artwork.url(width: Int(size * 2), height: Int(size * 2)) {
-                AsyncImage(url: url) { image in
-                    image.resizable().aspectRatio(contentMode: .fill)
-                } placeholder: {
+                CachedRemoteImage(url: url, contentMode: .fill) {
                     artworkPlaceholder
                 }
                 .frame(width: size, height: size)
@@ -249,9 +247,7 @@ struct MusicCardSheet: View {
     private func artworkImageView(url: URL?, size: CGFloat) -> some View {
         Group {
             if let url = url {
-                AsyncImage(url: url) { image in
-                    image.resizable().aspectRatio(contentMode: .fill)
-                } placeholder: {
+                CachedRemoteImage(url: url, contentMode: .fill) {
                     artworkPlaceholder
                 }
                 .frame(width: size, height: size)

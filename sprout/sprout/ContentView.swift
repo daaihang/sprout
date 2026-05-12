@@ -11,10 +11,14 @@ struct ContentView: View {
     // MARK: UI State
     @State private var isShowingAccountSheet = false
     @State private var isBarOpen             = false
+    @State private var composerDraftText     = ""
+    @State private var composerFocusRequestToken = 0
     @State private var selectedDate: Date    = Calendar.current.startOfDay(for: Date())
-    @State private var showDatePicker        = false
-    @State private var insertionEdge: Edge   = .trailing
-    @Environment(\.colorScheme) private var colorScheme
+    @State private var isTopDrawerPresented  = false
+    @State private var topDrawerMeasuredHeight: CGFloat = 0
+    @State private var topSafeAreaInset: CGFloat = 0
+    @State private var navigationBarMaxY: CGFloat = 0
+    @AppStorage("homeTopDrawerTag") private var selectedTopDrawerTagRawValue = HomeTopDrawerTag.cards.rawValue
 
     // MARK: Services
     @State private var musicService     = MusicService()
@@ -30,8 +34,8 @@ struct ContentView: View {
     @State private var showMusicSheet     = false
     @State private var showLocationSheet  = false
     @State private var showPeopleSheet    = false
+    @State private var showFullscreenEntryComposer = false
     @State private var showVoiceToast     = false
-    @AppStorage("homeDisplayMode") private var homeDisplayModeRawValue = HomeDisplayMode.dashboard.rawValue
 
     // Pending binding data for attachment sheets
     @State private var pendingMusicData    = MusicCardData()
@@ -43,12 +47,12 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
-                pageBackground.ignoresSafeArea()
+                HomeBackgroundView().ignoresSafeArea()
 
                 HomeModeContentView(
-                    displayMode: homeDisplayMode,
-                    selectedDate: selectedDate,
-                    insertionEdge: insertionEdge
+                    selectedTag: selectedTopDrawerTagBinding,
+                    selectedDate: $selectedDate,
+                    cardsTopInset: drawerTopInset
                 )
 
                 // Voice toast overlay
@@ -64,35 +68,53 @@ struct ContentView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                 }
             }
+            .background(
+                GeometryReader { geometry in
+                    Color.clear
+                        .onAppear {
+                            topSafeAreaInset = geometry.safeAreaInsets.top
+                        }
+                        .onChange(of: geometry.safeAreaInsets.top) { _, newValue in
+                            topSafeAreaInset = newValue
+                        }
+                }
+            )
+            .background(
+                NavigationBarFrameReader { maxY in
+                    navigationBarMaxY = maxY
+                }
+            )
             .overlay(alignment: .bottom) {
                 BottomCapsuleBar(
                     isOpen:               $isBarOpen,
+                    inputText:            $composerDraftText,
+                    focusRequestToken:    composerFocusRequestToken,
                     onAction:             handleComposerAction,
                     onRemoveAttachment:   removeAttachment,
                     onSend:               { text in insertRecord(body: text) },
+                    onExpandToFullscreen: { showFullscreenEntryComposer = true },
                     attachments:          composerAttachments,
                     speechRecognizer:     speechRecognizer,
                     onAudioCaptured:      { data in composerAttachments.audioData = data }
                 )
-                .ignoresSafeArea(.keyboard)
                 .zIndex(10)
+            }
+            .overlay {
+                topDrawerDismissLayer
+            }
+            .overlay(alignment: .top) {
+                topDrawerContainer
             }
             .navigationTitle(" ")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarBackground(.hidden, for: .navigationBar)
+            .toolbarBackground(.hidden, for: .tabBar)
             .toolbar {
                 HomeToolbarContent(
                     dateLabel: formattedDateLabel(selectedDate),
-                    displayMode: homeDisplayMode,
-                    showRecordsLabel: localization.string("content.mode.show_records", default: "Show raw records"),
-                    showCardsLabel: localization.string("content.mode.show_cards", default: "Show card grid"),
                     onDateTap: {
                         HapticFeedback.light()
-                        showDatePicker.toggle()
-                    },
-                    onModeToggle: {
-                        HapticFeedback.light()
-                        toggleHomeDisplayMode()
+                        toggleTopDrawer()
                     },
                     onProfileTap: {
                         HapticFeedback.light()
@@ -100,18 +122,35 @@ struct ContentView: View {
                     }
                 )
             }
-            .modifier(HomeDaySwipeModifier(isEnabled: homeDisplayMode == .dashboard, onNavigateDay: navigateDay))
         }
-        .animation(.spring(duration: 0.35, bounce: 0.1), value: selectedDate)
         .animation(.spring(duration: 0.3), value: showVoiceToast)
         // MARK: Sheets
         .sheet(isPresented: $isShowingAccountSheet) { AccountManagementSheet() }
-        .sheet(isPresented: $showDatePicker) {
-            HomeDatePickerSheet(selectedDate: $selectedDate)
-                .presentationDetents([.medium])
-        }
         .sheet(isPresented: $showAddCardSheet) {
             AddCardSheet(musicService: musicService, selectedDate: selectedDate)
+        }
+        .sheet(isPresented: $showFullscreenEntryComposer) {
+            FullscreenEntryComposerSheet(
+                text: $composerDraftText,
+                attachments: $composerAttachments,
+                speechRecognizer: speechRecognizer,
+                musicService: musicService,
+                onAction: handleComposerAction,
+                onRemoveAttachment: removeAttachment,
+                onSubmit: { text in
+                    insertRecord(body: text)
+                    showFullscreenEntryComposer = false
+                    isBarOpen = false
+                },
+                onClose: {
+                    showFullscreenEntryComposer = false
+                    isBarOpen = true
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(220))
+                        composerFocusRequestToken += 1
+                    }
+                }
+            )
         }
         .fullScreenCover(isPresented: $showCameraSheet) {
             CameraView { image in
@@ -173,32 +212,76 @@ struct ContentView: View {
         }
     }
 
-    private var homeDisplayMode: HomeDisplayMode {
-        HomeDisplayMode(rawValue: homeDisplayModeRawValue) ?? .dashboard
+    private var selectedTopDrawerTag: HomeTopDrawerTag {
+        HomeTopDrawerTag(persistedValue: selectedTopDrawerTagRawValue)
     }
 
-    // MARK: Date navigation
+    private var selectedTopDrawerTagBinding: Binding<HomeTopDrawerTag> {
+        Binding(
+            get: { selectedTopDrawerTag },
+            set: { selectedTopDrawerTagRawValue = $0.rawValue }
+        )
+    }
 
-    private func navigateDay(by delta: Int) {
-        let cal   = Calendar.current
-        let next  = cal.date(byAdding: .day, value: delta, to: selectedDate)!
-        let today = cal.startOfDay(for: Date())
-        guard next <= today else { return }
+    private var drawerTopInset: CGFloat {
+        max(navigationBarMaxY, topSafeAreaInset)
+    }
 
-        // Both in the same withAnimation for a single render transaction.
-        // delta > 0 → going forward (newer) → insertion from trailing (right)
-        // delta < 0 → going backward (older) → insertion from leading (left)
-        HapticFeedback.selection()
-        withAnimation(.spring(duration: 0.35, bounce: 0.1)) {
-            insertionEdge = delta > 0 ? .trailing : .leading
-            selectedDate  = next
+    private var drawerCornerRadius: CGFloat {
+        if topSafeAreaInset > 24 {
+            return max(topSafeAreaInset - 4, 34)
+        }
+        return 34
+    }
+
+    private var topDrawerContainer: some View {
+        HomeTopDrawerView(
+            selectedDate: $selectedDate,
+            selectedTag: selectedTopDrawerTagBinding,
+            isPresented: isTopDrawerPresented,
+            topContentInset: drawerTopInset,
+            outerCornerRadius: drawerCornerRadius,
+            onHeightChange: { height in
+                topDrawerMeasuredHeight = height
+            }
+        )
+        .frame(maxWidth: .infinity)
+        .fixedSize(horizontal: false, vertical: true)
+        .offset(y: isTopDrawerPresented ? 0 : -topDrawerMeasuredHeight)
+        .ignoresSafeArea(edges: .top)
+        .allowsHitTesting(isTopDrawerPresented)
+        .accessibilityHidden(!isTopDrawerPresented)
+        .animation(.smooth(duration: 0.28), value: topDrawerMeasuredHeight)
+    }
+
+    @ViewBuilder
+    private var topDrawerDismissLayer: some View {
+        if isTopDrawerPresented {
+            Rectangle()
+                .fill(Color.black.opacity(0.001))
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture(perform: closeTopDrawer)
+                .transition(.opacity)
+                .accessibilityLabel("Dismiss top drawer")
+                .accessibilityAddTraits(.isButton)
         }
     }
 
-    private func toggleHomeDisplayMode() {
-        homeDisplayModeRawValue = homeDisplayMode == .dashboard
-            ? HomeDisplayMode.rawRecords.rawValue
-            : HomeDisplayMode.dashboard.rawValue
+    private func toggleTopDrawer() {
+        if isTopDrawerPresented {
+            closeTopDrawer()
+        } else {
+            withAnimation(.smooth(duration: 0.42)) {
+                isTopDrawerPresented = true
+            }
+        }
+    }
+
+    private func closeTopDrawer() {
+        withAnimation(.smooth(duration: 0.42)) {
+            isTopDrawerPresented = false
+        }
     }
 
     private func formattedDateLabel(_ date: Date) -> String {
@@ -259,25 +342,29 @@ struct ContentView: View {
 
     /// Creates a photo-only standalone Record (triggered by the quick camera button).
     private func insertStandalonePhotoRecord(image: UIImage) {
-        let record = Record()
-        record.cardType = "photo"
         let cal = Calendar.current
         let today = cal.startOfDay(for: Date())
-        record.createdAt = cal.isDate(selectedDate, inSameDayAs: today)
+        let createdAt = cal.isDate(selectedDate, inSameDayAs: today)
             ? Date()
             : cal.date(byAdding: .day, value: 1, to: selectedDate)!.addingTimeInterval(-1)
-        record.updatedAt = record.createdAt
-        record.dashboardOrder = record.createdAt.timeIntervalSince1970
 
-        let m = MediaCard()
-        m.type          = "photo"
-        m.imageData     = image.jpegData(compressionQuality: 0.85)
-        m.thumbnailData = image
-            .preparingThumbnail(of: CGSize(width: 300, height: 300))?
-            .jpegData(compressionQuality: 0.7)
-        modelContext.insert(m)
-        modelContext.insert(record)
-        record.mediaCards = [m]
+        Task { @MainActor in
+            guard let payload = await preparePhotoMediaPayloads(from: [image]).first else { return }
+
+            let record = Record()
+            record.cardType = "photo"
+            record.createdAt = createdAt
+            record.updatedAt = createdAt
+            record.dashboardOrder = createdAt.timeIntervalSince1970
+
+            let m = MediaCard()
+            m.type = "photo"
+            m.imageData = payload.imageData
+            m.thumbnailData = payload.thumbnailData
+            modelContext.insert(m)
+            modelContext.insert(record)
+            record.mediaCards = [m]
+        }
     }
 
     /// Creates a Record from the text body + all pending ComposerAttachments.
@@ -285,119 +372,112 @@ struct ContentView: View {
         let trimmed = body.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty || !composerAttachments.isEmpty else { return }
 
-        let record    = Record()
-        record.body   = trimmed
+        Task { @MainActor in
+            let attachments = composerAttachments
+            let cal = Calendar.current
+            let today = cal.startOfDay(for: Date())
+            let createdAt = cal.isDate(selectedDate, inSameDayAs: today)
+                ? Date()
+                : cal.date(byAdding: .day, value: 1, to: selectedDate)!.addingTimeInterval(-1)
+            let parsed = RecordParser.parseBody(trimmed)
+            let photoPayloads = await preparePhotoMediaPayloads(from: attachments.photos)
 
-        let cal   = Calendar.current
-        let today = cal.startOfDay(for: Date())
-        record.createdAt = cal.isDate(selectedDate, inSameDayAs: today)
-            ? Date()
-            : cal.date(byAdding: .day, value: 1, to: selectedDate)!.addingTimeInterval(-1)
-        record.updatedAt = record.createdAt
-        record.dashboardOrder = record.createdAt.timeIntervalSince1970
+            let record = Record()
+            record.body = trimmed
+            record.createdAt = createdAt
+            record.updatedAt = createdAt
+            record.dashboardOrder = createdAt.timeIntervalSince1970
 
-        // Parse body for URLs
-        let parsed = RecordParser.parseBody(trimmed)
-
-        // Apply scalar attachments to Record fields
-        if let mood = composerAttachments.mood {
-            record.mood      = mood.rawValue
-            record.intensity = composerAttachments.intensity
-        }
-        if let loc = composerAttachments.locationData {
-            record.latitude  = loc.coordinate?.latitude
-            record.longitude = loc.coordinate?.longitude
-            record.location  = loc.locationName.isEmpty ? nil : loc.locationName
-        }
-        if !composerAttachments.people.isEmpty {
-            record.mentionedPeople = composerAttachments.people
-            for person in composerAttachments.people {
-                person.lastMentionedAt = record.createdAt
-                person.mentionCount += 1
+            if let mood = attachments.mood {
+                record.mood = mood.rawValue
+                record.intensity = attachments.intensity
             }
-        }
-
-        // Build media cards
-        var mediaCards: [MediaCard] = []
-
-        // Photos
-        for (i, img) in composerAttachments.photos.enumerated() {
-            let m = MediaCard()
-            m.type          = "photo"
-            m.sortIndex     = i
-            m.imageData     = img.jpegData(compressionQuality: 0.85)
-            m.thumbnailData = img
-                .preparingThumbnail(of: CGSize(width: 300, height: 300))?
-                .jpegData(compressionQuality: 0.7)
-            modelContext.insert(m)
-            mediaCards.append(m)
-        }
-
-        // Music from picker
-        if let music = composerAttachments.music {
-            let m = MediaCard()
-            m.type             = "music"
-            m.url              = music.appleMusicURL?.absoluteString
-            m.title            = music.trackName
-            m.caption          = music.artistName
-            m.albumName        = music.albumName.isEmpty ? nil : music.albumName
-            m.artworkURLString = music.albumArtworkURL?.absoluteString
-            modelContext.insert(m)
-            mediaCards.append(m)
-        }
-
-        // Todo
-        if let todos = composerAttachments.todos, !todos.isEmpty {
-            let m = MediaCard()
-            m.type  = "todo"
-            m.title = todos.title
-            if let json = try? JSONEncoder().encode(todos.items) {
-                m.caption = String(data: json, encoding: .utf8)
+            if let loc = attachments.locationData {
+                record.latitude = loc.coordinate?.latitude
+                record.longitude = loc.coordinate?.longitude
+                record.location = loc.locationName.isEmpty ? nil : loc.locationName
             }
-            modelContext.insert(m)
-            mediaCards.append(m)
+            if !attachments.people.isEmpty {
+                record.mentionedPeople = attachments.people
+                for person in attachments.people {
+                    person.lastMentionedAt = record.createdAt
+                    person.mentionCount += 1
+                }
+            }
+
+            var mediaCards: [MediaCard] = []
+
+            for (i, payload) in photoPayloads.enumerated() {
+                let m = MediaCard()
+                m.type = "photo"
+                m.sortIndex = i
+                m.imageData = payload.imageData
+                m.thumbnailData = payload.thumbnailData
+                modelContext.insert(m)
+                mediaCards.append(m)
+            }
+
+            if let music = attachments.music {
+                let m = MediaCard()
+                m.type = "music"
+                m.url = music.appleMusicURL?.absoluteString
+                m.title = music.trackName
+                m.caption = music.artistName
+                m.albumName = music.albumName.isEmpty ? nil : music.albumName
+                m.artworkURLString = music.albumArtworkURL?.absoluteString
+                modelContext.insert(m)
+                mediaCards.append(m)
+            }
+
+            if let todos = attachments.todos, !todos.isEmpty {
+                let m = MediaCard()
+                m.type = "todo"
+                m.title = todos.title
+                if let json = try? JSONEncoder().encode(todos.items) {
+                    m.caption = String(data: json, encoding: .utf8)
+                }
+                modelContext.insert(m)
+                mediaCards.append(m)
+            }
+
+            if let audioData = attachments.audioData {
+                let m = MediaCard()
+                m.type = "audio"
+                m.audioData = audioData
+                m.title = localization.string("content.audio.title", default: "Voice %@", arguments: [shortTimeLabel()])
+                m.caption = trimmed.isEmpty ? speechRecognizer.recognizedText : trimmed
+                m.capturedAt = record.createdAt
+                modelContext.insert(m)
+                mediaCards.append(m)
+            }
+
+            for url in parsed.appleMusicURLs {
+                let m = MediaCard()
+                m.type = "music"
+                m.url = url.absoluteString
+                m.title = url.lastPathComponent.replacingOccurrences(of: "-", with: " ")
+                m.artworkURLString = nil
+                modelContext.insert(m)
+                mediaCards.append(m)
+            }
+
+            for url in parsed.regularURLs {
+                let m = MediaCard()
+                m.type = "link"
+                m.url = url.absoluteString
+                m.title = url.host ?? url.absoluteString
+                modelContext.insert(m)
+                mediaCards.append(m)
+            }
+
+            record.cardType = primaryCardType(parsed: parsed)
+
+            modelContext.insert(record)
+            if !mediaCards.isEmpty { record.mediaCards = mediaCards }
+
+            composerAttachments.clear()
+            composerDraftText = ""
         }
-
-        // Voice recording
-        if let audioData = composerAttachments.audioData {
-            let m = MediaCard()
-            m.type      = "audio"
-            m.audioData = audioData
-            m.title     = localization.string("content.audio.title", default: "Voice %@", arguments: [shortTimeLabel()])
-            m.caption   = trimmed.isEmpty ? speechRecognizer.recognizedText : trimmed
-            m.capturedAt = record.createdAt
-            modelContext.insert(m)
-            mediaCards.append(m)
-        }
-
-        // Apple Music URLs parsed from typed text
-        for url in parsed.appleMusicURLs {
-            let m = MediaCard()
-            m.type             = "music"
-            m.url              = url.absoluteString
-            m.title            = url.lastPathComponent.replacingOccurrences(of: "-", with: " ")
-            m.artworkURLString = nil
-            modelContext.insert(m)
-            mediaCards.append(m)
-        }
-
-        // Regular link URLs
-        for url in parsed.regularURLs {
-            let m = MediaCard()
-            m.type  = "link"
-            m.url   = url.absoluteString
-            m.title = url.host ?? url.absoluteString
-            modelContext.insert(m)
-            mediaCards.append(m)
-        }
-
-        // Determine primary card type by richest attachment
-        record.cardType = primaryCardType(parsed: parsed)
-
-        modelContext.insert(record)
-        if !mediaCards.isEmpty { record.mediaCards = mediaCards }
-
-        composerAttachments.clear()
     }
 
     private func primaryCardType(parsed: ParsedContent) -> String {
@@ -423,29 +503,47 @@ struct ContentView: View {
     private func openPeoplePicker() {
         showPeopleSheet = true
     }
+}
 
-    // MARK: Background
+private struct NavigationBarFrameReader: UIViewRepresentable {
+    let onChange: (CGFloat) -> Void
 
-    private var pageBackground: LinearGradient {
-        if colorScheme == .dark {
-            LinearGradient(
-                stops: [
-                    .init(color: Color(red: 0.08, green: 0.10, blue: 0.16), location: 0.00),
-                    .init(color: Color(red: 0.10, green: 0.11, blue: 0.18), location: 0.45),
-                    .init(color: Color(red: 0.08, green: 0.12, blue: 0.10), location: 1.00),
-                ],
-                startPoint: .topLeading, endPoint: .bottomTrailing
-            )
-        } else {
-            LinearGradient(
-                stops: [
-                    .init(color: Color(red: 0.78, green: 0.91, blue: 0.97), location: 0.00),
-                    .init(color: Color(red: 0.88, green: 0.93, blue: 0.99), location: 0.45),
-                    .init(color: Color(red: 0.92, green: 0.96, blue: 0.92), location: 1.00),
-                ],
-                startPoint: .topLeading, endPoint: .bottomTrailing
-            )
-        }
+    func makeUIView(context: Context) -> NavigationBarProbeView {
+        let view = NavigationBarProbeView()
+        view.onChange = onChange
+        return view
+    }
+
+    func updateUIView(_ uiView: NavigationBarProbeView, context: Context) {
+        uiView.onChange = onChange
+        uiView.report()
+    }
+}
+
+private final class NavigationBarProbeView: UIView {
+    var onChange: ((CGFloat) -> Void)?
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        report()
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        report()
+    }
+
+    func report() {
+        guard let navigationController = sequence(first: next, next: { $0?.next })
+            .compactMap({ $0 as? UINavigationController })
+            .first
+        else { return }
+
+        let frame = navigationController.navigationBar.convert(
+            navigationController.navigationBar.bounds,
+            to: nil
+        )
+        onChange?(frame.maxY)
     }
 }
 

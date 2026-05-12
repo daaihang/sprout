@@ -17,95 +17,39 @@ struct FilmCard: View {
     var onTap: (() -> Void)?
 
     var body: some View {
-        Group {
-            if let data, !data.isEmpty {
-                GeometryReader { geo in
-                    contentView(data, metrics: CardLayoutMetrics(containerSize: geo.size))
-                }
-            } else {
-                placeholderView
-            }
+        AdaptiveCardRoot(content: filmContent) {
+            placeholderView
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .cardBackground()
         .onTapGesture { onTap?() }
     }
 
-    private func contentView(_ data: FilmCardData, metrics: CardLayoutMetrics) -> some View {
-        let posterWidth = min(max(metrics.containerSize.width * (metrics.isLandscape ? 0.24 : 0.28), 54), 110)
+    private var filmContent: AdaptiveCardContent? {
+        guard let data, !data.isEmpty else { return nil }
 
-        return HStack(spacing: metrics.isCompactHeight ? 10 : 14) {
-            posterImageView(data.posterImageURL, width: posterWidth)
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 4) {
-                    Text(data.title)
-                        .font(.system(size: metrics.isWideWidth ? 16 : 14, weight: .semibold))
-                        .lineLimit(metrics.isTallHeight ? 2 : 1)
-                    if data.isWatched {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 11))
-                            .foregroundStyle(.green)
-                    }
-                }
-
-                if !data.year.isEmpty {
-                    Text(data.year)
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                }
-
-                if let director = data.director, !director.isEmpty, !metrics.isCompactWidth {
-                    Text(director)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary.opacity(0.8))
-                        .lineLimit(1)
-                }
-
-                if let genre = data.genre, !genre.isEmpty, metrics.isTallHeight {
-                    Text(genre)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary.opacity(0.7))
-                        .lineLimit(1)
-                }
-
-                Spacer(minLength: 0)
-
-                if let rating = data.rating {
-                    HStack(spacing: 3) {
-                        ForEach(0..<5, id: \.self) { index in
-                            Image(systemName: Double(index + 1) <= rating ? "star.fill" : "star")
-                                .font(.system(size: metrics.isTallHeight ? 14 : 11))
-                                .foregroundStyle(Double(index + 1) <= rating ? .orange : .secondary.opacity(0.3))
-                        }
-                        Text(String(format: "%.1f", rating))
-                            .font(.system(size: metrics.isTallHeight ? 13 : 11, weight: .medium))
-                    }
-                }
-            }
-            Spacer(minLength: 0)
+        var meta: [AdaptiveCardMetaItem] = []
+        if !data.year.isEmpty {
+            meta.append(AdaptiveCardMetaItem(systemImage: "calendar", text: data.year))
         }
-        .padding(metrics.isCompactHeight ? 12 : 16)
-    }
-
-    private func posterImageView(_ url: URL?, width: CGFloat) -> some View {
-        Group {
-            if let url = url {
-                AsyncImage(url: url) { image in
-                    image.resizable().aspectRatio(contentMode: .fill)
-                } placeholder: {
-                    Color.secondary.opacity(0.15).overlay(ProgressView())
-                }
-            } else {
-                Color.secondary.opacity(0.15)
-                    .overlay(
-                        Image(systemName: "film.fill")
-                            .font(.system(size: width * 0.35))
-                            .foregroundStyle(.secondary.opacity(0.4))
-                    )
-            }
+        if let director = data.director, !director.isEmpty {
+            meta.append(AdaptiveCardMetaItem(systemImage: "movieclapper", text: director))
         }
-        .frame(width: width, height: width * 1.5)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        if let genre = data.genre, !genre.isEmpty {
+            meta.append(AdaptiveCardMetaItem(systemImage: "tag", text: genre))
+        }
+
+        return AdaptiveCardContent(
+            preferredLayout: .leadingVisual,
+            accent: Color(red: 0.84, green: 0.48, blue: 0.12),
+            visual: .remoteImage(data.posterImageURL, placeholderSystemName: "film.fill", treatment: .cover),
+            title: data.title,
+            subtitle: data.year.isEmpty ? nil : data.year,
+            body: data.genre,
+            badge: data.isWatched ? AdaptiveCardBadge(text: localizedString("card.film.watched", default: "Watched"), systemImage: "checkmark.circle.fill") : nil,
+            metaItems: meta,
+            footer: data.rating.map { String(format: localizedString("card.film.rating", default: "Rating %.1f"), $0) }
+        )
     }
 
     private var placeholderView: some View {

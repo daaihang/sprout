@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto"
+	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -51,7 +53,7 @@ type appleIdentityVerifier struct {
 	cacheTTL  time.Duration
 
 	mu         sync.RWMutex
-	cachedKeys map[string]ecdsa.PublicKey
+	cachedKeys map[string]applePublicKey
 	cacheUntil time.Time
 }
 
@@ -67,6 +69,12 @@ type appleJWK struct {
 	Crv string `json:"crv"`
 	X   string `json:"x"`
 	Y   string `json:"y"`
+	N   string `json:"n"`
+	E   string `json:"e"`
+}
+
+type applePublicKey struct {
+	Key any
 }
 
 type appleTokenHeader struct {
@@ -111,7 +119,10 @@ func (v *appleIdentityVerifier) VerifyIdentityToken(ctx context.Context, identit
 	if err := decodeJWTPart(parts[0], &header); err != nil {
 		return AppleIdentity{}, ErrAppleIdentityTokenInvalid
 	}
-	if header.Alg != "ES256" || header.Kid == "" {
+	if header.Kid == "" {
+		return AppleIdentity{}, ErrAppleIdentityTokenInvalid
+	}
+	if header.Alg != "RS256" && header.Alg != "ES256" {
 		return AppleIdentity{}, ErrAppleIdentityTokenInvalid
 	}
 
@@ -145,7 +156,7 @@ func (v *appleIdentityVerifier) VerifyIdentityToken(ctx context.Context, identit
 		return AppleIdentity{}, fmt.Errorf("%w: %v", ErrAppleJWKSUnavailable, err)
 	}
 
-	if err := verifyES256(parts[0]+"."+parts[1], parts[2], publicKey); err != nil {
+	if err := verifySignature(header.Alg, parts[0]+"."+parts[1], parts[2], publicKey); err != nil {
 		return AppleIdentity{}, err
 	}
 
@@ -157,7 +168,7 @@ func (v *appleIdentityVerifier) VerifyIdentityToken(ctx context.Context, identit
 	}, nil
 }
 
-func (v *appleIdentityVerifier) publicKey(ctx context.Context, kid string) (ecdsa.PublicKey, error) {
+func (v *appleIdentityVerifier) publicKey(ctx context.Context, kid string) (applePublicKey, error) {
 	v.mu.RLock()
 	if key, ok := v.cachedKeys[kid]; ok && time.Now().UTC().Before(v.cacheUntil) {
 		v.mu.RUnlock()
@@ -173,39 +184,39 @@ func (v *appleIdentityVerifier) publicKey(ctx context.Context, kid string) (ecds
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, v.jwksURL, nil)
 	if err != nil {
-		return ecdsa.PublicKey{}, fmt.Errorf("create apple jwks request: %w", err)
+		return applePublicKey{}, fmt.Errorf("create apple jwks request: %w", err)
 	}
 
 	resp, err := doRequestWithRetry(ctx, v.client, req, 1, 250*time.Millisecond)
 	if err != nil {
-		return ecdsa.PublicKey{}, fmt.Errorf("fetch apple jwks: %w", err)
+		return applePublicKey{}, fmt.Errorf("fetch apple jwks: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 300 {
-		return ecdsa.PublicKey{}, fmt.Errorf("apple jwks status %d", resp.StatusCode)
+		return applePublicKey{}, fmt.Errorf("apple jwks status %d", resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
-		return ecdsa.PublicKey{}, fmt.Errorf("read apple jwks: %w", err)
+		return applePublicKey{}, fmt.Errorf("read apple jwks: %w", err)
 	}
 
 	var jwks appleJWKSet
 	if err := json.Unmarshal(body, &jwks); err != nil {
-		return ecdsa.PublicKey{}, fmt.Errorf("decode apple jwks: %w", err)
+		return applePublicKey{}, fmt.Errorf("decode apple jwks: %w", err)
 	}
 
-	keys := make(map[string]ecdsa.PublicKey, len(jwks.Keys))
+	keys := make(map[string]applePublicKey, len(jwks.Keys))
 	for _, key := range jwks.Keys {
-		publicKey, err := jwkToECDSA(key)
+		publicKey, err := jwkToPublicKey(key)
 		if err != nil {
 			continue
 		}
 		keys[key.Kid] = publicKey
 	}
 	if len(keys) == 0 {
-		return ecdsa.PublicKey{}, fmt.Errorf("apple jwks contained no usable keys")
+		return applePublicKey{}, fmt.Errorf("apple jwks contained no usable keys")
 	}
 
 	v.cachedKeys = keys
@@ -213,7 +224,7 @@ func (v *appleIdentityVerifier) publicKey(ctx context.Context, kid string) (ecds
 
 	key, ok := v.cachedKeys[kid]
 	if !ok {
-		return ecdsa.PublicKey{}, ErrAppleKeyNotFound
+		return applePublicKey{}, ErrAppleKeyNotFound
 	}
 	return key, nil
 }
@@ -224,6 +235,10 @@ func decodeJWTPart[T any](encoded string, out *T) error {
 		return err
 	}
 	return json.Unmarshal(decoded, out)
+}
+
+func DecodeAppleJWTClaimsForDevelopment[T any](encoded string, out *T) error {
+	return decodeJWTPart(encoded, out)
 }
 
 func extractAudience(aud any, allowed map[string]struct{}) (string, bool) {
@@ -245,7 +260,39 @@ func extractAudience(aud any, allowed map[string]struct{}) (string, bool) {
 	return "", false
 }
 
-func verifyES256(unsignedToken, encodedSignature string, publicKey ecdsa.PublicKey) error {
+func verifySignature(alg, unsignedToken, encodedSignature string, publicKey applePublicKey) error {
+	switch alg {
+	case "RS256":
+		rsaKey, ok := publicKey.Key.(*rsa.PublicKey)
+		if !ok {
+			return ErrAppleTokenSignatureInvalid
+		}
+		return verifyRS256(unsignedToken, encodedSignature, rsaKey)
+	case "ES256":
+		ecdsaKey, ok := publicKey.Key.(*ecdsa.PublicKey)
+		if !ok {
+			return ErrAppleTokenSignatureInvalid
+		}
+		return verifyES256(unsignedToken, encodedSignature, ecdsaKey)
+	default:
+		return ErrAppleIdentityTokenInvalid
+	}
+}
+
+func verifyRS256(unsignedToken, encodedSignature string, publicKey *rsa.PublicKey) error {
+	signature, err := base64.RawURLEncoding.DecodeString(encodedSignature)
+	if err != nil {
+		return err
+	}
+
+	sum := sha256.Sum256([]byte(unsignedToken))
+	if err := rsa.VerifyPKCS1v15(publicKey, crypto.SHA256, sum[:], signature); err != nil {
+		return ErrAppleTokenSignatureInvalid
+	}
+	return nil
+}
+
+func verifyES256(unsignedToken, encodedSignature string, publicKey *ecdsa.PublicKey) error {
 	signature, err := base64.RawURLEncoding.DecodeString(encodedSignature)
 	if err != nil {
 		return err
@@ -257,23 +304,48 @@ func verifyES256(unsignedToken, encodedSignature string, publicKey ecdsa.PublicK
 	sum := sha256.Sum256([]byte(unsignedToken))
 	r := new(big.Int).SetBytes(signature[:32])
 	s := new(big.Int).SetBytes(signature[32:])
-	if !ecdsa.Verify(&publicKey, sum[:], r, s) {
+	if !ecdsa.Verify(publicKey, sum[:], r, s) {
 		return ErrAppleTokenSignatureInvalid
 	}
 	return nil
 }
 
-func jwkToECDSA(jwk appleJWK) (ecdsa.PublicKey, error) {
+func jwkToPublicKey(jwk appleJWK) (applePublicKey, error) {
+	switch jwk.Kty {
+	case "RSA":
+		if jwk.N == "" || jwk.E == "" {
+			return applePublicKey{}, ErrAppleIdentityTokenInvalid
+		}
+		key, err := jwkToRSA(jwk)
+		if err != nil {
+			return applePublicKey{}, err
+		}
+		return applePublicKey{Key: key}, nil
+	case "EC":
+		if jwk.Crv != "P-256" || jwk.X == "" || jwk.Y == "" {
+			return applePublicKey{}, ErrAppleIdentityTokenInvalid
+		}
+		key, err := jwkToECDSA(jwk)
+		if err != nil {
+			return applePublicKey{}, err
+		}
+		return applePublicKey{Key: key}, nil
+	default:
+		return applePublicKey{}, ErrAppleIdentityTokenInvalid
+	}
+}
+
+func jwkToECDSA(jwk appleJWK) (*ecdsa.PublicKey, error) {
 	if jwk.Kty != "EC" || jwk.Crv != "P-256" || jwk.X == "" || jwk.Y == "" {
-		return ecdsa.PublicKey{}, ErrAppleIdentityTokenInvalid
+		return nil, ErrAppleIdentityTokenInvalid
 	}
 	xBytes, err := base64.RawURLEncoding.DecodeString(jwk.X)
 	if err != nil {
-		return ecdsa.PublicKey{}, err
+		return nil, err
 	}
 	yBytes, err := base64.RawURLEncoding.DecodeString(jwk.Y)
 	if err != nil {
-		return ecdsa.PublicKey{}, err
+		return nil, err
 	}
 
 	publicKey := ecdsa.PublicKey{
@@ -282,7 +354,35 @@ func jwkToECDSA(jwk appleJWK) (ecdsa.PublicKey, error) {
 		Y:     new(big.Int).SetBytes(yBytes),
 	}
 	if !publicKey.Curve.IsOnCurve(publicKey.X, publicKey.Y) {
-		return ecdsa.PublicKey{}, ErrAppleIdentityTokenInvalid
+		return nil, ErrAppleIdentityTokenInvalid
+	}
+	return &publicKey, nil
+}
+
+func jwkToRSA(jwk appleJWK) (*rsa.PublicKey, error) {
+	nBytes, err := base64.RawURLEncoding.DecodeString(jwk.N)
+	if err != nil {
+		return nil, err
+	}
+	eBytes, err := base64.RawURLEncoding.DecodeString(jwk.E)
+	if err != nil {
+		return nil, err
+	}
+
+	e := 0
+	for _, b := range eBytes {
+		e = (e << 8) | int(b)
+	}
+	if e <= 0 {
+		return nil, ErrAppleIdentityTokenInvalid
+	}
+
+	publicKey := &rsa.PublicKey{
+		N: new(big.Int).SetBytes(nBytes),
+		E: e,
+	}
+	if publicKey.N.Sign() <= 0 {
+		return nil, ErrAppleIdentityTokenInvalid
 	}
 	return publicKey, nil
 }

@@ -59,96 +59,45 @@ struct TodayInHistoryCard: View {
     var data: TodayInHistoryCardData?
 
     var body: some View {
-        Group {
-            if let data, !data.isEmpty {
-                GeometryReader { geo in
-                    contentView(data, metrics: CardLayoutMetrics(containerSize: geo.size))
-                }
-            } else {
-                placeholderView
-            }
+        AdaptiveCardRoot(content: memoryContent) {
+            placeholderView
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .cardBackground()
     }
 
-    private func contentView(_ data: TodayInHistoryCardData, metrics: CardLayoutMetrics) -> some View {
-        let maxItems = metrics.isTallHeight ? 4 : (metrics.isWideWidth ? 3 : 2)
+    private var memoryContent: AdaptiveCardContent? {
+        guard let data, !data.isEmpty else { return nil }
 
-        return VStack(alignment: .leading, spacing: metrics.isCompactHeight ? 8 : 12) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Label(
-                        localizedString("card.memory.title", default: "On This Day"),
-                        systemImage: "clock.arrow.circlepath"
-                    )
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.secondary)
-
-                    Text(data.monthDayLabel)
-                        .font(.system(size: metrics.isWideWidth ? 22 : 18, weight: .bold, design: .rounded))
-                        .foregroundStyle(.primary)
-                }
-
-                Spacer(minLength: 8)
-
-                Text(localizedString("card.memory.count", default: "%d records", arguments: [data.totalCount]))
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(Color.accentColor.opacity(0.08), in: Capsule())
-            }
-
-            Text(
-                localizedString(
-                    "card.memory.summary",
-                    default: "You recorded %d entries on this day before. The earliest was %d years ago.",
-                    arguments: [data.totalCount, max(data.oldestYearsAgo, 1)]
+        let visibleEntries = Array(data.entries.prefix(4))
+        return AdaptiveCardContent(
+            preferredLayout: .stackedInfo,
+            accent: .accentColor,
+            visual: .symbol("clock.arrow.circlepath", tint: .accentColor, renderingMode: .hierarchical),
+            title: localizedString("card.memory.title", default: "On This Day"),
+            subtitle: data.monthDayLabel,
+            body: localizedString(
+                "card.memory.summary",
+                default: "You recorded %d entries on this day before. The earliest was %d years ago.",
+                arguments: [data.totalCount, max(data.oldestYearsAgo, 1)]
+            ),
+            badge: AdaptiveCardBadge(
+                text: localizedString("card.memory.count", default: "%d records", arguments: [data.totalCount]),
+                systemImage: "calendar"
+            ),
+            listItems: visibleEntries.map { entry in
+                AdaptiveCardListItem(
+                    systemImage: "clock",
+                    symbolColor: .accentColor,
+                    title: "\(entry.year) · \(entry.title)",
+                    subtitle: entry.subtitle.isEmpty ? localizedString("card.memory.years_ago", default: "%dY", arguments: [max(entry.yearsAgo, 1)]) : "\(localizedString("card.memory.years_ago", default: "%dY", arguments: [max(entry.yearsAgo, 1)])) · \(entry.subtitle)",
+                    emphasis: true
                 )
-            )
-            .font(.system(size: metrics.isTallHeight ? 14 : 12, weight: .medium))
-            .foregroundStyle(.primary)
-            .lineLimit(metrics.isTallHeight ? 3 : 2)
-
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach(Array(data.entries.prefix(maxItems))) { entry in
-                    HStack(alignment: .top, spacing: 10) {
-                        VStack(spacing: 2) {
-                            Text("\(entry.year)")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(Color.accentColor)
-                            Text(localizedString("card.memory.years_ago", default: "%dY", arguments: [max(entry.yearsAgo, 1)]))
-                                .font(.system(size: 10))
-                                .foregroundStyle(.secondary)
-                        }
-                        .frame(width: 42)
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(entry.title)
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(.primary)
-                                .lineLimit(1)
-                            if !entry.subtitle.isEmpty && (!metrics.isCompactHeight || metrics.isWideWidth) {
-                                Text(entry.subtitle)
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(1)
-                            }
-                        }
-
-                        Spacer(minLength: 0)
-                    }
-                }
-            }
-
-            if data.totalCount > maxItems {
-                Text(localizedString("card.memory.more", default: "+%d more memories", arguments: [data.totalCount - maxItems]))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .padding(metrics.isCompactHeight ? 12 : 16)
+            },
+            footer: data.totalCount > visibleEntries.count
+                ? localizedString("card.memory.more", default: "+%d more memories", arguments: [data.totalCount - visibleEntries.count])
+                : nil
+        )
     }
 
     private var placeholderView: some View {

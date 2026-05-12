@@ -1,6 +1,7 @@
 import Foundation
 import MusicKit
 import Observation
+import UIKit
 
 @Observable
 @MainActor
@@ -9,11 +10,14 @@ final class MusicService {
     var nowPlayingData: MusicCardData? = nil
 
     private var pollingTask: Task<Void, Never>?
+    private var isAppActive = true
+    private var lifecycleObservers: [NSObjectProtocol] = []
 
     init() {
+        registerLifecycleObservers()
         if authorizationStatus == .authorized {
             Task { await refreshNowPlaying() }
-            startPolling()
+            startPollingIfNeeded()
         }
     }
 
@@ -22,7 +26,7 @@ final class MusicService {
         authorizationStatus = status
         if status == .authorized {
             await refreshNowPlaying()
-            startPolling()
+            startPollingIfNeeded()
         }
     }
 
@@ -49,6 +53,7 @@ final class MusicService {
     }
 
     private func startPolling() {
+        guard isAppActive, authorizationStatus == .authorized else { return }
         pollingTask?.cancel()
         pollingTask = Task {
             while !Task.isCancelled {
@@ -58,5 +63,39 @@ final class MusicService {
                 }
             }
         }
+    }
+
+    private func startPollingIfNeeded() {
+        if isAppActive {
+            startPolling()
+        } else {
+            pollingTask?.cancel()
+            pollingTask = nil
+        }
+    }
+
+    private func stopPolling() {
+        pollingTask?.cancel()
+        pollingTask = nil
+    }
+
+    private func registerLifecycleObservers() {
+        let center = NotificationCenter.default
+        lifecycleObservers.append(
+            center.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.isAppActive = true
+                    self?.startPollingIfNeeded()
+                }
+            }
+        )
+        lifecycleObservers.append(
+            center.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.isAppActive = false
+                    self?.stopPolling()
+                }
+            }
+        )
     }
 }

@@ -1,13 +1,11 @@
 import SwiftUI
 
 struct TopNavigationBar: View {
-    @State private var isShowingMenu = false
+    @Environment(AppLocalization.self) private var localization
     let onProfileTapped: () -> Void
 
     private var currentDateString: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "M月d日 · EEEE"
-        return formatter.string(from: Date())
+        localization.templateDateString(from: Date(), template: "MMMMdEEEE")
     }
 
     var body: some View {
@@ -16,16 +14,16 @@ struct TopNavigationBar: View {
                 Menu {
                     Button {
                     } label: {
-                        Label("看板", systemImage: "square.grid.2x2")
+                        Label(t("content.nav.dashboard", "Dashboard"), systemImage: "square.grid.2x2")
                     }
 
                     Button {
                     } label: {
-                        Label("日历", systemImage: "calendar")
+                        Label(t("content.nav.calendar", "Calendar"), systemImage: "calendar")
                     }
                 } label: {
                     HStack(spacing: 4) {
-                        Text("Today")
+                        Text(t("content.date.today", "Today"))
                             .font(.largeTitle.bold())
                             .foregroundColor(.primary)
                         Image(systemName: "chevron.down")
@@ -51,6 +49,10 @@ struct TopNavigationBar: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
+    }
+
+    private func t(_ key: String, _ defaultValue: String, _ arguments: CVarArg...) -> String {
+        localization.string(key, default: defaultValue, arguments: arguments)
     }
 }
 

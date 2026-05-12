@@ -335,7 +335,7 @@ struct AddCardSheet: View {
         record.dashboardOrder = record.createdAt.timeIntervalSince1970
 
         // Set default size based on card type limits
-        let limits = cardSizeLimits[cardType] ?? CardSizeLimits(minWidth: 4, maxWidth: 4, minHeight: 1, maxHeight: 4)
+        let limits = cardSizeLimits[cardType] ?? sharedCardSizeLimits
         record.cardWidthColumns = limits.defaultSpan.widthColumns
         record.cardUnits = limits.defaultSpan.heightUnits
 
@@ -385,21 +385,22 @@ struct AddCardSheet: View {
             dismiss()
 
         case "photo":
-            var cards: [MediaCard] = []
-            for (i, img) in capturedImages.enumerated() {
-                let m = MediaCard()
-                m.type          = "photo"
-                m.sortIndex     = i
-                m.imageData     = img.jpegData(compressionQuality: 0.85)
-                m.thumbnailData = img
-                    .preparingThumbnail(of: CGSize(width: 300, height: 300))?
-                    .jpegData(compressionQuality: 0.7)
-                modelContext.insert(m)
-                cards.append(m)
+            Task { @MainActor in
+                let payloads = await preparePhotoMediaPayloads(from: capturedImages)
+                var cards: [MediaCard] = []
+                for (i, payload) in payloads.enumerated() {
+                    let m = MediaCard()
+                    m.type = "photo"
+                    m.sortIndex = i
+                    m.imageData = payload.imageData
+                    m.thumbnailData = payload.thumbnailData
+                    modelContext.insert(m)
+                    cards.append(m)
+                }
+                modelContext.insert(record)
+                if !cards.isEmpty { record.mediaCards = cards }
+                dismiss()
             }
-            modelContext.insert(record)
-            if !cards.isEmpty { record.mediaCards = cards }
-            dismiss()
 
         case "todo":
             guard !todoData.isEmpty else { return }

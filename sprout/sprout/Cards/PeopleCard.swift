@@ -69,116 +69,63 @@ struct PeopleCard: View {
     var onTap: (() -> Void)? = nil
 
     var body: some View {
-        Group {
-            if let data, !data.isEmpty {
-                GeometryReader { geo in
-                    contentView(data, metrics: CardLayoutMetrics(containerSize: geo.size))
-                }
-            } else {
-                placeholderView
-            }
+        AdaptiveCardRoot(content: peopleContent) {
+            placeholderView
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .cardBackground()
         .onTapGesture { onTap?() }
     }
 
-    @ViewBuilder
-    private func contentView(_ data: PeopleCardData, metrics: CardLayoutMetrics) -> some View {
+    private var peopleContent: AdaptiveCardContent? {
+        guard let data, !data.isEmpty else { return nil }
+
         if data.count == 1, let person = data.people.first {
-            singlePersonView(person, metrics: metrics)
-        } else {
-            multiPersonView(data, metrics: metrics)
-        }
-    }
-
-    private func singlePersonView(_ person: PersonCardItem, metrics: CardLayoutMetrics) -> some View {
-        HStack(spacing: metrics.isCompactHeight ? 10 : 14) {
-            avatarView(for: person, size: metrics.isCompactHeight ? 48 : (metrics.isWideWidth ? 76 : 64))
-
-            VStack(alignment: .leading, spacing: 6) {
-                Text(person.displayName)
-                    .font(.system(size: metrics.isWideWidth ? 18 : 15, weight: .semibold))
-                    .lineLimit(2)
-
-                if !person.subtitle.isEmpty {
-                    Text(person.subtitle)
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-
-                Spacer(minLength: 0)
-
-                HStack(spacing: 8) {
-                    Label(
-                        localizedString("card.people.mentions", default: "%d mentions", arguments: [max(person.mentionCount, 1)]),
-                        systemImage: "bubble.left.and.bubble.right"
-                    )
-                    .lineLimit(1)
-
-                    if let lastMentionedAt = person.lastMentionedAt, !metrics.isCompactWidth {
-                        Text(lastMentionedAt.formatted(date: .abbreviated, time: .omitted))
-                            .lineLimit(1)
-                    }
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
-
-            Spacer(minLength: 0)
-        }
-        .padding(metrics.isCompactHeight ? 12 : 16)
-    }
-
-    private func multiPersonView(_ data: PeopleCardData, metrics: CardLayoutMetrics) -> some View {
-        let visibleCount = metrics.isTallHeight ? min(4, data.count) : (metrics.isWideWidth ? min(3, data.count) : min(2, data.count))
-
-        return VStack(alignment: .leading, spacing: metrics.isCompactHeight ? 10 : 14) {
-            HStack {
-                Label(
-                    localizedString("card.people.title", default: "People"),
-                    systemImage: "person.2.fill"
+            var meta: [AdaptiveCardMetaItem] = [
+                AdaptiveCardMetaItem(
+                    systemImage: "bubble.left.and.bubble.right",
+                    text: localizedString("card.people.mentions", default: "%d mentions", arguments: [max(person.mentionCount, 1)])
                 )
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.secondary)
+            ]
 
-                Spacer()
-
-                Text(localizedString("card.people.count", default: "%d people", arguments: [data.count]))
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
+            if let lastMentionedAt = person.lastMentionedAt {
+                meta.append(AdaptiveCardMetaItem(systemImage: "calendar", text: lastMentionedAt.formatted(date: .abbreviated, time: .omitted)))
             }
 
-            VStack(spacing: 10) {
-                ForEach(Array(data.people.prefix(visibleCount))) { person in
-                    HStack(spacing: 10) {
-                        avatarView(for: person, size: metrics.isCompactHeight ? 36 : 44)
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(person.displayName)
-                                .font(.system(size: 13, weight: .semibold))
-                                .lineLimit(1)
-                            if !person.subtitle.isEmpty && !metrics.isCompactWidth {
-                                Text(person.subtitle)
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(1)
-                            }
-                        }
-
-                        Spacer()
-                    }
-                }
-            }
-
-            if data.count > visibleCount {
-                Text(localizedString("card.people.more", default: "+%d more", arguments: [data.count - visibleCount]))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+            return AdaptiveCardContent(
+                preferredLayout: .leadingVisual,
+                accent: .accentColor,
+                visual: .custom(treatment: .thumbnail) {
+                    avatarView(for: person, size: 76)
+                },
+                title: person.displayName,
+                subtitle: person.subtitle.isEmpty ? localizedString("card.people.single", default: "Person") : person.subtitle,
+                badge: AdaptiveCardBadge(text: "\(max(person.mentionCount, 1))", systemImage: "person.fill"),
+                metaItems: meta
+            )
         }
-        .padding(metrics.isCompactHeight ? 12 : 16)
+
+        let visiblePeople = Array(data.people.prefix(4))
+        return AdaptiveCardContent(
+            preferredLayout: .listSummary,
+            accent: .accentColor,
+            visual: .symbol("person.2.fill", tint: .accentColor, renderingMode: .hierarchical),
+            title: localizedString("card.people.title", default: "People"),
+            subtitle: localizedString("card.people.count", default: "%d people", arguments: [data.count]),
+            badge: AdaptiveCardBadge(text: "\(data.count)", systemImage: "person.2.fill"),
+            listItems: visiblePeople.map { person in
+                AdaptiveCardListItem(
+                    systemImage: "person.crop.circle",
+                    symbolColor: .accentColor,
+                    title: person.displayName,
+                    subtitle: person.subtitle.isEmpty ? nil : person.subtitle,
+                    emphasis: true
+                )
+            },
+            footer: data.count > visiblePeople.count
+                ? localizedString("card.people.more", default: "+%d more", arguments: [data.count - visiblePeople.count])
+                : nil
+        )
     }
 
     @ViewBuilder
