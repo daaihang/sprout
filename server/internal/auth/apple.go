@@ -22,8 +22,13 @@ import (
 )
 
 var (
-	ErrAppleIdentityTokenInvalid = errors.New("invalid apple identity token")
-	ErrAppleNonceMismatch        = errors.New("apple nonce mismatch")
+	ErrAppleIdentityTokenInvalid  = errors.New("invalid apple identity token")
+	ErrAppleIssuerMismatch        = errors.New("apple issuer mismatch")
+	ErrAppleAudienceMismatch      = errors.New("apple audience mismatch")
+	ErrAppleJWKSUnavailable       = errors.New("apple jwks unavailable")
+	ErrAppleKeyNotFound           = errors.New("apple jwks key not found")
+	ErrAppleTokenSignatureInvalid = errors.New("apple token signature invalid")
+	ErrAppleNonceMismatch         = errors.New("apple nonce mismatch")
 )
 
 type AppleIdentity struct {
@@ -115,6 +120,9 @@ func (v *appleIdentityVerifier) VerifyIdentityToken(ctx context.Context, identit
 		return AppleIdentity{}, ErrAppleIdentityTokenInvalid
 	}
 	if claims.Iss != v.issuer || claims.Sub == "" {
+		if claims.Iss != v.issuer {
+			return AppleIdentity{}, ErrAppleIssuerMismatch
+		}
 		return AppleIdentity{}, ErrAppleIdentityTokenInvalid
 	}
 	if time.Now().UTC().Unix() >= claims.Exp {
@@ -123,7 +131,7 @@ func (v *appleIdentityVerifier) VerifyIdentityToken(ctx context.Context, identit
 
 	audience, ok := extractAudience(claims.Aud, v.audiences)
 	if !ok {
-		return AppleIdentity{}, ErrAppleIdentityTokenInvalid
+		return AppleIdentity{}, ErrAppleAudienceMismatch
 	}
 	if expectedNonce != "" && claims.Nonce != sha256Hex(expectedNonce) {
 		return AppleIdentity{}, ErrAppleNonceMismatch
@@ -131,11 +139,14 @@ func (v *appleIdentityVerifier) VerifyIdentityToken(ctx context.Context, identit
 
 	publicKey, err := v.publicKey(ctx, header.Kid)
 	if err != nil {
-		return AppleIdentity{}, err
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return AppleIdentity{}, err
+		}
+		return AppleIdentity{}, fmt.Errorf("%w: %v", ErrAppleJWKSUnavailable, err)
 	}
 
 	if err := verifyES256(parts[0]+"."+parts[1], parts[2], publicKey); err != nil {
-		return AppleIdentity{}, ErrAppleIdentityTokenInvalid
+		return AppleIdentity{}, err
 	}
 
 	return AppleIdentity{
@@ -202,7 +213,7 @@ func (v *appleIdentityVerifier) publicKey(ctx context.Context, kid string) (ecds
 
 	key, ok := v.cachedKeys[kid]
 	if !ok {
-		return ecdsa.PublicKey{}, ErrAppleIdentityTokenInvalid
+		return ecdsa.PublicKey{}, ErrAppleKeyNotFound
 	}
 	return key, nil
 }
@@ -240,14 +251,14 @@ func verifyES256(unsignedToken, encodedSignature string, publicKey ecdsa.PublicK
 		return err
 	}
 	if len(signature) != 64 {
-		return ErrAppleIdentityTokenInvalid
+		return ErrAppleTokenSignatureInvalid
 	}
 
 	sum := sha256.Sum256([]byte(unsignedToken))
 	r := new(big.Int).SetBytes(signature[:32])
 	s := new(big.Int).SetBytes(signature[32:])
 	if !ecdsa.Verify(&publicKey, sum[:], r, s) {
-		return ErrAppleIdentityTokenInvalid
+		return ErrAppleTokenSignatureInvalid
 	}
 	return nil
 }

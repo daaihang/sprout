@@ -95,6 +95,16 @@ func (s *Server) handleAuthApple(w http.ResponseWriter, r *http.Request) {
 				writeError(w, http.StatusUnauthorized, "apple identity token expired")
 			case errors.Is(err, auth.ErrAppleNonceMismatch):
 				writeError(w, http.StatusUnauthorized, "apple nonce mismatch")
+			case errors.Is(err, auth.ErrAppleIssuerMismatch):
+				writeError(w, http.StatusUnauthorized, "apple issuer mismatch")
+			case errors.Is(err, auth.ErrAppleAudienceMismatch):
+				writeError(w, http.StatusUnauthorized, "apple audience mismatch")
+			case errors.Is(err, auth.ErrAppleJWKSUnavailable):
+				writeError(w, http.StatusServiceUnavailable, "apple jwks unavailable")
+			case errors.Is(err, auth.ErrAppleKeyNotFound):
+				writeError(w, http.StatusUnauthorized, "apple jwks key not found")
+			case errors.Is(err, auth.ErrAppleTokenSignatureInvalid):
+				writeError(w, http.StatusUnauthorized, "apple token signature invalid")
 			default:
 				writeError(w, http.StatusUnauthorized, "invalid apple identity token")
 			}
