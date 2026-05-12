@@ -41,15 +41,12 @@ enum MoryConfig {
     static let entitlementID = string(for: "REVENUECAT_ENTITLEMENT_ID", fallback: "Sprout Grow")
     static let entitlementFallbackIDs = stringList(for: "REVENUECAT_ENTITLEMENT_FALLBACK_IDS")
     static let offeringID = string(for: "REVENUECAT_OFFERING_ID", fallback: "sprout_grow")
-    static var apiBaseURL: String {
+    static var configuredAPIBaseURL: String? {
         let baseURL = string(for: "MORY_API_BASE_URL", fallback: "")
-        if !baseURL.isEmpty {
-            return baseURL
-        }
-        return "https://sprout-god7g.fly.dev"
+        return baseURL.isEmpty ? nil : baseURL
     }
 
-    static var apiHost: String {
-        URL(string: apiBaseURL)?.host ?? apiBaseURL
+    static var apiBaseURL: String {
+        configuredAPIBaseURL ?? "https://sprout-god7g.fly.dev"
     }
 }

@@ -1,14 +1,17 @@
+import AuthenticationServices
 import SwiftUI
 
 struct BackendInteractionDebugView: View {
     @Environment(AppLocalization.self) private var localization
     @Environment(AuthSessionManager.self) private var authSession
+    @State private var currentNonce = ""
 
     var body: some View {
         List {
             Section(t("common.backend.section.connection", "当前连接")) {
-                debugRow(title: t("common.backend.base_url", "Base URL"), value: MoryConfig.apiBaseURL)
-                debugRow(title: t("common.backend.host", "主机名"), value: MoryConfig.apiHost)
+                debugRow(title: t("common.backend.configured_base_url", "配置中的 Base URL"), value: MoryConfig.configuredAPIBaseURL ?? "-")
+                debugRow(title: t("common.backend.base_url", "生效 Base URL"), value: MoryConfig.apiBaseURL)
+                debugRow(title: t("common.backend.host", "主机名"), value: backendHost)
                 debugRow(title: t("common.backend.environment", "运行环境"), value: currentEnvironment)
                 debugRow(title: t("common.backend.auth_state", "登录状态"), value: authState)
                 debugRow(title: t("common.backend.last_error", "最近错误"), value: authSession.errorMessage ?? "-")
@@ -45,6 +48,19 @@ struct BackendInteractionDebugView: View {
             }
 
             Section(t("common.backend.section.apple", "Apple 登录调试")) {
+                SignInWithAppleButton(.signIn) { request in
+                    let nonce = AppleNonce.random()
+                    currentNonce = nonce
+                    request.requestedScopes = [.fullName, .email]
+                    request.nonce = AppleNonce.sha256(nonce)
+                } onCompletion: { result in
+                    handleAppleSignIn(result: result)
+                }
+                .signInWithAppleButtonStyle(.black)
+                .frame(height: 52)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .disabled(authSession.isAuthenticating)
+
                 debugRow(title: t("common.backend.identity_token", "Identity Token"), value: authSession.lastAppleIdentityToken ?? "-", multiline: true)
                 debugRow(title: t("common.backend.raw_nonce", "原始 Nonce"), value: authSession.lastAppleRawNonce ?? "-", multiline: true)
                 debugRow(title: t("common.backend.hashed_nonce", "哈希 Nonce"), value: authSession.lastAppleHashedNonce ?? "-", multiline: true)
@@ -59,6 +75,9 @@ struct BackendInteractionDebugView: View {
         .listStyle(.insetGrouped)
         .navigationTitle(t("common.backend.title", "前后端交互"))
         .navigationBarTitleDisplayMode(.inline)
+        .task {
+            await authSession.runHealthCheck()
+        }
     }
 
     @ViewBuilder
@@ -115,6 +134,10 @@ struct BackendInteractionDebugView: View {
         }
     }
 
+    private var backendHost: String {
+        URL(string: MoryConfig.apiBaseURL)?.host ?? "-"
+    }
+
     private func boolText(_ value: Bool) -> String {
         value ? t("common.backend.yes", "是") : t("common.backend.no", "否")
     }
@@ -132,6 +155,26 @@ struct BackendInteractionDebugView: View {
             .sorted { $0.key < $1.key }
             .map { "\($0.key): \($0.value)" }
             .joined(separator: "\n")
+    }
+
+    private func handleAppleSignIn(result: Result<ASAuthorization, Error>) {
+        switch result {
+        case let .success(authorization):
+            guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
+                  let tokenData = credential.identityToken,
+                  let identityToken = String(data: tokenData, encoding: .utf8) else {
+                authSession.errorMessage = AuthError.missingIdentityToken.localizedDescription
+                return
+            }
+
+            Task {
+                await authSession.signInWithApple(
+                    payload: .init(identityToken: identityToken, rawNonce: currentNonce)
+                )
+            }
+        case let .failure(error):
+            authSession.errorMessage = error.localizedDescription
+        }
     }
 
     private func t(_ key: String, _ defaultValue: String, _ arguments: CVarArg...) -> String {
