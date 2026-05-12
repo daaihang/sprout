@@ -6,7 +6,8 @@ enum MoryConfig {
     static var revenueCatAPIKey: String {
         guard let key = Bundle.main.infoDictionary?["REVENUECAT_API_KEY"] as? String,
               !key.isEmpty,
-              !key.hasPrefix("appl_REPLACE") else {
+              !key.hasPrefix("appl_REPLACE"),
+              !key.hasPrefix("test_REPLACE") else {
             assertionFailure("""
                 REVENUECAT_API_KEY is not configured.
                 Open sprout/Config/Debug.xcconfig and replace the placeholder with your
@@ -41,6 +42,11 @@ enum MoryConfig {
     static let entitlementFallbackIDs = stringList(for: "REVENUECAT_ENTITLEMENT_FALLBACK_IDS")
     static let offeringID = string(for: "REVENUECAT_OFFERING_ID", fallback: "sprout_grow")
     static var apiBaseURL: String {
+        let baseURL = string(for: "MORY_API_BASE_URL", fallback: "")
+        if !baseURL.isEmpty {
+            return baseURL
+        }
+
         let scheme = string(for: "MORY_API_SCHEME", fallback: "http")
         let host = string(for: "MORY_API_HOST", fallback: "127.0.0.1")
         let port = string(for: "MORY_API_PORT", fallback: "8080")
