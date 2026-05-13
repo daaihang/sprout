@@ -173,43 +173,16 @@ struct RecordDetailView: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(memoryView.artifacts.prefix(6), id: \.id) { artifact in
-                    HStack(alignment: .top, spacing: 10) {
-                        Text(kindBadge(artifact.kind))
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(Color.accentColor)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Color.accentColor.opacity(0.12), in: Capsule())
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(artifact.title.isEmpty ? kindLabel(artifact.kind) : artifact.title)
-                                .font(.subheadline.weight(.medium))
-                                .foregroundStyle(.primary)
-                                .lineLimit(2)
-                            if !artifact.summary.isEmpty {
-                                Text(artifact.summary)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(2)
-                            } else if !artifact.textContent.isEmpty {
-                                Text(String(artifact.textContent.prefix(120)))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(2)
-                            }
-
-                            if let entityNames = artifactEntityNamesByArtifactID[artifact.id], !entityNames.isEmpty {
-                                Text(entityNames.prefix(3).joined(separator: " · "))
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary.opacity(0.85))
-                                    .lineLimit(1)
-                            }
-                        }
-
-                        Spacer()
+                    NavigationLink {
+                        ArtifactDetailView(artifact: artifact)
+                    } label: {
+                        ArtifactRowView(
+                            artifact: artifact,
+                            entityNames: artifactEntityNamesByArtifactID[artifact.id] ?? [],
+                            style: .compact
+                        )
                     }
-                    .padding(10)
-                    .background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .buttonStyle(.plain)
                 }
             }
         }
@@ -878,26 +851,6 @@ struct RecordDetailView: View {
         }
     }
 
-    private func kindBadge(_ kind: ArtifactKind) -> String {
-        switch kind {
-        case .text: return "TEXT"
-        case .photo: return "PHOTO"
-        case .audio: return "VOICE"
-        case .music: return "MUSIC"
-        case .link: return "LINK"
-        case .location: return "PLACE"
-        case .weather: return "WEATHER"
-        case .todo: return "TODO"
-        case .personMention: return "PERSON"
-        case .decisionNote: return "DECISION"
-        case .book: return "BOOK"
-        case .film: return "FILM"
-        case .game: return "GAME"
-        case .ticket: return "TICKET"
-        case .healthMetric: return "HEALTH"
-        }
-    }
-
     private func evidenceCallout(title: String, body: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
@@ -930,18 +883,6 @@ struct RecordDetailView: View {
 
     private func t(_ key: String, _ defaultValue: String, _ arguments: CVarArg...) -> String {
         localization.string(key, default: defaultValue, arguments: arguments)
-    }
-}
-
-// MARK: - Section label
-
-private struct SectionLabel: View {
-    let icon: String
-    let title: String
-    var body: some View {
-        Label(title, systemImage: icon)
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(.secondary)
     }
 }
 

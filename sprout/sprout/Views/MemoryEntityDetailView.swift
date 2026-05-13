@@ -132,16 +132,12 @@ struct MemoryEntityDetailView: View {
         VStack(alignment: .leading, spacing: 12) {
             sectionTitle("shippingbox", t("memory.entity.related_artifacts", "Related Artifacts"))
             ForEach(entityView.relatedArtifacts.prefix(6), id: \.id) { artifact in
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(artifact.title.isEmpty ? artifact.kind.rawValue.capitalized : artifact.title)
-                        .font(.subheadline.weight(.medium))
-                    if !artifact.summary.isEmpty {
-                        Text(artifact.summary)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                    }
+                NavigationLink {
+                    ArtifactDetailView(artifact: artifact)
+                } label: {
+                    ArtifactRowView(artifact: artifact, style: .compact)
                 }
+                .buttonStyle(.plain)
             }
         }
         .detailCard()

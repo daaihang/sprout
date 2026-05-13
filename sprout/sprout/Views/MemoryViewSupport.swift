@@ -40,3 +40,14 @@ extension View {
             .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
     }
 }
+
+struct SectionLabel: View {
+    let icon: String
+    let title: String
+
+    var body: some View {
+        Label(title, systemImage: icon)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(.secondary)
+    }
+}

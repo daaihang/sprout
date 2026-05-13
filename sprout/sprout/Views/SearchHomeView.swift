@@ -399,7 +399,12 @@ struct SearchHomeView: View {
                 if !filteredArtifacts.isEmpty {
                     browseSection(title: "Artifacts", subtitle: "Text, media, and referenced fragments") {
                         ForEach(filteredArtifacts, id: \.id) { artifact in
-                            artifactRow(artifact)
+                            NavigationLink {
+                                ArtifactDetailView(artifact: artifact)
+                            } label: {
+                                ArtifactRowView(artifact: artifact, style: .card)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                 }
@@ -525,37 +530,6 @@ struct SearchHomeView: View {
             Text(record.createdAt.formatted(date: .abbreviated, time: .shortened))
                 .font(.caption)
                 .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(Color.white.opacity(0.78), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-    }
-
-    private func artifactRow(_ artifact: Artifact) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
-                Text(artifact.kind.rawValue.capitalized)
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.purple)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.purple.opacity(0.12), in: Capsule())
-                Text(artifact.title.isEmpty ? "Untitled Artifact" : artifact.title)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.primary)
-            }
-
-            if !artifact.summary.isEmpty {
-                Text(artifact.summary)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            } else if !artifact.textContent.isEmpty {
-                Text(String(artifact.textContent.prefix(140)))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
