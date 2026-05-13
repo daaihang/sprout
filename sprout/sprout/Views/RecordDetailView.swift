@@ -61,6 +61,10 @@ struct RecordDetailView: View {
         linkedArcs.first.flatMap { memoryRepository.linkedReflection(forArcID: $0.id) }
     }
 
+    private var linkedRecordReflection: ReflectionSnapshot? {
+        memoryView?.reflection
+    }
+
     private var artifactEntityNamesByArtifactID: [UUID: [String]] {
         guard let memoryView else { return [:] }
         let entityMap = Dictionary(uniqueKeysWithValues: memoryView.linkedEntities.map { ($0.id, $0) })
@@ -116,6 +120,9 @@ struct RecordDetailView: View {
                 }
                 if let firstArc = linkedArcs.first {
                     phaseContextSection(firstArc, reflection: linkedPhaseReflection)
+                }
+                if let linkedRecordReflection {
+                    recordReflectionSection(linkedRecordReflection)
                 }
                 ForEach(orderedSections, id: \.self) { section in
                     sectionView(for: section)
@@ -235,6 +242,36 @@ struct RecordDetailView: View {
         .detailCard()
     }
 
+    @ViewBuilder
+    private func recordReflectionSection(_ reflection: ReflectionSnapshot) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionLabel(icon: "sparkles", title: "Record Reflection")
+
+            NavigationLink {
+                ReflectionDetailView(reflection: reflection)
+            } label: {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(reflection.title)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    Text(reflection.body)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(4)
+                    HStack(spacing: 8) {
+                        SignalPill(title: reflection.statusDisplayText, tint: reflectionStatusTint(reflection.status))
+                        SignalPill(title: "\(reflection.sourceArtifactIDs.count) artifacts", tint: .blue)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(12)
+                .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+            .buttonStyle(.plain)
+        }
+        .detailCard()
+    }
+
     private var navigationTitle: String {
         if !record.body.isEmpty { return String(record.body.prefix(24)) }
         if let loc = record.location, !loc.isEmpty { return loc }
@@ -252,6 +289,17 @@ struct RecordDetailView: View {
             return loc
         }
         return "Untitled Capture"
+    }
+
+    private func reflectionStatusTint(_ status: ReflectionStatus) -> Color {
+        switch status {
+        case .active:
+            return .blue
+        case .saved:
+            return .green
+        case .dismissed:
+            return .secondary
+        }
     }
 
     private var captureSubtitleText: String {

@@ -38,6 +38,7 @@ final class SproutMemoryRepository {
         var artifacts: [Artifact]
         var analysis: RecordAnalysisSnapshot?
         var linkedEntities: [EntityNode]
+        var reflection: ReflectionSnapshot?
     }
 
     struct ArtifactEvidenceView: Sendable {
@@ -169,6 +170,11 @@ final class SproutMemoryRepository {
         entityEdges = graphResult.entityEdges
         artifactEntityLinks = graphResult.artifactEntityLinks
         rebuildTemporalArcs()
+        upsertRecordReflection(
+            for: analysis,
+            aggregate: aggregate,
+            sourceEntityIDs: graphResult.resolvedEntityIDs
+        )
         save()
     }
 
@@ -211,7 +217,8 @@ final class SproutMemoryRepository {
             recordShell: shell,
             artifacts: artifacts(forRecordID: recordID),
             analysis: analysis(for: recordID),
-            linkedEntities: linkedEntities(forRecordID: recordID)
+            linkedEntities: linkedEntities(forRecordID: recordID),
+            reflection: recordReflection(forRecordID: recordID)
         )
     }
 
@@ -243,6 +250,12 @@ final class SproutMemoryRepository {
     func linkedReflection(forArcID arcID: UUID) -> ReflectionSnapshot? {
         guard let reflectionID = temporalArc(for: arcID)?.linkedReflectionID else { return nil }
         return reflections.first { $0.id == reflectionID }
+    }
+
+    func recordReflection(forRecordID recordID: UUID) -> ReflectionSnapshot? {
+        reflections.first {
+            $0.type == .record && $0.sourceRecordIDs.contains(recordID)
+        }
     }
 
     func savedReflectionsForHome(referenceDate: Date, limit: Int = 3) -> [ReflectionSnapshot] {
@@ -738,6 +751,106 @@ final class SproutMemoryRepository {
         temporalArcs = bundles.map(\.arc)
         reflections.removeAll { $0.type == .phase }
         reflections.append(contentsOf: bundles.map(\.reflection))
+    }
+
+    private func upsertRecordReflection(
+        for analysis: RecordAnalysisSnapshot,
+        aggregate: SproutMemoryAggregate,
+        sourceEntityIDs: [UUID]
+    ) {
+        let recordID = aggregate.recordShell.id
+        let existing = recordReflection(forRecordID: recordID)
+        let linkedArcID = temporalArcs.first {
+            $0.status == .accepted && $0.sourceRecordIDs.contains(recordID)
+        }?.id
+
+        let reflection = ReflectionSnapshot(
+            id: existing?.id ?? UUID(),
+            type: .record,
+            title: recordReflectionTitle(for: analysis, aggregate: aggregate),
+            body: recordReflectionBody(for: analysis, aggregate: aggregate),
+            evidenceSummary: recordReflectionEvidenceSummary(
+                analysis: analysis,
+                artifactCount: aggregate.artifacts.count,
+                entityCount: sourceEntityIDs.count
+            ),
+            confidence: analysis.salienceScore.map { min(max($0, 0), 1) },
+            status: existing?.status ?? .active,
+            linkedTemporalArcID: existing?.linkedTemporalArcID ?? linkedArcID,
+            sourceRecordIDs: [recordID],
+            sourceArtifactIDs: aggregate.artifacts.map(\.id),
+            sourceEntityIDs: sourceEntityIDs,
+            createdAt: existing?.createdAt ?? analysis.createdAt,
+            savedAt: existing?.savedAt,
+            dismissedAt: existing?.dismissedAt
+        )
+
+        if let index = reflections.firstIndex(where: {
+            $0.type == .record && $0.sourceRecordIDs.contains(recordID)
+        }) {
+            reflections[index] = reflection
+        } else {
+            reflections.append(reflection)
+        }
+    }
+
+    private func recordReflectionTitle(
+        for analysis: RecordAnalysisSnapshot,
+        aggregate: SproutMemoryAggregate
+    ) -> String {
+        if let theme = analysis.tags.first?.trimmingCharacters(in: .whitespacesAndNewlines), !theme.isEmpty {
+            return "\(theme.capitalized) Reflection"
+        }
+        if let mood = aggregate.recordShell.userMood?.trimmingCharacters(in: .whitespacesAndNewlines), !mood.isEmpty {
+            return "\(mood.capitalized) Reflection"
+        }
+        let emotion = analysis.emotionLabel.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !emotion.isEmpty {
+            return "\(emotion.capitalized) Reflection"
+        }
+        return "Record Reflection"
+    }
+
+    private func recordReflectionBody(
+        for analysis: RecordAnalysisSnapshot,
+        aggregate: SproutMemoryAggregate
+    ) -> String {
+        if let hint = analysis.reflectionHint?.trimmingCharacters(in: .whitespacesAndNewlines), !hint.isEmpty {
+            return hint
+        }
+
+        var parts: [String] = []
+        let insight = analysis.insight.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !insight.isEmpty {
+            parts.append(insight)
+        }
+
+        let themes = analysis.tags.prefix(3)
+        if !themes.isEmpty {
+            parts.append("Themes: \(themes.joined(separator: " · "))")
+        }
+
+        let entities = analysis.entities.prefix(3).map(\.name)
+        if !entities.isEmpty {
+            parts.append("Entities: \(entities.joined(separator: " · "))")
+        }
+
+        parts.append("Captured via \(aggregate.recordShell.captureSource.rawValue.replacingOccurrences(of: "_", with: " ")).")
+        return parts.joined(separator: "\n\n")
+    }
+
+    private func recordReflectionEvidenceSummary(
+        analysis: RecordAnalysisSnapshot,
+        artifactCount: Int,
+        entityCount: Int
+    ) -> String? {
+        let parts = [
+            artifactCount > 0 ? "\(artifactCount) artifacts" : nil,
+            entityCount > 0 ? "\(entityCount) entities" : nil,
+            analysis.tags.isEmpty ? nil : analysis.tags.prefix(3).joined(separator: " · ")
+        ].compactMap { $0 }
+
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
     private func recordShells(on referenceDate: Date) -> [RecordShell] {
