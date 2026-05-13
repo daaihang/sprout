@@ -6,6 +6,10 @@ struct TemporalArcDetailView: View {
     @Environment(SproutMemoryRepository.self) private var memoryRepository
     let arc: TemporalArc
 
+    private var evidenceView: SproutMemoryRepository.ArcEvidenceView? {
+        memoryRepository.arcEvidenceView(for: arc.id)
+    }
+
     private var relatedRecords: [Record] {
         let records = (try? modelContext.fetch(FetchDescriptor<Record>())) ?? []
         let ids = Set(arc.sourceRecordIDs)
@@ -50,6 +54,12 @@ struct TemporalArcDetailView: View {
             Text(dateRangeText)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+
+            if let evidenceView {
+                Text(arcEvidenceSummary(for: evidenceView))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .detailCard()
     }
@@ -81,6 +91,9 @@ struct TemporalArcDetailView: View {
             }
             if !arc.entityNames.isEmpty {
                 labelRow(title: "Entities", value: arc.entityNames.prefix(4).joined(separator: ", "))
+            }
+            if let evidenceView, !evidenceView.relatedAnalyses.isEmpty {
+                labelRow(title: "Analyses", value: "\(evidenceView.relatedAnalyses.count)")
             }
 
             labelRow(title: "Memories", value: "\(arc.sourceRecordIDs.count)")
@@ -134,5 +147,15 @@ struct TemporalArcDetailView: View {
         formatter.dateStyle = .medium
         formatter.timeStyle = .none
         return formatter.string(from: arc.startDate, to: arc.endDate)
+    }
+
+    private func arcEvidenceSummary(for evidenceView: SproutMemoryRepository.ArcEvidenceView) -> String {
+        let parts = [
+            evidenceView.relatedRecordShells.isEmpty ? nil : "\(evidenceView.relatedRecordShells.count) memories",
+            evidenceView.relatedAnalyses.isEmpty ? nil : "\(evidenceView.relatedAnalyses.count) analyses",
+            evidenceView.linkedEntities.isEmpty ? nil : "\(evidenceView.linkedEntities.count) entities"
+        ].compactMap { $0 }
+
+        return parts.isEmpty ? "No linked evidence yet" : parts.joined(separator: " · ")
     }
 }

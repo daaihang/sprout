@@ -39,7 +39,8 @@ struct ArcsHomeView: View {
     }
 
     private func featuredSection(_ arc: TemporalArc) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let evidenceView = memoryRepository.arcEvidenceView(for: arc.id)
+        return VStack(alignment: .leading, spacing: 12) {
             Text("Current Phase")
                 .font(.headline)
 
@@ -58,6 +59,12 @@ struct ArcsHomeView: View {
                 .frame(height: 220)
             }
             .buttonStyle(.plain)
+
+            if let evidenceView {
+                Text(arcEvidenceSummary(for: evidenceView))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
 
             if let reflection = memoryRepository.linkedReflection(forArcID: arc.id) {
                 NavigationLink {
@@ -86,6 +93,7 @@ struct ArcsHomeView: View {
                 NavigationLink {
                     TemporalArcDetailView(arc: arc)
                 } label: {
+                    let evidenceView = memoryRepository.arcEvidenceView(for: arc.id)
                     VStack(alignment: .leading, spacing: 6) {
                         Text(arc.title)
                             .font(.subheadline.weight(.semibold))
@@ -94,6 +102,18 @@ struct ArcsHomeView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(3)
+                        if let reflection = evidenceView?.linkedReflection {
+                            Text(reflection.title)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary.opacity(0.9))
+                                .lineLimit(1)
+                        }
+                        if let evidenceView {
+                            Text(arcEvidenceSummary(for: evidenceView))
+                                .font(.caption2)
+                                .foregroundStyle(.secondary.opacity(0.8))
+                                .lineLimit(1)
+                        }
                         Text(dateRangeText(for: arc))
                             .font(.caption2)
                             .foregroundStyle(.secondary.opacity(0.8))
@@ -120,5 +140,15 @@ struct ArcsHomeView: View {
         formatter.dateStyle = .medium
         formatter.timeStyle = .none
         return formatter.string(from: arc.startDate, to: arc.endDate)
+    }
+
+    private func arcEvidenceSummary(for evidenceView: SproutMemoryRepository.ArcEvidenceView) -> String {
+        let parts = [
+            evidenceView.relatedRecordShells.isEmpty ? nil : "\(evidenceView.relatedRecordShells.count) memories",
+            evidenceView.relatedAnalyses.isEmpty ? nil : "\(evidenceView.relatedAnalyses.count) analyses",
+            evidenceView.linkedEntities.isEmpty ? nil : "\(evidenceView.linkedEntities.count) entities"
+        ].compactMap { $0 }
+
+        return parts.isEmpty ? "No linked evidence yet" : parts.joined(separator: " · ")
     }
 }

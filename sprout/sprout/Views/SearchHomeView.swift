@@ -376,6 +376,7 @@ struct SearchHomeView: View {
                             NavigationLink {
                                 TemporalArcDetailView(arc: arc)
                             } label: {
+                                let evidenceView = memoryRepository.arcEvidenceView(for: arc.id)
                                 VStack(alignment: .leading, spacing: 6) {
                                     Text(arc.title)
                                         .font(.subheadline.weight(.semibold))
@@ -384,6 +385,18 @@ struct SearchHomeView: View {
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                         .lineLimit(2)
+                                    if let reflection = evidenceView?.linkedReflection {
+                                        Text(reflection.title)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary.opacity(0.9))
+                                            .lineLimit(1)
+                                    }
+                                    if let evidenceView {
+                                        Text(arcEvidenceSummary(for: evidenceView))
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary.opacity(0.8))
+                                            .lineLimit(1)
+                                    }
                                     Text(dateRangeText(for: arc))
                                         .font(.caption2)
                                         .foregroundStyle(.secondary.opacity(0.8))
@@ -618,6 +631,16 @@ struct SearchHomeView: View {
             evidenceView.relatedRecordShells.isEmpty ? nil : "\(evidenceView.relatedRecordShells.count) memories",
             evidenceView.linkedEntities.isEmpty ? nil : "\(evidenceView.linkedEntities.count) entities",
             evidenceView.relatedArcs.isEmpty ? nil : "\(evidenceView.relatedArcs.count) phases"
+        ].compactMap { $0 }
+
+        return parts.isEmpty ? "No linked evidence yet" : parts.joined(separator: " · ")
+    }
+
+    private func arcEvidenceSummary(for evidenceView: SproutMemoryRepository.ArcEvidenceView) -> String {
+        let parts = [
+            evidenceView.relatedRecordShells.isEmpty ? nil : "\(evidenceView.relatedRecordShells.count) memories",
+            evidenceView.relatedAnalyses.isEmpty ? nil : "\(evidenceView.relatedAnalyses.count) analyses",
+            evidenceView.linkedEntities.isEmpty ? nil : "\(evidenceView.linkedEntities.count) entities"
         ].compactMap { $0 }
 
         return parts.isEmpty ? "No linked evidence yet" : parts.joined(separator: " · ")

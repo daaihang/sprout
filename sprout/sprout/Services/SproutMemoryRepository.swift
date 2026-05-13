@@ -47,6 +47,14 @@ final class SproutMemoryRepository {
         var relatedArcs: [TemporalArc]
     }
 
+    struct ArcEvidenceView: Sendable {
+        var arc: TemporalArc
+        var linkedReflection: ReflectionSnapshot?
+        var relatedRecordShells: [RecordShell]
+        var relatedAnalyses: [RecordAnalysisSnapshot]
+        var linkedEntities: [EntityNode]
+    }
+
     struct Snapshot: Codable, Sendable {
         var recordShells: [RecordShell]
         var artifacts: [Artifact]
@@ -313,6 +321,36 @@ final class SproutMemoryRepository {
             relatedRecordShells: relatedRecordShells,
             relatedAnalyses: relatedAnalyses,
             relatedArcs: relatedArcs
+        )
+    }
+
+    func arcEvidenceView(for arcID: UUID) -> ArcEvidenceView? {
+        guard let arc = temporalArcs.first(where: { $0.id == arcID }) else { return nil }
+
+        let relatedRecordShells = recordShells
+            .filter { arc.sourceRecordIDs.contains($0.id) }
+            .sorted { $0.createdAt > $1.createdAt }
+
+        let relatedRecordIDs = Set(relatedRecordShells.map(\.id))
+        let relatedAnalyses = analyses
+            .filter { relatedRecordIDs.contains($0.recordID) }
+            .sorted { $0.createdAt > $1.createdAt }
+
+        let linkedEntities = entityNodes
+            .filter { arc.sourceEntityIDs.contains($0.id) || arc.entityNames.contains($0.displayName) }
+            .sorted {
+                if $0.kind == $1.kind {
+                    return $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending
+                }
+                return $0.kind.rawValue < $1.kind.rawValue
+            }
+
+        return ArcEvidenceView(
+            arc: arc,
+            linkedReflection: linkedReflection(forArcID: arcID),
+            relatedRecordShells: relatedRecordShells,
+            relatedAnalyses: relatedAnalyses,
+            linkedEntities: linkedEntities
         )
     }
 
