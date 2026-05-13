@@ -342,6 +342,7 @@ struct AddCardSheet: View {
         let limits = cardSizeLimits[cardType] ?? sharedCardSizeLimits
         record.cardWidthColumns = limits.defaultSpan.widthColumns
         record.cardUnits = limits.defaultSpan.heightUnits
+        let cardKind = RecordCardKind(rawValue: cardType) ?? .text
 
         switch cardType {
 
@@ -350,7 +351,12 @@ struct AddCardSheet: View {
             record.intensity = emotionData.intensity
             if !emotionData.note.isEmpty { record.body = emotionData.note }
             modelContext.insert(record)
-            let aggregate = memoryAggregateBuilder.build(record: record)
+            let aggregate = memoryAggregateBuilder.buildStandaloneAggregate(
+                cardType: cardKind,
+                createdAt: record.createdAt,
+                shellText: record.body,
+                emotion: emotionData
+            )
             memoryRepository.upsertAggregate(aggregate)
             Task { await runPostCaptureAnalysisIfPossible(for: aggregate) }
             dismiss()
@@ -368,7 +374,11 @@ struct AddCardSheet: View {
             record.weatherObservedAt = weatherData.observedAt ?? record.createdAt
             record.weatherSource = weatherData.source.rawValue
             modelContext.insert(record)
-            let aggregate = memoryAggregateBuilder.build(record: record)
+            let aggregate = memoryAggregateBuilder.buildStandaloneAggregate(
+                cardType: cardKind,
+                createdAt: record.createdAt,
+                weather: weatherData
+            )
             memoryRepository.upsertAggregate(aggregate)
             Task { await runPostCaptureAnalysisIfPossible(for: aggregate) }
             dismiss()
@@ -379,7 +389,12 @@ struct AddCardSheet: View {
             record.location  = locationData.locationName.isEmpty ? nil : locationData.locationName
             record.body      = locationData.descriptionText
             modelContext.insert(record)
-            let aggregate = memoryAggregateBuilder.build(record: record)
+            let aggregate = memoryAggregateBuilder.buildStandaloneAggregate(
+                cardType: cardKind,
+                createdAt: record.createdAt,
+                shellText: record.body,
+                location: locationData
+            )
             memoryRepository.upsertAggregate(aggregate)
             Task { await runPostCaptureAnalysisIfPossible(for: aggregate) }
             dismiss()
@@ -395,7 +410,11 @@ struct AddCardSheet: View {
             modelContext.insert(m)
             modelContext.insert(record)
             record.mediaCards = [m]
-            let aggregate = memoryAggregateBuilder.build(record: record)
+            let aggregate = memoryAggregateBuilder.buildStandaloneAggregate(
+                cardType: cardKind,
+                createdAt: record.createdAt,
+                music: musicData
+            )
             memoryRepository.upsertAggregate(aggregate)
             Task { await runPostCaptureAnalysisIfPossible(for: aggregate) }
             dismiss()
@@ -415,7 +434,11 @@ struct AddCardSheet: View {
                 }
                 modelContext.insert(record)
                 if !cards.isEmpty { record.mediaCards = cards }
-                let aggregate = memoryAggregateBuilder.build(record: record)
+                let aggregate = memoryAggregateBuilder.buildStandaloneAggregate(
+                    cardType: cardKind,
+                    createdAt: record.createdAt,
+                    photoPayloads: payloads
+                )
                 memoryRepository.upsertAggregate(aggregate)
                 Task { await runPostCaptureAnalysisIfPossible(for: aggregate) }
                 dismiss()
@@ -432,14 +455,22 @@ struct AddCardSheet: View {
             modelContext.insert(m)
             modelContext.insert(record)
             record.mediaCards = [m]
-            let aggregate = memoryAggregateBuilder.build(record: record)
+            let aggregate = memoryAggregateBuilder.buildStandaloneAggregate(
+                cardType: cardKind,
+                createdAt: record.createdAt,
+                todo: todoData
+            )
             memoryRepository.upsertAggregate(aggregate)
             Task { await runPostCaptureAnalysisIfPossible(for: aggregate) }
             dismiss()
 
         default:
             modelContext.insert(record)
-            let aggregate = memoryAggregateBuilder.build(record: record)
+            let aggregate = memoryAggregateBuilder.buildStandaloneAggregate(
+                cardType: cardKind,
+                createdAt: record.createdAt,
+                shellText: record.body
+            )
             memoryRepository.upsertAggregate(aggregate)
             Task { await runPostCaptureAnalysisIfPossible(for: aggregate) }
             dismiss()

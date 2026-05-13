@@ -68,6 +68,190 @@ struct SproutMemoryAggregateBuilder {
         )
     }
 
+    func buildStandaloneAggregate(
+        cardType: RecordCardKind,
+        createdAt: Date,
+        shellText: String = "",
+        emotion: EmotionCardData? = nil,
+        weather: WeatherCardData? = nil,
+        location: MapCardData? = nil,
+        music: MusicCardData? = nil,
+        todo: TodoCardData? = nil,
+        photoPayloads: [PreparedPhotoMedia] = [],
+        audioData: Data? = nil
+    ) -> SproutMemoryAggregate {
+        let trimmed = shellText.trimmingCharacters(in: .whitespacesAndNewlines)
+        var artifacts: [Artifact] = []
+
+        if !trimmed.isEmpty {
+            artifacts.append(
+                Artifact(
+                    kind: .text,
+                    title: previewTitle(from: trimmed),
+                    summary: trimmed,
+                    textContent: trimmed,
+                    createdAt: createdAt,
+                    updatedAt: createdAt
+                )
+            )
+        }
+
+        switch cardType {
+        case .text:
+            break
+        case .emotion:
+            if let emotion {
+                artifacts.append(
+                    Artifact(
+                        kind: .text,
+                        title: emotion.mood.label,
+                        summary: emotion.note.isEmpty ? emotion.mood.label : emotion.note,
+                        textContent: emotion.note,
+                        createdAt: createdAt,
+                        updatedAt: createdAt,
+                        metadata: [
+                            "mood": emotion.mood.rawValue,
+                            "intensity": String(emotion.intensity)
+                        ]
+                    )
+                )
+            }
+        case .weather:
+            if let weather {
+                var metadata: [String: String] = [
+                    "condition": weather.condition.rawValue,
+                    "humidity": String(weather.humidity),
+                    "source": weather.source.rawValue
+                ]
+                if let coordinate = weather.coordinate {
+                    metadata["latitude"] = String(coordinate.latitude)
+                    metadata["longitude"] = String(coordinate.longitude)
+                }
+                artifacts.append(
+                    Artifact(
+                        kind: .weather,
+                        title: weather.condition.label,
+                        summary: weather.location.isEmpty ? weather.condition.label : weather.location,
+                        textContent: weather.liveSummary ?? "",
+                        createdAt: weather.observedAt ?? createdAt,
+                        updatedAt: createdAt,
+                        metadata: metadata
+                    )
+                )
+            }
+        case .activity:
+            break
+        case .todo:
+            if let todo, !todo.isEmpty {
+                let textContent = (try? JSONEncoder().encode(todo.items))
+                    .flatMap { String(data: $0, encoding: .utf8) } ?? ""
+                artifacts.append(
+                    Artifact(
+                        kind: .todo,
+                        title: todo.title.isEmpty ? "To-Do" : todo.title,
+                        summary: "\(todo.doneCount) of \(todo.totalCount) done",
+                        textContent: textContent,
+                        createdAt: createdAt,
+                        updatedAt: createdAt
+                    )
+                )
+            }
+        case .photo:
+            for (index, _) in photoPayloads.enumerated() {
+                artifacts.append(
+                    Artifact(
+                        kind: .photo,
+                        title: photoPayloads.count <= 1 ? "Photo" : "Photo \(index + 1)",
+                        summary: trimmed.isEmpty ? "Captured photo" : previewTitle(from: trimmed),
+                        createdAt: createdAt,
+                        updatedAt: createdAt,
+                        metadata: ["source": "add_card"]
+                    )
+                )
+            }
+        case .music:
+            if let music, !music.isEmpty {
+                var metadata: [String: String] = [:]
+                if let url = music.appleMusicURL?.absoluteString {
+                    metadata["url"] = url
+                }
+                if !music.albumName.isEmpty {
+                    metadata["albumName"] = music.albumName
+                }
+                if let artworkURL = music.albumArtworkURL?.absoluteString {
+                    metadata["artworkURLString"] = artworkURL
+                }
+                artifacts.append(
+                    Artifact(
+                        kind: .music,
+                        title: music.trackName,
+                        summary: music.artistName,
+                        textContent: music.albumName,
+                        createdAt: createdAt,
+                        updatedAt: createdAt,
+                        metadata: metadata
+                    )
+                )
+            }
+        case .link:
+            break
+        case .map:
+            if let location {
+                var metadata: [String: String] = [:]
+                if let coordinate = location.coordinate {
+                    metadata["latitude"] = String(coordinate.latitude)
+                    metadata["longitude"] = String(coordinate.longitude)
+                }
+                artifacts.append(
+                    Artifact(
+                        kind: .location,
+                        title: location.locationName.isEmpty ? "Location" : location.locationName,
+                        summary: location.descriptionText.isEmpty ? location.locationName : location.descriptionText,
+                        textContent: location.descriptionText,
+                        createdAt: createdAt,
+                        updatedAt: createdAt,
+                        metadata: metadata
+                    )
+                )
+            }
+        case .audio:
+            if let audioData {
+                artifacts.append(
+                    Artifact(
+                        kind: .audio,
+                        title: "Voice",
+                        summary: trimmed.isEmpty ? "Voice note" : previewTitle(from: trimmed),
+                        textContent: trimmed,
+                        createdAt: createdAt,
+                        updatedAt: createdAt,
+                        metadata: ["byteCount": String(audioData.count)]
+                    )
+                )
+            }
+        case .people:
+            break
+        case .todayInHistory, .book, .film, .game, .ticket, .health:
+            break
+        case .quote:
+            break
+        }
+
+        let knownEntities: [EntityReference] = []
+        return SproutMemoryAggregate(
+            recordShell: RecordShell(
+                createdAt: createdAt,
+                updatedAt: createdAt,
+                rawText: trimmed,
+                captureSource: .manual,
+                artifactIDs: artifacts.map(\.id),
+                userMood: emotion?.mood.rawValue,
+                userIntensity: emotion?.intensity
+            ),
+            artifacts: artifacts,
+            knownEntities: knownEntities
+        )
+    }
+
     private func buildArtifacts(
         draft: CaptureDraft,
         createdAt: Date,
