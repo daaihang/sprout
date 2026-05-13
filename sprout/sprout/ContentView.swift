@@ -250,6 +250,8 @@ struct ContentView: View {
             return "square.grid.2x2"
         case .rawRecords:
             return "list.bullet.rectangle"
+        case .arcs:
+            return "timeline.selection"
         case .people:
             return "person.2"
         case .decisions:
