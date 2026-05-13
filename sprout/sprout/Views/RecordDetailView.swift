@@ -28,15 +28,15 @@ struct RecordDetailView: View {
     private var availableSections: [RecordSection] {
         var sections: [RecordSection] = []
         let media = record.mediaCards ?? []
-        if media.contains(where: { $0.type == "photo" })  { sections.append(.photo) }
-        if media.contains(where: { $0.type == "music" })  { sections.append(.music) }
-        if media.contains(where: { $0.type == "audio" })  { sections.append(.audio) }
-        if media.contains(where: { $0.type == "link" })   { sections.append(.link) }
+        if media.contains(where: { $0.mediaKind == .photo })  { sections.append(.photo) }
+        if media.contains(where: { $0.mediaKind == .music })  { sections.append(.music) }
+        if media.contains(where: { $0.mediaKind == .audio })  { sections.append(.audio) }
+        if media.contains(where: { $0.mediaKind == .link })   { sections.append(.link) }
         if record.latitude != nil                         { sections.append(.map) }
         if record.activity?.value != nil                  { sections.append(.activity) }
         if record.mood != nil                             { sections.append(.emotion) }
         if record.weather != nil                          { sections.append(.weather) }
-        if media.contains(where: { $0.type == "todo" })  { sections.append(.todo) }
+        if media.contains(where: { $0.mediaKind == .todo })  { sections.append(.todo) }
         if !(record.mentionedPeople ?? []).isEmpty       { sections.append(.people) }
         if !record.body.isEmpty                           { sections.append(.text) }
         return sections
@@ -46,11 +46,47 @@ struct RecordDetailView: View {
         memoryRepository.memoryView(for: record.id)
     }
 
+    private var linkedArcs: [TemporalArc] {
+        memoryRepository.temporalArcs
+            .filter { $0.sourceRecordIDs.contains(record.id) && $0.status == .accepted }
+            .sorted { lhs, rhs in
+                if lhs.endDate == rhs.endDate {
+                    return lhs.intensityScore > rhs.intensityScore
+                }
+                return lhs.endDate > rhs.endDate
+            }
+    }
+
+    private var linkedPhaseReflection: ReflectionSnapshot? {
+        linkedArcs.first.flatMap { memoryRepository.linkedReflection(forArcID: $0.id) }
+    }
+
+    private var artifactSummaryLine: String {
+        guard let memoryView else { return "No artifact projection yet" }
+        let grouped = Dictionary(grouping: memoryView.artifacts, by: \.kind)
+        let parts = grouped
+            .sorted { $0.key.rawValue < $1.key.rawValue }
+            .map { kind, artifacts in
+                if artifacts.count == 1 {
+                    return kindLabel(kind)
+                }
+                return "\(artifacts.count) \(kindLabel(kind).lowercased())"
+            }
+        return parts.isEmpty ? "No artifacts attached" : parts.joined(separator: " · ")
+    }
+
     // MARK: Body
 
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 24) {
+                captureShellHeader
+                if let memoryView, !memoryView.artifacts.isEmpty {
+                    artifactOverviewSection(memoryView)
+                }
+                if let firstArc = linkedArcs.first {
+                    phaseContextSection(firstArc, reflection: linkedPhaseReflection)
+                }
                 ForEach(orderedSections, id: \.self) { section in
                     sectionView(for: section)
                 }
@@ -67,10 +103,165 @@ struct RecordDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
+    private var captureShellHeader: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Capture Shell")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                Text(captureTitleText)
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.primary)
+
+                Text(captureSubtitleText)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 8) {
+                shellMetaChip(icon: "shippingbox", text: artifactCountText)
+                if let source = memoryView?.recordShell.captureSource.rawValue {
+                    shellMetaChip(icon: "square.and.pencil", text: source.replacingOccurrences(of: "_", with: " "))
+                }
+                if let mood = memoryView?.recordShell.userMood, !mood.isEmpty {
+                    shellMetaChip(icon: "face.smiling", text: mood)
+                }
+            }
+        }
+        .detailCard()
+    }
+
+    @ViewBuilder
+    private func artifactOverviewSection(_ memoryView: SproutMemoryRepository.RecordMemoryView) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionLabel(icon: "shippingbox", title: "Artifacts in This Capture")
+
+            Text(artifactSummaryLine)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(memoryView.artifacts.prefix(6), id: \.id) { artifact in
+                    HStack(alignment: .top, spacing: 10) {
+                        Text(kindBadge(artifact.kind))
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(Color.accentColor)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.accentColor.opacity(0.12), in: Capsule())
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(artifact.title.isEmpty ? kindLabel(artifact.kind) : artifact.title)
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.primary)
+                                .lineLimit(2)
+                            if !artifact.summary.isEmpty {
+                                Text(artifact.summary)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(2)
+                            } else if !artifact.textContent.isEmpty {
+                                Text(String(artifact.textContent.prefix(120)))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(2)
+                            }
+                        }
+
+                        Spacer()
+                    }
+                    .padding(10)
+                    .background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+            }
+        }
+        .detailCard()
+    }
+
+    @ViewBuilder
+    private func phaseContextSection(_ arc: TemporalArc, reflection: ReflectionSnapshot?) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionLabel(icon: "timeline.selection", title: "Phase Context")
+
+            NavigationLink {
+                TemporalArcDetailView(arc: arc)
+            } label: {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(arc.title)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    Text(arc.summary)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(3)
+                    Text(dateRangeText(for: arc))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(12)
+                .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+            .buttonStyle(.plain)
+
+            if let reflection {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Current Reflection")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Text(reflection.title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Text(reflection.body)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(4)
+                }
+                .padding(12)
+                .background(Color.secondary.opacity(0.05), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+        }
+        .detailCard()
+    }
+
     private var navigationTitle: String {
         if !record.body.isEmpty { return String(record.body.prefix(24)) }
         if let loc = record.location, !loc.isEmpty { return loc }
         return t("detail.navigation.record", "Entry")
+    }
+
+    private var captureTitleText: String {
+        if let shell = memoryView?.recordShell, !shell.rawText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return String(shell.rawText.prefix(120))
+        }
+        if !record.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return String(record.body.prefix(120))
+        }
+        if let loc = record.location, !loc.isEmpty {
+            return loc
+        }
+        return "Untitled Capture"
+    }
+
+    private var captureSubtitleText: String {
+        if let analysis = memoryView?.analysis {
+            let emotion = analysis.emotionLabel.isEmpty ? "Analysis ready" : analysis.emotionLabel.capitalized
+            return "\(emotion) · \(artifactCountText)"
+        }
+        return artifactCountText
+    }
+
+    private var artifactCountText: String {
+        let count = memoryView?.artifacts.count ?? 0
+        switch count {
+        case 0:
+            return "0 artifacts"
+        case 1:
+            return "1 artifact"
+        default:
+            return "\(count) artifacts"
+        }
     }
 
     // MARK: Section dispatcher
@@ -182,7 +373,7 @@ struct RecordDetailView: View {
 
     @ViewBuilder
     private var photoSection: some View {
-        let photos = (record.mediaCards ?? []).filter { $0.type == "photo" }
+        let photos = (record.mediaCards ?? []).filter { $0.mediaKind == .photo }
         if !photos.isEmpty {
             let images: [UIImage] = photos.compactMap { m in
                 m.imageData.flatMap { UIImage(data: $0) }
@@ -228,7 +419,7 @@ struct RecordDetailView: View {
 
     @ViewBuilder
     private var musicSection: some View {
-        if let m = (record.mediaCards ?? []).first(where: { $0.type == "music" }) {
+        if let m = (record.mediaCards ?? []).first(where: { $0.mediaKind == .music }) {
             let artwork: UIImage? = m.thumbnailData.flatMap { UIImage(data: $0) }
             let artworkURL = m.artworkURLString.flatMap(URL.init(string:))
             VStack(alignment: .leading, spacing: 10) {
@@ -279,7 +470,7 @@ struct RecordDetailView: View {
 
     @ViewBuilder
     private var audioSection: some View {
-        if let audio = (record.mediaCards ?? []).first(where: { $0.type == "audio" }) {
+        if let audio = (record.mediaCards ?? []).first(where: { $0.mediaKind == .audio }) {
             VStack(alignment: .leading, spacing: 10) {
                 SectionLabel(icon: "waveform", title: t("detail.section.audio", "Voice"))
                 AudioCard(
@@ -299,7 +490,7 @@ struct RecordDetailView: View {
 
     @ViewBuilder
     private var linkSection: some View {
-        let links = (record.mediaCards ?? []).filter { $0.type == "link" }
+        let links = (record.mediaCards ?? []).filter { $0.mediaKind == .link }
         if !links.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 SectionLabel(icon: "link", title: t("detail.section.links", "Links"))
@@ -464,7 +655,7 @@ struct RecordDetailView: View {
 
     /// Decodes todo items from MediaCard JSON. Extracted to avoid var mutation inside ViewBuilder.
     private func decodedTodoItems() -> (title: String, items: [TodoItem])? {
-        guard let m = (record.mediaCards ?? []).first(where: { $0.type == "todo" }),
+        guard let m = (record.mediaCards ?? []).first(where: { $0.mediaKind == .todo }),
               let json = m.caption,
               let raw = json.data(using: .utf8),
               let items = try? JSONDecoder().decode([TodoItem].self, from: raw),
@@ -593,6 +784,62 @@ struct RecordDetailView: View {
 
     private func formattedDate(_ date: Date) -> String {
         localization.templateDateString(from: date, template: "MMM d HH:mm")
+    }
+
+    private func kindLabel(_ kind: ArtifactKind) -> String {
+        switch kind {
+        case .text: return "Text"
+        case .photo: return "Photo"
+        case .audio: return "Voice"
+        case .music: return "Music"
+        case .link: return "Link"
+        case .location: return "Location"
+        case .weather: return "Weather"
+        case .todo: return "To-Do"
+        case .personMention: return "Person"
+        case .decisionNote: return "Decision"
+        case .book: return "Book"
+        case .film: return "Film"
+        case .game: return "Game"
+        case .ticket: return "Ticket"
+        case .healthMetric: return "Health"
+        }
+    }
+
+    private func kindBadge(_ kind: ArtifactKind) -> String {
+        switch kind {
+        case .text: return "TEXT"
+        case .photo: return "PHOTO"
+        case .audio: return "VOICE"
+        case .music: return "MUSIC"
+        case .link: return "LINK"
+        case .location: return "PLACE"
+        case .weather: return "WEATHER"
+        case .todo: return "TODO"
+        case .personMention: return "PERSON"
+        case .decisionNote: return "DECISION"
+        case .book: return "BOOK"
+        case .film: return "FILM"
+        case .game: return "GAME"
+        case .ticket: return "TICKET"
+        case .healthMetric: return "HEALTH"
+        }
+    }
+
+    private func shellMetaChip(icon: String, text: String) -> some View {
+        Label(text.capitalized, systemImage: icon)
+            .font(.caption.weight(.medium))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Color.secondary.opacity(0.08), in: Capsule())
+    }
+
+    private func dateRangeText(for arc: TemporalArc) -> String {
+        let formatter = DateIntervalFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter.string(from: arc.startDate, to: arc.endDate)
     }
 
     private func t(_ key: String, _ defaultValue: String, _ arguments: CVarArg...) -> String {
