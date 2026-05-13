@@ -113,7 +113,7 @@ extension Record {
             )
         }
 
-        return sizeLimits(for: cardType).clamped(span: containerSpan)
+        return sizeLimits(for: cardType).defaultSpan
     }
 
     @available(*, deprecated, message: "Use CompositionStateRepository-backed projection state instead.")

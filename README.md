@@ -32,7 +32,7 @@ Practical progress against the v3 roadmap:
 - Phase 1 `92%`
   Artifact layer exists and modern capture paths already dual-write aggregate data.
 - Phase 2 `91%`
-  Composition state persists by board/day, and board resize now refreshes immediately; legacy layout fields still remain on `Record`.
+  Composition state persists by board/day, board resize now refreshes immediately, and legacy record-level default span fallback has been removed from the main read path; legacy layout fields still remain on `Record`.
 - Phase 3 `93%`
   Analysis snapshot contract and local persistence are active.
 - Phase 4 `84%`

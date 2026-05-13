@@ -45,13 +45,13 @@
 
 当前用途：
 
-- `Record.containerSpan`
 - `legacyDashboardContainerSpan`
 
 当前判断：
 
 - 首页主 composition 路径默认 span 已不再依赖
 - 新录入链已不再写
+- 旧 record-level default span 已不再作为主读取链默认值
 
 删除前条件：
 
@@ -66,7 +66,6 @@
 
 当前用途：
 
-- `Record.containerSpan`
 - `legacyDashboardContainerSpan`
 
 当前判断：
@@ -108,6 +107,7 @@
 - composer capture 不再写 legacy `cardType`
 - standalone add-card 不再写 legacy `cardType`
 - standalone add-card 不再写默认 `cardUnits/cardWidthColumns`
+- `Record.cardUnits/cardWidthColumns` 不再作为 legacy default span 读取来源
 - timeline detail entry 改为 content-kind 驱动
 - today-in-history subtitle 改为 content-kind 驱动
 - debug / calibration sample 不再直接写 `record.cardType`
