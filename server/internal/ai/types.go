@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 )
 
@@ -19,31 +20,49 @@ type UserContext struct {
 }
 
 type AnalyzeRequest struct {
-	Record  RecordContent   `json:"record"`
-	Persons []PersonProfile `json:"persons"`
+	SchemaVersion string                 `json:"schema_version"`
+	ClientVersion string                 `json:"client_version,omitempty"`
+	AnalysisReason string                `json:"analysis_reason"`
+	RecordShell   AnalyzeRecordShell     `json:"record_shell"`
+	Artifacts     []AnalyzeArtifact      `json:"artifacts"`
+	KnownEntities []KnownEntityReference `json:"known_entities"`
 }
 
-type RecordContent struct {
-	ID        string   `json:"id,omitempty"`
-	Content   string   `json:"content"`
-	CreatedAt string   `json:"created_at,omitempty"`
-	Tags      []string `json:"tags,omitempty"`
+type AnalyzeRecordShell struct {
+	ID            string `json:"id,omitempty"`
+	CreatedAt     string `json:"created_at,omitempty"`
+	UpdatedAt     string `json:"updated_at,omitempty"`
+	RawText       string `json:"raw_text"`
+	CaptureSource string `json:"capture_source,omitempty"`
+	UserMood      string `json:"user_mood,omitempty"`
+	UserIntensity *int   `json:"user_intensity,omitempty"`
 }
 
-type PersonProfile struct {
-	ID              string `json:"id,omitempty"`
-	Name            string `json:"name"`
-	Relationship    string `json:"relationship,omitempty"`
-	LastMentionedAt string `json:"last_mentioned_at,omitempty"`
+type AnalyzeArtifact struct {
+	ID          string            `json:"id,omitempty"`
+	Kind        string            `json:"kind"`
+	Title       string            `json:"title,omitempty"`
+	Summary     string            `json:"summary,omitempty"`
+	TextContent string            `json:"text_content,omitempty"`
+	Metadata    map[string]string `json:"metadata,omitempty"`
+}
+
+type KnownEntityReference struct {
+	ID         string   `json:"id,omitempty"`
+	Kind       string   `json:"kind"`
+	Name       string   `json:"name"`
+	Aliases    []string `json:"aliases,omitempty"`
+	Confidence *float64 `json:"confidence,omitempty"`
 }
 
 type AnalyzeResponse struct {
-	Tags     []string      `json:"tags"`
-	Emotion  EmotionResult `json:"emotion"`
-	Persons  []PersonMatch `json:"persons"`
-	NewMedia []MediaHint   `json:"new_media"`
-	Insight  string        `json:"insight"`
-	FollowUp *FollowUp     `json:"follow_up"`
+	Tags      []string         `json:"tags"`
+	Emotion   EmotionResult    `json:"emotion"`
+	Entities  []EntityMention  `json:"entities"`
+	Edges     []CandidateEdge  `json:"candidate_edges"`
+	Insight   string           `json:"insight"`
+	FollowUp  *FollowUp        `json:"follow_up"`
+	Summary   string           `json:"summary,omitempty"`
 }
 
 type EmotionResult struct {
@@ -52,18 +71,21 @@ type EmotionResult struct {
 	Confidence *float64 `json:"confidence,omitempty"`
 }
 
-type PersonMatch struct {
-	Name       string   `json:"name"`
-	Action     string   `json:"action"`
-	PersonID   string   `json:"person_id,omitempty"`
-	Confidence *float64 `json:"confidence,omitempty"`
+type EntityMention struct {
+	Kind        string   `json:"kind"`
+	Name        string   `json:"name"`
+	Canonical   string   `json:"canonical_name,omitempty"`
+	Confidence  *float64 `json:"confidence,omitempty"`
+	ArtifactIDs []string `json:"source_artifact_ids,omitempty"`
 }
 
-type MediaHint struct {
-	Type       string `json:"type"`
-	Title      string `json:"title"`
-	Creator    string `json:"creator,omitempty"`
-	SearchHint string `json:"search_hint,omitempty"`
+type CandidateEdge struct {
+	FromName    string   `json:"from_name"`
+	FromKind    string   `json:"from_kind"`
+	ToName      string   `json:"to_name"`
+	ToKind      string   `json:"to_kind"`
+	Relation    string   `json:"relation"`
+	Confidence  *float64 `json:"confidence,omitempty"`
 }
 
 type FollowUp struct {
@@ -84,10 +106,17 @@ type AnalyzeResult struct {
 }
 
 func (r AnalyzeRequest) Validate() error {
-	if len(r.Record.Content) == 0 {
+	if strings.TrimSpace(r.SchemaVersion) == "" {
 		return ErrInvalidAnalyzeRequest
 	}
-	if len(r.Record.Content) > 20000 {
+	if strings.TrimSpace(r.AnalysisReason) == "" {
+		return ErrInvalidAnalyzeRequest
+	}
+	content := strings.TrimSpace(r.RecordShell.RawText)
+	if content == "" && len(r.Artifacts) == 0 {
+		return ErrInvalidAnalyzeRequest
+	}
+	if len(content) > 20000 {
 		return ErrInvalidAnalyzeRequest
 	}
 	return nil
@@ -97,17 +126,20 @@ func NormalizeResponse(resp AnalyzeResponse) AnalyzeResponse {
 	if resp.Tags == nil {
 		resp.Tags = []string{}
 	}
-	if resp.Persons == nil {
-		resp.Persons = []PersonMatch{}
+	if resp.Entities == nil {
+		resp.Entities = []EntityMention{}
 	}
-	if resp.NewMedia == nil {
-		resp.NewMedia = []MediaHint{}
+	if resp.Edges == nil {
+		resp.Edges = []CandidateEdge{}
 	}
 	if resp.Emotion.Label == "" {
 		resp.Emotion.Label = "neutral"
 	}
 	if resp.Insight == "" {
 		resp.Insight = "No insight generated."
+	}
+	if strings.TrimSpace(resp.Summary) == "" {
+		resp.Summary = resp.Insight
 	}
 	if resp.FollowUp != nil && resp.FollowUp.Question == "" {
 		resp.FollowUp = nil

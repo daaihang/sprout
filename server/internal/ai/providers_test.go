@@ -47,12 +47,13 @@ func TestAnthropicProviderAnalyze(t *testing.T) {
 					"type": "tool_use",
 					"name": "submit_analyze_response",
 					"input": map[string]any{
-						"tags":      []string{"journal"},
-						"emotion":   map[string]any{"label": "positive", "intensity": 3, "confidence": 0.9},
-						"persons":   []any{},
-						"new_media": []any{},
-						"insight":   "live anthropic",
-						"follow_up": nil,
+						"tags":            []string{"journal"},
+						"emotion":         map[string]any{"label": "positive", "intensity": 3, "confidence": 0.9},
+						"entities":        []any{},
+						"candidate_edges": []any{},
+						"insight":         "live anthropic",
+						"summary":         "anthropic summary",
+						"follow_up":       nil,
 					},
 				},
 			},
@@ -76,7 +77,9 @@ func TestAnthropicProviderAnalyze(t *testing.T) {
 	)
 
 	result, err := provider.Analyze(context.Background(), AnalyzeRequest{
-		Record: RecordContent{Content: "今天很开心"},
+		SchemaVersion: "record_aggregate.v1",
+		AnalysisReason: "preview",
+		RecordShell: AnalyzeRecordShell{RawText: "今天很开心"},
 	}, UserContext{UserID: "user-1", Tier: "grow"})
 	if err != nil {
 		t.Fatalf("anthropic analyze: %v", err)
@@ -114,7 +117,7 @@ func TestOpenAICompatibleProviderAnalyze(t *testing.T) {
 			"choices": []map[string]any{
 				{
 					"message": map[string]any{
-						"content": `{"tags":["journal","gratitude"],"emotion":{"label":"positive","intensity":4,"confidence":0.88},"persons":[],"new_media":[],"insight":"live openai","follow_up":null}`,
+						"content": `{"tags":["journal","gratitude"],"emotion":{"label":"positive","intensity":4,"confidence":0.88},"entities":[],"candidate_edges":[],"insight":"live openai","summary":"openai summary","follow_up":null}`,
 					},
 				},
 			},
@@ -137,7 +140,9 @@ func TestOpenAICompatibleProviderAnalyze(t *testing.T) {
 	)
 
 	result, err := provider.Analyze(context.Background(), AnalyzeRequest{
-		Record: RecordContent{Content: "今天很开心"},
+		SchemaVersion: "record_aggregate.v1",
+		AnalysisReason: "preview",
+		RecordShell: AnalyzeRecordShell{RawText: "今天很开心"},
 	}, UserContext{UserID: "user-1", Tier: "grow"})
 	if err != nil {
 		t.Fatalf("openai analyze: %v", err)

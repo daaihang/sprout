@@ -4,6 +4,7 @@ enum CompositionTargetType: String, Codable, CaseIterable, Sendable {
     case artifact
     case record
     case reflection
+    case arc
 }
 
 struct CompositionPositionHint: Codable, Hashable, Sendable {

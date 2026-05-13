@@ -74,7 +74,13 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 	})
 
 	t.Run("analyze", func(t *testing.T) {
-		body := `{"record":{"content":"今天和妈妈看了一部电影，感觉很开心"},"persons":[{"id":"p1","name":"妈妈","relationship":"family"}]}`
+		body := `{
+			"schema_version":"record_aggregate.v1",
+			"analysis_reason":"manual",
+			"record_shell":{"raw_text":"今天和妈妈看了一部电影，感觉很开心","capture_source":"composer"},
+			"artifacts":[{"id":"a1","kind":"text","title":"电影夜晚","summary":"和妈妈看电影","text_content":"今天和妈妈看了一部电影，感觉很开心"}],
+			"known_entities":[{"id":"p1","kind":"person","name":"妈妈","aliases":["母亲"]}]
+		}`
 		req := httptest.NewRequest(http.MethodPost, "/api/records/analyze", bytes.NewBufferString(body))
 		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Set("Content-Type", "application/json")
@@ -98,7 +104,13 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 	})
 
 	t.Run("analyze preview", func(t *testing.T) {
-		body := `{"record":{"content":"今天和妈妈看了一部电影，感觉很开心"}}`
+		body := `{
+			"schema_version":"record_aggregate.v1",
+			"analysis_reason":"preview",
+			"record_shell":{"raw_text":"今天和妈妈看了一部电影，感觉很开心","capture_source":"composer"},
+			"artifacts":[{"id":"a1","kind":"text","title":"电影夜晚","summary":"和妈妈看电影","text_content":"今天和妈妈看了一部电影，感觉很开心"}],
+			"known_entities":[]
+		}`
 		req := httptest.NewRequest(http.MethodPost, "/api/onboarding/analyze-preview", bytes.NewBufferString(body))
 		req.Header.Set("Content-Type", "application/json")
 		rec := httptest.NewRecorder()
@@ -215,7 +227,13 @@ func TestUnauthorizedAnalyze(t *testing.T) {
 		UserProfiles:  store,
 	})
 
-	req := httptest.NewRequest(http.MethodPost, "/api/records/analyze", bytes.NewBufferString(`{"record":{"content":"hi"}}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/records/analyze", bytes.NewBufferString(`{
+		"schema_version":"record_aggregate.v1",
+		"analysis_reason":"manual",
+		"record_shell":{"raw_text":"hi","capture_source":"composer"},
+		"artifacts":[],
+		"known_entities":[]
+	}`))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 

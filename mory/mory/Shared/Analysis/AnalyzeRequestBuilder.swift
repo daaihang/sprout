@@ -1,56 +1,112 @@
 import Foundation
 
 struct AnalyzeRequestBuilder {
-    func build(record: RecordShell, artifacts: [Artifact]) -> AnalyzeRequestPayload {
-        let artifactSummary = artifacts
-            .map { "\($0.kind.rawValue): \($0.title) \($0.summary)".trimmingCharacters(in: .whitespaces) }
-            .joined(separator: "\n")
+    private let dateFormatter = ISO8601DateFormatter()
 
-        let content = [record.rawText, artifactSummary]
-            .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-            .joined(separator: "\n\n")
-
-        return AnalyzeRequestPayload(
-            record: .init(
+    func build(
+        record: RecordShell,
+        artifacts: [Artifact],
+        knownEntities: [EntityReference] = [],
+        analysisReason: String = "manual",
+        schemaVersion: String = "record_aggregate.v1",
+        clientVersion: String = "mory.prototype"
+    ) -> AnalyzeRequestPayload {
+        AnalyzeRequestPayload(
+            schemaVersion: schemaVersion,
+            clientVersion: clientVersion,
+            analysisReason: analysisReason,
+            recordShell: .init(
                 id: record.id.uuidString,
-                content: content,
-                createdAt: ISO8601DateFormatter().string(from: record.createdAt),
-                tags: []
+                createdAt: dateFormatter.string(from: record.createdAt),
+                updatedAt: dateFormatter.string(from: record.updatedAt),
+                rawText: record.rawText,
+                captureSource: record.captureSource.rawValue,
+                userMood: record.userMood,
+                userIntensity: record.userIntensity
             ),
-            persons: []
+            artifacts: artifacts.map { artifact in
+                .init(
+                    id: artifact.id.uuidString,
+                    kind: artifact.kind.rawValue,
+                    title: artifact.title,
+                    summary: artifact.summary,
+                    textContent: artifact.textContent,
+                    metadata: artifact.metadata
+                )
+            },
+            knownEntities: knownEntities.map { entity in
+                .init(
+                    id: entity.id.uuidString,
+                    kind: entity.kind.rawValue,
+                    name: entity.name,
+                    aliases: [],
+                    confidence: entity.confidence
+                )
+            }
         )
     }
 }
 
 struct AnalyzeRequestPayload: Codable, Sendable {
-    struct Record: Codable, Sendable {
+    struct RecordShellPayload: Codable, Sendable {
         var id: String
-        var content: String
         var createdAt: String
-        var tags: [String]
+        var updatedAt: String
+        var rawText: String
+        var captureSource: String
+        var userMood: String?
+        var userIntensity: Int?
 
         enum CodingKeys: String, CodingKey {
             case id
-            case content
             case createdAt = "created_at"
-            case tags
+            case updatedAt = "updated_at"
+            case rawText = "raw_text"
+            case captureSource = "capture_source"
+            case userMood = "user_mood"
+            case userIntensity = "user_intensity"
         }
     }
 
-    struct Person: Codable, Sendable {
-        var id: String?
-        var name: String
-        var relationship: String?
-        var lastMentionedAt: String?
+    struct ArtifactPayload: Codable, Sendable {
+        var id: String
+        var kind: String
+        var title: String
+        var summary: String
+        var textContent: String
+        var metadata: [String: String]
 
         enum CodingKeys: String, CodingKey {
             case id
-            case name
-            case relationship
-            case lastMentionedAt = "last_mentioned_at"
+            case kind
+            case title
+            case summary
+            case textContent = "text_content"
+            case metadata
         }
     }
 
-    var record: Record
-    var persons: [Person]
+    struct KnownEntityPayload: Codable, Sendable {
+        var id: String
+        var kind: String
+        var name: String
+        var aliases: [String]
+        var confidence: Double?
+    }
+
+    var schemaVersion: String
+    var clientVersion: String
+    var analysisReason: String
+    var recordShell: RecordShellPayload
+    var artifacts: [ArtifactPayload]
+    var knownEntities: [KnownEntityPayload]
+
+    enum CodingKeys: String, CodingKey {
+        case schemaVersion = "schema_version"
+        case clientVersion = "client_version"
+        case analysisReason = "analysis_reason"
+        case recordShell = "record_shell"
+        case artifacts
+        case knownEntities = "known_entities"
+    }
 }

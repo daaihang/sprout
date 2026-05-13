@@ -12,13 +12,15 @@ The JSON must match this shape:
 {
   "tags": ["string"],
   "emotion": {"label":"string","intensity":1,"confidence":0.0},
-  "persons": [{"name":"string","action":"link|create","person_id":"string","confidence":0.0}],
-  "new_media": [{"type":"string","title":"string","creator":"string","search_hint":"string"}],
+  "entities": [{"kind":"person|place|theme|decision","name":"string","canonical_name":"string","confidence":0.0,"source_artifact_ids":["string"]}],
+  "candidate_edges": [{"from_name":"string","from_kind":"string","to_name":"string","to_kind":"string","relation":"string","confidence":0.0}],
   "insight": "string",
+  "summary": "string",
   "follow_up": {"question":"string","expires_at":"RFC3339 string"} | null
 }
 Use empty arrays instead of null for collections.
-Only include person_id when linking an existing person.`
+Prefer structured entities over prose guesses.
+Only use the allowed entity kinds.`
 }
 
 func buildAnalyzeUserPrompt(req AnalyzeRequest, user UserContext) (string, error) {
@@ -27,8 +29,12 @@ func buildAnalyzeUserPrompt(req AnalyzeRequest, user UserContext) (string, error
 			"user_id": user.UserID,
 			"tier":    user.Tier,
 		},
-		"record":  req.Record,
-		"persons": req.Persons,
+		"schema_version": req.SchemaVersion,
+		"client_version": req.ClientVersion,
+		"analysis_reason": req.AnalysisReason,
+		"record_shell": req.RecordShell,
+		"artifacts": req.Artifacts,
+		"known_entities": req.KnownEntities,
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {

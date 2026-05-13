@@ -3,11 +3,9 @@ import Observation
 
 @Observable
 final class PrototypeWorkspaceStore {
-    private let graphUpdater = GraphUpdater()
     private let graphInsightsBuilder = GraphInsightsBuilder()
-    private let temporalArcCandidateBuilder = TemporalArcCandidateBuilder()
-    private let temporalArcPromoter = TemporalArcPromoter()
-    private let temporalArcMergeEngine = TemporalArcMergeEngine()
+    private let analysisService = PrototypeAnalysisService()
+    private let temporalArcService = PrototypeTemporalArcService()
 
     var scenarioName: String
     var boards: [Board]
@@ -57,37 +55,20 @@ final class PrototypeWorkspaceStore {
     }
 
     static func makeDefault() -> PrototypeWorkspaceStore {
-        if let persisted = try? PrototypeLocalPersistence.load() {
-            return PrototypeWorkspaceStore(
-                scenarioName: persisted.scenarioName,
-                boards: persisted.boards,
-                compositions: persisted.compositions,
-                items: persisted.items,
-                records: persisted.records,
-                artifacts: persisted.artifacts,
-                reflections: persisted.reflections,
-                temporalArcs: persisted.temporalArcs,
-                analyses: persisted.analyses,
-                entityNodes: persisted.entityNodes,
-                entityEdges: persisted.entityEdges,
-                artifactEntityLinks: persisted.artifactEntityLinks
-            )
-        }
-
-        let scenario = DemoScenarios.relationshipArc()
+        let snapshot = PrototypeWorkspaceRepository.loadDefaultSnapshot()
         return PrototypeWorkspaceStore(
-            scenarioName: scenario.name,
-            boards: scenario.boards,
-            compositions: scenario.compositions,
-            items: scenario.items,
-            records: scenario.records,
-            artifacts: scenario.artifacts,
-            reflections: scenario.reflections,
-            temporalArcs: scenario.temporalArcs,
-            analyses: scenario.analyses,
-            entityNodes: scenario.entityNodes,
-            entityEdges: scenario.entityEdges,
-            artifactEntityLinks: scenario.artifactEntityLinks
+            scenarioName: snapshot.scenarioName,
+            boards: snapshot.boards,
+            compositions: snapshot.compositions,
+            items: snapshot.items,
+            records: snapshot.records,
+            artifacts: snapshot.artifacts,
+            reflections: snapshot.reflections,
+            temporalArcs: snapshot.temporalArcs,
+            analyses: snapshot.analyses,
+            entityNodes: snapshot.entityNodes,
+            entityEdges: snapshot.entityEdges,
+            artifactEntityLinks: snapshot.artifactEntityLinks
         )
     }
 
@@ -122,25 +103,21 @@ final class PrototypeWorkspaceStore {
     }
 
     func setAnalysis(_ analysis: RecordAnalysisSnapshot) {
-        analyses.removeAll { $0.recordID == analysis.recordID }
-        analyses.append(analysis)
-        lastAnalyzedRecordID = analysis.recordID
-        let linkedArtifactIDs = records.first(where: { $0.id == analysis.recordID })?.artifactIDs ?? []
-        let graphUpdate = graphUpdater.apply(
+        let result = analysisService.applyAnalysis(
             analysis: analysis,
-            linkedArtifactIDs: linkedArtifactIDs,
-            linkedRecordIDs: [analysis.recordID],
-            existingEntityNodes: entityNodes,
-            existingEntityEdges: entityEdges,
-            existingArtifactEntityLinks: artifactEntityLinks
+            records: records,
+            analyses: analyses,
+            artifacts: artifacts,
+            entityNodes: entityNodes,
+            entityEdges: entityEdges,
+            artifactEntityLinks: artifactEntityLinks
         )
-        entityNodes = graphUpdate.entityNodes
-        entityEdges = graphUpdate.entityEdges
-        artifactEntityLinks = graphUpdate.artifactEntityLinks
-        for artifactID in linkedArtifactIDs {
-            guard let index = artifacts.firstIndex(where: { $0.id == artifactID }) else { continue }
-            artifacts[index].entities = analysis.entities
-        }
+        analyses = result.analyses
+        entityNodes = result.entityNodes
+        entityEdges = result.entityEdges
+        artifactEntityLinks = result.artifactEntityLinks
+        artifacts = result.artifacts
+        lastAnalyzedRecordID = result.lastAnalyzedRecordID
     }
 
     func setReflection(_ reflection: ReflectionSnapshot, for recordID: UUID) {
@@ -149,18 +126,19 @@ final class PrototypeWorkspaceStore {
     }
 
     func reload(from scenario: DemoScenario) {
-        scenarioName = scenario.name
-        boards = scenario.boards
-        compositions = scenario.compositions
-        items = scenario.items
-        records = scenario.records
-        artifacts = scenario.artifacts
-        reflections = scenario.reflections
-        temporalArcs = scenario.temporalArcs
-        analyses = scenario.analyses
-        entityNodes = scenario.entityNodes
-        entityEdges = scenario.entityEdges
-        artifactEntityLinks = scenario.artifactEntityLinks
+        let snapshot = PrototypeWorkspaceRepository.snapshot(from: scenario)
+        scenarioName = snapshot.scenarioName
+        boards = snapshot.boards
+        compositions = snapshot.compositions
+        items = snapshot.items
+        records = snapshot.records
+        artifacts = snapshot.artifacts
+        reflections = snapshot.reflections
+        temporalArcs = snapshot.temporalArcs
+        analyses = snapshot.analyses
+        entityNodes = snapshot.entityNodes
+        entityEdges = snapshot.entityEdges
+        artifactEntityLinks = snapshot.artifactEntityLinks
         lastAnalyzedRecordID = nil
         draftArtifact = nil
         draftRecord = nil
@@ -244,35 +222,25 @@ final class PrototypeWorkspaceStore {
     }
 
     func temporalArcCandidates(limit: Int = 4) -> [TemporalArcCandidate] {
-        temporalArcCandidateBuilder.buildCandidates(
+        temporalArcService.buildCandidates(
             records: records,
             analyses: analyses,
             artifacts: artifacts,
             artifactEntityLinks: artifactEntityLinks,
             entityNodes: entityNodes,
-            maxCandidates: limit
+            limit: limit
         )
     }
 
     func promoteTemporalArc(from candidate: TemporalArcCandidate) -> UUID {
-        var arc = temporalArcPromoter.promote(
+        let promotion = temporalArcService.promote(
             candidate: candidate,
             analyses: analyses,
             artifactEntityLinks: artifactEntityLinks,
             entityNodes: entityNodes
         )
-
-        let reflection = ReflectionSnapshot(
-            type: .phase,
-            title: arc.title,
-            body: arc.summary,
-            linkedTemporalArcID: arc.id,
-            sourceRecordIDs: arc.sourceRecordIDs,
-            sourceArtifactIDs: arc.sourceArtifactIDs,
-            sourceEntityIDs: arc.sourceEntityIDs,
-            createdAt: arc.updatedAt
-        )
-        arc.linkedReflectionID = reflection.id
+        let arc = promotion.arc
+        let reflection = promotion.reflection
 
         temporalArcs.removeAll { existingArc in
             Set(existingArc.sourceRecordIDs) == Set(candidate.recordIDs)
@@ -306,20 +274,7 @@ final class PrototypeWorkspaceStore {
     }
 
     func mergePreview(for arcID: UUID) -> TemporalArcMergePreview? {
-        guard let baseArc = temporalArc(for: arcID) else { return nil }
-
-        return temporalArcs
-            .filter { $0.id != arcID && $0.status == .accepted }
-            .compactMap { candidateArc in
-                temporalArcMergeEngine.previewMerge(base: baseArc, candidate: candidateArc)
-            }
-            .sorted { lhs, rhs in
-                if lhs.overlapScore == rhs.overlapScore {
-                    return lhs.candidateArcID.uuidString < rhs.candidateArcID.uuidString
-                }
-                return lhs.overlapScore > rhs.overlapScore
-            }
-            .first
+        temporalArcService.mergePreview(sourceArcID: arcID, arcs: temporalArcs)
     }
 
     func mergeTemporalArc(_ sourceArcID: UUID, with candidateArcID: UUID) {
@@ -328,27 +283,25 @@ final class PrototypeWorkspaceStore {
               let sourceIndex = temporalArcs.firstIndex(where: { $0.id == sourceArcID }),
               let candidateIndex = temporalArcs.firstIndex(where: { $0.id == candidateArcID }) else { return }
 
-        let mergedArc = temporalArcMergeEngine.merge(base: sourceArc, candidate: candidateArc)
-        temporalArcs[sourceIndex] = mergedArc
-
-        if let reflectionID = mergedArc.linkedReflectionID,
-           let reflectionIndex = reflections.firstIndex(where: { $0.id == reflectionID }) {
-            reflections[reflectionIndex].title = mergedArc.title
-            reflections[reflectionIndex].body = mergedArc.summary
-            reflections[reflectionIndex].linkedTemporalArcID = mergedArc.id
-            reflections[reflectionIndex].sourceRecordIDs = mergedArc.sourceRecordIDs
-            reflections[reflectionIndex].sourceArtifactIDs = mergedArc.sourceArtifactIDs
-            reflections[reflectionIndex].sourceEntityIDs = mergedArc.sourceEntityIDs
+        let linkedReflection = sourceArc.linkedReflectionID.flatMap { reflectionID in
+            reflections.first(where: { $0.id == reflectionID })
         }
+        let result = temporalArcService.merge(
+            sourceArc: sourceArc,
+            candidateArc: candidateArc,
+            linkedReflection: linkedReflection
+        )
 
-        if let candidateReflectionID = candidateArc.linkedReflectionID {
+        temporalArcs[sourceIndex] = result.sourceArc
+        temporalArcs[candidateIndex] = result.candidateArc
+
+        if let updatedReflection = result.updatedReflection,
+           let reflectionIndex = reflections.firstIndex(where: { $0.id == updatedReflection.id }) {
+            reflections[reflectionIndex] = updatedReflection
+        }
+        if let candidateReflectionID = result.candidateReflectionIDToRemove {
             reflections.removeAll { $0.id == candidateReflectionID }
         }
-
-        temporalArcs[candidateIndex].status = .archived
-        temporalArcs[candidateIndex].mergedIntoArcID = mergedArc.id
-        temporalArcs[candidateIndex].lastMergedAt = mergedArc.updatedAt
-        temporalArcs[candidateIndex].updatedAt = mergedArc.updatedAt
     }
 
     func sortedTemporalArcs() -> [TemporalArc] {

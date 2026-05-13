@@ -196,33 +196,37 @@ func analyzeResponseTool() anthropicTool {
 					},
 					"required": []string{"label"},
 				},
-				"persons": map[string]any{
+				"entities": map[string]any{
 					"type": "array",
 					"items": map[string]any{
 						"type": "object",
 						"properties": map[string]any{
-							"name":       map[string]any{"type": "string"},
-							"action":     map[string]any{"type": "string"},
-							"person_id":  map[string]any{"type": "string"},
-							"confidence": map[string]any{"type": "number"},
+							"kind":                map[string]any{"type": "string"},
+							"name":                map[string]any{"type": "string"},
+							"canonical_name":      map[string]any{"type": "string"},
+							"confidence":          map[string]any{"type": "number"},
+							"source_artifact_ids": map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
 						},
-						"required": []string{"name", "action"},
+						"required": []string{"kind", "name"},
 					},
 				},
-				"new_media": map[string]any{
+				"candidate_edges": map[string]any{
 					"type": "array",
 					"items": map[string]any{
 						"type": "object",
 						"properties": map[string]any{
-							"type":        map[string]any{"type": "string"},
-							"title":       map[string]any{"type": "string"},
-							"creator":     map[string]any{"type": "string"},
-							"search_hint": map[string]any{"type": "string"},
+							"from_name":   map[string]any{"type": "string"},
+							"from_kind":   map[string]any{"type": "string"},
+							"to_name":     map[string]any{"type": "string"},
+							"to_kind":     map[string]any{"type": "string"},
+							"relation":    map[string]any{"type": "string"},
+							"confidence":  map[string]any{"type": "number"},
 						},
-						"required": []string{"type", "title"},
+						"required": []string{"from_name", "from_kind", "to_name", "to_kind", "relation"},
 					},
 				},
 				"insight": map[string]any{"type": "string"},
+				"summary": map[string]any{"type": "string"},
 				"follow_up": map[string]any{
 					"anyOf": []any{
 						map[string]any{"type": "null"},
@@ -237,7 +241,7 @@ func analyzeResponseTool() anthropicTool {
 					},
 				},
 			},
-			"required": []string{"tags", "emotion", "persons", "new_media", "insight"},
+			"required": []string{"tags", "emotion", "entities", "candidate_edges", "insight"},
 		},
 	}
 }

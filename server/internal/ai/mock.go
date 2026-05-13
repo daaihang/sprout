@@ -20,52 +20,104 @@ func (p *MockProvider) Analyze(_ context.Context, req AnalyzeRequest, user UserC
 		return AnalyzeResult{}, err
 	}
 
-	content := strings.TrimSpace(req.Record.Content)
+	parts := []string{req.RecordShell.RawText}
+	for _, artifact := range req.Artifacts {
+		parts = append(parts, strings.TrimSpace(strings.Join([]string{
+			artifact.Kind,
+			artifact.Title,
+			artifact.Summary,
+			artifact.TextContent,
+		}, " ")))
+	}
+	content := strings.TrimSpace(strings.Join(parts, "\n"))
 	lower := strings.ToLower(content)
 
 	tags := []string{"journal"}
 	emotionLabel := "neutral"
 	insight := "This memory captures a steady moment worth revisiting."
+	summary := "A steady memory with enough structure to revisit later."
+	entities := []EntityMention{}
+	edges := []CandidateEdge{}
 
 	switch {
 	case containsAny(lower, "happy", "开心", "满足", "excited"):
 		emotionLabel = "positive"
 		tags = append(tags, "gratitude")
 		insight = "The note carries a clear positive signal and can anchor future reflection."
+		summary = "A positive memory with gratitude and emotional lift."
 	case containsAny(lower, "sad", "难过", "焦虑", "tired", "stress"):
 		emotionLabel = "tense"
 		tags = append(tags, "stress")
 		insight = "The note suggests unresolved pressure and may benefit from a short follow-up."
+		summary = "A tense memory with unresolved pressure."
 	case containsAny(lower, "movie", "film", "电影", "book", "read", "音乐", "music"):
 		emotionLabel = "curious"
 		tags = append(tags, "media")
 		insight = "The record points to a concrete media memory that can be expanded with metadata."
+		summary = "A media-related memory with concrete references."
 	}
 
-	personMatches := make([]PersonMatch, 0, len(req.Persons))
-	for _, person := range req.Persons {
-		confidence := 0.92
-		personMatches = append(personMatches, PersonMatch{
-			Name:       person.Name,
-			Action:     "link",
-			PersonID:   person.ID,
+	for _, known := range req.KnownEntities {
+		if strings.EqualFold(known.Kind, "person") && containsAny(lower, known.Name) {
+			confidence := 0.92
+			entities = append(entities, EntityMention{
+				Kind:       "person",
+				Name:       known.Name,
+				Canonical:  known.Name,
+				Confidence: &confidence,
+			})
+		}
+	}
+
+	if containsAny(lower, "妈妈", "母亲", "mom", "mother") {
+		confidence := 0.93
+		entities = append(entities, EntityMention{
+			Kind:       "person",
+			Name:       "妈妈",
+			Canonical:  "妈妈",
 			Confidence: &confidence,
 		})
 	}
-
-	var media []MediaHint
-	if containsAny(lower, "movie", "film", "电影") {
-		media = append(media, MediaHint{
-			Type:       "movie",
-			Title:      firstMeaningfulTitle(content, "Untitled Film"),
-			SearchHint: "search by title and recent release year",
+	if containsAny(lower, "上海", "beijing", "tokyo", "shanghai") {
+		confidence := 0.86
+		name := "Shanghai"
+		if containsAny(lower, "上海") {
+			name = "上海"
+		}
+		entities = append(entities, EntityMention{
+			Kind:       "place",
+			Name:       name,
+			Canonical:  name,
+			Confidence: &confidence,
 		})
 	}
-	if containsAny(lower, "book", "read", "阅读", "书") {
-		media = append(media, MediaHint{
-			Type:       "book",
-			Title:      firstMeaningfulTitle(content, "Untitled Book"),
-			SearchHint: "search by title and author",
+	for _, tag := range tags {
+		confidence := 0.8
+		entities = append(entities, EntityMention{
+			Kind:       "theme",
+			Name:       tag,
+			Canonical:  tag,
+			Confidence: &confidence,
+		})
+	}
+	if containsAny(lower, "决定", "decide", "should", "选择") {
+		confidence := 0.78
+		entities = append(entities, EntityMention{
+			Kind:       "decision",
+			Name:       firstMeaningfulTitle(content, "pending decision"),
+			Canonical:  firstMeaningfulTitle(content, "pending decision"),
+			Confidence: &confidence,
+		})
+	}
+	if len(entities) >= 2 {
+		confidence := 0.72
+		edges = append(edges, CandidateEdge{
+			FromName:   entities[0].Name,
+			FromKind:   entities[0].Kind,
+			ToName:     entities[1].Name,
+			ToKind:     entities[1].Kind,
+			Relation:   "MENTIONED_WITH",
+			Confidence: &confidence,
 		})
 	}
 
@@ -74,9 +126,10 @@ func (p *MockProvider) Analyze(_ context.Context, req AnalyzeRequest, user UserC
 	resp := NormalizeResponse(AnalyzeResponse{
 		Tags:     tags,
 		Emotion:  EmotionResult{Label: emotionLabel, Intensity: &intensity, Confidence: &confidence},
-		Persons:  personMatches,
-		NewMedia: media,
+		Entities: entities,
+		Edges:    edges,
 		Insight:  insight,
+		Summary:  summary,
 		FollowUp: &FollowUp{
 			Question:  "What part of this moment do you want to remember a month from now?",
 			ExpiresAt: oneHourFromNow(),

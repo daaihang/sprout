@@ -63,6 +63,8 @@ struct CompositionItemView: View {
             workspace.records.first(where: { $0.id == item.targetID })?.rawText ?? "Unknown Record"
         case .reflection:
             workspace.reflections.first(where: { $0.id == item.targetID })?.title ?? "Unknown Reflection"
+        case .arc:
+            workspace.temporalArcs.first(where: { $0.id == item.targetID })?.title ?? "Unknown Arc"
         }
     }
 
@@ -74,6 +76,8 @@ struct CompositionItemView: View {
             workspace.records.first(where: { $0.id == item.targetID })?.captureSource.rawValue ?? ""
         case .reflection:
             workspace.reflections.first(where: { $0.id == item.targetID })?.body ?? ""
+        case .arc:
+            workspace.temporalArcs.first(where: { $0.id == item.targetID })?.summary ?? ""
         }
     }
 

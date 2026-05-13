@@ -93,6 +93,16 @@ struct OnboardingFlowView: View {
                     .foregroundStyle(.secondary)
             }
 
+            if !result.entities.isEmpty {
+                Text(
+                    result.entities
+                        .map { "\($0.kind.capitalized): \($0.name)" }
+                        .joined(separator: "  •  ")
+                )
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            }
+
             if let followUp = result.followUp {
                 Text(followUp.question)
                     .font(.footnote.weight(.medium))
