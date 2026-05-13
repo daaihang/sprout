@@ -12,6 +12,10 @@ struct MemoryEntityDetailView: View {
         memoryRepository.entityView(for: entityID)
     }
 
+    private var analysisMentions: [RecordAnalysisSnapshot] {
+        memoryRepository.analyses(mentioning: entityID)
+    }
+
     var body: some View {
         Group {
             if let entityView {
@@ -26,6 +30,9 @@ struct MemoryEntityDetailView: View {
                         }
                         if !entityView.relatedArtifacts.isEmpty {
                             relatedArtifactsSection(entityView)
+                        }
+                        if !analysisMentions.isEmpty {
+                            analysisMentionsSection
                         }
                     }
                     .padding(.horizontal, 16)
@@ -138,6 +145,37 @@ struct MemoryEntityDetailView: View {
                     ArtifactRowView(artifact: artifact, style: .compact)
                 }
                 .buttonStyle(.plain)
+            }
+        }
+        .detailCard()
+    }
+
+    private var analysisMentionsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionTitle("sparkles", t("memory.entity.analysis_mentions", "Analysis Mentions"))
+            ForEach(analysisMentions.prefix(4), id: \.id) { analysis in
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(analysis.insight)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.primary)
+                    HStack(spacing: 8) {
+                        Text(analysis.emotionLabel.capitalized)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Text(analysis.createdAt.formatted(date: .abbreviated, time: .shortened))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    if !analysis.tags.isEmpty {
+                        Text(analysis.tags.prefix(4).joined(separator: " · "))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(12)
+                .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
         }
         .detailCard()

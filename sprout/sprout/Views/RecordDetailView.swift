@@ -699,6 +699,18 @@ struct RecordDetailView: View {
                         tokenWrapRow(analysis.tags, tint: .accentColor)
                     }
 
+                    if !analysis.entities.isEmpty {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(t("detail.memory.ai_entities", "AI Entities"))
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                            tokenWrapRow(
+                                analysis.entities.map { "\($0.kind.badgeLabel): \($0.name)" },
+                                tint: .purple
+                            )
+                        }
+                    }
+
                     if let evidenceSummaryText {
                         evidenceCallout(
                             title: "Evidence",

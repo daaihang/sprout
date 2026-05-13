@@ -94,6 +94,7 @@ final class SproutMemoryRepository {
     }
 
     private let graphUpdater = GraphUpdater()
+    private let analysisEntityMatcher = AnalysisEntityMatcher()
     private let temporalArcService = SproutTemporalArcService()
 
     var recordShells: [RecordShell] = []
@@ -266,6 +267,18 @@ final class SproutMemoryRepository {
             relatedArtifacts: relatedArtifacts,
             supportingEdges: supportingEdges.sorted { $0.lastSeenAt > $1.lastSeenAt }
         )
+    }
+
+    func analyses(mentioning entityID: UUID) -> [RecordAnalysisSnapshot] {
+        guard let entity = entityNode(for: entityID) else { return [] }
+        return analyses
+            .filter { analysisEntityMatcher.matches(entity: entity, analysis: $0) }
+            .sorted {
+                if $0.createdAt == $1.createdAt {
+                    return $0.recordID.uuidString < $1.recordID.uuidString
+                }
+                return $0.createdAt > $1.createdAt
+            }
     }
 
     func peopleIndex(limit: Int? = nil) -> [PersonIndexEntry] {
