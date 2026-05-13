@@ -266,7 +266,31 @@ struct RecordTimelineRow: View {
         if !record.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return .text
         }
-        return RecordMapper.allCards(record: record).first?.focusedSection ?? .text
+
+        switch record.cardKind {
+        case .photo:
+            return .photo
+        case .music:
+            return .music
+        case .audio:
+            return .audio
+        case .todo:
+            return .todo
+        case .link:
+            return .link
+        case .map:
+            return .map
+        case .activity:
+            return .activity
+        case .emotion:
+            return .emotion
+        case .weather:
+            return .weather
+        case .people:
+            return .people
+        case .text, .quote, .todayInHistory, .book, .film, .game, .ticket, .health:
+            return .text
+        }
     }
 
     @ViewBuilder
