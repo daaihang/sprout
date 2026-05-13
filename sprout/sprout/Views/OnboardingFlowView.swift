@@ -12,6 +12,10 @@ struct OnboardingFlowView: View {
                 if let result = previewService.previewResult {
                     previewResultCard(result)
                 }
+                if let memoryView = previewService.latestMemoryView,
+                   let snapshot = previewService.latestAnalysisSnapshot {
+                    persistedResultCard(memoryView: memoryView, snapshot: snapshot)
+                }
                 if let errorMessage = previewService.errorMessage, !errorMessage.isEmpty {
                     Text(errorMessage)
                         .font(.footnote.weight(.medium))
@@ -111,6 +115,66 @@ struct OnboardingFlowView: View {
         }
         .padding(20)
         .background(.white.opacity(0.75), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+
+    private func persistedResultCard(
+        memoryView: SproutMemoryRepository.RecordMemoryView,
+        snapshot: RecordAnalysisSnapshot
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Stored Memory Effects")
+                .font(.headline)
+
+            Text("This is the v3 memory-layer result after the preview response is mapped into snapshot, graph, and reflection state.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: 8) {
+                SignalPill(title: "\(memoryView.artifacts.count) artifacts", tint: .blue)
+                SignalPill(title: "\(memoryView.linkedEntities.count) entities", tint: .green)
+                if let reflection = memoryView.reflection {
+                    SignalPill(title: reflection.type.rawValue.capitalized, tint: .orange)
+                }
+            }
+
+            AnalysisCompactEvidenceView(
+                analysis: snapshot,
+                showInsight: true,
+                showEntities: true,
+                showRetrievalTerms: true,
+                showReflectionHint: true,
+                maxEntityCount: 4,
+                maxRetrievalTermCount: 8
+            )
+
+            if !memoryView.linkedEntities.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Linked Entities")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    TokenPillRow(
+                        values: memoryView.linkedEntities.prefix(6).map { "\($0.kind.badgeLabel): \($0.displayName)" },
+                        tint: .green
+                    )
+                }
+            }
+
+            if let reflection = memoryView.reflection {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Generated Reflection")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Text(reflection.title)
+                        .font(.subheadline.weight(.semibold))
+                    Text(reflection.body)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(4)
+                }
+            }
+        }
+        .padding(20)
+        .background(.white.opacity(0.78), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
     }
 
     private var signInSection: some View {

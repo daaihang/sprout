@@ -10,6 +10,7 @@ final class OnboardingPreviewService {
     var previewText = ""
     var previewResult: PreviewResult? = nil
     var latestAnalysisSnapshot: RecordAnalysisSnapshot? = nil
+    var latestMemoryView: SproutMemoryRepository.RecordMemoryView? = nil
     var errorMessage: String? = nil
 
     private let aggregateBuilder = SproutMemoryAggregateBuilder()
@@ -24,6 +25,7 @@ final class OnboardingPreviewService {
         let content = previewText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !content.isEmpty else {
             errorMessage = "Write a short memory to preview the AI reflection."
+            latestMemoryView = nil
             return
         }
 
@@ -40,8 +42,10 @@ final class OnboardingPreviewService {
             let analysis = analyzeService.mapToAnalysisSnapshot(response: result, recordID: aggregate.recordShell.id)
             latestAnalysisSnapshot = analysis
             memoryRepository.setAnalysis(analysis, aggregate: aggregate)
+            latestMemoryView = memoryRepository.memoryView(for: aggregate.recordShell.id)
         } catch {
             errorMessage = error.localizedDescription
+            latestMemoryView = nil
         }
     }
 }
