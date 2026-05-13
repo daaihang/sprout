@@ -10,17 +10,20 @@ struct AnalyzeResponseMapper {
         let tags = mergeTags(response.tags, entities: entities)
         let insight = preferredInsight(from: response)
         let retrievalTerms = mapRetrievalTerms(response.retrievalTerms, tags: tags, entities: entities)
+        let followUpCandidates = mapFollowUpCandidates(response.followUp?.question)
+        let candidateEdges = mapCandidateEdges(response.candidateEdges)
 
         return RecordAnalysisSnapshot(
             recordID: recordID,
-            tags: tags,
-            emotionLabel: normalizeText(response.emotion.label) ?? response.emotion.label,
-            insight: insight,
-            followUpQuestion: normalizeText(response.followUp?.question),
-            entities: entities,
+            summary: insight,
+            themes: tags,
+            emotionInterpretation: normalizeText(response.emotion.label) ?? response.emotion.label,
+            followUpCandidates: followUpCandidates,
+            entityMentions: entities,
             salienceScore: response.salienceScore,
             retrievalTerms: retrievalTerms,
             reflectionHint: normalizeText(response.reflectionHint),
+            candidateEdges: candidateEdges,
             createdAt: createdAt
         )
     }
@@ -94,6 +97,35 @@ struct AnalyzeResponseMapper {
         }
 
         return ordered
+    }
+
+    private func mapFollowUpCandidates(_ question: String?) -> [String] {
+        guard let question = normalizeText(question) else { return [] }
+        return [question]
+    }
+
+    private func mapCandidateEdges(
+        _ rawEdges: [SproutAnalyzeResponse.CandidateEdge]
+    ) -> [RecordAnalysisSnapshot.CandidateEdge] {
+        rawEdges.compactMap { edge in
+            guard
+                let fromName = normalizeText(edge.fromName),
+                let fromKind = normalizeText(edge.fromKind),
+                let toName = normalizeText(edge.toName),
+                let toKind = normalizeText(edge.toKind),
+                let relation = normalizeText(edge.relation)
+            else {
+                return nil
+            }
+
+            return RecordAnalysisSnapshot.CandidateEdge(
+                fromName: fromName,
+                fromKind: fromKind.lowercased(),
+                toName: toName,
+                toKind: toKind.lowercased(),
+                relation: relation
+            )
+        }
     }
 
     private func appendUnique(_ value: String, to ordered: inout [String], seen: inout Set<String>) {

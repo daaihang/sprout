@@ -17,11 +17,11 @@ struct AnalysisEntityMatcherTestRunner {
 
         let matchingAnalysis = RecordAnalysisSnapshot(
             recordID: UUID(),
-            tags: ["transition"],
-            emotionLabel: "reflective",
-            insight: "Lina appears in this memory.",
-            followUpQuestion: nil,
-            entities: [
+            summary: "Lina appears in this memory.",
+            themes: ["transition"],
+            emotionInterpretation: "reflective",
+            followUpCandidates: [],
+            entityMentions: [
                 EntityReference(kind: .person, name: " lina ", confidence: 0.91),
                 EntityReference(kind: .theme, name: "transition", confidence: 0.88)
             ],
@@ -30,11 +30,11 @@ struct AnalysisEntityMatcherTestRunner {
 
         let nonMatchingAnalysis = RecordAnalysisSnapshot(
             recordID: UUID(),
-            tags: ["work"],
-            emotionLabel: "focused",
-            insight: "Someone else is mentioned.",
-            followUpQuestion: nil,
-            entities: [
+            summary: "Someone else is mentioned.",
+            themes: ["work"],
+            emotionInterpretation: "focused",
+            followUpCandidates: [],
+            entityMentions: [
                 EntityReference(kind: .person, name: "Marcus", confidence: 0.8)
             ],
             createdAt: now.addingTimeInterval(60)
