@@ -73,12 +73,17 @@ private struct BottomRoundedRectangle: Shape {
 
 enum HomeTopDrawerTag: String, CaseIterable, Identifiable {
     case cards
+    case people
     case rawRecords
     case arcs
-    case people
+    case search
     case decisions
     case map
     case photos
+
+    static var allCases: [HomeTopDrawerTag] {
+        [.cards, .people, .rawRecords, .arcs, .search]
+    }
 
     var id: String { rawValue }
 
@@ -88,6 +93,8 @@ enum HomeTopDrawerTag: String, CaseIterable, Identifiable {
             return "content.top_drawer.tag.cards"
         case .rawRecords:
             return "content.top_drawer.tag.raw_records"
+        case .search:
+            return "content.top_drawer.tag.search"
         case .arcs:
             return "content.top_drawer.tag.arcs"
         case .people:
@@ -107,6 +114,8 @@ enum HomeTopDrawerTag: String, CaseIterable, Identifiable {
             return "卡片"
         case .rawRecords:
             return "原始记录"
+        case .search:
+            return "搜索"
         case .arcs:
             return "阶段"
         case .people:
@@ -126,6 +135,8 @@ enum HomeTopDrawerTag: String, CaseIterable, Identifiable {
             return "square.grid.2x2"
         case .rawRecords:
             return "list.bullet.rectangle"
+        case .search:
+            return "magnifyingglass"
         case .arcs:
             return "timeline.selection"
         case .people:
@@ -145,16 +156,12 @@ enum HomeTopDrawerTag: String, CaseIterable, Identifiable {
             self = .cards
         case Self.rawRecords.rawValue:
             self = .rawRecords
+        case Self.search.rawValue, Self.decisions.rawValue, Self.map.rawValue, Self.photos.rawValue:
+            self = .search
         case Self.arcs.rawValue:
             self = .arcs
         case Self.people.rawValue:
             self = .people
-        case Self.decisions.rawValue:
-            self = .decisions
-        case Self.map.rawValue:
-            self = .map
-        case Self.photos.rawValue:
-            self = .photos
         default:
             self = .cards
         }

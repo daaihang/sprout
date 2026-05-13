@@ -25,6 +25,8 @@ struct HomeModeContentView: View {
                 placeholderView(for: .map)
             case .photos:
                 placeholderView(for: .photos)
+            case .search:
+                SearchHomeView(selectedDate: selectedDate)
             }
         }
         .background(Color.clear)
@@ -66,6 +68,13 @@ struct HomeModeContentView: View {
                 "content.home.placeholder.arcs",
                 default: "阶段页已接入，会展示当前阶段、阶段反思与近期阶段列表。"
             )
+        case .search:
+            return localization.string(
+                "content.home.placeholder.search",
+                default: "搜索页已接入，会聚合人物、阶段、记忆和碎片内容。"
+            )
+        case .people:
+            return ""
         case .decisions:
             return localization.string(
                 "content.home.placeholder.decisions",
@@ -81,7 +90,7 @@ struct HomeModeContentView: View {
                 "content.home.placeholder.photos",
                 default: "图片墙主页还未接入，先保留这个入口。"
             )
-        case .cards, .rawRecords, .people:
+        case .cards, .rawRecords:
             return ""
         }
     }

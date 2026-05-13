@@ -25,6 +25,13 @@ final class SproutMemoryRepository {
         var id: UUID { entity.id }
     }
 
+    struct SearchResults: Sendable {
+        var entities: [EntityNode]
+        var arcs: [TemporalArc]
+        var records: [RecordShell]
+        var artifacts: [Artifact]
+    }
+
     struct RecordMemoryView: Sendable {
         var recordShell: RecordShell
         var artifacts: [Artifact]
@@ -302,6 +309,111 @@ final class SproutMemoryRepository {
         return Array(entries.prefix(limit))
     }
 
+    func searchResults(matching query: String, limitPerSection: Int = 6) -> SearchResults {
+        let tokens = searchTokens(for: query)
+        guard !tokens.isEmpty else {
+            return SearchResults(entities: [], arcs: [], records: [], artifacts: [])
+        }
+
+        let analysisIndex = Dictionary(uniqueKeysWithValues: analyses.map { ($0.recordID, $0) })
+
+        let entities = entityNodes
+            .compactMap { entity -> (EntityNode, Int)? in
+                let fields = [
+                    entity.displayName,
+                    entity.canonicalName,
+                    entity.summary,
+                    entity.kind.rawValue
+                ]
+                guard let score = searchScore(in: fields, tokens: tokens) else { return nil }
+                return (entity, score)
+            }
+            .sorted { lhs, rhs in
+                if lhs.1 == rhs.1 {
+                    return lhs.0.displayName.localizedCaseInsensitiveCompare(rhs.0.displayName) == .orderedAscending
+                }
+                return lhs.1 > rhs.1
+            }
+            .prefix(limitPerSection)
+            .map(\.0)
+
+        let arcs = temporalArcs
+            .filter { $0.status == .accepted }
+            .compactMap { arc -> (TemporalArc, Int)? in
+                let fields = [
+                    arc.title,
+                    arc.summary,
+                    arc.dominantTheme ?? "",
+                    arc.dominantEntityName ?? "",
+                    arc.themeLabels.joined(separator: " "),
+                    arc.entityNames.joined(separator: " ")
+                ]
+                guard let score = searchScore(in: fields, tokens: tokens) else { return nil }
+                return (arc, score)
+            }
+            .sorted { lhs, rhs in
+                if lhs.1 == rhs.1 {
+                    return temporalArcSort(lhs: lhs.0, rhs: rhs.0)
+                }
+                return lhs.1 > rhs.1
+            }
+            .prefix(limitPerSection)
+            .map(\.0)
+
+        let records = recordShells
+            .compactMap { record -> (RecordShell, Int)? in
+                let analysis = analysisIndex[record.id]
+                let fields = [
+                    record.rawText,
+                    record.captureSource.rawValue,
+                    record.userMood ?? "",
+                    analysis?.emotionLabel ?? "",
+                    analysis?.insight ?? "",
+                    analysis?.tags.joined(separator: " ") ?? "",
+                    analysis?.entities.map(\.name).joined(separator: " ") ?? ""
+                ]
+                guard let score = searchScore(in: fields, tokens: tokens) else { return nil }
+                return (record, score)
+            }
+            .sorted { lhs, rhs in
+                if lhs.1 == rhs.1 {
+                    return lhs.0.createdAt > rhs.0.createdAt
+                }
+                return lhs.1 > rhs.1
+            }
+            .prefix(limitPerSection)
+            .map(\.0)
+
+        let matchedArtifacts = artifacts
+            .compactMap { artifact -> (Artifact, Int)? in
+                let fields = [
+                    artifact.kind.rawValue,
+                    artifact.title,
+                    artifact.summary,
+                    artifact.textContent,
+                    artifact.entities.map(\.name).joined(separator: " "),
+                    artifact.metadata.values.joined(separator: " ")
+                ]
+                guard let score = searchScore(in: fields, tokens: tokens) else { return nil }
+                return (artifact, score)
+            }
+            .sorted { lhs, rhs in
+                if lhs.1 == rhs.1 {
+                    return lhs.0.updatedAt > rhs.0.updatedAt
+                }
+                return lhs.1 > rhs.1
+            }
+            .prefix(limitPerSection)
+            .map(\.0)
+
+        return SearchResults(
+            entities: entities,
+            arcs: arcs,
+            records: records,
+            artifacts: matchedArtifacts
+        )
+    }
+
     private func storageURL() -> URL? {
         FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask)
@@ -378,6 +490,41 @@ final class SproutMemoryRepository {
             return lhs.relatedArtifactCount > rhs.relatedArtifactCount
         }
         return lhs.relatedRecordCount > rhs.relatedRecordCount
+    }
+
+    private func searchTokens(for query: String) -> [String] {
+        query
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+            .split(whereSeparator: \.isWhitespace)
+            .map(String.init)
+    }
+
+    private func searchScore(in fields: [String], tokens: [String]) -> Int? {
+        let normalizedFields = fields
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+            .filter { !$0.isEmpty }
+
+        guard !normalizedFields.isEmpty else { return nil }
+
+        var total = 0
+        for token in tokens {
+            var best = 0
+            for field in normalizedFields {
+                if field == token {
+                    best = max(best, 120)
+                } else if field.hasPrefix(token) {
+                    best = max(best, 90)
+                } else if field.contains(token) {
+                    best = max(best, 60)
+                }
+            }
+
+            guard best > 0 else { return nil }
+            total += best
+        }
+
+        return total
     }
 
     private func orderedUniqueNames(from entities: [EntityNode], matching kind: EntityKind) -> [String] {

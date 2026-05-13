@@ -248,18 +248,16 @@ struct ContentView: View {
         switch selectedTopDrawerTag {
         case .cards:
             return "square.grid.2x2"
+        case .people:
+            return "person.2"
         case .rawRecords:
             return "list.bullet.rectangle"
         case .arcs:
             return "timeline.selection"
-        case .people:
-            return "person.2"
-        case .decisions:
-            return "checkmark.circle"
-        case .map:
-            return "map"
-        case .photos:
-            return "photo.stack"
+        case .search:
+            return "magnifyingglass"
+        case .decisions, .map, .photos:
+            return "ellipsis.circle"
         }
     }
 
