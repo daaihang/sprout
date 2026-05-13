@@ -74,6 +74,7 @@ private struct BottomRoundedRectangle: Shape {
 enum HomeTopDrawerTag: String, CaseIterable, Identifiable {
     case cards
     case rawRecords
+    case arcs
     case people
     case decisions
     case map
@@ -87,6 +88,8 @@ enum HomeTopDrawerTag: String, CaseIterable, Identifiable {
             return "content.top_drawer.tag.cards"
         case .rawRecords:
             return "content.top_drawer.tag.raw_records"
+        case .arcs:
+            return "content.top_drawer.tag.arcs"
         case .people:
             return "content.top_drawer.tag.people"
         case .decisions:
@@ -104,6 +107,8 @@ enum HomeTopDrawerTag: String, CaseIterable, Identifiable {
             return "卡片"
         case .rawRecords:
             return "原始记录"
+        case .arcs:
+            return "阶段"
         case .people:
             return "人物"
         case .decisions:
@@ -121,6 +126,8 @@ enum HomeTopDrawerTag: String, CaseIterable, Identifiable {
             return "square.grid.2x2"
         case .rawRecords:
             return "list.bullet.rectangle"
+        case .arcs:
+            return "timeline.selection"
         case .people:
             return "person.2"
         case .decisions:
@@ -138,6 +145,8 @@ enum HomeTopDrawerTag: String, CaseIterable, Identifiable {
             self = .cards
         case Self.rawRecords.rawValue:
             self = .rawRecords
+        case Self.arcs.rawValue:
+            self = .arcs
         case Self.people.rawValue:
             self = .people
         case Self.decisions.rawValue:

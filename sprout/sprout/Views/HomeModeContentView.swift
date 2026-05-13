@@ -15,6 +15,8 @@ struct HomeModeContentView: View {
                 HomeCardsPagerView(selectedDate: $selectedDate, topContentInset: cardsTopInset)
             case .rawRecords:
                 RecordTimelineView(selectedDate: selectedDate)
+            case .arcs:
+                ArcsHomeView(selectedDate: selectedDate)
             case .people:
                 placeholderView(for: .people)
             case .decisions:
@@ -59,6 +61,11 @@ struct HomeModeContentView: View {
 
     private func placeholderSubtitle(for tag: HomeTopDrawerTag) -> String {
         switch tag {
+        case .arcs:
+            return localization.string(
+                "content.home.placeholder.arcs",
+                default: "阶段页已接入，会展示当前阶段、阶段反思与近期阶段列表。"
+            )
         case .people:
             return localization.string(
                 "content.home.placeholder.people",
@@ -364,7 +371,7 @@ struct ClearAncestorBackgroundView: UIViewRepresentable {
     }
 }
 
-private struct HomeSectionPlaceholderView: View {
+struct HomeSectionPlaceholderView: View {
     let systemImage: String
     let title: String
     let subtitle: String
