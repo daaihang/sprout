@@ -16,7 +16,7 @@ final class OnboardingPreviewService {
     private let memoryRepository: SproutMemoryRepository
     private let analyzeService = SproutAnalyzeService()
 
-    init(memoryRepository: SproutMemoryRepository = SproutMemoryRepository()) {
+    init(memoryRepository: SproutMemoryRepository) {
         self.memoryRepository = memoryRepository
     }
 

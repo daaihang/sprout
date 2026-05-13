@@ -9,11 +9,13 @@ import SwiftData
 struct DailyView: View {
     @Environment(AppLocalization.self) private var localization
     @Environment(\.modelContext) private var modelContext
+    @Environment(SproutMemoryRepository.self) private var memoryRepository
     let date: Date
     let topContentInset: CGFloat
 
     @Query private var records: [Record]
     @Query(sort: \DashboardSystemCardConfig.dashboardOrder, order: .forward) private var systemConfigs: [DashboardSystemCardConfig]
+    private let compositionProjector = CompositionProjector()
 
     init(date: Date, topContentInset: CGFloat = 0) {
         let cal   = Calendar.current
@@ -54,22 +56,22 @@ struct DailyView: View {
     private var gridItems: [GridItem] {
         let recordItems: [(order: Double, item: GridItem)] = orderedRecords.enumerated().flatMap { index, record in
             let baseOrder = normalizedOrder(for: record) + Double(index) * 0.001
-            return RecordMapper.allCards(record: record).enumerated().map { cardIndex, info in
-                let spans = availableSpans(for: info.cardType)
+            return compositionProjector.projectCards(for: record, memoryRepository: memoryRepository).enumerated().map { cardIndex, projection in
+                let spans = availableSpans(for: projection.cardType)
                 return (
                     order: baseOrder + Double(cardIndex) * 0.0001,
                     item: GridItem(
-                        id: info.id,
-                        recordID: info.record.id,
-                        card: AnyView(CardWrapper(info: info)),
-                        columns: info.columns,
-                        units: info.units,
+                        id: projection.id,
+                        recordID: projection.record.id,
+                        card: AnyView(CardWrapper(info: projection.asDashboardCardInfo)),
+                        columns: projection.columns,
+                        units: projection.units,
                         availableSpans: spans,
                         onResize: { span in
-                            resizeCard(info, to: span)
+                            resizeCard(projection.asDashboardCardInfo, to: span)
                         },
                         onDelete: {
-                            modelContext.delete(info.record)
+                            modelContext.delete(projection.record)
                         }
                     )
                 )
@@ -193,6 +195,21 @@ struct DailyView: View {
             dashboardOrder: -10_000
         )
         modelContext.insert(created)
+    }
+}
+
+private extension CompositionProjectionCard {
+    var asDashboardCardInfo: DashboardCardInfo {
+        DashboardCardInfo(
+            id: id,
+            spanKey: spanKey,
+            cardType: cardType,
+            record: record,
+            focusedSection: focusedSection,
+            columns: columns,
+            units: units,
+            cardView: cardView
+        )
     }
 }
 

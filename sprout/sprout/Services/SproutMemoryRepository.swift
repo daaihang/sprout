@@ -4,6 +4,13 @@ import Observation
 @Observable
 @MainActor
 final class SproutMemoryRepository {
+    struct RecordMemoryView: Sendable {
+        var recordShell: RecordShell
+        var artifacts: [Artifact]
+        var analysis: RecordAnalysisSnapshot?
+        var linkedEntities: [EntityNode]
+    }
+
     struct Snapshot: Codable, Sendable {
         var recordShells: [RecordShell]
         var artifacts: [Artifact]
@@ -55,6 +62,49 @@ final class SproutMemoryRepository {
         entityEdges = graphResult.entityEdges
         artifactEntityLinks = graphResult.artifactEntityLinks
         save()
+    }
+
+    func recordShell(for recordID: UUID) -> RecordShell? {
+        recordShells.first { $0.id == recordID }
+    }
+
+    func analysis(for recordID: UUID) -> RecordAnalysisSnapshot? {
+        analyses.first { $0.recordID == recordID }
+    }
+
+    func artifacts(forRecordID recordID: UUID) -> [Artifact] {
+        guard let shell = recordShell(for: recordID) else { return [] }
+        let artifactIDs = Set(shell.artifactIDs)
+        return artifacts
+            .filter { artifactIDs.contains($0.id) }
+            .sorted { $0.createdAt < $1.createdAt }
+    }
+
+    func linkedEntities(forRecordID recordID: UUID) -> [EntityNode] {
+        let artifactIDs = Set(artifacts(forRecordID: recordID).map(\.id))
+        let entityIDs = Set(
+            artifactEntityLinks
+                .filter { artifactIDs.contains($0.artifactID) }
+                .map(\.entityID)
+        )
+        return entityNodes
+            .filter { entityIDs.contains($0.id) }
+            .sorted {
+                if $0.kind == $1.kind {
+                    return $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending
+                }
+                return $0.kind.rawValue < $1.kind.rawValue
+            }
+    }
+
+    func memoryView(for recordID: UUID) -> RecordMemoryView? {
+        guard let shell = recordShell(for: recordID) else { return nil }
+        return RecordMemoryView(
+            recordShell: shell,
+            artifacts: artifacts(forRecordID: recordID),
+            analysis: analysis(for: recordID),
+            linkedEntities: linkedEntities(forRecordID: recordID)
+        )
     }
 
     private func storageURL() -> URL? {
