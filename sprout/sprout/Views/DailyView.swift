@@ -147,7 +147,7 @@ struct DailyView: View {
         to span: ContainerSpan,
         boardKey: String
     ) {
-        compositionStateRepository.upsertSpan(
+        compositionStateRepository.upsertState(
             boardKey: boardKey,
             itemKey: projection.compositionItemKey,
             targetType: projection.targetType.rawValue,

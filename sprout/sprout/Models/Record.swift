@@ -116,14 +116,17 @@ extension Record {
         return sizeLimits(for: cardType).clamped(span: containerSpan)
     }
 
+    @available(*, deprecated, message: "Use CompositionStateRepository-backed projection state instead.")
     func dashboardContainerSpan(for key: String, cardType: String) -> ContainerSpan {
         legacyDashboardContainerSpan(for: key, cardType: cardType)
     }
 
+    @available(*, deprecated, message: "Use CompositionItemState lookup instead.")
     func hasDashboardContainerSpanOverride(for key: String) -> Bool {
         dashboardCardSpanOverrides[key] != nil
     }
 
+    @available(*, deprecated, message: "Persist composition span in CompositionItemState instead.")
     func setDashboardContainerSpan(_ span: ContainerSpan, for key: String) {
         var overrides = dashboardCardSpanOverrides
         overrides[key] = StoredDashboardCardSpan(
