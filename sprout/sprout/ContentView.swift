@@ -13,7 +13,7 @@ struct ContentView: View {
     // MARK: UI State
     @State private var isShowingAccountSheet = false
     @State private var isBarOpen             = false
-    @State private var composerDraftText     = ""
+    @State private var captureDraft          = CaptureDraft()
     @State private var composerFocusRequestToken = 0
     @State private var selectedDate: Date    = Calendar.current.startOfDay(for: Date())
     @State private var isTopDrawerPresented  = false
@@ -26,9 +26,6 @@ struct ContentView: View {
     @State private var speechRecognizer = SpeechRecognizer()
     private let memoryAggregateBuilder = SproutMemoryAggregateBuilder()
     private let analyzeService = SproutAnalyzeService()
-
-    // MARK: Composer attachments
-    @State private var composerAttachments = ComposerAttachments()
 
     // Sheet flags
     @State private var showAddCardSheet   = false
@@ -91,15 +88,15 @@ struct ContentView: View {
             .overlay(alignment: .bottom) {
                 BottomCapsuleBar(
                     isOpen:               $isBarOpen,
-                    inputText:            $composerDraftText,
+                    inputText:            captureShellTextBinding,
                     focusRequestToken:    composerFocusRequestToken,
                     onAction:             handleComposerAction,
                     onRemoveAttachment:   removeAttachment,
-                    onSend:               { text in insertRecord(body: text) },
+                    onSend:               { _ in insertRecord(from: captureDraft) },
                     onExpandToFullscreen: { showFullscreenEntryComposer = true },
-                    attachments:          composerAttachments,
+                    attachments:          captureDraft.attachments,
                     speechRecognizer:     speechRecognizer,
-                    onAudioCaptured:      { data in composerAttachments.audioData = data }
+                    onAudioCaptured:      { data in captureDraft.attachments.audioData = data }
                 )
                 .zIndex(10)
             }
@@ -141,14 +138,14 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showFullscreenEntryComposer) {
             FullscreenEntryComposerSheet(
-                text: $composerDraftText,
-                attachments: $composerAttachments,
+                text: captureShellTextBinding,
+                attachments: captureAttachmentsBinding,
                 speechRecognizer: speechRecognizer,
                 musicService: musicService,
                 onAction: handleComposerAction,
                 onRemoveAttachment: removeAttachment,
-                onSubmit: { text in
-                    insertRecord(body: text)
+                onSubmit: { _ in
+                    insertRecord(from: captureDraft)
                     showFullscreenEntryComposer = false
                     isBarOpen = false
                 },
@@ -165,7 +162,7 @@ struct ContentView: View {
         .fullScreenCover(isPresented: $showCameraSheet) {
             CameraView { image in
                 if isBarOpen {
-                    composerAttachments.photos.append(image)
+                    captureDraft.attachments.photos.append(image)
                 } else {
                     insertStandalonePhotoRecord(image: image)
                 }
@@ -181,7 +178,7 @@ struct ContentView: View {
             MusicCardSheet(data: $pendingMusicData, musicService: musicService)
                 .onDisappear {
                     if !pendingMusicData.trackName.isEmpty {
-                        composerAttachments.music = pendingMusicData
+                        captureDraft.attachments.music = pendingMusicData
                         pendingMusicData = MusicCardData()
                     }
                 }
@@ -190,18 +187,18 @@ struct ContentView: View {
             MapCardSheet(data: $pendingLocationData)
                 .onDisappear {
                     if pendingLocationData.coordinate != nil {
-                        composerAttachments.locationData = pendingLocationData
+                        captureDraft.attachments.locationData = pendingLocationData
                         pendingLocationData = MapCardData()
                     }
                 }
         }
         .sheet(isPresented: $showPeopleSheet) {
-            PeoplePickerSheet(selectedPeople: $composerAttachments.people)
+            PeoplePickerSheet(selectedPeople: capturePeopleBinding)
         }
         // MARK: onChange
         .onChange(of: isBarOpen) { _, newValue in
             // Clear transient attachments when the composer bar closes
-            if !newValue { composerAttachments.clear() }
+            if !newValue { captureDraft.attachments.clear() }
         }
         .onChange(of: pendingPhotoItems) { _, items in
             guard !items.isEmpty else { return }
@@ -213,7 +210,7 @@ struct ContentView: View {
                         images.append(img)
                     }
                 }
-                composerAttachments.photos = images
+                captureDraft.attachments.photos = images
                 pendingPhotoItems = []
             }
         }
@@ -235,6 +232,27 @@ struct ContentView: View {
 
     private var drawerTopInset: CGFloat {
         max(navigationBarMaxY, topSafeAreaInset)
+    }
+
+    private var captureShellTextBinding: Binding<String> {
+        Binding(
+            get: { captureDraft.shellText },
+            set: { captureDraft.shellText = $0 }
+        )
+    }
+
+    private var captureAttachmentsBinding: Binding<ComposerAttachments> {
+        Binding(
+            get: { captureDraft.attachments },
+            set: { captureDraft.attachments = $0 }
+        )
+    }
+
+    private var capturePeopleBinding: Binding<[Person]> {
+        Binding(
+            get: { captureDraft.attachments.people },
+            set: { captureDraft.attachments.people = $0 }
+        )
     }
 
     private var navigationTitleText: String {
@@ -326,13 +344,13 @@ struct ContentView: View {
 
     private func removeAttachment(_ key: ComposerAttachmentKey) {
         switch key {
-        case .mood:     composerAttachments.mood         = nil
-        case .photo:    composerAttachments.photos        = []
-        case .location: composerAttachments.locationData = nil
-        case .music:    composerAttachments.music         = nil
-        case .todo:     composerAttachments.todos         = nil
-        case .audio:    composerAttachments.audioData     = nil
-        case .people:   composerAttachments.people        = []
+        case .mood:     captureDraft.attachments.mood         = nil
+        case .photo:    captureDraft.attachments.photos        = []
+        case .location: captureDraft.attachments.locationData = nil
+        case .music:    captureDraft.attachments.music         = nil
+        case .todo:     captureDraft.attachments.todos         = nil
+        case .audio:    captureDraft.attachments.audioData     = nil
+        case .people:   captureDraft.attachments.people        = []
         }
     }
 
@@ -368,13 +386,13 @@ struct ContentView: View {
         }
     }
 
-    /// Creates a Record from the text body + all pending ComposerAttachments.
-    private func insertRecord(body: String) {
-        let trimmed = body.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty || !composerAttachments.isEmpty else { return }
+    /// Creates a Record from one capture draft: shell note + bundled artifacts.
+    private func insertRecord(from draft: CaptureDraft) {
+        guard draft.hasContent else { return }
 
         Task { @MainActor in
-            let attachments = composerAttachments
+            let trimmed = draft.trimmedShellText
+            let attachments = draft.attachments
             let cal = Calendar.current
             let today = cal.startOfDay(for: Date())
             let createdAt = cal.isDate(selectedDate, inSameDayAs: today)
@@ -471,7 +489,7 @@ struct ContentView: View {
                 mediaCards.append(m)
             }
 
-            record.cardType = primaryCardType(parsed: parsed)
+            record.cardType = primaryCardType(for: draft, parsed: parsed)
 
             modelContext.insert(record)
             if !mediaCards.isEmpty { record.mediaCards = mediaCards }
@@ -479,8 +497,7 @@ struct ContentView: View {
             memoryRepository.upsertAggregate(aggregate)
             await runPostCaptureAnalysisIfPossible(for: aggregate)
 
-            composerAttachments.clear()
-            composerDraftText = ""
+            captureDraft.clear()
         }
     }
 
@@ -501,14 +518,15 @@ struct ContentView: View {
         }
     }
 
-    private func primaryCardType(parsed: ParsedContent) -> String {
-        if !composerAttachments.photos.isEmpty           { return "photo"   }
-        if composerAttachments.music != nil              { return "music"   }
-        if composerAttachments.todos != nil              { return "todo"    }
-        if composerAttachments.locationData != nil       { return "map"     }
-        if composerAttachments.mood != nil               { return "emotion" }
-        if composerAttachments.audioData != nil          { return "audio"   }
-        if !composerAttachments.people.isEmpty           { return "people"  }
+    private func primaryCardType(for draft: CaptureDraft, parsed: ParsedContent) -> String {
+        let attachments = draft.attachments
+        if !attachments.photos.isEmpty                   { return "photo"   }
+        if attachments.music != nil                      { return "music"   }
+        if attachments.todos != nil                      { return "todo"    }
+        if attachments.locationData != nil               { return "map"     }
+        if attachments.mood != nil                       { return "emotion" }
+        if attachments.audioData != nil                  { return "audio"   }
+        if !attachments.people.isEmpty                   { return "people"  }
         if !parsed.appleMusicURLs.isEmpty                { return "music"   }
         if !parsed.regularURLs.isEmpty                   { return "link"    }
         return "text"
