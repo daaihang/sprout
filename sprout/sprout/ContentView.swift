@@ -605,7 +605,9 @@ struct ContentView: View {
         }
 
         let fallbackDraft = CaptureDraft(shellText: aggregate.recordShell.rawText)
-        record.cardKind = primaryCardType(for: draft ?? fallbackDraft, parsed: parsed)
+        if record.needsLegacyCardTypeFallback {
+            record.cardKind = primaryCardType(for: draft ?? fallbackDraft, parsed: parsed)
+        }
 
         modelContext.insert(record)
         if !mediaCards.isEmpty {
