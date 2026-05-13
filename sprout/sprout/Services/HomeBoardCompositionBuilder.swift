@@ -34,8 +34,12 @@ struct HomeBoardCompositionBuilder {
             date: date,
             compositionContext: compositionContext
         )
+        let savedReflectionItems = buildSavedReflectionEntries(
+            date: date,
+            compositionContext: compositionContext
+        )
 
-        return (systemItems + arcItems + reflectionItems + recordItems)
+        return (systemItems + arcItems + reflectionItems + savedReflectionItems + recordItems)
             .sorted { $0.order < $1.order }
             .map(\.item)
     }
@@ -116,6 +120,10 @@ struct HomeBoardCompositionBuilder {
     }
 
     func resizePhaseReflectionCard(_ reflection: ReflectionSnapshot, to span: ContainerSpan, on date: Date) {
+        resizeReflectionCard(reflection, to: span, on: date)
+    }
+
+    func resizeReflectionCard(_ reflection: ReflectionSnapshot, to span: ContainerSpan, on date: Date) {
         let compositionContext = dependencies.stateRepository.compositionContext(for: date)
         let itemID = "reflection-\(reflection.id.uuidString)"
         let prominence = dependencies.prominenceEngine.prominence(for: .phaseReflection, reflection: reflection)
@@ -276,6 +284,57 @@ struct HomeBoardCompositionBuilder {
         ]
     }
 
+    private func buildSavedReflectionEntries(
+        date: Date,
+        compositionContext: CompositionStateRepository.ResolvedCompositionContext
+    ) -> [(order: Double, item: GridItem)] {
+        let savedReflections = dependencies.memoryRepository.savedReflectionsForHome(referenceDate: date)
+        guard !savedReflections.isEmpty else { return [] }
+
+        return savedReflections.enumerated().map { index, reflection in
+            let itemID = "saved-reflection-\(reflection.id.uuidString)"
+            let prominence = dependencies.prominenceEngine.prominence(for: .phaseReflection, reflection: reflection)
+            let resolvedState = dependencies.stateRepository.resolvedState(
+                compositionKey: compositionContext.compositionKey,
+                itemKey: itemID,
+                fallbackSpan: prominence.fallbackSpan,
+                fallbackZIndex: prominence.fallbackZIndex,
+                fallbackRotationDegrees: stickerRotation(for: itemID),
+                fallbackScale: stickerScale(for: itemID)
+            )
+
+            return (
+                order: prominence.order + Double(index) * 0.001,
+                item: GridItem(
+                    id: itemID,
+                    projectionTargetType: CompositionProjectionTargetType.reflection.rawValue,
+                    projectionTargetID: reflection.id,
+                    recordID: reflection.sourceRecordIDs.first ?? UUID(uuidString: "00000000-0000-0000-0000-000000000002") ?? UUID(),
+                    card: AnyView(
+                        NavigationLink(destination: ReflectionDetailView(reflection: reflection)) {
+                            PhaseReflectionCard(data: reflectionCardData(for: reflection))
+                        }
+                        .buttonStyle(.plain)
+                    ),
+                    columns: resolvedState.span.widthColumns,
+                    units: resolvedState.span.heightUnits,
+                    zIndex: resolvedState.zIndex,
+                    rotationDegrees: resolvedState.rotationDegrees,
+                    scale: resolvedState.scale,
+                    availableSpans: availableSpans(for: "text"),
+                    deleteActionTitle: "Dismiss Reflection",
+                    deleteActionSystemImage: "archivebox",
+                    onResize: { newSpan in
+                        resizeReflectionCard(reflection, to: newSpan, on: date)
+                    },
+                    onDelete: {
+                        dependencies.memoryRepository.dismissReflection(reflection.id)
+                    }
+                )
+            )
+        }
+    }
+
     private func buildTemporalArcEntries(
         date: Date,
         compositionContext: CompositionStateRepository.ResolvedCompositionContext
@@ -355,7 +414,7 @@ struct HomeBoardCompositionBuilder {
                     recordID: reflection.sourceRecordIDs.first ?? UUID(),
                     card: AnyView(
                         NavigationLink(destination: ReflectionDetailView(reflection: reflection)) {
-                            PhaseReflectionCard(data: phaseReflectionCardData(for: arc, reflection: reflection))
+                            PhaseReflectionCard(data: reflectionCardData(for: reflection, linkedArc: arc))
                         }
                         .buttonStyle(.plain)
                     ),
@@ -420,14 +479,33 @@ struct HomeBoardCompositionBuilder {
         )
     }
 
-    private func phaseReflectionCardData(for arc: TemporalArc, reflection: ReflectionSnapshot) -> PhaseReflectionCardData {
+    private func reflectionCardData(for reflection: ReflectionSnapshot, linkedArc: TemporalArc? = nil) -> PhaseReflectionCardData {
         PhaseReflectionCardData(
             title: reflection.title,
             body: reflection.body,
-            phaseTitle: arc.title,
-            dateText: temporalArcDateRangeText(for: arc),
+            phaseTitle: linkedArc?.title ?? reflectionContextTitle(for: reflection),
+            dateText: reflectionDateText(for: reflection, linkedArc: linkedArc),
             recordCount: reflection.sourceRecordIDs.count
         )
+    }
+
+    private func reflectionContextTitle(for reflection: ReflectionSnapshot) -> String {
+        let trimmed = reflection.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "Saved Reflection" : trimmed
+    }
+
+    private func reflectionDateText(for reflection: ReflectionSnapshot, linkedArc: TemporalArc?) -> String {
+        if let linkedArc {
+            return temporalArcDateRangeText(for: linkedArc)
+        }
+
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        if let savedAt = reflection.savedAt {
+            return "Saved \(formatter.string(from: savedAt))"
+        }
+        return formatter.string(from: reflection.createdAt)
     }
 
     private func temporalArcDateRangeText(for arc: TemporalArc) -> String {

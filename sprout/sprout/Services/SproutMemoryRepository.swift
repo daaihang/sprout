@@ -245,6 +245,63 @@ final class SproutMemoryRepository {
         return reflections.first { $0.id == reflectionID }
     }
 
+    func savedReflectionsForHome(referenceDate: Date, limit: Int = 3) -> [ReflectionSnapshot] {
+        let saved = reflections
+            .filter { $0.status == .saved && $0.type != .phase }
+            .sorted { lhs, rhs in
+                if lhs.savedAt == rhs.savedAt {
+                    if lhs.createdAt == rhs.createdAt {
+                        return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
+                    }
+                    return lhs.createdAt > rhs.createdAt
+                }
+                return (lhs.savedAt ?? lhs.createdAt) > (rhs.savedAt ?? rhs.createdAt)
+            }
+
+        let referenceRecordIDs = Set(recordShells(on: referenceDate).map(\.id))
+        let ranked = saved.map { reflection -> (reflection: ReflectionSnapshot, score: Double) in
+            var score = Double(reflection.sourceRecordIDs.filter { referenceRecordIDs.contains($0) }.count) * 80
+            if let savedAt = reflection.savedAt, Calendar.current.isDate(savedAt, inSameDayAs: referenceDate) {
+                score += 40
+            }
+            if Calendar.current.isDate(reflection.createdAt, inSameDayAs: referenceDate) {
+                score += 24
+            }
+            if let linkedArcID = reflection.linkedTemporalArcID,
+               temporalArcs.contains(where: { $0.id == linkedArcID && $0.status == .accepted }) {
+                score += 18
+            }
+            score += min(Double(reflection.sourceArtifactIDs.count), 6) * 6
+            score += min(Double(reflection.sourceEntityIDs.count), 6) * 3
+            score += min(Double(reflection.body.count / 40), 6)
+            return (reflection, score)
+        }
+
+        let matched = ranked
+            .filter { item in
+                let reflection = item.reflection
+                return referenceRecordIDs.isEmpty
+                    ? true
+                    : reflection.sourceRecordIDs.contains { referenceRecordIDs.contains($0) }
+            }
+            .sorted {
+                if $0.score == $1.score {
+                    if $0.reflection.savedAt == $1.reflection.savedAt {
+                        return $0.reflection.createdAt > $1.reflection.createdAt
+                    }
+                    return ($0.reflection.savedAt ?? $0.reflection.createdAt) > ($1.reflection.savedAt ?? $1.reflection.createdAt)
+                }
+                return $0.score > $1.score
+            }
+            .map(\.reflection)
+
+        if !matched.isEmpty {
+            return Array(matched.prefix(limit))
+        }
+
+        return Array(saved.prefix(limit))
+    }
+
     func archiveTemporalArc(_ arcID: UUID) {
         guard let index = temporalArcs.firstIndex(where: { $0.id == arcID }) else { return }
         temporalArcs[index].status = .archived
@@ -681,6 +738,11 @@ final class SproutMemoryRepository {
         temporalArcs = bundles.map(\.arc)
         reflections.removeAll { $0.type == .phase }
         reflections.append(contentsOf: bundles.map(\.reflection))
+    }
+
+    private func recordShells(on referenceDate: Date) -> [RecordShell] {
+        let calendar = Calendar.current
+        return recordShells.filter { calendar.isDate($0.createdAt, inSameDayAs: referenceDate) }
     }
 
     private func temporalArcSort(lhs: TemporalArc, rhs: TemporalArc) -> Bool {
