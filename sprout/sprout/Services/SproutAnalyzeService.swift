@@ -1,67 +1,8 @@
 import Foundation
 
-struct SproutAnalyzeResponse: Decodable, Sendable {
-    let tags: [String]
-    let emotion: Emotion
-    let entities: [Entity]
-    let candidateEdges: [CandidateEdge]
-    let insight: String
-    let summary: String?
-    let followUp: FollowUp?
-
-    struct Emotion: Decodable, Sendable {
-        let label: String
-        let intensity: Int?
-        let confidence: Double?
-    }
-
-    struct Entity: Decodable, Sendable {
-        let kind: String
-        let name: String
-        let canonicalName: String?
-        let confidence: Double?
-
-        enum CodingKeys: String, CodingKey {
-            case kind
-            case name
-            case canonicalName = "canonical_name"
-            case confidence
-        }
-    }
-
-    struct CandidateEdge: Decodable, Sendable {
-        let fromName: String
-        let fromKind: String
-        let toName: String
-        let toKind: String
-        let relation: String
-
-        enum CodingKeys: String, CodingKey {
-            case fromName = "from_name"
-            case fromKind = "from_kind"
-            case toName = "to_name"
-            case toKind = "to_kind"
-            case relation
-        }
-    }
-
-    struct FollowUp: Decodable, Sendable {
-        let question: String
-    }
-
-    enum CodingKeys: String, CodingKey {
-        case tags
-        case emotion
-        case entities
-        case candidateEdges = "candidate_edges"
-        case insight
-        case summary
-        case followUp = "follow_up"
-    }
-}
-
 struct SproutAnalyzeService {
     private let dateFormatter = ISO8601DateFormatter()
+    private let responseMapper = AnalyzeResponseMapper()
 
     func analyzePreview(aggregate: SproutMemoryAggregate) async throws -> SproutAnalyzeResponse {
         try await request(path: "/api/onboarding/analyze-preview", aggregate: aggregate, bearerToken: nil, analysisReason: "preview")
@@ -84,22 +25,9 @@ struct SproutAnalyzeService {
         recordID: UUID,
         createdAt: Date = .now
     ) -> RecordAnalysisSnapshot {
-        let entities = response.entities.compactMap { entity -> EntityReference? in
-            guard let kind = EntityKind(rawValue: entity.kind.lowercased()) else { return nil }
-            return EntityReference(
-                kind: kind,
-                name: entity.name,
-                confidence: entity.confidence
-            )
-        }
-        let mergedTags = Array(NSOrderedSet(array: response.tags + entities.filter { $0.kind == .theme }.map(\.name))) as? [String] ?? response.tags
-        return RecordAnalysisSnapshot(
+        responseMapper.map(
+            response: response,
             recordID: recordID,
-            tags: mergedTags,
-            emotionLabel: response.emotion.label,
-            insight: response.summary?.isEmpty == false ? (response.summary ?? response.insight) : response.insight,
-            followUpQuestion: response.followUp?.question,
-            entities: entities,
             createdAt: createdAt
         )
     }
