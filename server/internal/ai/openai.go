@@ -56,10 +56,7 @@ type openAIUsage struct {
 }
 
 func NewOpenAICompatibleProvider(client *http.Client, logger *slog.Logger, cfg config.Config) *OpenAICompatibleProvider {
-	baseURL := strings.TrimSpace(cfg.AIBaseURL)
-	if baseURL == "" {
-		baseURL = "https://api.openai.com/v1/chat/completions"
-	}
+	baseURL := resolveOpenAICompatibleEndpoint(cfg.AIBaseURL)
 	return &OpenAICompatibleProvider{
 		client:     client,
 		logger:     logger,
@@ -68,6 +65,25 @@ func NewOpenAICompatibleProvider(client *http.Client, logger *slog.Logger, cfg c
 		model:      cfg.AIModel,
 		maxRetries: cfg.AIMaxRetries,
 		backoff:    cfg.AIRetryBackoff,
+	}
+}
+
+func resolveOpenAICompatibleEndpoint(raw string) string {
+	baseURL := strings.TrimSpace(raw)
+	if baseURL == "" {
+		return "https://api.openai.com/v1/chat/completions"
+	}
+
+	baseURL = strings.TrimRight(baseURL, "/")
+	switch {
+	case strings.HasSuffix(baseURL, "/chat/completions"):
+		return baseURL
+	case strings.HasSuffix(baseURL, "/v1"):
+		return baseURL + "/chat/completions"
+	case strings.HasSuffix(baseURL, "/chat"):
+		return baseURL + "/completions"
+	default:
+		return baseURL + "/chat/completions"
 	}
 }
 

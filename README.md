@@ -169,6 +169,23 @@ To switch to live AI:
 - provide `AI_API_KEY`
 - provide `AI_BASE_URL` when using a non-default OpenAI-compatible endpoint
 
+Local DeepSeek setup for immediate testing:
+
+1. Create `server/.env` from [server/.env.example](/Users/z14/Documents/sprout/server/.env.example).
+2. Put your key in `AI_API_KEY=...`.
+3. Keep:
+   - `AI_MODE=live`
+   - `AI_PROVIDER=openai_compatible`
+   - `AI_MODEL=deepseek-v4-pro`
+   - `AI_BASE_URL=https://api.deepseek.com`
+4. Run the backend from repo root:
+
+```sh
+set -a && source server/.env && set +a && go run ./server/cmd/server
+```
+
+The backend will normalize `AI_BASE_URL=https://api.deepseek.com` to the correct OpenAI-compatible chat completions endpoint automatically.
+
 ## Immediate Next Work
 
 The current best-practice next steps are:

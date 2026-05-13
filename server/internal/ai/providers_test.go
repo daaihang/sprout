@@ -158,6 +158,48 @@ func TestOpenAICompatibleProviderAnalyze(t *testing.T) {
 	}
 }
 
+func TestResolveOpenAICompatibleEndpoint(t *testing.T) {
+	tests := []struct {
+		name string
+		raw  string
+		want string
+	}{
+		{
+			name: "empty uses openai default",
+			raw:  "",
+			want: "https://api.openai.com/v1/chat/completions",
+		},
+		{
+			name: "deepseek root appends completions path",
+			raw:  "https://api.deepseek.com",
+			want: "https://api.deepseek.com/chat/completions",
+		},
+		{
+			name: "v1 suffix appends completions path",
+			raw:  "https://api.example.com/v1",
+			want: "https://api.example.com/v1/chat/completions",
+		},
+		{
+			name: "chat suffix appends completions leaf",
+			raw:  "https://api.example.com/chat",
+			want: "https://api.example.com/chat/completions",
+		},
+		{
+			name: "full endpoint remains unchanged",
+			raw:  "https://api.example.com/chat/completions",
+			want: "https://api.example.com/chat/completions",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := resolveOpenAICompatibleEndpoint(tt.raw); got != tt.want {
+				t.Fatalf("resolveOpenAICompatibleEndpoint(%q) = %q, want %q", tt.raw, got, tt.want)
+			}
+		})
+	}
+}
+
 func writeTestJSON(w http.ResponseWriter, payload any) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(payload)
