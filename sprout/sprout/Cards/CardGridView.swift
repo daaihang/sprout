@@ -7,7 +7,7 @@ struct CardGridView: View {
 
     private var layoutSignature: [String] {
         items.map {
-            "\($0.recordID.uuidString)-\($0.columns)x\($0.units)-r\($0.rotationDegrees)-s\($0.scale)"
+            "\($0.recordID.uuidString)-\($0.projectionTargetType ?? "record")-\($0.projectionTargetID?.uuidString ?? "none")-\($0.columns)x\($0.units)-r\($0.rotationDegrees)-s\($0.scale)"
         }
     }
 
@@ -72,6 +72,8 @@ struct CardGridView: View {
 }
 
 struct GridItem: Identifiable {
+    let projectionTargetType: String?
+    let projectionTargetID: UUID?
     let id: String
     let recordID: UUID
     let card: AnyView
@@ -85,6 +87,8 @@ struct GridItem: Identifiable {
 
     init(
         id: String = UUID().uuidString,
+        projectionTargetType: String? = nil,
+        projectionTargetID: UUID? = nil,
         recordID: UUID = UUID(),
         card: AnyView,
         columns: Int,
@@ -96,6 +100,8 @@ struct GridItem: Identifiable {
         onDelete: @escaping () -> Void = {}
     ) {
         self.id = id
+        self.projectionTargetType = projectionTargetType
+        self.projectionTargetID = projectionTargetID
         self.recordID = recordID
         self.card = card
         self.columns = columns

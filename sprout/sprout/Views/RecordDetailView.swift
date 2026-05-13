@@ -507,26 +507,36 @@ struct RecordDetailView: View {
                         .foregroundStyle(.secondary)
 
                     ForEach(memoryView.linkedEntities, id: \.id) { entity in
-                        HStack(alignment: .top, spacing: 10) {
-                            Text(entity.kind.badgeLabel)
-                                .font(.caption2.weight(.semibold))
-                                .foregroundStyle(entity.kind.tintColor)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(entity.kind.tintColor.opacity(0.12), in: Capsule())
+                        NavigationLink {
+                            MemoryEntityDetailView(entityID: entity.id)
+                        } label: {
+                            HStack(alignment: .top, spacing: 10) {
+                                Text(entity.kind.badgeLabel)
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(entity.kind.tintColor)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(entity.kind.tintColor.opacity(0.12), in: Capsule())
 
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(entity.displayName)
-                                    .font(.subheadline.weight(.medium))
-                                if !entity.summary.isEmpty {
-                                    Text(entity.summary)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(entity.displayName)
+                                        .font(.subheadline.weight(.medium))
+                                        .foregroundStyle(.primary)
+                                    if !entity.summary.isEmpty {
+                                        Text(entity.summary)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
                                 }
-                            }
 
-                            Spacer()
+                                Spacer()
+
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.tertiary)
+                            }
                         }
+                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -590,34 +600,6 @@ struct RecordDetailView: View {
     }
 }
 
-private extension EntityKind {
-    var badgeLabel: String {
-        switch self {
-        case .person:
-            return "Person"
-        case .place:
-            return "Place"
-        case .theme:
-            return "Theme"
-        case .decision:
-            return "Decision"
-        }
-    }
-
-    var tintColor: Color {
-        switch self {
-        case .person:
-            return .blue
-        case .place:
-            return .green
-        case .theme:
-            return .orange
-        case .decision:
-            return .pink
-        }
-    }
-}
-
 // MARK: - Section label
 
 private struct SectionLabel: View {
@@ -661,19 +643,6 @@ private struct MapSnapshotView: View {
         if let snap = try? await MKMapSnapshotter(options: opts).start() {
             image = snap.image
         }
-    }
-}
-
-// MARK: - Card modifier
-
-private extension View {
-    func detailCard() -> some View {
-        self
-            .padding(16)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.white.opacity(0.85),
-                        in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
     }
 }
 

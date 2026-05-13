@@ -4,6 +4,14 @@ import Observation
 @Observable
 @MainActor
 final class SproutMemoryRepository {
+    struct EntityMemoryView: Sendable {
+        var entity: EntityNode
+        var relatedEntities: [EntityNode]
+        var relatedRecords: [RecordShell]
+        var relatedArtifacts: [Artifact]
+        var supportingEdges: [EntityEdge]
+    }
+
     struct RecordMemoryView: Sendable {
         var recordShell: RecordShell
         var artifacts: [Artifact]
@@ -104,6 +112,57 @@ final class SproutMemoryRepository {
             artifacts: artifacts(forRecordID: recordID),
             analysis: analysis(for: recordID),
             linkedEntities: linkedEntities(forRecordID: recordID)
+        )
+    }
+
+    func entityNode(for entityID: UUID) -> EntityNode? {
+        entityNodes.first { $0.id == entityID }
+    }
+
+    func entityView(for entityID: UUID) -> EntityMemoryView? {
+        guard let entity = entityNode(for: entityID) else { return nil }
+
+        let supportingEdges = entityEdges.filter {
+            $0.fromEntityID == entityID || $0.toEntityID == entityID
+        }
+
+        let relatedEntityIDs = Set(
+            supportingEdges.map {
+                $0.fromEntityID == entityID ? $0.toEntityID : $0.fromEntityID
+            }
+        )
+        let relatedEntities = entityNodes
+            .filter { relatedEntityIDs.contains($0.id) }
+            .sorted {
+                if $0.kind == $1.kind {
+                    return $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending
+                }
+                return $0.kind.rawValue < $1.kind.rawValue
+            }
+
+        let relatedArtifactIDs = Set(
+            artifactEntityLinks
+                .filter { $0.entityID == entityID }
+                .map(\.artifactID)
+        )
+        let relatedArtifacts = artifacts
+            .filter { relatedArtifactIDs.contains($0.id) }
+            .sorted { $0.createdAt > $1.createdAt }
+
+        let relatedRecordIDs = Set(
+            supportingEdges
+                .flatMap(\.sourceRecordIDs)
+        )
+        let relatedRecords = recordShells
+            .filter { relatedRecordIDs.contains($0.id) }
+            .sorted { $0.createdAt > $1.createdAt }
+
+        return EntityMemoryView(
+            entity: entity,
+            relatedEntities: relatedEntities,
+            relatedRecords: relatedRecords,
+            relatedArtifacts: relatedArtifacts,
+            supportingEdges: supportingEdges.sorted { $0.lastSeenAt > $1.lastSeenAt }
         )
     }
 

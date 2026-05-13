@@ -62,6 +62,8 @@ struct DailyView: View {
                     order: baseOrder + Double(cardIndex) * 0.0001,
                     item: GridItem(
                         id: projection.id,
+                        projectionTargetType: projection.targetType.rawValue,
+                        projectionTargetID: projection.targetID,
                         recordID: projection.record.id,
                         card: AnyView(CardWrapper(info: projection.asDashboardCardInfo)),
                         columns: projection.columns,
@@ -93,6 +95,8 @@ struct DailyView: View {
                 order: config.dashboardOrder,
                 item: GridItem(
                     id: "system-\(DashboardSystemCardConfig.todayInHistoryKind)",
+                    projectionTargetType: CompositionProjectionTargetType.system.rawValue,
+                    projectionTargetID: nil,
                     recordID: UUID(uuidString: "00000000-0000-0000-0000-000000000001") ?? UUID(),
                     card: AnyView(
                         NavigationLink(
