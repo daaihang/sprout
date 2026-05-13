@@ -604,11 +604,6 @@ struct ContentView: View {
             }
         }
 
-        let fallbackDraft = CaptureDraft(shellText: aggregate.recordShell.rawText)
-        if record.needsLegacyCardTypeFallback {
-            record.cardKind = primaryCardType(for: draft ?? fallbackDraft, parsed: parsed)
-        }
-
         modelContext.insert(record)
         if !mediaCards.isEmpty {
             record.mediaCards = mediaCards
@@ -630,10 +625,6 @@ struct ContentView: View {
         } catch {
             // Keep capture resilient; analysis is best-effort.
         }
-    }
-
-    private func primaryCardType(for draft: CaptureDraft, parsed: ParsedContent) -> RecordCardKind {
-        RecordCardKind.primaryCaptureKind(draft: draft, parsed: parsed)
     }
 
     private func shortTimeLabel() -> String {
