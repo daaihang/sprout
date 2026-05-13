@@ -47,8 +47,20 @@ struct CardGridView: View {
             )
         )
         .layoutValue(key: StickerGridSpanKey.self, value: span)
+        .overlay(alignment: .topLeading) {
+            if let targetKind = item.targetKind {
+                gridTargetBadge(for: targetKind)
+                    .padding(10)
+            }
+        }
         .contentShape(RoundedRectangle(cornerRadius: GridConfig.cardCornerRadius, style: .continuous))
         .contextMenu {
+            if let targetKind = item.targetKind {
+                Label(targetKind.menuSummary, systemImage: targetKind.systemImage)
+            }
+
+            Divider()
+
             ForEach(item.availableSpans, id: \.self) { span in
                 Button {
                     item.onResize(span)
@@ -65,8 +77,74 @@ struct CardGridView: View {
             Button(role: .destructive) {
                 item.onDelete()
             } label: {
-                Label(localizedString("common.delete", default: "Delete"), systemImage: "trash")
+                Label(item.deleteActionTitle, systemImage: item.deleteActionSystemImage)
             }
+        }
+    }
+
+    private func gridTargetBadge(for targetKind: GridItemTargetKind) -> some View {
+        Label(targetKind.badgeTitle, systemImage: targetKind.systemImage)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(targetKind.tint)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(.ultraThinMaterial, in: Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(targetKind.tint.opacity(0.16), lineWidth: 1)
+            )
+    }
+}
+
+enum GridItemTargetKind: String {
+    case record
+    case artifact
+    case arc
+    case reflection
+    case system
+
+    init?(rawProjectionTargetType: String?) {
+        guard let rawProjectionTargetType else { return nil }
+        self.init(rawValue: rawProjectionTargetType)
+    }
+
+    var badgeTitle: String {
+        switch self {
+        case .record: return "Memory"
+        case .artifact: return "Artifact"
+        case .arc: return "Phase"
+        case .reflection: return "Reflection"
+        case .system: return "System"
+        }
+    }
+
+    var menuSummary: String {
+        switch self {
+        case .record: return "Memory composition item"
+        case .artifact: return "Artifact-backed composition item"
+        case .arc: return "Temporal phase composition item"
+        case .reflection: return "Reflection composition item"
+        case .system: return "System composition item"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .record: return "text.justify"
+        case .artifact: return "shippingbox"
+        case .arc: return "timeline.selection"
+        case .reflection: return "sparkles"
+        case .system: return "square.stack.3d.up"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .record: return .accentColor
+        case .artifact: return .green
+        case .arc: return .orange
+        case .reflection: return .purple
+        case .system: return .blue
         }
     }
 }
@@ -83,6 +161,8 @@ struct GridItem: Identifiable {
     let rotationDegrees: Double
     let scale: Double
     let availableSpans: [ContainerSpan]
+    let deleteActionTitle: String
+    let deleteActionSystemImage: String
     let onResize: (ContainerSpan) -> Void
     let onDelete: () -> Void
 
@@ -98,6 +178,8 @@ struct GridItem: Identifiable {
         rotationDegrees: Double? = nil,
         scale: Double? = nil,
         availableSpans: [ContainerSpan] = [],
+        deleteActionTitle: String = localizedString("common.delete", default: "Delete"),
+        deleteActionSystemImage: String = "trash",
         onResize: @escaping (ContainerSpan) -> Void = { _ in },
         onDelete: @escaping () -> Void = {}
     ) {
@@ -114,12 +196,18 @@ struct GridItem: Identifiable {
         self.availableSpans = availableSpans.isEmpty
             ? [ContainerSpan(widthColumns: columns, heightUnits: units)]
             : availableSpans
+        self.deleteActionTitle = deleteActionTitle
+        self.deleteActionSystemImage = deleteActionSystemImage
         self.onResize = onResize
         self.onDelete = onDelete
     }
 
     var span: ContainerSpan {
         ContainerSpan(widthColumns: columns, heightUnits: units)
+    }
+
+    var targetKind: GridItemTargetKind? {
+        GridItemTargetKind(rawProjectionTargetType: projectionTargetType)
     }
 }
 

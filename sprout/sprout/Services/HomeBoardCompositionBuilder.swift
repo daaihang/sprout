@@ -207,6 +207,8 @@ struct HomeBoardCompositionBuilder {
                         rotationDegrees: projection.rotationDegrees,
                         scale: projection.scale,
                         availableSpans: spans,
+                        deleteActionTitle: "Delete Memory",
+                        deleteActionSystemImage: "trash",
                         onResize: { span in
                             resizeProjection(projection, to: span, on: record.createdAt)
                         },
@@ -261,6 +263,8 @@ struct HomeBoardCompositionBuilder {
                     rotationDegrees: resolvedState.rotationDegrees,
                     scale: resolvedState.scale,
                     availableSpans: availableSpans(for: DashboardSystemCardConfig.todayInHistoryKind),
+                    deleteActionTitle: "Hide System Card",
+                    deleteActionSystemImage: "eye.slash",
                     onResize: { newSpan in
                         resizeTodayInHistoryCard(to: newSpan, on: date)
                     },
@@ -309,6 +313,8 @@ struct HomeBoardCompositionBuilder {
                     rotationDegrees: resolvedState.rotationDegrees,
                     scale: resolvedState.scale,
                     availableSpans: availableSpans(for: "text"),
+                    deleteActionTitle: "Archive Phase",
+                    deleteActionSystemImage: "archivebox",
                     onResize: { newSpan in
                         resizeTemporalArcCard(arc, to: newSpan, on: date)
                     },
@@ -359,6 +365,8 @@ struct HomeBoardCompositionBuilder {
                     rotationDegrees: resolvedState.rotationDegrees,
                     scale: resolvedState.scale,
                     availableSpans: availableSpans(for: "text"),
+                    deleteActionTitle: "Archive Reflection Phase",
+                    deleteActionSystemImage: "archivebox",
                     onResize: { newSpan in
                         resizePhaseReflectionCard(reflection, to: newSpan, on: date)
                     },
