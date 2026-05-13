@@ -5,6 +5,8 @@ import Observation
 @MainActor
 final class SproutMemoryRepository {
     struct Snapshot: Codable, Sendable {
+        var recordShells: [RecordShell]
+        var artifacts: [Artifact]
         var analyses: [RecordAnalysisSnapshot]
         var entityNodes: [EntityNode]
         var entityEdges: [EntityEdge]
@@ -13,6 +15,8 @@ final class SproutMemoryRepository {
 
     private let graphUpdater = GraphUpdater()
 
+    var recordShells: [RecordShell] = []
+    var artifacts: [Artifact] = []
     var analyses: [RecordAnalysisSnapshot] = []
     var entityNodes: [EntityNode] = []
     var entityEdges: [EntityEdge] = []
@@ -22,7 +26,19 @@ final class SproutMemoryRepository {
         load()
     }
 
+    func upsertAggregate(_ aggregate: SproutMemoryAggregate) {
+        recordShells.removeAll { $0.id == aggregate.recordShell.id }
+        recordShells.append(aggregate.recordShell)
+
+        let aggregateArtifactIDs = Set(aggregate.artifacts.map(\.id))
+        artifacts.removeAll { aggregateArtifactIDs.contains($0.id) }
+        artifacts.append(contentsOf: aggregate.artifacts)
+
+        save()
+    }
+
     func setAnalysis(_ analysis: RecordAnalysisSnapshot, aggregate: SproutMemoryAggregate) {
+        upsertAggregate(aggregate)
         analyses.removeAll { $0.recordID == analysis.recordID }
         analyses.append(analysis)
 
@@ -53,6 +69,8 @@ final class SproutMemoryRepository {
         guard let url = storageURL() else { return }
         guard let data = try? Data(contentsOf: url) else { return }
         guard let snapshot = try? JSONDecoder().decode(Snapshot.self, from: data) else { return }
+        recordShells = snapshot.recordShells
+        artifacts = snapshot.artifacts
         analyses = snapshot.analyses
         entityNodes = snapshot.entityNodes
         entityEdges = snapshot.entityEdges
@@ -64,6 +82,8 @@ final class SproutMemoryRepository {
         let directory = url.deletingLastPathComponent()
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let snapshot = Snapshot(
+            recordShells: recordShells,
+            artifacts: artifacts,
             analyses: analyses,
             entityNodes: entityNodes,
             entityEdges: entityEdges,

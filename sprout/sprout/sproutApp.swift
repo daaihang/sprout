@@ -9,7 +9,14 @@ struct sproutApp: App {
     @State private var authSessionManager = AuthSessionManager()
     @State private var biometricLockManager = BiometricLockManager()
     @State private var installExperienceStore = InstallExperienceStore()
-    @State private var onboardingPreviewService = OnboardingPreviewService()
+    @State private var memoryRepository = SproutMemoryRepository()
+    @State private var onboardingPreviewService: OnboardingPreviewService
+
+    init() {
+        let memoryRepository = SproutMemoryRepository()
+        _memoryRepository = State(initialValue: memoryRepository)
+        _onboardingPreviewService = State(initialValue: OnboardingPreviewService(memoryRepository: memoryRepository))
+    }
 
     var sharedModelContainer: ModelContainer = {
         #if targetEnvironment(simulator)
@@ -48,6 +55,7 @@ struct sproutApp: App {
                 .environment(authSessionManager)
                 .environment(biometricLockManager)
                 .environment(installExperienceStore)
+                .environment(memoryRepository)
                 .environment(onboardingPreviewService)
         }
         .modelContainer(sharedModelContainer)

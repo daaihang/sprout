@@ -11,6 +11,7 @@ struct AddCardSheet: View {
     @Environment(AppLocalization.self) private var localization
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss)      private var dismiss
+    @Environment(SproutMemoryRepository.self) private var memoryRepository
 
     var musicService: MusicService
     var selectedDate: Date
@@ -346,6 +347,7 @@ struct AddCardSheet: View {
             record.intensity = emotionData.intensity
             if !emotionData.note.isEmpty { record.body = emotionData.note }
             modelContext.insert(record)
+            memoryRepository.upsertAggregate(SproutMemoryAggregateBuilder().build(record: record))
             dismiss()
 
         case "weather":
@@ -361,6 +363,7 @@ struct AddCardSheet: View {
             record.weatherObservedAt = weatherData.observedAt ?? record.createdAt
             record.weatherSource = weatherData.source.rawValue
             modelContext.insert(record)
+            memoryRepository.upsertAggregate(SproutMemoryAggregateBuilder().build(record: record))
             dismiss()
 
         case "map":
@@ -369,6 +372,7 @@ struct AddCardSheet: View {
             record.location  = locationData.locationName.isEmpty ? nil : locationData.locationName
             record.body      = locationData.descriptionText
             modelContext.insert(record)
+            memoryRepository.upsertAggregate(SproutMemoryAggregateBuilder().build(record: record))
             dismiss()
 
         case "music":
@@ -382,6 +386,7 @@ struct AddCardSheet: View {
             modelContext.insert(m)
             modelContext.insert(record)
             record.mediaCards = [m]
+            memoryRepository.upsertAggregate(SproutMemoryAggregateBuilder().build(record: record))
             dismiss()
 
         case "photo":
@@ -399,6 +404,7 @@ struct AddCardSheet: View {
                 }
                 modelContext.insert(record)
                 if !cards.isEmpty { record.mediaCards = cards }
+                memoryRepository.upsertAggregate(SproutMemoryAggregateBuilder().build(record: record))
                 dismiss()
             }
 
@@ -413,10 +419,12 @@ struct AddCardSheet: View {
             modelContext.insert(m)
             modelContext.insert(record)
             record.mediaCards = [m]
+            memoryRepository.upsertAggregate(SproutMemoryAggregateBuilder().build(record: record))
             dismiss()
 
         default:
             modelContext.insert(record)
+            memoryRepository.upsertAggregate(SproutMemoryAggregateBuilder().build(record: record))
             dismiss()
         }
     }

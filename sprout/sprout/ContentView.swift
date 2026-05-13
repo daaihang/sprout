@@ -8,6 +8,7 @@ import PhotosUI
 struct ContentView: View {
     @Environment(AppLocalization.self) private var localization
     @Environment(\.modelContext) private var modelContext
+    @Environment(SproutMemoryRepository.self) private var memoryRepository
     // MARK: UI State
     @State private var isShowingAccountSheet = false
     @State private var isBarOpen             = false
@@ -358,6 +359,7 @@ struct ContentView: View {
             modelContext.insert(m)
             modelContext.insert(record)
             record.mediaCards = [m]
+            memoryRepository.upsertAggregate(SproutMemoryAggregateBuilder().build(record: record))
         }
     }
 
@@ -468,6 +470,7 @@ struct ContentView: View {
 
             modelContext.insert(record)
             if !mediaCards.isEmpty { record.mediaCards = mediaCards }
+            memoryRepository.upsertAggregate(SproutMemoryAggregateBuilder().build(record: record))
 
             composerAttachments.clear()
             composerDraftText = ""
