@@ -106,7 +106,7 @@ extension Record {
         }
     }
 
-    func dashboardContainerSpan(for key: String, cardType: String) -> ContainerSpan {
+    func legacyDashboardContainerSpan(for key: String, cardType: String) -> ContainerSpan {
         if let stored = dashboardCardSpanOverrides[key] {
             return sizeLimits(for: cardType).clamped(
                 span: ContainerSpan(widthColumns: stored.widthColumns, heightUnits: stored.heightUnits)
@@ -114,6 +114,10 @@ extension Record {
         }
 
         return sizeLimits(for: cardType).clamped(span: containerSpan)
+    }
+
+    func dashboardContainerSpan(for key: String, cardType: String) -> ContainerSpan {
+        legacyDashboardContainerSpan(for: key, cardType: cardType)
     }
 
     func hasDashboardContainerSpanOverride(for key: String) -> Bool {

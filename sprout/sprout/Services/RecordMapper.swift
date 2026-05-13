@@ -27,6 +27,9 @@ struct DashboardCardInfo: Identifiable {
     let columns: Int
     /// Grid height in units derived from record.cardUnits (1/2/4).
     let units: Int
+    /// Visual transform state for composition projection.
+    let rotationDegrees: Double
+    let scale: Double
     /// The rendered card view (navigation wrapping is added by CardWrapper in DailyView).
     let cardView: AnyView
 }
@@ -43,7 +46,7 @@ enum RecordMapper {
         var cards: [DashboardCardInfo] = []
         
         func resolvedSpan(for cardType: String, key: String) -> ContainerSpan {
-            record.dashboardContainerSpan(for: key, cardType: cardType)
+            record.legacyDashboardContainerSpan(for: key, cardType: cardType)
         }
 
         func cardInfo(
@@ -61,6 +64,8 @@ enum RecordMapper {
                 focusedSection: section,
                 columns: span.widthColumns,
                 units: span.heightUnits,
+                rotationDegrees: stickerRotation(for: "\(record.id.uuidString)-\(suffix)"),
+                scale: stickerScale(for: "\(record.id.uuidString)-\(suffix)"),
                 cardView: cardView
             )
         }

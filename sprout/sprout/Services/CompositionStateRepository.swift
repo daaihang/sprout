@@ -3,6 +3,12 @@ import SwiftData
 
 @MainActor
 struct CompositionStateRepository {
+    struct ResolvedCompositionState {
+        var span: ContainerSpan
+        var rotationDegrees: Double
+        var scale: Double
+    }
+
     let modelContext: ModelContext
 
     func boardKey(for date: Date) -> String {
@@ -24,25 +30,42 @@ struct CompositionStateRepository {
         return try? modelContext.fetch(descriptor).first
     }
 
-    func resolvedSpan(
+    func resolvedState(
         boardKey: String,
         itemKey: String,
-        fallback: ContainerSpan
-    ) -> ContainerSpan {
-        state(boardKey: boardKey, itemKey: itemKey)?.span ?? fallback
+        fallbackSpan: ContainerSpan,
+        fallbackRotationDegrees: Double,
+        fallbackScale: Double
+    ) -> ResolvedCompositionState {
+        guard let state = state(boardKey: boardKey, itemKey: itemKey) else {
+            return ResolvedCompositionState(
+                span: fallbackSpan,
+                rotationDegrees: fallbackRotationDegrees,
+                scale: fallbackScale
+            )
+        }
+
+        return ResolvedCompositionState(
+            span: state.span,
+            rotationDegrees: state.rotationDegrees,
+            scale: state.scale
+        )
     }
 
-    func upsertSpan(
+    func upsertState(
         boardKey: String,
         itemKey: String,
         targetType: String,
         targetID: UUID,
-        span: ContainerSpan
+        span: ContainerSpan,
+        rotationDegrees: Double,
+        scale: Double
     ) {
         if let existing = state(boardKey: boardKey, itemKey: itemKey) {
             existing.targetType = targetType
             existing.targetID = targetID
             existing.setSpan(span)
+            existing.setVisualState(rotationDegrees: rotationDegrees, scale: scale)
             return
         }
 
@@ -52,7 +75,9 @@ struct CompositionStateRepository {
             targetType: targetType,
             targetID: targetID,
             widthColumns: span.widthColumns,
-            heightUnits: span.heightUnits
+            heightUnits: span.heightUnits,
+            rotationDegrees: rotationDegrees,
+            scale: scale
         )
         modelContext.insert(created)
     }
