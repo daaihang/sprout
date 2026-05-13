@@ -201,8 +201,72 @@ struct ArtifactRenderer {
                 record: record,
                 cardView: AnyView(ArtifactRowView(artifact: artifact, style: .card))
             )
-        case .book, .film, .game, .ticket, .healthMetric:
-            return nil
+        case .book:
+            let data = BookCardData(
+                title: nonEmpty(artifact.title) ?? "Book",
+                author: artifact.metadata["author"] ?? artifact.summary,
+                coverImageURL: artifact.metadata["coverImageURL"].flatMap(URL.init(string:)),
+                progress: progressValue(from: artifact.metadata["progress"]),
+                genre: nonEmpty(artifact.metadata["genre"] ?? ""),
+                rating: Int(artifact.metadata["rating"] ?? "")
+            )
+            return renderedArtifactCard(
+                id: fallbackID,
+                spanKey: fallbackSpanKey,
+                cardType: "book",
+                section: .text,
+                record: record,
+                cardView: data.isEmpty
+                    ? AnyView(ArtifactRowView(artifact: artifact, style: .card))
+                    : AnyView(BookCard(data: data))
+            )
+        case .film:
+            let data = FilmCardData(
+                title: nonEmpty(artifact.title) ?? "Film",
+                year: artifact.metadata["year"] ?? "",
+                posterImageURL: artifact.metadata["posterImageURL"].flatMap(URL.init(string:)),
+                genre: nonEmpty(artifact.metadata["genre"] ?? ""),
+                rating: Double(artifact.metadata["rating"] ?? ""),
+                director: nonEmpty(artifact.metadata["director"] ?? ""),
+                isWatched: boolValue(from: artifact.metadata["isWatched"])
+            )
+            return renderedArtifactCard(
+                id: fallbackID,
+                spanKey: fallbackSpanKey,
+                cardType: "film",
+                section: .text,
+                record: record,
+                cardView: data.isEmpty
+                    ? AnyView(ArtifactRowView(artifact: artifact, style: .card))
+                    : AnyView(FilmCard(data: data))
+            )
+        case .game:
+            return renderedArtifactCard(
+                id: fallbackID,
+                spanKey: fallbackSpanKey,
+                cardType: "game",
+                section: .text,
+                record: record,
+                cardView: AnyView(ArtifactRowView(artifact: artifact, style: .card))
+            )
+        case .ticket:
+            return renderedArtifactCard(
+                id: fallbackID,
+                spanKey: fallbackSpanKey,
+                cardType: "ticket",
+                section: .text,
+                record: record,
+                cardView: AnyView(ArtifactRowView(artifact: artifact, style: .card))
+            )
+        case .healthMetric:
+            return renderedArtifactCard(
+                id: fallbackID,
+                spanKey: fallbackSpanKey,
+                cardType: "health",
+                section: .text,
+                record: record,
+                cardView: AnyView(ArtifactRowView(artifact: artifact, style: .card))
+            )
         }
     }
 
@@ -256,6 +320,20 @@ struct ArtifactRenderer {
     private func nonEmpty(_ text: String) -> String? {
         let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
         return value.isEmpty ? nil : value
+    }
+
+    private func progressValue(from text: String?) -> Double? {
+        guard let text = nonEmpty(text ?? "") else { return nil }
+        guard let rawValue = Double(text) else { return nil }
+        if rawValue > 1 {
+            return max(0, min(rawValue / 100, 1))
+        }
+        return max(0, min(rawValue, 1))
+    }
+
+    private func boolValue(from text: String?) -> Bool {
+        guard let normalized = nonEmpty(text ?? "")?.lowercased() else { return false }
+        return normalized == "true" || normalized == "1" || normalized == "yes"
     }
 }
 

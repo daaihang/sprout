@@ -41,7 +41,7 @@ struct CompositionProjector {
             by: \.kind
         )
 
-        return RecordMapper.allCards(record: record).enumerated().map { index, card in
+        let baseCards = RecordMapper.allCards(record: record).enumerated().map { index, card in
             let resolvedTarget = projectionTarget(
                 for: card,
                 record: record,
@@ -84,6 +84,21 @@ struct CompositionProjector {
                 cardView: renderedCard.cardView
             )
         }
+
+        let coveredArtifactIDs = Set(
+            baseCards
+                .filter { $0.targetType == .artifact }
+                .map(\.targetID)
+        )
+
+        return baseCards + supplementalArtifactCards(
+            for: record,
+            artifacts: memoryView?.artifacts ?? [],
+            coveredArtifactIDs: coveredArtifactIDs,
+            stateRepository: stateRepository,
+            compositionKey: compositionKey,
+            baseIndexOffset: baseCards.count
+        )
     }
 
     private func compositionItemKey(for card: DashboardCardInfo) -> String {
@@ -161,5 +176,68 @@ struct CompositionProjector {
         case .emotion, .activity, .todayInHistory:
             return nil
         }
+    }
+
+    private func supplementalArtifactCards(
+        for record: Record,
+        artifacts: [Artifact],
+        coveredArtifactIDs: Set<UUID>,
+        stateRepository: CompositionStateRepository,
+        compositionKey: String,
+        baseIndexOffset: Int
+    ) -> [CompositionProjectionCard] {
+        let supplementalKinds: Set<ArtifactKind> = [.book, .film, .game, .ticket, .healthMetric]
+
+        return artifacts
+            .filter { supplementalKinds.contains($0.kind) && !coveredArtifactIDs.contains($0.id) }
+            .enumerated()
+            .compactMap { index, artifact in
+                let fallbackID = "\(record.id.uuidString)-artifact-\(artifact.kind.rawValue)-\(artifact.id.uuidString)"
+                let fallbackSpanKey = "artifact-\(artifact.kind.rawValue)-\(artifact.id.uuidString)"
+
+                guard let rendered = artifactRenderer.renderCard(
+                    for: artifact,
+                    record: record,
+                    focusedSection: .text,
+                    fallbackID: fallbackID,
+                    fallbackSpanKey: fallbackSpanKey
+                ) else {
+                    return nil
+                }
+
+                let fallbackSpan = record.legacyDashboardContainerSpan(
+                    for: rendered.spanKey,
+                    cardType: rendered.cardType
+                )
+                let itemKey = "\(record.id.uuidString)-\(rendered.spanKey)"
+                let fallbackZIndex = baseIndexOffset + index
+                let fallbackRotation = stickerRotation(for: rendered.id)
+                let fallbackScale = stickerScale(for: rendered.id)
+                let resolvedState = stateRepository.resolvedState(
+                    compositionKey: compositionKey,
+                    itemKey: itemKey,
+                    fallbackSpan: fallbackSpan,
+                    fallbackZIndex: fallbackZIndex,
+                    fallbackRotationDegrees: fallbackRotation,
+                    fallbackScale: fallbackScale
+                )
+
+                return CompositionProjectionCard(
+                    id: rendered.id,
+                    spanKey: rendered.spanKey,
+                    compositionItemKey: itemKey,
+                    cardType: rendered.cardType,
+                    targetType: .artifact,
+                    targetID: artifact.id,
+                    record: rendered.record,
+                    focusedSection: rendered.focusedSection,
+                    columns: resolvedState.span.widthColumns,
+                    units: resolvedState.span.heightUnits,
+                    zIndex: resolvedState.zIndex,
+                    rotationDegrees: resolvedState.rotationDegrees,
+                    scale: resolvedState.scale,
+                    cardView: rendered.cardView
+                )
+            }
     }
 }
