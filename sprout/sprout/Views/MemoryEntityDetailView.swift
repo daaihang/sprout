@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 struct MemoryEntityDetailView: View {
     @Environment(AppLocalization.self) private var localization
@@ -167,13 +168,8 @@ struct MemoryEntityDetailView: View {
     }
 
     private func fetchRecord(id: UUID) -> Record? {
-        var descriptor = FetchDescriptor<Record>(
-            predicate: #Predicate<Record> { record in
-                record.id == id
-            }
-        )
-        descriptor.fetchLimit = 1
-        return try? modelContext.fetch(descriptor).first
+        let records = (try? modelContext.fetch(FetchDescriptor<Record>())) ?? []
+        return records.first { $0.id == id }
     }
 
     private func t(_ key: String, _ defaultValue: String, _ arguments: CVarArg...) -> String {

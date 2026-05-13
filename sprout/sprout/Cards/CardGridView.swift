@@ -42,7 +42,7 @@ struct CardGridView: View {
                 span: span,
                 rotationDegrees: item.rotationDegrees,
                 scale: item.scale,
-                zIndex: index,
+                zIndex: item.zIndex,
                 content: item.card
             )
         )
@@ -79,6 +79,7 @@ struct GridItem: Identifiable {
     let card: AnyView
     let columns: Int   // 2, 4, 6, 8
     let units: Int     // 1, 2, 4
+    let zIndex: Int
     let rotationDegrees: Double
     let scale: Double
     let availableSpans: [ContainerSpan]
@@ -93,6 +94,7 @@ struct GridItem: Identifiable {
         card: AnyView,
         columns: Int,
         units: Int,
+        zIndex: Int = 0,
         rotationDegrees: Double? = nil,
         scale: Double? = nil,
         availableSpans: [ContainerSpan] = [],
@@ -106,6 +108,7 @@ struct GridItem: Identifiable {
         self.card = card
         self.columns = columns
         self.units = units
+        self.zIndex = zIndex
         self.rotationDegrees = rotationDegrees ?? stickerRotation(for: id)
         self.scale = scale ?? stickerScale(for: id)
         self.availableSpans = availableSpans.isEmpty

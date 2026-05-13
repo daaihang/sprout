@@ -18,6 +18,7 @@ struct CompositionProjectionCard: Identifiable {
     let focusedSection: RecordSection
     let columns: Int
     let units: Int
+    let zIndex: Int
     let rotationDegrees: Double
     let scale: Double
     let cardView: AnyView
@@ -37,7 +38,7 @@ struct CompositionProjector {
             by: \.kind
         )
 
-        return RecordMapper.allCards(record: record).map { card in
+        return RecordMapper.allCards(record: record).enumerated().map { index, card in
             let resolvedTarget = projectionTarget(
                 for: card,
                 record: record,
@@ -45,12 +46,14 @@ struct CompositionProjector {
             )
             let fallbackSpan = ContainerSpan(widthColumns: card.columns, heightUnits: card.units)
             let itemKey = compositionItemKey(for: card)
+            let fallbackZIndex = index
             let fallbackRotation = stickerRotation(for: card.id)
             let fallbackScale = stickerScale(for: card.id)
             let resolvedState = stateRepository.resolvedState(
                 boardKey: boardKey,
                 itemKey: itemKey,
                 fallbackSpan: fallbackSpan,
+                fallbackZIndex: fallbackZIndex,
                 fallbackRotationDegrees: fallbackRotation,
                 fallbackScale: fallbackScale
             )
@@ -66,6 +69,7 @@ struct CompositionProjector {
                 focusedSection: card.focusedSection,
                 columns: resolvedState.span.widthColumns,
                 units: resolvedState.span.heightUnits,
+                zIndex: resolvedState.zIndex,
                 rotationDegrees: resolvedState.rotationDegrees,
                 scale: resolvedState.scale,
                 cardView: card.cardView

@@ -5,6 +5,7 @@ import SwiftData
 struct CompositionStateRepository {
     struct ResolvedCompositionState {
         var span: ContainerSpan
+        var zIndex: Int
         var rotationDegrees: Double
         var scale: Double
     }
@@ -34,12 +35,14 @@ struct CompositionStateRepository {
         boardKey: String,
         itemKey: String,
         fallbackSpan: ContainerSpan,
+        fallbackZIndex: Int,
         fallbackRotationDegrees: Double,
         fallbackScale: Double
     ) -> ResolvedCompositionState {
         guard let state = state(boardKey: boardKey, itemKey: itemKey) else {
             return ResolvedCompositionState(
                 span: fallbackSpan,
+                zIndex: fallbackZIndex,
                 rotationDegrees: fallbackRotationDegrees,
                 scale: fallbackScale
             )
@@ -47,6 +50,7 @@ struct CompositionStateRepository {
 
         return ResolvedCompositionState(
             span: state.span,
+            zIndex: state.zIndex,
             rotationDegrees: state.rotationDegrees,
             scale: state.scale
         )
@@ -58,6 +62,7 @@ struct CompositionStateRepository {
         targetType: String,
         targetID: UUID,
         span: ContainerSpan,
+        zIndex: Int,
         rotationDegrees: Double,
         scale: Double
     ) {
@@ -65,7 +70,7 @@ struct CompositionStateRepository {
             existing.targetType = targetType
             existing.targetID = targetID
             existing.setSpan(span)
-            existing.setVisualState(rotationDegrees: rotationDegrees, scale: scale)
+            existing.setVisualState(zIndex: zIndex, rotationDegrees: rotationDegrees, scale: scale)
             return
         }
 
@@ -76,6 +81,7 @@ struct CompositionStateRepository {
             targetID: targetID,
             widthColumns: span.widthColumns,
             heightUnits: span.heightUnits,
+            zIndex: zIndex,
             rotationDegrees: rotationDegrees,
             scale: scale
         )

@@ -77,6 +77,7 @@ struct DailyView: View {
                         card: AnyView(CardWrapper(info: projection.asDashboardCardInfo)),
                         columns: projection.columns,
                         units: projection.units,
+                        zIndex: projection.zIndex,
                         rotationDegrees: projection.rotationDegrees,
                         scale: projection.scale,
                         availableSpans: spans,
@@ -152,6 +153,7 @@ struct DailyView: View {
             targetType: projection.targetType.rawValue,
             targetID: projection.targetID,
             span: span,
+            zIndex: projection.zIndex,
             rotationDegrees: projection.rotationDegrees,
             scale: projection.scale
         )
@@ -229,6 +231,7 @@ private extension CompositionProjectionCard {
             focusedSection: focusedSection,
             columns: columns,
             units: units,
+            zIndex: zIndex,
             rotationDegrees: rotationDegrees,
             scale: scale,
             cardView: cardView

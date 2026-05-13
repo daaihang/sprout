@@ -27,6 +27,8 @@ struct DashboardCardInfo: Identifiable {
     let columns: Int
     /// Grid height in units derived from record.cardUnits (1/2/4).
     let units: Int
+    /// Layer ordering for composition projection.
+    let zIndex: Int
     /// Visual transform state for composition projection.
     let rotationDegrees: Double
     let scale: Double
@@ -64,6 +66,7 @@ enum RecordMapper {
                 focusedSection: section,
                 columns: span.widthColumns,
                 units: span.heightUnits,
+                zIndex: 0,
                 rotationDegrees: stickerRotation(for: "\(record.id.uuidString)-\(suffix)"),
                 scale: stickerScale(for: "\(record.id.uuidString)-\(suffix)"),
                 cardView: cardView

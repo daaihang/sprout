@@ -10,6 +10,7 @@ final class CompositionItemState {
     var targetID: UUID = UUID()
     var widthColumns: Int = 4
     var heightUnits: Int = 4
+    var zIndex: Int = 0
     var rotationDegrees: Double = 0
     var scale: Double = 1
     var updatedAt: Date = Date()
@@ -21,6 +22,7 @@ final class CompositionItemState {
         targetID: UUID,
         widthColumns: Int,
         heightUnits: Int,
+        zIndex: Int = 0,
         rotationDegrees: Double = 0,
         scale: Double = 1,
         updatedAt: Date = Date()
@@ -31,6 +33,7 @@ final class CompositionItemState {
         self.targetID = targetID
         self.widthColumns = widthColumns
         self.heightUnits = heightUnits
+        self.zIndex = zIndex
         self.rotationDegrees = rotationDegrees
         self.scale = scale
         self.updatedAt = updatedAt
@@ -48,7 +51,8 @@ extension CompositionItemState {
         updatedAt = Date()
     }
 
-    func setVisualState(rotationDegrees: Double, scale: Double) {
+    func setVisualState(zIndex: Int, rotationDegrees: Double, scale: Double) {
+        self.zIndex = zIndex
         self.rotationDegrees = rotationDegrees
         self.scale = scale
         updatedAt = Date()
