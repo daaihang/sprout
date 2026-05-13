@@ -55,6 +55,7 @@ Recent high-frequency card refreshes already completed:
 - `PhotoCard`
 - `PhaseReflectionCard`
 - `MusicCard`
+- `PeopleCard`
 
 ## Authentication
 
