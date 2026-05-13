@@ -27,6 +27,8 @@ struct CompositionProjectionCard: Identifiable {
 
 @MainActor
 struct CompositionProjector {
+    private let artifactRenderer = ArtifactRenderer()
+
     func projectCards(
         for record: Record,
         memoryRepository: SproutMemoryRepository,
@@ -45,11 +47,17 @@ struct CompositionProjector {
                 record: record,
                 artifactsByKind: artifactsByKind
             )
+            let renderedCard = renderedCardInfo(
+                for: card,
+                target: resolvedTarget,
+                record: record,
+                artifactsByKind: artifactsByKind
+            )
             let fallbackSpan = ContainerSpan(widthColumns: card.columns, heightUnits: card.units)
-            let itemKey = compositionItemKey(for: card)
+            let itemKey = compositionItemKey(for: renderedCard)
             let fallbackZIndex = index
-            let fallbackRotation = stickerRotation(for: card.id)
-            let fallbackScale = stickerScale(for: card.id)
+            let fallbackRotation = stickerRotation(for: renderedCard.id)
+            let fallbackScale = stickerScale(for: renderedCard.id)
             let resolvedState = stateRepository.resolvedState(
                 compositionKey: compositionKey,
                 itemKey: itemKey,
@@ -60,26 +68,59 @@ struct CompositionProjector {
             )
 
             return CompositionProjectionCard(
-                id: card.id,
-                spanKey: card.spanKey,
+                id: renderedCard.id,
+                spanKey: renderedCard.spanKey,
                 compositionItemKey: itemKey,
-                cardType: card.cardType,
+                cardType: renderedCard.cardType,
                 targetType: resolvedTarget.type,
                 targetID: resolvedTarget.id,
-                record: card.record,
-                focusedSection: card.focusedSection,
+                record: renderedCard.record,
+                focusedSection: renderedCard.focusedSection,
                 columns: resolvedState.span.widthColumns,
                 units: resolvedState.span.heightUnits,
                 zIndex: resolvedState.zIndex,
                 rotationDegrees: resolvedState.rotationDegrees,
                 scale: resolvedState.scale,
-                cardView: card.cardView
+                cardView: renderedCard.cardView
             )
         }
     }
 
     private func compositionItemKey(for card: DashboardCardInfo) -> String {
         "\(card.record.id.uuidString)-\(card.spanKey)"
+    }
+
+    private func renderedCardInfo(
+        for card: DashboardCardInfo,
+        target: (type: CompositionProjectionTargetType, id: UUID),
+        record: Record,
+        artifactsByKind: [ArtifactKind: [Artifact]]
+    ) -> DashboardCardInfo {
+        guard target.type == .artifact,
+              let artifact = artifactTarget(for: card, artifactsByKind: artifactsByKind),
+              let rendered = artifactRenderer.renderCard(
+                for: artifact,
+                record: record,
+                focusedSection: card.focusedSection,
+                fallbackID: card.id,
+                fallbackSpanKey: card.spanKey
+              ) else {
+            return card
+        }
+
+        return DashboardCardInfo(
+            id: rendered.id,
+            spanKey: rendered.spanKey,
+            cardType: rendered.cardType,
+            record: rendered.record,
+            focusedSection: rendered.focusedSection,
+            columns: card.columns,
+            units: card.units,
+            zIndex: card.zIndex,
+            rotationDegrees: card.rotationDegrees,
+            scale: card.scale,
+            cardView: rendered.cardView
+        )
     }
 
     private func projectionTarget(
