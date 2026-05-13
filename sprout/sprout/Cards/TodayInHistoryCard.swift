@@ -42,7 +42,7 @@ struct TodayInHistoryEntry: Identifiable {
         if let person = record.mentionedPeople?.first, !person.name.isEmpty {
             return person.nickname ?? person.name
         }
-        return record.cardType.capitalized
+        return record.cardKind.rawValue.replacingOccurrences(of: "_", with: " ").capitalized
     }
 }
 

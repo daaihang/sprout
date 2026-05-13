@@ -116,8 +116,50 @@ enum MediaCardKind: String, CaseIterable, Codable, Sendable {
 }
 
 extension Record {
+    var derivedCardKind: RecordCardKind {
+        let mediaCards = self.mediaCards ?? []
+
+        if mediaCards.contains(where: { $0.type == MediaCardKind.photo.rawValue }) {
+            return .photo
+        }
+        if mediaCards.contains(where: { $0.type == MediaCardKind.music.rawValue }) {
+            return .music
+        }
+        if mediaCards.contains(where: { $0.type == MediaCardKind.audio.rawValue }) {
+            return .audio
+        }
+        if mediaCards.contains(where: { $0.type == MediaCardKind.todo.rawValue }) {
+            return .todo
+        }
+        if mediaCards.contains(where: { $0.type == MediaCardKind.link.rawValue }) {
+            return .link
+        }
+        if latitude != nil && longitude != nil {
+            return .map
+        }
+        if activity?.value != nil {
+            return .activity
+        }
+        if let mood, !mood.isEmpty {
+            return .emotion
+        }
+        if let weather, !weather.isEmpty {
+            return .weather
+        }
+        if let mentionedPeople, !mentionedPeople.isEmpty {
+            return .people
+        }
+
+        let body = body.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !body.isEmpty {
+            return .text
+        }
+
+        return RecordCardKind(rawValue: cardType) ?? .text
+    }
+
     var cardKind: RecordCardKind {
-        get { RecordCardKind(rawValue: cardType) ?? .text }
+        get { derivedCardKind }
         set { cardType = newValue.rawValue }
     }
 }
