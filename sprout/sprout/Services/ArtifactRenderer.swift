@@ -81,6 +81,48 @@ struct ArtifactRenderer {
                 record: record,
                 cardView: AnyView(MusicCard(data: data))
             )
+        case .photo:
+            let matchingMedia = mediaCards(for: artifact, in: record).filter { $0.type == "photo" }
+            let imagesData = matchingMedia.compactMap(\.imageData)
+            let coordinate = coordinate(from: artifact.metadata) ?? mediaCoordinate(from: matchingMedia.first)
+            let data = PhotoCardData(
+                imagesData: imagesData,
+                locationName: artifact.metadata["locationName"] ?? matchingMedia.first?.locationName ?? artifact.title,
+                descriptionText: artifact.summary,
+                locationCoordinate: coordinate,
+                aiDescription: nonEmpty(artifact.textContent),
+                trailingInfoText: imagesData.count > 1 ? "\(imagesData.count) photos" : ""
+            )
+            return renderedArtifactCard(
+                id: fallbackID,
+                spanKey: fallbackSpanKey,
+                cardType: "photo",
+                section: .photo,
+                record: record,
+                cardView: imagesData.isEmpty
+                    ? AnyView(ArtifactRowView(artifact: artifact, style: .card))
+                    : AnyView(PhotoCard(data: data))
+            )
+        case .audio:
+            let media = mediaCards(for: artifact, in: record).first(where: { $0.type == "audio" })
+            let audioData = media?.audioData
+            let data = AudioCardData(
+                title: artifact.title.isEmpty ? "Voice" : artifact.title,
+                audioData: audioData,
+                transcriptPreview: artifact.textContent,
+                durationText: audioDurationString(from: audioData),
+                capturedAt: artifact.createdAt
+            )
+            return renderedArtifactCard(
+                id: fallbackID,
+                spanKey: fallbackSpanKey,
+                cardType: "audio",
+                section: .audio,
+                record: record,
+                cardView: audioData == nil && artifact.textContent.isEmpty
+                    ? AnyView(ArtifactRowView(artifact: artifact, style: .card))
+                    : AnyView(AudioCard(data: data))
+            )
         case .location:
             let coordinate = coordinate(from: artifact.metadata)
             let data = MapCardData(
@@ -159,7 +201,7 @@ struct ArtifactRenderer {
                 record: record,
                 cardView: AnyView(ArtifactRowView(artifact: artifact, style: .card))
             )
-        case .photo, .audio, .book, .film, .game, .ticket, .healthMetric:
+        case .book, .film, .game, .ticket, .healthMetric:
             return nil
         }
     }
@@ -185,6 +227,19 @@ struct ArtifactRenderer {
     private func coordinate(from metadata: [String: String]) -> CLLocationCoordinate2D? {
         guard let latitude = Double(metadata["latitude"] ?? ""),
               let longitude = Double(metadata["longitude"] ?? "") else {
+            return nil
+        }
+        return CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+    }
+
+    private func mediaCards(for artifact: Artifact, in record: Record) -> [MediaCard] {
+        (record.mediaCards ?? []).filter { $0.id == artifact.id }
+    }
+
+    private func mediaCoordinate(from media: MediaCard?) -> CLLocationCoordinate2D? {
+        guard let media,
+              let latitude = media.latitude,
+              let longitude = media.longitude else {
             return nil
         }
         return CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
