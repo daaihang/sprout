@@ -267,7 +267,7 @@ struct RecordTimelineRow: View {
             return .text
         }
 
-        switch record.cardKind {
+        switch primaryContentKind {
         case .photo:
             return .photo
         case .music:
@@ -295,13 +295,13 @@ struct RecordTimelineRow: View {
 
     @ViewBuilder
     private var preview: some View {
-        if record.cardKind == .photo, let image = photoPreviewImage {
+        if primaryContentKind == .photo, let image = photoPreviewImage {
             Image(uiImage: image)
                 .resizable()
                 .aspectRatio(contentMode: .fill)
                 .frame(width: 62, height: 62)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        } else if record.cardKind == .emotion, let mood = MoodType(rawValue: record.mood ?? "") {
+        } else if primaryContentKind == .emotion, let mood = MoodType(rawValue: record.mood ?? "") {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(mood.color.opacity(0.16))
                 .frame(width: 62, height: 62)
@@ -309,7 +309,7 @@ struct RecordTimelineRow: View {
                     Text(mood.emoji)
                         .font(.system(size: 30))
                 )
-        } else if record.cardKind == .people, let person = record.mentionedPeople?.first {
+        } else if primaryContentKind == .people, let person = record.mentionedPeople?.first {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(Color.accentColor.opacity(0.14))
                 .frame(width: 62, height: 62)
@@ -331,16 +331,16 @@ struct RecordTimelineRow: View {
     }
 
     private var previewSymbol: String {
-        switch record.cardKind {
+        switch primaryContentKind {
         case .weather:
-            return (record.weather).flatMap(WeatherCondition.init(rawValue:))?.sfSymbol ?? record.cardKind.timelineSymbolName
+            return (record.weather).flatMap(WeatherCondition.init(rawValue:))?.sfSymbol ?? primaryContentKind.timelineSymbolName
         default:
-            return record.cardKind.timelineSymbolName
+            return primaryContentKind.timelineSymbolName
         }
     }
 
     private var previewTint: Color {
-        switch record.cardKind {
+        switch primaryContentKind {
         case .weather:
             return (record.weather).flatMap(WeatherCondition.init(rawValue:))?.color ?? .accentColor
         case .audio:
@@ -356,6 +356,10 @@ struct RecordTimelineRow: View {
         default:
             return .accentColor
         }
+    }
+
+    private var primaryContentKind: RecordCardKind {
+        record.contentFirstCardKind ?? .text
     }
 
     private var photoPreviewImage: UIImage? {

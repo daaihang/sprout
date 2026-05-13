@@ -100,7 +100,7 @@ enum MediaCardKind: String, CaseIterable, Codable, Sendable {
 }
 
 extension Record {
-    var derivedCardKind: RecordCardKind {
+    var contentFirstCardKind: RecordCardKind? {
         let mediaCards = self.mediaCards ?? []
 
         if mediaCards.contains(where: { $0.type == MediaCardKind.photo.rawValue }) {
@@ -139,7 +139,11 @@ extension Record {
             return .text
         }
 
-        return RecordCardKind(rawValue: cardType) ?? .text
+        return nil
+    }
+
+    var derivedCardKind: RecordCardKind {
+        contentFirstCardKind ?? RecordCardKind(rawValue: cardType) ?? .text
     }
 
     var cardKind: RecordCardKind {

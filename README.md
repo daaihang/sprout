@@ -112,7 +112,7 @@ not as page-local hacks.
 `Record` still currently stores:
 
 - Base content such as `body`, `createdAt`, `updatedAt`, `tags`
-- Legacy home-layout fields such as `cardType`, `cardWidthColumns`, `cardUnits`, `dashboardCardSpanOverridesData`, `dashboardOrder`
+- Remaining transitional fields such as `cardType` and `dashboardOrder`
 - Weather and location snapshot fields
 - Legacy relationships around `MediaCard` and related objects
 

@@ -42,7 +42,32 @@ struct TodayInHistoryEntry: Identifiable {
         if let person = record.mentionedPeople?.first, !person.name.isEmpty {
             return person.nickname ?? person.name
         }
-        return record.cardKind.rawValue.replacingOccurrences(of: "_", with: " ").capitalized
+        switch record.contentFirstCardKind {
+        case .photo:
+            return localizedString("timeline.category.photo", default: "Photo")
+        case .music:
+            return localizedString("timeline.category.music", default: "Music")
+        case .audio:
+            return localizedString("timeline.category.audio", default: "Voice")
+        case .todo:
+            return localizedString("timeline.category.todo", default: "To-Do")
+        case .link:
+            return localizedString("timeline.category.link", default: "Link")
+        case .map:
+            return localizedString("timeline.category.location", default: "Location")
+        case .activity:
+            return localizedString("timeline.category.activity", default: "Activity")
+        case .emotion:
+            return localizedString("timeline.category.emotion", default: "Emotion")
+        case .weather:
+            return localizedString("timeline.category.weather", default: "Weather")
+        case .people:
+            return localizedString("timeline.category.people", default: "People")
+        case .text, .quote, .todayInHistory, .book, .film, .game, .ticket, .health:
+            return localizedString("timeline.category.note", default: "Note")
+        case nil:
+            return localizedString("detail.navigation.record", default: "Entry")
+        }
     }
 }
 
