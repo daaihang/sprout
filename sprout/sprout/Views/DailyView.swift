@@ -16,6 +16,7 @@ struct DailyView: View {
     @Query private var records: [Record]
     @Query(sort: \DashboardSystemCardConfig.dashboardOrder, order: .forward) private var systemConfigs: [DashboardSystemCardConfig]
     private let compositionProjector = CompositionProjector()
+    private let prominenceEngine = HomeBoardProminenceEngine()
     private var compositionStateRepository: CompositionStateRepository {
         CompositionStateRepository(modelContext: modelContext)
     }
@@ -110,18 +111,18 @@ struct DailyView: View {
         let compositionKey = compositionStateRepository.compositionKey(
             for: compositionStateRepository.boardKey(for: date)
         )
-        let fallbackSpan = sizeLimits(for: DashboardSystemCardConfig.todayInHistoryKind).clamped(span: config.span)
+        let prominence = prominenceEngine.prominence(for: .systemTodayInHistory)
         let resolvedState = compositionStateRepository.resolvedState(
             compositionKey: compositionKey,
             itemKey: itemID,
-            fallbackSpan: fallbackSpan,
-            fallbackZIndex: -10_000,
+            fallbackSpan: prominence.fallbackSpan,
+            fallbackZIndex: prominence.fallbackZIndex,
             fallbackRotationDegrees: stickerRotation(for: itemID),
             fallbackScale: stickerScale(for: itemID)
         )
         return [
             (
-                order: config.dashboardOrder,
+                order: prominence.order,
                 item: GridItem(
                     id: itemID,
                     projectionTargetType: CompositionProjectionTargetType.system.rawValue,
@@ -159,21 +160,19 @@ struct DailyView: View {
         let compositionKey = compositionStateRepository.compositionKey(
             for: compositionStateRepository.boardKey(for: date)
         )
-        let fallbackSpan = sizeLimits(for: "text").clamped(
-            span: ContainerSpan(widthColumns: 4, heightUnits: 4)
-        )
+        let prominence = prominenceEngine.prominence(for: .temporalArc, arc: arc)
         let resolvedState = compositionStateRepository.resolvedState(
             compositionKey: compositionKey,
             itemKey: itemID,
-            fallbackSpan: fallbackSpan,
-            fallbackZIndex: -9_500,
+            fallbackSpan: prominence.fallbackSpan,
+            fallbackZIndex: prominence.fallbackZIndex,
             fallbackRotationDegrees: stickerRotation(for: itemID),
             fallbackScale: stickerScale(for: itemID)
         )
 
         return [
             (
-                order: -9_500,
+                order: prominence.order,
                 item: GridItem(
                     id: itemID,
                     projectionTargetType: CompositionProjectionTargetType.arc.rawValue,
@@ -213,21 +212,19 @@ struct DailyView: View {
         let compositionKey = compositionStateRepository.compositionKey(
             for: compositionStateRepository.boardKey(for: date)
         )
-        let fallbackSpan = sizeLimits(for: "text").clamped(
-            span: ContainerSpan(widthColumns: 4, heightUnits: 2)
-        )
+        let prominence = prominenceEngine.prominence(for: .phaseReflection, reflection: reflection)
         let resolvedState = compositionStateRepository.resolvedState(
             compositionKey: compositionKey,
             itemKey: itemID,
-            fallbackSpan: fallbackSpan,
-            fallbackZIndex: -9_400,
+            fallbackSpan: prominence.fallbackSpan,
+            fallbackZIndex: prominence.fallbackZIndex,
             fallbackRotationDegrees: stickerRotation(for: itemID),
             fallbackScale: stickerScale(for: itemID)
         )
 
         return [
             (
-                order: -9_400,
+                order: prominence.order,
                 item: GridItem(
                     id: itemID,
                     projectionTargetType: CompositionProjectionTargetType.arc.rawValue,
@@ -291,13 +288,12 @@ struct DailyView: View {
     private func resizeTodayInHistoryCard(to span: ContainerSpan) {
         let compositionContext = compositionStateRepository.compositionContext(for: date)
         let itemID = "system-\(DashboardSystemCardConfig.todayInHistoryKind)"
+        let prominence = prominenceEngine.prominence(for: .systemTodayInHistory)
         let fallbackState = compositionStateRepository.resolvedState(
             compositionKey: compositionContext.compositionKey,
             itemKey: itemID,
-            fallbackSpan: sizeLimits(for: DashboardSystemCardConfig.todayInHistoryKind).clamped(
-                span: todayInHistoryConfig?.span ?? ContainerSpan(widthColumns: 4, heightUnits: 4)
-            ),
-            fallbackZIndex: -10_000,
+            fallbackSpan: prominence.fallbackSpan,
+            fallbackZIndex: prominence.fallbackZIndex,
             fallbackRotationDegrees: stickerRotation(for: itemID),
             fallbackScale: stickerScale(for: itemID)
         )
@@ -319,13 +315,12 @@ struct DailyView: View {
     private func resizeTemporalArcCard(_ arc: TemporalArc, to span: ContainerSpan) {
         let compositionContext = compositionStateRepository.compositionContext(for: date)
         let itemID = "arc-\(arc.id.uuidString)"
+        let prominence = prominenceEngine.prominence(for: .temporalArc, arc: arc)
         let fallbackState = compositionStateRepository.resolvedState(
             compositionKey: compositionContext.compositionKey,
             itemKey: itemID,
-            fallbackSpan: sizeLimits(for: "text").clamped(
-                span: ContainerSpan(widthColumns: 4, heightUnits: 4)
-            ),
-            fallbackZIndex: -9_500,
+            fallbackSpan: prominence.fallbackSpan,
+            fallbackZIndex: prominence.fallbackZIndex,
             fallbackRotationDegrees: stickerRotation(for: itemID),
             fallbackScale: stickerScale(for: itemID)
         )
@@ -347,13 +342,12 @@ struct DailyView: View {
     private func resizePhaseReflectionCard(_ reflection: ReflectionSnapshot, arc: TemporalArc, to span: ContainerSpan) {
         let compositionContext = compositionStateRepository.compositionContext(for: date)
         let itemID = "reflection-\(reflection.id.uuidString)"
+        let prominence = prominenceEngine.prominence(for: .phaseReflection, reflection: reflection)
         let fallbackState = compositionStateRepository.resolvedState(
             compositionKey: compositionContext.compositionKey,
             itemKey: itemID,
-            fallbackSpan: sizeLimits(for: "text").clamped(
-                span: ContainerSpan(widthColumns: 4, heightUnits: 2)
-            ),
-            fallbackZIndex: -9_400,
+            fallbackSpan: prominence.fallbackSpan,
+            fallbackZIndex: prominence.fallbackZIndex,
             fallbackRotationDegrees: stickerRotation(for: itemID),
             fallbackScale: stickerScale(for: itemID)
         )
