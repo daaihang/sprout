@@ -338,10 +338,6 @@ struct AddCardSheet: View {
         record.cardType  = cardType
         record.dashboardOrder = record.createdAt.timeIntervalSince1970
 
-        // Set default size based on card type limits
-        let limits = cardSizeLimits[cardType] ?? sharedCardSizeLimits
-        record.cardWidthColumns = limits.defaultSpan.widthColumns
-        record.cardUnits = limits.defaultSpan.heightUnits
         let cardKind = RecordCardKind(rawValue: cardType) ?? .text
 
         switch cardType {
