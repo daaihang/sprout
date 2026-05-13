@@ -23,9 +23,6 @@ final class Record {
     var director: String? = nil
     var progress: Double? = nil
     var appleMusicURL: String? = nil
-    /// Primary card type for dashboard display.
-    /// Values: "text" | "quote" | "emotion" | "weather" | "activity" | "todo" | "photo" | "music" | "link" | "map" | "audio" | "people" | "today_in_history"
-    var cardType: String = "text"
     /// Weather extended fields (replaces hardcoded defaults in RecordMapper)
     var feelsLike: Double? = nil
     var humidity: Int? = nil

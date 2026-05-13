@@ -327,15 +327,15 @@ struct AddCardSheet: View {
     }
 
     /// Creates a standalone Record of the given type and inserts it into SwiftData.
-    private func confirmStandalone(type cardType: String) {
+    private func confirmStandalone(type selectedCardType: String) {
         let record    = Record()
         record.createdAt = Date()
         record.updatedAt = record.createdAt
         record.dashboardOrder = record.createdAt.timeIntervalSince1970
 
-        let cardKind = RecordCardKind(rawValue: cardType) ?? .text
+        let cardKind = RecordCardKind(rawValue: selectedCardType) ?? .text
 
-        switch cardType {
+        switch selectedCardType {
 
         case "emotion":
             record.mood      = emotionData.mood.rawValue

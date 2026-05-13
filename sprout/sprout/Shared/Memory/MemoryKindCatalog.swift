@@ -143,7 +143,7 @@ extension Record {
     }
 
     var derivedCardKind: RecordCardKind {
-        contentFirstCardKind ?? RecordCardKind(rawValue: cardType) ?? .text
+        contentFirstCardKind ?? .text
     }
 
     var cardKind: RecordCardKind {
