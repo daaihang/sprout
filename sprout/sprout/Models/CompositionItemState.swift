@@ -4,6 +4,7 @@ import SwiftData
 @Model
 final class CompositionItemState {
     var id: UUID = UUID()
+    var boardID: UUID = UUID()
     var boardKey: String = ""
     var itemKey: String = ""
     var targetType: String = ""
@@ -16,6 +17,7 @@ final class CompositionItemState {
     var updatedAt: Date = Date()
 
     init(
+        boardID: UUID,
         boardKey: String,
         itemKey: String,
         targetType: String,
@@ -27,6 +29,7 @@ final class CompositionItemState {
         scale: Double = 1,
         updatedAt: Date = Date()
     ) {
+        self.boardID = boardID
         self.boardKey = boardKey
         self.itemKey = itemKey
         self.targetType = targetType

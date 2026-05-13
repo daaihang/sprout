@@ -3,6 +3,11 @@ import SwiftData
 
 @MainActor
 struct CompositionStateRepository {
+    struct ResolvedBoardContext {
+        let board: DayBoard
+        let boardKey: String
+    }
+
     struct ResolvedCompositionState {
         var span: ContainerSpan
         var zIndex: Int
@@ -12,6 +17,21 @@ struct CompositionStateRepository {
 
     let modelContext: ModelContext
 
+    func boardContext(for date: Date) -> ResolvedBoardContext {
+        let boardKey = boardKey(for: date)
+        if let existing = board(boardKey: boardKey) {
+            return ResolvedBoardContext(board: existing, boardKey: boardKey)
+        }
+
+        let created = DayBoard(
+            boardKey: boardKey,
+            boardDate: startOfDay(for: date),
+            title: boardTitle(for: date)
+        )
+        modelContext.insert(created)
+        return ResolvedBoardContext(board: created, boardKey: boardKey)
+    }
+
     func boardKey(for date: Date) -> String {
         let calendar = Calendar(identifier: .gregorian)
         let components = calendar.dateComponents([.year, .month, .day], from: date)
@@ -19,6 +39,16 @@ struct CompositionStateRepository {
         let month = components.month ?? 0
         let day = components.day ?? 0
         return String(format: "day-%04d-%02d-%02d", year, month, day)
+    }
+
+    func board(boardKey: String) -> DayBoard? {
+        var descriptor = FetchDescriptor<DayBoard>(
+            predicate: #Predicate<DayBoard> { board in
+                board.boardKey == boardKey
+            }
+        )
+        descriptor.fetchLimit = 1
+        return try? modelContext.fetch(descriptor).first
     }
 
     func state(boardKey: String, itemKey: String) -> CompositionItemState? {
@@ -57,6 +87,7 @@ struct CompositionStateRepository {
     }
 
     func upsertState(
+        boardID: UUID,
         boardKey: String,
         itemKey: String,
         targetType: String,
@@ -67,6 +98,7 @@ struct CompositionStateRepository {
         scale: Double
     ) {
         if let existing = state(boardKey: boardKey, itemKey: itemKey) {
+            existing.boardID = boardID
             existing.targetType = targetType
             existing.targetID = targetID
             existing.setSpan(span)
@@ -75,6 +107,7 @@ struct CompositionStateRepository {
         }
 
         let created = CompositionItemState(
+            boardID: boardID,
             boardKey: boardKey,
             itemKey: itemKey,
             targetType: targetType,
@@ -86,5 +119,17 @@ struct CompositionStateRepository {
             scale: scale
         )
         modelContext.insert(created)
+    }
+
+    private func startOfDay(for date: Date) -> Date {
+        Calendar(identifier: .gregorian).startOfDay(for: date)
+    }
+
+    private func boardTitle(for date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: startOfDay(for: date))
     }
 }

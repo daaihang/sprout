@@ -53,6 +53,7 @@ struct DailyView: View {
         .ignoresSafeArea(.container, edges: .bottom)
         .task {
             ensureTodayInHistoryConfig()
+            _ = compositionStateRepository.boardContext(for: date)
         }
     }
 
@@ -82,7 +83,7 @@ struct DailyView: View {
                         scale: projection.scale,
                         availableSpans: spans,
                         onResize: { span in
-                            resizeProjection(projection, to: span, boardKey: boardKey)
+                            resizeProjection(projection, to: span)
                         },
                         onDelete: {
                             modelContext.delete(projection.record)
@@ -144,11 +145,12 @@ struct DailyView: View {
 
     private func resizeProjection(
         _ projection: CompositionProjectionCard,
-        to span: ContainerSpan,
-        boardKey: String
+        to span: ContainerSpan
     ) {
+        let boardContext = compositionStateRepository.boardContext(for: date)
         compositionStateRepository.upsertState(
-            boardKey: boardKey,
+            boardID: boardContext.board.id,
+            boardKey: boardContext.boardKey,
             itemKey: projection.compositionItemKey,
             targetType: projection.targetType.rawValue,
             targetID: projection.targetID,
