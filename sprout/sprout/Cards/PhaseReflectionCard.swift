@@ -16,36 +16,119 @@ struct PhaseReflectionCard: View {
     let data: PhaseReflectionCardData?
 
     var body: some View {
-        AdaptiveCardRoot(content: reflectionContent) {
-            placeholderView
+        Group {
+            if let data {
+                reflectionBody(data)
+            } else {
+                placeholderView
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .cardBackground()
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: GridConfig.cardCornerRadius, style: .continuous))
     }
 
-    private var reflectionContent: AdaptiveCardContent? {
-        guard let data else { return nil }
+    @ViewBuilder
+    private func reflectionBody(_ data: PhaseReflectionCardData) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top, spacing: 10) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("REFLECTION")
+                        .font(.system(size: 10, weight: .black, design: .rounded))
+                        .tracking(1.3)
+                        .foregroundStyle(Color.white.opacity(0.82))
 
-        return AdaptiveCardContent(
-            preferredLayout: .stackedInfo,
-            accent: .purple,
-            visual: .symbol("sparkles", tint: .purple, renderingMode: .hierarchical),
-            title: "Reflection",
-            subtitle: data.phaseTitle,
-            body: data.body,
-            badge: AdaptiveCardBadge(text: data.badgeText, systemImage: "brain.head.profile"),
-            footer: data.dateText
-        )
+                    Text(data.phaseTitle)
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .lineLimit(2)
+                }
+
+                Spacer(minLength: 0)
+
+                ZStack {
+                    Circle()
+                        .fill(Color.white.opacity(0.16))
+                        .frame(width: 38, height: 38)
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundStyle(Color.white)
+                }
+            }
+
+            Spacer(minLength: 14)
+
+            Text(data.body)
+                .font(.system(size: 18, weight: .semibold, design: .serif))
+                .foregroundStyle(Color.white)
+                .multilineTextAlignment(.leading)
+                .lineSpacing(4)
+                .lineLimit(6)
+                .minimumScaleFactor(0.82)
+
+            Spacer(minLength: 16)
+
+            HStack(alignment: .bottom, spacing: 10) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(data.badgeText.uppercased())
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .tracking(1.1)
+                        .foregroundStyle(Color.white.opacity(0.76))
+
+                    Text(data.dateText)
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(Color.white.opacity(0.88))
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 0)
+
+                Text(data.title)
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Color.white.opacity(0.78))
+                    .lineLimit(1)
+            }
+        }
+        .padding(18)
     }
 
     private var placeholderView: some View {
-        VStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             Image(systemName: "sparkles")
-                .font(.system(size: 28))
-                .foregroundStyle(.secondary.opacity(0.4))
+                .font(.system(size: 28, weight: .semibold))
+                .foregroundStyle(Color.white.opacity(0.72))
             Text("No reflection yet")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.system(size: 14, weight: .medium, design: .rounded))
+                .foregroundStyle(Color.white.opacity(0.82))
+            Spacer(minLength: 0)
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: GridConfig.cardCornerRadius, style: .continuous))
+    }
+
+    private var cardBackground: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color(red: 0.18, green: 0.12, blue: 0.36),
+                    Color(red: 0.30, green: 0.17, blue: 0.47),
+                    Color(red: 0.12, green: 0.23, blue: 0.38)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+
+            RadialGradient(
+                colors: [
+                    Color.white.opacity(0.14),
+                    Color.clear
+                ],
+                center: .topLeading,
+                startRadius: 10,
+                endRadius: 220
+            )
         }
     }
 }
