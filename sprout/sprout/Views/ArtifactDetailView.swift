@@ -217,6 +217,12 @@ struct ArtifactDetailView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(2)
+                        if let reflection = memoryRepository.linkedReflection(forArcID: arc.id) {
+                            Text(reflection.title)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary.opacity(0.85))
+                                .lineLimit(1)
+                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(12)

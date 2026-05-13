@@ -55,6 +55,19 @@ final class SproutMemoryRepository {
         var linkedEntities: [EntityNode]
     }
 
+    struct EntityPhaseEvidenceView: Sendable {
+        var entity: EntityNode
+        var relatedArcs: [TemporalArc]
+        var relatedReflections: [ReflectionSnapshot]
+    }
+
+    struct ReflectionEvidenceView: Sendable {
+        var reflection: ReflectionSnapshot
+        var linkedArc: TemporalArc?
+        var linkedEntities: [EntityNode]
+        var linkedArtifacts: [Artifact]
+    }
+
     struct Snapshot: Codable, Sendable {
         var recordShells: [RecordShell]
         var artifacts: [Artifact]
@@ -351,6 +364,56 @@ final class SproutMemoryRepository {
             relatedRecordShells: relatedRecordShells,
             relatedAnalyses: relatedAnalyses,
             linkedEntities: linkedEntities
+        )
+    }
+
+    func entityPhaseEvidenceView(for entityID: UUID) -> EntityPhaseEvidenceView? {
+        guard let entity = entityNode(for: entityID) else { return nil }
+
+        let relatedArcs = temporalArcs
+            .filter { $0.sourceEntityIDs.contains(entityID) || $0.entityNames.contains(entity.displayName) }
+            .sorted(by: temporalArcSort)
+
+        let relatedArcIDs = Set(relatedArcs.map(\.id))
+        let relatedReflections = reflections
+            .filter { reflection in
+                guard reflection.type == .phase else { return false }
+                if reflection.sourceEntityIDs.contains(entityID) {
+                    return true
+                }
+                guard let linkedTemporalArcID = reflection.linkedTemporalArcID else { return false }
+                return relatedArcIDs.contains(linkedTemporalArcID)
+            }
+            .sorted { $0.createdAt > $1.createdAt }
+
+        return EntityPhaseEvidenceView(
+            entity: entity,
+            relatedArcs: relatedArcs,
+            relatedReflections: relatedReflections
+        )
+    }
+
+    func reflectionEvidenceView(for reflectionID: UUID) -> ReflectionEvidenceView? {
+        guard let reflection = reflections.first(where: { $0.id == reflectionID }) else { return nil }
+
+        let linkedEntities = entityNodes
+            .filter { reflection.sourceEntityIDs.contains($0.id) }
+            .sorted {
+                if $0.kind == $1.kind {
+                    return $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending
+                }
+                return $0.kind.rawValue < $1.kind.rawValue
+            }
+
+        let linkedArtifacts = artifacts
+            .filter { reflection.sourceArtifactIDs.contains($0.id) }
+            .sorted { $0.createdAt > $1.createdAt }
+
+        return ReflectionEvidenceView(
+            reflection: reflection,
+            linkedArc: reflection.linkedTemporalArcID.flatMap(temporalArc(for:)),
+            linkedEntities: linkedEntities,
+            linkedArtifacts: linkedArtifacts
         )
     }
 

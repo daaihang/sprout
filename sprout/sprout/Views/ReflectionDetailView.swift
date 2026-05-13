@@ -12,6 +12,10 @@ struct ReflectionDetailView: View {
         return memoryRepository.temporalArc(for: arcID)
     }
 
+    private var evidenceView: SproutMemoryRepository.ReflectionEvidenceView? {
+        memoryRepository.reflectionEvidenceView(for: reflection.id)
+    }
+
     private var relatedRecords: [Record] {
         let records = (try? modelContext.fetch(FetchDescriptor<Record>())) ?? []
         let ids = Set(reflection.sourceRecordIDs)
@@ -26,6 +30,12 @@ struct ReflectionDetailView: View {
                 header
                 if let linkedArc {
                     linkedPhaseSection(linkedArc)
+                }
+                if let evidenceView, !evidenceView.linkedEntities.isEmpty {
+                    linkedEntitiesSection(evidenceView.linkedEntities)
+                }
+                if let evidenceView, !evidenceView.linkedArtifacts.isEmpty {
+                    linkedArtifactsSection(evidenceView.linkedArtifacts)
                 }
                 if !relatedRecords.isEmpty {
                     relatedRecordsSection
@@ -107,6 +117,56 @@ struct ReflectionDetailView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(12)
                     .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .detailCard()
+    }
+
+    private func linkedEntitiesSection(_ entities: [EntityNode]) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Linked Entities")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            ForEach(entities.prefix(4), id: \.id) { entity in
+                NavigationLink {
+                    MemoryEntityDetailView(entityID: entity.id)
+                } label: {
+                    HStack {
+                        Text(entity.kind.badgeLabel)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(entity.kind.tintColor)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(entity.kind.tintColor.opacity(0.12), in: Capsule())
+                        Text(entity.displayName)
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.primary)
+                        Spacer()
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .detailCard()
+    }
+
+    private func linkedArtifactsSection(_ artifacts: [Artifact]) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Linked Artifacts")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            ForEach(artifacts.prefix(4), id: \.id) { artifact in
+                NavigationLink {
+                    ArtifactDetailView(artifact: artifact)
+                } label: {
+                    ArtifactRowView(artifact: artifact, style: .compact)
                 }
                 .buttonStyle(.plain)
             }

@@ -16,6 +16,10 @@ struct MemoryEntityDetailView: View {
         memoryRepository.analyses(mentioning: entityID)
     }
 
+    private var phaseEvidenceView: SproutMemoryRepository.EntityPhaseEvidenceView? {
+        memoryRepository.entityPhaseEvidenceView(for: entityID)
+    }
+
     var body: some View {
         Group {
             if let entityView {
@@ -33,6 +37,9 @@ struct MemoryEntityDetailView: View {
                         }
                         if !analysisMentions.isEmpty {
                             analysisMentionsSection
+                        }
+                        if let phaseEvidenceView, !phaseEvidenceView.relatedArcs.isEmpty || !phaseEvidenceView.relatedReflections.isEmpty {
+                            phaseContextSection(phaseEvidenceView)
                         }
                     }
                     .padding(.horizontal, 16)
@@ -176,6 +183,53 @@ struct MemoryEntityDetailView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(12)
                 .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+        }
+        .detailCard()
+    }
+
+    private func phaseContextSection(_ phaseEvidenceView: SproutMemoryRepository.EntityPhaseEvidenceView) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionTitle("timeline.selection", t("memory.entity.phase_context", "Phase Context"))
+
+            ForEach(phaseEvidenceView.relatedArcs.prefix(3), id: \.id) { arc in
+                NavigationLink {
+                    TemporalArcDetailView(arc: arc)
+                } label: {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(arc.title)
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.primary)
+                        Text(arc.summary)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+
+            ForEach(phaseEvidenceView.relatedReflections.prefix(2), id: \.id) { reflection in
+                NavigationLink {
+                    ReflectionDetailView(reflection: reflection)
+                } label: {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(reflection.title)
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.primary)
+                        Text(reflection.body)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(.plain)
             }
         }
         .detailCard()
