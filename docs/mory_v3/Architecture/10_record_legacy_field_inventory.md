@@ -22,9 +22,8 @@
 
 当前用途：
 
-- `Record.cardKind` setter 仍会写回 `cardType`
 - `derivedCardKind` 在无法从真实内容推导时回退到 `cardType`
-- debug / calibration sample 仍直接写 `record.cardType`
+- 少量兼容 helper 仍会在没有内容信号时回退到 `cardType`
 
 当前判断：
 
@@ -34,8 +33,9 @@
 
 删除前条件：
 
-1. 移除 debug / calibration 对 `record.cardType` 的直接写入
-2. 确认旧数据在 timeline / today-in-history / detail 中不再依赖它兜底
+1. 确认旧数据在 detail / search / board fallback 中不再依赖它兜底
+2. 核对 `RecordMapper` 与 `CompositionProjector` 的剩余兼容分支
+3. 评估 SwiftData schema 删除 `cardType` 的迁移策略
 
 删除优先级：高
 
@@ -79,21 +79,23 @@
 - `Record.dashboardCardSpanOverridesData` 已从模型移除
 - timeline detail entry 改为 content-kind 驱动
 - today-in-history subtitle 改为 content-kind 驱动
-- debug / calibration sample 不再直接写 `record.cardType`
+- `Record.cardKind` 不再提供把新语义回写进 `cardType` 的 setter
 - analyze 主链已切到 `/api/analysis/records`
 - analyze preview 主链已切到 `/api/analysis/preview`
 
 剩余：
 
-- debug / calibration 仍直接写旧字段
+- `derivedCardKind` 仍保留对 `cardType` 的最后 fallback
+- `Record.cardType` 字段本身仍留在 SwiftData 模型中
 
 ## 4. 下一阶段动作
 
 ### 4.1 结构动作
 
-1. 把 debug / calibration 从 `record.cardType` 直写迁到兼容 helper
-2. 评估 `cardType` 是否进入彻底删除阶段
-3. 核对移除旧字段后的 SwiftData schema 迁移策略
+1. 继续收缩 `cardType` 的兼容 fallback 范围
+2. 继续减少 `RecordMapper` / detail fallback 对 `derivedCardKind` 的依赖
+3. 评估 `cardType` 是否进入彻底删除阶段
+4. 核对移除旧字段后的 SwiftData schema 迁移策略
 
 ### 4.2 UI 动作
 

@@ -147,8 +147,7 @@ extension Record {
     }
 
     var cardKind: RecordCardKind {
-        get { derivedCardKind }
-        set { cardType = newValue.rawValue }
+        derivedCardKind
     }
 }
 
