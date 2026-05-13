@@ -23,7 +23,11 @@ The JSON must match this shape:
 }
 Use empty arrays instead of null for collections.
 Prefer structured entities over prose guesses.
-Only use the allowed entity kinds.`
+Only use the allowed entity kinds.
+Entity "name" and "canonical_name" must be short labels, usually 1 to 4 words.
+Never copy an entire sentence or artifact summary into an entity name.
+For "decision", extract a concise decision label such as "leave current job" instead of repeating the full note.
+If you are unsure, omit the entity instead of inventing or over-expanding it.`
 }
 
 func buildAnalyzeUserPrompt(req AnalyzeRequest, user UserContext) (string, error) {

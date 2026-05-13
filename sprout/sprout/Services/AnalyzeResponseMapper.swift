@@ -35,7 +35,7 @@ struct AnalyzeResponseMapper {
         for entity in responseEntities {
             guard let kind = normalizeKind(entity.kind) else { continue }
             let rawName = normalizeText(entity.canonicalName) ?? normalizeText(entity.name)
-            guard let name = rawName, !name.isEmpty else { continue }
+            guard let name = sanitizedEntityName(rawName, kind: kind), !name.isEmpty else { continue }
 
             let key = "\(kind.rawValue)::\(name.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current))"
             guard !seenKeys.contains(key) else { continue }
@@ -109,9 +109,9 @@ struct AnalyzeResponseMapper {
     ) -> [RecordAnalysisSnapshot.CandidateEdge] {
         rawEdges.compactMap { edge in
             guard
-                let fromName = normalizeText(edge.fromName),
+                let fromName = sanitizeEdgeEndpoint(edge.fromName, kindText: edge.fromKind),
                 let fromKind = normalizeText(edge.fromKind),
-                let toName = normalizeText(edge.toName),
+                let toName = sanitizeEdgeEndpoint(edge.toName, kindText: edge.toKind),
                 let toKind = normalizeText(edge.toKind),
                 let relation = normalizeText(edge.relation)
             else {
@@ -155,5 +155,32 @@ struct AnalyzeResponseMapper {
             return nil
         }
         return trimmed
+    }
+
+    private func sanitizedEntityName(_ text: String?, kind: EntityKind) -> String? {
+        guard let normalized = normalizeText(text) else { return nil }
+        let collapsed = normalized.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+        let wordCount = collapsed.split(whereSeparator: \.isWhitespace).count
+        let sentenceLikeMarkers = ["。", "，", ",", " but ", " and ", " because ", "还是", "想到", "今天"]
+
+        if collapsed.count > 48 { return nil }
+        if wordCount > 6 { return nil }
+        if sentenceLikeMarkers.contains(where: { collapsed.localizedCaseInsensitiveContains($0) }) { return nil }
+
+        if kind == .decision {
+            let lowered = collapsed.lowercased()
+            if lowered.hasPrefix("i ") || lowered.hasPrefix("we ") {
+                return nil
+            }
+        }
+
+        return collapsed
+    }
+
+    private func sanitizeEdgeEndpoint(_ text: String?, kindText: String?) -> String? {
+        guard let kind = kindText.flatMap(normalizeKind) else {
+            return normalizeText(text)
+        }
+        return sanitizedEntityName(text, kind: kind)
     }
 }
