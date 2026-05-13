@@ -26,9 +26,50 @@ final class SproutMemoryRepository {
         var entityNodes: [EntityNode]
         var entityEdges: [EntityEdge]
         var artifactEntityLinks: [ArtifactEntityLink]
+        var temporalArcs: [TemporalArc]
+
+        enum CodingKeys: String, CodingKey {
+            case recordShells
+            case artifacts
+            case analyses
+            case entityNodes
+            case entityEdges
+            case artifactEntityLinks
+            case temporalArcs
+        }
+
+        init(
+            recordShells: [RecordShell],
+            artifacts: [Artifact],
+            analyses: [RecordAnalysisSnapshot],
+            entityNodes: [EntityNode],
+            entityEdges: [EntityEdge],
+            artifactEntityLinks: [ArtifactEntityLink],
+            temporalArcs: [TemporalArc]
+        ) {
+            self.recordShells = recordShells
+            self.artifacts = artifacts
+            self.analyses = analyses
+            self.entityNodes = entityNodes
+            self.entityEdges = entityEdges
+            self.artifactEntityLinks = artifactEntityLinks
+            self.temporalArcs = temporalArcs
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            recordShells = try container.decode([RecordShell].self, forKey: .recordShells)
+            artifacts = try container.decode([Artifact].self, forKey: .artifacts)
+            analyses = try container.decode([RecordAnalysisSnapshot].self, forKey: .analyses)
+            entityNodes = try container.decode([EntityNode].self, forKey: .entityNodes)
+            entityEdges = try container.decode([EntityEdge].self, forKey: .entityEdges)
+            artifactEntityLinks = try container.decode([ArtifactEntityLink].self, forKey: .artifactEntityLinks)
+            temporalArcs = try container.decodeIfPresent([TemporalArc].self, forKey: .temporalArcs) ?? []
+        }
     }
 
     private let graphUpdater = GraphUpdater()
+    private let temporalArcService = SproutTemporalArcService()
 
     var recordShells: [RecordShell] = []
     var artifacts: [Artifact] = []
@@ -36,6 +77,7 @@ final class SproutMemoryRepository {
     var entityNodes: [EntityNode] = []
     var entityEdges: [EntityEdge] = []
     var artifactEntityLinks: [ArtifactEntityLink] = []
+    var temporalArcs: [TemporalArc] = []
 
     init() {
         load()
@@ -69,6 +111,7 @@ final class SproutMemoryRepository {
         entityNodes = graphResult.entityNodes
         entityEdges = graphResult.entityEdges
         artifactEntityLinks = graphResult.artifactEntityLinks
+        rebuildTemporalArcs()
         save()
     }
 
@@ -117,6 +160,34 @@ final class SproutMemoryRepository {
 
     func entityNode(for entityID: UUID) -> EntityNode? {
         entityNodes.first { $0.id == entityID }
+    }
+
+    func featuredTemporalArc(for referenceDate: Date, toleranceDays: Int = 6) -> TemporalArc? {
+        let accepted = temporalArcs.filter { $0.status == .accepted }
+        let active = accepted.filter { $0.startDate <= referenceDate && $0.endDate >= referenceDate }
+        if let current = active.sorted(by: temporalArcSort).first {
+            return current
+        }
+
+        let tolerance = TimeInterval(60 * 60 * 24 * toleranceDays)
+        let nearby = accepted
+            .filter {
+                abs($0.startDate.timeIntervalSince(referenceDate)) <= tolerance
+                    || abs($0.endDate.timeIntervalSince(referenceDate)) <= tolerance
+            }
+            .sorted(by: temporalArcSort)
+        return nearby.first
+    }
+
+    func temporalArc(for arcID: UUID) -> TemporalArc? {
+        temporalArcs.first { $0.id == arcID }
+    }
+
+    func archiveTemporalArc(_ arcID: UUID) {
+        guard let index = temporalArcs.firstIndex(where: { $0.id == arcID }) else { return }
+        temporalArcs[index].status = .archived
+        temporalArcs[index].updatedAt = .now
+        save()
     }
 
     func entityView(for entityID: UUID) -> EntityMemoryView? {
@@ -184,6 +255,10 @@ final class SproutMemoryRepository {
         entityNodes = snapshot.entityNodes
         entityEdges = snapshot.entityEdges
         artifactEntityLinks = snapshot.artifactEntityLinks
+        temporalArcs = snapshot.temporalArcs
+        if temporalArcs.isEmpty && !analyses.isEmpty {
+            rebuildTemporalArcs()
+        }
     }
 
     private func save() {
@@ -196,9 +271,27 @@ final class SproutMemoryRepository {
             analyses: analyses,
             entityNodes: entityNodes,
             entityEdges: entityEdges,
-            artifactEntityLinks: artifactEntityLinks
+            artifactEntityLinks: artifactEntityLinks,
+            temporalArcs: temporalArcs
         )
         guard let data = try? JSONEncoder().encode(snapshot) else { return }
         try? data.write(to: url, options: .atomic)
+    }
+
+    private func rebuildTemporalArcs() {
+        temporalArcs = temporalArcService.rebuildAcceptedArcs(
+            records: recordShells,
+            analyses: analyses,
+            artifacts: artifacts,
+            artifactEntityLinks: artifactEntityLinks,
+            entityNodes: entityNodes
+        )
+    }
+
+    private func temporalArcSort(lhs: TemporalArc, rhs: TemporalArc) -> Bool {
+        if lhs.endDate == rhs.endDate {
+            return lhs.intensityScore > rhs.intensityScore
+        }
+        return lhs.endDate > rhs.endDate
     }
 }

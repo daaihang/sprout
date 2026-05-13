@@ -96,7 +96,8 @@ struct DailyView: View {
         }
 
         let systemItems = systemGridEntries
-        return (systemItems + recordItems).sorted { $0.order < $1.order }.map(\.item)
+        let arcItems = temporalArcGridEntries
+        return (systemItems + arcItems + recordItems).sorted { $0.order < $1.order }.map(\.item)
     }
 
     private var systemGridEntries: [(order: Double, item: GridItem)] {
@@ -144,6 +145,58 @@ struct DailyView: View {
                     },
                     onDelete: {
                         config.isEnabled = false
+                    }
+                )
+            )
+        ]
+    }
+
+    private var temporalArcGridEntries: [(order: Double, item: GridItem)] {
+        guard let arc = memoryRepository.featuredTemporalArc(for: date) else { return [] }
+
+        let itemID = "arc-\(arc.id.uuidString)"
+        let compositionKey = compositionStateRepository.compositionKey(
+            for: compositionStateRepository.boardKey(for: date)
+        )
+        let fallbackSpan = sizeLimits(for: "text").clamped(
+            span: ContainerSpan(widthColumns: 4, heightUnits: 4)
+        )
+        let resolvedState = compositionStateRepository.resolvedState(
+            compositionKey: compositionKey,
+            itemKey: itemID,
+            fallbackSpan: fallbackSpan,
+            fallbackZIndex: -9_500,
+            fallbackRotationDegrees: stickerRotation(for: itemID),
+            fallbackScale: stickerScale(for: itemID)
+        )
+
+        return [
+            (
+                order: -9_500,
+                item: GridItem(
+                    id: itemID,
+                    projectionTargetType: CompositionProjectionTargetType.arc.rawValue,
+                    projectionTargetID: arc.id,
+                    recordID: arc.sourceRecordIDs.first ?? UUID(),
+                    card: AnyView(
+                        NavigationLink(
+                            destination: TemporalArcDetailView(arc: arc)
+                        ) {
+                            TemporalArcCard(data: temporalArcCardData(for: arc))
+                        }
+                        .buttonStyle(.plain)
+                    ),
+                    columns: resolvedState.span.widthColumns,
+                    units: resolvedState.span.heightUnits,
+                    zIndex: resolvedState.zIndex,
+                    rotationDegrees: resolvedState.rotationDegrees,
+                    scale: resolvedState.scale,
+                    availableSpans: availableSpans(for: "text"),
+                    onResize: { newSpan in
+                        resizeTemporalArcCard(arc, to: newSpan)
+                    },
+                    onDelete: {
+                        memoryRepository.archiveTemporalArc(arc.id)
                     }
                 )
             )
@@ -201,6 +254,34 @@ struct DailyView: View {
             itemKey: itemID,
             targetType: CompositionProjectionTargetType.system.rawValue,
             targetID: todayInHistoryTargetID,
+            span: span,
+            zIndex: fallbackState.zIndex,
+            rotationDegrees: fallbackState.rotationDegrees,
+            scale: fallbackState.scale
+        )
+    }
+
+    private func resizeTemporalArcCard(_ arc: TemporalArc, to span: ContainerSpan) {
+        let compositionContext = compositionStateRepository.compositionContext(for: date)
+        let itemID = "arc-\(arc.id.uuidString)"
+        let fallbackState = compositionStateRepository.resolvedState(
+            compositionKey: compositionContext.compositionKey,
+            itemKey: itemID,
+            fallbackSpan: sizeLimits(for: "text").clamped(
+                span: ContainerSpan(widthColumns: 4, heightUnits: 4)
+            ),
+            fallbackZIndex: -9_500,
+            fallbackRotationDegrees: stickerRotation(for: itemID),
+            fallbackScale: stickerScale(for: itemID)
+        )
+        compositionStateRepository.upsertState(
+            boardID: compositionContext.board.id,
+            boardKey: compositionContext.boardKey,
+            compositionID: compositionContext.composition.id,
+            compositionKey: compositionContext.compositionKey,
+            itemKey: itemID,
+            targetType: CompositionProjectionTargetType.arc.rawValue,
+            targetID: arc.id,
             span: span,
             zIndex: fallbackState.zIndex,
             rotationDegrees: fallbackState.rotationDegrees,
@@ -271,6 +352,25 @@ struct DailyView: View {
 
     private var todayInHistoryTargetID: UUID {
         UUID(uuidString: "00000000-0000-0000-0000-000000000100") ?? UUID()
+    }
+
+    private func temporalArcCardData(for arc: TemporalArc) -> TemporalArcCardData {
+        TemporalArcCardData(
+            title: arc.title,
+            summary: arc.summary,
+            dominantTheme: arc.dominantTheme,
+            dominantEntityName: arc.dominantEntityName,
+            dateRangeText: temporalArcDateRangeText(for: arc),
+            recordCount: arc.sourceRecordIDs.count,
+            artifactCount: arc.sourceArtifactIDs.count
+        )
+    }
+
+    private func temporalArcDateRangeText(for arc: TemporalArc) -> String {
+        let formatter = DateIntervalFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter.string(from: arc.startDate, to: arc.endDate)
     }
 }
 
