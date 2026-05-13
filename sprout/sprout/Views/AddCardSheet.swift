@@ -335,10 +335,10 @@ struct AddCardSheet: View {
             ? Date()
             : cal.date(byAdding: .day, value: 1, to: selectedDate)!.addingTimeInterval(-1)
         record.updatedAt = record.createdAt
-        record.cardType  = cardType
         record.dashboardOrder = record.createdAt.timeIntervalSince1970
 
         let cardKind = RecordCardKind(rawValue: cardType) ?? .text
+        record.cardKind = cardKind
 
         switch cardType {
 
