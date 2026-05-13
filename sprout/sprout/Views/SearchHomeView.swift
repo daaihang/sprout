@@ -321,6 +321,7 @@ struct SearchHomeView: View {
                             NavigationLink {
                                 MemoryEntityDetailView(entityID: entity.id)
                             } label: {
+                                let entityView = memoryRepository.entityView(for: entity.id)
                                 HStack(spacing: 12) {
                                     Text(entity.kind.badgeLabel)
                                         .font(.caption2.weight(.semibold))
@@ -338,6 +339,23 @@ struct SearchHomeView: View {
                                                 .font(.caption)
                                                 .foregroundStyle(.secondary)
                                                 .lineLimit(2)
+                                        } else if let entityView {
+                                            Text(entityEvidenceSummary(for: entity, view: entityView))
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                                .lineLimit(2)
+                                        }
+
+                                        if let entityView, !entityView.relatedEntities.isEmpty {
+                                            Text(
+                                                entityView.relatedEntities
+                                                    .prefix(3)
+                                                    .map(\.displayName)
+                                                    .joined(separator: " · ")
+                                            )
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary.opacity(0.85))
+                                            .lineLimit(1)
                                         }
                                     }
 
@@ -402,7 +420,28 @@ struct SearchHomeView: View {
                             NavigationLink {
                                 ArtifactDetailView(artifact: artifact)
                             } label: {
-                                ArtifactRowView(artifact: artifact, style: .card)
+                                let evidenceView = memoryRepository.artifactEvidenceView(for: artifact.id)
+                                VStack(alignment: .leading, spacing: 8) {
+                                    ArtifactRowView(
+                                        artifact: artifact,
+                                        entityNames: evidenceView?.linkedEntities.map(\.displayName) ?? [],
+                                        style: .card
+                                    )
+
+                                    if let evidenceView {
+                                        if let firstAnalysis = evidenceView.relatedAnalyses.first {
+                                            Text("\(firstAnalysis.emotionLabel.capitalized) · \(firstAnalysis.insight)")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                                .lineLimit(2)
+                                        }
+
+                                        Text(artifactEvidenceSummary(for: evidenceView))
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary.opacity(0.85))
+                                            .lineLimit(1)
+                                    }
+                                }
                             }
                             .buttonStyle(.plain)
                         }
@@ -555,6 +594,33 @@ struct SearchHomeView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
         .background(Color.white.opacity(0.78), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private func entityEvidenceSummary(
+        for entity: EntityNode,
+        view: SproutMemoryRepository.EntityMemoryView
+    ) -> String {
+        let parts = [
+            "\(view.relatedRecords.count) memories",
+            view.relatedArtifacts.isEmpty ? nil : "\(view.relatedArtifacts.count) artifacts",
+            view.relatedEntities.isEmpty ? nil : "\(view.relatedEntities.count) links"
+        ].compactMap { $0 }
+
+        if !parts.isEmpty {
+            return parts.joined(separator: " · ")
+        }
+
+        return entity.kind.badgeLabel
+    }
+
+    private func artifactEvidenceSummary(for evidenceView: SproutMemoryRepository.ArtifactEvidenceView) -> String {
+        let parts = [
+            evidenceView.relatedRecordShells.isEmpty ? nil : "\(evidenceView.relatedRecordShells.count) memories",
+            evidenceView.linkedEntities.isEmpty ? nil : "\(evidenceView.linkedEntities.count) entities",
+            evidenceView.relatedArcs.isEmpty ? nil : "\(evidenceView.relatedArcs.count) phases"
+        ].compactMap { $0 }
+
+        return parts.isEmpty ? "No linked evidence yet" : parts.joined(separator: " · ")
     }
 
     private func dateRangeText(for arc: TemporalArc) -> String {

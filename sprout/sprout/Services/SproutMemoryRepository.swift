@@ -39,6 +39,14 @@ final class SproutMemoryRepository {
         var linkedEntities: [EntityNode]
     }
 
+    struct ArtifactEvidenceView: Sendable {
+        var artifact: Artifact
+        var linkedEntities: [EntityNode]
+        var relatedRecordShells: [RecordShell]
+        var relatedAnalyses: [RecordAnalysisSnapshot]
+        var relatedArcs: [TemporalArc]
+    }
+
     struct Snapshot: Codable, Sendable {
         var recordShells: [RecordShell]
         var artifacts: [Artifact]
@@ -266,6 +274,45 @@ final class SproutMemoryRepository {
             relatedRecords: relatedRecords,
             relatedArtifacts: relatedArtifacts,
             supportingEdges: supportingEdges.sorted { $0.lastSeenAt > $1.lastSeenAt }
+        )
+    }
+
+    func artifactEvidenceView(for artifactID: UUID) -> ArtifactEvidenceView? {
+        guard let artifact = artifacts.first(where: { $0.id == artifactID }) else { return nil }
+
+        let linkedEntityIDs = Set(
+            artifactEntityLinks
+                .filter { $0.artifactID == artifactID }
+                .map(\.entityID)
+        )
+        let linkedEntities = entityNodes
+            .filter { linkedEntityIDs.contains($0.id) }
+            .sorted {
+                if $0.kind == $1.kind {
+                    return $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending
+                }
+                return $0.kind.rawValue < $1.kind.rawValue
+            }
+
+        let relatedRecordShells = recordShells
+            .filter { $0.artifactIDs.contains(artifactID) }
+            .sorted { $0.createdAt > $1.createdAt }
+
+        let relatedRecordIDs = Set(relatedRecordShells.map(\.id))
+        let relatedAnalyses = analyses
+            .filter { relatedRecordIDs.contains($0.recordID) }
+            .sorted { $0.createdAt > $1.createdAt }
+
+        let relatedArcs = temporalArcs
+            .filter { $0.sourceArtifactIDs.contains(artifactID) }
+            .sorted(by: temporalArcSort)
+
+        return ArtifactEvidenceView(
+            artifact: artifact,
+            linkedEntities: linkedEntities,
+            relatedRecordShells: relatedRecordShells,
+            relatedAnalyses: relatedAnalyses,
+            relatedArcs: relatedArcs
         )
     }
 
