@@ -90,6 +90,17 @@ struct TemporalArcDetailView: View {
             Text(reflection.body)
                 .font(.body)
                 .foregroundStyle(.primary)
+
+            if let evidenceSummary = reflection.evidenceSummary, !evidenceSummary.isEmpty {
+                EvidenceCalloutCard(title: "Evidence Summary", bodyText: evidenceSummary)
+            }
+
+            HStack(spacing: 8) {
+                if let confidenceText = reflection.confidencePercentageText {
+                    SignalPill(title: confidenceText, tint: .orange)
+                }
+                SignalPill(title: reflection.statusDisplayText, tint: .secondary)
+            }
         }
         .detailCard()
     }

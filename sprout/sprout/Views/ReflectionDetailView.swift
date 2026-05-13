@@ -60,16 +60,39 @@ struct ReflectionDetailView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Phase Reflection")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.purple)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(Color.purple.opacity(0.12), in: Capsule())
+            HStack(spacing: 8) {
+                Text(reflectionTypeLabel)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.purple)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color.purple.opacity(0.12), in: Capsule())
+
+                Text(reflection.statusDisplayText)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color.secondary.opacity(0.10), in: Capsule())
+            }
 
             Text(reflection.body)
                 .font(.body)
                 .foregroundStyle(.primary)
+
+            if let evidenceSummary = reflection.evidenceSummary, !evidenceSummary.isEmpty {
+                EvidenceCalloutCard(title: "Evidence Summary", bodyText: evidenceSummary)
+            }
+
+            HStack(spacing: 8) {
+                if let confidenceText = reflection.confidencePercentageText {
+                    SignalPill(title: confidenceText, tint: .orange)
+                }
+                SignalPill(title: "\(reflection.sourceRecordIDs.count) memories", tint: .blue)
+                if !reflection.sourceEntityIDs.isEmpty {
+                    SignalPill(title: "\(reflection.sourceEntityIDs.count) entities", tint: .green)
+                }
+            }
 
             Text(reflection.createdAt.formatted(date: .abbreviated, time: .shortened))
                 .font(.footnote)
@@ -212,5 +235,18 @@ struct ReflectionDetailView: View {
             }
         }
         .detailCard()
+    }
+
+    private var reflectionTypeLabel: String {
+        switch reflection.type {
+        case .pattern:
+            return "Pattern Reflection"
+        case .relationship:
+            return "Relationship Reflection"
+        case .phase:
+            return "Phase Reflection"
+        case .record:
+            return "Record Reflection"
+        }
     }
 }

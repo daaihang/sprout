@@ -35,6 +35,24 @@ extension RecordAnalysisSnapshot {
     }
 }
 
+extension ReflectionSnapshot {
+    var confidencePercentageText: String? {
+        guard let confidence else { return nil }
+        return "Confidence \(Int((confidence * 100).rounded()))"
+    }
+
+    var statusDisplayText: String {
+        switch status {
+        case .active:
+            return "Active"
+        case .saved:
+            return "Saved"
+        case .dismissed:
+            return "Dismissed"
+        }
+    }
+}
+
 extension View {
     func detailCard() -> some View {
         self

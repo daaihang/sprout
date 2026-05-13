@@ -44,6 +44,9 @@ struct SproutTemporalArcService {
                     type: .phase,
                     title: arc.title,
                     body: arc.summary,
+                    evidenceSummary: phaseEvidenceSummary(for: arc),
+                    confidence: phaseReflectionConfidence(for: arc),
+                    status: .active,
                     linkedTemporalArcID: arc.id,
                     sourceRecordIDs: arc.sourceRecordIDs,
                     sourceArtifactIDs: arc.sourceArtifactIDs,
@@ -60,6 +63,23 @@ struct SproutTemporalArcService {
                 }
                 return lhs.arc.endDate > rhs.arc.endDate
             }
+    }
+
+    private func phaseEvidenceSummary(for arc: TemporalArc) -> String {
+        let parts = [
+            arc.sourceRecordIDs.isEmpty ? nil : "\(arc.sourceRecordIDs.count) memories",
+            arc.sourceArtifactIDs.isEmpty ? nil : "\(arc.sourceArtifactIDs.count) artifacts",
+            arc.sourceEntityIDs.isEmpty ? nil : "\(arc.sourceEntityIDs.count) entities",
+            arc.dominantTheme.map { "theme \($0)" }
+        ].compactMap { $0 }
+
+        return parts.joined(separator: " · ")
+    }
+
+    private func phaseReflectionConfidence(for arc: TemporalArc) -> Double {
+        let intensityComponent = min(max(arc.intensityScore / 12, 0), 1)
+        let clusterComponent = min(max(arc.clusterStrength, 0), 1)
+        return min(max(intensityComponent * 0.45 + clusterComponent * 0.55, 0), 1)
     }
 }
 
