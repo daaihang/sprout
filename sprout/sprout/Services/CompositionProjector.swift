@@ -41,7 +41,10 @@ struct CompositionProjector {
             by: \.kind
         )
 
-        let baseCards = RecordMapper.allCards(record: record).enumerated().map { index, card in
+        let baseCards = RecordMapper.allCards(
+            record: record,
+            spanResolutionMode: .compositionDefault
+        ).enumerated().map { index, card in
             let resolvedTarget = projectionTarget(
                 for: card,
                 record: record,
@@ -205,10 +208,7 @@ struct CompositionProjector {
                     return nil
                 }
 
-                let fallbackSpan = record.legacyDashboardContainerSpan(
-                    for: rendered.spanKey,
-                    cardType: rendered.cardType
-                )
+                let fallbackSpan = sizeLimits(for: rendered.cardType).defaultSpan
                 let itemKey = "\(record.id.uuidString)-\(rendered.spanKey)"
                 let fallbackZIndex = baseIndexOffset + index
                 let fallbackRotation = stickerRotation(for: rendered.id)

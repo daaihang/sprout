@@ -39,16 +39,28 @@ struct DashboardCardInfo: Identifiable {
 // MARK: - RecordMapper
 
 enum RecordMapper {
+    enum SpanResolutionMode {
+        case legacyRecord
+        case compositionDefault
+    }
 
     /// Derives up to 4 dashboard cards from a single Record.
     /// Cards are ordered by visual importance (richest media first).
     /// Per-container size overrides are resolved by `spanKey`.
     /// Falls back to legacy record-level size when no per-container override exists.
-    static func allCards(record: Record) -> [DashboardCardInfo] {
+    static func allCards(
+        record: Record,
+        spanResolutionMode: SpanResolutionMode = .legacyRecord
+    ) -> [DashboardCardInfo] {
         var cards: [DashboardCardInfo] = []
-        
+
         func resolvedSpan(for cardType: String, key: String) -> ContainerSpan {
-            record.legacyDashboardContainerSpan(for: key, cardType: cardType)
+            switch spanResolutionMode {
+            case .legacyRecord:
+                return record.legacyDashboardContainerSpan(for: key, cardType: cardType)
+            case .compositionDefault:
+                return sizeLimits(for: cardType).defaultSpan
+            }
         }
 
         func cardInfo(
