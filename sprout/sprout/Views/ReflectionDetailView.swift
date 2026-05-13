@@ -7,8 +7,12 @@ struct ReflectionDetailView: View {
 
     let reflection: ReflectionSnapshot
 
+    private var currentReflection: ReflectionSnapshot {
+        memoryRepository.reflectionEvidenceView(for: reflection.id)?.reflection ?? reflection
+    }
+
     private var linkedArc: TemporalArc? {
-        guard let arcID = reflection.linkedTemporalArcID else { return nil }
+        guard let arcID = currentReflection.linkedTemporalArcID else { return nil }
         return memoryRepository.temporalArc(for: arcID)
     }
 
@@ -18,14 +22,14 @@ struct ReflectionDetailView: View {
 
     private var relatedRecords: [Record] {
         let records = (try? modelContext.fetch(FetchDescriptor<Record>())) ?? []
-        let ids = Set(reflection.sourceRecordIDs)
+        let ids = Set(currentReflection.sourceRecordIDs)
         return records
             .filter { ids.contains($0.id) }
             .sorted { $0.createdAt > $1.createdAt }
     }
 
     private var sourceAnalyses: [RecordAnalysisSnapshot] {
-        reflection.sourceRecordIDs
+        currentReflection.sourceRecordIDs
             .compactMap(memoryRepository.analysis(for:))
             .sorted { $0.createdAt > $1.createdAt }
     }
@@ -34,6 +38,7 @@ struct ReflectionDetailView: View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 20) {
                 header
+                managementSection
                 if let linkedArc {
                     linkedPhaseSection(linkedArc)
                 }
@@ -54,7 +59,7 @@ struct ReflectionDetailView: View {
             .padding(.vertical, 20)
             .padding(.bottom, 40)
         }
-        .navigationTitle(reflection.title)
+        .navigationTitle(currentReflection.title)
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -68,7 +73,7 @@ struct ReflectionDetailView: View {
                     .padding(.vertical, 5)
                     .background(Color.purple.opacity(0.12), in: Capsule())
 
-                Text(reflection.statusDisplayText)
+                Text(currentReflection.statusDisplayText)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 10)
@@ -76,25 +81,25 @@ struct ReflectionDetailView: View {
                     .background(Color.secondary.opacity(0.10), in: Capsule())
             }
 
-            Text(reflection.body)
+            Text(currentReflection.body)
                 .font(.body)
                 .foregroundStyle(.primary)
 
-            if let evidenceSummary = reflection.evidenceSummary, !evidenceSummary.isEmpty {
+            if let evidenceSummary = currentReflection.evidenceSummary, !evidenceSummary.isEmpty {
                 EvidenceCalloutCard(title: "Evidence Summary", bodyText: evidenceSummary)
             }
 
             HStack(spacing: 8) {
-                if let confidenceText = reflection.confidencePercentageText {
+                if let confidenceText = currentReflection.confidencePercentageText {
                     SignalPill(title: confidenceText, tint: .orange)
                 }
-                SignalPill(title: "\(reflection.sourceRecordIDs.count) memories", tint: .blue)
-                if !reflection.sourceEntityIDs.isEmpty {
-                    SignalPill(title: "\(reflection.sourceEntityIDs.count) entities", tint: .green)
+                SignalPill(title: "\(currentReflection.sourceRecordIDs.count) memories", tint: .blue)
+                if !currentReflection.sourceEntityIDs.isEmpty {
+                    SignalPill(title: "\(currentReflection.sourceEntityIDs.count) entities", tint: .green)
                 }
             }
 
-            Text(reflection.createdAt.formatted(date: .abbreviated, time: .shortened))
+            Text(currentReflection.createdAt.formatted(date: .abbreviated, time: .shortened))
                 .font(.footnote)
                 .foregroundStyle(.secondary)
 
@@ -106,6 +111,54 @@ struct ReflectionDetailView: View {
                     showRetrievalTerms: true,
                     showReflectionHint: true
                 )
+            }
+        }
+        .detailCard()
+    }
+
+    private var managementSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Management")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            Text(managementExplanation)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: 10) {
+                if currentReflection.status != .saved {
+                    Button("Save Reflection") {
+                        memoryRepository.saveReflection(currentReflection.id)
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+
+                if currentReflection.status != .dismissed {
+                    Button("Dismiss") {
+                        memoryRepository.dismissReflection(currentReflection.id)
+                    }
+                    .buttonStyle(.bordered)
+                }
+
+                if currentReflection.status == .dismissed {
+                    Button("Reactivate") {
+                        memoryRepository.reactivateReflection(currentReflection.id)
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+
+            if let savedAt = currentReflection.savedAt, currentReflection.status == .saved {
+                Text("Saved \(savedAt.formatted(date: .abbreviated, time: .shortened))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if let dismissedAt = currentReflection.dismissedAt, currentReflection.status == .dismissed {
+                Text("Dismissed \(dismissedAt.formatted(date: .abbreviated, time: .shortened))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
         .detailCard()
@@ -238,7 +291,7 @@ struct ReflectionDetailView: View {
     }
 
     private var reflectionTypeLabel: String {
-        switch reflection.type {
+        switch currentReflection.type {
         case .pattern:
             return "Pattern Reflection"
         case .relationship:
@@ -247,6 +300,17 @@ struct ReflectionDetailView: View {
             return "Phase Reflection"
         case .record:
             return "Record Reflection"
+        }
+    }
+
+    private var managementExplanation: String {
+        switch currentReflection.status {
+        case .active:
+            return "This reflection is currently active and can still be reviewed, saved, or dismissed."
+        case .saved:
+            return "This reflection has been kept as a durable meaning layer on top of the underlying evidence."
+        case .dismissed:
+            return "This reflection has been hidden from the active layer, but the underlying memory structure still remains."
         }
     }
 }

@@ -44,6 +44,26 @@ struct MemoryArchitectureDebugView: View {
             .map { $0 }
     }
 
+    private var acceptedArcCount: Int {
+        memoryRepository.temporalArcs.filter { $0.status == .accepted }.count
+    }
+
+    private var archivedArcCount: Int {
+        memoryRepository.temporalArcs.filter { $0.status == .archived }.count
+    }
+
+    private var activeReflectionCount: Int {
+        memoryRepository.reflections.filter { $0.status == .active }.count
+    }
+
+    private var savedReflectionCount: Int {
+        memoryRepository.reflections.filter { $0.status == .saved }.count
+    }
+
+    private var dismissedReflectionCount: Int {
+        memoryRepository.reflections.filter { $0.status == .dismissed }.count
+    }
+
     var body: some View {
         List {
             summarySection
@@ -51,6 +71,7 @@ struct MemoryArchitectureDebugView: View {
             graphSection
             arcSection
             reflectionSection
+            lifecycleSection
         }
         .listStyle(.insetGrouped)
         .navigationTitle("Memory Architecture")
@@ -194,6 +215,20 @@ struct MemoryArchitectureDebugView: View {
             Text("Reflections")
         } footer: {
             Text("Reflection is the top layer. It should sit on top of analysis, graph, and arcs instead of replacing them.")
+        }
+    }
+
+    private var lifecycleSection: some View {
+        Section {
+            debugRow("Accepted Arcs", "\(acceptedArcCount)")
+            debugRow("Archived Arcs", "\(archivedArcCount)")
+            debugRow("Active Reflections", "\(activeReflectionCount)")
+            debugRow("Saved Reflections", "\(savedReflectionCount)")
+            debugRow("Dismissed Reflections", "\(dismissedReflectionCount)")
+        } header: {
+            Text("Lifecycle")
+        } footer: {
+            Text("This is the management layer. If arcs cannot be archived or reflections cannot move between active, saved, and dismissed states, Phase 5 is still only a static demo.")
         }
     }
 

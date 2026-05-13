@@ -251,6 +251,35 @@ final class SproutMemoryRepository {
         save()
     }
 
+    func restoreTemporalArc(_ arcID: UUID) {
+        guard let index = temporalArcs.firstIndex(where: { $0.id == arcID }) else { return }
+        temporalArcs[index].status = .accepted
+        temporalArcs[index].updatedAt = .now
+        save()
+    }
+
+    func saveReflection(_ reflectionID: UUID) {
+        guard let index = reflections.firstIndex(where: { $0.id == reflectionID }) else { return }
+        reflections[index].status = .saved
+        reflections[index].savedAt = .now
+        reflections[index].dismissedAt = nil
+        save()
+    }
+
+    func dismissReflection(_ reflectionID: UUID) {
+        guard let index = reflections.firstIndex(where: { $0.id == reflectionID }) else { return }
+        reflections[index].status = .dismissed
+        reflections[index].dismissedAt = .now
+        save()
+    }
+
+    func reactivateReflection(_ reflectionID: UUID) {
+        guard let index = reflections.firstIndex(where: { $0.id == reflectionID }) else { return }
+        reflections[index].status = .active
+        reflections[index].dismissedAt = nil
+        save()
+    }
+
     func entityView(for entityID: UUID) -> EntityMemoryView? {
         guard let entity = entityNode(for: entityID) else { return nil }
 

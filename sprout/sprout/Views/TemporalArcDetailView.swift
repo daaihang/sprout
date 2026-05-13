@@ -6,13 +6,17 @@ struct TemporalArcDetailView: View {
     @Environment(SproutMemoryRepository.self) private var memoryRepository
     let arc: TemporalArc
 
+    private var currentArc: TemporalArc {
+        memoryRepository.temporalArc(for: arc.id) ?? arc
+    }
+
     private var evidenceView: SproutMemoryRepository.ArcEvidenceView? {
         memoryRepository.arcEvidenceView(for: arc.id)
     }
 
     private var relatedRecords: [Record] {
         let records = (try? modelContext.fetch(FetchDescriptor<Record>())) ?? []
-        let ids = Set(arc.sourceRecordIDs)
+        let ids = Set(currentArc.sourceRecordIDs)
         return records
             .filter { ids.contains($0.id) }
             .sorted { $0.createdAt > $1.createdAt }
@@ -26,7 +30,8 @@ struct TemporalArcDetailView: View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 20) {
                 header
-                if let reflection = memoryRepository.linkedReflection(forArcID: arc.id) {
+                managementSection
+                if let reflection = memoryRepository.linkedReflection(forArcID: currentArc.id) {
                     reflectionSection(reflection)
                 }
                 metadata
@@ -38,7 +43,7 @@ struct TemporalArcDetailView: View {
             .padding(.vertical, 20)
             .padding(.bottom, 40)
         }
-        .navigationTitle(arc.title)
+        .navigationTitle(currentArc.title)
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -51,7 +56,7 @@ struct TemporalArcDetailView: View {
                 .padding(.vertical, 5)
                 .background(Color.orange.opacity(0.12), in: Capsule())
 
-            Text(arc.summary)
+            Text(currentArc.summary)
                 .font(.body)
                 .foregroundStyle(.primary)
 
@@ -73,6 +78,33 @@ struct TemporalArcDetailView: View {
                     showRetrievalTerms: true,
                     showReflectionHint: true
                 )
+            }
+        }
+        .detailCard()
+    }
+
+    private var managementSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Phase Lifecycle")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            Text(phaseLifecycleExplanation)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: 10) {
+                if currentArc.status != .archived {
+                    Button("Archive Phase") {
+                        memoryRepository.archiveTemporalArc(currentArc.id)
+                    }
+                    .buttonStyle(.bordered)
+                } else {
+                    Button("Restore Phase") {
+                        memoryRepository.restoreTemporalArc(currentArc.id)
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
             }
         }
         .detailCard()
@@ -101,6 +133,10 @@ struct TemporalArcDetailView: View {
                 }
                 SignalPill(title: reflection.statusDisplayText, tint: .secondary)
             }
+
+            Text(reflectionSourceExplanation(reflection))
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
         .detailCard()
     }
@@ -111,11 +147,11 @@ struct TemporalArcDetailView: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.secondary)
 
-            if !arc.themeLabels.isEmpty {
-                labelRow(title: "Themes", value: arc.themeLabels.prefix(4).joined(separator: ", "))
+            if !currentArc.themeLabels.isEmpty {
+                labelRow(title: "Themes", value: currentArc.themeLabels.prefix(4).joined(separator: ", "))
             }
-            if !arc.entityNames.isEmpty {
-                labelRow(title: "Entities", value: arc.entityNames.prefix(4).joined(separator: ", "))
+            if !currentArc.entityNames.isEmpty {
+                labelRow(title: "Entities", value: currentArc.entityNames.prefix(4).joined(separator: ", "))
             }
             if let leadAnalysis, !leadAnalysis.retrievalTerms.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
@@ -129,8 +165,10 @@ struct TemporalArcDetailView: View {
                 labelRow(title: "Analyses", value: "\(evidenceView.relatedAnalyses.count)")
             }
 
-            labelRow(title: "Memories", value: "\(arc.sourceRecordIDs.count)")
-            labelRow(title: "Artifacts", value: "\(arc.sourceArtifactIDs.count)")
+            labelRow(title: "Memories", value: "\(currentArc.sourceRecordIDs.count)")
+            labelRow(title: "Artifacts", value: "\(currentArc.sourceArtifactIDs.count)")
+            labelRow(title: "Cluster", value: "\(Int((currentArc.clusterStrength * 100).rounded()))%")
+            labelRow(title: "Intensity", value: String(format: "%.1f", currentArc.intensityScore))
         }
         .detailCard()
     }
@@ -179,7 +217,7 @@ struct TemporalArcDetailView: View {
         let formatter = DateIntervalFormatter()
         formatter.dateStyle = .medium
         formatter.timeStyle = .none
-        return formatter.string(from: arc.startDate, to: arc.endDate)
+        return formatter.string(from: currentArc.startDate, to: currentArc.endDate)
     }
 
     private func arcEvidenceSummary(for evidenceView: SproutMemoryRepository.ArcEvidenceView) -> String {
@@ -190,5 +228,26 @@ struct TemporalArcDetailView: View {
         ].compactMap { $0 }
 
         return parts.isEmpty ? "No linked evidence yet" : parts.joined(separator: " · ")
+    }
+
+    private var phaseLifecycleExplanation: String {
+        switch currentArc.status {
+        case .candidate:
+            return "This phase is still provisional and should not yet drive the long-term memory layer."
+        case .accepted:
+            return "This phase is part of the active long-term memory structure and can power reflections, search, and entity context."
+        case .archived:
+            return "This phase has been archived from the active layer, but its evidence remains available for later review."
+        }
+    }
+
+    private func reflectionSourceExplanation(_ reflection: ReflectionSnapshot) -> String {
+        let parts = [
+            "\(reflection.sourceRecordIDs.count) source memories",
+            reflection.sourceEntityIDs.isEmpty ? nil : "\(reflection.sourceEntityIDs.count) source entities",
+            currentArc.dominantTheme.map { "dominant theme: \($0)" }
+        ].compactMap { $0 }
+
+        return "Generated from " + parts.joined(separator: " · ")
     }
 }
