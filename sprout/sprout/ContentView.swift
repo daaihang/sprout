@@ -444,11 +444,7 @@ struct ContentView: View {
 
     /// Creates a photo-only standalone Record (triggered by the quick camera button).
     private func insertStandalonePhotoRecord(image: UIImage) {
-        let cal = Calendar.current
-        let today = cal.startOfDay(for: Date())
-        let createdAt = cal.isDate(selectedDate, inSameDayAs: today)
-            ? Date()
-            : cal.date(byAdding: .day, value: 1, to: selectedDate)!.addingTimeInterval(-1)
+        let createdAt = Date()
 
         Task { @MainActor in
             let payloads = await preparePhotoMediaPayloads(from: [image])
@@ -482,11 +478,7 @@ struct ContentView: View {
         Task { @MainActor in
             let trimmed = draft.trimmedShellText
             let attachments = draft.attachments
-            let cal = Calendar.current
-            let today = cal.startOfDay(for: Date())
-            let createdAt = cal.isDate(selectedDate, inSameDayAs: today)
-                ? Date()
-                : cal.date(byAdding: .day, value: 1, to: selectedDate)!.addingTimeInterval(-1)
+            let createdAt = Date()
             let parsed = RecordParser.parseBody(trimmed)
             let photoPayloads = await preparePhotoMediaPayloads(from: attachments.photos)
             let aggregate = memoryAggregateBuilder.build(

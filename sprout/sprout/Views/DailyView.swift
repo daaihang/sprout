@@ -14,6 +14,7 @@ struct DailyView: View {
     let topContentInset: CGFloat
 
     @Query private var records: [Record]
+    @Query private var compositionStates: [CompositionItemState]
     @Query(sort: \DashboardSystemCardConfig.dashboardOrder, order: .forward) private var systemConfigs: [DashboardSystemCardConfig]
     private var compositionStateRepository: CompositionStateRepository {
         CompositionStateRepository(modelContext: modelContext)
@@ -39,6 +40,14 @@ struct DailyView: View {
                 r.createdAt >= start && r.createdAt < end
             },
             sort: \Record.createdAt, order: .reverse
+        )
+        let boardKey = CompositionStateRepository.boardKey(for: start)
+        _compositionStates = Query(
+            filter: #Predicate<CompositionItemState> { state in
+                state.boardKey == boardKey
+            },
+            sort: \CompositionItemState.updatedAt,
+            order: .reverse
         )
         self.date = date
         self.topContentInset = topContentInset
@@ -68,7 +77,8 @@ struct DailyView: View {
     }
 
     private var gridItems: [GridItem] {
-        homeBoardBuilder.buildGridItems(
+        _ = compositionStates.count
+        return homeBoardBuilder.buildGridItems(
             for: date,
             records: records,
             systemConfigs: systemConfigs

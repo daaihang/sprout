@@ -329,11 +329,7 @@ struct AddCardSheet: View {
     /// Creates a standalone Record of the given type and inserts it into SwiftData.
     private func confirmStandalone(type cardType: String) {
         let record    = Record()
-        let cal       = Calendar.current
-        let today     = cal.startOfDay(for: Date())
-        record.createdAt = cal.isDate(selectedDate, inSameDayAs: today)
-            ? Date()
-            : cal.date(byAdding: .day, value: 1, to: selectedDate)!.addingTimeInterval(-1)
+        record.createdAt = Date()
         record.updatedAt = record.createdAt
         record.dashboardOrder = record.createdAt.timeIntervalSince1970
 

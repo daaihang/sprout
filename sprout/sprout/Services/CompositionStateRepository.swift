@@ -20,7 +20,7 @@ struct CompositionStateRepository {
     let modelContext: ModelContext
 
     func compositionContext(for date: Date) -> ResolvedCompositionContext {
-        let boardKey = boardKey(for: date)
+        let boardKey = Self.boardKey(for: date)
         let board = board(boardKey: boardKey) ?? {
             let created = DayBoard(
                 boardKey: boardKey,
@@ -49,6 +49,10 @@ struct CompositionStateRepository {
     }
 
     func boardKey(for date: Date) -> String {
+        Self.boardKey(for: date)
+    }
+
+    static func boardKey(for date: Date) -> String {
         let calendar = Calendar(identifier: .gregorian)
         let components = calendar.dateComponents([.year, .month, .day], from: date)
         let year = components.year ?? 0
@@ -138,6 +142,7 @@ struct CompositionStateRepository {
             existing.targetID = targetID
             existing.setSpan(span)
             existing.setVisualState(zIndex: zIndex, rotationDegrees: rotationDegrees, scale: scale)
+            try? modelContext.save()
             return
         }
 
@@ -156,6 +161,7 @@ struct CompositionStateRepository {
             scale: scale
         )
         modelContext.insert(created)
+        try? modelContext.save()
     }
 
     private func startOfDay(for date: Date) -> Date {
