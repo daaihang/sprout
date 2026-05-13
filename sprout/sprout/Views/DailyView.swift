@@ -97,7 +97,8 @@ struct DailyView: View {
 
         let systemItems = systemGridEntries
         let arcItems = temporalArcGridEntries
-        return (systemItems + arcItems + recordItems).sorted { $0.order < $1.order }.map(\.item)
+        let reflectionItems = phaseReflectionGridEntries
+        return (systemItems + arcItems + reflectionItems + recordItems).sorted { $0.order < $1.order }.map(\.item)
     }
 
     private var systemGridEntries: [(order: Double, item: GridItem)] {
@@ -203,6 +204,60 @@ struct DailyView: View {
         ]
     }
 
+    private var phaseReflectionGridEntries: [(order: Double, item: GridItem)] {
+        guard let arc = memoryRepository.featuredTemporalArc(for: date),
+              let reflection = memoryRepository.linkedReflection(forArcID: arc.id)
+        else { return [] }
+
+        let itemID = "reflection-\(reflection.id.uuidString)"
+        let compositionKey = compositionStateRepository.compositionKey(
+            for: compositionStateRepository.boardKey(for: date)
+        )
+        let fallbackSpan = sizeLimits(for: "text").clamped(
+            span: ContainerSpan(widthColumns: 4, heightUnits: 2)
+        )
+        let resolvedState = compositionStateRepository.resolvedState(
+            compositionKey: compositionKey,
+            itemKey: itemID,
+            fallbackSpan: fallbackSpan,
+            fallbackZIndex: -9_400,
+            fallbackRotationDegrees: stickerRotation(for: itemID),
+            fallbackScale: stickerScale(for: itemID)
+        )
+
+        return [
+            (
+                order: -9_400,
+                item: GridItem(
+                    id: itemID,
+                    projectionTargetType: CompositionProjectionTargetType.arc.rawValue,
+                    projectionTargetID: arc.id,
+                    recordID: arc.sourceRecordIDs.first ?? UUID(),
+                    card: AnyView(
+                        NavigationLink(
+                            destination: ReflectionDetailView(reflection: reflection)
+                        ) {
+                            PhaseReflectionCard(data: phaseReflectionCardData(for: arc, reflection: reflection))
+                        }
+                        .buttonStyle(.plain)
+                    ),
+                    columns: resolvedState.span.widthColumns,
+                    units: resolvedState.span.heightUnits,
+                    zIndex: resolvedState.zIndex,
+                    rotationDegrees: resolvedState.rotationDegrees,
+                    scale: resolvedState.scale,
+                    availableSpans: availableSpans(for: "text"),
+                    onResize: { newSpan in
+                        resizePhaseReflectionCard(reflection, arc: arc, to: newSpan)
+                    },
+                    onDelete: {
+                        memoryRepository.archiveTemporalArc(arc.id)
+                    }
+                )
+            )
+        ]
+    }
+
     private var orderedRecords: [Record] {
         records.sorted {
             normalizedOrder(for: $0) < normalizedOrder(for: $1)
@@ -271,6 +326,34 @@ struct DailyView: View {
                 span: ContainerSpan(widthColumns: 4, heightUnits: 4)
             ),
             fallbackZIndex: -9_500,
+            fallbackRotationDegrees: stickerRotation(for: itemID),
+            fallbackScale: stickerScale(for: itemID)
+        )
+        compositionStateRepository.upsertState(
+            boardID: compositionContext.board.id,
+            boardKey: compositionContext.boardKey,
+            compositionID: compositionContext.composition.id,
+            compositionKey: compositionContext.compositionKey,
+            itemKey: itemID,
+            targetType: CompositionProjectionTargetType.arc.rawValue,
+            targetID: arc.id,
+            span: span,
+            zIndex: fallbackState.zIndex,
+            rotationDegrees: fallbackState.rotationDegrees,
+            scale: fallbackState.scale
+        )
+    }
+
+    private func resizePhaseReflectionCard(_ reflection: ReflectionSnapshot, arc: TemporalArc, to span: ContainerSpan) {
+        let compositionContext = compositionStateRepository.compositionContext(for: date)
+        let itemID = "reflection-\(reflection.id.uuidString)"
+        let fallbackState = compositionStateRepository.resolvedState(
+            compositionKey: compositionContext.compositionKey,
+            itemKey: itemID,
+            fallbackSpan: sizeLimits(for: "text").clamped(
+                span: ContainerSpan(widthColumns: 4, heightUnits: 2)
+            ),
+            fallbackZIndex: -9_400,
             fallbackRotationDegrees: stickerRotation(for: itemID),
             fallbackScale: stickerScale(for: itemID)
         )
@@ -363,6 +446,16 @@ struct DailyView: View {
             dateRangeText: temporalArcDateRangeText(for: arc),
             recordCount: arc.sourceRecordIDs.count,
             artifactCount: arc.sourceArtifactIDs.count
+        )
+    }
+
+    private func phaseReflectionCardData(for arc: TemporalArc, reflection: ReflectionSnapshot) -> PhaseReflectionCardData {
+        PhaseReflectionCardData(
+            title: reflection.title,
+            body: reflection.body,
+            phaseTitle: arc.title,
+            dateText: temporalArcDateRangeText(for: arc),
+            recordCount: reflection.sourceRecordIDs.count
         )
     }
 
