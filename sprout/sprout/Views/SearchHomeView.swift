@@ -522,11 +522,32 @@ struct SearchHomeView: View {
     }
 
     private func recordRow(_ record: RecordShell) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        let analysis = memoryRepository.analysis(for: record.id)
+        return VStack(alignment: .leading, spacing: 6) {
             Text(record.rawText.isEmpty ? "Untitled Memory" : String(record.rawText.prefix(120)))
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.primary)
                 .lineLimit(3)
+
+            if let analysis {
+                Text("\(analysis.emotionLabel.capitalized) · \(analysis.insight)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+
+                if !analysis.entities.isEmpty {
+                    Text(
+                        analysis.entities
+                            .prefix(3)
+                            .map { "\($0.kind.badgeLabel): \($0.name)" }
+                            .joined(separator: " · ")
+                    )
+                    .font(.caption2)
+                    .foregroundStyle(.secondary.opacity(0.85))
+                    .lineLimit(1)
+                }
+            }
+
             Text(record.createdAt.formatted(date: .abbreviated, time: .shortened))
                 .font(.caption)
                 .foregroundStyle(.secondary)

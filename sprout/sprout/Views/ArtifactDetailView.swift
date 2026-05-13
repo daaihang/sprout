@@ -47,6 +47,13 @@ struct ArtifactDetailView: View {
             }
     }
 
+    private var relatedAnalyses: [(record: Record, analysis: RecordAnalysisSnapshot)] {
+        relatedRecords.compactMap { record in
+            guard let analysis = memoryRepository.analysis(for: record.id) else { return nil }
+            return (record: record, analysis: analysis)
+        }
+    }
+
     private var evidenceSummary: String {
         let parts = [
             relatedRecords.isEmpty ? nil : "\(relatedRecords.count) memories",
@@ -66,6 +73,9 @@ struct ArtifactDetailView: View {
                 }
                 if !relatedEntities.isEmpty {
                     relatedEntitiesSection
+                }
+                if !relatedAnalyses.isEmpty {
+                    relatedAnalysesSection
                 }
                 if !relatedArcs.isEmpty {
                     relatedPhasesSection
@@ -148,6 +158,45 @@ struct ArtifactDetailView: View {
                     .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
                 .buttonStyle(.plain)
+            }
+        }
+        .detailCard()
+    }
+
+    private var relatedAnalysesSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionLabel(icon: "sparkles", title: "Source Analyses")
+            ForEach(relatedAnalyses.prefix(4), id: \.record.id) { item in
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(item.analysis.insight)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.primary)
+                        .lineLimit(2)
+
+                    HStack(spacing: 8) {
+                        Text(item.analysis.emotionLabel.capitalized)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Text(item.record.createdAt.formatted(date: .abbreviated, time: .shortened))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    if !item.analysis.entities.isEmpty {
+                        Text(
+                            item.analysis.entities
+                                .prefix(3)
+                                .map { "\($0.kind.badgeLabel): \($0.name)" }
+                                .joined(separator: " · ")
+                        )
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(12)
+                .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
         }
         .detailCard()
