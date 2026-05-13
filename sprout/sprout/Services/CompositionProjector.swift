@@ -4,6 +4,7 @@ enum CompositionProjectionTargetType: String, Sendable {
     case record
     case artifact
     case arc
+    case reflection
     case system
 }
 
