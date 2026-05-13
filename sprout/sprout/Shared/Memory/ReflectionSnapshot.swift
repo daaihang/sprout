@@ -17,4 +17,26 @@ struct ReflectionSnapshot: Identifiable, Codable, Hashable, Sendable {
     var sourceArtifactIDs: [UUID]
     var sourceEntityIDs: [UUID]
     var createdAt: Date
+
+    init(
+        id: UUID = UUID(),
+        type: ReflectionType,
+        title: String,
+        body: String,
+        linkedTemporalArcID: UUID? = nil,
+        sourceRecordIDs: [UUID],
+        sourceArtifactIDs: [UUID],
+        sourceEntityIDs: [UUID] = [],
+        createdAt: Date
+    ) {
+        self.id = id
+        self.type = type
+        self.title = title
+        self.body = body
+        self.linkedTemporalArcID = linkedTemporalArcID
+        self.sourceRecordIDs = sourceRecordIDs
+        self.sourceArtifactIDs = sourceArtifactIDs
+        self.sourceEntityIDs = sourceEntityIDs
+        self.createdAt = createdAt
+    }
 }
