@@ -104,14 +104,26 @@ struct DailyView: View {
               let memoryData = todayInHistoryData
         else { return [] }
 
-        let span = sizeLimits(for: DashboardSystemCardConfig.todayInHistoryKind).clamped(span: config.span)
+        let itemID = "system-\(DashboardSystemCardConfig.todayInHistoryKind)"
+        let compositionKey = compositionStateRepository.compositionKey(
+            for: compositionStateRepository.boardKey(for: date)
+        )
+        let fallbackSpan = sizeLimits(for: DashboardSystemCardConfig.todayInHistoryKind).clamped(span: config.span)
+        let resolvedState = compositionStateRepository.resolvedState(
+            compositionKey: compositionKey,
+            itemKey: itemID,
+            fallbackSpan: fallbackSpan,
+            fallbackZIndex: -10_000,
+            fallbackRotationDegrees: stickerRotation(for: itemID),
+            fallbackScale: stickerScale(for: itemID)
+        )
         return [
             (
                 order: config.dashboardOrder,
                 item: GridItem(
-                    id: "system-\(DashboardSystemCardConfig.todayInHistoryKind)",
+                    id: itemID,
                     projectionTargetType: CompositionProjectionTargetType.system.rawValue,
-                    projectionTargetID: nil,
+                    projectionTargetID: todayInHistoryTargetID,
                     recordID: UUID(uuidString: "00000000-0000-0000-0000-000000000001") ?? UUID(),
                     card: AnyView(
                         NavigationLink(
@@ -121,11 +133,14 @@ struct DailyView: View {
                         }
                         .buttonStyle(.plain)
                     ),
-                    columns: span.widthColumns,
-                    units: span.heightUnits,
+                    columns: resolvedState.span.widthColumns,
+                    units: resolvedState.span.heightUnits,
+                    zIndex: resolvedState.zIndex,
+                    rotationDegrees: resolvedState.rotationDegrees,
+                    scale: resolvedState.scale,
                     availableSpans: availableSpans(for: DashboardSystemCardConfig.todayInHistoryKind),
                     onResize: { newSpan in
-                        config.setSpan(newSpan)
+                        resizeTodayInHistoryCard(to: newSpan)
                     },
                     onDelete: {
                         config.isEnabled = false
@@ -162,6 +177,34 @@ struct DailyView: View {
             zIndex: projection.zIndex,
             rotationDegrees: projection.rotationDegrees,
             scale: projection.scale
+        )
+    }
+
+    private func resizeTodayInHistoryCard(to span: ContainerSpan) {
+        let compositionContext = compositionStateRepository.compositionContext(for: date)
+        let itemID = "system-\(DashboardSystemCardConfig.todayInHistoryKind)"
+        let fallbackState = compositionStateRepository.resolvedState(
+            compositionKey: compositionContext.compositionKey,
+            itemKey: itemID,
+            fallbackSpan: sizeLimits(for: DashboardSystemCardConfig.todayInHistoryKind).clamped(
+                span: todayInHistoryConfig?.span ?? ContainerSpan(widthColumns: 4, heightUnits: 4)
+            ),
+            fallbackZIndex: -10_000,
+            fallbackRotationDegrees: stickerRotation(for: itemID),
+            fallbackScale: stickerScale(for: itemID)
+        )
+        compositionStateRepository.upsertState(
+            boardID: compositionContext.board.id,
+            boardKey: compositionContext.boardKey,
+            compositionID: compositionContext.composition.id,
+            compositionKey: compositionContext.compositionKey,
+            itemKey: itemID,
+            targetType: CompositionProjectionTargetType.system.rawValue,
+            targetID: todayInHistoryTargetID,
+            span: span,
+            zIndex: fallbackState.zIndex,
+            rotationDegrees: fallbackState.rotationDegrees,
+            scale: fallbackState.scale
         )
     }
 
@@ -224,6 +267,10 @@ struct DailyView: View {
             dashboardOrder: -10_000
         )
         modelContext.insert(created)
+    }
+
+    private var todayInHistoryTargetID: UUID {
+        UUID(uuidString: "00000000-0000-0000-0000-000000000100") ?? UUID()
     }
 }
 
