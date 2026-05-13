@@ -49,6 +49,13 @@ Main remaining gaps:
 - Several card internals still present legacy UI quality or legacy assumptions.
 - Graph and arc layers are not yet fully exposed as first-class navigation experiences.
 
+Recent high-frequency card refreshes already completed:
+
+- `QuoteCard`
+- `PhotoCard`
+- `PhaseReflectionCard`
+- `MusicCard`
+
 ## Authentication
 
 Authentication is handled by `AuthSessionManager` in [sprout/sprout/Services/AuthSessionManager.swift](/Users/z14/Documents/sprout/sprout/sprout/Services/AuthSessionManager.swift).
