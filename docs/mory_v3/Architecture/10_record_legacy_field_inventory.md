@@ -110,6 +110,9 @@
 - standalone add-card 不再写默认 `cardUnits/cardWidthColumns`
 - timeline detail entry 改为 content-kind 驱动
 - today-in-history subtitle 改为 content-kind 驱动
+- debug / calibration sample 不再直接写 `record.cardType`
+- analyze 主链已切到 `/api/analysis/records`
+- analyze preview 主链已切到 `/api/analysis/preview`
 
 剩余：
 

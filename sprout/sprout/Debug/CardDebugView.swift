@@ -379,7 +379,6 @@ struct CardDebugView: View {
                 "在路上听到喜欢的歌，突然很开心。",
                 "整理旧照片时想起了很多事情。",
             ][index % 6]
-            record.cardType = "text"
             return record
         }
 

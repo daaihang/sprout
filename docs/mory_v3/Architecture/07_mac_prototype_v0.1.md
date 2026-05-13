@@ -411,8 +411,8 @@ sprout/
 
 - Go backend
 - 现有认证框架中的一部分开发态逻辑
-- `/api/onboarding/analyze-preview`
-- `/api/records/analyze` 的基础链路
+- `/api/analysis/preview` 主链路（保留旧 preview 路径兼容）
+- `/api/analysis/records` 主链路（保留旧 analyze 路径兼容）
 - 现有 provider abstraction
 
 ### 12.2 需要包装或过渡的部分

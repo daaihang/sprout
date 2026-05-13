@@ -81,7 +81,7 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 			"artifacts":[{"id":"a1","kind":"text","title":"电影夜晚","summary":"和妈妈看电影","text_content":"今天和妈妈看了一部电影，感觉很开心"}],
 			"known_entities":[{"id":"p1","kind":"person","name":"妈妈","aliases":["母亲"]}]
 		}`
-		req := httptest.NewRequest(http.MethodPost, "/api/records/analyze", bytes.NewBufferString(body))
+		req := httptest.NewRequest(http.MethodPost, "/api/analysis/records", bytes.NewBufferString(body))
 		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Set("Content-Type", "application/json")
 		rec := httptest.NewRecorder()
@@ -111,7 +111,7 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 			"artifacts":[{"id":"a1","kind":"text","title":"电影夜晚","summary":"和妈妈看电影","text_content":"今天和妈妈看了一部电影，感觉很开心"}],
 			"known_entities":[]
 		}`
-		req := httptest.NewRequest(http.MethodPost, "/api/onboarding/analyze-preview", bytes.NewBufferString(body))
+		req := httptest.NewRequest(http.MethodPost, "/api/analysis/preview", bytes.NewBufferString(body))
 		req.Header.Set("Content-Type", "application/json")
 		rec := httptest.NewRecorder()
 
@@ -227,7 +227,7 @@ func TestUnauthorizedAnalyze(t *testing.T) {
 		UserProfiles:  store,
 	})
 
-	req := httptest.NewRequest(http.MethodPost, "/api/records/analyze", bytes.NewBufferString(`{
+	req := httptest.NewRequest(http.MethodPost, "/api/analysis/records", bytes.NewBufferString(`{
 		"schema_version":"record_aggregate.v1",
 		"analysis_reason":"manual",
 		"record_shell":{"raw_text":"hi","capture_source":"composer"},

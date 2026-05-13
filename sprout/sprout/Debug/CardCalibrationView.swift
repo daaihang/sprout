@@ -834,7 +834,6 @@ private enum CalibrationFixtures {
                 "Stayed up too late tuning small UI details.",
                 "Walked home listening to the same album twice."
             ][index]
-            record.cardType = "text"
             return record
         }
 

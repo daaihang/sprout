@@ -70,6 +70,8 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("GET /metrics", s.handleMetrics)
 	s.mux.HandleFunc("POST /auth/apple", s.handleAuthApple)
 	s.mux.Handle("POST /auth/refresh", s.withAuth(http.HandlerFunc(s.handleAuthRefresh)))
+	s.mux.HandleFunc("POST /api/analysis/preview", s.handleAnalyzePreview)
+	s.mux.Handle("POST /api/analysis/records", s.withAuth(http.HandlerFunc(s.handleAnalyze)))
 	s.mux.HandleFunc("POST /api/onboarding/analyze-preview", s.handleAnalyzePreview)
 	s.mux.Handle("POST /api/records/analyze", s.withAuth(http.HandlerFunc(s.handleAnalyze)))
 	s.mux.Handle("POST /api/me/onboarding/complete", s.withAuth(http.HandlerFunc(s.handleOnboardingComplete)))

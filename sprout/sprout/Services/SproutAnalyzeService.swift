@@ -5,7 +5,7 @@ struct SproutAnalyzeService {
     private let responseMapper = AnalyzeResponseMapper()
 
     func analyzePreview(aggregate: SproutMemoryAggregate) async throws -> SproutAnalyzeResponse {
-        try await request(path: "/api/onboarding/analyze-preview", aggregate: aggregate, bearerToken: nil, analysisReason: "preview")
+        try await request(path: "/api/analysis/preview", aggregate: aggregate, bearerToken: nil, analysisReason: "preview")
     }
 
     func analyzeRecord(
@@ -13,7 +13,7 @@ struct SproutAnalyzeService {
         session: AuthSessionManager.Session
     ) async throws -> SproutAnalyzeResponse {
         try await request(
-            path: "/api/records/analyze",
+            path: "/api/analysis/records",
             aggregate: aggregate,
             bearerToken: session.accessToken,
             analysisReason: "create"
