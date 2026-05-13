@@ -24,6 +24,10 @@ final class CaptureDraftStore {
         restorableDraft?.hasContent == true
     }
 
+    var hasAnyDraft: Bool {
+        draft.hasContent || hasRestorableDraft
+    }
+
     func handleComposerPresentationChange(isPresented: Bool) {
         if isPresented {
             restoreIfNeeded()
@@ -48,6 +52,10 @@ final class CaptureDraftStore {
     func reset() {
         draft.clear()
         restorableDraft = nil
+    }
+
+    func discardDraft() {
+        reset()
     }
 
     func currentSubmissionDraft() -> CaptureDraft? {

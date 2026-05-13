@@ -56,6 +56,17 @@ struct ContentView: View {
                     onPrimaryContentInteraction: closeTopDrawerIfNeeded
                 )
 
+                if shouldShowDraftResumeBanner {
+                    VStack {
+                        Spacer()
+                        draftResumeBanner
+                            .padding(.horizontal, 18)
+                            .padding(.bottom, 94)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+                    .zIndex(6)
+                }
+
                 // Voice toast overlay
                 if showVoiceToast {
                     Text(localization.string("content.voice_coming_soon", default: "Voice input coming soon", table: "Content"))
@@ -131,6 +142,7 @@ struct ContentView: View {
         }
         .animation(.spring(duration: 0.3), value: showVoiceToast)
         .animation(.smooth(duration: 0.32), value: isTopDrawerPresented)
+        .animation(.smooth(duration: 0.28), value: shouldShowDraftResumeBanner)
         // MARK: Sheets
         .sheet(isPresented: $isShowingAccountSheet) { AccountManagementSheet() }
         .sheet(isPresented: $showAddCardSheet) {
@@ -233,11 +245,81 @@ struct ContentView: View {
         max(navigationBarMaxY, topSafeAreaInset)
     }
 
+    private var shouldShowDraftResumeBanner: Bool {
+        !isBarOpen && !showFullscreenEntryComposer && captureDraftStore.hasRestorableDraft
+    }
+
     private var captureShellTextBinding: Binding<String> {
         Binding(
             get: { captureDraftStore.draft.shellText },
             set: { captureDraftStore.draft.shellText = $0 }
         )
+    }
+
+    private var draftResumeBanner: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Draft Saved")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.primary)
+
+                Text(draftResumeSubtitle)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            Spacer(minLength: 8)
+
+            Button {
+                HapticFeedback.light()
+                captureDraftStore.discardDraft()
+            } label: {
+                Text("Discard")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(.regularMaterial, in: Capsule())
+            }
+
+            Button {
+                HapticFeedback.selection()
+                captureDraftStore.restoreIfNeeded()
+                isBarOpen = true
+                composerFocusRequestToken += 1
+            } label: {
+                Text("Resume")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(Color.accentColor, in: Capsule())
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(.white.opacity(0.2), lineWidth: 0.5)
+        )
+        .shadow(color: .black.opacity(0.08), radius: 14, x: 0, y: 6)
+    }
+
+    private var draftResumeSubtitle: String {
+        let draft = captureDraftStore.draft
+        var parts: [String] = []
+        if draft.hasShellText {
+            parts.append("Text note")
+        }
+        if draft.attachments.hasArtifacts {
+            parts.append(draft.attachments.artifactCountLabel)
+        }
+        if parts.isEmpty {
+            return "You have an unfinished capture ready to continue."
+        }
+        return parts.joined(separator: " + ")
     }
 
     private var captureAttachmentsBinding: Binding<ComposerAttachments> {
