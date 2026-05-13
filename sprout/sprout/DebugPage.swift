@@ -28,6 +28,12 @@ struct DebugPage: View {
                     Label(t("common.debug.subscription_test", "Subscription Status & Test"), systemImage: "creditcard")
                 }
             }
+
+            Section("Memory Architecture") {
+                NavigationLink(destination: MemoryArchitectureDebugView()) {
+                    Label("Memory Graph / Arc / Reflection", systemImage: "point.3.connected.trianglepath.dotted")
+                }
+            }
         }
         .listStyle(.insetGrouped)
         .navigationTitle(t("common.debug.title", "Debug"))

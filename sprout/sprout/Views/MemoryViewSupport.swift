@@ -28,6 +28,21 @@ extension EntityKind {
     }
 }
 
+extension EntityRelationKind {
+    var label: String {
+        switch self {
+        case .mentionedWith:
+            return "Mentioned together"
+        case .repeatedIn:
+            return "Repeated pattern"
+        case .decidedAt:
+            return "Decision context"
+        case .relatedTo:
+            return "Related"
+        }
+    }
+}
+
 extension RecordAnalysisSnapshot {
     var saliencePercentageText: String? {
         guard let salienceScore else { return nil }

@@ -39,6 +39,9 @@ struct MemoryEntityDetailView: View {
                         if !entityView.relatedArtifacts.isEmpty {
                             relatedArtifactsSection(entityView)
                         }
+                        if !entityView.supportingEdges.isEmpty {
+                            relationshipEvidenceSection(entityView)
+                        }
                         if !analysisMentions.isEmpty {
                             analysisMentionsSection
                         }
@@ -186,12 +189,66 @@ struct MemoryEntityDetailView: View {
                     Text(analysis.createdAt.formatted(date: .abbreviated, time: .shortened))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
+                    if !analysis.candidateEdges.isEmpty {
+                        Text("AI candidate edges: \(analysis.candidateEdges.count)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                     if !analysis.tags.isEmpty {
                         Text(analysis.tags.prefix(4).joined(separator: " · "))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(2)
                     }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(12)
+                .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+        }
+        .detailCard()
+    }
+
+    private func relationshipEvidenceSection(_ entityView: SproutMemoryRepository.EntityMemoryView) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionTitle("link", "Relationship Evidence")
+
+            ForEach(entityView.supportingEdges.prefix(6), id: \.id) { edge in
+                let relatedEntityID = edge.fromEntityID == entityView.entity.id ? edge.toEntityID : edge.fromEntityID
+                let relatedEntity = entityView.relatedEntities.first(where: { $0.id == relatedEntityID })
+
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(alignment: .top, spacing: 10) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(relatedEntity?.displayName ?? "Unknown entity")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.primary)
+                            Text(edge.relationKind.label)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer()
+
+                        if let relatedEntity {
+                            NavigationLink {
+                                MemoryEntityDetailView(entityID: relatedEntity.id)
+                            } label: {
+                                Image(systemName: "arrow.right.circle")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+
+                    HStack(spacing: 8) {
+                        SignalPill(title: "\(edge.evidenceCount) evidence", tint: .blue)
+                        SignalPill(title: "\(edge.sourceRecordIDs.count) memories", tint: .green)
+                        SignalPill(title: "\(edge.sourceArtifactIDs.count) artifacts", tint: .orange)
+                    }
+
+                    Text("Last seen \(edge.lastSeenAt.formatted(date: .abbreviated, time: .shortened))")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(12)
@@ -275,20 +332,5 @@ struct MemoryEntityDetailView: View {
 
     private func t(_ key: String, _ defaultValue: String, _ arguments: CVarArg...) -> String {
         localization.string(key, default: defaultValue, arguments: arguments)
-    }
-}
-
-private extension EntityRelationKind {
-    var label: String {
-        switch self {
-        case .mentionedWith:
-            return "Mentioned together"
-        case .repeatedIn:
-            return "Repeated pattern"
-        case .decidedAt:
-            return "Decision context"
-        case .relatedTo:
-            return "Related"
-        }
     }
 }
