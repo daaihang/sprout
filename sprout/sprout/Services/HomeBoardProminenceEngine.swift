@@ -63,9 +63,7 @@ struct HomeBoardProminenceEngine {
             )
         case .recordCard:
             let order = record.map(recordOrder(for:)) ?? 0
-            let span = sizeLimits(for: cardType ?? "text").clamped(
-                span: record?.containerSpan ?? ContainerSpan(widthColumns: 4, heightUnits: 4)
-            )
+            let span = sizeLimits(for: cardType ?? "text").defaultSpan
             return HomeBoardProminence(
                 order: order,
                 fallbackSpan: span,

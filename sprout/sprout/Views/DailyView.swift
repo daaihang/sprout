@@ -5,7 +5,7 @@ import SwiftData
 
 /// Displays the card grid for a single calendar day.
 /// Owns a @Query filtered to [startOfDay, endOfDay) so the grid automatically
-/// updates when records are added, deleted, or modified (e.g. cardUnits change).
+/// updates when records are added, deleted, or when composition-backed projections change.
 struct DailyView: View {
     @Environment(AppLocalization.self) private var localization
     @Environment(\.modelContext) private var modelContext
