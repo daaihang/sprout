@@ -200,7 +200,7 @@ struct HomeBoardCompositionBuilder {
                         projectionTargetType: projection.targetType.rawValue,
                         projectionTargetID: projection.targetID,
                         recordID: projection.record.id,
-                        card: AnyView(CardWrapper(info: projection.asDashboardCardInfo)),
+                        card: AnyView(HomeBoardCardWrapper(projection: projection)),
                         columns: projection.columns,
                         units: projection.units,
                         zIndex: projection.zIndex,
@@ -441,23 +441,5 @@ struct HomeBoardCompositionBuilder {
         let formatter = DateFormatter()
         formatter.setLocalizedDateFormatFromTemplate(template)
         return formatter.string(from: date)
-    }
-}
-
-private extension CompositionProjectionCard {
-    var asDashboardCardInfo: DashboardCardInfo {
-        DashboardCardInfo(
-            id: id,
-            spanKey: spanKey,
-            cardType: cardType,
-            record: record,
-            focusedSection: focusedSection,
-            columns: columns,
-            units: units,
-            zIndex: zIndex,
-            rotationDegrees: rotationDegrees,
-            scale: scale,
-            cardView: cardView
-        )
     }
 }

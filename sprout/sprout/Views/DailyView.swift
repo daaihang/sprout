@@ -78,20 +78,61 @@ struct DailyView: View {
 
 // MARK: - CardWrapper
 
-/// Wraps a single DashboardCardInfo with NavigationLink.
-struct CardWrapper: View {
-    let info: DashboardCardInfo
+/// Wraps a projected home board card with target-aware navigation.
+struct HomeBoardCardWrapper: View {
+    @Environment(SproutMemoryRepository.self) private var memoryRepository
+    let projection: CompositionProjectionCard
 
     var body: some View {
-        NavigationLink(
-            destination: RecordDetailView(
-                record: info.record,
-                focusedSection: info.focusedSection
-            )
-        ) {
-            info.cardView
+        NavigationLink {
+            destinationView
+        } label: {
+            projection.cardView
         }
         .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private var destinationView: some View {
+        switch projection.targetType {
+        case .artifact:
+            if let artifact = artifactTarget {
+                ArtifactDetailView(artifact: artifact)
+            } else {
+                fallbackRecordDetailView
+            }
+        case .record:
+            fallbackRecordDetailView
+        case .arc:
+            if let arc = memoryRepository.temporalArc(for: projection.targetID) {
+                TemporalArcDetailView(arc: arc)
+            } else {
+                fallbackRecordDetailView
+            }
+        case .reflection:
+            if let reflection = reflectionTarget {
+                ReflectionDetailView(reflection: reflection)
+            } else {
+                fallbackRecordDetailView
+            }
+        case .system:
+            fallbackRecordDetailView
+        }
+    }
+
+    private var artifactTarget: Artifact? {
+        memoryRepository.artifacts.first { $0.id == projection.targetID }
+    }
+
+    private var reflectionTarget: ReflectionSnapshot? {
+        memoryRepository.reflections.first { $0.id == projection.targetID }
+    }
+
+    private var fallbackRecordDetailView: some View {
+        RecordDetailView(
+            record: projection.record,
+            focusedSection: projection.focusedSection
+        )
     }
 }
 
