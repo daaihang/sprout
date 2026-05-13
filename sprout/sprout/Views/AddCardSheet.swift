@@ -338,7 +338,6 @@ struct AddCardSheet: View {
         record.dashboardOrder = record.createdAt.timeIntervalSince1970
 
         let cardKind = RecordCardKind(rawValue: cardType) ?? .text
-        record.cardKind = cardKind
 
         switch cardType {
 
