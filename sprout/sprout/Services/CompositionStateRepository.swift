@@ -3,9 +3,11 @@ import SwiftData
 
 @MainActor
 struct CompositionStateRepository {
-    struct ResolvedBoardContext {
+    struct ResolvedCompositionContext {
         let board: DayBoard
+        let composition: BoardComposition
         let boardKey: String
+        let compositionKey: String
     }
 
     struct ResolvedCompositionState {
@@ -17,19 +19,33 @@ struct CompositionStateRepository {
 
     let modelContext: ModelContext
 
-    func boardContext(for date: Date) -> ResolvedBoardContext {
+    func compositionContext(for date: Date) -> ResolvedCompositionContext {
         let boardKey = boardKey(for: date)
-        if let existing = board(boardKey: boardKey) {
-            return ResolvedBoardContext(board: existing, boardKey: boardKey)
-        }
-
-        let created = DayBoard(
+        let board = board(boardKey: boardKey) ?? {
+            let created = DayBoard(
+                boardKey: boardKey,
+                boardDate: startOfDay(for: date),
+                title: boardTitle(for: date)
+            )
+            modelContext.insert(created)
+            return created
+        }()
+        let compositionKey = compositionKey(for: boardKey)
+        let composition = composition(boardID: board.id, compositionKey: compositionKey) ?? {
+            let created = BoardComposition(
+                boardID: board.id,
+                compositionKey: compositionKey,
+                title: board.title
+            )
+            modelContext.insert(created)
+            return created
+        }()
+        return ResolvedCompositionContext(
+            board: board,
+            composition: composition,
             boardKey: boardKey,
-            boardDate: startOfDay(for: date),
-            title: boardTitle(for: date)
+            compositionKey: compositionKey
         )
-        modelContext.insert(created)
-        return ResolvedBoardContext(board: created, boardKey: boardKey)
     }
 
     func boardKey(for date: Date) -> String {
@@ -39,6 +55,10 @@ struct CompositionStateRepository {
         let month = components.month ?? 0
         let day = components.day ?? 0
         return String(format: "day-%04d-%02d-%02d", year, month, day)
+    }
+
+    func compositionKey(for boardKey: String) -> String {
+        "\(boardKey):primary"
     }
 
     func board(boardKey: String) -> DayBoard? {
@@ -51,10 +71,20 @@ struct CompositionStateRepository {
         return try? modelContext.fetch(descriptor).first
     }
 
-    func state(boardKey: String, itemKey: String) -> CompositionItemState? {
+    func composition(boardID: UUID, compositionKey: String) -> BoardComposition? {
+        var descriptor = FetchDescriptor<BoardComposition>(
+            predicate: #Predicate<BoardComposition> { composition in
+                composition.boardID == boardID && composition.compositionKey == compositionKey
+            }
+        )
+        descriptor.fetchLimit = 1
+        return try? modelContext.fetch(descriptor).first
+    }
+
+    func state(compositionKey: String, itemKey: String) -> CompositionItemState? {
         var descriptor = FetchDescriptor<CompositionItemState>(
             predicate: #Predicate<CompositionItemState> { state in
-                state.boardKey == boardKey && state.itemKey == itemKey
+                state.compositionKey == compositionKey && state.itemKey == itemKey
             }
         )
         descriptor.fetchLimit = 1
@@ -62,14 +92,14 @@ struct CompositionStateRepository {
     }
 
     func resolvedState(
-        boardKey: String,
+        compositionKey: String,
         itemKey: String,
         fallbackSpan: ContainerSpan,
         fallbackZIndex: Int,
         fallbackRotationDegrees: Double,
         fallbackScale: Double
     ) -> ResolvedCompositionState {
-        guard let state = state(boardKey: boardKey, itemKey: itemKey) else {
+        guard let state = state(compositionKey: compositionKey, itemKey: itemKey) else {
             return ResolvedCompositionState(
                 span: fallbackSpan,
                 zIndex: fallbackZIndex,
@@ -89,6 +119,8 @@ struct CompositionStateRepository {
     func upsertState(
         boardID: UUID,
         boardKey: String,
+        compositionID: UUID,
+        compositionKey: String,
         itemKey: String,
         targetType: String,
         targetID: UUID,
@@ -97,8 +129,11 @@ struct CompositionStateRepository {
         rotationDegrees: Double,
         scale: Double
     ) {
-        if let existing = state(boardKey: boardKey, itemKey: itemKey) {
+        if let existing = state(compositionKey: compositionKey, itemKey: itemKey) {
             existing.boardID = boardID
+            existing.boardKey = boardKey
+            existing.compositionID = compositionID
+            existing.compositionKey = compositionKey
             existing.targetType = targetType
             existing.targetID = targetID
             existing.setSpan(span)
@@ -109,6 +144,8 @@ struct CompositionStateRepository {
         let created = CompositionItemState(
             boardID: boardID,
             boardKey: boardKey,
+            compositionID: compositionID,
+            compositionKey: compositionKey,
             itemKey: itemKey,
             targetType: targetType,
             targetID: targetID,

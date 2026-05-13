@@ -575,6 +575,9 @@ private final class NavigationBarProbeView: UIView {
         .modelContainer(
             for: [
                 Record.self,
+                DayBoard.self,
+                BoardComposition.self,
+                CompositionItemState.self,
                 MediaCard.self,
                 Activity.self,
                 Person.self,

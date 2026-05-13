@@ -53,19 +53,21 @@ struct DailyView: View {
         .ignoresSafeArea(.container, edges: .bottom)
         .task {
             ensureTodayInHistoryConfig()
-            _ = compositionStateRepository.boardContext(for: date)
+            _ = compositionStateRepository.compositionContext(for: date)
         }
     }
 
     private var gridItems: [GridItem] {
-        let boardKey = compositionStateRepository.boardKey(for: date)
+        let compositionKey = compositionStateRepository.compositionKey(
+            for: compositionStateRepository.boardKey(for: date)
+        )
         let recordItems: [(order: Double, item: GridItem)] = orderedRecords.enumerated().flatMap { index, record in
             let baseOrder = normalizedOrder(for: record) + Double(index) * 0.001
             return compositionProjector.projectCards(
                 for: record,
                 memoryRepository: memoryRepository,
                 stateRepository: compositionStateRepository,
-                boardKey: boardKey
+                compositionKey: compositionKey
             ).enumerated().map { cardIndex, projection in
                 let spans = availableSpans(for: projection.cardType)
                 return (
@@ -147,10 +149,12 @@ struct DailyView: View {
         _ projection: CompositionProjectionCard,
         to span: ContainerSpan
     ) {
-        let boardContext = compositionStateRepository.boardContext(for: date)
+        let compositionContext = compositionStateRepository.compositionContext(for: date)
         compositionStateRepository.upsertState(
-            boardID: boardContext.board.id,
-            boardKey: boardContext.boardKey,
+            boardID: compositionContext.board.id,
+            boardKey: compositionContext.boardKey,
+            compositionID: compositionContext.composition.id,
+            compositionKey: compositionContext.compositionKey,
             itemKey: projection.compositionItemKey,
             targetType: projection.targetType.rawValue,
             targetID: projection.targetID,

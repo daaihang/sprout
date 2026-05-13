@@ -30,7 +30,7 @@ struct CompositionProjector {
         for record: Record,
         memoryRepository: SproutMemoryRepository,
         stateRepository: CompositionStateRepository,
-        boardKey: String
+        compositionKey: String
     ) -> [CompositionProjectionCard] {
         let memoryView = memoryRepository.memoryView(for: record.id)
         let artifactsByKind = Dictionary(
@@ -50,7 +50,7 @@ struct CompositionProjector {
             let fallbackRotation = stickerRotation(for: card.id)
             let fallbackScale = stickerScale(for: card.id)
             let resolvedState = stateRepository.resolvedState(
-                boardKey: boardKey,
+                compositionKey: compositionKey,
                 itemKey: itemKey,
                 fallbackSpan: fallbackSpan,
                 fallbackZIndex: fallbackZIndex,

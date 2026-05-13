@@ -6,6 +6,8 @@ final class CompositionItemState {
     var id: UUID = UUID()
     var boardID: UUID = UUID()
     var boardKey: String = ""
+    var compositionID: UUID = UUID()
+    var compositionKey: String = ""
     var itemKey: String = ""
     var targetType: String = ""
     var targetID: UUID = UUID()
@@ -19,6 +21,8 @@ final class CompositionItemState {
     init(
         boardID: UUID,
         boardKey: String,
+        compositionID: UUID,
+        compositionKey: String,
         itemKey: String,
         targetType: String,
         targetID: UUID,
@@ -31,6 +35,8 @@ final class CompositionItemState {
     ) {
         self.boardID = boardID
         self.boardKey = boardKey
+        self.compositionID = compositionID
+        self.compositionKey = compositionKey
         self.itemKey = itemKey
         self.targetType = targetType
         self.targetID = targetID
