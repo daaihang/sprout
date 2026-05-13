@@ -32,10 +32,35 @@ struct FullscreenEntryComposerSheet: View {
         !trimmedText.isEmpty || !attachments.isEmpty
     }
 
+    private var captureSummaryTitle: String {
+        var pieces: [String] = []
+        if !trimmedText.isEmpty {
+            pieces.append("Shell note")
+        }
+        if attachments.hasArtifacts {
+            pieces.append(attachments.artifactCountLabel)
+        }
+        return pieces.isEmpty ? "Build this capture from text and artifacts." : pieces.joined(separator: " + ")
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Capture Bundle")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.secondary)
+
+                        Text(captureSummaryTitle)
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(.primary)
+
+                        Text("One capture event creates a shell note and can bundle multiple artifacts.")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(.secondary)
+                    }
+
                     TextEditor(text: $text)
                         .font(.system(size: 18))
                         .frame(minHeight: 240)
@@ -43,7 +68,9 @@ struct FullscreenEntryComposerSheet: View {
                         .focused($inputFocused)
 
                     if !attachments.isEmpty {
-                        attachmentChipsSection
+                        artifactBundleSection
+                    } else if !trimmedText.isEmpty {
+                        shellOnlyHint
                     }
                 }
                 .padding(20)
@@ -56,7 +83,7 @@ struct FullscreenEntryComposerSheet: View {
                         Image(systemName: "arrow.down.right.and.arrow.up.left")
                             .font(.system(size: 15, weight: .semibold))
                     }
-                    .accessibilityLabel(t("toolbar.action.minimize", "Return to Compact Composer"))
+                    .accessibilityLabel(t("toolbar.action.minimize", "Return to Compact Capture"))
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {
@@ -139,45 +166,71 @@ struct FullscreenEntryComposerSheet: View {
         }
     }
 
-    private var attachmentChipsSection: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                if let mood = attachments.mood {
-                    AttachmentChip(prefix: mood.emoji, label: mood.label) {
-                        onRemoveAttachment(.mood)
+    private var artifactBundleSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Artifacts in This Capture")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.secondary)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    if let mood = attachments.mood {
+                        AttachmentChip(prefix: mood.emoji, label: mood.label) {
+                            onRemoveAttachment(.mood)
+                        }
                     }
-                }
-                if !attachments.photos.isEmpty {
-                    AttachmentChip(prefix: "📷", label: t("toolbar.attachment.photos", "%d photos", attachments.photos.count)) {
-                        onRemoveAttachment(.photo)
+                    if !attachments.photos.isEmpty {
+                        AttachmentChip(prefix: "📷", label: t("toolbar.attachment.photos", "%d photos", attachments.photos.count)) {
+                            onRemoveAttachment(.photo)
+                        }
                     }
-                }
-                if let loc = attachments.locationData {
-                    AttachmentChip(prefix: "📍", label: loc.locationName.isEmpty ? t("toolbar.attachment.location", "Location") : loc.locationName) {
-                        onRemoveAttachment(.location)
+                    if let loc = attachments.locationData {
+                        AttachmentChip(prefix: "📍", label: loc.locationName.isEmpty ? t("toolbar.attachment.location", "Location") : loc.locationName) {
+                            onRemoveAttachment(.location)
+                        }
                     }
-                }
-                if let music = attachments.music {
-                    AttachmentChip(prefix: "🎵", label: music.trackName.isEmpty ? t("toolbar.attachment.music", "Music") : music.trackName) {
-                        onRemoveAttachment(.music)
+                    if let music = attachments.music {
+                        AttachmentChip(prefix: "🎵", label: music.trackName.isEmpty ? t("toolbar.attachment.music", "Music") : music.trackName) {
+                            onRemoveAttachment(.music)
+                        }
                     }
-                }
-                if !attachments.people.isEmpty {
-                    AttachmentChip(prefix: "👥", label: t("toolbar.attachment.people", "%d people", attachments.people.count)) {
-                        onRemoveAttachment(.people)
+                    if !attachments.people.isEmpty {
+                        AttachmentChip(prefix: "👥", label: t("toolbar.attachment.people", "%d people", attachments.people.count)) {
+                            onRemoveAttachment(.people)
+                        }
                     }
-                }
-                if attachments.todos != nil {
-                    AttachmentChip(prefix: "✅", label: t("toolbar.attachment.todo", "To-Do")) {
-                        onRemoveAttachment(.todo)
+                    if attachments.todos != nil {
+                        AttachmentChip(prefix: "✅", label: t("toolbar.attachment.todo", "To-Do")) {
+                            onRemoveAttachment(.todo)
+                        }
                     }
-                }
-                if attachments.audioData != nil {
-                    AttachmentChip(prefix: "🎙", label: t("toolbar.attachment.voice", "Voice")) {
-                        onRemoveAttachment(.audio)
+                    if attachments.audioData != nil {
+                        AttachmentChip(prefix: "🎙", label: t("toolbar.attachment.voice", "Voice")) {
+                            onRemoveAttachment(.audio)
+                        }
                     }
                 }
             }
+
+            if !attachments.captureSummarySegments.isEmpty {
+                Text(attachments.captureSummarySegments.joined(separator: " · "))
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private var shellOnlyHint: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "doc.text")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.secondary)
+
+            Text("This capture currently has only the shell note. Add photo, voice, people, location, or music artifacts if needed.")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 

@@ -79,6 +79,17 @@ struct BottomCapsuleBar: View {
     private var recognizedText: String { speechRecognizer?.recognizedText ?? "" }
     private var trimmedRecognizedText: String { recognizedText.trimmingCharacters(in: .whitespacesAndNewlines) }
     private var hasRecognizedText: Bool { !trimmedRecognizedText.isEmpty }
+    private var captureHasText: Bool { !trimmedInputText.isEmpty }
+    private var captureBundleSubtitle: String {
+        var segments: [String] = []
+        if captureHasText {
+            segments.append("Text note")
+        }
+        if attachments.hasArtifacts {
+            segments.append(attachments.artifactCountLabel)
+        }
+        return segments.isEmpty ? "Start with a note, photo, voice clip, person, or place." : segments.joined(separator: " + ")
+    }
     private var voiceBadgeOffset: CGSize {
         guard isVoiceHolding else { return .zero }
         return CGSize(
@@ -308,10 +319,22 @@ struct BottomCapsuleBar: View {
 
     private var cardInputContent: some View {
         VStack(spacing: 0) {
-            TextField(t("toolbar.input.placeholder", "What do you want to capture today?"), text: $inputText, axis: .vertical)
-                .font(.system(size: 16))
-                .lineLimit(3...8)
-                .focused($inputFocused)
+            VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Capture Bundle")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.secondary)
+
+                    Text(captureBundleSubtitle)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.primary)
+                }
+
+                TextField(t("toolbar.input.placeholder", "Write the shell note for this capture"), text: $inputText, axis: .vertical)
+                    .font(.system(size: 16))
+                    .lineLimit(3...8)
+                    .focused($inputFocused)
+            }
 
             Divider()
                 .padding(.vertical, 12)
@@ -326,50 +349,71 @@ struct BottomCapsuleBar: View {
             if !attachments.isEmpty {
                 Divider()
                     .padding(.top, 8)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        if let mood = attachments.mood {
-                            AttachmentChip(prefix: mood.emoji, label: mood.label) {
-                                onRemoveAttachment(.mood)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Artifacts in This Capture")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.secondary)
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            if let mood = attachments.mood {
+                                AttachmentChip(prefix: mood.emoji, label: mood.label) {
+                                    onRemoveAttachment(.mood)
+                                }
+                            }
+                            if !attachments.photos.isEmpty {
+                                AttachmentChip(prefix: "📷", label: t("toolbar.attachment.photos", "%d photos", attachments.photos.count)) {
+                                    onRemoveAttachment(.photo)
+                                }
+                            }
+                            if let loc = attachments.locationData {
+                                AttachmentChip(prefix: "📍", label: loc.locationName.isEmpty ? t("toolbar.attachment.location", "Location") : loc.locationName) {
+                                    onRemoveAttachment(.location)
+                                }
+                            }
+                            if let music = attachments.music {
+                                AttachmentChip(prefix: "🎵", label: music.trackName.isEmpty ? t("toolbar.attachment.music", "Music") : music.trackName) {
+                                    onRemoveAttachment(.music)
+                                }
+                            }
+                            if !attachments.people.isEmpty {
+                                AttachmentChip(
+                                    prefix: "👥",
+                                    label: t("toolbar.attachment.people", "%d people", attachments.people.count)
+                                ) {
+                                    onRemoveAttachment(.people)
+                                }
+                            }
+                            if attachments.todos != nil {
+                                AttachmentChip(prefix: "✅", label: t("toolbar.attachment.todo", "To-Do")) {
+                                    onRemoveAttachment(.todo)
+                                }
+                            }
+                            if attachments.audioData != nil {
+                                AttachmentChip(prefix: "🎙", label: t("toolbar.attachment.voice", "Voice")) {
+                                    onRemoveAttachment(.audio)
+                                }
                             }
                         }
-                        if !attachments.photos.isEmpty {
-                            AttachmentChip(prefix: "📷", label: t("toolbar.attachment.photos", "%d photos", attachments.photos.count)) {
-                                onRemoveAttachment(.photo)
-                            }
-                        }
-                        if let loc = attachments.locationData {
-                            AttachmentChip(prefix: "📍", label: loc.locationName.isEmpty ? t("toolbar.attachment.location", "Location") : loc.locationName) {
-                                onRemoveAttachment(.location)
-                            }
-                        }
-                        if let music = attachments.music {
-                            AttachmentChip(prefix: "🎵", label: music.trackName.isEmpty ? t("toolbar.attachment.music", "Music") : music.trackName) {
-                                onRemoveAttachment(.music)
-                            }
-                        }
-                        if !attachments.people.isEmpty {
-                            AttachmentChip(
-                                prefix: "👥",
-                                label: t("toolbar.attachment.people", "%d people", attachments.people.count)
-                            ) {
-                                onRemoveAttachment(.people)
-                            }
-                        }
-                        if attachments.todos != nil {
-                            AttachmentChip(prefix: "✅", label: t("toolbar.attachment.todo", "To-Do")) {
-                                onRemoveAttachment(.todo)
-                            }
-                        }
-                        if attachments.audioData != nil {
-                            AttachmentChip(prefix: "🎙", label: t("toolbar.attachment.voice", "Voice")) {
-                                onRemoveAttachment(.audio)
-                            }
-                        }
+                        .padding(.horizontal, 2)
+                        .padding(.top, 8)
                     }
-                    .padding(.horizontal, 2)
-                    .padding(.top, 8)
                 }
+            } else if captureHasText {
+                Divider()
+                    .padding(.top, 8)
+                HStack(spacing: 8) {
+                    Image(systemName: "doc.text")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.secondary)
+
+                    Text("This capture currently contains only the shell note. Add artifacts to make it multimodal.")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 10)
             }
         }
         .padding(14)
@@ -388,7 +432,7 @@ struct BottomCapsuleBar: View {
                 .frame(width: fullscreenButtonSize, height: fullscreenButtonSize)
                 .background(expandButtonBackground)
         }
-        .accessibilityLabel(t("toolbar.action.fullscreen", "Open Fullscreen Composer"))
+        .accessibilityLabel(t("toolbar.action.fullscreen", "Open Fullscreen Capture"))
     }
 
     @ViewBuilder

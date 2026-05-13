@@ -46,5 +46,51 @@ struct ComposerAttachments {
             && people.isEmpty
     }
 
+    var artifactCount: Int {
+        (mood == nil ? 0 : 1)
+            + photos.count
+            + (locationData == nil ? 0 : 1)
+            + (music == nil ? 0 : 1)
+            + (todos == nil ? 0 : 1)
+            + (audioData == nil ? 0 : 1)
+            + people.count
+    }
+
+    var hasArtifacts: Bool { artifactCount > 0 }
+
+    var artifactCountLabel: String {
+        switch artifactCount {
+        case 0: "0 artifacts"
+        case 1: "1 artifact"
+        default: "\(artifactCount) artifacts"
+        }
+    }
+
+    var captureSummarySegments: [String] {
+        var segments: [String] = []
+        if let mood {
+            segments.append(mood.label)
+        }
+        if !photos.isEmpty {
+            segments.append("\(photos.count) photos")
+        }
+        if let locationData {
+            segments.append(locationData.locationName.isEmpty ? "Location" : locationData.locationName)
+        }
+        if let music {
+            segments.append(music.trackName.isEmpty ? "Music" : music.trackName)
+        }
+        if !people.isEmpty {
+            segments.append("\(people.count) people")
+        }
+        if todos != nil {
+            segments.append("To-Do")
+        }
+        if audioData != nil {
+            segments.append("Voice")
+        }
+        return segments
+    }
+
     mutating func clear() { self = ComposerAttachments() }
 }
