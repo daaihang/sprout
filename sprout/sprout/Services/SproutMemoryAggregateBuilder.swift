@@ -1,28 +1,48 @@
 import Foundation
+import CoreLocation
 
 struct SproutMemoryAggregateBuilder {
     func buildPreviewAggregate(from text: String) -> SproutMemoryAggregate {
         let now = Date()
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        let artifact = Artifact(
-            kind: .text,
-            title: previewTitle(from: trimmed),
-            summary: trimmed,
-            textContent: trimmed,
+        return build(
+            draft: CaptureDraft(shellText: text),
             createdAt: now,
-            updatedAt: now
-        )
-        let record = RecordShell(
-            createdAt: now,
-            updatedAt: now,
-            rawText: trimmed,
             captureSource: .composer,
-            artifactIDs: [artifact.id]
+            parsed: RecordParser.parseBody(text)
         )
+    }
+
+    func build(
+        draft: CaptureDraft,
+        createdAt: Date,
+        captureSource: CaptureSource,
+        parsed: ParsedContent? = nil,
+        photoPayloads: [PreparedPhotoMedia] = []
+    ) -> SproutMemoryAggregate {
+        let trimmed = draft.trimmedShellText
+        let parsedContent = parsed ?? RecordParser.parseBody(trimmed)
+        let artifacts = buildArtifacts(
+            draft: draft,
+            createdAt: createdAt,
+            parsed: parsedContent,
+            photoPayloads: photoPayloads
+        )
+        let knownEntities = draft.attachments.people.map {
+            EntityReference(kind: .person, name: $0.displayName, confidence: nil)
+        }
+
         return SproutMemoryAggregate(
-            recordShell: record,
-            artifacts: [artifact],
-            knownEntities: []
+            recordShell: RecordShell(
+                createdAt: createdAt,
+                updatedAt: createdAt,
+                rawText: trimmed,
+                captureSource: captureSource,
+                artifactIDs: artifacts.map(\.id),
+                userMood: draft.attachments.mood?.rawValue,
+                userIntensity: draft.attachments.mood == nil ? nil : draft.attachments.intensity
+            ),
+            artifacts: artifacts,
+            knownEntities: knownEntities
         )
     }
 
@@ -46,6 +66,170 @@ struct SproutMemoryAggregateBuilder {
             artifacts: artifacts,
             knownEntities: knownEntities
         )
+    }
+
+    private func buildArtifacts(
+        draft: CaptureDraft,
+        createdAt: Date,
+        parsed: ParsedContent,
+        photoPayloads: [PreparedPhotoMedia]
+    ) -> [Artifact] {
+        var artifacts: [Artifact] = []
+        let trimmed = draft.trimmedShellText
+
+        if !trimmed.isEmpty {
+            artifacts.append(
+                Artifact(
+                    kind: .text,
+                    title: previewTitle(from: trimmed),
+                    summary: trimmed,
+                    textContent: trimmed,
+                    createdAt: createdAt,
+                    updatedAt: createdAt
+                )
+            )
+        }
+
+        for (index, _) in photoPayloads.enumerated() {
+            artifacts.append(
+                Artifact(
+                    kind: .photo,
+                    title: photoTitle(index: index, totalCount: photoPayloads.count),
+                    summary: photoSummary(from: trimmed),
+                    textContent: "",
+                    createdAt: createdAt,
+                    updatedAt: createdAt,
+                    metadata: [
+                        "payloadIndex": String(index),
+                        "source": "composer"
+                    ]
+                )
+            )
+        }
+
+        if let location = draft.attachments.locationData, !location.locationName.isEmpty || location.coordinate != nil {
+            var metadata: [String: String] = [:]
+            if let coordinate = location.coordinate {
+                metadata["latitude"] = String(coordinate.latitude)
+                metadata["longitude"] = String(coordinate.longitude)
+            }
+            artifacts.append(
+                Artifact(
+                    kind: .location,
+                    title: location.locationName.isEmpty ? "Location" : location.locationName,
+                    summary: location.descriptionText.isEmpty ? (location.locationName.isEmpty ? "Location" : location.locationName) : location.descriptionText,
+                    createdAt: createdAt,
+                    updatedAt: createdAt,
+                    metadata: metadata
+                )
+            )
+        }
+
+        if let music = draft.attachments.music, !music.isEmpty {
+            var metadata: [String: String] = [:]
+            if let url = music.appleMusicURL?.absoluteString {
+                metadata["url"] = url
+            }
+            if !music.albumName.isEmpty {
+                metadata["albumName"] = music.albumName
+            }
+            if let artworkURL = music.albumArtworkURL?.absoluteString {
+                metadata["artworkURLString"] = artworkURL
+            }
+            artifacts.append(
+                Artifact(
+                    kind: .music,
+                    title: music.trackName.isEmpty ? "Music" : music.trackName,
+                    summary: music.artistName.isEmpty ? music.albumName : music.artistName,
+                    createdAt: createdAt,
+                    updatedAt: createdAt,
+                    metadata: metadata
+                )
+            )
+        }
+
+        if let todos = draft.attachments.todos, !todos.items.isEmpty {
+            let summary = "\(todos.doneCount) of \(todos.totalCount) done"
+            let textContent = (try? JSONEncoder().encode(todos.items))
+                .flatMap { String(data: $0, encoding: .utf8) } ?? ""
+            artifacts.append(
+                Artifact(
+                    kind: .todo,
+                    title: todos.title.isEmpty ? "To-Do" : todos.title,
+                    summary: summary,
+                    textContent: textContent,
+                    createdAt: createdAt,
+                    updatedAt: createdAt
+                )
+            )
+        }
+
+        if let audioData = draft.attachments.audioData {
+            artifacts.append(
+                Artifact(
+                    kind: .audio,
+                    title: "Voice",
+                    summary: trimmed.isEmpty ? "Voice note" : previewTitle(from: trimmed),
+                    textContent: trimmed,
+                    createdAt: createdAt,
+                    updatedAt: createdAt,
+                    metadata: [
+                        "byteCount": String(audioData.count)
+                    ]
+                )
+            )
+        }
+
+        if !draft.attachments.people.isEmpty {
+            let personArtifacts = draft.attachments.people.map { person in
+                var metadata: [String: String] = [:]
+                if let relationship = person.relationship, !relationship.isEmpty {
+                    metadata["relationship"] = relationship
+                }
+                return Artifact(
+                    kind: .personMention,
+                    title: person.displayName,
+                    summary: person.secondaryLabel,
+                    createdAt: createdAt,
+                    updatedAt: createdAt,
+                    metadata: metadata,
+                    entities: [EntityReference(kind: .person, name: person.displayName, confidence: nil)]
+                )
+            }
+            artifacts.append(contentsOf: personArtifacts)
+        }
+
+        if !parsed.appleMusicURLs.isEmpty {
+            let parsedMusicArtifacts = parsed.appleMusicURLs.map { url in
+                Artifact(
+                    kind: .music,
+                    title: url.lastPathComponent.replacingOccurrences(of: "-", with: " "),
+                    summary: url.host ?? url.absoluteString,
+                    textContent: url.absoluteString,
+                    createdAt: createdAt,
+                    updatedAt: createdAt,
+                    metadata: ["url": url.absoluteString]
+                )
+            }
+            artifacts.append(contentsOf: parsedMusicArtifacts)
+        }
+
+        if !parsed.regularURLs.isEmpty {
+            let parsedLinkArtifacts = parsed.regularURLs.map { url in
+                Artifact(
+                    kind: .link,
+                    title: url.host ?? url.absoluteString,
+                    summary: url.absoluteString,
+                    textContent: url.absoluteString,
+                    createdAt: createdAt,
+                    updatedAt: createdAt,
+                    metadata: ["url": url.absoluteString]
+                )
+            }
+            artifacts.append(contentsOf: parsedLinkArtifacts)
+        }
+
+        return artifacts
     }
 
     private func buildArtifacts(record: Record) -> [Artifact] {
@@ -163,6 +347,15 @@ struct SproutMemoryAggregateBuilder {
         }
 
         return artifacts
+    }
+
+    private func photoTitle(index: Int, totalCount: Int) -> String {
+        totalCount <= 1 ? "Photo" : "Photo \(index + 1)"
+    }
+
+    private func photoSummary(from text: String) -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "Captured photo" : previewTitle(from: trimmed)
     }
 
     private func artifact(from media: MediaCard, record: Record) -> Artifact? {

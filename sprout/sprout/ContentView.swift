@@ -451,22 +451,25 @@ struct ContentView: View {
             : cal.date(byAdding: .day, value: 1, to: selectedDate)!.addingTimeInterval(-1)
 
         Task { @MainActor in
-            guard let payload = await preparePhotoMediaPayloads(from: [image]).first else { return }
+            let payloads = await preparePhotoMediaPayloads(from: [image])
+            guard !payloads.isEmpty else { return }
 
-            let record = Record()
-            record.cardKind = .photo
-            record.createdAt = createdAt
-            record.updatedAt = createdAt
-            record.dashboardOrder = createdAt.timeIntervalSince1970
-
-            let m = MediaCard()
-            m.mediaKind = .photo
-            m.imageData = payload.imageData
-            m.thumbnailData = payload.thumbnailData
-            modelContext.insert(m)
-            modelContext.insert(record)
-            record.mediaCards = [m]
-            let aggregate = memoryAggregateBuilder.build(record: record)
+            let draft = CaptureDraft(
+                shellText: "",
+                attachments: ComposerAttachments(photos: [image])
+            )
+            let aggregate = memoryAggregateBuilder.build(
+                draft: draft,
+                createdAt: createdAt,
+                captureSource: .photo,
+                photoPayloads: payloads
+            )
+            persistLegacyRecord(
+                for: aggregate,
+                draft: draft,
+                parsed: RecordParser.parseBody(""),
+                photoPayloads: payloads
+            )
             memoryRepository.upsertAggregate(aggregate)
             await runPostCaptureAnalysisIfPossible(for: aggregate)
         }
@@ -486,104 +489,127 @@ struct ContentView: View {
                 : cal.date(byAdding: .day, value: 1, to: selectedDate)!.addingTimeInterval(-1)
             let parsed = RecordParser.parseBody(trimmed)
             let photoPayloads = await preparePhotoMediaPayloads(from: attachments.photos)
-
-            let record = Record()
-            record.body = trimmed
-            record.createdAt = createdAt
-            record.updatedAt = createdAt
-            record.dashboardOrder = createdAt.timeIntervalSince1970
-
-            if let mood = attachments.mood {
-                record.mood = mood.rawValue
-                record.intensity = attachments.intensity
-            }
-            if let loc = attachments.locationData {
-                record.latitude = loc.coordinate?.latitude
-                record.longitude = loc.coordinate?.longitude
-                record.location = loc.locationName.isEmpty ? nil : loc.locationName
-            }
-            if !attachments.people.isEmpty {
-                record.mentionedPeople = attachments.people
-                for person in attachments.people {
-                    person.lastMentionedAt = record.createdAt
-                    person.mentionCount += 1
-                }
-            }
-
-            var mediaCards: [MediaCard] = []
-
-            for (i, payload) in photoPayloads.enumerated() {
-                let m = MediaCard()
-                m.mediaKind = .photo
-                m.sortIndex = i
-                m.imageData = payload.imageData
-                m.thumbnailData = payload.thumbnailData
-                modelContext.insert(m)
-                mediaCards.append(m)
-            }
-
-            if let music = attachments.music {
-                let m = MediaCard()
-                m.mediaKind = .music
-                m.url = music.appleMusicURL?.absoluteString
-                m.title = music.trackName
-                m.caption = music.artistName
-                m.albumName = music.albumName.isEmpty ? nil : music.albumName
-                m.artworkURLString = music.albumArtworkURL?.absoluteString
-                modelContext.insert(m)
-                mediaCards.append(m)
-            }
-
-            if let todos = attachments.todos, !todos.isEmpty {
-                let m = MediaCard()
-                m.mediaKind = .todo
-                m.title = todos.title
-                if let json = try? JSONEncoder().encode(todos.items) {
-                    m.caption = String(data: json, encoding: .utf8)
-                }
-                modelContext.insert(m)
-                mediaCards.append(m)
-            }
-
-            if let audioData = attachments.audioData {
-                let m = MediaCard()
-                m.mediaKind = .audio
-                m.audioData = audioData
-                m.title = localization.string("content.audio.title", default: "Voice %@", arguments: [shortTimeLabel()])
-                m.caption = trimmed.isEmpty ? speechRecognizer.recognizedText : trimmed
-                m.capturedAt = record.createdAt
-                modelContext.insert(m)
-                mediaCards.append(m)
-            }
-
-            for url in parsed.appleMusicURLs {
-                let m = MediaCard()
-                m.mediaKind = .music
-                m.url = url.absoluteString
-                m.title = url.lastPathComponent.replacingOccurrences(of: "-", with: " ")
-                m.artworkURLString = nil
-                modelContext.insert(m)
-                mediaCards.append(m)
-            }
-
-            for url in parsed.regularURLs {
-                let m = MediaCard()
-                m.mediaKind = .link
-                m.url = url.absoluteString
-                m.title = url.host ?? url.absoluteString
-                modelContext.insert(m)
-                mediaCards.append(m)
-            }
-
-            record.cardKind = primaryCardType(for: draft, parsed: parsed)
-
-            modelContext.insert(record)
-            if !mediaCards.isEmpty { record.mediaCards = mediaCards }
-            let aggregate = memoryAggregateBuilder.build(record: record)
+            let aggregate = memoryAggregateBuilder.build(
+                draft: draft,
+                createdAt: createdAt,
+                captureSource: draft.attachments.audioData == nil ? .composer : .voice,
+                parsed: parsed,
+                photoPayloads: photoPayloads
+            )
+            persistLegacyRecord(for: aggregate, draft: draft, parsed: parsed, photoPayloads: photoPayloads)
             memoryRepository.upsertAggregate(aggregate)
             await runPostCaptureAnalysisIfPossible(for: aggregate)
 
             captureDraftStore.reset()
+        }
+    }
+
+    @MainActor
+    private func persistLegacyRecord(
+        for aggregate: SproutMemoryAggregate,
+        draft: CaptureDraft? = nil,
+        parsed: ParsedContent,
+        photoPayloads: [PreparedPhotoMedia] = []
+    ) {
+        let record = Record()
+        record.id = aggregate.recordShell.id
+        record.body = aggregate.recordShell.rawText
+        record.createdAt = aggregate.recordShell.createdAt
+        record.updatedAt = aggregate.recordShell.updatedAt
+        record.dashboardOrder = aggregate.recordShell.createdAt.timeIntervalSince1970
+        record.mood = aggregate.recordShell.userMood
+        record.intensity = aggregate.recordShell.userIntensity
+
+        if let draft {
+            if let location = draft.attachments.locationData {
+                record.latitude = location.coordinate?.latitude
+                record.longitude = location.coordinate?.longitude
+                record.location = location.locationName.isEmpty ? nil : location.locationName
+            }
+
+            if let music = draft.attachments.music, !music.isEmpty {
+                record.appleMusicURL = music.appleMusicURL?.absoluteString
+            }
+
+            if !draft.attachments.people.isEmpty {
+                record.mentionedPeople = draft.attachments.people
+                for person in draft.attachments.people {
+                    person.lastMentionedAt = record.createdAt
+                    person.mentionCount += 1
+                }
+            }
+        }
+
+        if let weatherArtifact = aggregate.artifacts.first(where: { $0.kind == .weather }) {
+            record.weather = weatherArtifact.title
+            if let location = weatherArtifact.metadata["location"], !location.isEmpty {
+                record.location = location
+            }
+            if let humidity = weatherArtifact.metadata["humidity"].flatMap(Int.init) {
+                record.humidity = humidity
+            }
+        }
+
+        var mediaCards: [MediaCard] = []
+
+        for (index, payload) in photoPayloads.enumerated() {
+            let media = MediaCard()
+            media.type = "photo"
+            media.sortIndex = index
+            media.imageData = payload.imageData
+            media.thumbnailData = payload.thumbnailData
+            modelContext.insert(media)
+            mediaCards.append(media)
+        }
+
+        for artifact in aggregate.artifacts {
+            switch artifact.kind {
+            case .music:
+                let media = MediaCard()
+                media.type = "music"
+                media.url = artifact.metadata["url"] ?? parsed.appleMusicURLs.first?.absoluteString
+                media.title = artifact.title
+                media.caption = artifact.summary
+                media.albumName = artifact.metadata["albumName"]
+                media.artworkURLString = artifact.metadata["artworkURLString"]
+                modelContext.insert(media)
+                mediaCards.append(media)
+            case .audio:
+                guard let audioData = draft?.attachments.audioData else { break }
+                let media = MediaCard()
+                media.type = "audio"
+                media.audioData = audioData
+                media.title = localization.string("content.audio.title", default: "Voice %@", arguments: [shortTimeLabel()])
+                media.caption = aggregate.recordShell.rawText.isEmpty ? speechRecognizer.recognizedText : aggregate.recordShell.rawText
+                media.capturedAt = aggregate.recordShell.createdAt
+                modelContext.insert(media)
+                mediaCards.append(media)
+            case .todo:
+                let media = MediaCard()
+                media.type = "todo"
+                media.title = artifact.title
+                media.caption = artifact.textContent
+                modelContext.insert(media)
+                mediaCards.append(media)
+            case .link:
+                let media = MediaCard()
+                media.type = "link"
+                media.url = artifact.metadata["url"] ?? artifact.textContent
+                media.title = artifact.title
+                media.caption = artifact.summary
+                modelContext.insert(media)
+                mediaCards.append(media)
+            case .photo, .text, .location, .weather, .personMention, .decisionNote, .book, .film, .game, .ticket, .healthMetric:
+                break
+            }
+        }
+
+        let fallbackDraft = CaptureDraft(shellText: aggregate.recordShell.rawText)
+        record.cardKind = primaryCardType(for: draft ?? fallbackDraft, parsed: parsed)
+
+        modelContext.insert(record)
+        if !mediaCards.isEmpty {
+            record.mediaCards = mediaCards
         }
     }
 
