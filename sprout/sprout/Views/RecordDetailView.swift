@@ -695,14 +695,14 @@ struct RecordDetailView: View {
                             .foregroundStyle(.secondary)
                     }
 
-                    if let salienceScore = analysis.salienceScore {
-                        Text("Salience \(Int((salienceScore * 100).rounded()))")
+                    if let salienceText = analysis.saliencePercentageText {
+                        Text(salienceText)
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
                     }
 
                     if !analysis.tags.isEmpty {
-                        tokenWrapRow(analysis.tags, tint: .accentColor)
+                        TokenPillRow(values: analysis.tags, tint: .accentColor)
                     }
 
                     if !analysis.retrievalTerms.isEmpty {
@@ -710,7 +710,7 @@ struct RecordDetailView: View {
                             Text("Retrieval Terms")
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(.secondary)
-                            tokenWrapRow(analysis.retrievalTerms, tint: .green)
+                            TokenPillRow(values: analysis.retrievalTerms, tint: .green)
                         }
                     }
 
@@ -719,24 +719,21 @@ struct RecordDetailView: View {
                             Text(t("detail.memory.ai_entities", "AI Entities"))
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(.secondary)
-                            tokenWrapRow(
-                                analysis.entities.map { "\($0.kind.badgeLabel): \($0.name)" },
+                            TokenPillRow(
+                                values: analysis.entities.map { "\($0.kind.badgeLabel): \($0.name)" },
                                 tint: .purple
                             )
                         }
                     }
 
                     if let reflectionHint = analysis.reflectionHint, !reflectionHint.isEmpty {
-                        evidenceCallout(
-                            title: "Reflection Hint",
-                            body: reflectionHint
-                        )
+                        EvidenceCalloutCard(title: "Reflection Hint", bodyText: reflectionHint)
                     }
 
                     if let evidenceSummaryText {
-                        evidenceCallout(
+                        EvidenceCalloutCard(
                             title: "Evidence",
-                            body: "This analysis is currently grounded in \(evidenceSummaryText)."
+                            bodyText: "This analysis is currently grounded in \(evidenceSummaryText)."
                         )
                     }
                 }
@@ -814,21 +811,6 @@ struct RecordDetailView: View {
         .detailCard()
     }
 
-    private func tokenWrapRow(_ values: [String], tint: Color) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-                ForEach(values, id: \.self) { value in
-                    Text(value)
-                        .font(.caption2)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(tint.opacity(0.12), in: Capsule())
-                        .foregroundStyle(tint)
-                }
-            }
-        }
-    }
-
     // MARK: - Metadata footer
 
     private var metadataFooter: some View {
@@ -883,20 +865,6 @@ struct RecordDetailView: View {
         case .ticket: return "Ticket"
         case .healthMetric: return "Health"
         }
-    }
-
-    private func evidenceCallout(title: String, body: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-            Text(body)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(10)
-        .background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     private func shellMetaChip(icon: String, text: String) -> some View {

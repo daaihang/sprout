@@ -54,6 +54,10 @@ struct ArtifactDetailView: View {
         }
     }
 
+    private var leadAnalysis: RecordAnalysisSnapshot? {
+        relatedAnalyses.first?.analysis
+    }
+
     private var evidenceSummary: String {
         let parts = [
             relatedRecords.isEmpty ? nil : "\(relatedRecords.count) memories",
@@ -106,6 +110,16 @@ struct ArtifactDetailView: View {
             Text("This artifact is part of the record graph and can be traced back to its source memories, entities, and phases.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
+
+            if let leadAnalysis {
+                AnalysisCompactEvidenceView(
+                    analysis: leadAnalysis,
+                    showInsight: true,
+                    showEntities: true,
+                    showRetrievalTerms: true,
+                    showReflectionHint: true
+                )
+            }
         }
         .detailCard()
     }
@@ -168,31 +182,17 @@ struct ArtifactDetailView: View {
             SectionLabel(icon: "sparkles", title: "Source Analyses")
             ForEach(relatedAnalyses.prefix(4), id: \.record.id) { item in
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(item.analysis.insight)
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.primary)
-                        .lineLimit(2)
+                    AnalysisCompactEvidenceView(
+                        analysis: item.analysis,
+                        showInsight: true,
+                        showEntities: true,
+                        showRetrievalTerms: true,
+                        showReflectionHint: false
+                    )
 
-                    HStack(spacing: 8) {
-                        Text(item.analysis.emotionLabel.capitalized)
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                        Text(item.record.createdAt.formatted(date: .abbreviated, time: .shortened))
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    if !item.analysis.entities.isEmpty {
-                        Text(
-                            item.analysis.entities
-                                .prefix(3)
-                                .map { "\($0.kind.badgeLabel): \($0.name)" }
-                                .joined(separator: " · ")
-                        )
-                        .font(.caption)
+                    Text(item.record.createdAt.formatted(date: .abbreviated, time: .shortened))
+                        .font(.caption2)
                         .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(12)

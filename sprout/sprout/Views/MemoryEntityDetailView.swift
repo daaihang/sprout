@@ -16,6 +16,10 @@ struct MemoryEntityDetailView: View {
         memoryRepository.analyses(mentioning: entityID)
     }
 
+    private var leadAnalysis: RecordAnalysisSnapshot? {
+        analysisMentions.first
+    }
+
     private var phaseEvidenceView: SproutMemoryRepository.EntityPhaseEvidenceView? {
         memoryRepository.entityPhaseEvidenceView(for: entityID)
     }
@@ -81,6 +85,16 @@ struct MemoryEntityDetailView: View {
             )
             .font(.footnote)
             .foregroundStyle(.secondary)
+
+            if let leadAnalysis {
+                AnalysisCompactEvidenceView(
+                    analysis: leadAnalysis,
+                    showInsight: false,
+                    showEntities: false,
+                    showRetrievalTerms: true,
+                    showReflectionHint: true
+                )
+            }
         }
         .detailCard()
     }
@@ -162,17 +176,16 @@ struct MemoryEntityDetailView: View {
             sectionTitle("sparkles", t("memory.entity.analysis_mentions", "Analysis Mentions"))
             ForEach(analysisMentions.prefix(4), id: \.id) { analysis in
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(analysis.insight)
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.primary)
-                    HStack(spacing: 8) {
-                        Text(analysis.emotionLabel.capitalized)
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                        Text(analysis.createdAt.formatted(date: .abbreviated, time: .shortened))
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
+                    AnalysisCompactEvidenceView(
+                        analysis: analysis,
+                        showInsight: true,
+                        showEntities: false,
+                        showRetrievalTerms: true,
+                        showReflectionHint: true
+                    )
+                    Text(analysis.createdAt.formatted(date: .abbreviated, time: .shortened))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                     if !analysis.tags.isEmpty {
                         Text(analysis.tags.prefix(4).joined(separator: " · "))
                             .font(.caption)

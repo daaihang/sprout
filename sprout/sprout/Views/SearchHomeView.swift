@@ -582,22 +582,15 @@ struct SearchHomeView: View {
                 .lineLimit(3)
 
             if let analysis {
-                Text("\(analysis.emotionLabel.capitalized) · \(analysis.insight)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-
-                if !analysis.entities.isEmpty {
-                    Text(
-                        analysis.entities
-                            .prefix(3)
-                            .map { "\($0.kind.badgeLabel): \($0.name)" }
-                            .joined(separator: " · ")
-                    )
-                    .font(.caption2)
-                    .foregroundStyle(.secondary.opacity(0.85))
-                    .lineLimit(1)
-                }
+                AnalysisCompactEvidenceView(
+                    analysis: analysis,
+                    showInsight: true,
+                    showEntities: true,
+                    showRetrievalTerms: true,
+                    showReflectionHint: false,
+                    maxEntityCount: 3,
+                    maxRetrievalTermCount: 4
+                )
             }
 
             Text(record.createdAt.formatted(date: .abbreviated, time: .shortened))

@@ -24,12 +24,21 @@ struct ReflectionDetailView: View {
             .sorted { $0.createdAt > $1.createdAt }
     }
 
+    private var sourceAnalyses: [RecordAnalysisSnapshot] {
+        reflection.sourceRecordIDs
+            .compactMap(memoryRepository.analysis(for:))
+            .sorted { $0.createdAt > $1.createdAt }
+    }
+
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 20) {
                 header
                 if let linkedArc {
                     linkedPhaseSection(linkedArc)
+                }
+                if !sourceAnalyses.isEmpty {
+                    sourceAnalysesSection
                 }
                 if let evidenceView, !evidenceView.linkedEntities.isEmpty {
                     linkedEntitiesSection(evidenceView.linkedEntities)
@@ -65,6 +74,16 @@ struct ReflectionDetailView: View {
             Text(reflection.createdAt.formatted(date: .abbreviated, time: .shortened))
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+
+            if let leadAnalysis = sourceAnalyses.first {
+                AnalysisCompactEvidenceView(
+                    analysis: leadAnalysis,
+                    showInsight: false,
+                    showEntities: true,
+                    showRetrievalTerms: true,
+                    showReflectionHint: true
+                )
+            }
         }
         .detailCard()
     }
@@ -119,6 +138,27 @@ struct ReflectionDetailView: View {
                     .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
                 .buttonStyle(.plain)
+            }
+        }
+        .detailCard()
+    }
+
+    private var sourceAnalysesSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Source Analyses")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            ForEach(sourceAnalyses.prefix(3), id: \.id) { analysis in
+                AnalysisCompactEvidenceView(
+                    analysis: analysis,
+                    showInsight: true,
+                    showEntities: true,
+                    showRetrievalTerms: true,
+                    showReflectionHint: false
+                )
+                .padding(12)
+                .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
         }
         .detailCard()

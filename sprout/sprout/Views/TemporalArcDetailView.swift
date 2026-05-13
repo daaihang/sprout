@@ -18,6 +18,10 @@ struct TemporalArcDetailView: View {
             .sorted { $0.createdAt > $1.createdAt }
     }
 
+    private var leadAnalysis: RecordAnalysisSnapshot? {
+        evidenceView?.relatedAnalyses.first
+    }
+
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 20) {
@@ -60,6 +64,16 @@ struct TemporalArcDetailView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+
+            if let leadAnalysis {
+                AnalysisCompactEvidenceView(
+                    analysis: leadAnalysis,
+                    showInsight: false,
+                    showEntities: false,
+                    showRetrievalTerms: true,
+                    showReflectionHint: true
+                )
+            }
         }
         .detailCard()
     }
@@ -91,6 +105,14 @@ struct TemporalArcDetailView: View {
             }
             if !arc.entityNames.isEmpty {
                 labelRow(title: "Entities", value: arc.entityNames.prefix(4).joined(separator: ", "))
+            }
+            if let leadAnalysis, !leadAnalysis.retrievalTerms.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Retrieval Terms")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    TokenPillRow(values: Array(leadAnalysis.retrievalTerms.prefix(6)), tint: .green)
+                }
             }
             if let evidenceView, !evidenceView.relatedAnalyses.isEmpty {
                 labelRow(title: "Analyses", value: "\(evidenceView.relatedAnalyses.count)")
