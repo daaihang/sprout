@@ -4,6 +4,7 @@ import SwiftUI
 struct BackendInteractionDebugView: View {
     @Environment(AppLocalization.self) private var localization
     @Environment(AuthSessionManager.self) private var authSession
+    @Environment(InstallExperienceStore.self) private var installExperience
     @State private var currentNonce = ""
 
     var body: some View {
@@ -23,11 +24,36 @@ struct BackendInteractionDebugView: View {
                 debugRow(title: t("common.backend.mode", "登录模式"), value: authSession.currentSession?.mode ?? "-")
                 debugRow(title: t("common.backend.expires_at", "过期时间"), value: format(date: authSession.currentSession?.expiresAt))
                 debugRow(title: t("common.backend.is_expired", "是否已过期"), value: boolText(authSession.currentSession?.isExpired ?? false))
+                debugRow(title: "Onboarding Complete", value: boolText(authSession.currentSession?.hasCompletedOnboarding ?? false))
 
                 Button(t("common.backend.action.refresh_session", "测试 Refresh")) {
                     Task { await authSession.refreshSession() }
                 }
                 .disabled(authSession.currentSession == nil || authSession.currentSession?.mode == "development_stub")
+            }
+
+            Section("Onboarding Debug") {
+                debugRow(title: "Has Seen Welcome", value: boolText(installExperience.hasSeenWelcome))
+                debugRow(title: "Force Show Welcome", value: boolText(installExperience.forceShowWelcome))
+                debugRow(title: "Force Signed-In Onboarding", value: boolText(installExperience.forceRequireSignedInOnboarding))
+
+                Toggle("Force Show Welcome", isOn: Binding(
+                    get: { installExperience.forceShowWelcome },
+                    set: { installExperience.setForceShowWelcome($0) }
+                ))
+
+                Toggle("Force Signed-In Onboarding", isOn: Binding(
+                    get: { installExperience.forceRequireSignedInOnboarding },
+                    set: { installExperience.setForceRequireSignedInOnboarding($0) }
+                ))
+
+                Button("Mark Welcome As Seen") {
+                    installExperience.markWelcomeSeen()
+                }
+
+                Button("Reset Welcome State") {
+                    installExperience.resetWelcome()
+                }
             }
 
             Section(t("common.backend.section.health", "后端健康检查")) {

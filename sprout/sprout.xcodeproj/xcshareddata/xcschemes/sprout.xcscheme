@@ -52,7 +52,7 @@
          </BuildableReference>
       </BuildableProductRunnable>
       <StoreKitConfigurationFileReference
-         identifier = "../../sprout/sprout.storekit">
+         identifier = "../../../sprout/sprout.storekit">
       </StoreKitConfigurationFileReference>
    </LaunchAction>
    <ProfileAction

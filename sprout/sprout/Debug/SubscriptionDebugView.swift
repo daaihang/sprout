@@ -1,4 +1,7 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 #if canImport(RevenueCat)
 import RevenueCat
 #endif
@@ -85,11 +88,7 @@ struct SubscriptionDebugView: View {
         Section(t("subscription.debug.section.packages", "Available Packages (RevenueCat)")) {
             if manager.isLoading {
                 HStack { Spacer(); ProgressView(); Spacer() }
-            } else if manager.availablePackages.isEmpty {
-                Text(t("subscription.debug.empty_packages", "No packages loaded. Tap Refresh Packages below."))
-                    .foregroundStyle(.secondary)
-                    .font(.caption)
-            } else {
+            } else if !manager.availablePackages.isEmpty {
                 #if canImport(RevenueCat)
                 ForEach(manager.availablePackages, id: \.identifier) { pkg in
                     VStack(alignment: .leading, spacing: 6) {
@@ -119,6 +118,42 @@ struct SubscriptionDebugView: View {
                     .padding(.vertical, 4)
                 }
                 #endif
+            } else if !manager.packageSummaries.isEmpty {
+                ForEach(manager.packageSummaries) { summary in
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text(summary.title)
+                                .font(.system(size: 15, weight: .medium))
+                            Spacer()
+                            Text(summary.price)
+                                .foregroundStyle(.secondary)
+                        }
+                        Text(summary.productID)
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                        Button(t("common.purchase", "Purchase")) {
+                            Task {
+                                do {
+                                    try await manager.purchase(kind: summary.kind)
+                                } catch {
+                                    purchaseError = error.localizedDescription
+                                }
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                        .disabled(manager.isLoading)
+                    }
+                    .padding(.vertical, 4)
+                }
+            } else if manager.isUsingStoreKitFallback {
+                Text(t("subscription.debug.empty_packages", "No packages loaded. Tap Refresh Packages below."))
+                    .foregroundStyle(.secondary)
+                    .font(.caption)
+            } else {
+                Text(t("subscription.debug.empty_packages", "No packages loaded. Tap Refresh Packages below."))
+                    .foregroundStyle(.secondary)
+                    .font(.caption)
             }
         }
     }
@@ -131,6 +166,9 @@ struct SubscriptionDebugView: View {
                 .disabled(manager.isLoading)
             Button(t("subscription.debug.refresh_customer", "Refresh Customer Status")) { Task { await manager.refreshCustomerInfo() } }
                 .disabled(manager.isLoading)
+            Button("Copy Diagnostics") {
+                copyDiagnostics()
+            }
         }
     }
 
@@ -142,6 +180,17 @@ struct SubscriptionDebugView: View {
             infoRow(t("subscription.debug.row.offering_id", "Offering ID"), value: MoryConfig.offeringID)
             infoRow(t("subscription.debug.row.monthly_product_id", "Monthly Product ID"), value: MoryConfig.ProductID.monthlyGrow)
             infoRow(t("subscription.debug.row.yearly_product_id", "Yearly Product ID"), value: MoryConfig.ProductID.yearlyGrow)
+            infoRow(t("subscription.debug.row.loaded_source", "Loaded Source"), value: manager.loadSource.rawValue)
+            infoRow(t("subscription.debug.row.target_offering", "Target Offering"), value: manager.lastTargetOfferingID ?? t("common.none", "None"))
+            infoRow(t("subscription.debug.row.current_offering", "Current Offering"), value: manager.lastCurrentOfferingID ?? t("common.none", "None"))
+            infoRow(t("subscription.debug.row.available_offerings", "Available Offerings"), value: manager.lastAvailableOfferingIDs.isEmpty ? t("common.none", "None") : manager.lastAvailableOfferingIDs.joined(separator: ", "))
+            infoRow(t("subscription.debug.row.loaded_products", "Loaded Product IDs"), value: manager.loadedProductIDs.isEmpty ? t("common.none", "None") : manager.loadedProductIDs.joined(separator: ", "))
+            infoRow(t("subscription.debug.row.revenuecat_error", "RevenueCat Error"), value: manager.lastRevenueCatError ?? t("common.none", "None"))
+            infoRow(t("subscription.debug.row.storekit_error", "StoreKit Error"), value: manager.lastStoreKitError ?? t("common.none", "None"))
+            infoRow("Diagnostics Status", value: manager.diagnostics?.status ?? t("common.none", "None"))
+            infoRow("Diagnostics Blocker", value: manager.diagnostics?.blockingError ?? t("common.none", "None"))
+            infoRow("Diagnostics Products", value: manager.diagnostics?.products.joined(separator: " | ") ?? t("common.none", "None"))
+            infoRow("Diagnostics Offerings", value: manager.diagnostics?.offerings.joined(separator: " | ") ?? t("common.none", "None"))
         }
     }
 
@@ -175,6 +224,41 @@ struct SubscriptionDebugView: View {
 
     private func t(_ key: String, _ defaultValue: String, _ arguments: CVarArg...) -> String {
         localization.string(key, default: defaultValue, arguments: arguments)
+    }
+
+    private func copyDiagnostics() {
+        #if canImport(UIKit)
+        UIPasteboard.general.string = diagnosticsText
+        #endif
+    }
+
+    private var diagnosticsText: String {
+        [
+            "API Key: \(maskedAPIKey)",
+            "Offering: \(MoryConfig.offeringID)",
+            "Entitlement: \(MoryConfig.entitlementID)",
+            "Fallbacks: \(MoryConfig.entitlementFallbackIDs.isEmpty ? "None" : MoryConfig.entitlementFallbackIDs.joined(separator: ", "))",
+            "Monthly ID: \(MoryConfig.ProductID.monthlyGrow)",
+            "Yearly ID: \(MoryConfig.ProductID.yearlyGrow)",
+            "Loaded Source: \(manager.loadSource.rawValue)",
+            "Target Offering: \(manager.lastTargetOfferingID ?? "None")",
+            "Current Offering: \(manager.lastCurrentOfferingID ?? "None")",
+            "Available Offerings: \(manager.lastAvailableOfferingIDs.isEmpty ? "None" : manager.lastAvailableOfferingIDs.joined(separator: ", "))",
+            "Loaded Product IDs: \(manager.loadedProductIDs.isEmpty ? "None" : manager.loadedProductIDs.joined(separator: ", "))",
+            "Loaded Packages: \(manager.packageSummaries.count)",
+            "RevenueCat Error: \(manager.lastRevenueCatError ?? "None")",
+            "StoreKit Error: \(manager.lastStoreKitError ?? "None")",
+            "Diagnostics Status: \(manager.diagnostics?.status ?? "None")",
+            "Diagnostics Blocker: \(manager.diagnostics?.blockingError ?? "None")",
+            "Diagnostics Products: \(manager.diagnostics?.products.isEmpty == false ? manager.diagnostics!.products.joined(separator: " | ") : "None")",
+            "Diagnostics Offerings: \(manager.diagnostics?.offerings.isEmpty == false ? manager.diagnostics!.offerings.joined(separator: " | ") : "None")",
+            "Error: \(manager.errorMessage ?? "None")"
+        ].joined(separator: "\n")
+    }
+
+    private var maskedAPIKey: String {
+        let key = MoryConfig.revenueCatAPIKey
+        return key.count > 12 ? String(key.prefix(12)) + "…" : key
     }
 }
 

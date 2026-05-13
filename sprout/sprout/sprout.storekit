@@ -1,78 +1,70 @@
 {
-  "identifier" : "sprout-storekit-config",
-  "nonConsumableProducts" : [],
-  "nonRenewingSubscriptionProducts" : [],
-  "products" : [],
-  "settings" : {
-    "_timeSyncEnabled" : false,
-    "askToBuyEnabled" : false,
-    "failTransactionsEnabled" : false,
-    "storefront" : "CHN",
-    "locale" : "zh_CN"
+  "appPolicies": {
+    "eula": "",
+    "policies": [
+      {
+        "locale": "en_US",
+        "policyText": "",
+        "policyURL": ""
+      }
+    ]
   },
-  "subscriptionGroups" : [
+  "identifier": "sprout-storekit-config",
+  "nonRenewingSubscriptions": [],
+  "products": [],
+  "subscriptionGroups": [
     {
-      "id" : "grow-group",
-      "localizations" : [],
-      "name" : "Grow 计划",
-      "products" : [
+      "id": "grow-group",
+      "localizations": [],
+      "name": "Sprout Grow",
+      "subscriptions": [
         {
-          "adHocOfferCodes" : [],
-          "displayPrice" : "6.99",
-          "familyShareable" : false,
-          "groupNumber" : 1,
-          "internalID" : "grow_monthly",
-          "introductoryOffer" : {
-            "displayPrice" : "0.00",
-            "offerIdentifier" : "free_trial_7d",
-            "offerMode" : "freeTrial",
-            "periodCount" : 1,
-            "periodUnit" : "WEEK"
-          },
-          "localizations" : [
+          "displayPrice": "6.99",
+          "familyShareable": false,
+          "internalID": "grow_monthly",
+          "localizations": [
             {
-              "description" : "每月订阅 Grow 计划，解锁 AI 分析、关系图谱等全部功能。",
-              "displayName" : "Grow 月度计划",
-              "locale" : "zh_CN"
+              "description": "Monthly Grow subscription for Sprout premium features.",
+              "displayName": "Sprout Grow Monthly",
+              "locale": "en_US"
             }
           ],
-          "productID" : "com.speculolabs.sprout.grow.monthly",
-          "recurringSubscriptionPeriod" : "P1M",
-          "referenceName" : "Grow Monthly",
-          "subscriptionGroupID" : "grow-group",
-          "type" : "RecurringSubscription"
+          "productID": "com.speculolabs.sprout.grow.monthly",
+          "referenceName": "Sprout Grow Monthly",
+          "type": "RecurringSubscription",
+          "adHocOffers": [],
+          "codeOffers": [],
+          "groupNumber": 1,
+          "recurringSubscriptionPeriod": "P1M",
+          "subscriptionGroupID": "grow-group",
+          "winbackOffers": []
         },
         {
-          "adHocOfferCodes" : [],
-          "displayPrice" : "49.99",
-          "familyShareable" : false,
-          "groupNumber" : 2,
-          "internalID" : "grow_yearly",
-          "introductoryOffer" : {
-            "displayPrice" : "0.00",
-            "offerIdentifier" : "free_trial_7d",
-            "offerMode" : "freeTrial",
-            "periodCount" : 1,
-            "periodUnit" : "WEEK"
-          },
-          "localizations" : [
+          "displayPrice": "49.99",
+          "familyShareable": false,
+          "internalID": "grow_yearly",
+          "localizations": [
             {
-              "description" : "年度订阅 Grow 计划，享受最优惠价格，相当于每月约 4.17 元。",
-              "displayName" : "Grow 年度计划",
-              "locale" : "zh_CN"
+              "description": "Yearly Grow subscription for Sprout premium features.",
+              "displayName": "Sprout Grow Yearly",
+              "locale": "en_US"
             }
           ],
-          "productID" : "com.speculolabs.sprout.grow.yearly",
-          "recurringSubscriptionPeriod" : "P1Y",
-          "referenceName" : "Grow Yearly",
-          "subscriptionGroupID" : "grow-group",
-          "type" : "RecurringSubscription"
+          "productID": "com.speculolabs.sprout.grow.yearly",
+          "referenceName": "Sprout Grow Yearly",
+          "type": "RecurringSubscription",
+          "adHocOffers": [],
+          "codeOffers": [],
+          "groupNumber": 1,
+          "recurringSubscriptionPeriod": "P1Y",
+          "subscriptionGroupID": "grow-group",
+          "winbackOffers": []
         }
       ]
     }
   ],
-  "version" : {
-    "major" : 3,
-    "minor" : 0
+  "version": {
+    "major": 4,
+    "minor": 0
   }
 }

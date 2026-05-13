@@ -53,6 +53,7 @@ func main() {
 		AIProvider:    aiProvider,
 		Subscription:  subscriptionService,
 		PushTokens:    store,
+		UserProfiles:  store,
 	})
 
 	srv := &http.Server{

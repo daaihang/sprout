@@ -1,0 +1,70 @@
+{
+  "appPolicies": {
+    "eula": "",
+    "policies": [
+      {
+        "locale": "en_US",
+        "policyText": "",
+        "policyURL": ""
+      }
+    ]
+  },
+  "identifier": "07618CA6",
+  "nonRenewingSubscriptions": [],
+  "products": [],
+  "subscriptionGroups": [
+    {
+      "id": "4662721F",
+      "localizations": [],
+      "name": "Sprout Grow",
+      "subscriptions": [
+        {
+          "displayPrice": "9.99",
+          "familyShareable": false,
+          "internalID": "8E86BAE1",
+          "localizations": [
+            {
+              "description": "",
+              "displayName": "",
+              "locale": "en_US"
+            }
+          ],
+          "productID": "com.speculolabs.sprout.grow.monthly",
+          "referenceName": "Sprout Grow Monthly",
+          "type": "RecurringSubscription",
+          "adHocOffers": [],
+          "codeOffers": [],
+          "groupNumber": 1,
+          "recurringSubscriptionPeriod": "P1M",
+          "subscriptionGroupID": "4662721F",
+          "winbackOffers": []
+        },
+        {
+          "displayPrice": "79.99",
+          "familyShareable": false,
+          "internalID": "125740D0",
+          "localizations": [
+            {
+              "description": "",
+              "displayName": "",
+              "locale": "en_US"
+            }
+          ],
+          "productID": "com.speculolabs.sprout.grow.yearly",
+          "referenceName": "Sprout Grow Yearly",
+          "type": "RecurringSubscription",
+          "adHocOffers": [],
+          "codeOffers": [],
+          "groupNumber": 1,
+          "recurringSubscriptionPeriod": "P1Y",
+          "subscriptionGroupID": "4662721F",
+          "winbackOffers": []
+        }
+      ]
+    }
+  ],
+  "version": {
+    "major": 4,
+    "minor": 0
+  }
+}

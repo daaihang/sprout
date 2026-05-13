@@ -7,6 +7,10 @@ struct AccountManagementSheet: View {
         case about
         case debug
         case backendInteraction
+        case dailyPrompt
+        case appLanguage
+        case appearance
+        case exportData
     }
 
     @Environment(\.dismiss) private var dismiss
@@ -20,8 +24,6 @@ struct AccountManagementSheet: View {
     @AppStorage("account.daily_prompt_time") private var dailyPromptTime = Date().timeIntervalSince1970
     @AppStorage("account.relationship_reminder_interval") private var reminderInterval = 30
 
-    @State private var showTimePicker = false
-    @State private var showReminderPicker = false
     @State private var navigationPath: [Route] = []
 
     var body: some View {
@@ -32,59 +34,40 @@ struct AccountManagementSheet: View {
 
                     nicknameRow
 
-                    LabeledContentWithIcon(
+                    rowContent(
                         icon: loginMethodIcon,
                         tint: loginMethodTint,
-                        title: t("account.row.login_method", "Login Method")
-                    ) {
-                        Text(loginMethodTitle)
-                            .foregroundStyle(.secondary)
-                    }
+                        title: t("account.row.login_method", "Login Method"),
+                        value: loginMethodTitle
+                    )
+                    .foregroundStyle(.primary)
 
                     NavigationLink(value: Route.subscription) {
-                        LabeledContentWithIcon(icon: "leaf.fill", tint: .green, title: t("account.row.subscription", "Subscription")) {
-                            Text(subscriptionDisplayName)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-
-                    Button {
-                        Task { await subscriptionManager.restorePurchases() }
-                    } label: {
-                        HStack(spacing: 12) {
-                            rowIcon("arrow.clockwise.circle.fill", tint: .mint)
-                            Text(t("common.restore_purchases", "Restore Purchases"))
-                        }
-                    }
-                    .disabled(subscriptionManager.isLoading)
-
-                    if let upgradeTitle {
-                        NavigationLink(value: Route.subscription) {
-                            HStack(spacing: 12) {
-                                rowIcon("sparkles", tint: .pink)
-                                Text(upgradeTitle)
-                            }
-                        }
+                        rowContent(
+                            icon: "leaf.fill",
+                            tint: .green,
+                            title: t("account.row.subscription", "Subscription"),
+                            value: subscriptionDisplayName
+                        )
                     }
                 }
 
                 Section(t("account.section.personal", "Personal Settings")) {
-                    Button {
-                        showTimePicker = true
-                    } label: {
-                        SettingsDisclosureRow(
+                    NavigationLink(value: Route.dailyPrompt) {
+                        rowContent(
                             icon: "bell.fill",
                             tint: .red,
                             title: t("account.row.daily_prompt", "Daily Prompt Time"),
                             value: pushTimeString
                         )
                     }
-                    .foregroundStyle(.primary)
 
-                    Button {
-                        showReminderPicker = true
+                    Menu {
+                        Button(t("account.reminder.days", "%d days", 7)) { reminderInterval = 7 }
+                        Button(t("account.reminder.days", "%d days", 14)) { reminderInterval = 14 }
+                        Button(t("account.reminder.days", "%d days", 30)) { reminderInterval = 30 }
                     } label: {
-                        SettingsDisclosureRow(
+                        rowContent(
                             icon: "person.2.fill",
                             tint: .orange,
                             title: t("account.row.relationship_interval", "Relationship Reminder Interval"),
@@ -93,46 +76,43 @@ struct AccountManagementSheet: View {
                     }
                     .foregroundStyle(.primary)
 
-                    Button {
-                        openSystemSettings()
-                    } label: {
-                        SettingsDisclosureRow(
+                    NavigationLink(value: Route.appLanguage) {
+                        rowContent(
                             icon: "globe",
                             tint: .blue,
                             title: t("account.row.app_language", "App Language"),
                             value: localization.currentLanguage.nativeDisplayName
                         )
                     }
-                    .foregroundStyle(.primary)
 
-                    SettingsStaticValueRow(
-                        icon: "moon.fill",
-                        tint: .indigo,
-                        title: t("account.row.appearance", "Appearance"),
-                        value: t("common.follow_system", "Follow System")
-                    )
+                    NavigationLink(value: Route.appearance) {
+                        rowContent(
+                            icon: "moon.fill",
+                            tint: .indigo,
+                            title: t("account.row.appearance", "Appearance"),
+                            value: t("common.follow_system", "Follow System")
+                        )
+                    }
                 }
 
                 Section {
                     if biometricLock.isAvailable {
                         Toggle(isOn: biometricBinding) {
-                            LabeledContentWithIcon(
+                            rowTitleContent(
                                 icon: biometricLock.biometricKind.iconName,
                                 tint: .green,
                                 title: biometricLock.biometricKind.settingsTitle
-                            ) {
-                                EmptyView()
-                            }
+                            )
                         }
                     }
 
-                    Button {} label: {
-                        HStack(spacing: 12) {
-                            rowIcon("square.and.arrow.up", tint: .gray)
-                            Text(t("account.row.export_json", "Export Data (JSON)"))
-                        }
+                    NavigationLink(value: Route.exportData) {
+                        rowTitleContent(
+                            icon: "square.and.arrow.up",
+                            tint: .gray,
+                            title: t("account.row.export_json", "Export Data (JSON)")
+                        )
                     }
-                    .foregroundStyle(.primary)
                 } header: {
                     Text(t("account.section.privacy", "Privacy & Security"))
                 } footer: {
@@ -143,27 +123,46 @@ struct AccountManagementSheet: View {
                 }
 
                 Section(t("account.section.about", "About")) {
-                    LabeledContentWithIcon(icon: "info.circle.fill", tint: .gray, title: t("account.row.version", "Version")) {
-                        Text(appVersion)
-                            .foregroundStyle(.secondary)
-                    }
+                    rowContent(
+                        icon: "info.circle.fill",
+                        tint: .gray,
+                        title: t("account.row.version", "Version"),
+                        value: appVersion
+                    )
+                    .foregroundStyle(.primary)
 
                     NavigationLink(value: Route.rate) {
-                        IconTitleRow(icon: "star.fill", tint: .yellow, title: t("account.row.rate", "Rate Sprout"))
+                        rowTitleContent(
+                            icon: "star.fill",
+                            tint: .yellow,
+                            title: t("account.row.rate", "Rate Sprout")
+                        )
                     }
 
                     NavigationLink(value: Route.about) {
-                        IconTitleRow(icon: "info.bubble.fill", tint: .orange, title: t("account.row.feedback", "About"))
+                        rowTitleContent(
+                            icon: "info.bubble.fill",
+                            tint: .orange,
+                            title: t("account.row.feedback", "About")
+                        )
                     }
                 }
 
                 Section {
                     NavigationLink(value: Route.debug) {
-                        IconTitleRow(icon: "ant.fill", tint: .purple, title: t("common.debug", "Debug"))
+                        rowTitleContent(
+                            icon: "ant.fill",
+                            tint: .purple,
+                            title: t("common.debug", "Debug")
+                        )
                     }
 
                     NavigationLink(value: Route.backendInteraction) {
-                        IconTitleRow(icon: "arrow.triangle.branch", tint: .teal, title: t("common.backend.title", "前后端交互"))
+                        rowTitleContent(
+                            icon: "arrow.triangle.branch",
+                            tint: .teal,
+                            title: t("common.backend.title", "前后端交互")
+                        )
                     }
                 }
 
@@ -190,6 +189,14 @@ struct AccountManagementSheet: View {
                     DebugPage()
                 case .backendInteraction:
                     BackendInteractionDebugView()
+                case .dailyPrompt:
+                    dailyPromptSettingsView
+                case .appLanguage:
+                    appLanguageSettingsView
+                case .appearance:
+                    appearanceSettingsView
+                case .exportData:
+                    exportDataSettingsView
                 }
             }
             .task {
@@ -207,36 +214,26 @@ struct AccountManagementSheet: View {
                     .accessibilityLabel(t("common.close", "Close"))
                 }
             }
-            .sheet(isPresented: $showTimePicker) {
-                NavigationStack {
-                    VStack {
-                        DatePicker(
-                            t("account.sheet.daily_prompt", "Daily Prompt Time"),
-                            selection: promptTimeBinding,
-                            displayedComponents: .hourAndMinute
-                        )
-                        .datePickerStyle(.wheel)
-                        .labelsHidden()
-                    }
-                    .navigationTitle(t("account.sheet.daily_prompt", "Daily Prompt Time"))
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button(t("common.done", "Done")) { showTimePicker = false }
-                        }
-                    }
-                }
-                .presentationDetents([.height(300)])
-            }
-            .confirmationDialog(
-                t("account.dialog.relationship_title", "Relationship Reminder Interval"),
-                isPresented: $showReminderPicker
-            ) {
-                Button(t("account.reminder.days", "%d days", 7)) { reminderInterval = 7 }
-                Button(t("account.reminder.days", "%d days", 14)) { reminderInterval = 14 }
-                Button(t("account.reminder.days", "%d days", 30)) { reminderInterval = 30 }
-                Button(t("common.cancel", "Cancel"), role: .cancel) {}
-            }
+        }
+    }
+
+    @ViewBuilder
+    private func rowContent(icon: String, tint: Color, title: String, value: String) -> some View {
+        HStack(spacing: 12) {
+            rowIcon(icon, tint: tint)
+            Text(title)
+            Spacer()
+            Text(value)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+    }
+
+    @ViewBuilder
+    private func rowTitleContent(icon: String, tint: Color, title: String) -> some View {
+        HStack(spacing: 12) {
+            rowIcon(icon, tint: tint)
+            Text(title)
         }
     }
 
@@ -281,13 +278,80 @@ struct AccountManagementSheet: View {
             .navigationTitle(t("account.row.nickname", "Nickname"))
             .navigationBarTitleDisplayMode(.inline)
         } label: {
-            SettingsDisclosureRow(
+            rowContent(
                 icon: "person.text.rectangle",
                 tint: .blue,
                 title: t("account.row.nickname", "Nickname"),
                 value: displayNickname
             )
         }
+    }
+
+    private var dailyPromptSettingsView: some View {
+        Form {
+            DatePicker(
+                t("account.sheet.daily_prompt", "Daily Prompt Time"),
+                selection: promptTimeBinding,
+                displayedComponents: .hourAndMinute
+            )
+            .datePickerStyle(.wheel)
+        }
+        .navigationTitle(t("account.sheet.daily_prompt", "Daily Prompt Time"))
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var appLanguageSettingsView: some View {
+        List {
+            Section {
+                rowContent(
+                    icon: "globe",
+                    tint: .blue,
+                    title: t("account.row.app_language", "App Language"),
+                    value: localization.currentLanguage.nativeDisplayName
+                )
+            }
+
+            Section {
+                Button {
+                    openSystemSettings()
+                } label: {
+                    Text(t("account.language.open_settings", "Open System Settings"))
+                }
+            } footer: {
+                Text(t("account.language.footer", "Sprout currently follows the language configured in iOS Settings."))
+            }
+        }
+        .navigationTitle(t("account.row.app_language", "App Language"))
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var appearanceSettingsView: some View {
+        List {
+            Section {
+                rowContent(
+                    icon: "moon.fill",
+                    tint: .indigo,
+                    title: t("account.row.appearance", "Appearance"),
+                    value: t("common.follow_system", "Follow System")
+                )
+            } footer: {
+                Text(t("account.appearance.footer", "Appearance currently follows the system setting."))
+            }
+        }
+        .navigationTitle(t("account.row.appearance", "Appearance"))
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var exportDataSettingsView: some View {
+        List {
+            Section {
+                Button(t("account.row.export_json", "Export Data (JSON)")) {}
+            } footer: {
+                Text(t("account.export.footer", "Export is not implemented yet. This entry keeps the row in a native navigation flow."))
+            }
+        }
+        .navigationTitle(t("account.row.export_json", "Export Data (JSON)"))
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     private var promptTimeBinding: Binding<Date> {
@@ -379,22 +443,6 @@ struct AccountManagementSheet: View {
         return t("account.profile.free", "Free")
     }
 
-    private var upgradeTitle: String? {
-        if subscriptionManager.isSubscribed {
-            return nil
-        }
-
-        if let yearly = subscriptionManager.summary(for: .yearly) {
-            return t("subscription.status.yearly_price", "Yearly %@%@", yearly.price, periodLabel(for: .yearly))
-        }
-
-        if let monthly = subscriptionManager.summary(for: .monthly) {
-            return t("subscription.status.monthly_price", "Monthly %@%@", monthly.price, periodLabel(for: .monthly))
-        }
-
-        return t("subscription.status.upgrade", "Upgrade")
-    }
-
     private func planName(for kind: SubscriptionManager.PackageKind) -> String {
         switch kind {
         case .monthly:
@@ -429,105 +477,6 @@ struct AccountManagementSheet: View {
 
     private func t(_ key: String, _ defaultValue: String, _ arguments: CVarArg...) -> String {
         localization.string(key, default: defaultValue, arguments: arguments)
-    }
-}
-
-private struct LabeledContentWithIcon<Content: View>: View {
-    let icon: String
-    let tint: Color
-    let title: String
-    @ViewBuilder let content: () -> Content
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 16))
-                .foregroundStyle(.white)
-                .frame(width: 28, height: 28)
-                .background(tint)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-
-            Text(title)
-
-            Spacer()
-
-            content()
-        }
-    }
-}
-
-private struct IconTitleRow: View {
-    let icon: String
-    let tint: Color
-    let title: String
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 16))
-                .foregroundStyle(.white)
-                .frame(width: 28, height: 28)
-                .background(tint)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-
-            Text(title)
-        }
-    }
-}
-
-private struct SettingsDisclosureRow: View {
-    let icon: String
-    let tint: Color
-    let title: String
-    let value: String
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 16))
-                .foregroundStyle(.white)
-                .frame(width: 28, height: 28)
-                .background(tint)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-
-            Text(title)
-
-            Spacer()
-
-            Text(value)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-
-            Image(systemName: "chevron.right")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.tertiary)
-        }
-    }
-}
-
-private struct SettingsStaticValueRow: View {
-    let icon: String
-    let tint: Color
-    let title: String
-    let value: String
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 16))
-                .foregroundStyle(.white)
-                .frame(width: 28, height: 28)
-                .background(tint)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-
-            Text(title)
-
-            Spacer()
-
-            Text(value)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-        }
     }
 }
 

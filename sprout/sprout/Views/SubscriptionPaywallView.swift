@@ -6,6 +6,7 @@ struct SubscriptionPaywallView: View {
     @Environment(SubscriptionManager.self) private var manager
 
     @State private var selectedKind: SubscriptionManager.PackageKind = .yearly
+    @State private var hasUserSelectedKind = false
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -107,6 +108,7 @@ struct SubscriptionPaywallView: View {
         let isCurrent = manager.currentPackageKind == summary.kind && manager.isSubscribed
 
         return Button {
+            hasUserSelectedKind = true
             selectedKind = summary.kind
         } label: {
             VStack(alignment: .leading, spacing: 12) {
@@ -277,9 +279,19 @@ struct SubscriptionPaywallView: View {
             debugRow(t("paywall.debug.fallbacks", "Fallbacks"), value: fallbackDisplayValue)
             debugRow(t("paywall.debug.monthly_id", "Monthly ID"), value: MoryConfig.ProductID.monthlyGrow)
             debugRow(t("paywall.debug.yearly_id", "Yearly ID"), value: MoryConfig.ProductID.yearlyGrow)
+            debugRow(t("paywall.debug.loaded_source", "Loaded Source"), value: manager.loadSource.rawValue)
+            debugRow(t("paywall.debug.target_offering", "Target Offering"), value: manager.lastTargetOfferingID ?? t("common.none", "None"))
+            debugRow(t("paywall.debug.current_offering", "Current Offering"), value: manager.lastCurrentOfferingID ?? t("common.none", "None"))
+            debugRow(t("paywall.debug.available_offerings", "Available Offerings"), value: manager.lastAvailableOfferingIDs.isEmpty ? t("common.none", "None") : manager.lastAvailableOfferingIDs.joined(separator: ", "))
             debugRow(t("paywall.debug.loaded_product_ids", "Loaded Product IDs"), value: manager.loadedProductIDs.isEmpty ? t("common.none", "None") : manager.loadedProductIDs.joined(separator: ", "))
             debugRow(t("paywall.debug.selected_kind", "Selected Kind"), value: selectedKind.rawValue)
             debugRow(t("paywall.debug.loaded_packages", "Loaded Packages"), value: "\(manager.packageSummaries.count)")
+            debugRow(t("paywall.debug.revenuecat_error", "RevenueCat Error"), value: manager.lastRevenueCatError ?? t("common.none", "None"))
+            debugRow(t("paywall.debug.storekit_error", "StoreKit Error"), value: manager.lastStoreKitError ?? t("common.none", "None"))
+            debugRow("Diagnostics Status", value: manager.diagnostics?.status ?? t("common.none", "None"))
+            debugRow("Diagnostics Blocker", value: manager.diagnostics?.blockingError ?? t("common.none", "None"))
+            debugRow("Diagnostics Products", value: manager.diagnostics?.products.joined(separator: " | ") ?? t("common.none", "None"))
+            debugRow("Diagnostics Offerings", value: manager.diagnostics?.offerings.joined(separator: " | ") ?? t("common.none", "None"))
             debugRow(t("common.error", "Error"), value: manager.errorMessage ?? t("common.none", "None"))
         }
         .padding(14)
@@ -340,7 +352,14 @@ struct SubscriptionPaywallView: View {
     private func syncSelectionIfNeeded() {
         if let current = manager.currentPackageKind {
             selectedKind = current
-        } else if manager.summary(for: .yearly) != nil {
+            return
+        }
+
+        if hasUserSelectedKind, manager.summary(for: selectedKind) != nil {
+            return
+        }
+
+        if manager.summary(for: .yearly) != nil {
             selectedKind = .yearly
         } else if manager.summary(for: .monthly) != nil {
             selectedKind = .monthly

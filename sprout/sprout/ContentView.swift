@@ -15,7 +15,6 @@ struct ContentView: View {
     @State private var composerFocusRequestToken = 0
     @State private var selectedDate: Date    = Calendar.current.startOfDay(for: Date())
     @State private var isTopDrawerPresented  = false
-    @State private var topDrawerMeasuredHeight: CGFloat = 0
     @State private var topSafeAreaInset: CGFloat = 0
     @State private var navigationBarMaxY: CGFloat = 0
     @AppStorage("homeTopDrawerTag") private var selectedTopDrawerTagRawValue = HomeTopDrawerTag.cards.rawValue
@@ -52,7 +51,8 @@ struct ContentView: View {
                 HomeModeContentView(
                     selectedTag: selectedTopDrawerTagBinding,
                     selectedDate: $selectedDate,
-                    cardsTopInset: drawerTopInset
+                    cardsTopInset: drawerTopInset,
+                    onPrimaryContentInteraction: closeTopDrawerIfNeeded
                 )
 
                 // Voice toast overlay
@@ -99,11 +99,15 @@ struct ContentView: View {
                 )
                 .zIndex(10)
             }
-            .overlay {
-                topDrawerDismissLayer
-            }
             .overlay(alignment: .top) {
-                topDrawerContainer
+                if isTopDrawerPresented {
+                    HomeTopTabsBar(
+                        selectedTag: selectedTopDrawerTagBinding,
+                        isPresented: isTopDrawerPresented
+                    )
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .allowsHitTesting(true)
+                }
             }
             .navigationTitle(" ")
             .navigationBarTitleDisplayMode(.inline)
@@ -111,8 +115,9 @@ struct ContentView: View {
             .toolbarBackground(.hidden, for: .tabBar)
             .toolbar {
                 HomeToolbarContent(
-                    dateLabel: formattedDateLabel(selectedDate),
-                    onDateTap: {
+                    dateLabel: navigationTitleText,
+                    leadingSymbolName: navigationLeadingSymbolName,
+                    onMenuTap: {
                         HapticFeedback.light()
                         toggleTopDrawer()
                     },
@@ -124,6 +129,7 @@ struct ContentView: View {
             }
         }
         .animation(.spring(duration: 0.3), value: showVoiceToast)
+        .animation(.smooth(duration: 0.32), value: isTopDrawerPresented)
         // MARK: Sheets
         .sheet(isPresented: $isShowingAccountSheet) { AccountManagementSheet() }
         .sheet(isPresented: $showAddCardSheet) {
@@ -227,44 +233,27 @@ struct ContentView: View {
         max(navigationBarMaxY, topSafeAreaInset)
     }
 
-    private var drawerCornerRadius: CGFloat {
-        if topSafeAreaInset > 24 {
-            return max(topSafeAreaInset - 4, 34)
+    private var navigationTitleText: String {
+        if selectedTopDrawerTag == .cards {
+            return formattedDateLabel(selectedDate)
         }
-        return 34
+        return localization.string(selectedTopDrawerTag.localizationKey, default: selectedTopDrawerTag.defaultTitle)
     }
 
-    private var topDrawerContainer: some View {
-        HomeTopDrawerView(
-            selectedDate: $selectedDate,
-            selectedTag: selectedTopDrawerTagBinding,
-            isPresented: isTopDrawerPresented,
-            topContentInset: drawerTopInset,
-            outerCornerRadius: drawerCornerRadius,
-            onHeightChange: { height in
-                topDrawerMeasuredHeight = height
-            }
-        )
-        .frame(maxWidth: .infinity)
-        .fixedSize(horizontal: false, vertical: true)
-        .offset(y: isTopDrawerPresented ? 0 : -topDrawerMeasuredHeight)
-        .ignoresSafeArea(edges: .top)
-        .allowsHitTesting(isTopDrawerPresented)
-        .accessibilityHidden(!isTopDrawerPresented)
-        .animation(.smooth(duration: 0.28), value: topDrawerMeasuredHeight)
-    }
-
-    @ViewBuilder
-    private var topDrawerDismissLayer: some View {
-        if isTopDrawerPresented {
-            Rectangle()
-                .fill(Color.black.opacity(0.001))
-                .ignoresSafeArea()
-                .contentShape(Rectangle())
-                .onTapGesture(perform: closeTopDrawer)
-                .transition(.opacity)
-                .accessibilityLabel("Dismiss top drawer")
-                .accessibilityAddTraits(.isButton)
+    private var navigationLeadingSymbolName: String {
+        switch selectedTopDrawerTag {
+        case .cards:
+            return "square.grid.2x2"
+        case .rawRecords:
+            return "list.bullet.rectangle"
+        case .people:
+            return "person.2"
+        case .decisions:
+            return "checkmark.circle"
+        case .map:
+            return "map"
+        case .photos:
+            return "photo.stack"
         }
     }
 
@@ -282,6 +271,11 @@ struct ContentView: View {
         withAnimation(.smooth(duration: 0.42)) {
             isTopDrawerPresented = false
         }
+    }
+
+    private func closeTopDrawerIfNeeded() {
+        guard isTopDrawerPresented else { return }
+        closeTopDrawer()
     }
 
     private func formattedDateLabel(_ date: Date) -> String {

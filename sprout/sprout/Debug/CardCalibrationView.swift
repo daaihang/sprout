@@ -13,6 +13,7 @@ struct CardCalibrationView: View {
     @State private var previewTransitionStyle: AdaptiveCardTransitionStyle = .standard
     @State private var previewDiagnostics: AdaptiveCardDiagnostics = .empty
     @State private var reviewNotes = ""
+    @State private var copyStatusMessage: String?
 
     var body: some View {
         List {
@@ -27,6 +28,15 @@ struct CardCalibrationView: View {
         .listStyle(.insetGrouped)
         .navigationTitle("Card Calibration")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    copyCalibrationSnapshot()
+                } label: {
+                    Label("Copy Snapshot", systemImage: "doc.on.doc")
+                }
+            }
+        }
         .onChange(of: kind) { _, newKind in
             let limits = sizeLimits(for: newKind.gridCardType)
             previewSpan = limits.clamped(span: previewSpan)
@@ -159,6 +169,18 @@ struct CardCalibrationView: View {
             TextEditor(text: $reviewNotes)
                 .frame(minHeight: 120)
 
+            Button {
+                copyCalibrationSnapshot()
+            } label: {
+                Label("Copy Snapshot", systemImage: "doc.on.doc")
+            }
+
+            if let copyStatusMessage {
+                Text(copyStatusMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
             Text("记录这个尺寸最终该保留什么，例如：只留标题 2 行，隐藏副标题和列表。")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
@@ -211,6 +233,190 @@ struct CardCalibrationView: View {
         AnyView(cardView.adaptiveCardTheme(previewTheme))
     }
 
+    private var calibrationSnapshotText: String {
+        """
+        Card Calibration Snapshot
+        Card Type: \(kind.title)
+        Card Key: \(kind.gridCardType)
+        Content Level: \(contentLevel.label)
+        Size: \(previewSpan.widthColumns)x\(previewSpan.heightUnits)
+        Tilt: \(String(format: "%.1f°", previewRotationDegrees))
+        Theme: \(previewThemePreset.label)
+        Metric Font: \(previewMetricFont.label)
+        Density: \(previewDensityChoice.label)
+        Motion: \(previewTransitionStyle.label)
+
+        Diagnostics
+        - Layout Mode: \(previewDiagnostics.layoutMode)
+        - Resolved Density: \(previewDiagnostics.density)
+        - Theme: \(previewDiagnostics.theme)
+        - Metric Font: \(previewDiagnostics.metricFont)
+        - Title Overflow: \(boolText(previewDiagnostics.titleOverflow))
+        - Subtitle Overflow: \(boolText(previewDiagnostics.subtitleOverflow))
+        - Body Overflow: \(boolText(previewDiagnostics.bodyOverflow))
+        - Visible List: \(previewDiagnostics.visibleListItems)
+        - Hero Crop: \(previewDiagnostics.heroCrop)
+        - Fallback: \(previewDiagnostics.fallbackReason)
+
+        Card Metadata
+        \(previewCardMetadataDescription)
+
+        Review Notes
+        \(reviewNotes.trimmingCharacters(in: .whitespacesAndNewlines).ifEmpty("-"))
+        """
+    }
+
+    private var previewCardMetadataDescription: String {
+        switch kind {
+        case .quote:
+            let data = CalibrationFixtures.quote(level: contentLevel)
+            return """
+            - quote: \(quotedOrDash(data.quote))
+            - author: \(quotedOrDash(data.author))
+            - source: \(quotedOrDash(data.source))
+            """
+        case .weather:
+            let data = CalibrationFixtures.weather(level: contentLevel)
+            return """
+            - location: \(quotedOrDash(data.location))
+            - temperature: \(data.temperature)
+            - feelsLike: \(data.feelsLike)
+            - condition: \(String(describing: data.condition))
+            - humidity: \(data.humidity)
+            - high: \(data.high)
+            - low: \(data.low)
+            - source: \(String(describing: data.source))
+            - hasLiveData: \(boolText(data.liveData != nil))
+            """
+        case .link:
+            let data = CalibrationFixtures.link(level: contentLevel)
+            let titles = data.links.map { $0.title.isEmpty ? $0.domain : $0.title }.joined(separator: " | ").ifEmpty("-")
+            return """
+            - linkCount: \(data.links.count)
+            - titles: \(titles)
+            """
+        case .activity:
+            let data = CalibrationFixtures.activity(level: contentLevel)
+            return """
+            - type: \(String(describing: data.type))
+            - value: \(data.value)
+            - goal: \(data.goal)
+            - durationMinutes: \(data.durationMinutes)
+            """
+        case .music:
+            let data = CalibrationFixtures.music(level: contentLevel)
+            return """
+            - trackName: \(quotedOrDash(data.trackName))
+            - artistName: \(quotedOrDash(data.artistName))
+            - albumName: \(quotedOrDash(data.albumName))
+            - isPlaying: \(boolText(data.isPlaying))
+            - hasAppleMusicURL: \(boolText(data.appleMusicURL != nil))
+            """
+        case .emotion:
+            let data = CalibrationFixtures.emotion(level: contentLevel)
+            return """
+            - mood: \(String(describing: data.mood))
+            - intensity: \(data.intensity)
+            - note: \(quotedOrDash(data.note))
+            """
+        case .todo:
+            let data = CalibrationFixtures.todo(level: contentLevel)
+            let items = data.items.map(\.text).joined(separator: " | ").ifEmpty("-")
+            return """
+            - title: \(quotedOrDash(data.title))
+            - itemCount: \(data.items.count)
+            - items: \(items)
+            """
+        case .photo:
+            let data = CalibrationFixtures.photo(level: contentLevel)
+            return """
+            - imageCount: \(data.imagesData.count)
+            - locationName: \(quotedOrDash(data.locationName))
+            - descriptionText: \(quotedOrDash(data.descriptionText))
+            - aiDescription: \(quotedOrDash(data.aiDescription))
+            - trailingInfoText: \(quotedOrDash(data.trailingInfoText))
+            """
+        case .map:
+            let data = CalibrationFixtures.map(level: contentLevel)
+            return """
+            - locationName: \(quotedOrDash(data.locationName))
+            - descriptionText: \(quotedOrDash(data.descriptionText))
+            - coordinate: \(coordinateDescription(data.coordinate))
+            """
+        case .audio:
+            let data = CalibrationFixtures.audio(level: contentLevel)
+            return """
+            - title: \(quotedOrDash(data.title))
+            - durationText: \(quotedOrDash(data.durationText))
+            - transcriptPreview: \(quotedOrDash(data.transcriptPreview))
+            - hasCapturedAt: \(boolText(data.capturedAt != nil))
+            """
+        case .people:
+            let data = CalibrationFixtures.people(level: contentLevel)
+            let names = data.people.map(\.name).joined(separator: " | ").ifEmpty("-")
+            return """
+            - peopleCount: \(data.people.count)
+            - names: \(names)
+            """
+        case .todayInHistory:
+            let data = CalibrationFixtures.todayInHistory(level: contentLevel)
+            let summaries = data.entries.map { $0.record.body }.joined(separator: " | ").ifEmpty("-")
+            return """
+            - monthDayLabel: \(quotedOrDash(data.monthDayLabel))
+            - entryCount: \(data.entries.count)
+            - entryBodies: \(summaries)
+            """
+        case .book:
+            let data = CalibrationFixtures.book(level: contentLevel)
+            return """
+            - title: \(quotedOrDash(data.title))
+            - author: \(quotedOrDash(data.author))
+            - progress: \(formattedProgress(data.progress))
+            - genre: \(quotedOrDash(data.genre))
+            - rating: \(data.rating.map(String.init) ?? "-")
+            """
+        case .film:
+            let data = CalibrationFixtures.film(level: contentLevel)
+            return """
+            - title: \(quotedOrDash(data.title))
+            - year: \(quotedOrDash(data.year))
+            - genre: \(quotedOrDash(data.genre))
+            - rating: \(data.rating.map { String(format: "%.1f", $0) } ?? "-")
+            - director: \(quotedOrDash(data.director))
+            - isWatched: \(boolText(data.isWatched))
+            """
+        }
+    }
+
+    private func copyCalibrationSnapshot() {
+        UIPasteboard.general.string = calibrationSnapshotText
+        copyStatusMessage = "Snapshot copied. Paste it here with your screenshot if needed."
+    }
+
+    private func boolText(_ value: Bool) -> String {
+        value ? "Yes" : "No"
+    }
+
+    private func quotedOrDash(_ value: String) -> String {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "-" : trimmed
+    }
+
+    private func quotedOrDash(_ value: String?) -> String {
+        guard let value else { return "-" }
+        return quotedOrDash(value)
+    }
+
+    private func coordinateDescription(_ value: CLLocationCoordinate2D?) -> String {
+        guard let value else { return "-" }
+        return String(format: "%.4f, %.4f", value.latitude, value.longitude)
+    }
+
+    private func formattedProgress(_ value: Double?) -> String {
+        guard let value else { return "-" }
+        return String(format: "%.2f", value)
+    }
+
     @ViewBuilder
     private var cardView: some View {
         switch kind {
@@ -243,6 +449,12 @@ struct CardCalibrationView: View {
         case .film:
             FilmCard(data: CalibrationFixtures.film(level: contentLevel))
         }
+    }
+}
+
+private extension String {
+    func ifEmpty(_ fallback: String) -> String {
+        isEmpty ? fallback : self
     }
 }
 

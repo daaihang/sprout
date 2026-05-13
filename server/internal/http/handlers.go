@@ -19,15 +19,26 @@ type authAppleRequest struct {
 }
 
 type authResponse struct {
-	AccessToken string   `json:"access_token"`
-	ExpiresAt   string   `json:"expires_at"`
-	User        authUser `json:"user"`
-	Mode        string   `json:"mode"`
+	AccessToken             string   `json:"access_token"`
+	ExpiresAt               string   `json:"expires_at"`
+	User                    authUser `json:"user"`
+	Mode                    string   `json:"mode"`
+	IsNewUser               bool     `json:"is_new_user"`
+	HasCompletedOnboarding  bool     `json:"has_completed_onboarding"`
 }
 
 type authUser struct {
 	ID   string `json:"id"`
 	Tier string `json:"tier"`
+}
+
+type onboardingCompleteResponse struct {
+	HasCompletedOnboarding bool `json:"has_completed_onboarding"`
+}
+
+type analyzePreviewResponseEnvelope struct {
+	ai.AnalyzeResponse
+	Mode string `json:"mode"`
 }
 
 type pushRegisterRequest struct {
@@ -133,6 +144,11 @@ func (s *Server) handleAuthApple(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to resolve subscription")
 		return
 	}
+	profile, isNewUser, err := s.userProfiles.GetOrCreateUserProfile(r.Context(), userID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to resolve user profile")
+		return
+	}
 
 	token, claims, err := s.authenticator.IssueToken(userID, status.Tier)
 	if err != nil {
@@ -147,7 +163,9 @@ func (s *Server) handleAuthApple(w http.ResponseWriter, r *http.Request) {
 			ID:   userID,
 			Tier: status.Tier,
 		},
-		Mode: mode,
+		Mode:                   mode,
+		IsNewUser:              isNewUser,
+		HasCompletedOnboarding: profile.HasCompletedOnboarding,
 	})
 }
 
@@ -163,6 +181,11 @@ func (s *Server) handleAuthRefresh(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to refresh token")
 		return
 	}
+	profile, _, err := s.userProfiles.GetOrCreateUserProfile(r.Context(), refreshed.UserID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to resolve user profile")
+		return
+	}
 
 	writeJSON(w, http.StatusOK, authResponse{
 		AccessToken: token,
@@ -171,7 +194,39 @@ func (s *Server) handleAuthRefresh(w http.ResponseWriter, r *http.Request) {
 			ID:   refreshed.UserID,
 			Tier: refreshed.Tier,
 		},
-		Mode: "jwt_refresh",
+		Mode:                   "jwt_refresh",
+		IsNewUser:              false,
+		HasCompletedOnboarding: profile.HasCompletedOnboarding,
+	})
+}
+
+func (s *Server) handleAnalyzePreview(w http.ResponseWriter, r *http.Request) {
+	var req ai.AnalyzeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	if err := req.Validate(); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid analyze request")
+		return
+	}
+
+	result, err := s.aiProvider.Analyze(r.Context(), req, ai.UserContext{
+		UserID: "preview",
+		Tier:   "preview",
+	})
+	if err != nil {
+		if errors.Is(err, ai.ErrInvalidAnalyzeRequest) {
+			writeError(w, http.StatusBadRequest, "invalid analyze request")
+			return
+		}
+		writeError(w, http.StatusBadGateway, "analysis request failed")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, analyzePreviewResponseEnvelope{
+		AnalyzeResponse: result.Response,
+		Mode:            "preview",
 	})
 }
 
@@ -228,6 +283,24 @@ func (s *Server) handleSubscriptionVerify(w http.ResponseWriter, r *http.Request
 		return
 	}
 	writeJSON(w, http.StatusOK, status)
+}
+
+func (s *Server) handleOnboardingComplete(w http.ResponseWriter, r *http.Request) {
+	claims, ok := auth.ClaimsFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "missing auth claims")
+		return
+	}
+
+	profile, err := s.userProfiles.MarkOnboardingComplete(r.Context(), claims.UserID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to update onboarding state")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, onboardingCompleteResponse{
+		HasCompletedOnboarding: profile.HasCompletedOnboarding,
+	})
 }
 
 func (s *Server) handlePushRegister(w http.ResponseWriter, r *http.Request) {

@@ -8,6 +8,19 @@ import RevenueCat
 @Observable
 @MainActor
 final class SubscriptionManager {
+    enum LoadSource: String {
+        case revenueCat = "RevenueCat"
+        case storeKitFallback = "StoreKit fallback"
+        case none = "None"
+    }
+
+    struct DiagnosticsSnapshot {
+        let status: String
+        let blockingError: String?
+        let products: [String]
+        let offerings: [String]
+    }
+
     enum PackageKind: String {
         case monthly
         case yearly
@@ -41,10 +54,20 @@ final class SubscriptionManager {
     var currentPackageKind: PackageKind? = nil
     var expirationDate: Date? = nil
     var loadedProductIDs: [String] = []
+    var loadSource: LoadSource = .none
+    var lastRevenueCatError: String? = nil
+    var lastStoreKitError: String? = nil
+    var lastTargetOfferingID: String? = nil
+    var lastCurrentOfferingID: String? = nil
+    var lastAvailableOfferingIDs: [String] = []
+    var diagnostics: DiagnosticsSnapshot? = nil
+    var isUsingStoreKitFallback: Bool {
+        !packageSummaries.isEmpty && availablePackages.isEmpty
+    }
     private var storeKitProductsByID: [String: Product] = [:]
     private let productConfigurationHint = AppLocalization.shared.string(
         "subscription.error.products_configuration_hint",
-        default: "No subscription products could be loaded. On a real device, confirm these product IDs exist in App Store Connect, are approved for the current environment, and are also added to the RevenueCat offering.",
+        default: "No subscription products could be loaded. If you are running from Xcode, confirm the active Run scheme is using sprout.storekit. On a real device or TestFlight build, confirm these product IDs exist in App Store Connect for com.speculolabs.sprout, are available in the current environment, and are also attached to the RevenueCat offering sprout_grow.",
         table: "Subscription"
     )
 
@@ -73,6 +96,7 @@ final class SubscriptionManager {
         Task {
             await refreshCustomerInfo()
             await loadOfferings()
+            await refreshDiagnostics()
         }
     }
 
@@ -80,13 +104,21 @@ final class SubscriptionManager {
         isLoading = true
         defer { isLoading = false }
         errorMessage = nil
+        lastRevenueCatError = nil
+        lastStoreKitError = nil
+        lastTargetOfferingID = nil
+        lastCurrentOfferingID = nil
+        lastAvailableOfferingIDs = []
 
         do {
             let offerings = try await Purchases.shared.offerings()
+            lastCurrentOfferingID = offerings.current?.identifier
+            lastAvailableOfferingIDs = offerings.all.keys.sorted()
             let targetOffering =
                 offerings.offering(identifier: MoryConfig.offeringID)
                 ?? offerings.current
                 ?? offerings.all.values.sorted(by: { $0.identifier < $1.identifier }).first
+            lastTargetOfferingID = targetOffering?.identifier
             let packages = targetOffering?.availablePackages ?? []
             if !packages.isEmpty {
                 applyRevenueCatPackages(packages)
@@ -125,6 +157,7 @@ final class SubscriptionManager {
                 )
             }
         } catch {
+            lastRevenueCatError = error.localizedDescription
             if await loadStoreKitProducts() {
                 if let customerInfo {
                     await reconcileSubscriptionState(with: customerInfo)
@@ -136,6 +169,32 @@ final class SubscriptionManager {
                 errorMessage = productsUnavailableMessage(error.localizedDescription)
             }
         }
+    }
+
+    func refreshDiagnostics() async {
+        #if DEBUG
+        let report = await PurchasesDiagnostics.default.healthReport()
+
+        let status: String
+        let blockingError: String?
+        switch report.status {
+        case let .healthy(warnings):
+            status = "healthy"
+            blockingError = warnings.isEmpty ? nil : warnings.map(sdkHealthErrorDescription).joined(separator: " | ")
+        case let .unhealthy(error):
+            status = "unhealthy"
+            blockingError = sdkHealthErrorDescription(error)
+        }
+
+        diagnostics = DiagnosticsSnapshot(
+            status: status,
+            blockingError: blockingError,
+            products: report.products.map { "\($0.identifier): \($0.status)" },
+            offerings: report.offerings.map { "\($0.identifier): \($0.status)" }
+        )
+        #else
+        diagnostics = nil
+        #endif
     }
 
     func refreshCustomerInfo() async {
@@ -303,6 +362,7 @@ final class SubscriptionManager {
         packageSummaries = packages.compactMap(makeSummary(for:)).sorted { lhs, rhs in
             lhs.kind.sortOrder < rhs.kind.sortOrder
         }
+        loadSource = .revenueCat
         errorMessage = nil
     }
 
@@ -310,11 +370,33 @@ final class SubscriptionManager {
         availablePackages = []
         loadedProductIDs = []
         packageSummaries = []
+        loadSource = .none
     }
 
     private func productsUnavailableMessage(_ message: String) -> String {
         message + "\n\n" + productConfigurationHint
     }
+
+    #if DEBUG
+    private func sdkHealthErrorDescription(_ error: PurchasesDiagnostics.SDKHealthError) -> String {
+        switch error {
+        case .invalidAPIKey:
+            return "invalidAPIKey"
+        case .noOfferings:
+            return "noOfferings"
+        case .offeringConfiguration:
+            return "offeringConfiguration"
+        case .invalidBundleId:
+            return "invalidBundleId"
+        case .invalidProducts:
+            return "invalidProducts"
+        case .notAuthorizedToMakePayments:
+            return "notAuthorizedToMakePayments"
+        case let .unknown(underlying):
+            return "unknown: \(underlying.localizedDescription)"
+        }
+    }
+    #endif
 
     @discardableResult
     private func loadStoreKitProducts() async -> Bool {
@@ -336,6 +418,7 @@ final class SubscriptionManager {
                 lhs.kind.sortOrder < rhs.kind.sortOrder
             }
             availablePackages = []
+            loadSource = packageSummaries.isEmpty ? .none : .storeKitFallback
             if packageSummaries.isEmpty {
                 errorMessage = productsUnavailableMessage(
                     AppLocalization.shared.string(
@@ -349,6 +432,7 @@ final class SubscriptionManager {
             }
             return !packageSummaries.isEmpty
         } catch {
+            lastStoreKitError = error.localizedDescription
             clearPackages()
             return false
         }

@@ -6,6 +6,7 @@ struct HomeModeContentView: View {
     @Binding var selectedTag: HomeTopDrawerTag
     @Binding var selectedDate: Date
     let cardsTopInset: CGFloat
+    var onPrimaryContentInteraction: () -> Void = {}
 
     var body: some View {
         Group {
@@ -24,15 +25,23 @@ struct HomeModeContentView: View {
                 placeholderView(for: .photos)
             }
         }
-        .background {
-            HomeBackgroundView()
-                .ignoresSafeArea()
-        }
         .background(Color.clear)
         .overlay {
             ClearAncestorBackgroundView(clearDescendantScrollViews: true)
                 .allowsHitTesting(false)
         }
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 4)
+                .onChanged { _ in
+                    onPrimaryContentInteraction()
+                }
+        )
+        .simultaneousGesture(
+            TapGesture()
+                .onEnded {
+                    onPrimaryContentInteraction()
+                }
+        )
     }
 
     private func localizedTitle(for tag: HomeTopDrawerTag) -> String {
@@ -81,10 +90,7 @@ private struct HomeCardsPagerView: View {
     let topContentInset: CGFloat
 
     var body: some View {
-        GeometryReader { geometry in
-            NativeDayPagingView(selectedDate: $selectedDate, topContentInset: topContentInset)
-                .frame(width: geometry.size.width, height: geometry.size.height)
-        }
+        HomeCardsSwiftUIPager(selectedDate: $selectedDate, topContentInset: topContentInset)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.clear)
         .ignoresSafeArea(.container, edges: [.top, .bottom])
@@ -96,14 +102,9 @@ private struct HomeCardsPageView: View {
     let topContentInset: CGFloat
 
     var body: some View {
-        ZStack {
-            HomeBackgroundView()
-                .ignoresSafeArea()
-
-            DailyView(date: date, topContentInset: topContentInset)
-                .id(date)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
+        DailyView(date: date, topContentInset: topContentInset)
+            .id(date)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ignoresSafeArea(.container, edges: [.top, .bottom])
     }
 }
@@ -137,8 +138,11 @@ private struct NativeDayPagingView: UIViewControllerRepresentable {
 
     func updateUIViewController(_ uiViewController: UIPageViewController, context: Context) {
         context.coordinator.topContentInset = topContentInset
+        context.coordinator.refreshCachedControllers()
+        context.coordinator.refreshVisibleControllers(in: uiViewController)
         let targetDate = context.coordinator.clamped(date: selectedDate)
         guard !context.coordinator.calendar.isDate(targetDate, inSameDayAs: context.coordinator.currentDate) else {
+            configureTransparentBackgrounds(for: uiViewController)
             return
         }
 
@@ -207,6 +211,22 @@ private struct NativeDayPagingView: UIViewControllerRepresentable {
             controller.view.backgroundColor = .clear
             cachedControllers[normalizedDate] = controller
             return controller
+        }
+
+        func refreshCachedControllers() {
+            for (date, controller) in cachedControllers {
+                controller.rootView = HomeCardsPageView(date: date, topContentInset: topContentInset)
+            }
+        }
+
+        func refreshVisibleControllers(in pageViewController: UIPageViewController) {
+            pageViewController.viewControllers?.forEach { hosted in
+                guard let controller = hosted as? DayPageHostingController else { return }
+                controller.rootView = HomeCardsPageView(
+                    date: controller.representedDate,
+                    topContentInset: topContentInset
+                )
+            }
         }
 
         func pageViewController(
@@ -379,9 +399,6 @@ private struct HomeSectionPlaceholderView: View {
             .padding(.bottom, 120)
         }
         .scrollContentBackground(.hidden)
-        .background {
-            HomeBackgroundView()
-                .ignoresSafeArea()
-        }
+        .background(Color.clear)
     }
 }

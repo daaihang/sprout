@@ -36,10 +36,7 @@ struct RecordTimelineView: View {
     }
 
     var body: some View {
-        ZStack {
-            HomeBackgroundView()
-                .ignoresSafeArea()
-
+        Group {
             if daySections.isEmpty {
                 emptyState
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -53,24 +50,16 @@ struct RecordTimelineView: View {
                                 ForEach(Array(section.records.enumerated()), id: \.element.id) { index, record in
                                     RecordTimelineRow(record: record)
                                         .id(record.id)
-                                        .listRowBackground(Color.clear)
                                         .task {
                                             await loadMoreIfNeeded(currentRecord: record, sectionIndex: index)
                                         }
                                 }
                             }
-                            .listRowBackground(Color.clear)
                             .id(sectionAnchorID(for: section))
                         }
                     }
-                    .listStyle(.plain)
-                    .scrollContentBackground(.hidden)
-                    .background(Color.clear)
-                    .containerBackground(.clear, for: .navigation)
+                    .listStyle(.insetGrouped)
                     .contentMargins(.bottom, 104, for: .scrollContent)
-                    .task {
-                        await reloadRecords()
-                    }
                     .task(id: sectionIDs) {
                         guard !hasPerformedInitialScroll, !daySections.isEmpty else { return }
                         hasPerformedInitialScroll = true
@@ -85,9 +74,9 @@ struct RecordTimelineView: View {
                 }
             }
         }
-        .overlay {
-            ClearAncestorBackgroundView(clearDescendantScrollViews: true)
-                .allowsHitTesting(false)
+        .background(Color.clear)
+        .task {
+            await reloadRecords()
         }
         .onReceive(NotificationCenter.default.publisher(for: ModelContext.didSave)) { _ in
             Task {
@@ -219,12 +208,12 @@ struct RecordTimelineView: View {
     }
 }
 
-private struct RecordDaySection: Identifiable {
+struct RecordDaySection: Identifiable {
     let id: Date
     let records: [Record]
 }
 
-private struct RecordTimelineRow: View {
+struct RecordTimelineRow: View {
     @Environment(AppLocalization.self) private var localization
 
     let record: Record

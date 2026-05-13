@@ -2,17 +2,28 @@ import SwiftUI
 
 struct HomeToolbarContent: ToolbarContent {
     let dateLabel: String
-    let onDateTap: () -> Void
+    let leadingSymbolName: String
+    let onMenuTap: () -> Void
     let onProfileTap: () -> Void
 
     var body: some ToolbarContent {
-        ToolbarItem(placement: .principal) {
-            Button(action: onDateTap) {
-                titleLabel
-                    .padding(.horizontal, 14)
-                    .frame(height: 38)
+        ToolbarItem(placement: .topBarLeading) {
+            Button(action: onMenuTap) {
+                Image(systemName: leadingSymbolName)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .frame(width: 34, height: 34)
+                    .contentTransition(.symbolEffect(.replace))
             }
-            .buttonStyle(.plain)
+            .animation(.smooth(duration: 0.22), value: leadingSymbolName)
+        }
+
+        ToolbarItem(placement: .principal) {
+            Text(dateLabel)
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(.primary)
+                .contentTransition(.numericText())
+                .lineLimit(1)
         }
 
         ToolbarItem(placement: .topBarTrailing) {
@@ -22,20 +33,6 @@ struct HomeToolbarContent: ToolbarContent {
                     .foregroundStyle(.primary)
                     .frame(width: 34, height: 34)
             }
-        }
-    }
-
-    private var titleLabel: some View {
-        HStack(spacing: 6) {
-            Text(dateLabel)
-                .font(.headline.weight(.semibold))
-                .foregroundStyle(.primary)
-                .contentTransition(.numericText())
-                .lineLimit(1)
-
-            Image(systemName: "chevron.down")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.secondary)
         }
     }
 }

@@ -49,9 +49,29 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 		AIProvider:    ai.NewMockProvider(),
 		Subscription:  subscription.NewService("mock", "seed"),
 		PushTokens:    store,
+		UserProfiles:  store,
 	})
 
 	token := issueDevToken(t, server, `{"identity_token":"tester-1"}`)
+
+	t.Run("auth response includes onboarding state", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/auth/refresh", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		rec := httptest.NewRecorder()
+
+		server.Handler().ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("refresh status = %d, body = %s", rec.Code, rec.Body.String())
+		}
+
+		var resp authResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("decode refresh response: %v", err)
+		}
+		if resp.HasCompletedOnboarding {
+			t.Fatalf("expected onboarding to be incomplete")
+		}
+	})
 
 	t.Run("analyze", func(t *testing.T) {
 		body := `{"record":{"content":"今天和妈妈看了一部电影，感觉很开心"},"persons":[{"id":"p1","name":"妈妈","relationship":"family"}]}`
@@ -74,6 +94,65 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 		}
 		if len(resp.Tags) == 0 {
 			t.Fatalf("expected tags in analyze response")
+		}
+	})
+
+	t.Run("analyze preview", func(t *testing.T) {
+		body := `{"record":{"content":"今天和妈妈看了一部电影，感觉很开心"}}`
+		req := httptest.NewRequest(http.MethodPost, "/api/onboarding/analyze-preview", bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+
+		server.Handler().ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("preview status = %d, body = %s", rec.Code, rec.Body.String())
+		}
+
+		var resp analyzePreviewResponseEnvelope
+		if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("decode preview response: %v", err)
+		}
+		if resp.Mode != "preview" {
+			t.Fatalf("expected preview mode, got %q", resp.Mode)
+		}
+		if len(resp.Tags) == 0 {
+			t.Fatalf("expected preview tags in response")
+		}
+	})
+
+	t.Run("complete onboarding", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/api/me/onboarding/complete", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		rec := httptest.NewRecorder()
+
+		server.Handler().ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("complete onboarding status = %d, body = %s", rec.Code, rec.Body.String())
+		}
+
+		var resp onboardingCompleteResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("decode onboarding complete response: %v", err)
+		}
+		if !resp.HasCompletedOnboarding {
+			t.Fatalf("expected onboarding to be completed")
+		}
+
+		refreshReq := httptest.NewRequest(http.MethodPost, "/auth/refresh", nil)
+		refreshReq.Header.Set("Authorization", "Bearer "+token)
+		refreshRec := httptest.NewRecorder()
+
+		server.Handler().ServeHTTP(refreshRec, refreshReq)
+		if refreshRec.Code != http.StatusOK {
+			t.Fatalf("refresh after onboarding status = %d, body = %s", refreshRec.Code, refreshRec.Body.String())
+		}
+
+		var refreshResp authResponse
+		if err := json.Unmarshal(refreshRec.Body.Bytes(), &refreshResp); err != nil {
+			t.Fatalf("decode post-onboarding refresh response: %v", err)
+		}
+		if !refreshResp.HasCompletedOnboarding {
+			t.Fatalf("expected refreshed auth response to include completed onboarding")
 		}
 	})
 
@@ -133,6 +212,7 @@ func TestUnauthorizedAnalyze(t *testing.T) {
 		AIProvider:    ai.NewMockProvider(),
 		Subscription:  subscription.NewService("mock", "seed"),
 		PushTokens:    store,
+		UserProfiles:  store,
 	})
 
 	req := httptest.NewRequest(http.MethodPost, "/api/records/analyze", bytes.NewBufferString(`{"record":{"content":"hi"}}`))
@@ -165,6 +245,7 @@ func TestAuthAppleDevelopmentFallbackAcceptsAppleJWTWhenVerificationFails(t *tes
 		AIProvider:    ai.NewMockProvider(),
 		Subscription:  subscription.NewService("mock", "seed"),
 		PushTokens:    store,
+		UserProfiles:  store,
 	})
 
 	body := `{"identity_token":"` + fakeAppleJWT(t, "apple-user-123") + `","nonce":"nonce"}`
@@ -203,6 +284,7 @@ func TestMetricsAndRequestID(t *testing.T) {
 		AIProvider:    ai.NewMockProvider(),
 		Subscription:  subscription.NewService("mock", "seed"),
 		PushTokens:    store,
+		UserProfiles:  store,
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
@@ -237,6 +319,7 @@ func TestAuthAppleRequiresIdentityTokenWhenDevDisabled(t *testing.T) {
 		AIProvider:    ai.NewMockProvider(),
 		Subscription:  subscription.NewService("mock", "seed"),
 		PushTokens:    store,
+		UserProfiles:  store,
 	})
 
 	req := httptest.NewRequest(http.MethodPost, "/auth/apple", bytes.NewBufferString(`{"identity_token":""}`))

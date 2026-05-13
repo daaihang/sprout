@@ -27,6 +27,7 @@ type Dependencies struct {
 	AIProvider    ai.Provider
 	Subscription  *subscription.Service
 	PushTokens    db.PushTokenStore
+	UserProfiles  db.UserProfileStore
 }
 
 type Server struct {
@@ -37,6 +38,7 @@ type Server struct {
 	aiProvider    ai.Provider
 	subscription  *subscription.Service
 	pushTokens    db.PushTokenStore
+	userProfiles  db.UserProfileStore
 	metrics       *metrics
 	mux           *http.ServeMux
 }
@@ -50,6 +52,7 @@ func NewServer(deps Dependencies) *Server {
 		aiProvider:    deps.AIProvider,
 		subscription:  deps.Subscription,
 		pushTokens:    deps.PushTokens,
+		userProfiles:  deps.UserProfiles,
 		metrics:       newMetrics(),
 		mux:           http.NewServeMux(),
 	}
@@ -67,7 +70,9 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("GET /metrics", s.handleMetrics)
 	s.mux.HandleFunc("POST /auth/apple", s.handleAuthApple)
 	s.mux.Handle("POST /auth/refresh", s.withAuth(http.HandlerFunc(s.handleAuthRefresh)))
+	s.mux.HandleFunc("POST /api/onboarding/analyze-preview", s.handleAnalyzePreview)
 	s.mux.Handle("POST /api/records/analyze", s.withAuth(http.HandlerFunc(s.handleAnalyze)))
+	s.mux.Handle("POST /api/me/onboarding/complete", s.withAuth(http.HandlerFunc(s.handleOnboardingComplete)))
 	s.mux.Handle("GET /api/subscription/verify", s.withAuth(http.HandlerFunc(s.handleSubscriptionVerify)))
 	s.mux.Handle("POST /api/push/register", s.withAuth(http.HandlerFunc(s.handlePushRegister)))
 }

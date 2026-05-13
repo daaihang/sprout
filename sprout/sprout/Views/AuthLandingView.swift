@@ -5,25 +5,36 @@ struct AuthLandingView: View {
     @Environment(AppLocalization.self) private var localization
     @Environment(AuthSessionManager.self) private var authSession
     @State private var currentNonce = ""
+    let titleOverride: String?
+    let subtitleOverride: String?
+    let compactLayout: Bool
+
+    init(titleOverride: String? = nil, subtitleOverride: String? = nil, compactLayout: Bool = false) {
+        self.titleOverride = titleOverride
+        self.subtitleOverride = subtitleOverride
+        self.compactLayout = compactLayout
+    }
 
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [
-                    Color(red: 0.95, green: 0.89, blue: 0.80),
-                    Color(red: 0.87, green: 0.93, blue: 0.88),
-                    Color(red: 0.81, green: 0.89, blue: 0.97),
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
+            if !compactLayout {
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.95, green: 0.89, blue: 0.80),
+                        Color(red: 0.87, green: 0.93, blue: 0.88),
+                        Color(red: 0.81, green: 0.89, blue: 0.97),
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
+            }
 
-            VStack(spacing: 28) {
+            VStack(spacing: compactLayout ? 18 : 28) {
                 HStack {
                     Spacer()
 
-                    if canSkipSignIn {
+                    if canSkipSignIn && !compactLayout {
                         Button(t("common.skip", "Skip")) {
                             authSession.signInForDevelopmentBypass()
                         }
@@ -38,19 +49,21 @@ struct AuthLandingView: View {
 
                 Spacer()
 
-                VStack(spacing: 16) {
-                    Image(systemName: "tree.fill")
-                        .font(.system(size: 54))
-                        .foregroundStyle(Color(red: 0.16, green: 0.42, blue: 0.31))
-                        .padding(20)
-                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+                VStack(spacing: compactLayout ? 12 : 16) {
+                    if !compactLayout {
+                        Image(systemName: "tree.fill")
+                            .font(.system(size: 54))
+                            .foregroundStyle(Color(red: 0.16, green: 0.42, blue: 0.31))
+                            .padding(20)
+                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+                    }
 
-                    Text(localization.string("auth.title", default: "Let your memories take root"))
-                        .font(.system(size: 30, weight: .bold, design: .rounded))
+                    Text(titleOverride ?? localization.string("auth.title", default: "Let your memories take root"))
+                        .font(.system(size: compactLayout ? 22 : 30, weight: .bold, design: .rounded))
                         .multilineTextAlignment(.center)
 
-                    Text(localization.string("auth.subtitle", default: "Sign in with Apple to securely sync your private journaling space across devices."))
-                        .font(.system(size: 16, weight: .medium))
+                    Text(subtitleOverride ?? localization.string("auth.subtitle", default: "Sign in with Apple to securely sync your private journaling space across devices."))
+                        .font(.system(size: compactLayout ? 15 : 16, weight: .medium))
                         .multilineTextAlignment(.center)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: 320)
@@ -85,17 +98,24 @@ struct AuthLandingView: View {
                     }
                 }
                 .padding(24)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-                .padding(.horizontal, 24)
+                .background {
+                    if !compactLayout {
+                        RoundedRectangle(cornerRadius: 28, style: .continuous)
+                            .fill(.ultraThinMaterial)
+                    }
+                }
+                .padding(.horizontal, compactLayout ? 0 : 24)
 
                 Spacer()
 
-                Text(localization.string("auth.footer", default: "Requires Sign in with Apple capability on the app ID and an Apple ID signed in on the simulator or device."))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 24)
+                if !compactLayout {
+                    Text(localization.string("auth.footer", default: "Requires Sign in with Apple capability on the app ID and an Apple ID signed in on the simulator or device."))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 24)
+                }
             }
         }
     }

@@ -3,15 +3,18 @@ import SwiftUI
 struct AuthGateView: View {
     @Environment(AuthSessionManager.self) private var authSession
     @Environment(BiometricLockManager.self) private var biometricLock
+    @Environment(InstallExperienceStore.self) private var installExperience
     @Environment(AppLocalization.self) private var localization
 
     var body: some View {
-        switch authSession.state {
+        switch gateState {
         case .loading:
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-        case .signedOut:
-            AuthLandingView()
+        case .welcome:
+            WelcomeView()
+        case .anonymousOnboarding:
+            OnboardingFlowView()
         case .signedIn:
             Group {
                 if biometricLock.isEnabled && !biometricLock.isUnlocked {
@@ -23,6 +26,26 @@ struct AuthGateView: View {
             .task {
                 await biometricLock.authenticateIfNeeded()
             }
+        case .signedInOnboarding:
+            SignedInOnboardingView()
+        }
+    }
+
+    private var gateState: GateState {
+        if installExperience.forceShowWelcome || !installExperience.hasSeenWelcome {
+            return .welcome
+        }
+
+        switch authSession.state {
+        case .loading:
+            return .loading
+        case .signedOut:
+            return .anonymousOnboarding
+        case let .signedIn(session):
+            if installExperience.forceRequireSignedInOnboarding || !session.hasCompletedOnboarding {
+                return .signedInOnboarding
+            }
+            return .signedIn
         }
     }
 
@@ -57,4 +80,12 @@ struct AuthGateView: View {
     private func t(_ key: String, _ defaultValue: String, _ arguments: CVarArg...) -> String {
         localization.string(key, default: defaultValue, arguments: arguments)
     }
+}
+
+private enum GateState {
+    case loading
+    case welcome
+    case anonymousOnboarding
+    case signedIn
+    case signedInOnboarding
 }

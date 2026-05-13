@@ -42,10 +42,7 @@ struct DailyView: View {
                 )
             }
         }
-        .background {
-            HomeBackgroundView()
-                .ignoresSafeArea()
-        }
+        .background(Color.clear)
         .contentMargins(.top, topContentInset, for: .scrollContent)
         .contentMargins(.bottom, 104, for: .scrollContent)
         .ignoresSafeArea(.container, edges: .bottom)

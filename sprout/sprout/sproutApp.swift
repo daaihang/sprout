@@ -8,6 +8,8 @@ struct sproutApp: App {
     @State private var subscriptionManager = SubscriptionManager()
     @State private var authSessionManager = AuthSessionManager()
     @State private var biometricLockManager = BiometricLockManager()
+    @State private var installExperienceStore = InstallExperienceStore()
+    @State private var onboardingPreviewService = OnboardingPreviewService()
 
     var sharedModelContainer: ModelContainer = {
         #if targetEnvironment(simulator)
@@ -45,6 +47,8 @@ struct sproutApp: App {
                 .environment(subscriptionManager)
                 .environment(authSessionManager)
                 .environment(biometricLockManager)
+                .environment(installExperienceStore)
+                .environment(onboardingPreviewService)
         }
         .modelContainer(sharedModelContainer)
         .onChange(of: scenePhase) { _, newPhase in

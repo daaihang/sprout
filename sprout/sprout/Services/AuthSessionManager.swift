@@ -46,8 +46,44 @@ final class AuthSessionManager {
         let userID: String
         let tier: String
         let mode: String
+        var hasCompletedOnboarding: Bool
 
         var isExpired: Bool { expiresAt <= Date() }
+
+        private enum CodingKeys: String, CodingKey {
+            case accessToken
+            case expiresAt
+            case userID
+            case tier
+            case mode
+            case hasCompletedOnboarding
+        }
+
+        init(
+            accessToken: String,
+            expiresAt: Date,
+            userID: String,
+            tier: String,
+            mode: String,
+            hasCompletedOnboarding: Bool
+        ) {
+            self.accessToken = accessToken
+            self.expiresAt = expiresAt
+            self.userID = userID
+            self.tier = tier
+            self.mode = mode
+            self.hasCompletedOnboarding = hasCompletedOnboarding
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            accessToken = try container.decode(String.self, forKey: .accessToken)
+            expiresAt = try container.decode(Date.self, forKey: .expiresAt)
+            userID = try container.decode(String.self, forKey: .userID)
+            tier = try container.decode(String.self, forKey: .tier)
+            mode = try container.decode(String.self, forKey: .mode)
+            hasCompletedOnboarding = try container.decodeIfPresent(Bool.self, forKey: .hasCompletedOnboarding) ?? false
+        }
     }
 
     struct AppleSignInPayload {
@@ -65,12 +101,26 @@ final class AuthSessionManager {
         let expiresAt: Date
         let user: User
         let mode: String
+        let isNewUser: Bool
+        let hasCompletedOnboarding: Bool
 
         private enum CodingKeys: String, CodingKey {
             case accessToken = "access_token"
             case expiresAt = "expires_at"
             case user
             case mode
+            case isNewUser = "is_new_user"
+            case hasCompletedOnboarding = "has_completed_onboarding"
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            accessToken = try container.decode(String.self, forKey: .accessToken)
+            expiresAt = try container.decode(Date.self, forKey: .expiresAt)
+            user = try container.decode(User.self, forKey: .user)
+            mode = try container.decode(String.self, forKey: .mode)
+            isNewUser = try container.decodeIfPresent(Bool.self, forKey: .isNewUser) ?? false
+            hasCompletedOnboarding = try container.decodeIfPresent(Bool.self, forKey: .hasCompletedOnboarding) ?? false
         }
     }
 
@@ -145,7 +195,8 @@ final class AuthSessionManager {
                 expiresAt: decoded.expiresAt,
                 userID: decoded.user.id,
                 tier: decoded.user.tier,
-                mode: decoded.mode
+                mode: decoded.mode,
+                hasCompletedOnboarding: decoded.hasCompletedOnboarding
             )
             try keychain.save(session, for: sessionKey)
             state = .signedIn(session)
@@ -207,7 +258,8 @@ final class AuthSessionManager {
                 expiresAt: decoded.expiresAt,
                 userID: decoded.user.id,
                 tier: decoded.user.tier,
-                mode: decoded.mode
+                mode: decoded.mode,
+                hasCompletedOnboarding: decoded.hasCompletedOnboarding
             )
             try keychain.save(refreshed, for: sessionKey)
             state = .signedIn(refreshed)
@@ -246,11 +298,31 @@ final class AuthSessionManager {
             expiresAt: Date().addingTimeInterval(60 * 60 * 24 * 365),
             userID: "Developer",
             tier: "free",
-            mode: "development_stub"
+            mode: "development_stub",
+            hasCompletedOnboarding: false
         )
         try? keychain.save(session, for: sessionKey)
         errorMessage = nil
         state = .signedIn(session)
+    }
+
+    func completeOnboarding() async {
+        guard var session = currentSession else { return }
+
+        do {
+            var request = URLRequest(url: try endpoint("/api/me/onboarding/complete"))
+            request.httpMethod = "POST"
+            request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+            try validate(response: response, data: data)
+            let decoded = try JSONDecoder().decode(OnboardingCompleteResponse.self, from: data)
+            session.hasCompletedOnboarding = decoded.hasCompletedOnboarding
+            try keychain.save(session, for: sessionKey)
+            state = .signedIn(session)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     func runHealthCheck() async {
@@ -383,6 +455,14 @@ enum AuthError: LocalizedError {
 
 struct ServerErrorResponse: Decodable {
     let error: String
+}
+
+private struct OnboardingCompleteResponse: Decodable {
+    let hasCompletedOnboarding: Bool
+
+    private enum CodingKeys: String, CodingKey {
+        case hasCompletedOnboarding = "has_completed_onboarding"
+    }
 }
 
 enum AppleNonce {
