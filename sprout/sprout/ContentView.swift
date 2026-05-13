@@ -13,7 +13,7 @@ struct ContentView: View {
     // MARK: UI State
     @State private var isShowingAccountSheet = false
     @State private var isBarOpen             = false
-    @State private var captureDraft          = CaptureDraft()
+    @State private var captureDraftStore     = CaptureDraftStore()
     @State private var composerFocusRequestToken = 0
     @State private var selectedDate: Date    = Calendar.current.startOfDay(for: Date())
     @State private var isTopDrawerPresented  = false
@@ -92,11 +92,11 @@ struct ContentView: View {
                     focusRequestToken:    composerFocusRequestToken,
                     onAction:             handleComposerAction,
                     onRemoveAttachment:   removeAttachment,
-                    onSend:               { _ in insertRecord(from: captureDraft) },
+                    onSend:               { _ in submitCaptureDraft() },
                     onExpandToFullscreen: { showFullscreenEntryComposer = true },
-                    attachments:          captureDraft.attachments,
+                    attachments:          captureDraftStore.draft.attachments,
                     speechRecognizer:     speechRecognizer,
-                    onAudioCaptured:      { data in captureDraft.attachments.audioData = data }
+                    onAudioCaptured:      { data in captureDraftStore.draft.attachments.audioData = data }
                 )
                 .zIndex(10)
             }
@@ -145,7 +145,7 @@ struct ContentView: View {
                 onAction: handleComposerAction,
                 onRemoveAttachment: removeAttachment,
                 onSubmit: { _ in
-                    insertRecord(from: captureDraft)
+                    submitCaptureDraft()
                     showFullscreenEntryComposer = false
                     isBarOpen = false
                 },
@@ -162,7 +162,7 @@ struct ContentView: View {
         .fullScreenCover(isPresented: $showCameraSheet) {
             CameraView { image in
                 if isBarOpen {
-                    captureDraft.attachments.photos.append(image)
+                    captureDraftStore.draft.attachments.photos.append(image)
                 } else {
                     insertStandalonePhotoRecord(image: image)
                 }
@@ -178,7 +178,7 @@ struct ContentView: View {
             MusicCardSheet(data: $pendingMusicData, musicService: musicService)
                 .onDisappear {
                     if !pendingMusicData.trackName.isEmpty {
-                        captureDraft.attachments.music = pendingMusicData
+                        captureDraftStore.draft.attachments.music = pendingMusicData
                         pendingMusicData = MusicCardData()
                     }
                 }
@@ -187,7 +187,7 @@ struct ContentView: View {
             MapCardSheet(data: $pendingLocationData)
                 .onDisappear {
                     if pendingLocationData.coordinate != nil {
-                        captureDraft.attachments.locationData = pendingLocationData
+                        captureDraftStore.draft.attachments.locationData = pendingLocationData
                         pendingLocationData = MapCardData()
                     }
                 }
@@ -197,8 +197,7 @@ struct ContentView: View {
         }
         // MARK: onChange
         .onChange(of: isBarOpen) { _, newValue in
-            // Clear transient attachments when the composer bar closes
-            if !newValue { captureDraft.attachments.clear() }
+            captureDraftStore.handleComposerPresentationChange(isPresented: newValue)
         }
         .onChange(of: pendingPhotoItems) { _, items in
             guard !items.isEmpty else { return }
@@ -210,7 +209,7 @@ struct ContentView: View {
                         images.append(img)
                     }
                 }
-                captureDraft.attachments.photos = images
+                captureDraftStore.draft.attachments.photos = images
                 pendingPhotoItems = []
             }
         }
@@ -236,22 +235,22 @@ struct ContentView: View {
 
     private var captureShellTextBinding: Binding<String> {
         Binding(
-            get: { captureDraft.shellText },
-            set: { captureDraft.shellText = $0 }
+            get: { captureDraftStore.draft.shellText },
+            set: { captureDraftStore.draft.shellText = $0 }
         )
     }
 
     private var captureAttachmentsBinding: Binding<ComposerAttachments> {
         Binding(
-            get: { captureDraft.attachments },
-            set: { captureDraft.attachments = $0 }
+            get: { captureDraftStore.draft.attachments },
+            set: { captureDraftStore.draft.attachments = $0 }
         )
     }
 
     private var capturePeopleBinding: Binding<[Person]> {
         Binding(
-            get: { captureDraft.attachments.people },
-            set: { captureDraft.attachments.people = $0 }
+            get: { captureDraftStore.draft.attachments.people },
+            set: { captureDraftStore.draft.attachments.people = $0 }
         )
     }
 
@@ -344,14 +343,19 @@ struct ContentView: View {
 
     private func removeAttachment(_ key: ComposerAttachmentKey) {
         switch key {
-        case .mood:     captureDraft.attachments.mood         = nil
-        case .photo:    captureDraft.attachments.photos        = []
-        case .location: captureDraft.attachments.locationData = nil
-        case .music:    captureDraft.attachments.music         = nil
-        case .todo:     captureDraft.attachments.todos         = nil
-        case .audio:    captureDraft.attachments.audioData     = nil
-        case .people:   captureDraft.attachments.people        = []
+        case .mood:     captureDraftStore.draft.attachments.mood         = nil
+        case .photo:    captureDraftStore.draft.attachments.photos        = []
+        case .location: captureDraftStore.draft.attachments.locationData = nil
+        case .music:    captureDraftStore.draft.attachments.music         = nil
+        case .todo:     captureDraftStore.draft.attachments.todos         = nil
+        case .audio:    captureDraftStore.draft.attachments.audioData     = nil
+        case .people:   captureDraftStore.draft.attachments.people        = []
         }
+    }
+
+    private func submitCaptureDraft() {
+        guard let draft = captureDraftStore.currentSubmissionDraft() else { return }
+        insertRecord(from: draft)
     }
 
     // MARK: Record creation
@@ -497,7 +501,7 @@ struct ContentView: View {
             memoryRepository.upsertAggregate(aggregate)
             await runPostCaptureAnalysisIfPossible(for: aggregate)
 
-            captureDraft.clear()
+            captureDraftStore.reset()
         }
     }
 
