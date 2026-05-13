@@ -4,6 +4,7 @@ enum HomeBoardItemKind: String, Sendable {
     case systemTodayInHistory
     case temporalArc
     case phaseReflection
+    case recordReflection
     case recordCard
 }
 
@@ -49,6 +50,16 @@ struct HomeBoardProminenceEngine {
                     span: ContainerSpan(widthColumns: 4, heightUnits: baseHeight)
                 ),
                 fallbackZIndex: -9_620
+            )
+        case .recordReflection:
+            let baseHeight = reflection.map(reflectionHeightUnits(for:)) ?? 2
+            let score = reflection.map(reflectionProminenceScore(for:)) ?? 0
+            return HomeBoardProminence(
+                order: -9_540 - score,
+                fallbackSpan: sizeLimits(for: "text").clamped(
+                    span: ContainerSpan(widthColumns: 4, heightUnits: baseHeight)
+                ),
+                fallbackZIndex: -9_540
             )
         case .recordCard:
             let order = record.map(recordOrder(for:)) ?? 0

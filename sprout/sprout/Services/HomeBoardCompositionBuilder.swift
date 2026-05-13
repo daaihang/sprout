@@ -34,12 +34,16 @@ struct HomeBoardCompositionBuilder {
             date: date,
             compositionContext: compositionContext
         )
+        let activeRecordReflectionItems = buildActiveRecordReflectionEntries(
+            date: date,
+            compositionContext: compositionContext
+        )
         let savedReflectionItems = buildSavedReflectionEntries(
             date: date,
             compositionContext: compositionContext
         )
 
-        return (systemItems + arcItems + reflectionItems + savedReflectionItems + recordItems)
+        return (systemItems + arcItems + reflectionItems + activeRecordReflectionItems + savedReflectionItems + recordItems)
             .sorted { $0.order < $1.order }
             .map(\.item)
     }
@@ -310,6 +314,57 @@ struct HomeBoardCompositionBuilder {
                     projectionTargetType: CompositionProjectionTargetType.reflection.rawValue,
                     projectionTargetID: reflection.id,
                     recordID: reflection.sourceRecordIDs.first ?? UUID(uuidString: "00000000-0000-0000-0000-000000000002") ?? UUID(),
+                    card: AnyView(
+                        NavigationLink(destination: ReflectionDetailView(reflection: reflection)) {
+                            PhaseReflectionCard(data: reflectionCardData(for: reflection))
+                        }
+                        .buttonStyle(.plain)
+                    ),
+                    columns: resolvedState.span.widthColumns,
+                    units: resolvedState.span.heightUnits,
+                    zIndex: resolvedState.zIndex,
+                    rotationDegrees: resolvedState.rotationDegrees,
+                    scale: resolvedState.scale,
+                    availableSpans: availableSpans(for: "text"),
+                    deleteActionTitle: "Dismiss Reflection",
+                    deleteActionSystemImage: "archivebox",
+                    onResize: { newSpan in
+                        resizeReflectionCard(reflection, to: newSpan, on: date)
+                    },
+                    onDelete: {
+                        dependencies.memoryRepository.dismissReflection(reflection.id)
+                    }
+                )
+            )
+        }
+    }
+
+    private func buildActiveRecordReflectionEntries(
+        date: Date,
+        compositionContext: CompositionStateRepository.ResolvedCompositionContext
+    ) -> [(order: Double, item: GridItem)] {
+        let activeReflections = dependencies.memoryRepository.activeRecordReflectionsForHome(referenceDate: date)
+        guard !activeReflections.isEmpty else { return [] }
+
+        return activeReflections.enumerated().map { index, reflection in
+            let itemID = "active-record-reflection-\(reflection.id.uuidString)"
+            let prominence = dependencies.prominenceEngine.prominence(for: .recordReflection, reflection: reflection)
+            let resolvedState = dependencies.stateRepository.resolvedState(
+                compositionKey: compositionContext.compositionKey,
+                itemKey: itemID,
+                fallbackSpan: prominence.fallbackSpan,
+                fallbackZIndex: prominence.fallbackZIndex,
+                fallbackRotationDegrees: stickerRotation(for: itemID),
+                fallbackScale: stickerScale(for: itemID)
+            )
+
+            return (
+                order: prominence.order + Double(index) * 0.001,
+                item: GridItem(
+                    id: itemID,
+                    projectionTargetType: CompositionProjectionTargetType.reflection.rawValue,
+                    projectionTargetID: reflection.id,
+                    recordID: reflection.sourceRecordIDs.first ?? UUID(uuidString: "00000000-0000-0000-0000-000000000003") ?? UUID(),
                     card: AnyView(
                         NavigationLink(destination: ReflectionDetailView(reflection: reflection)) {
                             PhaseReflectionCard(data: reflectionCardData(for: reflection))

@@ -315,6 +315,68 @@ final class SproutMemoryRepository {
         return Array(saved.prefix(limit))
     }
 
+    func activeRecordReflectionsForHome(referenceDate: Date, limit: Int = 2) -> [ReflectionSnapshot] {
+        let active = reflections
+            .filter { $0.status == .active && $0.type == .record }
+
+        guard !active.isEmpty else { return [] }
+
+        let referenceRecordIDs = Set(recordShells(on: referenceDate).map(\.id))
+        let ranked = active.map { reflection -> (reflection: ReflectionSnapshot, score: Double) in
+            var score = 0.0
+
+            let sameDayMatchCount = reflection.sourceRecordIDs.filter { referenceRecordIDs.contains($0) }.count
+            score += Double(sameDayMatchCount) * 100
+
+            if Calendar.current.isDate(reflection.createdAt, inSameDayAs: referenceDate) {
+                score += 36
+            }
+            if let confidence = reflection.confidence {
+                score += confidence * 24
+            }
+            score += min(Double(reflection.sourceArtifactIDs.count), 6) * 6
+            score += min(Double(reflection.sourceEntityIDs.count), 6) * 5
+            score += min(Double(reflection.body.count / 40), 6) * 2
+
+            if let linkedArcID = reflection.linkedTemporalArcID,
+               temporalArcs.contains(where: { $0.id == linkedArcID && $0.status == .accepted }) {
+                score += 12
+            }
+
+            return (reflection, score)
+        }
+
+        let matched = ranked
+            .filter { item in
+                let reflection = item.reflection
+                return referenceRecordIDs.isEmpty
+                    ? true
+                    : reflection.sourceRecordIDs.contains { referenceRecordIDs.contains($0) }
+            }
+            .sorted {
+                if $0.score == $1.score {
+                    return $0.reflection.createdAt > $1.reflection.createdAt
+                }
+                return $0.score > $1.score
+            }
+            .map(\.reflection)
+
+        if !matched.isEmpty {
+            return Array(matched.prefix(limit))
+        }
+
+        let fallback = ranked
+            .sorted {
+                if $0.score == $1.score {
+                    return $0.reflection.createdAt > $1.reflection.createdAt
+                }
+                return $0.score > $1.score
+            }
+            .map(\.reflection)
+
+        return Array(fallback.prefix(limit))
+    }
+
     func archiveTemporalArc(_ arcID: UUID) {
         guard let index = temporalArcs.firstIndex(where: { $0.id == arcID }) else { return }
         temporalArcs[index].status = .archived
