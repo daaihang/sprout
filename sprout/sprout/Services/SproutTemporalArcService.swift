@@ -4,14 +4,19 @@ struct SproutTemporalArcService {
     private let candidateBuilder = TemporalArcCandidateBuilder()
     private let promoter = TemporalArcPromoter()
 
-    func rebuildAcceptedArcs(
+    struct PhaseBundle: Sendable {
+        var arc: TemporalArc
+        var reflection: ReflectionSnapshot
+    }
+
+    func rebuildAcceptedBundles(
         records: [RecordShell],
         analyses: [RecordAnalysisSnapshot],
         artifacts: [Artifact],
         artifactEntityLinks: [ArtifactEntityLink],
         entityNodes: [EntityNode],
         limit: Int = 6
-    ) -> [TemporalArc] {
+    ) -> [PhaseBundle] {
         let candidates = candidateBuilder.buildCandidates(
             records: records,
             analyses: analyses,
@@ -28,19 +33,32 @@ struct SproutTemporalArcService {
             .prefix(limit)
             .enumerated()
             .map { index, candidate in
-                promoter.promote(
+                let arc = promoter.promote(
                     candidate: candidate,
                     analyses: analyses,
                     artifactEntityLinks: artifactEntityLinks,
                     entityNodes: entityNodes,
                     createdAt: candidate.endDate.addingTimeInterval(Double(index))
                 )
+                let reflection = ReflectionSnapshot(
+                    type: .phase,
+                    title: arc.title,
+                    body: arc.summary,
+                    linkedTemporalArcID: arc.id,
+                    sourceRecordIDs: arc.sourceRecordIDs,
+                    sourceArtifactIDs: arc.sourceArtifactIDs,
+                    sourceEntityIDs: arc.sourceEntityIDs,
+                    createdAt: arc.updatedAt
+                )
+                var linkedArc = arc
+                linkedArc.linkedReflectionID = reflection.id
+                return PhaseBundle(arc: linkedArc, reflection: reflection)
             }
             .sorted { lhs, rhs in
-                if lhs.endDate == rhs.endDate {
-                    return lhs.intensityScore > rhs.intensityScore
+                if lhs.arc.endDate == rhs.arc.endDate {
+                    return lhs.arc.intensityScore > rhs.arc.intensityScore
                 }
-                return lhs.endDate > rhs.endDate
+                return lhs.arc.endDate > rhs.arc.endDate
             }
     }
 }

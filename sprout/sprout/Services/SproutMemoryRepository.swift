@@ -23,6 +23,7 @@ final class SproutMemoryRepository {
         var recordShells: [RecordShell]
         var artifacts: [Artifact]
         var analyses: [RecordAnalysisSnapshot]
+        var reflections: [ReflectionSnapshot]
         var entityNodes: [EntityNode]
         var entityEdges: [EntityEdge]
         var artifactEntityLinks: [ArtifactEntityLink]
@@ -32,6 +33,7 @@ final class SproutMemoryRepository {
             case recordShells
             case artifacts
             case analyses
+            case reflections
             case entityNodes
             case entityEdges
             case artifactEntityLinks
@@ -42,6 +44,7 @@ final class SproutMemoryRepository {
             recordShells: [RecordShell],
             artifacts: [Artifact],
             analyses: [RecordAnalysisSnapshot],
+            reflections: [ReflectionSnapshot],
             entityNodes: [EntityNode],
             entityEdges: [EntityEdge],
             artifactEntityLinks: [ArtifactEntityLink],
@@ -50,6 +53,7 @@ final class SproutMemoryRepository {
             self.recordShells = recordShells
             self.artifacts = artifacts
             self.analyses = analyses
+            self.reflections = reflections
             self.entityNodes = entityNodes
             self.entityEdges = entityEdges
             self.artifactEntityLinks = artifactEntityLinks
@@ -61,6 +65,7 @@ final class SproutMemoryRepository {
             recordShells = try container.decode([RecordShell].self, forKey: .recordShells)
             artifacts = try container.decode([Artifact].self, forKey: .artifacts)
             analyses = try container.decode([RecordAnalysisSnapshot].self, forKey: .analyses)
+            reflections = try container.decodeIfPresent([ReflectionSnapshot].self, forKey: .reflections) ?? []
             entityNodes = try container.decode([EntityNode].self, forKey: .entityNodes)
             entityEdges = try container.decode([EntityEdge].self, forKey: .entityEdges)
             artifactEntityLinks = try container.decode([ArtifactEntityLink].self, forKey: .artifactEntityLinks)
@@ -74,6 +79,7 @@ final class SproutMemoryRepository {
     var recordShells: [RecordShell] = []
     var artifacts: [Artifact] = []
     var analyses: [RecordAnalysisSnapshot] = []
+    var reflections: [ReflectionSnapshot] = []
     var entityNodes: [EntityNode] = []
     var entityEdges: [EntityEdge] = []
     var artifactEntityLinks: [ArtifactEntityLink] = []
@@ -183,6 +189,11 @@ final class SproutMemoryRepository {
         temporalArcs.first { $0.id == arcID }
     }
 
+    func linkedReflection(forArcID arcID: UUID) -> ReflectionSnapshot? {
+        guard let reflectionID = temporalArc(for: arcID)?.linkedReflectionID else { return nil }
+        return reflections.first { $0.id == reflectionID }
+    }
+
     func archiveTemporalArc(_ arcID: UUID) {
         guard let index = temporalArcs.firstIndex(where: { $0.id == arcID }) else { return }
         temporalArcs[index].status = .archived
@@ -252,6 +263,7 @@ final class SproutMemoryRepository {
         recordShells = snapshot.recordShells
         artifacts = snapshot.artifacts
         analyses = snapshot.analyses
+        reflections = snapshot.reflections
         entityNodes = snapshot.entityNodes
         entityEdges = snapshot.entityEdges
         artifactEntityLinks = snapshot.artifactEntityLinks
@@ -269,6 +281,7 @@ final class SproutMemoryRepository {
             recordShells: recordShells,
             artifacts: artifacts,
             analyses: analyses,
+            reflections: reflections,
             entityNodes: entityNodes,
             entityEdges: entityEdges,
             artifactEntityLinks: artifactEntityLinks,
@@ -279,13 +292,16 @@ final class SproutMemoryRepository {
     }
 
     private func rebuildTemporalArcs() {
-        temporalArcs = temporalArcService.rebuildAcceptedArcs(
+        let bundles = temporalArcService.rebuildAcceptedBundles(
             records: recordShells,
             analyses: analyses,
             artifacts: artifacts,
             artifactEntityLinks: artifactEntityLinks,
             entityNodes: entityNodes
         )
+        temporalArcs = bundles.map(\.arc)
+        reflections.removeAll { $0.type == .phase }
+        reflections.append(contentsOf: bundles.map(\.reflection))
     }
 
     private func temporalArcSort(lhs: TemporalArc, rhs: TemporalArc) -> Bool {

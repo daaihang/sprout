@@ -3,6 +3,7 @@ import SwiftData
 
 struct TemporalArcDetailView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(SproutMemoryRepository.self) private var memoryRepository
     let arc: TemporalArc
 
     private var relatedRecords: [Record] {
@@ -17,6 +18,9 @@ struct TemporalArcDetailView: View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 20) {
                 header
+                if let reflection = memoryRepository.linkedReflection(forArcID: arc.id) {
+                    reflectionSection(reflection)
+                }
                 metadata
                 if !relatedRecords.isEmpty {
                     relatedRecordsSection
@@ -46,6 +50,22 @@ struct TemporalArcDetailView: View {
             Text(dateRangeText)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+        }
+        .detailCard()
+    }
+
+    private func reflectionSection(_ reflection: ReflectionSnapshot) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Reflection")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            Text(reflection.title)
+                .font(.headline)
+
+            Text(reflection.body)
+                .font(.body)
+                .foregroundStyle(.primary)
         }
         .detailCard()
     }
