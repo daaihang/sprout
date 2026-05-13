@@ -11,6 +11,11 @@ enum ArtifactKind: String, Codable, CaseIterable, Identifiable, Sendable {
     case todo
     case personMention
     case decisionNote
+    case book
+    case film
+    case game
+    case ticket
+    case healthMetric
 
     var id: String { rawValue }
 }

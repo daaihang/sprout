@@ -166,21 +166,8 @@ struct SproutMemoryAggregateBuilder {
     }
 
     private func artifact(from media: MediaCard, record: Record) -> Artifact? {
-        let kind: ArtifactKind
-        switch media.type {
-        case "photo":
-            kind = .photo
-        case "audio":
-            kind = .audio
-        case "music":
-            kind = .music
-        case "link":
-            kind = .link
-        case "todo":
-            kind = .todo
-        default:
-            return nil
-        }
+        guard let mediaKind = media.mediaKind else { return nil }
+        let kind = mediaKind.artifactKind
 
         let fallbackTitle = String(record.body.prefix(24))
         let title = media.title ?? media.locationName ?? fallbackTitle

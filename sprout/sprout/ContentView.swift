@@ -454,13 +454,13 @@ struct ContentView: View {
             guard let payload = await preparePhotoMediaPayloads(from: [image]).first else { return }
 
             let record = Record()
-            record.cardType = "photo"
+            record.cardKind = .photo
             record.createdAt = createdAt
             record.updatedAt = createdAt
             record.dashboardOrder = createdAt.timeIntervalSince1970
 
             let m = MediaCard()
-            m.type = "photo"
+            m.mediaKind = .photo
             m.imageData = payload.imageData
             m.thumbnailData = payload.thumbnailData
             modelContext.insert(m)
@@ -514,7 +514,7 @@ struct ContentView: View {
 
             for (i, payload) in photoPayloads.enumerated() {
                 let m = MediaCard()
-                m.type = "photo"
+                m.mediaKind = .photo
                 m.sortIndex = i
                 m.imageData = payload.imageData
                 m.thumbnailData = payload.thumbnailData
@@ -524,7 +524,7 @@ struct ContentView: View {
 
             if let music = attachments.music {
                 let m = MediaCard()
-                m.type = "music"
+                m.mediaKind = .music
                 m.url = music.appleMusicURL?.absoluteString
                 m.title = music.trackName
                 m.caption = music.artistName
@@ -536,7 +536,7 @@ struct ContentView: View {
 
             if let todos = attachments.todos, !todos.isEmpty {
                 let m = MediaCard()
-                m.type = "todo"
+                m.mediaKind = .todo
                 m.title = todos.title
                 if let json = try? JSONEncoder().encode(todos.items) {
                     m.caption = String(data: json, encoding: .utf8)
@@ -547,7 +547,7 @@ struct ContentView: View {
 
             if let audioData = attachments.audioData {
                 let m = MediaCard()
-                m.type = "audio"
+                m.mediaKind = .audio
                 m.audioData = audioData
                 m.title = localization.string("content.audio.title", default: "Voice %@", arguments: [shortTimeLabel()])
                 m.caption = trimmed.isEmpty ? speechRecognizer.recognizedText : trimmed
@@ -558,7 +558,7 @@ struct ContentView: View {
 
             for url in parsed.appleMusicURLs {
                 let m = MediaCard()
-                m.type = "music"
+                m.mediaKind = .music
                 m.url = url.absoluteString
                 m.title = url.lastPathComponent.replacingOccurrences(of: "-", with: " ")
                 m.artworkURLString = nil
@@ -568,14 +568,14 @@ struct ContentView: View {
 
             for url in parsed.regularURLs {
                 let m = MediaCard()
-                m.type = "link"
+                m.mediaKind = .link
                 m.url = url.absoluteString
                 m.title = url.host ?? url.absoluteString
                 modelContext.insert(m)
                 mediaCards.append(m)
             }
 
-            record.cardType = primaryCardType(for: draft, parsed: parsed)
+            record.cardKind = primaryCardType(for: draft, parsed: parsed)
 
             modelContext.insert(record)
             if !mediaCards.isEmpty { record.mediaCards = mediaCards }
@@ -604,18 +604,8 @@ struct ContentView: View {
         }
     }
 
-    private func primaryCardType(for draft: CaptureDraft, parsed: ParsedContent) -> String {
-        let attachments = draft.attachments
-        if !attachments.photos.isEmpty                   { return "photo"   }
-        if attachments.music != nil                      { return "music"   }
-        if attachments.todos != nil                      { return "todo"    }
-        if attachments.locationData != nil               { return "map"     }
-        if attachments.mood != nil                       { return "emotion" }
-        if attachments.audioData != nil                  { return "audio"   }
-        if !attachments.people.isEmpty                   { return "people"  }
-        if !parsed.appleMusicURLs.isEmpty                { return "music"   }
-        if !parsed.regularURLs.isEmpty                   { return "link"    }
-        return "text"
+    private func primaryCardType(for draft: CaptureDraft, parsed: ParsedContent) -> RecordCardKind {
+        RecordCardKind.primaryCaptureKind(draft: draft, parsed: parsed)
     }
 
     private func shortTimeLabel() -> String {

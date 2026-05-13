@@ -271,13 +271,13 @@ struct RecordTimelineRow: View {
 
     @ViewBuilder
     private var preview: some View {
-        if record.cardType == "photo", let image = photoPreviewImage {
+        if record.cardKind == .photo, let image = photoPreviewImage {
             Image(uiImage: image)
                 .resizable()
                 .aspectRatio(contentMode: .fill)
                 .frame(width: 62, height: 62)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        } else if record.cardType == "emotion", let mood = MoodType(rawValue: record.mood ?? "") {
+        } else if record.cardKind == .emotion, let mood = MoodType(rawValue: record.mood ?? "") {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(mood.color.opacity(0.16))
                 .frame(width: 62, height: 62)
@@ -285,7 +285,7 @@ struct RecordTimelineRow: View {
                     Text(mood.emoji)
                         .font(.system(size: 30))
                 )
-        } else if record.cardType == "people", let person = record.mentionedPeople?.first {
+        } else if record.cardKind == .people, let person = record.mentionedPeople?.first {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(Color.accentColor.opacity(0.14))
                 .frame(width: 62, height: 62)
@@ -307,33 +307,27 @@ struct RecordTimelineRow: View {
     }
 
     private var previewSymbol: String {
-        switch record.cardType {
-        case "music":   return "music.note"
-        case "weather": return (record.weather).flatMap(WeatherCondition.init(rawValue:))?.sfSymbol ?? "cloud.sun.fill"
-        case "todo":    return "checklist"
-        case "map":     return "mappin.and.ellipse"
-        case "audio":   return "waveform"
-        case "people":  return "person.2.fill"
-        case "photo":   return "photo"
-        case "emotion": return "face.smiling"
-        case "link":    return "link"
-        default:        return "text.alignleft"
+        switch record.cardKind {
+        case .weather:
+            return (record.weather).flatMap(WeatherCondition.init(rawValue:))?.sfSymbol ?? record.cardKind.timelineSymbolName
+        default:
+            return record.cardKind.timelineSymbolName
         }
     }
 
     private var previewTint: Color {
-        switch record.cardType {
-        case "weather":
+        switch record.cardKind {
+        case .weather:
             return (record.weather).flatMap(WeatherCondition.init(rawValue:))?.color ?? .accentColor
-        case "audio":
+        case .audio:
             return .orange
-        case "music":
+        case .music:
             return .pink
-        case "map":
+        case .map:
             return .green
-        case "todo":
+        case .todo:
             return .accentColor
-        case "link":
+        case .link:
             return .blue
         default:
             return .accentColor
@@ -341,7 +335,7 @@ struct RecordTimelineRow: View {
     }
 
     private var photoPreviewImage: UIImage? {
-        let photoMedia = (record.mediaCards ?? []).first(where: { $0.type == "photo" })
+        let photoMedia = (record.mediaCards ?? []).first(where: { $0.mediaKind == .photo })
         if let data = photoMedia?.thumbnailData ?? photoMedia?.imageData {
             return UIImage(data: data)
         }
@@ -451,19 +445,19 @@ struct RecordTimelineRow: View {
         if !record.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             labels.append(localization.string("timeline.category.note", default: "Note"))
         }
-        if media.contains(where: { $0.type == "photo" }) {
+        if media.contains(where: { $0.mediaKind == .photo }) {
             labels.append(localization.string("timeline.category.photo", default: "Photo"))
         }
-        if media.contains(where: { $0.type == "music" }) {
+        if media.contains(where: { $0.mediaKind == .music }) {
             labels.append(localization.string("timeline.category.music", default: "Music"))
         }
-        if media.contains(where: { $0.type == "audio" }) {
+        if media.contains(where: { $0.mediaKind == .audio }) {
             labels.append(localization.string("timeline.category.audio", default: "Voice"))
         }
-        if media.contains(where: { $0.type == "todo" }) {
+        if media.contains(where: { $0.mediaKind == .todo }) {
             labels.append(localization.string("timeline.category.todo", default: "To-Do"))
         }
-        if media.contains(where: { $0.type == "link" }) {
+        if media.contains(where: { $0.mediaKind == .link }) {
             labels.append(localization.string("timeline.category.link", default: "Link"))
         }
         if record.weather != nil {
@@ -487,19 +481,19 @@ struct RecordTimelineRow: View {
     }
 
     private var photoMediaCount: Int {
-        (record.mediaCards ?? []).filter { $0.type == "photo" }.count
+        (record.mediaCards ?? []).filter { $0.mediaKind == .photo }.count
     }
 
     private var firstMusicMedia: MediaCard? {
-        (record.mediaCards ?? []).first(where: { $0.type == "music" })
+        (record.mediaCards ?? []).first(where: { $0.mediaKind == .music })
     }
 
     private var firstAudioMedia: MediaCard? {
-        (record.mediaCards ?? []).first(where: { $0.type == "audio" })
+        (record.mediaCards ?? []).first(where: { $0.mediaKind == .audio })
     }
 
     private var decodedTodoItems: (title: String, items: [TodoItem])? {
-        guard let media = (record.mediaCards ?? []).first(where: { $0.type == "todo" }),
+        guard let media = (record.mediaCards ?? []).first(where: { $0.mediaKind == .todo }),
               let json = media.caption,
               let raw = json.data(using: .utf8),
               let items = try? JSONDecoder().decode([TodoItem].self, from: raw),
