@@ -30,6 +30,7 @@ final class SproutMemoryRepository {
         var arcs: [TemporalArc]
         var records: [RecordShell]
         var artifacts: [Artifact]
+        var reflections: [ReflectionSnapshot]
     }
 
     struct RecordMemoryView: Sendable {
@@ -502,7 +503,7 @@ final class SproutMemoryRepository {
     func searchResults(matching query: String, limitPerSection: Int = 6) -> SearchResults {
         let tokens = searchTokens(for: query)
         guard !tokens.isEmpty else {
-            return SearchResults(entities: [], arcs: [], records: [], artifacts: [])
+            return SearchResults(entities: [], arcs: [], records: [], artifacts: [], reflections: [])
         }
 
         let analysisIndex = Dictionary(uniqueKeysWithValues: analyses.map { ($0.recordID, $0) })
@@ -596,11 +597,33 @@ final class SproutMemoryRepository {
             .prefix(limitPerSection)
             .map(\.0)
 
+        let reflections = self.reflections
+            .compactMap { reflection -> (ReflectionSnapshot, Int)? in
+                let fields = [
+                    reflection.title,
+                    reflection.body,
+                    reflection.evidenceSummary ?? "",
+                    reflection.type.rawValue,
+                    reflection.status.rawValue
+                ]
+                guard let score = searchScore(in: fields, tokens: tokens) else { return nil }
+                return (reflection, score)
+            }
+            .sorted { lhs, rhs in
+                if lhs.1 == rhs.1 {
+                    return lhs.0.createdAt > rhs.0.createdAt
+                }
+                return lhs.1 > rhs.1
+            }
+            .prefix(limitPerSection)
+            .map(\.0)
+
         return SearchResults(
             entities: entities,
             arcs: arcs,
             records: records,
-            artifacts: matchedArtifacts
+            artifacts: matchedArtifacts,
+            reflections: reflections
         )
     }
 

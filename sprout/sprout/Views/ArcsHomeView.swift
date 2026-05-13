@@ -15,6 +15,17 @@ struct ArcsHomeView: View {
             }
     }
 
+    private var archivedArcs: [TemporalArc] {
+        memoryRepository.temporalArcs
+            .filter { $0.status == .archived }
+            .sorted {
+                if $0.updatedAt == $1.updatedAt {
+                    return $0.endDate > $1.endDate
+                }
+                return $0.updatedAt > $1.updatedAt
+            }
+    }
+
     private var featuredArc: TemporalArc? {
         memoryRepository.featuredTemporalArc(for: selectedDate)
     }
@@ -26,9 +37,14 @@ struct ArcsHomeView: View {
                     featuredSection(featuredArc)
                 }
                 if !acceptedArcs.isEmpty {
-                    arcListSection
+                    activeArcListSection
+                }
+                if !archivedArcs.isEmpty {
+                    archivedArcListSection
                 } else {
-                    emptyState
+                    if acceptedArcs.isEmpty {
+                        emptyState
+                    }
                 }
             }
             .padding(.horizontal, 16)
@@ -84,9 +100,9 @@ struct ArcsHomeView: View {
         }
     }
 
-    private var arcListSection: some View {
+    private var activeArcListSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Recent Arcs")
+            Text("Active Phases")
                 .font(.headline)
 
             ForEach(acceptedArcs, id: \.id) { arc in
@@ -121,6 +137,53 @@ struct ArcsHomeView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(14)
                     .background(Color.white.opacity(0.78), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private var archivedArcListSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Archived Phases")
+                .font(.headline)
+
+            Text("These phases are no longer in the active layer, but their evidence is still preserved.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            ForEach(archivedArcs.prefix(6), id: \.id) { arc in
+                NavigationLink {
+                    TemporalArcDetailView(arc: arc)
+                } label: {
+                    let evidenceView = memoryRepository.arcEvidenceView(for: arc.id)
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 8) {
+                            Text(arc.title)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.primary)
+                            SignalPill(title: "Archived", tint: .secondary)
+                        }
+
+                        Text(arc.summary)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(3)
+
+                        if let evidenceView {
+                            Text(arcEvidenceSummary(for: evidenceView))
+                                .font(.caption2)
+                                .foregroundStyle(.secondary.opacity(0.8))
+                                .lineLimit(1)
+                        }
+
+                        Text("Archived lifecycle state")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary.opacity(0.8))
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(14)
+                    .background(Color.white.opacity(0.62), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
                 .buttonStyle(.plain)
             }

@@ -32,6 +32,26 @@ struct SearchHomeView: View {
         }
     }
 
+    private enum PhaseLifecycleFilter: String, CaseIterable, Identifiable {
+        case all
+        case active
+        case archived
+        case savedReflection
+        case dismissedReflection
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .all: return "All Phases"
+            case .active: return "Active"
+            case .archived: return "Archived"
+            case .savedReflection: return "Saved Reflection"
+            case .dismissedReflection: return "Dismissed Reflection"
+            }
+        }
+    }
+
     private enum SearchCategory: String, CaseIterable, Identifiable {
         case all
         case people
@@ -80,6 +100,7 @@ struct SearchHomeView: View {
     @State private var selectedCategory: SearchCategory = .all
     @State private var selectedTimeRange: SearchTimeRange = .allTime
     @State private var selectedEmotionLabel: String = "All"
+    @State private var selectedPhaseLifecycle: PhaseLifecycleFilter = .all
     @AppStorage("searchRecentQueries") private var recentSearchQueriesStorage = "[]"
 
     private var trimmedQuery: String {
@@ -134,13 +155,21 @@ struct SearchHomeView: View {
             .map { (label: $0.key, count: $0.value) }
     }
 
+    private var featuredReflections: [ReflectionSnapshot] {
+        memoryRepository.reflections
+            .filter(matchesPhaseLifecycle)
+            .sorted { $0.createdAt > $1.createdAt }
+            .prefix(4)
+            .map { $0 }
+    }
+
     private var recentQueries: [String] {
         decodeRecentQueries(from: recentSearchQueriesStorage)
     }
 
     private var featuredArcs: [TemporalArc] {
         memoryRepository.temporalArcs
-            .filter { $0.status == .accepted }
+            .filter(matchesPhaseLifecycle)
             .sorted {
                 if $0.endDate == $1.endDate {
                     return $0.intensityScore > $1.intensityScore
@@ -174,7 +203,7 @@ struct SearchHomeView: View {
 
     private var filteredArcs: [TemporalArc] {
         (selectedCategory == .all || selectedCategory == .phases ? results.arcs : [])
-            .filter { matchesTimeRange(arc: $0) && matchesEmotion(arc: $0) }
+            .filter { matchesTimeRange(arc: $0) && matchesEmotion(arc: $0) && matchesPhaseLifecycle($0) }
     }
 
     private var filteredRecords: [RecordShell] {
@@ -187,8 +216,13 @@ struct SearchHomeView: View {
             .filter { matchesTimeRange(artifact: $0) && matchesEmotion(artifact: $0) }
     }
 
+    private var filteredReflections: [ReflectionSnapshot] {
+        (selectedCategory == .all || selectedCategory == .phases ? results.reflections : [])
+            .filter { matchesTimeRange(reflection: $0) && matchesPhaseLifecycle($0) }
+    }
+
     private var totalFilteredCount: Int {
-        filteredEntities.count + filteredArcs.count + filteredRecords.count + filteredArtifacts.count
+        filteredEntities.count + filteredArcs.count + filteredRecords.count + filteredArtifacts.count + filteredReflections.count
     }
 
     var body: some View {
@@ -283,13 +317,49 @@ struct SearchHomeView: View {
                             TemporalArcDetailView(arc: arc)
                         } label: {
                             VStack(alignment: .leading, spacing: 6) {
-                                Text(arc.title)
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.primary)
+                                HStack(spacing: 8) {
+                                    Text(arc.title)
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(.primary)
+                                    phaseLifecyclePill(for: arc)
+                                }
                                 Text(arc.summary)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                                     .lineLimit(2)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(14)
+                            .background(Color.white.opacity(0.78), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+
+            if selectedCategory == .all || selectedCategory == .phases, !featuredReflections.isEmpty {
+                browseSection(title: "Reflections", subtitle: "Keep, dismiss, or reopen meaning snapshots") {
+                    ForEach(featuredReflections, id: \.id) { reflection in
+                        NavigationLink {
+                            ReflectionDetailView(reflection: reflection)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack(spacing: 8) {
+                                    Text(reflection.title)
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(.primary)
+                                    reflectionStatusPill(reflection)
+                                }
+                                Text(reflection.body)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(2)
+                                if let evidenceSummary = reflection.evidenceSummary {
+                                    Text(evidenceSummary)
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary.opacity(0.85))
+                                        .lineLimit(1)
+                                }
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(14)
@@ -378,18 +448,24 @@ struct SearchHomeView: View {
                             } label: {
                                 let evidenceView = memoryRepository.arcEvidenceView(for: arc.id)
                                 VStack(alignment: .leading, spacing: 6) {
-                                    Text(arc.title)
-                                        .font(.subheadline.weight(.semibold))
-                                        .foregroundStyle(.primary)
+                                    HStack(spacing: 8) {
+                                        Text(arc.title)
+                                            .font(.subheadline.weight(.semibold))
+                                            .foregroundStyle(.primary)
+                                        phaseLifecyclePill(for: arc)
+                                    }
                                     Text(arc.summary)
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                         .lineLimit(2)
                                     if let reflection = evidenceView?.linkedReflection {
-                                        Text(reflection.title)
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary.opacity(0.9))
-                                            .lineLimit(1)
+                                        HStack(spacing: 6) {
+                                            Text(reflection.title)
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary.opacity(0.9))
+                                                .lineLimit(1)
+                                            reflectionStatusPill(reflection)
+                                        }
                                     }
                                     if let evidenceView {
                                         Text(arcEvidenceSummary(for: evidenceView))
@@ -455,6 +531,36 @@ struct SearchHomeView: View {
                                             .lineLimit(1)
                                     }
                                 }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+
+                if !filteredReflections.isEmpty {
+                    browseSection(title: "Reflections", subtitle: "Meaning snapshots with lifecycle state") {
+                        ForEach(filteredReflections, id: \.id) { reflection in
+                            NavigationLink {
+                                ReflectionDetailView(reflection: reflection)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    HStack(spacing: 8) {
+                                        Text(reflection.title)
+                                            .font(.subheadline.weight(.semibold))
+                                            .foregroundStyle(.primary)
+                                        reflectionStatusPill(reflection)
+                                    }
+                                    Text(reflection.body)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(3)
+                                    Text(reflection.createdAt.formatted(date: .abbreviated, time: .shortened))
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary.opacity(0.85))
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(14)
+                                .background(Color.white.opacity(0.78), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                             }
                             .buttonStyle(.plain)
                         }
@@ -530,6 +636,21 @@ struct SearchHomeView: View {
                                 isSelected: selectedEmotionLabel == item.label
                             ) {
                                 selectedEmotionLabel = item.label
+                            }
+                        }
+                    }
+                }
+            }
+
+            if selectedCategory == .all || selectedCategory == .phases {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(PhaseLifecycleFilter.allCases) { filter in
+                            filterChip(
+                                title: filter.title,
+                                isSelected: selectedPhaseLifecycle == filter
+                            ) {
+                                selectedPhaseLifecycle = filter
                             }
                         }
                     }
@@ -637,6 +758,75 @@ struct SearchHomeView: View {
         ].compactMap { $0 }
 
         return parts.isEmpty ? "No linked evidence yet" : parts.joined(separator: " · ")
+    }
+
+    private func matchesPhaseLifecycle(_ reflection: ReflectionSnapshot) -> Bool {
+        switch selectedPhaseLifecycle {
+        case .all:
+            return true
+        case .active:
+            return reflection.status == .active
+        case .archived:
+            return false
+        case .savedReflection:
+            return reflection.status == .saved
+        case .dismissedReflection:
+            return reflection.status == .dismissed
+        }
+    }
+
+    private func matchesTimeRange(reflection: ReflectionSnapshot) -> Bool {
+        switch selectedTimeRange {
+        case .allTime: return true
+        case .last7Days: return reflection.createdAt >= dateThreshold(days: 7)
+        case .last30Days: return reflection.createdAt >= dateThreshold(days: 30)
+        case .last90Days: return reflection.createdAt >= dateThreshold(days: 90)
+        case .last365Days: return reflection.createdAt >= dateThreshold(days: 365)
+        }
+    }
+
+    private func matchesPhaseLifecycle(_ arc: TemporalArc) -> Bool {
+        let reflection = memoryRepository.linkedReflection(forArcID: arc.id)
+
+        switch selectedPhaseLifecycle {
+        case .all:
+            return true
+        case .active:
+            return arc.status == .accepted
+        case .archived:
+            return arc.status == .archived
+        case .savedReflection:
+            return reflection?.status == .saved
+        case .dismissedReflection:
+            return reflection?.status == .dismissed
+        }
+    }
+
+    private func reflectionStatusPill(_ reflection: ReflectionSnapshot) -> some View {
+        SignalPill(title: reflection.statusDisplayText, tint: reflectionStatusTint(reflection.status))
+    }
+
+    @ViewBuilder
+    private func phaseLifecyclePill(for arc: TemporalArc) -> some View {
+        switch arc.status {
+        case .accepted:
+            SignalPill(title: "Active", tint: .orange)
+        case .archived:
+            SignalPill(title: "Archived", tint: .secondary)
+        case .candidate:
+            SignalPill(title: "Candidate", tint: .purple)
+        }
+    }
+
+    private func reflectionStatusTint(_ status: ReflectionStatus) -> Color {
+        switch status {
+        case .active:
+            return .blue
+        case .saved:
+            return .green
+        case .dismissed:
+            return .secondary
+        }
     }
 
     private func dateRangeText(for arc: TemporalArc) -> String {
