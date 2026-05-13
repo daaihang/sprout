@@ -36,14 +36,26 @@ struct CompositionProjector {
         compositionKey: String
     ) -> [CompositionProjectionCard] {
         let memoryView = memoryRepository.memoryView(for: record.id)
+        let artifacts = memoryView?.artifacts ?? []
         let artifactsByKind = Dictionary(
-            grouping: memoryView?.artifacts ?? [],
+            grouping: artifacts,
             by: \.kind
         )
 
-        let baseCards = RecordMapper.allCards(
+        let artifactCards = primaryArtifactCards(
+            for: record,
+            artifacts: artifacts,
+            stateRepository: stateRepository,
+            compositionKey: compositionKey
+        )
+        let coveredSections = Set(artifactCards.map(\.focusedSection))
+
+        let legacyFallbackCards = RecordMapper.allCards(
             record: record
-        ).enumerated().map { index, card in
+        )
+        .filter { !coveredSections.contains($0.focusedSection) }
+        .enumerated()
+        .map { index, card in
             let resolvedTarget = projectionTarget(
                 for: card,
                 record: record,
@@ -57,7 +69,7 @@ struct CompositionProjector {
             )
             let fallbackSpan = ContainerSpan(widthColumns: card.columns, heightUnits: card.units)
             let itemKey = compositionItemKey(for: renderedCard)
-            let fallbackZIndex = index
+            let fallbackZIndex = artifactCards.count + index
             let fallbackRotation = stickerRotation(for: renderedCard.id)
             let fallbackScale = stickerScale(for: renderedCard.id)
             let resolvedState = stateRepository.resolvedState(
@@ -88,18 +100,18 @@ struct CompositionProjector {
         }
 
         let coveredArtifactIDs = Set(
-            baseCards
+            (artifactCards + legacyFallbackCards)
                 .filter { $0.targetType == .artifact }
                 .map(\.targetID)
         )
 
-        return baseCards + supplementalArtifactCards(
+        return artifactCards + legacyFallbackCards + supplementalArtifactCards(
             for: record,
-            artifacts: memoryView?.artifacts ?? [],
+            artifacts: artifacts,
             coveredArtifactIDs: coveredArtifactIDs,
             stateRepository: stateRepository,
             compositionKey: compositionKey,
-            baseIndexOffset: baseCards.count
+            baseIndexOffset: artifactCards.count + legacyFallbackCards.count
         )
     }
 
@@ -160,11 +172,11 @@ struct CompositionProjector {
         case .text:
             return artifactsByKind[.text]?.first
         case .photo:
-            return artifactsByKind[.photo]?.first
+            return nil
         case .music:
             return artifactsByKind[.music]?.first
         case .audio:
-            return artifactsByKind[.audio]?.first
+            return nil
         case .link:
             return artifactsByKind[.link]?.first
         case .weather:
@@ -177,6 +189,127 @@ struct CompositionProjector {
             return artifactsByKind[.personMention]?.first
         case .emotion, .activity, .todayInHistory:
             return nil
+        }
+    }
+
+    private func primaryArtifactCards(
+        for record: Record,
+        artifacts: [Artifact],
+        stateRepository: CompositionStateRepository,
+        compositionKey: String
+    ) -> [CompositionProjectionCard] {
+        artifacts
+            .filter(isPrimaryArtifact)
+            .sorted { lhs, rhs in
+                if lhs.createdAt == rhs.createdAt {
+                    return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
+                }
+                return lhs.createdAt < rhs.createdAt
+            }
+            .enumerated()
+            .compactMap { index, artifact in
+                let fallbackSpanKey = artifactSpanKey(for: artifact)
+                let fallbackID = "\(record.id.uuidString)-\(fallbackSpanKey)"
+                let section = focusedSection(for: artifact)
+
+                guard let rendered = artifactRenderer.renderCard(
+                    for: artifact,
+                    record: record,
+                    focusedSection: section,
+                    fallbackID: fallbackID,
+                    fallbackSpanKey: fallbackSpanKey
+                ) else {
+                    return nil
+                }
+
+                let fallbackSpan = sizeLimits(for: rendered.cardType).defaultSpan
+                let itemKey = "\(record.id.uuidString)-\(rendered.spanKey)"
+                let fallbackRotation = stickerRotation(for: rendered.id)
+                let fallbackScale = stickerScale(for: rendered.id)
+                let resolvedState = stateRepository.resolvedState(
+                    compositionKey: compositionKey,
+                    itemKey: itemKey,
+                    fallbackSpan: fallbackSpan,
+                    fallbackZIndex: index,
+                    fallbackRotationDegrees: fallbackRotation,
+                    fallbackScale: fallbackScale
+                )
+
+                return CompositionProjectionCard(
+                    id: rendered.id,
+                    spanKey: rendered.spanKey,
+                    compositionItemKey: itemKey,
+                    cardType: rendered.cardType,
+                    targetType: .artifact,
+                    targetID: artifact.id,
+                    record: rendered.record,
+                    focusedSection: rendered.focusedSection,
+                    columns: resolvedState.span.widthColumns,
+                    units: resolvedState.span.heightUnits,
+                    zIndex: resolvedState.zIndex,
+                    rotationDegrees: resolvedState.rotationDegrees,
+                    scale: resolvedState.scale,
+                    cardView: rendered.cardView
+                )
+            }
+    }
+
+    private func isPrimaryArtifact(_ artifact: Artifact) -> Bool {
+        switch artifact.kind {
+        case .photo, .audio:
+            return false
+        case .text, .link, .todo, .music, .location, .weather, .personMention, .decisionNote:
+            return true
+        case .book, .film, .game, .ticket, .healthMetric:
+            return false
+        }
+    }
+
+    private func focusedSection(for artifact: Artifact) -> RecordSection {
+        switch artifact.kind {
+        case .text, .decisionNote, .book, .film, .game, .ticket, .healthMetric:
+            return .text
+        case .photo:
+            return .photo
+        case .audio:
+            return .audio
+        case .link:
+            return .link
+        case .todo:
+            return .todo
+        case .music:
+            return .music
+        case .location:
+            return .map
+        case .weather:
+            return .weather
+        case .personMention:
+            return .people
+        }
+    }
+
+    private func artifactSpanKey(for artifact: Artifact) -> String {
+        switch artifact.kind {
+        case .text:
+            return "text"
+        case .link:
+            return "link"
+        case .todo:
+            return "todo"
+        case .music:
+            return "music"
+        case .location:
+            return "map"
+        case .weather:
+            return "weather"
+        case .personMention:
+            return "people"
+        case .photo:
+            return "photo"
+        case .audio:
+            return "audio"
+        case .decisionNote, .book, .film, .game, .ticket, .healthMetric:
+            return "artifact-\(artifact.kind.rawValue)-\(artifact.id.uuidString)"
         }
     }
 

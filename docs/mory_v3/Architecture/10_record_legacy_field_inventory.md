@@ -1,7 +1,7 @@
 # 10. Record Legacy Field Inventory
 
 > 更新时间：2026-05-14
-> 目的：为 `Record` 旧字段清理进入“待删除候选”阶段建立显式台账。
+> 目的：记录 `Record` 旧字段清理状态，并明确剩余 fallback 层的收缩方向。
 
 ## 1. 当前判断
 
@@ -18,26 +18,24 @@
 
 ### 2.1 `cardType`
 
-状态：`fallback-only / debug-compatible`
+状态：`removed from model`
 
 当前用途：
 
-- `derivedCardKind` 在无法从真实内容推导时回退到 `cardType`
-- 少量兼容 helper 仍会在没有内容信号时回退到 `cardType`
+- 无
 
 当前判断：
 
 - 主 composer capture 已不再写
 - standalone add-card 已不再写
-- 真实用户路径读取已基本改为 content-first
+- `derivedCardKind` 已改为 `contentFirstCardKind ?? .text`
+- `Record.cardType` 已从 SwiftData 模型物理移除
 
-删除前条件：
+完成情况：
 
-1. 确认旧数据在 detail / search / board fallback 中不再依赖它兜底
-2. 核对 `RecordMapper` 与 `CompositionProjector` 的剩余兼容分支
-3. 评估 SwiftData schema 删除 `cardType` 的迁移策略
-
-删除优先级：高
+1. 旧数据在 detail / search / board fallback 中不再依赖 `cardType` 兜底
+2. `CompositionProjector` 已优先生成 artifact-backed composition items
+3. `RecordMapper` 仍保留为旧记录 fallback transition layer
 
 ### 2.2 `cardUnits`
 
@@ -80,30 +78,33 @@
 - timeline detail entry 改为 content-kind 驱动
 - today-in-history subtitle 改为 content-kind 驱动
 - `Record.cardKind` 不再提供把新语义回写进 `cardType` 的 setter
+- `derivedCardKind` 不再读取 `cardType`
+- `Record.cardType` 已从模型移除
+- `CompositionProjector` 先渲染可直接展示的 artifacts，再用 `RecordMapper` 补齐 legacy sections
 - analyze 主链已切到 `/api/analysis/records`
 - analyze preview 主链已切到 `/api/analysis/preview`
 
 剩余：
 
-- `derivedCardKind` 仍保留对 `cardType` 的最后 fallback
-- `Record.cardType` 字段本身仍留在 SwiftData 模型中
+- `RecordMapper` 仍保留为旧记录 fallback transition layer
+- `MediaCard` 仍作为兼容旧 capture/media payload 的附属对象存在
 
 ## 4. 下一阶段动作
 
 ### 4.1 结构动作
 
-1. 继续收缩 `cardType` 的兼容 fallback 范围
-2. 继续减少 `RecordMapper` / detail fallback 对 `derivedCardKind` 的依赖
-3. 评估 `cardType` 是否进入彻底删除阶段
-4. 核对移除旧字段后的 SwiftData schema 迁移策略
+1. 继续收缩 `RecordMapper` 的职责，只保留旧记录 fallback 能力
+2. 继续让首页 composition projection 直接消费 `ArtifactRenderer`
+3. 梳理 `MediaCard` 仍承担的真实 payload 职责，避免和 `Artifact` 重复扩张
+4. 核对移除旧字段后的 SwiftData schema 迁移风险
 
 ### 4.2 UI 动作
 
 在不返工架构的前提下，开始重做高频卡片内部版式：
 
-1. `QuoteCard`
-2. `PhotoCard`
-3. `PhaseReflectionCard`
+1. `AudioCard`
+2. `BookCard / FilmCard`
+3. `RecordDetail` 中 artifact evidence 的可解释展示
 
 ## 5. 完成标准
 

@@ -31,21 +31,20 @@ Practical progress against the v3 roadmap:
   Ontology and architecture docs are frozen.
 - Phase 1 `92%`
   Artifact layer exists and modern capture paths already dual-write aggregate data.
-- Phase 2 `94%`
-  Composition state persists by board/day, board resize now refreshes immediately, and the main read path no longer depends on legacy record-level span fields or legacy span overrides; the old per-record span fields have now been physically removed from `Record`.
+- Phase 2 `95%`
+  Composition state persists by board/day, board resize now refreshes immediately, and the home projection path now prefers artifact-rendered composition items before falling back to legacy record-derived cards.
 - Phase 3 `93%`
   Analysis snapshot contract and local persistence are active.
 - Phase 4 `84%`
   Graph models and update logic exist, but UI consumption is still partial.
 - Phase 5 `86%`
   Temporal arcs and phase reflections exist, but the page-level user experience is still incomplete.
-- Phase 6 `96%`
-  Legacy cleanup is deep into physical removal; old per-record span fields and override storage have already been removed from `Record`, while `cardType` still remains.
+- Phase 6 `98%`
+  Legacy cleanup is deep into physical removal; old per-record span fields, override storage, and `cardType` have been removed from `Record`.
 
 Main remaining gaps:
 
-- `Record.cardType` still exists.
-- `RecordMapper` still survives as a transition layer, but no longer reads legacy span fallback state.
+- `RecordMapper` still survives as a fallback transition layer, but artifact-backed composition projection now runs first.
 - Several card internals still present legacy UI quality or legacy assumptions.
 - Graph and arc layers are not yet fully exposed as first-class navigation experiences.
 
@@ -112,7 +111,7 @@ not as page-local hacks.
 `Record` still currently stores:
 
 - Base content such as `body`, `createdAt`, `updatedAt`, `tags`
-- Remaining transitional fields such as `cardType` and `dashboardOrder`
+- Remaining transitional fields such as `dashboardOrder`
 - Weather and location snapshot fields
 - Legacy relationships around `MediaCard` and related objects
 
@@ -190,7 +189,7 @@ The backend will normalize `AI_BASE_URL=https://api.deepseek.com` to the correct
 
 The current best-practice next steps are:
 
-1. Continue refreshing high-frequency card internals so the board feels intentional rather than legacy.
-2. Keep removing `Record` legacy layout dependencies.
+1. Continue shrinking `RecordMapper` until it only supports old records that have not been artifact-backed.
+2. Continue refreshing high-frequency card internals so the board feels intentional rather than legacy.
 3. Surface graph and phase objects more directly in navigation and detail views.
 4. Keep iOS and backend contracts aligned to the v3 document set instead of adding more one-off UI types.
