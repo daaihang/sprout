@@ -23,9 +23,9 @@ struct DashboardCardInfo: Identifiable {
     let record: Record
     /// Which section of the record this card represents (determines what's shown at top in detail view).
     let focusedSection: RecordSection
-    /// Grid column span (2/4/6/8 based on card type limits).
+    /// Grid column span resolved from either legacy record overrides or composition defaults.
     let columns: Int
-    /// Grid height in units derived from record.cardUnits (1/2/4).
+    /// Grid height resolved from either legacy record overrides or composition defaults.
     let units: Int
     /// Layer ordering for composition projection.
     let zIndex: Int
@@ -53,6 +53,13 @@ enum RecordMapper {
         spanResolutionMode: SpanResolutionMode = .legacyRecord
     ) -> [DashboardCardInfo] {
         var cards: [DashboardCardInfo] = []
+
+        let photoMedia = (record.mediaCards ?? []).filter { $0.type == "photo" }
+        let musicMedia = (record.mediaCards ?? []).first(where: { $0.type == "music" })
+        let audioMedia = (record.mediaCards ?? []).first(where: { $0.type == "audio" })
+        let linkMedia = (record.mediaCards ?? []).filter { $0.type == "link" }
+        let todoMedia = (record.mediaCards ?? []).first(where: { $0.type == "todo" })
+        let mentionedPeople = record.mentionedPeople ?? []
 
         func resolvedSpan(for cardType: String, key: String) -> ContainerSpan {
             switch spanResolutionMode {
@@ -86,7 +93,6 @@ enum RecordMapper {
         }
 
         // ── Photos ────────────────────────────────────────────────────────────
-        let photoMedia = (record.mediaCards ?? []).filter { $0.type == "photo" }
         if !photoMedia.isEmpty {
             let imagesData = photoMedia.compactMap { m -> Data? in
                 m.imageData
@@ -102,7 +108,7 @@ enum RecordMapper {
         }
 
         // ── Music ─────────────────────────────────────────────────────────────
-        if let m = (record.mediaCards ?? []).first(where: { $0.type == "music" }) {
+        if let m = musicMedia {
             let data = MusicCardData(
                 trackName: m.title ?? "",
                 artistName: m.caption ?? "",
@@ -119,7 +125,7 @@ enum RecordMapper {
         }
 
         // ── Audio ─────────────────────────────────────────────────────────────
-        if let m = (record.mediaCards ?? []).first(where: { $0.type == "audio" }) {
+        if let m = audioMedia {
             cards.append(cardInfo(
                 suffix: "audio",
                 type: "audio",
@@ -139,7 +145,6 @@ enum RecordMapper {
         }
 
         // ── Links ─────────────────────────────────────────────────────────────
-        let linkMedia = (record.mediaCards ?? []).filter { $0.type == "link" }
         if !linkMedia.isEmpty {
             let items = linkMedia.compactMap { m -> LinkItem? in
                 guard let urlStr = m.url, let url = URL(string: urlStr) else { return nil }
@@ -226,7 +231,7 @@ enum RecordMapper {
         }
 
         // ── Todo ──────────────────────────────────────────────────────────────
-        if let todoMedia = (record.mediaCards ?? []).first(where: { $0.type == "todo" }) {
+        if let todoMedia {
             var todoData = TodoCardData(title: todoMedia.title ?? "")
             if let json = todoMedia.caption,
                let raw = json.data(using: .utf8),
@@ -244,7 +249,6 @@ enum RecordMapper {
         }
 
         // ── People ────────────────────────────────────────────────────────────
-        let mentionedPeople = record.mentionedPeople ?? []
         if !mentionedPeople.isEmpty {
             cards.append(cardInfo(
                 suffix: "people",
