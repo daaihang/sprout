@@ -61,6 +61,36 @@ struct RecordDetailView: View {
         linkedArcs.first.flatMap { memoryRepository.linkedReflection(forArcID: $0.id) }
     }
 
+    private var artifactEntityNamesByArtifactID: [UUID: [String]] {
+        guard let memoryView else { return [:] }
+        let entityMap = Dictionary(uniqueKeysWithValues: memoryView.linkedEntities.map { ($0.id, $0) })
+        let artifactIDs = Set(memoryView.artifacts.map(\.id))
+        let groupedLinks = Dictionary(grouping: memoryRepository.artifactEntityLinks.filter { artifactIDs.contains($0.artifactID) }, by: \.artifactID)
+
+        return groupedLinks.mapValues { links in
+            links.compactMap { entityMap[$0.entityID]?.displayName }
+                .uniqued()
+                .sorted()
+        }
+    }
+
+    private var evidenceSummaryText: String? {
+        guard let memoryView else { return nil }
+
+        var parts: [String] = []
+        if !memoryView.artifacts.isEmpty {
+            parts.append("\(memoryView.artifacts.count) artifacts")
+        }
+        if !memoryView.linkedEntities.isEmpty {
+            parts.append("\(memoryView.linkedEntities.count) entities")
+        }
+        if !linkedArcs.isEmpty {
+            parts.append("\(linkedArcs.count) phases")
+        }
+
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
     private var artifactSummaryLine: String {
         guard let memoryView else { return "No artifact projection yet" }
         let grouped = Dictionary(grouping: memoryView.artifacts, by: \.kind)
@@ -166,6 +196,13 @@ struct RecordDetailView: View {
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                                     .lineLimit(2)
+                            }
+
+                            if let entityNames = artifactEntityNamesByArtifactID[artifact.id], !entityNames.isEmpty {
+                                Text(entityNames.prefix(3).joined(separator: " · "))
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary.opacity(0.85))
+                                    .lineLimit(1)
                             }
                         }
 
@@ -688,6 +725,13 @@ struct RecordDetailView: View {
                     if !analysis.tags.isEmpty {
                         tokenWrapRow(analysis.tags, tint: .accentColor)
                     }
+
+                    if let evidenceSummaryText {
+                        evidenceCallout(
+                            title: "Evidence",
+                            body: "This analysis is currently grounded in \(evidenceSummaryText)."
+                        )
+                    }
                 }
             }
 
@@ -726,6 +770,34 @@ struct RecordDetailView: View {
                                     .font(.caption.weight(.semibold))
                                     .foregroundStyle(.tertiary)
                             }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+
+            if !linkedArcs.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Related Phases")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    ForEach(linkedArcs.prefix(3), id: \.id) { arc in
+                        NavigationLink {
+                            TemporalArcDetailView(arc: arc)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(arc.title)
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(.primary)
+                                Text(arc.summary)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(2)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(10)
+                            .background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                         }
                         .buttonStyle(.plain)
                     }
@@ -826,6 +898,20 @@ struct RecordDetailView: View {
         }
     }
 
+    private func evidenceCallout(title: String, body: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text(body)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(10)
+        .background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
     private func shellMetaChip(icon: String, text: String) -> some View {
         Label(text.capitalized, systemImage: icon)
             .font(.caption.weight(.medium))
@@ -890,6 +976,13 @@ private struct MapSnapshotView: View {
         if let snap = try? await MKMapSnapshotter(options: opts).start() {
             image = snap.image
         }
+    }
+}
+
+private extension Array where Element: Hashable {
+    func uniqued() -> [Element] {
+        var seen = Set<Element>()
+        return filter { seen.insert($0).inserted }
     }
 }
 
