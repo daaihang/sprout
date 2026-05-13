@@ -2,12 +2,52 @@ import SwiftUI
 import SwiftData
 
 struct SearchHomeView: View {
+    private enum SearchCategory: String, CaseIterable, Identifiable {
+        case all
+        case people
+        case places
+        case themes
+        case decisions
+        case phases
+        case memories
+        case artifacts
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .all: return "All"
+            case .people: return "People"
+            case .places: return "Places"
+            case .themes: return "Themes"
+            case .decisions: return "Decisions"
+            case .phases: return "Phases"
+            case .memories: return "Memories"
+            case .artifacts: return "Artifacts"
+            }
+        }
+
+        var systemImage: String {
+            switch self {
+            case .all: return "square.grid.2x2"
+            case .people: return "person.2"
+            case .places: return "map"
+            case .themes: return "tag"
+            case .decisions: return "checkmark.circle"
+            case .phases: return "timeline.selection"
+            case .memories: return "list.bullet.rectangle"
+            case .artifacts: return "shippingbox"
+            }
+        }
+    }
+
     @Environment(\.modelContext) private var modelContext
     @Environment(SproutMemoryRepository.self) private var memoryRepository
 
     let selectedDate: Date
 
     @State private var query = ""
+    @State private var selectedCategory: SearchCategory = .all
 
     private var trimmedQuery: String {
         query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -29,6 +69,22 @@ struct SearchHomeView: View {
             .map { $0 }
     }
 
+    private var featuredPlaces: [EntityNode] {
+        memoryRepository.entityNodes
+            .filter { $0.kind == .place }
+            .sorted { $0.updatedAt > $1.updatedAt }
+            .prefix(4)
+            .map { $0 }
+    }
+
+    private var featuredDecisions: [EntityNode] {
+        memoryRepository.entityNodes
+            .filter { $0.kind == .decision }
+            .sorted { $0.updatedAt > $1.updatedAt }
+            .prefix(4)
+            .map { $0 }
+    }
+
     private var featuredArcs: [TemporalArc] {
         memoryRepository.temporalArcs
             .filter { $0.status == .accepted }
@@ -42,9 +98,45 @@ struct SearchHomeView: View {
             .map { $0 }
     }
 
+    private var filteredEntities: [EntityNode] {
+        filtered(results.entities, matching: { entity in
+            switch selectedCategory {
+            case .all:
+                return true
+            case .people:
+                return entity.kind == .person
+            case .places:
+                return entity.kind == .place
+            case .themes:
+                return entity.kind == .theme
+            case .decisions:
+                return entity.kind == .decision
+            case .phases, .memories, .artifacts:
+                return false
+            }
+        })
+    }
+
+    private var filteredArcs: [TemporalArc] {
+        selectedCategory == .all || selectedCategory == .phases ? results.arcs : []
+    }
+
+    private var filteredRecords: [RecordShell] {
+        selectedCategory == .all || selectedCategory == .memories ? results.records : []
+    }
+
+    private var filteredArtifacts: [Artifact] {
+        selectedCategory == .all || selectedCategory == .artifacts ? results.artifacts : []
+    }
+
+    private var totalFilteredCount: Int {
+        filteredEntities.count + filteredArcs.count + filteredRecords.count + filteredArtifacts.count
+    }
+
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 20) {
+                categoryStrip
                 if trimmedQuery.isEmpty {
                     browseState
                 } else {
@@ -69,7 +161,7 @@ struct SearchHomeView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
-            if !featuredPeople.isEmpty {
+            if selectedCategory == .all || selectedCategory == .people, !featuredPeople.isEmpty {
                 browseSection(title: "People", subtitle: "Start from long-term relationships") {
                     ForEach(featuredPeople, id: \.id) { person in
                         NavigationLink {
@@ -92,13 +184,25 @@ struct SearchHomeView: View {
                 }
             }
 
-            if !featuredThemes.isEmpty {
+            if selectedCategory == .all || selectedCategory == .themes, !featuredThemes.isEmpty {
                 browseSection(title: "Themes", subtitle: "Jump into recurring topics") {
                     chipCloud(featuredThemes.map(\.displayName), tint: .orange)
                 }
             }
 
-            if !featuredArcs.isEmpty {
+            if selectedCategory == .all || selectedCategory == .places, !featuredPlaces.isEmpty {
+                browseSection(title: "Places", subtitle: "Ground search in location memory") {
+                    chipCloud(featuredPlaces.map(\.displayName), tint: .green)
+                }
+            }
+
+            if selectedCategory == .all || selectedCategory == .decisions, !featuredDecisions.isEmpty {
+                browseSection(title: "Decisions", subtitle: "Jump to important choice markers") {
+                    chipCloud(featuredDecisions.map(\.displayName), tint: .pink)
+                }
+            }
+
+            if selectedCategory == .all || selectedCategory == .phases, !featuredArcs.isEmpty {
                 browseSection(title: "Phases", subtitle: "Search by longer arcs, not only single records") {
                     ForEach(featuredArcs, id: \.id) { arc in
                         NavigationLink {
@@ -126,16 +230,20 @@ struct SearchHomeView: View {
 
     private var resultsState: some View {
         VStack(alignment: .leading, spacing: 20) {
-            if isEmpty(results) {
+            Text("\(totalFilteredCount) matches")
+                .font(.headline)
+                .foregroundStyle(.secondary)
+
+            if totalFilteredCount == 0 {
                 HomeSectionPlaceholderView(
                     systemImage: "magnifyingglass",
                     title: "No Results",
                     subtitle: "Try a person, place, theme, phase title, or a line from a memory."
                 )
             } else {
-                if !results.entities.isEmpty {
+                if !filteredEntities.isEmpty {
                     browseSection(title: "Entities", subtitle: "People, places, themes, decisions") {
-                        ForEach(results.entities, id: \.id) { entity in
+                        ForEach(filteredEntities, id: \.id) { entity in
                             NavigationLink {
                                 MemoryEntityDetailView(entityID: entity.id)
                             } label: {
@@ -170,9 +278,9 @@ struct SearchHomeView: View {
                     }
                 }
 
-                if !results.arcs.isEmpty {
+                if !filteredArcs.isEmpty {
                     browseSection(title: "Phases", subtitle: "Temporal arcs and stage summaries") {
-                        ForEach(results.arcs, id: \.id) { arc in
+                        ForEach(filteredArcs, id: \.id) { arc in
                             NavigationLink {
                                 TemporalArcDetailView(arc: arc)
                             } label: {
@@ -197,9 +305,9 @@ struct SearchHomeView: View {
                     }
                 }
 
-                if !results.records.isEmpty {
+                if !filteredRecords.isEmpty {
                     browseSection(title: "Memories", subtitle: "Raw capture shells and analyzed records") {
-                        ForEach(results.records, id: \.id) { record in
+                        ForEach(filteredRecords, id: \.id) { record in
                             if let fullRecord = fetchRecord(id: record.id) {
                                 NavigationLink {
                                     RecordDetailView(record: fullRecord)
@@ -214,9 +322,9 @@ struct SearchHomeView: View {
                     }
                 }
 
-                if !results.artifacts.isEmpty {
+                if !filteredArtifacts.isEmpty {
                     browseSection(title: "Artifacts", subtitle: "Text, media, and referenced fragments") {
-                        ForEach(results.artifacts, id: \.id) { artifact in
+                        ForEach(filteredArtifacts, id: \.id) { artifact in
                             artifactRow(artifact)
                         }
                     }
@@ -235,6 +343,28 @@ struct SearchHomeView: View {
                     .foregroundStyle(.secondary)
             }
             content()
+        }
+    }
+
+    private var categoryStrip: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                ForEach(SearchCategory.allCases) { category in
+                    Button {
+                        selectedCategory = category
+                    } label: {
+                        Label(category.title, systemImage: category.systemImage)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(selectedCategory == category ? .white : .primary)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(
+                                Capsule().fill(selectedCategory == category ? Color.accentColor : Color.white.opacity(0.16))
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
         }
     }
 
@@ -316,10 +446,7 @@ struct SearchHomeView: View {
         return records.first { $0.id == id }
     }
 
-    private func isEmpty(_ results: SproutMemoryRepository.SearchResults) -> Bool {
-        results.entities.isEmpty
-            && results.arcs.isEmpty
-            && results.records.isEmpty
-            && results.artifacts.isEmpty
+    private func filtered<T>(_ items: [T], matching predicate: (T) -> Bool) -> [T] {
+        items.filter(predicate)
     }
 }
