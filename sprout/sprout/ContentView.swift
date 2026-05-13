@@ -9,6 +9,7 @@ struct ContentView: View {
     @Environment(AppLocalization.self) private var localization
     @Environment(\.modelContext) private var modelContext
     @Environment(SproutMemoryRepository.self) private var memoryRepository
+    @Environment(AuthSessionManager.self) private var authSession
     // MARK: UI State
     @State private var isShowingAccountSheet = false
     @State private var isBarOpen             = false
@@ -23,6 +24,8 @@ struct ContentView: View {
     // MARK: Services
     @State private var musicService     = MusicService()
     @State private var speechRecognizer = SpeechRecognizer()
+    private let memoryAggregateBuilder = SproutMemoryAggregateBuilder()
+    private let analyzeService = SproutAnalyzeService()
 
     // MARK: Composer attachments
     @State private var composerAttachments = ComposerAttachments()
@@ -359,7 +362,9 @@ struct ContentView: View {
             modelContext.insert(m)
             modelContext.insert(record)
             record.mediaCards = [m]
-            memoryRepository.upsertAggregate(SproutMemoryAggregateBuilder().build(record: record))
+            let aggregate = memoryAggregateBuilder.build(record: record)
+            memoryRepository.upsertAggregate(aggregate)
+            await runPostCaptureAnalysisIfPossible(for: aggregate)
         }
     }
 
@@ -470,10 +475,29 @@ struct ContentView: View {
 
             modelContext.insert(record)
             if !mediaCards.isEmpty { record.mediaCards = mediaCards }
-            memoryRepository.upsertAggregate(SproutMemoryAggregateBuilder().build(record: record))
+            let aggregate = memoryAggregateBuilder.build(record: record)
+            memoryRepository.upsertAggregate(aggregate)
+            await runPostCaptureAnalysisIfPossible(for: aggregate)
 
             composerAttachments.clear()
             composerDraftText = ""
+        }
+    }
+
+    @MainActor
+    private func runPostCaptureAnalysisIfPossible(for aggregate: SproutMemoryAggregate) async {
+        guard let session = authSession.currentSession else { return }
+        guard session.mode != "development_stub" || !session.accessToken.isEmpty else { return }
+
+        do {
+            let response = try await analyzeService.analyzeRecord(aggregate: aggregate, session: session)
+            let snapshot = analyzeService.mapToAnalysisSnapshot(
+                response: response,
+                recordID: aggregate.recordShell.id
+            )
+            memoryRepository.setAnalysis(snapshot, aggregate: aggregate)
+        } catch {
+            // Keep capture resilient; analysis is best-effort.
         }
     }
 
