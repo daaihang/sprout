@@ -7,6 +7,9 @@ struct SproutAnalyzeResponse: Decodable, Sendable {
     let candidateEdges: [CandidateEdge]
     let insight: String
     let summary: String?
+    let salienceScore: Double?
+    let retrievalTerms: [String]
+    let reflectionHint: String?
     let followUp: FollowUp?
 
     struct Emotion: Decodable, Sendable {
@@ -56,6 +59,9 @@ struct SproutAnalyzeResponse: Decodable, Sendable {
         case candidateEdges = "candidate_edges"
         case insight
         case summary
+        case salienceScore = "salience_score"
+        case retrievalTerms = "retrieval_terms"
+        case reflectionHint = "reflection_hint"
         case followUp = "follow_up"
     }
 }

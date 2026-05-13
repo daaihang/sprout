@@ -695,8 +695,23 @@ struct RecordDetailView: View {
                             .foregroundStyle(.secondary)
                     }
 
+                    if let salienceScore = analysis.salienceScore {
+                        Text("Salience \(Int((salienceScore * 100).rounded()))")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+
                     if !analysis.tags.isEmpty {
                         tokenWrapRow(analysis.tags, tint: .accentColor)
+                    }
+
+                    if !analysis.retrievalTerms.isEmpty {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Retrieval Terms")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                            tokenWrapRow(analysis.retrievalTerms, tint: .green)
+                        }
                     }
 
                     if !analysis.entities.isEmpty {
@@ -709,6 +724,13 @@ struct RecordDetailView: View {
                                 tint: .purple
                             )
                         }
+                    }
+
+                    if let reflectionHint = analysis.reflectionHint, !reflectionHint.isEmpty {
+                        evidenceCallout(
+                            title: "Reflection Hint",
+                            body: reflectionHint
+                        )
                     }
 
                     if let evidenceSummaryText {

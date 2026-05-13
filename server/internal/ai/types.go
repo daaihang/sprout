@@ -56,13 +56,16 @@ type KnownEntityReference struct {
 }
 
 type AnalyzeResponse struct {
-	Tags      []string         `json:"tags"`
-	Emotion   EmotionResult    `json:"emotion"`
-	Entities  []EntityMention  `json:"entities"`
-	Edges     []CandidateEdge  `json:"candidate_edges"`
-	Insight   string           `json:"insight"`
-	FollowUp  *FollowUp        `json:"follow_up"`
-	Summary   string           `json:"summary,omitempty"`
+	Tags           []string        `json:"tags"`
+	Emotion        EmotionResult   `json:"emotion"`
+	Entities       []EntityMention `json:"entities"`
+	Edges          []CandidateEdge `json:"candidate_edges"`
+	Insight        string          `json:"insight"`
+	FollowUp       *FollowUp       `json:"follow_up"`
+	Summary        string          `json:"summary,omitempty"`
+	SalienceScore  *float64        `json:"salience_score,omitempty"`
+	RetrievalTerms []string        `json:"retrieval_terms,omitempty"`
+	ReflectionHint string          `json:"reflection_hint,omitempty"`
 }
 
 type EmotionResult struct {
@@ -140,6 +143,9 @@ func NormalizeResponse(resp AnalyzeResponse) AnalyzeResponse {
 	}
 	if strings.TrimSpace(resp.Summary) == "" {
 		resp.Summary = resp.Insight
+	}
+	if resp.RetrievalTerms == nil {
+		resp.RetrievalTerms = []string{}
 	}
 	if resp.FollowUp != nil && resp.FollowUp.Question == "" {
 		resp.FollowUp = nil

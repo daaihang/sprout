@@ -53,6 +53,9 @@ func TestAnthropicProviderAnalyze(t *testing.T) {
 						"candidate_edges": []any{},
 						"insight":         "live anthropic",
 						"summary":         "anthropic summary",
+						"salience_score":  0.67,
+						"retrieval_terms": []string{"gratitude", "journal"},
+						"reflection_hint": "watch for repetition",
 						"follow_up":       nil,
 					},
 				},
@@ -117,7 +120,7 @@ func TestOpenAICompatibleProviderAnalyze(t *testing.T) {
 			"choices": []map[string]any{
 				{
 					"message": map[string]any{
-						"content": `{"tags":["journal","gratitude"],"emotion":{"label":"positive","intensity":4,"confidence":0.88},"entities":[],"candidate_edges":[],"insight":"live openai","summary":"openai summary","follow_up":null}`,
+						"content": `{"tags":["journal","gratitude"],"emotion":{"label":"positive","intensity":4,"confidence":0.88},"entities":[],"candidate_edges":[],"insight":"live openai","summary":"openai summary","salience_score":0.71,"retrieval_terms":["gratitude","journal"],"reflection_hint":"watch for repeated gratitude anchors","follow_up":null}`,
 					},
 				},
 			},

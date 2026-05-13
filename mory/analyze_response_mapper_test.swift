@@ -21,6 +21,9 @@ struct AnalyzeResponseMapperTestRunner {
             candidateEdges: [],
             insight: "Fallback insight",
             summary: " Preferred summary ",
+            salienceScore: 0.74,
+            retrievalTerms: [" transition ", "Lina", "career"],
+            reflectionHint: " Watch for repeated hesitation around leaving. ",
             followUp: .init(question: " What should I do next? ")
         )
 
@@ -30,12 +33,15 @@ struct AnalyzeResponseMapperTestRunner {
         expect(snapshot.insight == "Preferred summary", "prefers summary over insight")
         expect(snapshot.emotionLabel == "reflective", "trims emotion label")
         expect(snapshot.followUpQuestion == "What should I do next?", "trims follow-up question")
+        expect(snapshot.salienceScore == 0.74, "maps salience score")
+        expect(snapshot.reflectionHint == "Watch for repeated hesitation around leaving.", "trims reflection hint")
         expect(snapshot.entities.count == 4, "maps four normalized entity kinds and deduplicates aliases")
         expect(snapshot.entities.contains(where: { $0.kind == .person && $0.name == "Lina" }), "maps person entity")
         expect(snapshot.entities.contains(where: { $0.kind == .place && $0.name == "上海" }), "maps place entity from location alias")
         expect(snapshot.entities.contains(where: { $0.kind == .theme && $0.name == "Transition" }), "maps theme entity from topic alias")
         expect(snapshot.entities.contains(where: { $0.kind == .decision && $0.name == "Leave Job" }), "maps decision entity")
         expect(snapshot.tags == ["transition", "career"], "deduplicates tags and appends theme names once")
+        expect(snapshot.retrievalTerms == ["transition", "Lina", "career", "上海", "Leave Job"], "merges retrieval terms with tags and entity names")
 
         print("analyze_response_mapper_test: PASS")
     }

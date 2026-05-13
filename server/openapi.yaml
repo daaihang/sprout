@@ -209,6 +209,16 @@ components:
                 type: string
         insight:
           type: string
+        summary:
+          type: string
+        salience_score:
+          type: number
+        retrieval_terms:
+          type: array
+          items:
+            type: string
+        reflection_hint:
+          type: string
         follow_up:
           anyOf:
             - type: "null"

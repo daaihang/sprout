@@ -16,6 +16,9 @@ The JSON must match this shape:
   "candidate_edges": [{"from_name":"string","from_kind":"string","to_name":"string","to_kind":"string","relation":"string","confidence":0.0}],
   "insight": "string",
   "summary": "string",
+  "salience_score": 0.0,
+  "retrieval_terms": ["string"],
+  "reflection_hint": "string",
   "follow_up": {"question":"string","expires_at":"RFC3339 string"} | null
 }
 Use empty arrays instead of null for collections.

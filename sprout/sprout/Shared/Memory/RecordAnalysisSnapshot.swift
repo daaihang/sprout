@@ -8,6 +8,9 @@ struct RecordAnalysisSnapshot: Identifiable, Codable, Hashable, Sendable {
     var insight: String
     var followUpQuestion: String?
     var entities: [EntityReference]
+    var salienceScore: Double?
+    var retrievalTerms: [String]
+    var reflectionHint: String?
     var createdAt: Date
 
     init(
@@ -18,6 +21,9 @@ struct RecordAnalysisSnapshot: Identifiable, Codable, Hashable, Sendable {
         insight: String,
         followUpQuestion: String? = nil,
         entities: [EntityReference] = [],
+        salienceScore: Double? = nil,
+        retrievalTerms: [String] = [],
+        reflectionHint: String? = nil,
         createdAt: Date
     ) {
         self.id = id
@@ -27,6 +33,9 @@ struct RecordAnalysisSnapshot: Identifiable, Codable, Hashable, Sendable {
         self.insight = insight
         self.followUpQuestion = followUpQuestion
         self.entities = entities
+        self.salienceScore = salienceScore
+        self.retrievalTerms = retrievalTerms
+        self.reflectionHint = reflectionHint
         self.createdAt = createdAt
     }
 }

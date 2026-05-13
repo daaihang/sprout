@@ -36,8 +36,11 @@ func (p *MockProvider) Analyze(_ context.Context, req AnalyzeRequest, user UserC
 	emotionLabel := "neutral"
 	insight := "This memory captures a steady moment worth revisiting."
 	summary := "A steady memory with enough structure to revisit later."
+	reflectionHint := "This could matter later if it starts repeating."
 	entities := []EntityMention{}
 	edges := []CandidateEdge{}
+	retrievalTerms := []string{"journal", "memory"}
+	salienceScore := 0.46
 
 	switch {
 	case containsAny(lower, "happy", "开心", "满足", "excited"):
@@ -45,16 +48,25 @@ func (p *MockProvider) Analyze(_ context.Context, req AnalyzeRequest, user UserC
 		tags = append(tags, "gratitude")
 		insight = "The note carries a clear positive signal and can anchor future reflection."
 		summary = "A positive memory with gratitude and emotional lift."
+		reflectionHint = "Track whether gratitude keeps clustering around the same people or settings."
+		retrievalTerms = append(retrievalTerms, "gratitude", "positive_moment")
+		salienceScore = 0.72
 	case containsAny(lower, "sad", "难过", "焦虑", "tired", "stress"):
 		emotionLabel = "tense"
 		tags = append(tags, "stress")
 		insight = "The note suggests unresolved pressure and may benefit from a short follow-up."
 		summary = "A tense memory with unresolved pressure."
+		reflectionHint = "Check if this pressure is isolated or part of a larger pattern."
+		retrievalTerms = append(retrievalTerms, "stress", "pressure")
+		salienceScore = 0.78
 	case containsAny(lower, "movie", "film", "电影", "book", "read", "音乐", "music"):
 		emotionLabel = "curious"
 		tags = append(tags, "media")
 		insight = "The record points to a concrete media memory that can be expanded with metadata."
 		summary = "A media-related memory with concrete references."
+		reflectionHint = "Media references may become stronger signals once linked across time."
+		retrievalTerms = append(retrievalTerms, "media", "cultural_reference")
+		salienceScore = 0.58
 	}
 
 	for _, known := range req.KnownEntities {
@@ -130,6 +142,9 @@ func (p *MockProvider) Analyze(_ context.Context, req AnalyzeRequest, user UserC
 		Edges:    edges,
 		Insight:  insight,
 		Summary:  summary,
+		SalienceScore: &salienceScore,
+		RetrievalTerms: uniqueStrings(retrievalTerms),
+		ReflectionHint: reflectionHint,
 		FollowUp: &FollowUp{
 			Question:  "What part of this moment do you want to remember a month from now?",
 			ExpiresAt: oneHourFromNow(),
@@ -166,4 +181,22 @@ func firstMeaningfulTitle(content, fallback string) string {
 		return fallback
 	}
 	return title
+}
+
+func uniqueStrings(values []string) []string {
+	seen := make(map[string]struct{}, len(values))
+	ordered := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		key := strings.ToLower(value)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		ordered = append(ordered, value)
+	}
+	return ordered
 }

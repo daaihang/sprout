@@ -9,6 +9,7 @@ struct AnalyzeResponseMapper {
         let entities = mapEntities(response.entities)
         let tags = mergeTags(response.tags, entities: entities)
         let insight = preferredInsight(from: response)
+        let retrievalTerms = mapRetrievalTerms(response.retrievalTerms, tags: tags, entities: entities)
 
         return RecordAnalysisSnapshot(
             recordID: recordID,
@@ -17,6 +18,9 @@ struct AnalyzeResponseMapper {
             insight: insight,
             followUpQuestion: normalizeText(response.followUp?.question),
             entities: entities,
+            salienceScore: response.salienceScore,
+            retrievalTerms: retrievalTerms,
+            reflectionHint: normalizeText(response.reflectionHint),
             createdAt: createdAt
         )
     }
@@ -66,6 +70,30 @@ struct AnalyzeResponseMapper {
         normalizeText(response.summary)
             ?? normalizeText(response.insight)
             ?? response.insight
+    }
+
+    private func mapRetrievalTerms(
+        _ rawTerms: [String],
+        tags: [String],
+        entities: [EntityReference]
+    ) -> [String] {
+        var ordered: [String] = []
+        var seen: Set<String> = []
+
+        for term in rawTerms {
+            guard let normalized = normalizeText(term) else { continue }
+            appendUnique(normalized, to: &ordered, seen: &seen)
+        }
+
+        for tag in tags {
+            appendUnique(tag, to: &ordered, seen: &seen)
+        }
+
+        for entity in entities {
+            appendUnique(entity.name, to: &ordered, seen: &seen)
+        }
+
+        return ordered
     }
 
     private func appendUnique(_ value: String, to ordered: inout [String], seen: inout Set<String>) {

@@ -227,6 +227,12 @@ func analyzeResponseTool() anthropicTool {
 				},
 				"insight": map[string]any{"type": "string"},
 				"summary": map[string]any{"type": "string"},
+				"salience_score": map[string]any{"type": "number"},
+				"retrieval_terms": map[string]any{
+					"type": "array",
+					"items": map[string]any{"type": "string"},
+				},
+				"reflection_hint": map[string]any{"type": "string"},
 				"follow_up": map[string]any{
 					"anyOf": []any{
 						map[string]any{"type": "null"},
