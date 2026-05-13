@@ -35,18 +35,8 @@ final class Record {
     var weatherObservedAt: Date? = nil
     /// Source of the weather snapshot, for example "current_location_auto" or "manual".
     var weatherSource: String? = nil
-    /// User-preferred display height in grid units (1 / 2 / 4). Default 4 = full-size card.
-    var cardUnits: Int = 4
-    /// User-preferred display width in grid columns (2 / 4 / 6 / 8). Default 4 = full-width card.
-    var cardWidthColumns: Int = 4
-    /// Per-dashboard-container span overrides keyed by card suffix, stored as JSON.
-    var dashboardCardSpanOverridesData: Data? = nil
     /// Dashboard ordering rank. Lower values appear earlier.
     var dashboardOrder: Double = 0
-
-    var containerSpan: ContainerSpan {
-        ContainerSpan(widthColumns: cardWidthColumns, heightUnits: cardUnits)
-    }
 
     @Relationship(deleteRule: .cascade) var mediaCards: [MediaCard]? = nil
     @Relationship(deleteRule: .nullify) var mentionedPeople: [Person]? = nil
@@ -55,84 +45,4 @@ final class Record {
     @Relationship(deleteRule: .nullify) var dailyQuestion: DailyQuestion? = nil
 
     init() {}
-}
-
-private struct StoredDashboardCardSpan: Codable {
-    let widthColumns: Int
-    let heightUnits: Int
-}
-
-extension Record {
-    private enum DashboardCardSpanOverridesCache {
-        static var storage: [ObjectIdentifier: CacheEntry] = [:]
-
-        struct CacheEntry {
-            let data: Data?
-            let overrides: [String: StoredDashboardCardSpan]
-        }
-    }
-
-    private var dashboardCardSpanOverrides: [String: StoredDashboardCardSpan] {
-        get {
-            let identifier = ObjectIdentifier(self)
-            let cached = DashboardCardSpanOverridesCache.storage[identifier]
-            if cached?.data == dashboardCardSpanOverridesData {
-                return cached?.overrides ?? [:]
-            }
-
-            let overrides: [String: StoredDashboardCardSpan]
-            if let dashboardCardSpanOverridesData {
-                overrides = (try? JSONDecoder().decode(
-                    [String: StoredDashboardCardSpan].self,
-                    from: dashboardCardSpanOverridesData
-                )) ?? [:]
-            } else {
-                overrides = [:]
-            }
-
-            DashboardCardSpanOverridesCache.storage[identifier] = DashboardCardSpanOverridesCache.CacheEntry(
-                data: dashboardCardSpanOverridesData,
-                overrides: overrides
-            )
-            return overrides
-        }
-        set {
-            let encoded = try? JSONEncoder().encode(newValue)
-            dashboardCardSpanOverridesData = encoded
-            DashboardCardSpanOverridesCache.storage[ObjectIdentifier(self)] = DashboardCardSpanOverridesCache.CacheEntry(
-                data: encoded,
-                overrides: newValue
-            )
-        }
-    }
-
-    func legacyDashboardContainerSpan(for key: String, cardType: String) -> ContainerSpan {
-        if let stored = dashboardCardSpanOverrides[key] {
-            return sizeLimits(for: cardType).clamped(
-                span: ContainerSpan(widthColumns: stored.widthColumns, heightUnits: stored.heightUnits)
-            )
-        }
-
-        return sizeLimits(for: cardType).defaultSpan
-    }
-
-    @available(*, deprecated, message: "Use CompositionStateRepository-backed projection state instead.")
-    func dashboardContainerSpan(for key: String, cardType: String) -> ContainerSpan {
-        legacyDashboardContainerSpan(for: key, cardType: cardType)
-    }
-
-    @available(*, deprecated, message: "Use CompositionItemState lookup instead.")
-    func hasDashboardContainerSpanOverride(for key: String) -> Bool {
-        dashboardCardSpanOverrides[key] != nil
-    }
-
-    @available(*, deprecated, message: "Persist composition span in CompositionItemState instead.")
-    func setDashboardContainerSpan(_ span: ContainerSpan, for key: String) {
-        var overrides = dashboardCardSpanOverrides
-        overrides[key] = StoredDashboardCardSpan(
-            widthColumns: span.widthColumns,
-            heightUnits: span.heightUnits
-        )
-        dashboardCardSpanOverrides = overrides
-    }
 }

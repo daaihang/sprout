@@ -41,64 +41,31 @@
 
 ### 2.2 `cardUnits`
 
-状态：`legacy-only`
-
-当前用途：
-
-- `legacyDashboardContainerSpan`
+状态：`removed from model`
 
 当前判断：
 
-- 首页主 composition 路径默认 span 已不再依赖
-- 新录入链已不再写
-- 旧 record-level default span 已不再作为主读取链默认值
-
-删除前条件：
-
-1. `legacyDashboardContainerSpan` 只剩 debug 或存量 fallback 使用
-2. 明确旧数据是否需要一次性迁移到 `CompositionItemState`
-
-删除优先级：高
+- 已不再参与主读写链
+- 已从 `Record` 模型物理移除
 
 ### 2.3 `cardWidthColumns`
 
-状态：`legacy-only`
-
-当前用途：
-
-- `legacyDashboardContainerSpan`
+状态：`removed from model`
 
 当前判断：
 
-- 与 `cardUnits` 同步处理
-
-删除前条件：
-
-1. 与 `cardUnits` 同步完成
-
-删除优先级：高
+- 已不再参与主读写链
+- 已从 `Record` 模型物理移除
 
 ### 2.4 `dashboardCardSpanOverridesData`
 
-状态：`legacy-fallback`
-
-当前用途：
-
-- `setDashboardContainerSpan`
-- 旧 per-card span override 存量兼容
+状态：`removed from model`
 
 当前判断：
 
-- 首页主路径已迁到 `CompositionItemState`
 - 主读取链已不再消费该字段
-- 该字段正退化为存量兼容 / 待删字段
-
-删除前条件：
-
-1. 确认没有真实用户路径继续写入
-2. 明确旧 span override 是否迁移或放弃
-
-删除优先级：中高
+- 已从 `Record` 模型物理移除
+- 旧 per-card span 现在统一由 `CompositionItemState` 负责
 
 ## 3. 真实主路径现状
 
@@ -107,8 +74,9 @@
 - composer capture 不再写 legacy `cardType`
 - standalone add-card 不再写 legacy `cardType`
 - standalone add-card 不再写默认 `cardUnits/cardWidthColumns`
-- `Record.cardUnits/cardWidthColumns` 不再作为 legacy default span 读取来源
+- `Record.cardUnits/cardWidthColumns` 已从模型移除
 - `RecordMapper` 主读取链不再读取 `dashboardCardSpanOverridesData`
+- `Record.dashboardCardSpanOverridesData` 已从模型移除
 - timeline detail entry 改为 content-kind 驱动
 - today-in-history subtitle 改为 content-kind 驱动
 - debug / calibration sample 不再直接写 `record.cardType`
@@ -124,8 +92,8 @@
 ### 4.1 结构动作
 
 1. 把 debug / calibration 从 `record.cardType` 直写迁到兼容 helper
-2. 评估 `legacyDashboardContainerSpan` 的真实调用面
-3. 明确 `cardUnits/cardWidthColumns/dashboardCardSpanOverridesData` 是否进入迁移或直接废弃
+2. 评估 `cardType` 是否进入彻底删除阶段
+3. 核对移除旧字段后的 SwiftData schema 迁移策略
 
 ### 4.2 UI 动作
 
@@ -142,4 +110,4 @@
 1. 主录入链不再写 legacy 展示字段
 2. 主读取链不再依赖 legacy 展示字段
 3. 旧字段只剩 debug / migration 用途
-4. 可明确列出待删字段与删前条件
+4. `Record` 仅保留真正还在使用的 capture 相关字段

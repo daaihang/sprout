@@ -31,20 +31,20 @@ Practical progress against the v3 roadmap:
   Ontology and architecture docs are frozen.
 - Phase 1 `92%`
   Artifact layer exists and modern capture paths already dual-write aggregate data.
-- Phase 2 `91%`
-  Composition state persists by board/day, board resize now refreshes immediately, and the main read path no longer depends on legacy record-level span fields or legacy span overrides; legacy layout fields still remain on `Record`.
+- Phase 2 `94%`
+  Composition state persists by board/day, board resize now refreshes immediately, and the main read path no longer depends on legacy record-level span fields or legacy span overrides; the old per-record span fields have now been physically removed from `Record`.
 - Phase 3 `93%`
   Analysis snapshot contract and local persistence are active.
 - Phase 4 `84%`
   Graph models and update logic exist, but UI consumption is still partial.
 - Phase 5 `86%`
   Temporal arcs and phase reflections exist, but the page-level user experience is still incomplete.
-- Phase 6 `87%`
-  Legacy cleanup is underway; `Record` still physically carries fields that should eventually be removed.
+- Phase 6 `96%`
+  Legacy cleanup is deep into physical removal; old per-record span fields and override storage have already been removed from `Record`, while `cardType` still remains.
 
 Main remaining gaps:
 
-- `Record.cardType`, `cardUnits`, `cardWidthColumns`, and `dashboardCardSpanOverridesData` still exist.
+- `Record.cardType` still exists.
 - `RecordMapper` still survives as a transition layer, but no longer reads legacy span fallback state.
 - Several card internals still present legacy UI quality or legacy assumptions.
 - Graph and arc layers are not yet fully exposed as first-class navigation experiences.
