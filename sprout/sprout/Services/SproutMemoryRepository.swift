@@ -12,6 +12,19 @@ final class SproutMemoryRepository {
         var supportingEdges: [EntityEdge]
     }
 
+    struct PersonIndexEntry: Identifiable, Sendable {
+        var entity: EntityNode
+        var relatedRecordCount: Int
+        var relatedArtifactCount: Int
+        var relatedEntityCount: Int
+        var themeNames: [String]
+        var placeNames: [String]
+        var arcTitles: [String]
+        var lastSeenAt: Date?
+
+        var id: UUID { entity.id }
+    }
+
     struct RecordMemoryView: Sendable {
         var recordShell: RecordShell
         var artifacts: [Artifact]
@@ -248,6 +261,47 @@ final class SproutMemoryRepository {
         )
     }
 
+    func peopleIndex(limit: Int? = nil) -> [PersonIndexEntry] {
+        let acceptedArcs = temporalArcs
+            .filter { $0.status == .accepted }
+            .sorted(by: temporalArcSort)
+
+        let entries = entityNodes
+            .filter { $0.kind == .person }
+            .compactMap { person -> PersonIndexEntry? in
+                guard let entityView = entityView(for: person.id) else { return nil }
+
+                let themeNames = orderedUniqueNames(
+                    from: entityView.relatedEntities,
+                    matching: .theme
+                )
+                let placeNames = orderedUniqueNames(
+                    from: entityView.relatedEntities,
+                    matching: .place
+                )
+                let arcTitles = acceptedArcs
+                    .filter { $0.sourceEntityIDs.contains(person.id) }
+                    .prefix(3)
+                    .map(\.title)
+                let lastSeenAt = entityView.relatedRecords.first?.createdAt ?? person.updatedAt
+
+                return PersonIndexEntry(
+                    entity: person,
+                    relatedRecordCount: entityView.relatedRecords.count,
+                    relatedArtifactCount: entityView.relatedArtifacts.count,
+                    relatedEntityCount: entityView.relatedEntities.count,
+                    themeNames: Array(themeNames.prefix(3)),
+                    placeNames: Array(placeNames.prefix(3)),
+                    arcTitles: arcTitles,
+                    lastSeenAt: lastSeenAt
+                )
+            }
+            .sorted(by: peopleIndexSort)
+
+        guard let limit else { return entries }
+        return Array(entries.prefix(limit))
+    }
+
     private func storageURL() -> URL? {
         FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask)
@@ -309,5 +363,31 @@ final class SproutMemoryRepository {
             return lhs.intensityScore > rhs.intensityScore
         }
         return lhs.endDate > rhs.endDate
+    }
+
+    private func peopleIndexSort(lhs: PersonIndexEntry, rhs: PersonIndexEntry) -> Bool {
+        if lhs.relatedRecordCount == rhs.relatedRecordCount {
+            if lhs.relatedArtifactCount == rhs.relatedArtifactCount {
+                switch (lhs.lastSeenAt, rhs.lastSeenAt) {
+                case let (left?, right?) where left != right:
+                    return left > right
+                default:
+                    return lhs.entity.displayName.localizedCaseInsensitiveCompare(rhs.entity.displayName) == .orderedAscending
+                }
+            }
+            return lhs.relatedArtifactCount > rhs.relatedArtifactCount
+        }
+        return lhs.relatedRecordCount > rhs.relatedRecordCount
+    }
+
+    private func orderedUniqueNames(from entities: [EntityNode], matching kind: EntityKind) -> [String] {
+        var seen = Set<String>()
+        var ordered: [String] = []
+        for entity in entities where entity.kind == kind {
+            let name = entity.displayName
+            guard seen.insert(name).inserted else { continue }
+            ordered.append(name)
+        }
+        return ordered
     }
 }

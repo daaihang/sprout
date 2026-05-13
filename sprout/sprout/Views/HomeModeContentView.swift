@@ -18,7 +18,7 @@ struct HomeModeContentView: View {
             case .arcs:
                 ArcsHomeView(selectedDate: selectedDate)
             case .people:
-                placeholderView(for: .people)
+                PeopleHomeView()
             case .decisions:
                 placeholderView(for: .decisions)
             case .map:
@@ -66,11 +66,6 @@ struct HomeModeContentView: View {
                 "content.home.placeholder.arcs",
                 default: "阶段页已接入，会展示当前阶段、阶段反思与近期阶段列表。"
             )
-        case .people:
-            return localization.string(
-                "content.home.placeholder.people",
-                default: "人物主页还未接入，先保留这个入口。"
-            )
         case .decisions:
             return localization.string(
                 "content.home.placeholder.decisions",
@@ -86,7 +81,7 @@ struct HomeModeContentView: View {
                 "content.home.placeholder.photos",
                 default: "图片墙主页还未接入，先保留这个入口。"
             )
-        case .cards, .rawRecords:
+        case .cards, .rawRecords, .people:
             return ""
         }
     }
