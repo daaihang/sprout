@@ -10,6 +10,7 @@ enum CompositionProjectionTargetType: String, Sendable {
 struct CompositionProjectionCard: Identifiable {
     let id: String
     let spanKey: String
+    let compositionItemKey: String
     let cardType: String
     let targetType: CompositionProjectionTargetType
     let targetID: UUID
@@ -24,7 +25,9 @@ struct CompositionProjectionCard: Identifiable {
 struct CompositionProjector {
     func projectCards(
         for record: Record,
-        memoryRepository: SproutMemoryRepository
+        memoryRepository: SproutMemoryRepository,
+        stateRepository: CompositionStateRepository,
+        boardKey: String
     ) -> [CompositionProjectionCard] {
         let memoryView = memoryRepository.memoryView(for: record.id)
         let artifactsByKind = Dictionary(
@@ -38,20 +41,32 @@ struct CompositionProjector {
                 record: record,
                 artifactsByKind: artifactsByKind
             )
+            let fallbackSpan = ContainerSpan(widthColumns: card.columns, heightUnits: card.units)
+            let itemKey = compositionItemKey(for: card)
+            let resolvedSpan = stateRepository.resolvedSpan(
+                boardKey: boardKey,
+                itemKey: itemKey,
+                fallback: fallbackSpan
+            )
 
             return CompositionProjectionCard(
                 id: card.id,
                 spanKey: card.spanKey,
+                compositionItemKey: itemKey,
                 cardType: card.cardType,
                 targetType: resolvedTarget.type,
                 targetID: resolvedTarget.id,
                 record: card.record,
                 focusedSection: card.focusedSection,
-                columns: card.columns,
-                units: card.units,
+                columns: resolvedSpan.widthColumns,
+                units: resolvedSpan.heightUnits,
                 cardView: card.cardView
             )
         }
+    }
+
+    private func compositionItemKey(for card: DashboardCardInfo) -> String {
+        "\(card.record.id.uuidString)-\(card.spanKey)"
     }
 
     private func projectionTarget(

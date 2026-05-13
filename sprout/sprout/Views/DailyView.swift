@@ -16,6 +16,9 @@ struct DailyView: View {
     @Query private var records: [Record]
     @Query(sort: \DashboardSystemCardConfig.dashboardOrder, order: .forward) private var systemConfigs: [DashboardSystemCardConfig]
     private let compositionProjector = CompositionProjector()
+    private var compositionStateRepository: CompositionStateRepository {
+        CompositionStateRepository(modelContext: modelContext)
+    }
 
     init(date: Date, topContentInset: CGFloat = 0) {
         let cal   = Calendar.current
@@ -54,9 +57,15 @@ struct DailyView: View {
     }
 
     private var gridItems: [GridItem] {
+        let boardKey = compositionStateRepository.boardKey(for: date)
         let recordItems: [(order: Double, item: GridItem)] = orderedRecords.enumerated().flatMap { index, record in
             let baseOrder = normalizedOrder(for: record) + Double(index) * 0.001
-            return compositionProjector.projectCards(for: record, memoryRepository: memoryRepository).enumerated().map { cardIndex, projection in
+            return compositionProjector.projectCards(
+                for: record,
+                memoryRepository: memoryRepository,
+                stateRepository: compositionStateRepository,
+                boardKey: boardKey
+            ).enumerated().map { cardIndex, projection in
                 let spans = availableSpans(for: projection.cardType)
                 return (
                     order: baseOrder + Double(cardIndex) * 0.0001,
@@ -70,7 +79,7 @@ struct DailyView: View {
                         units: projection.units,
                         availableSpans: spans,
                         onResize: { span in
-                            resizeCard(projection.asDashboardCardInfo, to: span)
+                            resizeProjection(projection, to: span, boardKey: boardKey)
                         },
                         onDelete: {
                             modelContext.delete(projection.record)
@@ -130,14 +139,18 @@ struct DailyView: View {
         record.dashboardOrder == 0 ? record.createdAt.timeIntervalSince1970 : record.dashboardOrder
     }
 
-    private func resizeCard(_ info: DashboardCardInfo, to span: ContainerSpan) {
-        let siblingCards = RecordMapper.allCards(record: info.record)
-        for sibling in siblingCards where !info.record.hasDashboardContainerSpanOverride(for: sibling.spanKey) {
-            let currentSpan = ContainerSpan(widthColumns: sibling.columns, heightUnits: sibling.units)
-            info.record.setDashboardContainerSpan(currentSpan, for: sibling.spanKey)
-        }
-
-        info.record.setDashboardContainerSpan(span, for: info.spanKey)
+    private func resizeProjection(
+        _ projection: CompositionProjectionCard,
+        to span: ContainerSpan,
+        boardKey: String
+    ) {
+        compositionStateRepository.upsertSpan(
+            boardKey: boardKey,
+            itemKey: projection.compositionItemKey,
+            targetType: projection.targetType.rawValue,
+            targetID: projection.targetID,
+            span: span
+        )
     }
 
     private var todayInHistoryConfig: DashboardSystemCardConfig? {

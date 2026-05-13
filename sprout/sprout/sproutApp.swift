@@ -27,6 +27,7 @@ struct sproutApp: App {
 
         let schema = Schema([
             Record.self,
+            CompositionItemState.self,
             Person.self,
             Decision.self,
             MediaCard.self,

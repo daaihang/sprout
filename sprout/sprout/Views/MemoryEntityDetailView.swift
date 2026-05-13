@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MemoryEntityDetailView: View {
     @Environment(AppLocalization.self) private var localization
+    @Environment(\.modelContext) private var modelContext
     @Environment(SproutMemoryRepository.self) private var memoryRepository
 
     let entityID: UUID
@@ -111,17 +112,16 @@ struct MemoryEntityDetailView: View {
         VStack(alignment: .leading, spacing: 12) {
             sectionTitle("clock.arrow.trianglehead.counterclockwise.rotate.90", t("memory.entity.related_memories", "Related Memories"))
             ForEach(entityView.relatedRecords, id: \.id) { record in
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(record.rawText.isEmpty ? t("memory.entity.memory.untitled", "Untitled Memory") : String(record.rawText.prefix(100)))
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.primary)
-                    Text(record.createdAt.formatted(date: .abbreviated, time: .shortened))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                if let fullRecord = fetchRecord(id: record.id) {
+                    NavigationLink {
+                        RecordDetailView(record: fullRecord)
+                    } label: {
+                        relatedRecordRow(record)
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    relatedRecordRow(record)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(12)
-                .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
         }
         .detailCard()
@@ -150,6 +150,30 @@ struct MemoryEntityDetailView: View {
         Label(title, systemImage: icon)
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(.secondary)
+    }
+
+    private func relatedRecordRow(_ record: RecordShell) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(record.rawText.isEmpty ? t("memory.entity.memory.untitled", "Untitled Memory") : String(record.rawText.prefix(100)))
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.primary)
+            Text(record.createdAt.formatted(date: .abbreviated, time: .shortened))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private func fetchRecord(id: UUID) -> Record? {
+        var descriptor = FetchDescriptor<Record>(
+            predicate: #Predicate<Record> { record in
+                record.id == id
+            }
+        )
+        descriptor.fetchLimit = 1
+        return try? modelContext.fetch(descriptor).first
     }
 
     private func t(_ key: String, _ defaultValue: String, _ arguments: CVarArg...) -> String {
