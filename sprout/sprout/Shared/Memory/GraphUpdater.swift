@@ -44,6 +44,7 @@ struct GraphUpdater {
             timestamp: analysis.createdAt,
             linkedArtifactIDs: linkedArtifactIDs,
             linkedRecordIDs: linkedRecordIDs,
+            candidateEdges: analysis.candidateEdges,
             entityNodes: entityNodes,
             into: &entityEdges
         )
@@ -116,9 +117,27 @@ struct GraphUpdater {
         timestamp: Date,
         linkedArtifactIDs: [UUID],
         linkedRecordIDs: [UUID],
+        candidateEdges: [RecordAnalysisSnapshot.CandidateEdge],
         entityNodes: [EntityNode],
         into entityEdges: inout [EntityEdge]
     ) {
+        let candidateResolvedEdges = resolvedCandidateEdges(
+            from: candidateEdges,
+            entityNodes: entityNodes
+        )
+
+        if !candidateResolvedEdges.isEmpty {
+            for candidateEdge in candidateResolvedEdges {
+                upsertEdge(
+                    candidateEdge,
+                    timestamp: timestamp,
+                    linkedArtifactIDs: linkedArtifactIDs,
+                    linkedRecordIDs: linkedRecordIDs,
+                    into: &entityEdges
+                )
+            }
+        }
+
         guard entityIDs.count > 1 else { return }
         for leftIndex in entityIDs.indices {
             for rightIndex in entityIDs.indices where rightIndex > leftIndex {
@@ -129,42 +148,87 @@ struct GraphUpdater {
                     and: rightID,
                     entityNodes: entityNodes
                 )
-                if let edgeIndex = entityEdges.firstIndex(where: {
-                    ($0.fromEntityID == inferred.fromEntityID && $0.toEntityID == inferred.toEntityID) ||
-                    ($0.fromEntityID == inferred.toEntityID && $0.toEntityID == inferred.fromEntityID)
-                }) {
-                    entityEdges[edgeIndex].lastSeenAt = timestamp
-                    entityEdges[edgeIndex].evidenceCount += 1
-                    entityEdges[edgeIndex].weight += 0.2
-                    entityEdges[edgeIndex].sourceArtifactIDs = mergeUniqueIDs(
-                        entityEdges[edgeIndex].sourceArtifactIDs,
-                        linkedArtifactIDs
-                    )
-                    entityEdges[edgeIndex].sourceRecordIDs = mergeUniqueIDs(
-                        entityEdges[edgeIndex].sourceRecordIDs,
-                        linkedRecordIDs
-                    )
-                    if specificity(of: inferred.relationKind) > specificity(of: entityEdges[edgeIndex].relationKind) {
-                        entityEdges[edgeIndex].relationKind = inferred.relationKind
-                        entityEdges[edgeIndex].fromEntityID = inferred.fromEntityID
-                        entityEdges[edgeIndex].toEntityID = inferred.toEntityID
-                    }
-                } else {
-                    entityEdges.append(
-                        EntityEdge(
-                            fromEntityID: inferred.fromEntityID,
-                            toEntityID: inferred.toEntityID,
-                            relationKind: inferred.relationKind,
-                            weight: 1,
-                            firstSeenAt: timestamp,
-                            lastSeenAt: timestamp,
-                            evidenceCount: 1,
-                            sourceArtifactIDs: linkedArtifactIDs,
-                            sourceRecordIDs: linkedRecordIDs
-                        )
-                    )
-                }
+                upsertEdge(
+                    inferred,
+                    timestamp: timestamp,
+                    linkedArtifactIDs: linkedArtifactIDs,
+                    linkedRecordIDs: linkedRecordIDs,
+                    into: &entityEdges
+                )
             }
+        }
+    }
+
+    private func resolvedCandidateEdges(
+        from candidateEdges: [RecordAnalysisSnapshot.CandidateEdge],
+        entityNodes: [EntityNode]
+    ) -> [(fromEntityID: UUID, toEntityID: UUID, relationKind: EntityRelationKind)] {
+        var resolved: [(fromEntityID: UUID, toEntityID: UUID, relationKind: EntityRelationKind)] = []
+        var seen: Set<String> = []
+
+        for candidate in candidateEdges {
+            guard
+                let fromKind = normalizeEntityKind(candidate.fromKind),
+                let toKind = normalizeEntityKind(candidate.toKind),
+                let relationKind = normalizeRelationKind(candidate.relation),
+                let fromEntity = matchEntity(named: candidate.fromName, kind: fromKind, in: entityNodes),
+                let toEntity = matchEntity(named: candidate.toName, kind: toKind, in: entityNodes),
+                fromEntity.id != toEntity.id
+            else {
+                continue
+            }
+
+            let ordered = orderedPair(fromEntity.id, toEntity.id, relationKind: relationKind)
+            let key = "\(ordered.fromEntityID.uuidString)|\(ordered.toEntityID.uuidString)|\(ordered.relationKind.rawValue)"
+            guard !seen.contains(key) else { continue }
+            seen.insert(key)
+            resolved.append(ordered)
+        }
+
+        return resolved
+    }
+
+    private func upsertEdge(
+        _ edge: (fromEntityID: UUID, toEntityID: UUID, relationKind: EntityRelationKind),
+        timestamp: Date,
+        linkedArtifactIDs: [UUID],
+        linkedRecordIDs: [UUID],
+        into entityEdges: inout [EntityEdge]
+    ) {
+        if let edgeIndex = entityEdges.firstIndex(where: {
+            ($0.fromEntityID == edge.fromEntityID && $0.toEntityID == edge.toEntityID) ||
+            ($0.fromEntityID == edge.toEntityID && $0.toEntityID == edge.fromEntityID)
+        }) {
+            entityEdges[edgeIndex].lastSeenAt = timestamp
+            entityEdges[edgeIndex].evidenceCount += 1
+            entityEdges[edgeIndex].weight += 0.2
+            entityEdges[edgeIndex].sourceArtifactIDs = mergeUniqueIDs(
+                entityEdges[edgeIndex].sourceArtifactIDs,
+                linkedArtifactIDs
+            )
+            entityEdges[edgeIndex].sourceRecordIDs = mergeUniqueIDs(
+                entityEdges[edgeIndex].sourceRecordIDs,
+                linkedRecordIDs
+            )
+            if specificity(of: edge.relationKind) > specificity(of: entityEdges[edgeIndex].relationKind) {
+                entityEdges[edgeIndex].relationKind = edge.relationKind
+                entityEdges[edgeIndex].fromEntityID = edge.fromEntityID
+                entityEdges[edgeIndex].toEntityID = edge.toEntityID
+            }
+        } else {
+            entityEdges.append(
+                EntityEdge(
+                    fromEntityID: edge.fromEntityID,
+                    toEntityID: edge.toEntityID,
+                    relationKind: edge.relationKind,
+                    weight: 1,
+                    firstSeenAt: timestamp,
+                    lastSeenAt: timestamp,
+                    evidenceCount: 1,
+                    sourceArtifactIDs: linkedArtifactIDs,
+                    sourceRecordIDs: linkedRecordIDs
+                )
+            )
         }
     }
 
@@ -228,6 +292,59 @@ struct GraphUpdater {
         case .repeatedIn: 2
         case .decidedAt: 3
         }
+    }
+
+    private func matchEntity(
+        named rawName: String,
+        kind: EntityKind,
+        in entityNodes: [EntityNode]
+    ) -> EntityNode? {
+        let normalizedName = normalized(rawName)
+        return entityNodes.first {
+            $0.kind == kind &&
+            (
+                normalized($0.displayName) == normalizedName ||
+                normalized($0.canonicalName) == normalizedName ||
+                normalized($0.summary) == normalizedName
+            )
+        }
+    }
+
+    private func normalizeEntityKind(_ rawValue: String) -> EntityKind? {
+        switch normalized(rawValue) {
+        case "person", "people", "human":
+            return .person
+        case "place", "location", "city", "area":
+            return .place
+        case "theme", "tag", "topic":
+            return .theme
+        case "decision", "choice", "plan":
+            return .decision
+        default:
+            return EntityKind(rawValue: rawValue.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())
+        }
+    }
+
+    private func normalizeRelationKind(_ rawValue: String) -> EntityRelationKind? {
+        switch normalized(rawValue) {
+        case "mentioned_with", "mentionedwith", "cooccurred", "co-occurred":
+            return .mentionedWith
+        case "repeated_in", "repeatedin":
+            return .repeatedIn
+        case "decided_at", "decidedat":
+            return .decidedAt
+        case "related_to", "relatedto":
+            return .relatedTo
+        default:
+            return EntityRelationKind(rawValue: rawValue.trimmingCharacters(in: .whitespacesAndNewlines))
+        }
+    }
+
+    private func normalized(_ text: String) -> String {
+        text
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+            .lowercased()
     }
 
     private func mergeUniqueIDs(_ lhs: [UUID], _ rhs: [UUID]) -> [UUID] {

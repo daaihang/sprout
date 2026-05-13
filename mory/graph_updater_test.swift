@@ -5,8 +5,7 @@ struct GraphUpdaterTestRunner {
     static func main() {
         let updater = GraphUpdater()
         let insightsBuilder = GraphInsightsBuilder()
-        let arcBuilder = TemporalArcCandidateBuilder()
-        let arcPromoter = TemporalArcPromoter()
+        let arcService = SproutTemporalArcService()
         let mergeEngine = TemporalArcMergeEngine()
         let now = Date(timeIntervalSince1970: 1_715_596_800)
         let artifactID = UUID()
@@ -15,11 +14,11 @@ struct GraphUpdaterTestRunner {
 
         let analysis = RecordAnalysisSnapshot(
             recordID: UUID(),
-            tags: ["relationship", "transition"],
-            emotionLabel: "reflective",
-            insight: "Test insight",
-            followUpQuestion: nil,
-            entities: [
+            summary: "Test insight",
+            themes: ["relationship", "transition"],
+            emotionInterpretation: "reflective",
+            followUpCandidates: [],
+            entityMentions: [
                 EntityReference(id: personID, kind: .person, name: "Lina", confidence: 0.9),
                 EntityReference(id: themeID, kind: .theme, name: "transition", confidence: 0.8)
             ],
@@ -41,7 +40,7 @@ struct GraphUpdaterTestRunner {
         expect(first.entityEdges.first?.evidenceCount == 1, "initial edge evidence count is 1")
         expect(first.entityEdges.first?.relationKind == .relatedTo, "person-theme relation resolves to relatedTo")
         expect(first.entityEdges.first?.sourceArtifactIDs == [artifactID], "persists edge artifact evidence")
-        expect(first.entityEdges.first?.sourceRecordIDs == [analysis.recordID], "persists edge record evidence")
+        expect(Set(first.entityEdges.first?.sourceRecordIDs ?? []) == Set([analysis.recordID]), "persists edge record evidence")
 
         let second = updater.apply(
             analysis: analysis,
@@ -62,11 +61,11 @@ struct GraphUpdaterTestRunner {
 
         let decisionAnalysis = RecordAnalysisSnapshot(
             recordID: UUID(),
-            tags: ["decision", "career"],
-            emotionLabel: "tense",
-            insight: "Decision test",
-            followUpQuestion: nil,
-            entities: [
+            summary: "Decision test",
+            themes: ["decision", "career"],
+            emotionInterpretation: "tense",
+            followUpCandidates: [],
+            entityMentions: [
                 EntityReference(id: UUID(), kind: .person, name: "Marcus", confidence: 0.9),
                 EntityReference(id: UUID(), kind: .decision, name: "job_offer", confidence: 0.95)
             ],
@@ -86,11 +85,11 @@ struct GraphUpdaterTestRunner {
 
         let placeThemeAnalysis = RecordAnalysisSnapshot(
             recordID: UUID(),
-            tags: ["arrival"],
-            emotionLabel: "unsettled",
-            insight: "Place theme test",
-            followUpQuestion: nil,
-            entities: [
+            summary: "Place theme test",
+            themes: ["arrival"],
+            emotionInterpretation: "unsettled",
+            followUpCandidates: [],
+            entityMentions: [
                 EntityReference(id: UUID(), kind: .place, name: "Jing'an", confidence: 0.9),
                 EntityReference(id: UUID(), kind: .theme, name: "arrival", confidence: 0.85)
             ],
@@ -107,6 +106,41 @@ struct GraphUpdaterTestRunner {
         )
 
         expect(placeThemeResult.entityEdges.first?.relationKind == .repeatedIn, "place-theme relation resolves to repeatedIn")
+
+        let candidateDrivenAnalysis = RecordAnalysisSnapshot(
+            recordID: UUID(),
+            summary: "Candidate edge test",
+            themes: ["transition"],
+            emotionInterpretation: "reflective",
+            followUpCandidates: [],
+            entityMentions: [
+                EntityReference(id: UUID(), kind: .person, name: "Nina", confidence: 0.91),
+                EntityReference(id: UUID(), kind: .place, name: "Shanghai", confidence: 0.89)
+            ],
+            reflectionHint: "Watch how place and person recur together.",
+            candidateEdges: [
+                .init(
+                    fromName: "Nina",
+                    fromKind: "person",
+                    toName: "Shanghai",
+                    toKind: "place",
+                    relation: "related_to"
+                )
+            ],
+            createdAt: now.addingTimeInterval(180)
+        )
+
+        let candidateDrivenResult = updater.apply(
+            analysis: candidateDrivenAnalysis,
+            linkedArtifactIDs: [UUID()],
+            linkedRecordIDs: [candidateDrivenAnalysis.recordID],
+            existingEntityNodes: [],
+            existingEntityEdges: [],
+            existingArtifactEntityLinks: []
+        )
+
+        expect(candidateDrivenResult.entityEdges.count == 1, "candidate edges produce a graph edge")
+        expect(candidateDrivenResult.entityEdges.first?.relationKind == .relatedTo, "candidate relation kind is applied")
 
         let artifact = Artifact(
             id: artifactID,
@@ -187,11 +221,11 @@ struct GraphUpdaterTestRunner {
         )
         let secondAnalysis = RecordAnalysisSnapshot(
             recordID: secondRecord.id,
-            tags: ["transition", "goodbye"],
-            emotionLabel: "reflective",
-            insight: "Arc candidate test",
-            followUpQuestion: nil,
-            entities: [
+            summary: "Arc candidate test",
+            themes: ["transition", "goodbye"],
+            emotionInterpretation: "reflective",
+            followUpCandidates: [],
+            entityMentions: [
                 EntityReference(id: personID, kind: .person, name: "Lina", confidence: 0.9),
                 EntityReference(id: themeID, kind: .theme, name: "transition", confidence: 0.8)
             ],
@@ -199,11 +233,11 @@ struct GraphUpdaterTestRunner {
         )
         let thirdAnalysis = RecordAnalysisSnapshot(
             recordID: thirdRecord.id,
-            tags: ["transition", "distance"],
-            emotionLabel: "heavy",
-            insight: "Still unresolved",
-            followUpQuestion: nil,
-            entities: [
+            summary: "Still unresolved",
+            themes: ["transition", "distance"],
+            emotionInterpretation: "heavy",
+            followUpCandidates: [],
+            entityMentions: [
                 EntityReference(id: personID, kind: .person, name: "Lina", confidence: 0.92),
                 EntityReference(id: themeID, kind: .theme, name: "transition", confidence: 0.88)
             ],
@@ -211,11 +245,11 @@ struct GraphUpdaterTestRunner {
         )
         let unrelatedAnalysis = RecordAnalysisSnapshot(
             recordID: unrelatedRecord.id,
-            tags: ["work", "ops"],
-            emotionLabel: "focused",
-            insight: "Execution details",
-            followUpQuestion: nil,
-            entities: [
+            summary: "Execution details",
+            themes: ["work", "ops"],
+            emotionInterpretation: "focused",
+            followUpCandidates: [],
+            entityMentions: [
                 EntityReference(id: UUID(), kind: .decision, name: "LaunchOps", confidence: 0.8)
             ],
             createdAt: now.addingTimeInterval(60 * 60 * 24 * 30)
@@ -251,40 +285,32 @@ struct GraphUpdaterTestRunner {
             createdAt: now.addingTimeInterval(60 * 60 * 24 * 30)
         )
 
-        let arcCandidates = arcBuilder.buildCandidates(
+        let phaseBundles = arcService.rebuildAcceptedBundles(
             records: [record, secondRecord, thirdRecord, unrelatedRecord],
             analyses: [analysis, secondAnalysis, thirdAnalysis, unrelatedAnalysis],
             artifacts: [artifact, secondArtifact, unrelatedArtifact],
             artifactEntityLinks: first.artifactEntityLinks + [thirdArtifactLink, fourthArtifactLink, unrelatedArtifactLink],
             entityNodes: first.entityNodes + [unrelatedEntityNode],
-            maxCandidates: 3
+            limit: 3
         )
 
-        expect(!arcCandidates.isEmpty, "builds temporal arc candidates")
-        expect(arcCandidates.first?.recordIDs.count == 3, "candidate groups related records across nearby days")
-        expect(arcCandidates.first?.themeLabels.contains("transition") == true, "candidate carries theme labels")
-        expect(arcCandidates.first?.entityNames.contains("Lina") == true, "candidate carries entity names")
-        expect((arcCandidates.first?.clusterStrength ?? 0) > 0.45, "candidate computes meaningful cluster strength")
-        expect(arcCandidates.count >= 2, "separates unrelated records into a different candidate")
-        expect(arcCandidates.first?.recordIDs.contains(unrelatedRecord.id) == false, "does not merge distant unrelated records")
-        expect(arcCandidates.first?.dominantTheme == "transition", "candidate exposes dominant theme")
+        expect(!phaseBundles.isEmpty, "builds temporal phase bundles")
+        expect(phaseBundles.first?.arc.sourceRecordIDs.count == 3, "phase groups related records across nearby days")
+        expect(phaseBundles.first?.arc.themeLabels.contains("transition") == true, "phase carries theme labels")
+        expect(phaseBundles.first?.arc.entityNames.contains("Lina") == true, "phase carries entity names")
+        expect((phaseBundles.first?.arc.clusterStrength ?? 0) > 0.45, "phase computes meaningful cluster strength")
+        expect(phaseBundles.first?.arc.sourceRecordIDs.contains(unrelatedRecord.id) == false, "does not merge distant unrelated records")
+        expect(phaseBundles.first?.arc.dominantTheme == "transition", "phase exposes dominant theme")
 
-        if let firstCandidate = arcCandidates.first {
-            let promotedArc = arcPromoter.promote(
-                candidate: firstCandidate,
-                analyses: [analysis, secondAnalysis, thirdAnalysis, unrelatedAnalysis],
-                artifactEntityLinks: first.artifactEntityLinks + [thirdArtifactLink, fourthArtifactLink, unrelatedArtifactLink],
-                entityNodes: first.entityNodes + [unrelatedEntityNode],
-                createdAt: now.addingTimeInterval(60 * 60 * 24 * 31)
-            )
+        if let firstBundle = phaseBundles.first {
+            let promotedArc = firstBundle.arc
 
             expect(promotedArc.status == .accepted, "promoted arc defaults to accepted")
             expect(promotedArc.sourceRecordIDs.count == 3, "promoted arc preserves source records")
             expect(promotedArc.sourceEntityIDs.count >= 2, "promoted arc resolves source entities")
             expect(promotedArc.summary.contains("phase"), "promoted arc generates summary")
-            expect(promotedArc.title == firstCandidate.titleHint, "promoted arc inherits title hint")
-            expect(promotedArc.status == .accepted, "arc lifecycle starts in accepted state")
-            expect(promotedArc.linkedReflectionID == nil, "promoter leaves reflection linkage for store orchestration")
+            expect(promotedArc.status == TemporalArcStatus.accepted, "arc lifecycle starts in accepted state")
+            expect(promotedArc.linkedReflectionID == firstBundle.reflection.id, "bundle links reflection back to arc")
 
             let linkedRecordSet = Set(promotedArc.sourceRecordIDs)
             expect(linkedRecordSet.contains(record.id), "promoted arc keeps first source record")
@@ -294,30 +320,20 @@ struct GraphUpdaterTestRunner {
             expect(linkedArtifactSet.contains(artifact.id), "promoted arc keeps first source artifact")
             expect(linkedArtifactSet.contains(secondArtifact.id), "promoted arc keeps second source artifact")
 
-            let generatedReflection = ReflectionSnapshot(
-                type: .phase,
-                title: promotedArc.title,
-                body: promotedArc.summary,
-                linkedTemporalArcID: promotedArc.id,
-                sourceRecordIDs: promotedArc.sourceRecordIDs,
-                sourceArtifactIDs: promotedArc.sourceArtifactIDs,
-                sourceEntityIDs: promotedArc.sourceEntityIDs,
-                createdAt: promotedArc.updatedAt
-            )
-            var linkedArc = promotedArc
-            linkedArc.linkedReflectionID = generatedReflection.id
-
-            expect(generatedReflection.linkedTemporalArcID == linkedArc.id, "phase reflection links back to arc")
-            expect(linkedArc.linkedReflectionID == generatedReflection.id, "arc stores linked reflection id")
+            let generatedReflection = firstBundle.reflection
+            expect(generatedReflection.linkedTemporalArcID == promotedArc.id, "phase reflection links back to arc")
+            expect(promotedArc.linkedReflectionID == generatedReflection.id, "arc stores linked reflection id")
 
             let mergeCandidateArc = TemporalArc(
+                id: UUID(),
                 title: "transition around Lina",
                 summary: "Another nearby phase candidate.",
-                status: .accepted,
+                status: TemporalArcStatus.accepted,
                 dominantTheme: "transition",
                 dominantEntityName: "Lina",
                 themeLabels: ["transition", "distance"],
                 entityNames: ["Lina"],
+                linkedReflectionID: nil,
                 mergedFromArcIDs: [],
                 mergedIntoArcID: nil,
                 lastMergedAt: nil,
@@ -332,23 +348,23 @@ struct GraphUpdaterTestRunner {
                 updatedAt: now.addingTimeInterval(60 * 60 * 24 * 32)
             )
 
-            let preview = mergeEngine.previewMerge(base: linkedArc, candidate: mergeCandidateArc)
+            let preview = mergeEngine.previewMerge(base: promotedArc, candidate: mergeCandidateArc)
             expect(preview != nil, "merge engine surfaces overlap preview for nearby arcs")
             expect((preview?.overlapScore ?? 0) > 0.42, "merge overlap crosses merge threshold")
 
             let mergedArc = mergeEngine.merge(
-                base: linkedArc,
+                base: promotedArc,
                 candidate: mergeCandidateArc,
                 mergedAt: now.addingTimeInterval(60 * 60 * 24 * 33)
             )
             expect(mergedArc.sourceRecordIDs.count == 3, "merged arc deduplicates source records")
             expect(mergedArc.sourceArtifactIDs.count == 2, "merged arc combines source artifacts")
             expect(mergedArc.summary.contains("Merged phase"), "merged arc updates summary")
-            expect(mergedArc.status == .accepted, "merged arc remains accepted")
+            expect(mergedArc.status == TemporalArcStatus.accepted, "merged arc remains accepted")
             expect(mergedArc.mergedFromArcIDs.contains(mergeCandidateArc.id), "merged arc records provenance source ids")
             expect(mergedArc.lastMergedAt != nil, "merged arc stores merge timestamp")
         } else {
-            expect(false, "expected first temporal arc candidate for promotion")
+            expect(false, "expected first temporal phase bundle")
         }
 
         print("graph_updater_test: PASS")
