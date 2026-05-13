@@ -84,14 +84,14 @@
 
 当前用途：
 
-- `legacyDashboardContainerSpan`
 - `setDashboardContainerSpan`
 - 旧 per-card span override 存量兼容
 
 当前判断：
 
 - 首页主路径已迁到 `CompositionItemState`
-- 这是剩余 legacy layout 兼容最核心的一项
+- 主读取链已不再消费该字段
+- 该字段正退化为存量兼容 / 待删字段
 
 删除前条件：
 
@@ -108,6 +108,7 @@
 - standalone add-card 不再写 legacy `cardType`
 - standalone add-card 不再写默认 `cardUnits/cardWidthColumns`
 - `Record.cardUnits/cardWidthColumns` 不再作为 legacy default span 读取来源
+- `RecordMapper` 主读取链不再读取 `dashboardCardSpanOverridesData`
 - timeline detail entry 改为 content-kind 驱动
 - today-in-history subtitle 改为 content-kind 驱动
 - debug / calibration sample 不再直接写 `record.cardType`
@@ -116,7 +117,6 @@
 
 剩余：
 
-- `RecordMapper` 仍保留 legacy span 分支
 - debug / calibration 仍直接写旧字段
 
 ## 4. 下一阶段动作

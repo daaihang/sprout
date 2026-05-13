@@ -42,8 +42,7 @@ struct CompositionProjector {
         )
 
         let baseCards = RecordMapper.allCards(
-            record: record,
-            spanResolutionMode: .compositionDefault
+            record: record
         ).enumerated().map { index, card in
             let resolvedTarget = projectionTarget(
                 for: card,
