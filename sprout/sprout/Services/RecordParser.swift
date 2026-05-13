@@ -40,12 +40,4 @@ enum RecordParser {
 
         return result
     }
-
-    /// Determines the best `cardType` string for a record given its parsed content.
-    static func primaryCardType(body: String, parsed: ParsedContent) -> String {
-        if parsed.hasAppleMusic { return RecordCardKind.music.rawValue }
-        if parsed.hasLinks      { return RecordCardKind.link.rawValue  }
-        if !body.isEmpty        { return RecordCardKind.text.rawValue  }
-        return RecordCardKind.text.rawValue
-    }
 }

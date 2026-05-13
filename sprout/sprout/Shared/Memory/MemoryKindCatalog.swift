@@ -59,22 +59,6 @@ enum RecordCardKind: String, CaseIterable, Codable, Sendable {
         }
     }
 
-    static func primaryCaptureKind(
-        draft: CaptureDraft,
-        parsed: ParsedContent
-    ) -> RecordCardKind {
-        let attachments = draft.attachments
-        if !attachments.photos.isEmpty { return .photo }
-        if attachments.music != nil { return .music }
-        if attachments.todos != nil { return .todo }
-        if attachments.locationData != nil { return .map }
-        if attachments.mood != nil { return .emotion }
-        if attachments.audioData != nil { return .audio }
-        if !attachments.people.isEmpty { return .people }
-        if !parsed.appleMusicURLs.isEmpty { return .music }
-        if !parsed.regularURLs.isEmpty { return .link }
-        return .text
-    }
 }
 
 enum MediaCardKind: String, CaseIterable, Codable, Sendable {
@@ -116,29 +100,6 @@ enum MediaCardKind: String, CaseIterable, Codable, Sendable {
 }
 
 extension Record {
-    var needsLegacyCardTypeFallback: Bool {
-        let mediaCards = self.mediaCards ?? []
-        if mediaCards.contains(where: { $0.mediaKind == .photo || $0.mediaKind == .music || $0.mediaKind == .audio || $0.mediaKind == .todo || $0.mediaKind == .link }) {
-            return false
-        }
-        if latitude != nil && longitude != nil {
-            return false
-        }
-        if activity?.value != nil {
-            return false
-        }
-        if let mood, !mood.isEmpty {
-            return false
-        }
-        if let weather, !weather.isEmpty {
-            return false
-        }
-        if let mentionedPeople, !mentionedPeople.isEmpty {
-            return false
-        }
-        return body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-
     var derivedCardKind: RecordCardKind {
         let mediaCards = self.mediaCards ?? []
 
