@@ -5,6 +5,7 @@ struct AccountManagementSheet: View {
         case subscription
         case rate
         case about
+        case reflectionInbox
         case debug
         case backendInteraction
         case dailyPrompt
@@ -149,6 +150,14 @@ struct AccountManagementSheet: View {
                 }
 
                 Section {
+                    NavigationLink(value: Route.reflectionInbox) {
+                        rowTitleContent(
+                            icon: "tray.full",
+                            tint: .green,
+                            title: t("account.row.reflection_inbox", "Reflection Inbox")
+                        )
+                    }
+
                     NavigationLink(value: Route.debug) {
                         rowTitleContent(
                             icon: "ant.fill",
@@ -185,6 +194,8 @@ struct AccountManagementSheet: View {
                     Text(t("account.placeholder.rate", "Rating Screen"))
                 case .about:
                     Text(t("account.placeholder.feedback", "About Screen"))
+                case .reflectionInbox:
+                    ReflectionInboxView()
                 case .debug:
                     DebugPage()
                 case .backendInteraction:
