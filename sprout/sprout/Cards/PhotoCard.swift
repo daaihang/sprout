@@ -94,16 +94,40 @@ struct PhotoCard: View {
 
     @ViewBuilder
     private var placeholderContent: some View {
-        ZStack {
-            Color.gray.opacity(0.2)
-            VStack(spacing: 8) {
-                Image(systemName: "photo")
-                    .font(.system(size: 28))
-                    .foregroundColor(.secondary.opacity(0.5))
+        ZStack(alignment: .bottomLeading) {
+            LinearGradient(
+                colors: [
+                    Color(red: 0.98, green: 0.95, blue: 0.88),
+                    Color(red: 0.85, green: 0.91, blue: 0.96)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+
+            RoundedRectangle(cornerRadius: GridConfig.cardCornerRadius - 6, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.5), lineWidth: 1)
+                .padding(6)
+
+            VStack(alignment: .leading, spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(.white.opacity(0.76))
+                        .frame(width: 42, height: 42)
+                    Image(systemName: "photo.on.rectangle.angled")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(Color.black.opacity(0.6))
+                }
+
                 Text(localizedString("card.photo.placeholder", default: "Tap to add a photo"))
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Color.black.opacity(0.72))
+
+                Text(localizedString("card.photo.placeholder.subtitle", default: "Photos become memory artifacts and board items automatically."))
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Color.black.opacity(0.5))
+                    .lineLimit(2)
             }
+            .padding(16)
         }
     }
 }
@@ -133,7 +157,7 @@ private struct PhotoCardRenderer: View {
     }
 
     private var fullBleedBottomOverlay: some View {
-        ZStack(alignment: .bottomLeading) {
+        ZStack(alignment: .topLeading) {
             mediaView(fillMode: true)
             LinearGradient(
                 colors: [.clear, .black.opacity(0.72)],
@@ -141,48 +165,60 @@ private struct PhotoCardRenderer: View {
                 endPoint: .bottom
             )
 
-            HStack(alignment: .bottom, spacing: 12) {
-                VStack(alignment: .leading, spacing: 6) {
-                    if let title = titleText {
-                        Text(title)
-                            .font(context.overlayTitleFont)
+            VStack(alignment: .leading, spacing: 0) {
+                topOverlayBar(lightText: true)
+                    .padding(.horizontal, context.overlayPadding)
+                    .padding(.top, context.overlayPadding)
+
+                Spacer(minLength: 0)
+
+                HStack(alignment: .bottom, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        if let title = titleText {
+                            Text(title)
+                                .font(context.overlayTitleFont)
+                                .foregroundStyle(.white)
+                                .lineLimit(report.titleLineLimit)
+                                .minimumScaleFactor(0.82)
+                        }
+
+                        if let description = report.displayedDescriptionText {
+                            Text(description)
+                                .font(context.overlayBodyFont)
+                                .foregroundStyle(.white.opacity(0.94))
+                                .lineLimit(report.visibleDescriptionLines)
+                        }
+
+                        HStack(spacing: 8) {
+                            if let location = report.displayedLocationText {
+                                Text(location)
+                                    .font(context.overlayMetaFont)
+                                    .foregroundStyle(.white.opacity(0.95))
+                                    .lineLimit(1)
+                            }
+
+                            pagerHint(lightText: true)
+                        }
+                    }
+
+                    Spacer(minLength: 8)
+
+                    if let trailing = report.displayedTrailingText {
+                        Text(trailing)
+                            .font(context.trailingInfoFont)
                             .foregroundStyle(.white)
-                            .lineLimit(report.titleLineLimit)
-                            .minimumScaleFactor(0.82)
-                    }
-
-                    if let description = report.displayedDescriptionText {
-                        Text(description)
-                            .font(context.overlayBodyFont)
-                            .foregroundStyle(.white.opacity(0.94))
-                            .lineLimit(report.visibleDescriptionLines)
-                    }
-
-                    if let location = report.displayedLocationText {
-                        Text(location)
-                            .font(context.overlayMetaFont)
-                            .foregroundStyle(.white.opacity(0.95))
                             .lineLimit(1)
+                            .minimumScaleFactor(0.72)
+                            .monospacedDigit()
                     }
                 }
-
-                Spacer(minLength: 8)
-
-                if let trailing = report.displayedTrailingText {
-                    Text(trailing)
-                        .font(context.trailingInfoFont)
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.72)
-                        .monospacedDigit()
-                }
+                .padding(context.overlayPadding)
             }
-            .padding(context.overlayPadding)
         }
     }
 
     private var fullBleedCenteredSplitText: some View {
-        ZStack {
+        ZStack(alignment: .topLeading) {
             mediaView(fillMode: true)
             LinearGradient(
                 colors: [.black.opacity(0.10), .black.opacity(0.36), .black.opacity(0.12)],
@@ -190,26 +226,38 @@ private struct PhotoCardRenderer: View {
                 endPoint: .bottom
             )
 
-            VStack(spacing: 8) {
-                if let title = titleText {
-                    Text(title)
-                        .font(context.centeredTitleFont)
-                        .foregroundStyle(.white)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(report.titleLineLimit)
-                        .minimumScaleFactor(0.82)
-                }
+            VStack(alignment: .leading, spacing: 0) {
+                topOverlayBar(lightText: true)
+                    .padding(.horizontal, context.overlayPadding)
+                    .padding(.top, context.overlayPadding)
 
-                if let description = report.displayedDescriptionText {
-                    Text(description)
-                        .font(context.centeredBodyFont)
-                        .foregroundStyle(.white.opacity(0.94))
-                        .multilineTextAlignment(.center)
-                        .lineLimit(report.visibleDescriptionLines)
+                Spacer(minLength: 0)
+
+                VStack(spacing: 8) {
+                    if let title = titleText {
+                        Text(title)
+                            .font(context.centeredTitleFont)
+                            .foregroundStyle(.white)
+                            .multilineTextAlignment(.center)
+                            .lineLimit(report.titleLineLimit)
+                            .minimumScaleFactor(0.82)
+                    }
+
+                    if let description = report.displayedDescriptionText {
+                        Text(description)
+                            .font(context.centeredBodyFont)
+                            .foregroundStyle(.white.opacity(0.94))
+                            .multilineTextAlignment(.center)
+                            .lineLimit(report.visibleDescriptionLines)
+                    }
+
+                    pagerHint(lightText: true)
                 }
+                .padding(.horizontal, context.overlayPadding)
+                .padding(.bottom, context.overlayPadding)
+                .frame(maxWidth: min(context.containerSize.width * 0.72, 280))
+                .frame(maxWidth: .infinity)
             }
-            .padding(.horizontal, context.overlayPadding)
-            .frame(maxWidth: min(context.containerSize.width * 0.72, 280))
         }
     }
 
@@ -217,8 +265,16 @@ private struct PhotoCardRenderer: View {
         VStack(spacing: 0) {
             mediaView(fillMode: false)
                 .frame(height: context.topSeparatedImageHeight)
+                .overlay(alignment: .topLeading) {
+                    topOverlayBar(lightText: true)
+                        .padding(10)
+                }
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 8) {
+                if hasMetadataHeader {
+                    metadataHeader(lightText: false)
+                }
+
                 if let title = titleText {
                     Text(title)
                         .font(context.separatedTitleFont)
@@ -243,6 +299,8 @@ private struct PhotoCardRenderer: View {
 
                     Spacer(minLength: 0)
 
+                    pagerHint(lightText: false)
+
                     if let trailing = report.displayedTrailingText {
                         Text(trailing)
                             .font(context.separatedMetaFont.monospacedDigit())
@@ -261,8 +319,16 @@ private struct PhotoCardRenderer: View {
         HStack(spacing: 0) {
             mediaView(fillMode: false)
                 .frame(width: context.leadingSeparatedImageWidth)
+                .overlay(alignment: .topLeading) {
+                    topOverlayBar(lightText: true)
+                        .padding(10)
+                }
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 8) {
+                if hasMetadataHeader {
+                    metadataHeader(lightText: false)
+                }
+
                 if let title = titleText {
                     Text(title)
                         .font(context.separatedTitleFont)
@@ -286,11 +352,15 @@ private struct PhotoCardRenderer: View {
                         .lineLimit(1)
                 }
 
-                if let trailing = report.displayedTrailingText {
-                    Text(trailing)
-                        .font(context.separatedMetaFont.monospacedDigit())
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
+                HStack(spacing: 8) {
+                    pagerHint(lightText: false)
+
+                    if let trailing = report.displayedTrailingText {
+                        Text(trailing)
+                            .font(context.separatedMetaFont.monospacedDigit())
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+                    }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -300,7 +370,25 @@ private struct PhotoCardRenderer: View {
     }
 
     private var imageOnly: some View {
-        mediaView(fillMode: true)
+        ZStack(alignment: .topLeading) {
+            mediaView(fillMode: true)
+            LinearGradient(
+                colors: [.black.opacity(0.26), .clear, .black.opacity(0.42)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+
+            VStack(alignment: .leading, spacing: 0) {
+                topOverlayBar(lightText: true)
+                    .padding(12)
+                Spacer(minLength: 0)
+                HStack {
+                    pagerHint(lightText: true)
+                    Spacer(minLength: 0)
+                }
+                .padding(12)
+            }
+        }
     }
 
     @ViewBuilder
@@ -371,6 +459,101 @@ private struct PhotoCardRenderer: View {
         let trimmed = data.trailingInfoText.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
     }
+
+    private var photoCountLabel: String? {
+        data.images.count > 1 ? "\(data.images.count) photos" : nil
+    }
+
+    private var hasMetadataHeader: Bool {
+        photoCountLabel != nil || locationText != nil
+    }
+
+    @ViewBuilder
+    private func topOverlayBar(lightText: Bool) -> some View {
+        let chips = overlayChipModels
+        if !chips.isEmpty {
+            HStack(spacing: 8) {
+                ForEach(chips) { chip in
+                    photoChromeChip(
+                        text: chip.text,
+                        systemImage: chip.systemImage,
+                        lightText: lightText
+                    )
+                }
+                Spacer(minLength: 0)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func metadataHeader(lightText: Bool) -> some View {
+        let chips = overlayChipModels
+        if !chips.isEmpty {
+            HStack(spacing: 8) {
+                ForEach(chips) { chip in
+                    photoChromeChip(
+                        text: chip.text,
+                        systemImage: chip.systemImage,
+                        lightText: lightText
+                    )
+                }
+                Spacer(minLength: 0)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func pagerHint(lightText: Bool) -> some View {
+        if data.images.count > 1 {
+            HStack(spacing: 5) {
+                ForEach(0..<min(data.images.count, 4), id: \.self) { _ in
+                    Circle()
+                        .fill((lightText ? Color.white : Color.primary).opacity(lightText ? 0.92 : 0.7))
+                        .frame(width: 5, height: 5)
+                }
+
+                if data.images.count > 4 {
+                    Text("+\(data.images.count - 4)")
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundStyle((lightText ? Color.white : Color.secondary).opacity(lightText ? 0.92 : 0.85))
+                }
+            }
+        }
+    }
+
+    private func photoChromeChip(text: String, systemImage: String, lightText: Bool) -> some View {
+        Label(text, systemImage: systemImage)
+            .font(.system(size: 10, weight: .semibold, design: .rounded))
+            .lineLimit(1)
+            .foregroundStyle(lightText ? Color.white : Color.primary)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 6)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(lightText ? Color.black.opacity(0.28) : Color.black.opacity(0.05))
+            )
+            .overlay(
+                Capsule(style: .continuous)
+                    .stroke((lightText ? Color.white : Color.black).opacity(lightText ? 0.16 : 0.08), lineWidth: 1)
+            )
+    }
+
+    private var overlayChipModels: [PhotoChromeChipModel] {
+        var chips: [PhotoChromeChipModel] = []
+        if let locationText {
+            chips.append(.init(text: locationText, systemImage: "mappin.and.ellipse"))
+        }
+        if let photoCountLabel {
+            chips.append(.init(text: photoCountLabel, systemImage: "square.stack.3d.up"))
+        }
+        return chips
+    }
+}
+
+private struct PhotoChromeChipModel: Identifiable {
+    let id = UUID()
+    let text: String
+    let systemImage: String
 }
 
 private struct PhotoCardLayoutContext {

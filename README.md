@@ -1,141 +1,170 @@
 # Sprout
 
-Sprout is a SwiftUI-first journaling app built around a containerized home-card system. Records are persisted with SwiftData, rendered into adaptive cards on the home screen, and arranged by a custom sticker-style grid layout.
+Sprout is currently in the Mory v3 migration: from a record-centric journaling app toward a local-first personal memory system.
 
-## Architecture Overview
+The target architecture is:
+
+`Artifact -> Composition -> Analysis Snapshot -> Graph -> Temporal Arc -> Reflection`
+
+The codebase already contains most of these layers, but they are still being progressively wired together and old `Record`-centric paths are still being removed.
+
+## Current Shape
 
 - `sprout/sprout/Models`
-  SwiftData models such as `Record`, `MediaCard`, `Activity`, and related entities.
-- `sprout/sprout/Cards`
-  One SwiftUI file per card type. Cards adapt to the container size they receive instead of relying on legacy fixed-size variants.
+  SwiftData models for legacy capture objects and transition-era persisted layout objects such as `Record`, `MediaCard`, and `CompositionItemState`.
+- `sprout/sprout/Shared/Memory`
+  v3 memory-domain models including `Artifact`, `RecordShell`, `RecordAnalysisSnapshot`, `ReflectionSnapshot`, `EntityNode`, `EntityEdge`, `ArtifactEntityLink`, and `TemporalArc`.
 - `sprout/sprout/Services`
-  Core business logic: mapping, parsing, external-data integration, authentication, and subscriptions.
+  Aggregate building, composition projection, parsing, AI-response mapping, repositories, external integrations, auth, and subscriptions.
+- `sprout/sprout/Cards`
+  SwiftUI renderers for memory surfaces. These are being gradually repositioned from old business-card components into artifact/composition renderers.
 - `sprout/sprout/Views`
-  App screens and editing flows including `DailyView`, `AddCardSheet`, `RecordDetailView`, auth flow, and paywall.
+  Main screens, capture flows, detail pages, onboarding, and home navigation.
+- `server/`
+  Go backend for auth, lightweight user state, and AI provider orchestration.
+
+## Migration Status
+
+Practical progress against the v3 roadmap:
+
+- Phase 0 `100%`
+  Ontology and architecture docs are frozen.
+- Phase 1 `92%`
+  Artifact layer exists and modern capture paths already dual-write aggregate data.
+- Phase 2 `91%`
+  Composition state persists by board/day, and board resize now refreshes immediately; legacy layout fields still remain on `Record`.
+- Phase 3 `93%`
+  Analysis snapshot contract and local persistence are active.
+- Phase 4 `84%`
+  Graph models and update logic exist, but UI consumption is still partial.
+- Phase 5 `86%`
+  Temporal arcs and phase reflections exist, but the page-level user experience is still incomplete.
+- Phase 6 `87%`
+  Legacy cleanup is underway; `Record` still physically carries fields that should eventually be removed.
+
+Main remaining gaps:
+
+- `Record.cardType`, `cardUnits`, `cardWidthColumns`, and `dashboardCardSpanOverridesData` still exist.
+- `RecordMapper` still survives as a transition layer.
+- Several card internals still present legacy UI quality or legacy assumptions.
+- Graph and arc layers are not yet fully exposed as first-class navigation experiences.
 
 ## Authentication
 
-Authentication is handled by `AuthSessionManager` (`sprout/sprout/Services/AuthSessionManager.swift`).
+Authentication is handled by `AuthSessionManager` in [sprout/sprout/Services/AuthSessionManager.swift](/Users/z14/Documents/sprout/sprout/sprout/Services/AuthSessionManager.swift).
 
-- **Sign in with Apple** — Identity token and nonce are sent to the backend `/auth/apple` endpoint. The backend verifies with Apple and returns an access token + session metadata.
-- **Session storage** — Sessions are stored in the iOS Keychain under `com.speculolabs.sprout.auth`. Each session carries: `accessToken`, `expiresAt`, `userID`, `tier`, `mode`, and `hasCompletedOnboarding`.
-- **Token refresh** — Sessions are automatically refreshed when they are within 6 hours of expiry (except `development_stub` mode).
-- **Development bypass** — `signInForDevelopmentBypass()` creates a local stub session with `mode: development_stub` to skip backend auth during development.
-- **Onboarding completion** — After the user finishes onboarding, `completeOnboarding()` PATCHes `/api/me/onboarding/complete` to record completion on the server.
+- Sign in with Apple posts to `/auth/apple`.
+- Sessions are stored in the iOS Keychain under `com.speculolabs.sprout.auth`.
+- `development_stub` mode can bypass backend auth during development.
+- Signed-in onboarding completion posts to `/api/me/onboarding/complete`.
 
-The app navigates through `AuthGateView`:
-1. **Welcome** — First-launch or force-show welcome screen
-2. **AnonymousOnboarding** — Preview AI reflection before signing in (`OnboardingFlowView`)
-3. **SignedInOnboarding** — Onboarding flow for signed-in users (`SignedInOnboardingView`)
-4. **SignedIn** — Main app content, optionally locked behind biometric auth
+The app flows through `AuthGateView`:
 
-## Onboarding Preview
+1. Welcome
+2. Anonymous onboarding preview
+3. Signed-in onboarding
+4. Signed-in main app
 
-Before requiring sign-in, anonymous users can try the AI reflection experience:
+## AI Analysis Contract
 
-- `OnboardingFlowView` presents a text input where the user writes about their day.
-- `OnboardingPreviewService` sends the text to the backend `/api/analyze/preview` endpoint.
-- The backend returns an emotion label, insight text, tags, and an optional follow-up question.
-- The user can then sign in with Apple to save their reflection and continue.
+AI analysis is now record-aggregate based.
 
-This lets users evaluate the app's value before creating an account.
+- Onboarding preview posts to `/api/analysis/preview`.
+- Signed-in capture analysis posts to `/api/analysis/records`.
+- The payload carries `schema_version`, `analysis_reason`, `record_shell`, `artifacts`, and `known_entities`.
+- iOS maps the response into `RecordAnalysisSnapshot`, then uses deterministic local services to update graph and reflection state.
 
-## Subscription System
+The Go backend keeps AI provider abstraction behind the server boundary.
 
-Subscriptions are managed by `SubscriptionManager` (`sprout/sprout/Services/SubscriptionManager.swift`).
+- `AI_PROVIDER=anthropic`
+- `AI_PROVIDER=openai_compatible`
 
-- **RevenueCat** is the primary subscription backend. Products (monthly/yearly "Grow" packages) are loaded via RevenueCat offerings.
-- **StoreKit fallback** — If RevenueCat offerings fail or are unavailable, the app directly queries StoreKit for products.
-- **Entitlement resolution** — The app resolves entitlement from RevenueCat (`MoryConfig.entitlementID`) with fallback IDs for migration scenarios.
-- **No RevenueCat SDK** — If the SDK is not linked (non-CocoaPods builds), `SubscriptionManager` is stubbed out with `errorMessage: "RevenueCat SDK is not installed."`
-- **Diagnostics** — In DEBUG builds, `refreshDiagnostics()` captures a `PurchasesDiagnostics` health report for troubleshooting.
+OpenAI-compatible vendors such as DeepSeek should be integrated through backend configuration, not by direct client calls.
 
-## Home Layout
+## Home Board
 
-- Home layout is container-first.
-- `ContainerSpan` is the placement unit for the grid.
-- `StickerGridLayout` arranges containers responsively.
-- `CardContainerView` owns container-level visual placement behavior.
-- Cards are self-adaptive internally and do not encode `4x1` / `4x2` / `4x4` semantics.
+The home experience is moving from container-first UI toward persistent composition.
 
-## Card Actions
+- `ContainerSpan` remains the visible placement unit.
+- `StickerGridLayout` still renders the board.
+- `CompositionItemState` is now the primary persisted resize state for board items.
+- The current day board refreshes immediately when a user changes card size.
+- Capture timestamps now use real capture time again instead of backfilling non-today entries to the selected page's `23:59`.
 
-- Cards use the system native long-press `contextMenu`.
-- Menu actions include card size options and delete.
-- Supported container sizes per card type are defined in `sprout/sprout/Cards/GridConfig.swift` under `cardSizeLimits`.
-- The home grid uses a stable occupancy-based placement algorithm so resizing a card mainly affects the cards after it instead of reshuffling the whole page.
+This matters because v3 treats:
+
+- `Record` as a capture event
+- `Composition` as persistent layout meaning
+
+not as page-local hacks.
 
 ## Record Storage
 
-`Record` currently stores:
+`Record` still currently stores:
 
-- Base content: `body`, `createdAt`, `updatedAt`, `tags`
-- Home layout: `cardType`, `cardWidthColumns`, `cardUnits`, `dashboardCardSpanOverridesData`, `dashboardOrder`
-- Emotion: `mood`, `intensity`
-- Weather snapshot: `weather`, `temperature`, `feelsLike`, `humidity`, `weatherHigh`, `weatherLow`, `location`, `latitude`, `longitude`, `weatherObservedAt`, `weatherSource`
-- Media / map / music related relationships and fields
+- Base content such as `body`, `createdAt`, `updatedAt`, `tags`
+- Legacy home-layout fields such as `cardType`, `cardWidthColumns`, `cardUnits`, `dashboardCardSpanOverridesData`, `dashboardOrder`
+- Weather and location snapshot fields
+- Legacy relationships around `MediaCard` and related objects
 
-Home layout sizing now works in two layers:
+That is transitional, not final.
 
-- `cardWidthColumns` and `cardUnits` are legacy/default fallback values on the `Record`.
-- `dashboardCardSpanOverridesData` stores per-container size overrides keyed by dashboard card suffix such as `photo`, `text`, or `weather`.
-- This prevents multiple dashboard containers from the same `Record` from resizing together.
+The intended direction is:
 
-## Weather Strategy
+- `Record` becomes a capture shell
+- `Artifact` becomes content truth
+- `CompositionItemState` becomes board layout truth
+- `RecordAnalysisSnapshot` / `ReflectionSnapshot` become AI truth
 
-Weather is treated as a recorded snapshot, not a mutable live value.
+## Subscription System
 
-- When creating a weather card, Sprout should request current location and fetch WeatherKit data.
-- The fetched result is persisted into the `Record` as the weather at record time.
-- Home cards and detail pages primarily display the recorded snapshot.
-- For same-day records with coordinates, the weather card may fetch live weather for that location and show it only as supplemental text such as `现在 26° 晴`.
-- Live weather must not overwrite the stored snapshot.
-- Reverse geocoding failure must not block weather snapshot creation. If placemark lookup fails, the app falls back to formatted coordinates.
-- On the simulator, SwiftData CloudKit sync is disabled to avoid `CKAccountStatusNoAccount` startup failures when no iCloud account is signed in.
+Subscriptions are managed by `SubscriptionManager`.
+
+- RevenueCat is the primary subscription backend when linked.
+- StoreKit is the fallback path.
+- If RevenueCat is unavailable in a local build, subscription handling is stubbed.
 
 ## Build
 
 Preferred verification command:
 
 ```sh
-xcodebuild -scheme sprout -destination 'platform=iOS Simulator,name=iPhone 17' build 2>&1 | grep -E "(error:|warning:|BUILD)" | tail -50
+xcodebuild -project sprout/sprout.xcodeproj -scheme sprout -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build
 ```
 
-For fuller output:
+For filtered output:
 
 ```sh
-xcodebuild -scheme sprout -destination 'platform=iOS Simulator,name=iPhone 17' build 2>&1 | tail -100
+xcodebuild -project sprout/sprout.xcodeproj -scheme sprout -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build 2>&1 | rg -n 'error:|warning:|BUILD SUCCEEDED|BUILD FAILED'
 ```
 
-For building on an iOS Simulator without StoreKit/TestFlight (e.g., subscription testing), ensure the active scheme uses `sprout.storekit` configuration.
+## Backend
 
-## Backend Deployment
+The backend lives in `server/` and is deployed independently from the iOS app.
 
-The backend lives in `server/` and can be deployed to Fly.io.
-
-- Repo-level Fly config: [fly.toml](/Users/z14/Documents/sprout/fly.toml)
-- Container build: [server/Dockerfile](/Users/z14/Documents/sprout/server/Dockerfile)
+- Fly config: [fly.toml](/Users/z14/Documents/sprout/fly.toml)
+- Docker build: [server/Dockerfile](/Users/z14/Documents/sprout/server/Dockerfile)
 - Deployment notes: [server/DEPLOY_FLY.md](/Users/z14/Documents/sprout/server/DEPLOY_FLY.md)
-- Fly working directory: repo root (`/Users/z14/Documents/sprout`)
 
-Default deployment mode is conservative:
+Default conservative deployment mode:
 
 - `AI_MODE=mock`
 - `AI_PROVIDER=mock`
 - `DEV_AUTH_ENABLED=false`
-- SQLite persisted on a Fly volume at `/data/sprout.db`
-- Physical iPhones/iPads should use `https://sprout-god7g.fly.dev`
 
-Fly Managed Postgres is not used here. If the Fly dashboard only shows database options, create a regular Fly Volume with `fly volumes create` instead of selecting Managed Postgres.
+To switch to live AI:
 
-To switch to live AI, set Fly secrets/envs for `AI_MODE=live`, choose `AI_PROVIDER=anthropic` or `openai_compatible`, then provide `AI_MODEL` and `AI_API_KEY`. For OpenAI-compatible vendors, also set `AI_BASE_URL` when the endpoint differs from OpenAI's default.
+- set `AI_MODE=live`
+- choose `AI_PROVIDER=anthropic` or `openai_compatible`
+- provide `AI_MODEL`
+- provide `AI_API_KEY`
+- provide `AI_BASE_URL` when using a non-default OpenAI-compatible endpoint
 
-Backend changes should be committed and pushed to `origin/main` after each update so the Fly deployment stays in sync.
+## Immediate Next Work
 
-## Known Follow-ups
+The current best-practice next steps are:
 
-- Clean remaining warnings in weather, map, layout actor-isolation, and mapper files.
-- Add migration handling if SwiftData schema changes need explicit rollout support.
-- Consider extracting weather snapshot types into a dedicated model or value object if the feature expands further.
-- RevenueCat entitlement fallback IDs may need cleanup after all users have migrated off legacy product IDs.
-- `InstallExperienceStore` may need adjustment when TestFlight/Production builds have different welcome-screen requirements.
+1. Continue refreshing high-frequency card internals so the board feels intentional rather than legacy.
+2. Keep removing `Record` legacy layout dependencies.
+3. Surface graph and phase objects more directly in navigation and detail views.
+4. Keep iOS and backend contracts aligned to the v3 document set instead of adding more one-off UI types.
