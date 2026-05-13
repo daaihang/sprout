@@ -10,6 +10,7 @@ import MapKit
 /// a QuoteCard shows the text first. All content still follows below.
 struct RecordDetailView: View {
     @Environment(AppLocalization.self) private var localization
+    @Environment(SproutMemoryRepository.self) private var memoryRepository
     let record: Record
     var focusedSection: RecordSection = .text
 
@@ -41,6 +42,10 @@ struct RecordDetailView: View {
         return sections
     }
 
+    private var memoryView: SproutMemoryRepository.RecordMemoryView? {
+        memoryRepository.memoryView(for: record.id)
+    }
+
     // MARK: Body
 
     var body: some View {
@@ -48,6 +53,9 @@ struct RecordDetailView: View {
             VStack(alignment: .leading, spacing: 24) {
                 ForEach(orderedSections, id: \.self) { section in
                     sectionView(for: section)
+                }
+                if let memoryView, memoryView.analysis != nil || !memoryView.linkedEntities.isEmpty {
+                    memoryInsightsSection(memoryView)
                 }
                 metadataFooter.padding(.top, 8)
             }
@@ -465,6 +473,82 @@ struct RecordDetailView: View {
         return (m.title ?? t("detail.todo.default_title", "To-Do"), items)
     }
 
+    @ViewBuilder
+    private func memoryInsightsSection(_ memoryView: SproutMemoryRepository.RecordMemoryView) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionLabel(icon: "sparkles.rectangle.stack", title: t("detail.section.memory_insights", "Memory Insights"))
+
+            if let analysis = memoryView.analysis {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(analysis.emotionLabel.capitalized)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    Text(analysis.insight)
+                        .font(.body)
+                        .foregroundStyle(.primary)
+
+                    if let followUpQuestion = analysis.followUpQuestion, !followUpQuestion.isEmpty {
+                        Text(followUpQuestion)
+                            .font(.footnote.weight(.medium))
+                            .foregroundStyle(.secondary)
+                    }
+
+                    if !analysis.tags.isEmpty {
+                        tokenWrapRow(analysis.tags, tint: .accentColor)
+                    }
+                }
+            }
+
+            if !memoryView.linkedEntities.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(t("detail.memory.entities", "Linked Entities"))
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    ForEach(memoryView.linkedEntities, id: \.id) { entity in
+                        HStack(alignment: .top, spacing: 10) {
+                            Text(entity.kind.badgeLabel)
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(entity.kind.tintColor)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(entity.kind.tintColor.opacity(0.12), in: Capsule())
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(entity.displayName)
+                                    .font(.subheadline.weight(.medium))
+                                if !entity.summary.isEmpty {
+                                    Text(entity.summary)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+
+                            Spacer()
+                        }
+                    }
+                }
+            }
+        }
+        .detailCard()
+    }
+
+    private func tokenWrapRow(_ values: [String], tint: Color) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(values, id: \.self) { value in
+                    Text(value)
+                        .font(.caption2)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(tint.opacity(0.12), in: Capsule())
+                        .foregroundStyle(tint)
+                }
+            }
+        }
+    }
+
     // MARK: - Metadata footer
 
     private var metadataFooter: some View {
@@ -503,6 +587,34 @@ struct RecordDetailView: View {
 
     private func t(_ key: String, _ defaultValue: String, _ arguments: CVarArg...) -> String {
         localization.string(key, default: defaultValue, arguments: arguments)
+    }
+}
+
+private extension EntityKind {
+    var badgeLabel: String {
+        switch self {
+        case .person:
+            return "Person"
+        case .place:
+            return "Place"
+        case .theme:
+            return "Theme"
+        case .decision:
+            return "Decision"
+        }
+    }
+
+    var tintColor: Color {
+        switch self {
+        case .person:
+            return .blue
+        case .place:
+            return .green
+        case .theme:
+            return .orange
+        case .decision:
+            return .pink
+        }
     }
 }
 

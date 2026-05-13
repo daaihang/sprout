@@ -71,64 +71,95 @@ struct SproutMemoryAggregateBuilder {
         }
 
         if let location = record.location, !location.isEmpty {
+            var metadata: [String: String] = [:]
+            if let latitude = record.latitude {
+                metadata["latitude"] = String(latitude)
+            }
+            if let longitude = record.longitude {
+                metadata["longitude"] = String(longitude)
+            }
+
+            let locationArtifact = Artifact(
+                kind: .location,
+                title: location,
+                summary: location,
+                createdAt: record.createdAt,
+                updatedAt: record.updatedAt,
+                metadata: metadata
+            )
             artifacts.append(
-                Artifact(
-                    kind: .location,
-                    title: location,
-                    summary: location,
-                    createdAt: record.createdAt,
-                    updatedAt: record.updatedAt,
-                    metadata: [
-                        "latitude": record.latitude.map(String.init) ?? "",
-                        "longitude": record.longitude.map(String.init) ?? ""
-                    ].filter { !$0.value.isEmpty }
-                )
+                locationArtifact
             )
         }
 
         if let weather = record.weather, !weather.isEmpty {
+            let temperatureText: String
+            if let temperature = record.temperature {
+                temperatureText = String(format: "%.0f", temperature)
+            } else {
+                temperatureText = ""
+            }
+            let weatherSummary = "\(weather) \(temperatureText)".trimmingCharacters(in: .whitespaces)
+            var metadata: [String: String] = [:]
+            if let location = record.location, !location.isEmpty {
+                metadata["location"] = location
+            }
+            if let humidity = record.humidity {
+                metadata["humidity"] = String(humidity)
+            }
+
+            let weatherArtifact = Artifact(
+                kind: .weather,
+                title: weather,
+                summary: weatherSummary,
+                createdAt: record.weatherObservedAt ?? record.createdAt,
+                updatedAt: record.updatedAt,
+                metadata: metadata
+            )
             artifacts.append(
-                Artifact(
-                    kind: .weather,
-                    title: weather,
-                    summary: "\(weather) \(record.temperature.map { String(format: "%.0f", $0) } ?? "")".trimmingCharacters(in: .whitespaces),
-                    createdAt: record.weatherObservedAt ?? record.createdAt,
-                    updatedAt: record.updatedAt,
-                    metadata: [
-                        "location": record.location ?? "",
-                        "humidity": record.humidity.map(String.init) ?? ""
-                    ].filter { !$0.value.isEmpty }
-                )
+                weatherArtifact
             )
         }
 
         if let people = record.mentionedPeople, !people.isEmpty {
-            artifacts.append(contentsOf: people.map { person in
-                Artifact(
+            let peopleArtifacts = people.map { person in
+                var metadata: [String: String] = [:]
+                if let relationship = person.relationship, !relationship.isEmpty {
+                    metadata["relationship"] = relationship
+                }
+
+                return Artifact(
                     kind: .personMention,
                     title: person.displayName,
                     summary: person.secondaryLabel,
                     createdAt: record.createdAt,
                     updatedAt: record.updatedAt,
-                    metadata: ["relationship": person.relationship ?? ""].filter { !$0.value.isEmpty },
+                    metadata: metadata,
                     entities: [EntityReference(kind: .person, name: person.displayName, confidence: nil)]
                 )
-            })
+            }
+            artifacts.append(contentsOf: peopleArtifacts)
         }
 
         if let decisions = record.linkedDecisions, !decisions.isEmpty {
-            artifacts.append(contentsOf: decisions.map { decision in
-                Artifact(
+            let decisionArtifacts = decisions.map { decision in
+                let summary = decision.context ?? decision.outcome ?? decision.status
+                let textContent = [decision.context, decision.outcome]
+                    .compactMap { $0 }
+                    .joined(separator: "\n")
+
+                return Artifact(
                     kind: .decisionNote,
                     title: decision.title,
-                    summary: decision.context ?? decision.outcome ?? decision.status,
-                    textContent: [decision.context, decision.outcome].compactMap { $0 }.joined(separator: "\n"),
+                    summary: summary,
+                    textContent: textContent,
                     createdAt: decision.createdAt,
                     updatedAt: decision.updatedAt,
                     metadata: ["status": decision.status],
                     entities: [EntityReference(kind: .decision, name: decision.title, confidence: nil)]
                 )
-            })
+            }
+            artifacts.append(contentsOf: decisionArtifacts)
         }
 
         return artifacts
@@ -151,20 +182,32 @@ struct SproutMemoryAggregateBuilder {
             return nil
         }
 
+        let fallbackTitle = String(record.body.prefix(24))
+        let title = media.title ?? media.locationName ?? fallbackTitle
+        let summary = media.caption ?? media.locationName ?? ""
+        var metadata: [String: String] = [:]
+        if let url = media.url, !url.isEmpty {
+            metadata["url"] = url
+        }
+        if let albumName = media.albumName, !albumName.isEmpty {
+            metadata["albumName"] = albumName
+        }
+        if let artworkURLString = media.artworkURLString, !artworkURLString.isEmpty {
+            metadata["artworkURLString"] = artworkURLString
+        }
+        if let locationName = media.locationName, !locationName.isEmpty {
+            metadata["locationName"] = locationName
+        }
+
         return Artifact(
             id: media.id,
             kind: kind,
-            title: media.title ?? media.locationName ?? record.body.prefix(24).description,
-            summary: media.caption ?? media.locationName ?? "",
+            title: title,
+            summary: summary,
             textContent: media.aiDescription ?? "",
             createdAt: media.capturedAt ?? media.createdAt,
             updatedAt: record.updatedAt,
-            metadata: [
-                "url": media.url ?? "",
-                "albumName": media.albumName ?? "",
-                "artworkURLString": media.artworkURLString ?? "",
-                "locationName": media.locationName ?? ""
-            ].filter { !$0.value.isEmpty }
+            metadata: metadata
         )
     }
 
