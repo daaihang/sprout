@@ -23,7 +23,7 @@ final class Record {
     var director: String? = nil
     var progress: Double? = nil
     var appleMusicURL: String? = nil
-    /// Weather extended fields (replaces hardcoded defaults in RecordMapper)
+    /// Weather extended fields captured at record time.
     var feelsLike: Double? = nil
     var humidity: Int? = nil
     var weatherHigh: Double? = nil
@@ -35,7 +35,6 @@ final class Record {
     /// Dashboard ordering rank. Lower values appear earlier.
     var dashboardOrder: Double = 0
 
-    @Relationship(deleteRule: .cascade) var mediaCards: [MediaCard]? = nil
     @Relationship(deleteRule: .nullify) var mentionedPeople: [Person]? = nil
     @Relationship(deleteRule: .nullify) var linkedDecisions: [Decision]? = nil
     @Relationship(deleteRule: .nullify) var activity: Activity? = nil

@@ -10,6 +10,7 @@ struct sproutApp: App {
     @State private var biometricLockManager = BiometricLockManager()
     @State private var installExperienceStore = InstallExperienceStore()
     @State private var memoryRepository = SproutMemoryRepository()
+    @State private var capturePipelineStore = CapturePipelineStore.shared
     @State private var onboardingPreviewService: OnboardingPreviewService
 
     init() {
@@ -32,7 +33,6 @@ struct sproutApp: App {
             CompositionItemState.self,
             Person.self,
             Decision.self,
-            MediaCard.self,
             DailyQuestion.self,
             Activity.self,
             DashboardSystemCardConfig.self,
@@ -59,6 +59,7 @@ struct sproutApp: App {
                 .environment(biometricLockManager)
                 .environment(installExperienceStore)
                 .environment(memoryRepository)
+                .environment(capturePipelineStore)
                 .environment(onboardingPreviewService)
         }
         .modelContainer(sharedModelContainer)
