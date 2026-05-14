@@ -392,8 +392,8 @@ struct SproutMemoryAggregateBuilder {
         if !draft.attachments.people.isEmpty {
             let personArtifacts = draft.attachments.people.map { person in
                 var metadata: [String: String] = [:]
-                if let relationship = person.relationship, !relationship.isEmpty {
-                    metadata["relationship"] = relationship
+                if !person.relationship.isEmpty {
+                    metadata["relationship"] = person.relationship
                 }
                 return Artifact(
                     kind: .personMention,

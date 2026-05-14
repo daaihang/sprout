@@ -14,6 +14,7 @@ final class OnboardingPreviewService {
     var errorMessage: String? = nil
 
     private let aggregateBuilder = SproutMemoryAggregateBuilder()
+    private let capturePipeline = CapturePipelineStore.shared
     private let memoryRepository: SproutMemoryRepository
     private let analyzeService = SproutAnalyzeService()
 
@@ -34,6 +35,7 @@ final class OnboardingPreviewService {
         defer { isLoading = false }
 
         let aggregate = aggregateBuilder.buildPreviewAggregate(from: content)
+        capturePipeline.markAnalyzing(recordID: aggregate.recordShell.id, detail: "Preview request")
 
         do {
             let result = try await analyzeService.analyzePreview(aggregate: aggregate)
@@ -41,11 +43,13 @@ final class OnboardingPreviewService {
 
             let analysis = analyzeService.mapToAnalysisSnapshot(response: result, recordID: aggregate.recordShell.id)
             latestAnalysisSnapshot = analysis
-            memoryRepository.setAnalysis(analysis, aggregate: aggregate)
+            try memoryRepository.setAnalysis(analysis, aggregate: aggregate)
             latestMemoryView = memoryRepository.memoryView(for: aggregate.recordShell.id)
+            capturePipeline.markAnalyzed(recordID: aggregate.recordShell.id)
         } catch {
             errorMessage = error.localizedDescription
             latestMemoryView = nil
+            capturePipeline.markFailed(recordID: aggregate.recordShell.id, detail: error.localizedDescription)
         }
     }
 }

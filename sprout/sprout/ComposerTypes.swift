@@ -34,7 +34,7 @@ struct ComposerAttachments {
     var music: MusicCardData? = nil
     var todos: TodoCardData? = nil
     var audioData: Data? = nil
-    var people: [Person] = []
+    var people: [PersonCardItem] = []
 
     var isEmpty: Bool {
         mood == nil

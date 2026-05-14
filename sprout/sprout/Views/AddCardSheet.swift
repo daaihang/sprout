@@ -9,7 +9,6 @@ import CoreLocation
 /// Creates standalone Records (independent of the text composer).
 struct AddCardSheet: View {
     @Environment(AppLocalization.self) private var localization
-    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss)      private var dismiss
     @Environment(SproutMemoryRepository.self) private var memoryRepository
     @Environment(AuthSessionManager.self) private var authSession
@@ -360,9 +359,7 @@ struct AddCardSheet: View {
                 textArtifactText: emotionData.note,
                 emotion: emotionData
             )
-            persistStandaloneRecord(for: aggregate)
-            guard persistLocalChanges(recordID: aggregate.recordShell.id) else { return }
-            memoryRepository.upsertAggregate(aggregate)
+            guard persistAggregate(aggregate) else { return }
             Task { await runPostCaptureAnalysisIfPossible(for: aggregate) }
             dismiss()
 
@@ -373,9 +370,7 @@ struct AddCardSheet: View {
                 createdAt: createdAt,
                 weather: weatherData
             )
-            persistStandaloneRecord(for: aggregate)
-            guard persistLocalChanges(recordID: aggregate.recordShell.id) else { return }
-            memoryRepository.upsertAggregate(aggregate)
+            guard persistAggregate(aggregate) else { return }
             Task { await runPostCaptureAnalysisIfPossible(for: aggregate) }
             dismiss()
 
@@ -387,9 +382,7 @@ struct AddCardSheet: View {
                 textArtifactText: locationData.descriptionText,
                 location: locationData
             )
-            persistStandaloneRecord(for: aggregate)
-            guard persistLocalChanges(recordID: aggregate.recordShell.id) else { return }
-            memoryRepository.upsertAggregate(aggregate)
+            guard persistAggregate(aggregate) else { return }
             Task { await runPostCaptureAnalysisIfPossible(for: aggregate) }
             dismiss()
 
@@ -400,9 +393,7 @@ struct AddCardSheet: View {
                 createdAt: createdAt,
                 music: musicData
             )
-            persistStandaloneRecord(for: aggregate)
-            guard persistLocalChanges(recordID: aggregate.recordShell.id) else { return }
-            memoryRepository.upsertAggregate(aggregate)
+            guard persistAggregate(aggregate) else { return }
             Task { await runPostCaptureAnalysisIfPossible(for: aggregate) }
             dismiss()
 
@@ -415,9 +406,7 @@ struct AddCardSheet: View {
                     createdAt: createdAt,
                     photoPayloads: payloads
                 )
-                persistStandaloneRecord(for: aggregate)
-                guard persistLocalChanges(recordID: aggregate.recordShell.id) else { return }
-                memoryRepository.upsertAggregate(aggregate)
+                guard persistAggregate(aggregate) else { return }
                 Task { await runPostCaptureAnalysisIfPossible(for: aggregate) }
                 dismiss()
             }
@@ -430,9 +419,7 @@ struct AddCardSheet: View {
                 createdAt: createdAt,
                 todo: todoData
             )
-            persistStandaloneRecord(for: aggregate)
-            guard persistLocalChanges(recordID: aggregate.recordShell.id) else { return }
-            memoryRepository.upsertAggregate(aggregate)
+            guard persistAggregate(aggregate) else { return }
             Task { await runPostCaptureAnalysisIfPossible(for: aggregate) }
             dismiss()
 
@@ -443,26 +430,10 @@ struct AddCardSheet: View {
                 createdAt: createdAt,
                 textArtifactText: ""
             )
-            persistStandaloneRecord(for: aggregate)
-            guard persistLocalChanges(recordID: aggregate.recordShell.id) else { return }
-            memoryRepository.upsertAggregate(aggregate)
+            guard persistAggregate(aggregate) else { return }
             Task { await runPostCaptureAnalysisIfPossible(for: aggregate) }
             dismiss()
         }
-    }
-
-    @MainActor
-    private func persistStandaloneRecord(for aggregate: SproutMemoryAggregate) {
-        let record = Record()
-        record.id = aggregate.recordShell.id
-        record.createdAt = aggregate.recordShell.createdAt
-        record.updatedAt = aggregate.recordShell.updatedAt
-        record.captureSource = aggregate.recordShell.captureSource
-        record.rawText = aggregate.recordShell.rawText
-        record.userMood = aggregate.recordShell.userMood
-        record.userIntensity = aggregate.recordShell.userIntensity
-        record.inputContext = aggregate.recordShell.inputContext
-        modelContext.insert(record)
     }
 
     @MainActor
@@ -494,7 +465,7 @@ struct AddCardSheet: View {
                 response: response,
                 recordID: aggregate.recordShell.id
             )
-            memoryRepository.setAnalysis(snapshot, aggregate: aggregate)
+            try memoryRepository.setAnalysis(snapshot, aggregate: aggregate)
             capturePipeline.markAnalyzed(recordID: aggregate.recordShell.id)
         } catch {
             capturePipeline.markAnalysisUnavailable(
@@ -505,15 +476,15 @@ struct AddCardSheet: View {
     }
 
     @MainActor
-    private func persistLocalChanges(recordID: UUID) -> Bool {
+    private func persistAggregate(_ aggregate: SproutMemoryAggregate) -> Bool {
         do {
-            try modelContext.save()
-            capturePipeline.markSaved(recordID: recordID)
+            try memoryRepository.upsertAggregate(aggregate)
+            capturePipeline.markSaved(recordID: aggregate.recordShell.id)
             return true
         } catch {
             let message = error.localizedDescription
             captureErrorMessage = message
-            capturePipeline.markFailed(recordID: recordID, detail: message)
+            capturePipeline.markFailed(recordID: aggregate.recordShell.id, detail: message)
             return false
         }
     }

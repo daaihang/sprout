@@ -9,45 +9,35 @@ struct sproutApp: App {
     @State private var authSessionManager = AuthSessionManager()
     @State private var biometricLockManager = BiometricLockManager()
     @State private var installExperienceStore = InstallExperienceStore()
-    @State private var memoryRepository = SproutMemoryRepository()
+    @State private var memoryRepository: SproutMemoryRepository
     @State private var capturePipelineStore = CapturePipelineStore.shared
     @State private var onboardingPreviewService: OnboardingPreviewService
 
-    init() {
-        let memoryRepository = SproutMemoryRepository()
-        _memoryRepository = State(initialValue: memoryRepository)
-        _onboardingPreviewService = State(initialValue: OnboardingPreviewService(memoryRepository: memoryRepository))
-    }
+    private let sharedModelContainer: ModelContainer
 
-    var sharedModelContainer: ModelContainer = {
+    init() {
         #if targetEnvironment(simulator)
         let cloudKitDatabase: ModelConfiguration.CloudKitDatabase = .none
         #else
         let cloudKitDatabase: ModelConfiguration.CloudKitDatabase = .automatic
         #endif
-
-        let schema = Schema([
-            Record.self,
-            DayBoard.self,
-            BoardComposition.self,
-            CompositionItemState.self,
-            Person.self,
-            Decision.self,
-            DailyQuestion.self,
-            Activity.self,
-            DashboardSystemCardConfig.self,
-        ])
+        let schema = MemoryModelSchema.makeSchema()
         let modelConfiguration = ModelConfiguration(
             schema: schema,
             isStoredInMemoryOnly: false,
             cloudKitDatabase: cloudKitDatabase
         )
+
         do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
+            let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
+            sharedModelContainer = container
+            let memoryRepository = SproutMemoryRepository(modelContainer: container)
+            _memoryRepository = State(initialValue: memoryRepository)
+            _onboardingPreviewService = State(initialValue: OnboardingPreviewService(memoryRepository: memoryRepository))
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }
-    }()
+    }
 
     var body: some Scene {
         WindowGroup {

@@ -7,7 +7,6 @@ import PhotosUI
 
 struct ContentView: View {
     @Environment(AppLocalization.self) private var localization
-    @Environment(\.modelContext) private var modelContext
     @Environment(SproutMemoryRepository.self) private var memoryRepository
     @Environment(AuthSessionManager.self) private var authSession
     // MARK: UI State
@@ -329,7 +328,7 @@ struct ContentView: View {
         )
     }
 
-    private var capturePeopleBinding: Binding<[Person]> {
+    private var capturePeopleBinding: Binding<[PersonCardItem]> {
         Binding(
             get: { captureDraftStore.draft.attachments.people },
             set: { captureDraftStore.draft.attachments.people = $0 }
@@ -462,14 +461,12 @@ struct ContentView: View {
                 captureSource: .photo,
                 photoPayloads: payloads
             )
-            persistRecordShell(
-                for: aggregate,
-                draft: draft,
-                parsed: RecordParser.parseBody(""),
-                photoPayloads: payloads
-            )
-            memoryRepository.upsertAggregate(aggregate)
-            await runPostCaptureAnalysisIfPossible(for: aggregate)
+            do {
+                try memoryRepository.upsertAggregate(aggregate)
+                await runPostCaptureAnalysisIfPossible(for: aggregate)
+            } catch {
+                return
+            }
         }
     }
 
@@ -490,39 +487,14 @@ struct ContentView: View {
                 parsed: parsed,
                 photoPayloads: photoPayloads
             )
-            persistRecordShell(for: aggregate, draft: draft, parsed: parsed, photoPayloads: photoPayloads)
-            memoryRepository.upsertAggregate(aggregate)
-            await runPostCaptureAnalysisIfPossible(for: aggregate)
-
-            captureDraftStore.reset()
-        }
-    }
-
-    @MainActor
-    private func persistRecordShell(
-        for aggregate: SproutMemoryAggregate,
-        draft: CaptureDraft? = nil,
-        parsed: ParsedContent,
-        photoPayloads: [PreparedPhotoMedia] = []
-    ) {
-        let record = Record()
-        record.id = aggregate.recordShell.id
-        record.createdAt = aggregate.recordShell.createdAt
-        record.updatedAt = aggregate.recordShell.updatedAt
-        record.captureSource = aggregate.recordShell.captureSource
-        record.rawText = aggregate.recordShell.rawText
-        record.userMood = aggregate.recordShell.userMood
-        record.userIntensity = aggregate.recordShell.userIntensity
-        record.inputContext = aggregate.recordShell.inputContext
-
-        if let draft, !draft.attachments.people.isEmpty {
-            for person in draft.attachments.people {
-                person.lastMentionedAt = record.createdAt
-                person.mentionCount += 1
+            do {
+                try memoryRepository.upsertAggregate(aggregate)
+                await runPostCaptureAnalysisIfPossible(for: aggregate)
+                captureDraftStore.reset()
+            } catch {
+                return
             }
         }
-
-        modelContext.insert(record)
     }
 
     @MainActor
@@ -536,7 +508,7 @@ struct ContentView: View {
                 response: response,
                 recordID: aggregate.recordShell.id
             )
-            memoryRepository.setAnalysis(snapshot, aggregate: aggregate)
+            try memoryRepository.setAnalysis(snapshot, aggregate: aggregate)
         } catch {
             // Keep capture resilient; analysis is best-effort.
         }
@@ -600,16 +572,5 @@ private final class NavigationBarProbeView: UIView {
 
 #Preview {
     ContentView()
-        .modelContainer(
-            for: [
-                Record.self,
-                DayBoard.self,
-                BoardComposition.self,
-                CompositionItemState.self,
-                Activity.self,
-                Person.self,
-                DashboardSystemCardConfig.self,
-            ],
-            inMemory: true
-        )
+        .modelContainer(try! ModelContainer(for: MemoryModelSchema.makeSchema(), configurations: ModelConfiguration(isStoredInMemoryOnly: true)))
 }

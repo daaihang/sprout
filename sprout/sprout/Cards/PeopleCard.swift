@@ -28,14 +28,22 @@ struct PersonCardItem: Identifiable, Hashable {
         self.mentionCount = mentionCount
     }
 
-    init(person: Person) {
-        self.id = person.id
-        self.name = person.name
-        self.nickname = person.nickname ?? ""
-        self.relationship = person.relationship ?? ""
-        self.avatarImageData = person.avatarImageData
-        self.lastMentionedAt = person.lastMentionedAt
-        self.mentionCount = person.mentionCount
+    init(
+        id: UUID,
+        name: String,
+        nickname: String? = nil,
+        relationship: String? = nil,
+        avatarImageData: Data? = nil,
+        lastMentionedAt: Date? = nil,
+        mentionCount: Int = 0
+    ) {
+        self.id = id
+        self.name = name
+        self.nickname = nickname ?? ""
+        self.relationship = relationship ?? ""
+        self.avatarImageData = avatarImageData
+        self.lastMentionedAt = lastMentionedAt
+        self.mentionCount = mentionCount
     }
 
     var displayName: String {
@@ -46,6 +54,10 @@ struct PersonCardItem: Identifiable, Hashable {
         if !relationship.isEmpty { return relationship }
         if !nickname.isEmpty && nickname != name { return name }
         return ""
+    }
+
+    var secondaryLabel: String {
+        subtitle
     }
 
     var initials: String {

@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import SwiftData
 
 @Observable
 @MainActor
@@ -82,64 +83,10 @@ final class SproutMemoryRepository {
         var linkedEntities: [EntityNode]
         var linkedArtifacts: [Artifact]
     }
-
-    struct Snapshot: Codable, Sendable {
-        var recordShells: [RecordShell]
-        var artifacts: [Artifact]
-        var analyses: [RecordAnalysisSnapshot]
-        var reflections: [ReflectionSnapshot]
-        var entityNodes: [EntityNode]
-        var entityEdges: [EntityEdge]
-        var artifactEntityLinks: [ArtifactEntityLink]
-        var temporalArcs: [TemporalArc]
-
-        enum CodingKeys: String, CodingKey {
-            case recordShells
-            case artifacts
-            case analyses
-            case reflections
-            case entityNodes
-            case entityEdges
-            case artifactEntityLinks
-            case temporalArcs
-        }
-
-        init(
-            recordShells: [RecordShell],
-            artifacts: [Artifact],
-            analyses: [RecordAnalysisSnapshot],
-            reflections: [ReflectionSnapshot],
-            entityNodes: [EntityNode],
-            entityEdges: [EntityEdge],
-            artifactEntityLinks: [ArtifactEntityLink],
-            temporalArcs: [TemporalArc]
-        ) {
-            self.recordShells = recordShells
-            self.artifacts = artifacts
-            self.analyses = analyses
-            self.reflections = reflections
-            self.entityNodes = entityNodes
-            self.entityEdges = entityEdges
-            self.artifactEntityLinks = artifactEntityLinks
-            self.temporalArcs = temporalArcs
-        }
-
-        init(from decoder: Decoder) throws {
-            let container = try decoder.container(keyedBy: CodingKeys.self)
-            recordShells = try container.decode([RecordShell].self, forKey: .recordShells)
-            artifacts = try container.decode([Artifact].self, forKey: .artifacts)
-            analyses = try container.decode([RecordAnalysisSnapshot].self, forKey: .analyses)
-            reflections = try container.decodeIfPresent([ReflectionSnapshot].self, forKey: .reflections) ?? []
-            entityNodes = try container.decode([EntityNode].self, forKey: .entityNodes)
-            entityEdges = try container.decode([EntityEdge].self, forKey: .entityEdges)
-            artifactEntityLinks = try container.decode([ArtifactEntityLink].self, forKey: .artifactEntityLinks)
-            temporalArcs = try container.decodeIfPresent([TemporalArc].self, forKey: .temporalArcs) ?? []
-        }
-    }
-
     private let graphUpdater = GraphUpdater()
     private let analysisEntityMatcher = AnalysisEntityMatcher()
     private let temporalArcService = SproutTemporalArcService()
+    private let modelContainer: ModelContainer
 
     var recordShells: [RecordShell] = []
     var artifacts: [Artifact] = []
@@ -150,11 +97,16 @@ final class SproutMemoryRepository {
     var artifactEntityLinks: [ArtifactEntityLink] = []
     var temporalArcs: [TemporalArc] = []
 
-    init() {
+    init(modelContainer: ModelContainer) {
+        self.modelContainer = modelContainer
         load()
     }
 
-    func upsertAggregate(_ aggregate: SproutMemoryAggregate) {
+    convenience init() {
+        self.init(modelContainer: Self.makePreviewContainer())
+    }
+
+    func upsertAggregate(_ aggregate: SproutMemoryAggregate) throws {
         recordShells.removeAll { $0.id == aggregate.recordShell.id }
         recordShells.append(aggregate.recordShell)
 
@@ -162,11 +114,11 @@ final class SproutMemoryRepository {
         artifacts.removeAll { aggregateArtifactIDs.contains($0.id) }
         artifacts.append(contentsOf: aggregate.artifacts)
 
-        save()
+        try save()
     }
 
-    func setAnalysis(_ analysis: RecordAnalysisSnapshot, aggregate: SproutMemoryAggregate) {
-        upsertAggregate(aggregate)
+    func setAnalysis(_ analysis: RecordAnalysisSnapshot, aggregate: SproutMemoryAggregate) throws {
+        try upsertAggregate(aggregate)
         analyses.removeAll { $0.recordID == analysis.recordID }
         analyses.append(analysis)
 
@@ -188,7 +140,7 @@ final class SproutMemoryRepository {
             aggregate: aggregate,
             sourceEntityIDs: graphResult.resolvedEntityIDs
         )
-        save()
+        try save()
     }
 
     func recordShell(for recordID: UUID) -> RecordShell? {
@@ -398,14 +350,14 @@ final class SproutMemoryRepository {
         guard let index = temporalArcs.firstIndex(where: { $0.id == arcID }) else { return }
         temporalArcs[index].status = .archived
         temporalArcs[index].updatedAt = .now
-        save()
+        persistCurrentState()
     }
 
     func restoreTemporalArc(_ arcID: UUID) {
         guard let index = temporalArcs.firstIndex(where: { $0.id == arcID }) else { return }
         temporalArcs[index].status = .accepted
         temporalArcs[index].updatedAt = .now
-        save()
+        persistCurrentState()
     }
 
     func saveReflection(_ reflectionID: UUID) {
@@ -413,7 +365,7 @@ final class SproutMemoryRepository {
         reflections[index].status = .saved
         reflections[index].savedAt = .now
         reflections[index].dismissedAt = nil
-        save()
+        persistCurrentState()
     }
 
     func upsertReflection(_ reflection: ReflectionSnapshot) {
@@ -422,21 +374,21 @@ final class SproutMemoryRepository {
         } else {
             reflections.append(reflection)
         }
-        save()
+        persistCurrentState()
     }
 
     func dismissReflection(_ reflectionID: UUID) {
         guard let index = reflections.firstIndex(where: { $0.id == reflectionID }) else { return }
         reflections[index].status = .dismissed
         reflections[index].dismissedAt = .now
-        save()
+        persistCurrentState()
     }
 
     func reactivateReflection(_ reflectionID: UUID) {
         guard let index = reflections.firstIndex(where: { $0.id == reflectionID }) else { return }
         reflections[index].status = .active
         reflections[index].dismissedAt = nil
-        save()
+        persistCurrentState()
     }
 
     func entityView(for entityID: UUID) -> EntityMemoryView? {
@@ -846,48 +798,469 @@ final class SproutMemoryRepository {
         )
     }
 
-    private func storageURL() -> URL? {
-        FileManager.default
-            .urls(for: .applicationSupportDirectory, in: .userDomainMask)
-            .first?
-            .appendingPathComponent("SproutMemory", isDirectory: true)
-            .appendingPathComponent("memory_snapshot.json")
-    }
-
-    private func load() {
-        guard let url = storageURL() else { return }
-        guard let data = try? Data(contentsOf: url) else { return }
-        guard let snapshot = try? JSONDecoder().decode(Snapshot.self, from: data) else { return }
-        recordShells = snapshot.recordShells
-        artifacts = snapshot.artifacts
-        analyses = snapshot.analyses
-        reflections = snapshot.reflections
-        entityNodes = snapshot.entityNodes
-        entityEdges = snapshot.entityEdges
-        artifactEntityLinks = snapshot.artifactEntityLinks
-        temporalArcs = snapshot.temporalArcs
-        if temporalArcs.isEmpty && !analyses.isEmpty {
-            rebuildTemporalArcs()
+    private static func makePreviewContainer() -> ModelContainer {
+        do {
+            let schema = MemoryModelSchema.makeSchema()
+            let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+            return try ModelContainer(for: schema, configurations: [configuration])
+        } catch {
+            fatalError("Could not create preview ModelContainer: \(error)")
         }
     }
 
-    private func save() {
-        guard let url = storageURL() else { return }
-        let directory = url.deletingLastPathComponent()
-        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let snapshot = Snapshot(
-            recordShells: recordShells,
-            artifacts: artifacts,
-            analyses: analyses,
-            reflections: reflections,
-            entityNodes: entityNodes,
-            entityEdges: entityEdges,
-            artifactEntityLinks: artifactEntityLinks,
-            temporalArcs: temporalArcs
-        )
-        guard let data = try? JSONEncoder().encode(snapshot) else { return }
-        try? data.write(to: url, options: .atomic)
+    private var modelContext: ModelContext {
+        modelContainer.mainContext
     }
+
+    private func persistCurrentState() {
+        do {
+            try save()
+        } catch {
+            assertionFailure("Failed to persist Sprout memory state: \(error)")
+        }
+    }
+
+    private func load() {
+        do {
+            recordShells = try fetchRecordShells()
+            artifacts = try fetchArtifacts()
+            analyses = try fetchAnalyses()
+            reflections = try fetchReflections()
+            entityNodes = try fetchEntityNodes()
+            entityEdges = try fetchEntityEdges()
+            artifactEntityLinks = try fetchArtifactEntityLinks()
+            temporalArcs = try fetchTemporalArcs()
+            if temporalArcs.isEmpty && !analyses.isEmpty {
+                rebuildTemporalArcs()
+                try save()
+            }
+        } catch {
+            recordShells = []
+            artifacts = []
+            analyses = []
+            reflections = []
+            entityNodes = []
+            entityEdges = []
+            artifactEntityLinks = []
+            temporalArcs = []
+            assertionFailure("Failed to load Sprout memory state: \(error)")
+        }
+    }
+
+    private func save() throws {
+        try upsertRecordShellModels()
+        try upsertArtifactStoreModels()
+        try upsertAnalysisStoreModels()
+        try upsertReflectionStoreModels()
+        try upsertEntityNodeStoreModels()
+        try upsertEntityEdgeStoreModels()
+        try upsertArtifactEntityLinkStoreModels()
+        try upsertTemporalArcStoreModels()
+        try modelContext.save()
+    }
+
+    private func fetchRecordShells() throws -> [RecordShell] {
+        let records = try modelContext.fetch(FetchDescriptor<Record>())
+        return records
+            .map {
+                RecordShell(
+                    id: $0.id,
+                    createdAt: $0.createdAt,
+                    updatedAt: $0.updatedAt,
+                    rawText: $0.rawText,
+                    captureSource: $0.captureSource,
+                    artifactIDs: artifactsForRecordID($0.id, in: try? modelContext.fetch(FetchDescriptor<ArtifactStoreModel>())).map(\.id),
+                    userMood: $0.userMood,
+                    userIntensity: $0.userIntensity,
+                    inputContext: $0.inputContext
+                )
+            }
+            .sorted { $0.createdAt > $1.createdAt }
+    }
+
+    private func artifactsForRecordID(_ recordID: UUID, in cached: [ArtifactStoreModel]?) -> [ArtifactStoreModel] {
+        let source = cached ?? []
+        return source.filter { $0.recordID == recordID }.sorted { $0.createdAt < $1.createdAt }
+    }
+
+    private func fetchArtifacts() throws -> [Artifact] {
+        try modelContext.fetch(FetchDescriptor<ArtifactStoreModel>())
+            .map(artifact(from:))
+            .sorted { lhs, rhs in
+                if lhs.createdAt == rhs.createdAt { return lhs.id.uuidString < rhs.id.uuidString }
+                return lhs.createdAt < rhs.createdAt
+            }
+    }
+
+    private func fetchAnalyses() throws -> [RecordAnalysisSnapshot] {
+        try modelContext.fetch(FetchDescriptor<RecordAnalysisSnapshotStoreModel>())
+            .map(analysis(from:))
+            .sorted { $0.createdAt > $1.createdAt }
+    }
+
+    private func fetchReflections() throws -> [ReflectionSnapshot] {
+        try modelContext.fetch(FetchDescriptor<ReflectionSnapshotStoreModel>())
+            .map(reflection(from:))
+            .sorted { $0.createdAt > $1.createdAt }
+    }
+
+    private func fetchEntityNodes() throws -> [EntityNode] {
+        try modelContext.fetch(FetchDescriptor<EntityNodeStoreModel>())
+            .map(entityNode(from:))
+            .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+    }
+
+    private func fetchEntityEdges() throws -> [EntityEdge] {
+        try modelContext.fetch(FetchDescriptor<EntityEdgeStoreModel>())
+            .map(entityEdge(from:))
+            .sorted { $0.lastSeenAt > $1.lastSeenAt }
+    }
+
+    private func fetchArtifactEntityLinks() throws -> [ArtifactEntityLink] {
+        try modelContext.fetch(FetchDescriptor<ArtifactEntityLinkStoreModel>())
+            .map(artifactEntityLink(from:))
+            .sorted { $0.createdAt > $1.createdAt }
+    }
+
+    private func fetchTemporalArcs() throws -> [TemporalArc] {
+        try modelContext.fetch(FetchDescriptor<TemporalArcStoreModel>())
+            .map(temporalArc(from:))
+            .sorted(by: temporalArcSort)
+    }
+
+    private func upsertRecordShellModels() throws {
+        let existing = try Dictionary(uniqueKeysWithValues: modelContext.fetch(FetchDescriptor<Record>()).map { ($0.id, $0) })
+        let targetIDs = Set(recordShells.map(\.id))
+
+        for record in existing.values where !targetIDs.contains(record.id) {
+            modelContext.delete(record)
+        }
+
+        for shell in recordShells {
+            let record = existing[shell.id] ?? Record()
+            record.id = shell.id
+            record.createdAt = shell.createdAt
+            record.updatedAt = shell.updatedAt
+            record.captureSource = shell.captureSource
+            record.rawText = shell.rawText
+            record.userMood = shell.userMood
+            record.userIntensity = shell.userIntensity
+            record.inputContext = shell.inputContext
+            if existing[shell.id] == nil { modelContext.insert(record) }
+        }
+    }
+
+    private func upsertArtifactStoreModels() throws {
+        let existing = try Dictionary(uniqueKeysWithValues: modelContext.fetch(FetchDescriptor<ArtifactStoreModel>()).map { ($0.id, $0) })
+        let targetIDs = Set(artifacts.map(\.id))
+
+        for model in existing.values where !targetIDs.contains(model.id) {
+            modelContext.delete(model)
+        }
+
+        for artifact in artifacts {
+            let model = existing[artifact.id] ?? ArtifactStoreModel()
+            model.id = artifact.id
+            model.recordID = recordID(forArtifactID: artifact.id)
+            model.kindRawValue = artifact.kind.rawValue
+            model.title = artifact.title
+            model.summary = artifact.summary
+            model.textContent = artifact.textContent
+            model.createdAt = artifact.createdAt
+            model.updatedAt = artifact.updatedAt
+            model.metadataData = try encode(artifact.metadata)
+            model.entitiesData = try encode(artifact.entities)
+            model.binaryPayload = artifact.binaryPayload
+            model.previewPayload = artifact.previewPayload
+            if existing[artifact.id] == nil { modelContext.insert(model) }
+        }
+    }
+
+    private func upsertAnalysisStoreModels() throws {
+        let existing = try Dictionary(uniqueKeysWithValues: modelContext.fetch(FetchDescriptor<RecordAnalysisSnapshotStoreModel>()).map { ($0.id, $0) })
+        let targetIDs = Set(analyses.map(\.id))
+
+        for model in existing.values where !targetIDs.contains(model.id) {
+            modelContext.delete(model)
+        }
+
+        for snapshot in analyses {
+            let model = existing[snapshot.id] ?? RecordAnalysisSnapshotStoreModel()
+            model.id = snapshot.id
+            model.recordID = snapshot.recordID
+            model.summary = snapshot.summary
+            model.themesData = try encode(snapshot.themes)
+            model.emotionInterpretation = snapshot.emotionInterpretation
+            model.followUpCandidatesData = try encode(snapshot.followUpCandidates)
+            model.entityMentionsData = try encode(snapshot.entityMentions)
+            model.salienceScore = snapshot.salienceScore
+            model.retrievalTermsData = try encode(snapshot.retrievalTerms)
+            model.reflectionHint = snapshot.reflectionHint
+            model.candidateEdgesData = try encode(snapshot.candidateEdges)
+            model.createdAt = snapshot.createdAt
+            if existing[snapshot.id] == nil { modelContext.insert(model) }
+        }
+    }
+
+    private func upsertReflectionStoreModels() throws {
+        let existing = try Dictionary(uniqueKeysWithValues: modelContext.fetch(FetchDescriptor<ReflectionSnapshotStoreModel>()).map { ($0.id, $0) })
+        let targetIDs = Set(reflections.map(\.id))
+
+        for model in existing.values where !targetIDs.contains(model.id) {
+            modelContext.delete(model)
+        }
+
+        for reflection in reflections {
+            let model = existing[reflection.id] ?? ReflectionSnapshotStoreModel()
+            model.id = reflection.id
+            model.typeRawValue = reflection.type.rawValue
+            model.title = reflection.title
+            model.bodyText = reflection.body
+            model.evidenceSummary = reflection.evidenceSummary
+            model.confidence = reflection.confidence
+            model.statusRawValue = reflection.status.rawValue
+            model.linkedTemporalArcID = reflection.linkedTemporalArcID
+            model.sourceRecordIDsData = try encode(reflection.sourceRecordIDs)
+            model.sourceArtifactIDsData = try encode(reflection.sourceArtifactIDs)
+            model.sourceEntityIDsData = try encode(reflection.sourceEntityIDs)
+            model.createdAt = reflection.createdAt
+            model.savedAt = reflection.savedAt
+            model.dismissedAt = reflection.dismissedAt
+            if existing[reflection.id] == nil { modelContext.insert(model) }
+        }
+    }
+
+    private func upsertEntityNodeStoreModels() throws {
+        let existing = try Dictionary(uniqueKeysWithValues: modelContext.fetch(FetchDescriptor<EntityNodeStoreModel>()).map { ($0.id, $0) })
+        let targetIDs = Set(entityNodes.map(\.id))
+
+        for model in existing.values where !targetIDs.contains(model.id) {
+            modelContext.delete(model)
+        }
+
+        for node in entityNodes {
+            let model = existing[node.id] ?? EntityNodeStoreModel()
+            model.id = node.id
+            model.kindRawValue = node.kind.rawValue
+            model.displayName = node.displayName
+            model.canonicalName = node.canonicalName
+            model.summary = node.summary
+            model.createdAt = node.createdAt
+            model.updatedAt = node.updatedAt
+            model.confidence = node.confidence
+            if existing[node.id] == nil { modelContext.insert(model) }
+        }
+    }
+
+    private func upsertEntityEdgeStoreModels() throws {
+        let existing = try Dictionary(uniqueKeysWithValues: modelContext.fetch(FetchDescriptor<EntityEdgeStoreModel>()).map { ($0.id, $0) })
+        let targetIDs = Set(entityEdges.map(\.id))
+
+        for model in existing.values where !targetIDs.contains(model.id) {
+            modelContext.delete(model)
+        }
+
+        for edge in entityEdges {
+            let model = existing[edge.id] ?? EntityEdgeStoreModel()
+            model.id = edge.id
+            model.fromEntityID = edge.fromEntityID
+            model.toEntityID = edge.toEntityID
+            model.relationKindRawValue = edge.relationKind.rawValue
+            model.weight = edge.weight
+            model.firstSeenAt = edge.firstSeenAt
+            model.lastSeenAt = edge.lastSeenAt
+            model.evidenceCount = edge.evidenceCount
+            model.sourceArtifactIDsData = try encode(edge.sourceArtifactIDs)
+            model.sourceRecordIDsData = try encode(edge.sourceRecordIDs)
+            if existing[edge.id] == nil { modelContext.insert(model) }
+        }
+    }
+
+    private func upsertArtifactEntityLinkStoreModels() throws {
+        let existing = try Dictionary(uniqueKeysWithValues: modelContext.fetch(FetchDescriptor<ArtifactEntityLinkStoreModel>()).map { ($0.id, $0) })
+        let targetIDs = Set(artifactEntityLinks.map(\.id))
+
+        for model in existing.values where !targetIDs.contains(model.id) {
+            modelContext.delete(model)
+        }
+
+        for link in artifactEntityLinks {
+            let model = existing[link.id] ?? ArtifactEntityLinkStoreModel()
+            model.id = link.id
+            model.artifactID = link.artifactID
+            model.entityID = link.entityID
+            model.confidence = link.confidence
+            model.source = link.source
+            model.createdAt = link.createdAt
+            if existing[link.id] == nil { modelContext.insert(model) }
+        }
+    }
+
+    private func upsertTemporalArcStoreModels() throws {
+        let existing = try Dictionary(uniqueKeysWithValues: modelContext.fetch(FetchDescriptor<TemporalArcStoreModel>()).map { ($0.id, $0) })
+        let targetIDs = Set(temporalArcs.map(\.id))
+
+        for model in existing.values where !targetIDs.contains(model.id) {
+            modelContext.delete(model)
+        }
+
+        for arc in temporalArcs {
+            let model = existing[arc.id] ?? TemporalArcStoreModel()
+            model.id = arc.id
+            model.title = arc.title
+            model.summary = arc.summary
+            model.statusRawValue = arc.status.rawValue
+            model.dominantTheme = arc.dominantTheme
+            model.dominantEntityName = arc.dominantEntityName
+            model.themeLabelsData = try encode(arc.themeLabels)
+            model.entityNamesData = try encode(arc.entityNames)
+            model.linkedReflectionID = arc.linkedReflectionID
+            model.mergedFromArcIDsData = try encode(arc.mergedFromArcIDs)
+            model.mergedIntoArcID = arc.mergedIntoArcID
+            model.lastMergedAt = arc.lastMergedAt
+            model.sourceRecordIDsData = try encode(arc.sourceRecordIDs)
+            model.sourceArtifactIDsData = try encode(arc.sourceArtifactIDs)
+            model.sourceEntityIDsData = try encode(arc.sourceEntityIDs)
+            model.startDate = arc.startDate
+            model.endDate = arc.endDate
+            model.intensityScore = arc.intensityScore
+            model.clusterStrength = arc.clusterStrength
+            model.createdAt = arc.createdAt
+            model.updatedAt = arc.updatedAt
+            if existing[arc.id] == nil { modelContext.insert(model) }
+        }
+    }
+
+    private func recordID(forArtifactID artifactID: UUID) -> UUID {
+        recordShells.first(where: { $0.artifactIDs.contains(artifactID) })?.id ?? UUID()
+    }
+
+    private func artifact(from model: ArtifactStoreModel) -> Artifact {
+        Artifact(
+            id: model.id,
+            kind: ArtifactKind(rawValue: model.kindRawValue) ?? .text,
+            title: model.title,
+            summary: model.summary,
+            textContent: model.textContent,
+            createdAt: model.createdAt,
+            updatedAt: model.updatedAt,
+            metadata: decode(model.metadataData, default: [:]),
+            entities: decode(model.entitiesData, default: []),
+            binaryPayload: model.binaryPayload,
+            previewPayload: model.previewPayload
+        )
+    }
+
+    private func analysis(from model: RecordAnalysisSnapshotStoreModel) -> RecordAnalysisSnapshot {
+        RecordAnalysisSnapshot(
+            id: model.id,
+            recordID: model.recordID,
+            summary: model.summary,
+            themes: decode(model.themesData, default: []),
+            emotionInterpretation: model.emotionInterpretation,
+            followUpCandidates: decode(model.followUpCandidatesData, default: []),
+            entityMentions: decode(model.entityMentionsData, default: []),
+            salienceScore: model.salienceScore,
+            retrievalTerms: decode(model.retrievalTermsData, default: []),
+            reflectionHint: model.reflectionHint,
+            candidateEdges: decode(model.candidateEdgesData, default: []),
+            createdAt: model.createdAt
+        )
+    }
+
+    private func reflection(from model: ReflectionSnapshotStoreModel) -> ReflectionSnapshot {
+        ReflectionSnapshot(
+            id: model.id,
+            type: ReflectionType(rawValue: model.typeRawValue) ?? .record,
+            title: model.title,
+            body: model.bodyText,
+            evidenceSummary: model.evidenceSummary,
+            confidence: model.confidence,
+            status: ReflectionStatus(rawValue: model.statusRawValue) ?? .active,
+            linkedTemporalArcID: model.linkedTemporalArcID,
+            sourceRecordIDs: decode(model.sourceRecordIDsData, default: []),
+            sourceArtifactIDs: decode(model.sourceArtifactIDsData, default: []),
+            sourceEntityIDs: decode(model.sourceEntityIDsData, default: []),
+            createdAt: model.createdAt,
+            savedAt: model.savedAt,
+            dismissedAt: model.dismissedAt
+        )
+    }
+
+    private func entityNode(from model: EntityNodeStoreModel) -> EntityNode {
+        EntityNode(
+            id: model.id,
+            kind: EntityKind(rawValue: model.kindRawValue) ?? .person,
+            displayName: model.displayName,
+            canonicalName: model.canonicalName,
+            summary: model.summary,
+            createdAt: model.createdAt,
+            updatedAt: model.updatedAt,
+            confidence: model.confidence
+        )
+    }
+
+    private func entityEdge(from model: EntityEdgeStoreModel) -> EntityEdge {
+        EntityEdge(
+            id: model.id,
+            fromEntityID: model.fromEntityID,
+            toEntityID: model.toEntityID,
+            relationKind: EntityRelationKind(rawValue: model.relationKindRawValue) ?? .relatedTo,
+            weight: model.weight,
+            firstSeenAt: model.firstSeenAt,
+            lastSeenAt: model.lastSeenAt,
+            evidenceCount: model.evidenceCount,
+            sourceArtifactIDs: decode(model.sourceArtifactIDsData, default: []),
+            sourceRecordIDs: decode(model.sourceRecordIDsData, default: [])
+        )
+    }
+
+    private func artifactEntityLink(from model: ArtifactEntityLinkStoreModel) -> ArtifactEntityLink {
+        ArtifactEntityLink(
+            id: model.id,
+            artifactID: model.artifactID,
+            entityID: model.entityID,
+            confidence: model.confidence,
+            source: model.source,
+            createdAt: model.createdAt
+        )
+    }
+
+    private func temporalArc(from model: TemporalArcStoreModel) -> TemporalArc {
+        TemporalArc(
+            id: model.id,
+            title: model.title,
+            summary: model.summary,
+            status: TemporalArcStatus(rawValue: model.statusRawValue) ?? .candidate,
+            dominantTheme: model.dominantTheme,
+            dominantEntityName: model.dominantEntityName,
+            themeLabels: decode(model.themeLabelsData, default: []),
+            entityNames: decode(model.entityNamesData, default: []),
+            linkedReflectionID: model.linkedReflectionID,
+            mergedFromArcIDs: decode(model.mergedFromArcIDsData, default: []),
+            mergedIntoArcID: model.mergedIntoArcID,
+            lastMergedAt: model.lastMergedAt,
+            sourceRecordIDs: decode(model.sourceRecordIDsData, default: []),
+            sourceArtifactIDs: decode(model.sourceArtifactIDsData, default: []),
+            sourceEntityIDs: decode(model.sourceEntityIDsData, default: []),
+            startDate: model.startDate,
+            endDate: model.endDate,
+            intensityScore: model.intensityScore,
+            clusterStrength: model.clusterStrength,
+            createdAt: model.createdAt,
+            updatedAt: model.updatedAt
+        )
+    }
+
+    private func encode<T: Encodable>(_ value: T) throws -> Data {
+        try JSONEncoder().encode(value)
+    }
+
+    private func decode<T: Decodable>(_ data: Data, default defaultValue: T) -> T {
+        guard !data.isEmpty else { return defaultValue }
+        return (try? JSONDecoder().decode(T.self, from: data)) ?? defaultValue
+    }
+
 
     private func rebuildTemporalArcs() {
         let existingArcs = temporalArcs

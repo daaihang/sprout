@@ -1,26 +1,39 @@
 import SwiftUI
-import SwiftData
 
 struct PeoplePickerSheet: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var modelContext
     @Environment(AppLocalization.self) private var localization
-    @Query(sort: \Person.mentionCount, order: .reverse) private var people: [Person]
+    @Environment(SproutMemoryRepository.self) private var memoryRepository
 
-    @Binding var selectedPeople: [Person]
+    @Binding var selectedPeople: [PersonCardItem]
 
     @State private var searchText = ""
     @State private var newPersonName = ""
     @State private var newPersonNickname = ""
     @State private var newPersonRelationship = ""
 
-    private var filteredPeople: [Person] {
+    private var allPeople: [PersonCardItem] {
+        memoryRepository
+            .peopleIndex()
+            .map { entry in
+                PersonCardItem(
+                    id: entry.entity.id,
+                    name: entry.entity.canonicalName,
+                    nickname: entry.entity.displayName == entry.entity.canonicalName ? nil : entry.entity.displayName,
+                    relationship: entry.themeNames.first,
+                    lastMentionedAt: entry.lastSeenAt,
+                    mentionCount: entry.relatedRecordCount
+                )
+            }
+    }
+
+    private var filteredPeople: [PersonCardItem] {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return people }
-        return people.filter {
+        guard !query.isEmpty else { return allPeople }
+        return allPeople.filter {
             $0.name.localizedCaseInsensitiveContains(query)
-                || ($0.nickname ?? "").localizedCaseInsensitiveContains(query)
-                || ($0.relationship ?? "").localizedCaseInsensitiveContains(query)
+                || $0.nickname.localizedCaseInsensitiveContains(query)
+                || $0.relationship.localizedCaseInsensitiveContains(query)
         }
     }
 
@@ -44,19 +57,19 @@ struct PeoplePickerSheet: View {
                     TextField(t("content.people_picker.field.relationship_optional", "Relationship (Optional)"), text: $newPersonRelationship)
 
                     Button {
-                    createAndSelectPerson()
-                } label: {
-                    Label(t("content.people_picker.action.create_select", "Create and Select"), systemImage: "plus")
+                        createAndSelectPerson()
+                    } label: {
+                        Label(t("content.people_picker.action.create_select", "Create and Select"), systemImage: "plus")
+                    }
+                    .disabled(newPersonName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
-                .disabled(newPersonName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            }
 
-            Section(t("content.people_picker.section.list", "People")) {
-                if filteredPeople.isEmpty {
-                    Text(t("content.people_picker.empty.search", "No people found"))
-                        .foregroundStyle(.secondary)
-                } else {
-                    ForEach(filteredPeople, id: \.id) { person in
+                Section(t("content.people_picker.section.list", "People")) {
+                    if filteredPeople.isEmpty {
+                        Text(t("content.people_picker.empty.search", "No people found"))
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(filteredPeople, id: \.id) { person in
                             personRow(person, selected: isSelected(person))
                                 .contentShape(Rectangle())
                                 .onTapGesture {
@@ -81,7 +94,7 @@ struct PeoplePickerSheet: View {
     }
 
     @ViewBuilder
-    private func personRow(_ person: Person, selected: Bool) -> some View {
+    private func personRow(_ person: PersonCardItem, selected: Bool) -> some View {
         HStack(spacing: 12) {
             Circle()
                 .fill(Color.accentColor.opacity(0.14))
@@ -95,8 +108,8 @@ struct PeoplePickerSheet: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(person.displayName)
                     .font(.subheadline.weight(.medium))
-                if !person.secondaryLabel.isEmpty {
-                    Text(person.secondaryLabel)
+                if !person.subtitle.isEmpty {
+                    Text(person.subtitle)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -111,11 +124,11 @@ struct PeoplePickerSheet: View {
         }
     }
 
-    private func isSelected(_ person: Person) -> Bool {
+    private func isSelected(_ person: PersonCardItem) -> Bool {
         selectedPeople.contains(where: { $0.id == person.id })
     }
 
-    private func toggleSelection(for person: Person) {
+    private func toggleSelection(for person: PersonCardItem) {
         if let index = selectedPeople.firstIndex(where: { $0.id == person.id }) {
             selectedPeople.remove(at: index)
         } else {
@@ -124,12 +137,13 @@ struct PeoplePickerSheet: View {
     }
 
     private func createAndSelectPerson() {
-        let person = Person()
-        person.name = newPersonName.trimmingCharacters(in: .whitespacesAndNewlines)
-        person.nickname = trimmedOrNil(newPersonNickname)
-        person.relationship = trimmedOrNil(newPersonRelationship)
-        modelContext.insert(person)
-        selectedPeople.append(person)
+        selectedPeople.append(
+            PersonCardItem(
+                name: newPersonName.trimmingCharacters(in: .whitespacesAndNewlines),
+                nickname: trimmedOrNil(newPersonNickname) ?? "",
+                relationship: trimmedOrNil(newPersonRelationship) ?? ""
+            )
+        )
         newPersonName = ""
         newPersonNickname = ""
         newPersonRelationship = ""
