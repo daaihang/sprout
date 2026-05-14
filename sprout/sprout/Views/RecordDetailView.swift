@@ -29,7 +29,7 @@ struct RecordDetailView: View {
 
     private var availableSections: [RecordSection] {
         var sections: [RecordSection] = []
-        if textArtifact != nil || !record.body.isEmpty { sections.append(.text) }
+        if textArtifact != nil { sections.append(.text) }
         if hasArtifacts(.photo) || hasLegacyMedia(.photo) { sections.append(.photo) }
         if hasArtifacts(.audio) || hasLegacyMedia(.audio) { sections.append(.audio) }
         if hasArtifacts(.link) || hasLegacyMedia(.link) { sections.append(.link) }

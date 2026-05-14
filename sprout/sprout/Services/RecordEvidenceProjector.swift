@@ -57,7 +57,7 @@ struct RecordEvidenceProjector {
             personArtifact: personArtifact
         )
 
-        let preferredFocusedSection = focusedSection(for: primaryKind, hasText: nonEmpty(textArtifact?.textContent) != nil || !trimmed(record.body).isEmpty)
+        let preferredFocusedSection = focusedSection(for: primaryKind, hasText: textArtifact != nil)
         let photoPreviewImage = resolvePhotoPreviewImage(record: record, photoArtifacts: photoArtifacts)
         let photoCount = max(photoArtifacts.count, legacyMedia(kind: .photo, record: record).count)
 
@@ -133,7 +133,7 @@ struct RecordEvidenceProjector {
         if let mood = record.mood, !mood.isEmpty { return .emotion }
         if weatherArtifact != nil || !(record.weather ?? "").isEmpty { return .weather }
         if personArtifact != nil || !(record.mentionedPeople ?? []).isEmpty { return .people }
-        if textArtifact != nil || !trimmed(record.body).isEmpty { return .text }
+        if textArtifact != nil { return .text }
         return .text
     }
 
@@ -275,7 +275,7 @@ struct RecordEvidenceProjector {
     private func resolveMetaLabels(record: Record, artifacts: [Artifact], linkedLocationName: String?) -> [String] {
         var labels: [String] = []
 
-        if artifacts.contains(where: { $0.kind == .text }) || !trimmed(record.body).isEmpty {
+        if artifacts.contains(where: { $0.kind == .text }) {
             labels.append(localization.string("timeline.category.note", default: "Note"))
         }
         if artifacts.contains(where: { $0.kind == .photo }) || !legacyMedia(kind: .photo, record: record).isEmpty {

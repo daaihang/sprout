@@ -360,7 +360,11 @@ struct CardCalibrationView: View {
             """
         case .todayInHistory:
             let data = CalibrationFixtures.todayInHistory(level: contentLevel)
+            #if DEBUG
             let summaries = data.entries.map { $0.record.body }.joined(separator: " | ").ifEmpty("-")
+            #else
+            let summaries = "-"
+            #endif
             return """
             - monthDayLabel: \(quotedOrDash(data.monthDayLabel))
             - entryCount: \(data.entries.count)
