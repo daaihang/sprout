@@ -308,9 +308,9 @@ struct RecordTimelineRow: View {
     private var previewSymbol: String {
         switch evidence.primaryKind {
         case .weather:
-            return evidence.weatherCondition?.sfSymbol ?? evidence.primaryKind.timelineSymbolName
+            return evidence.weatherCondition?.sfSymbol ?? evidence.primaryKind.symbolName
         default:
-            return evidence.primaryKind.timelineSymbolName
+            return evidence.primaryKind.symbolName
         }
     }
 

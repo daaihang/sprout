@@ -218,7 +218,7 @@ struct HomeBoardCompositionBuilder {
                 stateRepository: dependencies.stateRepository,
                 compositionKey: compositionKey
             ).enumerated().map { cardIndex, projection in
-                let spans = availableSpans(for: projection.cardType)
+                let spans = availableSpans(for: projection.presentationKey)
                 return (
                     order: baseOrder + Double(cardIndex) * 0.0001,
                     item: GridItem(

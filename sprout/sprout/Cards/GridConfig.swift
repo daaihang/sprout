@@ -131,8 +131,8 @@ let globalAllowedCardSpans: [ContainerSpan] = {
 
 let sharedCardSizeLimits = CardSizeLimits(allowedSpans: globalAllowedCardSpans)
 
-// Card type size limits - currently unified for all card types.
-let cardSizeLimits: [String: CardSizeLimits] = [
+// Presentation key size limits - currently unified for all presentation kinds.
+let presentationSizeLimits: [String: CardSizeLimits] = [
     "emotion": sharedCardSizeLimits,
     "music": sharedCardSizeLimits,
     "audio": sharedCardSizeLimits,
@@ -150,12 +150,12 @@ let cardSizeLimits: [String: CardSizeLimits] = [
     "text": sharedCardSizeLimits,
 ]
 
-func sizeLimits(for cardType: String) -> CardSizeLimits {
-    cardSizeLimits[cardType] ?? sharedCardSizeLimits
+func sizeLimits(for presentationKey: String) -> CardSizeLimits {
+    presentationSizeLimits[presentationKey] ?? sharedCardSizeLimits
 }
 
-func availableSpans(for cardType: String) -> [ContainerSpan] {
-    sizeLimits(for: cardType).allSpans.sorted {
+func availableSpans(for presentationKey: String) -> [ContainerSpan] {
+    sizeLimits(for: presentationKey).allSpans.sorted {
         if $0.widthColumns == $1.widthColumns {
             return $0.heightUnits < $1.heightUnits
         }

@@ -351,7 +351,7 @@ struct AddCardSheet: View {
         record.updatedAt = record.createdAt
         record.dashboardOrder = record.createdAt.timeIntervalSince1970
 
-        let cardKind = RecordCardKind(rawValue: selectedCardType) ?? .text
+        let presentationKind = MemoryPresentationKind(rawValue: selectedCardType) ?? .text
 
         switch selectedCardType {
 
@@ -362,7 +362,7 @@ struct AddCardSheet: View {
             modelContext.insert(record)
             guard persistLocalChanges(recordID: record.id) else { return }
             let aggregate = memoryAggregateBuilder.buildStandaloneAggregate(
-                cardType: cardKind,
+                presentationKind: presentationKind,
                 recordID: record.id,
                 createdAt: record.createdAt,
                 textArtifactText: record.body,
@@ -387,7 +387,7 @@ struct AddCardSheet: View {
             modelContext.insert(record)
             guard persistLocalChanges(recordID: record.id) else { return }
             let aggregate = memoryAggregateBuilder.buildStandaloneAggregate(
-                cardType: cardKind,
+                presentationKind: presentationKind,
                 recordID: record.id,
                 createdAt: record.createdAt,
                 weather: weatherData
@@ -404,7 +404,7 @@ struct AddCardSheet: View {
             modelContext.insert(record)
             guard persistLocalChanges(recordID: record.id) else { return }
             let aggregate = memoryAggregateBuilder.buildStandaloneAggregate(
-                cardType: cardKind,
+                presentationKind: presentationKind,
                 recordID: record.id,
                 createdAt: record.createdAt,
                 textArtifactText: record.body,
@@ -418,7 +418,7 @@ struct AddCardSheet: View {
             modelContext.insert(record)
             guard persistLocalChanges(recordID: record.id) else { return }
             let aggregate = memoryAggregateBuilder.buildStandaloneAggregate(
-                cardType: cardKind,
+                presentationKind: presentationKind,
                 recordID: record.id,
                 createdAt: record.createdAt,
                 music: musicData
@@ -433,7 +433,7 @@ struct AddCardSheet: View {
                 modelContext.insert(record)
                 guard persistLocalChanges(recordID: record.id) else { return }
                 let aggregate = memoryAggregateBuilder.buildStandaloneAggregate(
-                    cardType: cardKind,
+                    presentationKind: presentationKind,
                     recordID: record.id,
                     createdAt: record.createdAt,
                     photoPayloads: payloads
@@ -448,7 +448,7 @@ struct AddCardSheet: View {
             modelContext.insert(record)
             guard persistLocalChanges(recordID: record.id) else { return }
             let aggregate = memoryAggregateBuilder.buildStandaloneAggregate(
-                cardType: cardKind,
+                presentationKind: presentationKind,
                 recordID: record.id,
                 createdAt: record.createdAt,
                 todo: todoData
@@ -461,7 +461,7 @@ struct AddCardSheet: View {
             modelContext.insert(record)
             guard persistLocalChanges(recordID: record.id) else { return }
             let aggregate = memoryAggregateBuilder.buildStandaloneAggregate(
-                cardType: cardKind,
+                presentationKind: presentationKind,
                 recordID: record.id,
                 createdAt: record.createdAt,
                 textArtifactText: record.body

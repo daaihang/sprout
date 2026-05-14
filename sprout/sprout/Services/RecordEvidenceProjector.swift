@@ -9,7 +9,7 @@ struct RecordEvidenceProjector {
         var artifacts: [Artifact]
         var analysis: RecordAnalysisSnapshot?
         var linkedEntities: [EntityNode]
-        var primaryKind: RecordCardKind
+        var primaryKind: MemoryPresentationKind
         var preferredFocusedSection: RecordSection
         var headlineText: String
         var supportingText: String?
@@ -122,7 +122,7 @@ struct RecordEvidenceProjector {
         locationArtifact: Artifact?,
         weatherArtifact: Artifact?,
         personArtifact: Artifact?
-    ) -> RecordCardKind {
+    ) -> MemoryPresentationKind {
         if !photoArtifacts.isEmpty { return .photo }
         if musicArtifact != nil { return .music }
         if audioArtifact != nil { return .audio }
@@ -137,7 +137,7 @@ struct RecordEvidenceProjector {
         return .text
     }
 
-    private func focusedSection(for primaryKind: RecordCardKind, hasText: Bool) -> RecordSection {
+    private func focusedSection(for primaryKind: MemoryPresentationKind, hasText: Bool) -> RecordSection {
         if hasText {
             return .text
         }

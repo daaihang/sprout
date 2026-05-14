@@ -1,6 +1,6 @@
 import Foundation
 
-enum RecordCardKind: String, CaseIterable, Codable, Sendable {
+enum MemoryPresentationKind: String, CaseIterable, Codable, Sendable {
     case text
     case quote
     case emotion
@@ -20,7 +20,7 @@ enum RecordCardKind: String, CaseIterable, Codable, Sendable {
     case ticket
     case health
 
-    var timelineSymbolName: String {
+    var symbolName: String {
         switch self {
         case .text, .quote:
             return "text.alignleft"
@@ -57,42 +57,5 @@ enum RecordCardKind: String, CaseIterable, Codable, Sendable {
         case .health:
             return "heart.text.square"
         }
-    }
-
-}
-
-extension Record {
-    /// Legacy-only fallback. Main UI paths should resolve primary kind from artifact-backed evidence.
-    var contentFirstCardKind: RecordCardKind? {
-        if latitude != nil && longitude != nil {
-            return .map
-        }
-        if activity?.value != nil {
-            return .activity
-        }
-        if let mood, !mood.isEmpty {
-            return .emotion
-        }
-        if let weather, !weather.isEmpty {
-            return .weather
-        }
-        if let mentionedPeople, !mentionedPeople.isEmpty {
-            return .people
-        }
-
-        let body = body.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !body.isEmpty {
-            return .text
-        }
-
-        return nil
-    }
-
-    var derivedCardKind: RecordCardKind {
-        contentFirstCardKind ?? .text
-    }
-
-    var cardKind: RecordCardKind {
-        derivedCardKind
     }
 }

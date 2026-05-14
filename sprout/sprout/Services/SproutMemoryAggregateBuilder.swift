@@ -69,7 +69,7 @@ struct SproutMemoryAggregateBuilder {
     }
 
     func buildStandaloneAggregate(
-        cardType: RecordCardKind,
+        presentationKind: MemoryPresentationKind,
         recordID: UUID = UUID(),
         createdAt: Date,
         textArtifactText: String = "",
@@ -80,7 +80,7 @@ struct SproutMemoryAggregateBuilder {
         todo: TodoCardData? = nil,
         photoPayloads: [PreparedPhotoMedia] = [],
         audioData: Data? = nil
-    ) -> SproutMemoryAggregate {
+        ) -> SproutMemoryAggregate {
         let trimmed = textArtifactText.trimmingCharacters(in: .whitespacesAndNewlines)
         var artifacts: [Artifact] = []
 
@@ -97,7 +97,7 @@ struct SproutMemoryAggregateBuilder {
             )
         }
 
-        switch cardType {
+        switch presentationKind {
         case .text:
             break
         case .emotion:

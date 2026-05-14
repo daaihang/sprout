@@ -20,7 +20,7 @@ struct HomeBoardProminenceEngine {
         record: Record? = nil,
         arc: TemporalArc? = nil,
         reflection: ReflectionSnapshot? = nil,
-        cardType: String? = nil
+        presentationKey: String? = nil
     ) -> HomeBoardProminence {
         switch kind {
         case .systemTodayInHistory:
@@ -63,7 +63,7 @@ struct HomeBoardProminenceEngine {
             )
         case .recordCard:
             let order = record.map(recordOrder(for:)) ?? 0
-            let span = sizeLimits(for: cardType ?? "text").defaultSpan
+            let span = sizeLimits(for: presentationKey ?? "text").defaultSpan
             return HomeBoardProminence(
                 order: order,
                 fallbackSpan: span,
