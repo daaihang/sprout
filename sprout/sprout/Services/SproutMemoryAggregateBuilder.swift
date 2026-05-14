@@ -443,12 +443,6 @@ struct SproutMemoryAggregateBuilder {
             )
         }
 
-        for media in (record.mediaCards ?? []).sorted(by: { $0.sortIndex < $1.sortIndex }) {
-            if let artifact = artifact(from: media, record: record) {
-                artifacts.append(artifact)
-            }
-        }
-
         if let location = record.location, !location.isEmpty {
             var metadata: [String: String] = [:]
             if let latitude = record.latitude {
@@ -551,41 +545,6 @@ struct SproutMemoryAggregateBuilder {
     private func photoSummary(from text: String) -> String {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? "Captured photo" : previewTitle(from: trimmed)
-    }
-
-    private func artifact(from media: MediaCard, record: Record) -> Artifact? {
-        guard let mediaKind = media.mediaKind else { return nil }
-        let kind = mediaKind.artifactKind
-
-        let fallbackTitle = String(record.body.prefix(24))
-        let title = media.title ?? media.locationName ?? fallbackTitle
-        let summary = media.caption ?? media.locationName ?? ""
-        var metadata: [String: String] = [:]
-        if let url = media.url, !url.isEmpty {
-            metadata["url"] = url
-        }
-        if let albumName = media.albumName, !albumName.isEmpty {
-            metadata["albumName"] = albumName
-        }
-        if let artworkURLString = media.artworkURLString, !artworkURLString.isEmpty {
-            metadata["artworkURLString"] = artworkURLString
-        }
-        if let locationName = media.locationName, !locationName.isEmpty {
-            metadata["locationName"] = locationName
-        }
-
-        return Artifact(
-            id: media.id,
-            kind: kind,
-            title: title,
-            summary: summary,
-            textContent: media.aiDescription ?? "",
-            createdAt: media.capturedAt ?? media.createdAt,
-            updatedAt: record.updatedAt,
-            metadata: metadata,
-            binaryPayload: media.imageData ?? media.audioData,
-            previewPayload: media.thumbnailData
-        )
     }
 
     private func previewTitle(from text: String) -> String {

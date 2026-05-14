@@ -48,8 +48,5 @@ final class MediaCard {
     
     /// LEGACY: Capture timestamp. Kept for backward compatibility; new data via Artifact.createdAt.
     var capturedAt: Date? = nil
-
-    @Relationship(inverse: \Record.mediaCards) var record: Record? = nil
-
     init() {}
 }

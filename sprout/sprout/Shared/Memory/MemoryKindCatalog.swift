@@ -61,64 +61,9 @@ enum RecordCardKind: String, CaseIterable, Codable, Sendable {
 
 }
 
-enum MediaCardKind: String, CaseIterable, Codable, Sendable {
-    case photo
-    case audio
-    case music
-    case link
-    case todo
-    case book
-    case film
-    case game
-    case ticket
-    case health
-
-    var artifactKind: ArtifactKind {
-        switch self {
-        case .photo:
-            return .photo
-        case .audio:
-            return .audio
-        case .music:
-            return .music
-        case .link:
-            return .link
-        case .todo:
-            return .todo
-        case .book:
-            return .book
-        case .film:
-            return .film
-        case .game:
-            return .game
-        case .ticket:
-            return .ticket
-        case .health:
-            return .healthMetric
-        }
-    }
-}
-
 extension Record {
     /// Legacy-only fallback. Main UI paths should resolve primary kind from artifact-backed evidence.
     var contentFirstCardKind: RecordCardKind? {
-        let mediaCards = self.mediaCards ?? []
-
-        if mediaCards.contains(where: { $0.type == MediaCardKind.photo.rawValue }) {
-            return .photo
-        }
-        if mediaCards.contains(where: { $0.type == MediaCardKind.music.rawValue }) {
-            return .music
-        }
-        if mediaCards.contains(where: { $0.type == MediaCardKind.audio.rawValue }) {
-            return .audio
-        }
-        if mediaCards.contains(where: { $0.type == MediaCardKind.todo.rawValue }) {
-            return .todo
-        }
-        if mediaCards.contains(where: { $0.type == MediaCardKind.link.rawValue }) {
-            return .link
-        }
         if latitude != nil && longitude != nil {
             return .map
         }
@@ -149,12 +94,5 @@ extension Record {
 
     var cardKind: RecordCardKind {
         derivedCardKind
-    }
-}
-
-extension MediaCard {
-    var mediaKind: MediaCardKind? {
-        get { MediaCardKind(rawValue: type) }
-        set { type = newValue?.rawValue ?? type }
     }
 }

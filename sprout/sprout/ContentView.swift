@@ -628,7 +628,6 @@ private final class NavigationBarProbeView: UIView {
                 DayBoard.self,
                 BoardComposition.self,
                 CompositionItemState.self,
-                MediaCard.self,
                 Activity.self,
                 Person.self,
                 DashboardSystemCardConfig.self,
