@@ -3,6 +3,7 @@ import SwiftData
 
 struct TemporalArcDetailView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(AppLocalization.self) private var localization
     @Environment(SproutMemoryRepository.self) private var memoryRepository
     let arc: TemporalArc
 
@@ -57,7 +58,7 @@ struct TemporalArcDetailView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Phase")
+            Text(localization.string("content.phase_title", default: "Phase"))
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.orange)
                 .padding(.horizontal, 10)
@@ -93,7 +94,7 @@ struct TemporalArcDetailView: View {
 
     private var managementSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Phase Lifecycle")
+            Text(localization.string("common.phase_lifecycle", default: "Phase Lifecycle"))
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.secondary)
 
@@ -120,7 +121,7 @@ struct TemporalArcDetailView: View {
             Button(action: { showReflectionEditor = true }) {
                 HStack(spacing: 8) {
                     Image(systemName: "sparkles")
-                    Text("Create Reflection for Phase")
+                    Text(localization.string("common.create_reflection_for_phase", default: "Create Reflection for Phase"))
                 }
                 .font(.subheadline.weight(.medium))
                 .frame(maxWidth: .infinity)
@@ -165,7 +166,7 @@ struct TemporalArcDetailView: View {
 
     private func entitySummarySection(_ evidenceView: SproutMemoryRepository.ArcEvidenceView) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Entities in This Phase")
+            Text(localization.string("common.entities_in_this_phase", default: "Entities in This Phase"))
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.secondary)
 
@@ -203,7 +204,7 @@ struct TemporalArcDetailView: View {
 
     private var metadata: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Signals")
+            Text(localization.string("common.signals", default: "Signals"))
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.secondary)
 
@@ -215,7 +216,7 @@ struct TemporalArcDetailView: View {
             }
             if let leadAnalysis, !leadAnalysis.retrievalTerms.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Retrieval Terms")
+                    Text(localization.string("common.retrieval_terms", default: "Retrieval Terms"))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
                     TokenPillRow(values: Array(leadAnalysis.retrievalTerms.prefix(6)), tint: .green)
@@ -235,13 +236,13 @@ struct TemporalArcDetailView: View {
 
     private var relatedRecordsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Related Memories")
+            Text(localization.string("common.related_memories", default: "Related Memories"))
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.secondary)
 
             ForEach(relatedRecords, id: \.id) { record in
                 NavigationLink {
-                    RecordDetailView(record: record)
+                    MemoryRecordDetailView(recordID: record.id, fallbackRecord: record)
                 } label: {
                     RecordEvidenceSummaryContent(record: record, includeMetaLine: true, includeAnalysis: false, maxHeadlineLines: 2)
                     .frame(maxWidth: .infinity, alignment: .leading)

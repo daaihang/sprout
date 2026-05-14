@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 extension EntityKind {
     var badgeLabel: String {
@@ -130,6 +131,7 @@ struct EvidenceCalloutCard: View {
 }
 
 struct AnalysisCompactEvidenceView: View {
+    @Environment(AppLocalization.self) private var localization
     let analysis: RecordAnalysisSnapshot
     var showInsight: Bool = true
     var showEntities: Bool = false
@@ -167,7 +169,7 @@ struct AnalysisCompactEvidenceView: View {
 
             if showRetrievalTerms, !analysis.retrievalTerms.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Retrieval Terms")
+                    Text(localization.string("common.retrieval_terms", default: "Retrieval Terms"))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
                     TokenPillRow(
@@ -288,5 +290,191 @@ struct RecordShellFallbackSummaryContent: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
+    }
+}
+
+@MainActor
+struct MemoryRecordDetailView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(AppLocalization.self) private var localization
+    @Environment(SproutMemoryRepository.self) private var memoryRepository
+
+    let recordID: UUID
+    var fallbackRecord: Record? = nil
+    var focusedSection: RecordSection = .text
+
+    private var resolvedRecord: Record? {
+        if let fallbackRecord {
+            return fallbackRecord
+        }
+        let records = (try? modelContext.fetch(FetchDescriptor<Record>())) ?? []
+        return records.first { $0.id == recordID }
+    }
+
+    private var memoryView: SproutMemoryRepository.RecordMemoryView? {
+        memoryRepository.memoryView(for: recordID)
+    }
+
+    private var linkedArcs: [TemporalArc] {
+        memoryRepository.temporalArcs
+            .filter { $0.sourceRecordIDs.contains(recordID) && $0.status == .accepted }
+            .sorted { lhs, rhs in
+                if lhs.endDate == rhs.endDate {
+                    return lhs.intensityScore > rhs.intensityScore
+                }
+                return lhs.endDate > rhs.endDate
+            }
+    }
+
+    var body: some View {
+        if let resolvedRecord {
+            RecordDetailView(record: resolvedRecord, focusedSection: focusedSection)
+        } else if let memoryView {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 20) {
+                    shellSection(memoryView.recordShell)
+
+                    if let analysis = memoryView.analysis {
+                        analysisSection(analysis)
+                    }
+
+                    if !memoryView.artifacts.isEmpty {
+                        artifactsSection(memoryView.artifacts)
+                    }
+
+                    if !memoryView.linkedEntities.isEmpty {
+                        linkedEntitiesSection(memoryView.linkedEntities)
+                    }
+
+                    if !linkedArcs.isEmpty {
+                        linkedPhasesSection(linkedArcs)
+                    }
+
+                    if let reflection = memoryView.reflection {
+                        linkedReflectionSection(reflection)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 20)
+                .padding(.bottom, 40)
+            }
+            .navigationTitle(localization.string("detail.navigation.record", default: "Entry"))
+            .navigationBarTitleDisplayMode(.inline)
+        } else {
+            ContentUnavailableView(
+                localization.string("common.memory_unavailable", default: "Memory Unavailable"),
+                systemImage: "exclamationmark.triangle",
+                description: Text(localization.string("common.memory_unavailable_description", default: "This memory could not be resolved from the new architecture store."))
+            )
+        }
+    }
+
+    private func shellSection(_ recordShell: RecordShell) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionLabel(icon: "clock.arrow.trianglehead.counterclockwise.rotate.90", title: localization.string("common.memory_shell", default: "Memory Shell"))
+            RecordShellFallbackSummaryContent(
+                recordShell: recordShell,
+                includeAnalysis: false,
+                maxHeadlineLines: 4
+            )
+
+            HStack(spacing: 10) {
+                SignalPill(
+                    title: recordShell.captureSource.rawValue.replacingOccurrences(of: "_", with: " ").capitalized,
+                    tint: .blue
+                )
+                if let mood = recordShell.userMood, !mood.isEmpty {
+                    SignalPill(title: mood.capitalized, tint: .orange)
+                }
+            }
+        }
+        .detailCard()
+    }
+
+    private func analysisSection(_ analysis: RecordAnalysisSnapshot) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionLabel(icon: "sparkles", title: localization.string("common.analysis", default: "Analysis"))
+            AnalysisCompactEvidenceView(
+                analysis: analysis,
+                showInsight: true,
+                showEntities: true,
+                showRetrievalTerms: true,
+                showReflectionHint: true
+            )
+        }
+        .detailCard()
+    }
+
+    private func artifactsSection(_ artifacts: [Artifact]) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionLabel(icon: "shippingbox", title: localization.string("common.artifacts", default: "Artifacts"))
+            ForEach(artifacts, id: \.id) { artifact in
+                NavigationLink {
+                    ArtifactDetailView(artifact: artifact)
+                } label: {
+                    ArtifactRowView(artifact: artifact, style: .compact)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .detailCard()
+    }
+
+    private func linkedEntitiesSection(_ entities: [EntityNode]) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionLabel(icon: "person.2", title: localization.string("common.linked_entities", default: "Linked Entities"))
+            TokenPillRow(values: entities.map(\.displayName), tint: .blue)
+        }
+        .detailCard()
+    }
+
+    private func linkedPhasesSection(_ arcs: [TemporalArc]) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionLabel(icon: "timeline.selection", title: localization.string("common.related_phases", default: "Related Phases"))
+            ForEach(arcs.prefix(3), id: \.id) { arc in
+                NavigationLink {
+                    TemporalArcDetailView(arc: arc)
+                } label: {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(arc.title)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                        Text(arc.summary)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .detailCard()
+    }
+
+    private func linkedReflectionSection(_ reflection: ReflectionSnapshot) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionLabel(icon: "sparkles.rectangle.stack", title: localization.string("common.linked_reflection", default: "Linked Reflection"))
+            NavigationLink {
+                ReflectionDetailView(reflection: reflection)
+            } label: {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(reflection.title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Text(reflection.body)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(3)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(12)
+                .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+            .buttonStyle(.plain)
+        }
+        .detailCard()
     }
 }

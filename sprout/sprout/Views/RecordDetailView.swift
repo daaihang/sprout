@@ -601,9 +601,7 @@ struct RecordDetailView: View {
     private var musicSection: some View {
         let musicArtifact = primaryArtifact(for: .music)
         return MusicEvidenceSection(
-            artifact: musicArtifact,
-            record: record,
-            legacyMedia: nil
+            artifact: musicArtifact
         )
     }
 

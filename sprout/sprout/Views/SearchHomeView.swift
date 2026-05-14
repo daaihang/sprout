@@ -92,6 +92,7 @@ struct SearchHomeView: View {
     }
 
     @Environment(\.modelContext) private var modelContext
+    @Environment(AppLocalization.self) private var localization
     @Environment(SproutMemoryRepository.self) private var memoryRepository
 
     let selectedDate: Date
@@ -249,11 +250,11 @@ struct SearchHomeView: View {
 
     private var browseState: some View {
         VStack(alignment: .leading, spacing: 20) {
-            Text("Search")
+            Text(localization.string("common.search", default: "Search"))
                 .font(.largeTitle.weight(.semibold))
                 .foregroundStyle(.primary)
 
-            Text("Search across people, phases, memories, and artifacts from the same memory graph.")
+            Text(localization.string("common.search_placeholder", default: "Search across people, phases, memories, and artifacts from the same memory graph."))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
@@ -489,16 +490,12 @@ struct SearchHomeView: View {
                 if !filteredRecords.isEmpty {
                     browseSection(title: "Memories", subtitle: "Raw capture shells and analyzed records") {
                         ForEach(filteredRecords, id: \.id) { record in
-                            if let fullRecord = fetchRecord(id: record.id) {
-                                NavigationLink {
-                                    RecordDetailView(record: fullRecord)
-                                } label: {
-                                    recordRow(record)
-                                }
-                                .buttonStyle(.plain)
-                            } else {
+                            NavigationLink {
+                                MemoryRecordDetailView(recordID: record.id, fallbackRecord: fetchRecord(id: record.id))
+                            } label: {
                                 recordRow(record)
                             }
+                            .buttonStyle(.plain)
                         }
                     }
                 }

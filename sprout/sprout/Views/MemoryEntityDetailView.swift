@@ -144,16 +144,12 @@ struct MemoryEntityDetailView: View {
         VStack(alignment: .leading, spacing: 12) {
             sectionTitle("clock.arrow.trianglehead.counterclockwise.rotate.90", t("memory.entity.related_memories", "Related Memories"))
             ForEach(entityView.relatedRecords, id: \.id) { record in
-                if let fullRecord = fetchRecord(id: record.id) {
-                    NavigationLink {
-                        RecordDetailView(record: fullRecord)
-                    } label: {
-                        relatedRecordRow(record)
-                    }
-                    .buttonStyle(.plain)
-                } else {
+                NavigationLink {
+                    MemoryRecordDetailView(recordID: record.id, fallbackRecord: fetchRecord(id: record.id))
+                } label: {
                     relatedRecordRow(record)
                 }
+                .buttonStyle(.plain)
             }
         }
         .detailCard()
@@ -190,7 +186,7 @@ struct MemoryEntityDetailView: View {
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                     if !analysis.candidateEdges.isEmpty {
-                        Text("AI candidate edges: \(analysis.candidateEdges.count)")
+                        Text(localization.string("common.ai_candidate_edges", default: "AI candidate edges: %d", arguments: [analysis.candidateEdges.count]))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -220,7 +216,7 @@ struct MemoryEntityDetailView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(alignment: .top, spacing: 10) {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(relatedEntity?.displayName ?? "Unknown entity")
+                            Text(relatedEntity?.displayName ?? localization.string("common.unknown_entity", default: "Unknown entity"))
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(.primary)
                             Text(edge.relationKind.label)
@@ -246,7 +242,7 @@ struct MemoryEntityDetailView: View {
                         SignalPill(title: "\(edge.sourceArtifactIDs.count) artifacts", tint: .orange)
                     }
 
-                    Text("Last seen \(edge.lastSeenAt.formatted(date: .abbreviated, time: .shortened))")
+                    Text(localization.string("common.last_seen_at", default: "Last seen %@", arguments: [edge.lastSeenAt.formatted(date: .abbreviated, time: .shortened)]))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }

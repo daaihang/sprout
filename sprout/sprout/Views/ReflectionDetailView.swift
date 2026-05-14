@@ -3,6 +3,7 @@ import SwiftData
 
 struct ReflectionDetailView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(AppLocalization.self) private var localization
     @Environment(SproutMemoryRepository.self) private var memoryRepository
 
     let reflection: ReflectionSnapshot
@@ -118,7 +119,7 @@ struct ReflectionDetailView: View {
 
     private var managementSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Management")
+            Text(localization.string("common.management", default: "Management"))
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.secondary)
 
@@ -150,15 +151,13 @@ struct ReflectionDetailView: View {
             }
 
             if let savedAt = currentReflection.savedAt, currentReflection.status == .saved {
-                Text("Saved \(savedAt.formatted(date: .abbreviated, time: .shortened))")
+                Text(localization.string("common.saved_at", default: "Saved %@", arguments: [savedAt.formatted(date: .abbreviated, time: .shortened)]))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
             if let dismissedAt = currentReflection.dismissedAt, currentReflection.status == .dismissed {
-                Text("Dismissed \(dismissedAt.formatted(date: .abbreviated, time: .shortened))")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Text(localization.string("common.dismissed_at", default: "Dismissed %@", arguments: [dismissedAt.formatted(date: .abbreviated, time: .shortened)]))
             }
         }
         .detailCard()
@@ -166,7 +165,7 @@ struct ReflectionDetailView: View {
 
     private func linkedPhaseSection(_ arc: TemporalArc) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Linked Phase")
+            Text(localization.string("common.linked_phase", default: "Linked Phase"))
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.secondary)
 
@@ -193,13 +192,13 @@ struct ReflectionDetailView: View {
 
     private var relatedRecordsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Related Memories")
+            Text(localization.string("common.related_memories", default: "Related Memories"))
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.secondary)
 
             ForEach(relatedRecords, id: \.id) { record in
                 NavigationLink {
-                    RecordDetailView(record: record)
+                    MemoryRecordDetailView(recordID: record.id, fallbackRecord: record)
                 } label: {
                     RecordEvidenceSummaryContent(record: record, includeMetaLine: true, includeAnalysis: false, maxHeadlineLines: 2)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -214,7 +213,7 @@ struct ReflectionDetailView: View {
 
     private var sourceAnalysesSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Source Analyses")
+            Text(localization.string("common.source_analyses", default: "Source Analyses"))
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.secondary)
 
@@ -235,7 +234,7 @@ struct ReflectionDetailView: View {
 
     private func linkedEntitiesSection(_ entities: [EntityNode]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Linked Entities")
+            Text(localization.string("common.linked_entities", default: "Linked Entities"))
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.secondary)
 
@@ -267,7 +266,7 @@ struct ReflectionDetailView: View {
 
     private func linkedArtifactsSection(_ artifacts: [Artifact]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Linked Artifacts")
+            Text(localization.string("common.linked_artifacts", default: "Linked Artifacts"))
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.secondary)
 

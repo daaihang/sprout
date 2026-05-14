@@ -208,8 +208,9 @@ struct HomeBoardCardWrapper: View {
     }
 
     private var fallbackRecordDetailView: some View {
-        RecordDetailView(
-            record: projection.record,
+        MemoryRecordDetailView(
+            recordID: projection.record.id,
+            fallbackRecord: projection.record,
             focusedSection: projection.focusedSection
         )
     }

@@ -107,7 +107,7 @@ struct ArtifactDetailView: View {
     private var evidenceSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             SectionLabel(icon: "magnifyingglass", title: "Evidence")
-            Text("This artifact is part of the record graph and can be traced back to its source memories, entities, and phases.")
+            Text(localization.string("common.evidence", default: "This artifact is part of the record graph and can be traced back to its source memories, entities, and phases."))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
@@ -129,7 +129,7 @@ struct ArtifactDetailView: View {
             SectionLabel(icon: "clock.arrow.trianglehead.counterclockwise.rotate.90", title: "Source Memories")
             ForEach(relatedRecords, id: \.id) { record in
                 NavigationLink {
-                    RecordDetailView(record: record)
+                    MemoryRecordDetailView(recordID: record.id, fallbackRecord: record)
                 } label: {
                     RecordEvidenceSummaryContent(record: record, includeMetaLine: true, includeAnalysis: false, maxHeadlineLines: 2)
                     .frame(maxWidth: .infinity, alignment: .leading)
