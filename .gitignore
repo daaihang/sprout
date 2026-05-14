@@ -17,3 +17,8 @@ server/.idea/
 server/*.db
 server/*.db-shm
 server/*.db-wal
+.DS_Store
+.claude/
+sprout/SourcePackages/workspace-state.json
+*.xcuserstate
+DerivedData/
