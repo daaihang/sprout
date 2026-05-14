@@ -507,7 +507,6 @@ struct ContentView: View {
     ) {
         let record = Record()
         record.id = aggregate.recordShell.id
-        record.body = aggregate.recordShell.rawText
         record.createdAt = aggregate.recordShell.createdAt
         record.updatedAt = aggregate.recordShell.updatedAt
         record.dashboardOrder = aggregate.recordShell.createdAt.timeIntervalSince1970
@@ -515,32 +514,12 @@ struct ContentView: View {
         record.intensity = aggregate.recordShell.userIntensity
 
         if let draft {
-            if let location = draft.attachments.locationData {
-                record.latitude = location.coordinate?.latitude
-                record.longitude = location.coordinate?.longitude
-                record.location = location.locationName.isEmpty ? nil : location.locationName
-            }
-
-            if let music = draft.attachments.music, !music.isEmpty {
-                record.appleMusicURL = music.appleMusicURL?.absoluteString
-            }
-
             if !draft.attachments.people.isEmpty {
                 record.mentionedPeople = draft.attachments.people
                 for person in draft.attachments.people {
                     person.lastMentionedAt = record.createdAt
                     person.mentionCount += 1
                 }
-            }
-        }
-
-        if let weatherArtifact = aggregate.artifacts.first(where: { $0.kind == .weather }) {
-            record.weather = weatherArtifact.title
-            if let location = weatherArtifact.metadata["location"], !location.isEmpty {
-                record.location = location
-            }
-            if let humidity = weatherArtifact.metadata["humidity"].flatMap(Int.init) {
-                record.humidity = humidity
             }
         }
 

@@ -35,7 +35,7 @@ struct RecordDetailView: View {
         if hasArtifacts(.link) { sections.append(.link) }
         if hasArtifacts(.todo) { sections.append(.todo) }
         if hasArtifacts(.music) { sections.append(.music) }
-        if primaryArtifact(for: .location) != nil || evidence.linkedLocationName != nil || record.latitude != nil { sections.append(.map) }
+        if primaryArtifact(for: .location) != nil || evidence.linkedLocationName != nil { sections.append(.map) }
         if primaryArtifact(for: .weather) != nil || evidence.weatherCondition != nil { sections.append(.weather) }
         if !peopleArtifactRows.isEmpty || !analysisPeopleReferences.isEmpty || evidence.primaryPersonName != nil { sections.append(.people) }
         if evidence.mood != nil { sections.append(.emotion) }
@@ -175,9 +175,6 @@ struct RecordDetailView: View {
            let coordinate = coordinate(from: artifact) {
             return coordinate
         }
-        if let lat = record.latitude, let lng = record.longitude {
-            return CLLocationCoordinate2D(latitude: lat, longitude: lng)
-        }
         return nil
     }
 
@@ -200,19 +197,10 @@ struct RecordDetailView: View {
            let condition = WeatherCondition(rawValue: artifact.metadata["condition"] ?? artifact.title) {
             return (
                 condition: condition,
-                temperature: Double(artifact.metadata["temperature"] ?? "") ?? record.temperature ?? 20,
+                temperature: Double(artifact.metadata["temperature"] ?? "") ?? 20,
                 locationText: artifact.metadata["location"] ?? nonEmpty(artifact.summary) ?? evidence.linkedLocationName,
                 observedAt: artifact.createdAt,
                 insight: nonEmpty(artifact.textContent)
-            )
-        }
-        if let condition = evidence.weatherCondition {
-            return (
-                condition: condition,
-                temperature: record.temperature ?? 20,
-                locationText: evidence.linkedLocationName,
-                observedAt: record.weatherObservedAt,
-                insight: nil
             )
         }
         return nil
@@ -236,7 +224,7 @@ struct RecordDetailView: View {
             return analysisPeople
         }
 
-        return (record.mentionedPeople ?? []).map(PersonCardItem.init(person:))
+        return []
     }
 
     // MARK: Body
@@ -506,7 +494,7 @@ struct RecordDetailView: View {
     // MARK: - Text
 
     private var textSection: some View {
-        let bodyText = nonEmpty(textArtifact?.textContent) ?? record.body
+        let bodyText = nonEmpty(textArtifact?.textContent) ?? ""
         let author = record.tagValue(for: "author")
         let source = record.tagValue(for: "source")
         return VStack(alignment: .leading, spacing: 8) {
@@ -899,7 +887,7 @@ struct RecordDetailView: View {
             Divider()
             HStack(spacing: 16) {
                 Label(formattedDate(record.createdAt), systemImage: "clock")
-                if record.latitude == nil, let loc = locationTitleText, !loc.isEmpty {
+                if let loc = locationTitleText, !loc.isEmpty {
                     Label(loc, systemImage: "location")
                 }
             }

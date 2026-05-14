@@ -48,14 +48,11 @@ struct SproutMemoryAggregateBuilder {
 
     func build(record: Record) -> SproutMemoryAggregate {
         let artifacts = buildArtifacts(record: record)
-        let knownEntities = (record.mentionedPeople ?? []).map {
-            EntityReference(kind: .person, name: $0.displayName, confidence: nil)
-        }
         let recordShell = RecordShell(
             id: record.id,
             createdAt: record.createdAt,
             updatedAt: record.updatedAt,
-            rawText: record.body,
+            rawText: artifacts.first(where: { $0.kind == .text })?.textContent ?? "",
             captureSource: .composer,
             artifactIDs: artifacts.map(\.id),
             userMood: record.mood,
@@ -64,7 +61,7 @@ struct SproutMemoryAggregateBuilder {
         return SproutMemoryAggregate(
             recordShell: recordShell,
             artifacts: artifacts,
-            knownEntities: knownEntities
+            knownEntities: []
         )
     }
 
@@ -429,90 +426,6 @@ struct SproutMemoryAggregateBuilder {
 
     private func buildArtifacts(record: Record) -> [Artifact] {
         var artifacts: [Artifact] = []
-
-        if !record.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            artifacts.append(
-                Artifact(
-                    kind: .text,
-                    title: previewTitle(from: record.body),
-                    summary: record.body,
-                    textContent: record.body,
-                    createdAt: record.createdAt,
-                    updatedAt: record.updatedAt
-                )
-            )
-        }
-
-        if let location = record.location, !location.isEmpty {
-            var metadata: [String: String] = [:]
-            if let latitude = record.latitude {
-                metadata["latitude"] = String(latitude)
-            }
-            if let longitude = record.longitude {
-                metadata["longitude"] = String(longitude)
-            }
-
-            let locationArtifact = Artifact(
-                kind: .location,
-                title: location,
-                summary: location,
-                createdAt: record.createdAt,
-                updatedAt: record.updatedAt,
-                metadata: metadata
-            )
-            artifacts.append(
-                locationArtifact
-            )
-        }
-
-        if let weather = record.weather, !weather.isEmpty {
-            let temperatureText: String
-            if let temperature = record.temperature {
-                temperatureText = String(format: "%.0f", temperature)
-            } else {
-                temperatureText = ""
-            }
-            let weatherSummary = "\(weather) \(temperatureText)".trimmingCharacters(in: .whitespaces)
-            var metadata: [String: String] = [:]
-            if let location = record.location, !location.isEmpty {
-                metadata["location"] = location
-            }
-            if let humidity = record.humidity {
-                metadata["humidity"] = String(humidity)
-            }
-
-            let weatherArtifact = Artifact(
-                kind: .weather,
-                title: weather,
-                summary: weatherSummary,
-                createdAt: record.weatherObservedAt ?? record.createdAt,
-                updatedAt: record.updatedAt,
-                metadata: metadata
-            )
-            artifacts.append(
-                weatherArtifact
-            )
-        }
-
-        if let people = record.mentionedPeople, !people.isEmpty {
-            let peopleArtifacts = people.map { person in
-                var metadata: [String: String] = [:]
-                if let relationship = person.relationship, !relationship.isEmpty {
-                    metadata["relationship"] = relationship
-                }
-
-                return Artifact(
-                    kind: .personMention,
-                    title: person.displayName,
-                    summary: person.secondaryLabel,
-                    createdAt: record.createdAt,
-                    updatedAt: record.updatedAt,
-                    metadata: metadata,
-                    entities: [EntityReference(kind: .person, name: person.displayName, confidence: nil)]
-                )
-            }
-            artifacts.append(contentsOf: peopleArtifacts)
-        }
 
         if let decisions = record.linkedDecisions, !decisions.isEmpty {
             let decisionArtifacts = decisions.map { decision in

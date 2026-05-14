@@ -141,11 +141,11 @@ struct ArtifactRenderer {
         case .weather:
             if let condition = WeatherCondition(rawValue: artifact.metadata["condition"] ?? artifact.title) {
                 let coordinate = coordinate(from: artifact.metadata)
-                let temperature = Double(artifact.metadata["temperature"] ?? "") ?? record.temperature ?? 20
-                let feelsLike = Double(artifact.metadata["feelsLike"] ?? "") ?? record.feelsLike ?? temperature
-                let humidity = Int(artifact.metadata["humidity"] ?? "") ?? record.humidity ?? 60
-                let high = Double(artifact.metadata["high"] ?? "") ?? record.weatherHigh ?? temperature + 3
-                let low = Double(artifact.metadata["low"] ?? "") ?? record.weatherLow ?? temperature - 3
+                let temperature = Double(artifact.metadata["temperature"] ?? "") ?? 20
+                let feelsLike = Double(artifact.metadata["feelsLike"] ?? "") ?? temperature
+                let humidity = Int(artifact.metadata["humidity"] ?? "") ?? 60
+                let high = Double(artifact.metadata["high"] ?? "") ?? temperature + 3
+                let low = Double(artifact.metadata["low"] ?? "") ?? temperature - 3
                 let data = WeatherCardData(
                     location: artifact.summary,
                     coordinate: coordinate,

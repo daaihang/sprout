@@ -46,6 +46,7 @@ struct RecordEvidenceProjector {
 
         let primaryKind = resolvePrimaryKind(
             record: record,
+            linkedEntities: linkedEntities,
             textArtifact: textArtifact,
             photoArtifacts: photoArtifacts,
             audioArtifact: audioArtifact,
@@ -113,6 +114,7 @@ struct RecordEvidenceProjector {
 
     private func resolvePrimaryKind(
         record: Record,
+        linkedEntities: [EntityNode],
         textArtifact: Artifact?,
         photoArtifacts: [Artifact],
         audioArtifact: Artifact?,
@@ -128,11 +130,11 @@ struct RecordEvidenceProjector {
         if audioArtifact != nil { return .audio }
         if todoArtifact != nil { return .todo }
         if linkArtifact != nil { return .link }
-        if locationArtifact != nil || (record.latitude != nil && record.longitude != nil) { return .map }
+        if locationArtifact != nil { return .map }
         if record.activity?.value != nil { return .activity }
         if let mood = record.mood, !mood.isEmpty { return .emotion }
-        if weatherArtifact != nil || !(record.weather ?? "").isEmpty { return .weather }
-        if personArtifact != nil || !(record.mentionedPeople ?? []).isEmpty { return .people }
+        if weatherArtifact != nil { return .weather }
+        if personArtifact != nil || linkedEntities.contains(where: { $0.kind == .person }) { return .people }
         if textArtifact != nil { return .text }
         return .text
     }
@@ -179,7 +181,7 @@ struct RecordEvidenceProjector {
         primaryPersonName: String?,
         photoCount: Int
     ) -> String {
-        if let text = nonEmpty(textArtifact?.textContent) ?? nonEmpty(record.body) {
+        if let text = nonEmpty(textArtifact?.textContent) {
             return text
         }
 
@@ -210,7 +212,7 @@ struct RecordEvidenceProjector {
             return "\(tempPrefix)\(weatherCondition.label)"
         }
 
-        if let location = nonEmpty(locationArtifact?.title) ?? nonEmpty(record.location) {
+        if let location = nonEmpty(locationArtifact?.title) {
             return location
         }
 
@@ -281,16 +283,16 @@ struct RecordEvidenceProjector {
         if artifacts.contains(where: { $0.kind == .link }) {
             labels.append(localization.string("timeline.category.link", default: "Link"))
         }
-        if artifacts.contains(where: { $0.kind == .weather }) || !(record.weather ?? "").isEmpty {
+        if artifacts.contains(where: { $0.kind == .weather }) {
             labels.append(localization.string("timeline.category.weather", default: "Weather"))
         }
         if record.mood != nil {
             labels.append(localization.string("timeline.category.emotion", default: "Emotion"))
         }
-        if artifacts.contains(where: { $0.kind == .location }) || record.latitude != nil {
+        if artifacts.contains(where: { $0.kind == .location }) {
             labels.append(localization.string("timeline.category.location", default: "Location"))
         }
-        if artifacts.contains(where: { $0.kind == .personMention }) || !(record.mentionedPeople ?? []).isEmpty {
+        if artifacts.contains(where: { $0.kind == .personMention }) {
             labels.append(localization.string("timeline.category.people", default: "People"))
         }
 
@@ -306,7 +308,7 @@ struct RecordEvidenceProjector {
            let condition = WeatherCondition(rawValue: artifact.metadata["condition"] ?? artifact.title) {
             return condition
         }
-        return (record.weather).flatMap(WeatherCondition.init(rawValue:))
+        return nil
     }
 
     private func resolveWeatherTemperature(from artifact: Artifact?, record: Record) -> Double? {
@@ -314,7 +316,7 @@ struct RecordEvidenceProjector {
            let value = Double(artifact.metadata["temperature"] ?? "") {
             return value
         }
-        return record.temperature
+        return nil
     }
 
     private func resolvePrimaryPersonName(
@@ -329,14 +331,14 @@ struct RecordEvidenceProjector {
            !linkedPerson.displayName.isEmpty {
             return linkedPerson.displayName
         }
-        return record.mentionedPeople?.first?.displayName
+        return nil
     }
 
     private func resolveLocationName(locationArtifact: Artifact?, record: Record) -> String? {
         if let title = nonEmpty(locationArtifact?.title) {
             return title
         }
-        return nonEmpty(record.location)
+        return nil
     }
 
     private func resolvePhotoPreviewImage(record: Record, photoArtifacts: [Artifact]) -> UIImage? {

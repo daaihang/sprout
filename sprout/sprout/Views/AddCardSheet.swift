@@ -346,83 +346,62 @@ struct AddCardSheet: View {
     /// Creates a standalone Record of the given type and inserts it into SwiftData.
     private func confirmStandalone(type selectedCardType: String) {
         capturePipeline.beginSaving()
-        let record    = Record()
-        record.createdAt = Date()
-        record.updatedAt = record.createdAt
-        record.dashboardOrder = record.createdAt.timeIntervalSince1970
-
+        let createdAt = Date()
+        let recordID = UUID()
         let presentationKind = MemoryPresentationKind(rawValue: selectedCardType) ?? .text
 
         switch selectedCardType {
 
         case "emotion":
-            record.mood      = emotionData.mood.rawValue
-            record.intensity = emotionData.intensity
-            if !emotionData.note.isEmpty { record.body = emotionData.note }
-            modelContext.insert(record)
-            guard persistLocalChanges(recordID: record.id) else { return }
             let aggregate = memoryAggregateBuilder.buildStandaloneAggregate(
                 presentationKind: presentationKind,
-                recordID: record.id,
-                createdAt: record.createdAt,
-                textArtifactText: record.body,
+                recordID: recordID,
+                createdAt: createdAt,
+                textArtifactText: emotionData.note,
                 emotion: emotionData
             )
+            persistStandaloneRecord(for: aggregate)
+            guard persistLocalChanges(recordID: aggregate.recordShell.id) else { return }
             memoryRepository.upsertAggregate(aggregate)
             Task { await runPostCaptureAnalysisIfPossible(for: aggregate) }
             dismiss()
 
         case "weather":
-            record.weather     = weatherData.condition.rawValue
-            record.temperature = weatherData.temperature
-            record.feelsLike   = weatherData.feelsLike
-            record.humidity    = weatherData.humidity
-            record.weatherHigh = weatherData.high
-            record.weatherLow  = weatherData.low
-            record.location    = weatherData.location.isEmpty ? nil : weatherData.location
-            record.latitude    = weatherData.coordinate?.latitude
-            record.longitude   = weatherData.coordinate?.longitude
-            record.weatherObservedAt = weatherData.observedAt ?? record.createdAt
-            record.weatherSource = weatherData.source.rawValue
-            modelContext.insert(record)
-            guard persistLocalChanges(recordID: record.id) else { return }
             let aggregate = memoryAggregateBuilder.buildStandaloneAggregate(
                 presentationKind: presentationKind,
-                recordID: record.id,
-                createdAt: record.createdAt,
+                recordID: recordID,
+                createdAt: createdAt,
                 weather: weatherData
             )
+            persistStandaloneRecord(for: aggregate)
+            guard persistLocalChanges(recordID: aggregate.recordShell.id) else { return }
             memoryRepository.upsertAggregate(aggregate)
             Task { await runPostCaptureAnalysisIfPossible(for: aggregate) }
             dismiss()
 
         case "map":
-            record.latitude  = locationData.coordinate?.latitude
-            record.longitude = locationData.coordinate?.longitude
-            record.location  = locationData.locationName.isEmpty ? nil : locationData.locationName
-            record.body      = locationData.descriptionText
-            modelContext.insert(record)
-            guard persistLocalChanges(recordID: record.id) else { return }
             let aggregate = memoryAggregateBuilder.buildStandaloneAggregate(
                 presentationKind: presentationKind,
-                recordID: record.id,
-                createdAt: record.createdAt,
-                textArtifactText: record.body,
+                recordID: recordID,
+                createdAt: createdAt,
+                textArtifactText: locationData.descriptionText,
                 location: locationData
             )
+            persistStandaloneRecord(for: aggregate)
+            guard persistLocalChanges(recordID: aggregate.recordShell.id) else { return }
             memoryRepository.upsertAggregate(aggregate)
             Task { await runPostCaptureAnalysisIfPossible(for: aggregate) }
             dismiss()
 
         case "music":
-            modelContext.insert(record)
-            guard persistLocalChanges(recordID: record.id) else { return }
             let aggregate = memoryAggregateBuilder.buildStandaloneAggregate(
                 presentationKind: presentationKind,
-                recordID: record.id,
-                createdAt: record.createdAt,
+                recordID: recordID,
+                createdAt: createdAt,
                 music: musicData
             )
+            persistStandaloneRecord(for: aggregate)
+            guard persistLocalChanges(recordID: aggregate.recordShell.id) else { return }
             memoryRepository.upsertAggregate(aggregate)
             Task { await runPostCaptureAnalysisIfPossible(for: aggregate) }
             dismiss()
@@ -430,14 +409,14 @@ struct AddCardSheet: View {
         case "photo":
             Task { @MainActor in
                 let payloads = await preparePhotoMediaPayloads(from: capturedImages)
-                modelContext.insert(record)
-                guard persistLocalChanges(recordID: record.id) else { return }
                 let aggregate = memoryAggregateBuilder.buildStandaloneAggregate(
                     presentationKind: presentationKind,
-                    recordID: record.id,
-                    createdAt: record.createdAt,
+                    recordID: recordID,
+                    createdAt: createdAt,
                     photoPayloads: payloads
                 )
+                persistStandaloneRecord(for: aggregate)
+                guard persistLocalChanges(recordID: aggregate.recordShell.id) else { return }
                 memoryRepository.upsertAggregate(aggregate)
                 Task { await runPostCaptureAnalysisIfPossible(for: aggregate) }
                 dismiss()
@@ -445,31 +424,43 @@ struct AddCardSheet: View {
 
         case "todo":
             guard !todoData.isEmpty else { return }
-            modelContext.insert(record)
-            guard persistLocalChanges(recordID: record.id) else { return }
             let aggregate = memoryAggregateBuilder.buildStandaloneAggregate(
                 presentationKind: presentationKind,
-                recordID: record.id,
-                createdAt: record.createdAt,
+                recordID: recordID,
+                createdAt: createdAt,
                 todo: todoData
             )
+            persistStandaloneRecord(for: aggregate)
+            guard persistLocalChanges(recordID: aggregate.recordShell.id) else { return }
             memoryRepository.upsertAggregate(aggregate)
             Task { await runPostCaptureAnalysisIfPossible(for: aggregate) }
             dismiss()
 
         default:
-            modelContext.insert(record)
-            guard persistLocalChanges(recordID: record.id) else { return }
             let aggregate = memoryAggregateBuilder.buildStandaloneAggregate(
                 presentationKind: presentationKind,
-                recordID: record.id,
-                createdAt: record.createdAt,
-                textArtifactText: record.body
+                recordID: recordID,
+                createdAt: createdAt,
+                textArtifactText: ""
             )
+            persistStandaloneRecord(for: aggregate)
+            guard persistLocalChanges(recordID: aggregate.recordShell.id) else { return }
             memoryRepository.upsertAggregate(aggregate)
             Task { await runPostCaptureAnalysisIfPossible(for: aggregate) }
             dismiss()
         }
+    }
+
+    @MainActor
+    private func persistStandaloneRecord(for aggregate: SproutMemoryAggregate) {
+        let record = Record()
+        record.id = aggregate.recordShell.id
+        record.createdAt = aggregate.recordShell.createdAt
+        record.updatedAt = aggregate.recordShell.updatedAt
+        record.dashboardOrder = aggregate.recordShell.createdAt.timeIntervalSince1970
+        record.mood = aggregate.recordShell.userMood
+        record.intensity = aggregate.recordShell.userIntensity
+        modelContext.insert(record)
     }
 
     @MainActor
