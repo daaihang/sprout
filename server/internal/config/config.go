@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/joho/godotenv"
 )
 
 const (
@@ -49,6 +51,9 @@ type Config struct {
 }
 
 func Load() (Config, error) {
+	// Load .env file if it exists
+	_ = godotenv.Load(".env")
+
 	cfg := Config{
 		AppEnv:           envString("APP_ENV", "development"),
 		Port:             envString("PORT", "8080"),

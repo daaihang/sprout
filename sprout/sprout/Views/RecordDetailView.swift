@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import MapKit
+import AVFoundation
 
 // MARK: - RecordDetailView
 
@@ -157,14 +158,6 @@ struct RecordDetailView: View {
 
     private func matchingMedia(for artifact: Artifact, kind: MediaCardKind) -> [MediaCard] {
         legacyMedia(kind: kind).filter { $0.id == artifact.id }
-    }
-
-    private func decodedTodoItems(from text: String) -> [TodoItem] {
-        guard let raw = text.data(using: .utf8),
-              let items = try? JSONDecoder().decode([TodoItem].self, from: raw) else {
-            return []
-        }
-        return items
     }
 
     private func coordinate(from artifact: Artifact) -> CLLocationCoordinate2D? {
@@ -604,252 +597,52 @@ struct RecordDetailView: View {
 
     // MARK: - Photos
 
-    @ViewBuilder
     private var photoSection: some View {
-        let photoArtifacts = sectionArtifacts(for: .photo)
-        if !photoArtifacts.isEmpty || hasLegacyMedia(.photo) {
-            let photoPayloads = photoArtifacts.isEmpty ? legacyMedia(kind: .photo) : photoArtifacts.flatMap { matchingMedia(for: $0, kind: .photo) }
-            let images: [UIImage] = photoPayloads.compactMap { m in
-                m.imageData.flatMap(UIImage.init(data:))
-            }
-            let leadArtifact = photoArtifacts.first
-            VStack(alignment: .leading, spacing: 10) {
-                SectionLabel(icon: "photo.on.rectangle.angled", title: t("detail.section.photos", "Photos"))
-                if images.isEmpty {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.secondary.opacity(0.1))
-                        .frame(height: 200)
-                        .overlay(
-                            Image(systemName: "photo").font(.largeTitle)
-                                .foregroundStyle(.secondary.opacity(0.4))
-                        )
-                } else if images.count == 1 {
-                    Image(uiImage: images[0])
-                        .resizable().aspectRatio(contentMode: .fill)
-                        .frame(maxWidth: .infinity).frame(height: 260).clipped()
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                } else {
-                    TabView {
-                        ForEach(images.indices, id: \.self) { idx in
-                            Image(uiImage: images[idx])
-                                .resizable().aspectRatio(contentMode: .fill)
-                                .frame(maxWidth: .infinity).clipped()
-                        }
-                    }
-                    .tabViewStyle(.page)
-                    .frame(height: 260)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                }
-                let photoLoc = leadArtifact?.metadata["locationName"] ?? photoPayloads.first?.locationName ?? record.location
-                if let loc = photoLoc, !loc.isEmpty {
-                    Label(loc, systemImage: "location.fill")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                if let summary = nonEmpty(leadArtifact?.summary) {
-                    Text(summary)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .detailCard()
-        }
+        let photoLegacy = legacyMedia(kind: .photo)
+        return PhotoEvidenceSection(
+            artifacts: artifacts,
+            record: record,
+            mediaCards: photoLegacy
+        )
     }
 
     // MARK: - Music
 
-    @ViewBuilder
     private var musicSection: some View {
-        if let artifact = primaryArtifact(for: .music) {
-            let artworkURL = artifact.metadata["artworkURLString"].flatMap(URL.init(string:))
-            VStack(alignment: .leading, spacing: 10) {
-                SectionLabel(icon: "music.note", title: t("detail.section.music", "Music"))
-                HStack(spacing: 14) {
-                    Group {
-                        if let artworkURL {
-                            CachedRemoteImage(url: artworkURL, contentMode: .fill) {
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(Color.secondary.opacity(0.15))
-                                    .overlay(ProgressView())
-                            }
-                        } else {
-                            RoundedRectangle(cornerRadius: 10)
-                                .fill(Color.secondary.opacity(0.15))
-                                .overlay(
-                                    Image(systemName: "music.note").font(.title2)
-                                        .foregroundStyle(.secondary.opacity(0.5))
-                                )
-                        }
-                    }
-                    .frame(width: 72, height: 72)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(nonEmpty(artifact.title) ?? t("detail.music.unknown_track", "Unknown Track")).font(.headline).lineLimit(2)
-                        Text(artifact.summary).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
-                        if let albumName = artifact.metadata["albumName"] ?? nonEmpty(artifact.textContent), !albumName.isEmpty {
-                            Text(albumName)
-                                .font(.caption)
-                                .foregroundStyle(.secondary.opacity(0.8))
-                                .lineLimit(1)
-                        }
-                        if let urlStr = artifact.metadata["url"], let url = URL(string: urlStr) {
-                            Link(t("detail.music.open_apple_music", "Open in Apple Music"), destination: url).font(.caption)
-                        }
-                    }
-                    Spacer()
-                }
-            }
-            .detailCard()
-        } else if let m = legacyMedia(kind: .music).first {
-            let artwork: UIImage? = m.thumbnailData.flatMap { UIImage(data: $0) }
-            let artworkURL = m.artworkURLString.flatMap(URL.init(string:))
-            VStack(alignment: .leading, spacing: 10) {
-                SectionLabel(icon: "music.note", title: t("detail.section.music", "Music"))
-                HStack(spacing: 14) {
-                    Group {
-                        if let img = artwork {
-                            Image(uiImage: img).resizable().aspectRatio(contentMode: .fill)
-                        } else if let artworkURL {
-                            CachedRemoteImage(url: artworkURL, contentMode: .fill) {
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(Color.secondary.opacity(0.15))
-                                    .overlay(ProgressView())
-                            }
-                        } else {
-                            RoundedRectangle(cornerRadius: 10)
-                                .fill(Color.secondary.opacity(0.15))
-                                .overlay(
-                                    Image(systemName: "music.note").font(.title2)
-                                        .foregroundStyle(.secondary.opacity(0.5))
-                                )
-                        }
-                    }
-                    .frame(width: 72, height: 72)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(m.title ?? t("detail.music.unknown_track", "Unknown Track")).font(.headline).lineLimit(2)
-                        Text(m.caption ?? "").font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
-                        if let albumName = m.albumName, !albumName.isEmpty {
-                            Text(albumName)
-                                .font(.caption)
-                                .foregroundStyle(.secondary.opacity(0.8))
-                                .lineLimit(1)
-                        }
-                        if let urlStr = m.url, let url = URL(string: urlStr) {
-                            Link(t("detail.music.open_apple_music", "Open in Apple Music"), destination: url).font(.caption)
-                        }
-                    }
-                    Spacer()
-                }
-            }
-            .detailCard()
-        }
+        let musicArtifact = primaryArtifact(for: .music)
+        let musicLegacy = legacyMedia(kind: .music).first
+        return MusicEvidenceSection(
+            artifact: musicArtifact,
+            record: record,
+            legacyMedia: musicLegacy
+        )
     }
 
     // MARK: - Links
 
     @ViewBuilder
     private var audioSection: some View {
-        if let artifact = primaryArtifact(for: .audio) {
-            let audio = matchingMedia(for: artifact, kind: .audio).first
-            VStack(alignment: .leading, spacing: 10) {
-                SectionLabel(icon: "waveform", title: t("detail.section.audio", "Voice"))
-                AudioCard(
-                    data: AudioCardData(
-                        title: nonEmpty(artifact.title) ?? audio?.title ?? "",
-                        audioData: audio?.audioData,
-                        transcriptPreview: nonEmpty(artifact.textContent) ?? audio?.caption ?? "",
-                        durationText: audioDurationString(from: audio?.audioData),
-                        capturedAt: artifact.createdAt
-                    )
-                )
-                .frame(height: 180)
-            }
-            .detailCard()
-        } else if let audio = legacyMedia(kind: .audio).first {
-            VStack(alignment: .leading, spacing: 10) {
-                SectionLabel(icon: "waveform", title: t("detail.section.audio", "Voice"))
-                AudioCard(
-                    data: AudioCardData(
-                        title: audio.title ?? "",
-                        audioData: audio.audioData,
-                        transcriptPreview: audio.caption ?? "",
-                        durationText: audioDurationString(from: audio.audioData),
-                        capturedAt: audio.capturedAt ?? record.createdAt
-                    )
-                )
-                .frame(height: 180)
-            }
-            .detailCard()
+        let audioArtifact = primaryArtifact(for: .audio)
+        let legacyAudio = legacyMedia(kind: .audio).first
+        
+        if audioArtifact != nil || legacyAudio != nil {
+            AudioEvidenceSection(
+                artifact: audioArtifact,
+                record: record,
+                legacyAudio: legacyAudio,
+                audioDurationString: audioDurationString
+            )
         }
     }
 
     @ViewBuilder
     private var linkSection: some View {
-        let artifacts = sectionArtifacts(for: .link)
-        let legacyLinks = legacyMedia(kind: .link)
-        if !artifacts.isEmpty || !legacyLinks.isEmpty {
-            VStack(alignment: .leading, spacing: 10) {
-                SectionLabel(icon: "link", title: t("detail.section.links", "Links"))
-                ForEach(artifacts, id: \.id) { artifact in
-                    if let urlStr = artifact.metadata["url"] ?? nonEmpty(artifact.textContent),
-                       let url = URL(string: urlStr) {
-                        HStack(spacing: 12) {
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color.accentColor.opacity(0.1))
-                                .frame(width: 36, height: 36)
-                                .overlay(
-                                    Image(systemName: "safari.fill").font(.system(size: 18))
-                                        .foregroundStyle(Color.accentColor)
-                                )
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(nonEmpty(artifact.title) ?? urlStr)
-                                    .font(.subheadline.weight(.medium)).lineLimit(1)
-                                Text(nonEmpty(artifact.summary) ?? url.host ?? urlStr)
-                                    .font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                            }
-                            Spacer()
-                            Link(destination: url) {
-                                Image(systemName: "arrow.up.right.square").foregroundStyle(.secondary)
-                            }
-                        }
-                        .padding(10)
-                        .background(Color.secondary.opacity(0.06),
-                                    in: RoundedRectangle(cornerRadius: 10))
-                    }
-                }
-                if artifacts.isEmpty {
-                    ForEach(legacyLinks) { m in
-                        if let urlStr = m.url, let url = URL(string: urlStr) {
-                            HStack(spacing: 12) {
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(Color.accentColor.opacity(0.1))
-                                    .frame(width: 36, height: 36)
-                                    .overlay(
-                                        Image(systemName: "safari.fill").font(.system(size: 18))
-                                            .foregroundStyle(Color.accentColor)
-                                    )
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(m.title ?? urlStr)
-                                        .font(.subheadline.weight(.medium)).lineLimit(1)
-                                    Text(url.host ?? urlStr)
-                                        .font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                                }
-                                Spacer()
-                                Link(destination: url) {
-                                    Image(systemName: "arrow.up.right.square").foregroundStyle(.secondary)
-                                }
-                            }
-                            .padding(10)
-                            .background(Color.secondary.opacity(0.06),
-                                        in: RoundedRectangle(cornerRadius: 10))
-                        }
-                    }
-                }
-            }
-            .detailCard()
-        }
+        LinkEvidenceSection(
+            artifacts: sectionArtifacts(for: .link),
+            record: record,
+            legacyLinks: legacyMedia(kind: .link)
+        )
+    }
     }
 
     // MARK: - Activity
@@ -972,48 +765,11 @@ struct RecordDetailView: View {
 
     @ViewBuilder
     private var todoSection: some View {
-        if let artifact = primaryArtifact(for: .todo) {
-            let items = decodedTodoItems(from: artifact.textContent)
-            if !items.isEmpty {
-                VStack(alignment: .leading, spacing: 10) {
-                    SectionLabel(icon: "checklist", title: nonEmpty(artifact.title) ?? t("detail.todo.default_title", "To-Do"))
-                    ForEach(items) { item in
-                        HStack(spacing: 10) {
-                            Image(systemName: item.isDone ? "checkmark.square.fill" : "square")
-                                .foregroundStyle(item.isDone ? .green : .secondary)
-                                .font(.system(size: 16))
-                            Text(item.text)
-                                .font(.body)
-                                .foregroundStyle(item.isDone ? .secondary : .primary)
-                                .strikethrough(item.isDone)
-                        }
-                    }
-                    let doneCount = items.filter(\.isDone).count
-                    Text(t("detail.todo.completed", "%d/%d completed", doneCount, items.count))
-                        .font(.caption).foregroundStyle(.secondary).padding(.top, 4)
-                }
-                .detailCard()
-            }
-        } else if let payload = legacyTodoPayload() {
-            VStack(alignment: .leading, spacing: 10) {
-                SectionLabel(icon: "checklist", title: payload.title)
-                ForEach(payload.items) { item in
-                    HStack(spacing: 10) {
-                        Image(systemName: item.isDone ? "checkmark.square.fill" : "square")
-                            .foregroundStyle(item.isDone ? .green : .secondary)
-                            .font(.system(size: 16))
-                        Text(item.text)
-                            .font(.body)
-                            .foregroundStyle(item.isDone ? .secondary : .primary)
-                            .strikethrough(item.isDone)
-                    }
-                }
-                let doneCount = payload.items.filter(\.isDone).count
-                Text(t("detail.todo.completed", "%d/%d completed", doneCount, payload.items.count))
-                    .font(.caption).foregroundStyle(.secondary).padding(.top, 4)
-            }
-            .detailCard()
-        }
+        TodoEvidenceSection(
+            artifact: primaryArtifact(for: .todo),
+            record: record,
+            legacyTodoPayload: legacyTodoPayload()
+        )
     }
 
     /// Decodes todo items from artifact payload first, then legacy MediaCard JSON as compatibility fallback.
@@ -1272,7 +1028,19 @@ struct RecordDetailView: View {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
     }
-}
+
+    /// Computes audio duration from raw data for use as a fallback label.
+    /// The actual duration is recalculated within AudioCard via AVAudioPlayer, so this is a fallback only.
+    private func audioDurationString(from data: Data?) -> String {
+        guard let data = data, !data.isEmpty else { return "" }
+        do {
+            let audioPlayer = try AVAudioPlayer(data: data, fileTypeHint: AVFileType.wav.rawValue)
+            let totalSeconds = max(Int(audioPlayer.duration.rounded()), 0)
+            return String(format: "%02d:%02d", totalSeconds / 60, totalSeconds % 60)
+        } catch {
+            return ""
+        }
+    }
 
 private extension String {
     var nilIfBlank: String? {
