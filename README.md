@@ -130,6 +130,7 @@ Current detail-page truth after this round:
 - AI entity evidence is surfaced directly in people/detail evidence areas.
 - `RecordTimelineView` and `TodayInHistoryCard` now use a shared `RecordEvidenceProjector`, so preview kind, headline, subtitle, and meta labels come from the same artifact-backed evidence path as detail.
 - `SearchHomeView`, `ArtifactDetailView`, `ReflectionDetailView`, `TemporalArcDetailView`, and `MemoryEntityDetailView` now reuse shared memory evidence summary rendering for related memory rows instead of hand-built `Record.body` / `RecordShell.rawText` snippets.
+- Even when the full `Record` is temporarily unavailable, shell-level fallback summaries now go through one shared `RecordShellFallbackSummaryContent` path instead of page-local snippets.
 - `Record` and `MediaCard` are retained only as compatibility fallback for older rows and photo/audio payload lookup.
 
 ## Subscription System
@@ -197,7 +198,7 @@ The backend will normalize `AI_BASE_URL=https://api.deepseek.com` to the correct
 
 The current best-practice next steps are:
 
-1. Replace the remaining residual preview helpers and fetch-failure fallbacks with shared artifact-backed evidence projection.
-2. Continue extracting `RecordDetailView` sections into clearer artifact evidence views, especially for media-heavy and mixed-content sections.
+1. Continue extracting `RecordDetailView` sections into clearer artifact evidence views, especially for media-heavy and mixed-content sections.
+2. Audit debug-only and non-primary fallback readers so they do not drift back into user-facing paths.
 3. Surface graph and phase objects more directly in navigation and detail views.
 4. Add a dedicated backend Reflection API while keeping iOS local-first.

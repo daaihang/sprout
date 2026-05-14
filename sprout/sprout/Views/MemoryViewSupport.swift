@@ -250,3 +250,43 @@ struct RecordEvidenceSummaryContent: View {
         }
     }
 }
+
+@MainActor
+struct RecordShellFallbackSummaryContent: View {
+    @Environment(SproutMemoryRepository.self) private var memoryRepository
+
+    let recordShell: RecordShell
+    var includeAnalysis: Bool = true
+    var maxHeadlineLines: Int = 3
+
+    private var trimmedHeadline: String {
+        let trimmed = recordShell.rawText.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "Untitled Memory" : trimmed
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(trimmedHeadline)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
+                .lineLimit(maxHeadlineLines)
+
+            if includeAnalysis,
+               let analysis = memoryRepository.analysis(for: recordShell.id) {
+                AnalysisCompactEvidenceView(
+                    analysis: analysis,
+                    showInsight: true,
+                    showEntities: true,
+                    showRetrievalTerms: true,
+                    showReflectionHint: false,
+                    maxEntityCount: 3,
+                    maxRetrievalTermCount: 4
+                )
+            }
+
+            Text(recordShell.createdAt.formatted(date: .abbreviated, time: .shortened))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+}

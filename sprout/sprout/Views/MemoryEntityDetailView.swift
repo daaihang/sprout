@@ -316,14 +316,7 @@ struct MemoryEntityDetailView: View {
             if let fullRecord = fetchRecord(id: record.id) {
                 RecordEvidenceSummaryContent(record: fullRecord, includeMetaLine: true, includeAnalysis: false, maxHeadlineLines: 2)
             } else {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(record.rawText.isEmpty ? t("memory.entity.memory.untitled", "Untitled Memory") : String(record.rawText.prefix(100)))
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.primary)
-                    Text(record.createdAt.formatted(date: .abbreviated, time: .shortened))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                RecordShellFallbackSummaryContent(recordShell: record, includeAnalysis: false, maxHeadlineLines: 2)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

@@ -699,16 +699,7 @@ struct SearchHomeView: View {
             if let fullRecord = fetchRecord(id: record.id) {
                 RecordEvidenceSummaryContent(record: fullRecord)
             } else {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(record.rawText.isEmpty ? "Untitled Memory" : String(record.rawText.prefix(120)))
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                        .lineLimit(3)
-
-                    Text(record.createdAt.formatted(date: .abbreviated, time: .shortened))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                RecordShellFallbackSummaryContent(recordShell: record, includeAnalysis: true, maxHeadlineLines: 3)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
