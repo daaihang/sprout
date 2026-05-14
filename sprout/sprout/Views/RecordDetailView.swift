@@ -30,11 +30,11 @@ struct RecordDetailView: View {
     private var availableSections: [RecordSection] {
         var sections: [RecordSection] = []
         if textArtifact != nil { sections.append(.text) }
-        if hasArtifacts(.photo) || hasLegacyMedia(.photo) { sections.append(.photo) }
-        if hasArtifacts(.audio) || hasLegacyMedia(.audio) { sections.append(.audio) }
-        if hasArtifacts(.link) || hasLegacyMedia(.link) { sections.append(.link) }
-        if hasArtifacts(.todo) || hasLegacyMedia(.todo) { sections.append(.todo) }
-        if hasArtifacts(.music) || hasLegacyMedia(.music) { sections.append(.music) }
+        if hasArtifacts(.photo) { sections.append(.photo) }
+        if hasArtifacts(.audio) { sections.append(.audio) }
+        if hasArtifacts(.link) { sections.append(.link) }
+        if hasArtifacts(.todo) { sections.append(.todo) }
+        if hasArtifacts(.music) { sections.append(.music) }
         if primaryArtifact(for: .location) != nil || evidence.linkedLocationName != nil || record.latitude != nil { sections.append(.map) }
         if primaryArtifact(for: .weather) != nil || evidence.weatherCondition != nil { sections.append(.weather) }
         if !peopleArtifactRows.isEmpty || !analysisPeopleReferences.isEmpty || evidence.primaryPersonName != nil { sections.append(.people) }
@@ -146,18 +146,6 @@ struct RecordDetailView: View {
 
     private func hasArtifacts(_ kind: ArtifactKind) -> Bool {
         primaryArtifact(for: kind) != nil
-    }
-
-    private func legacyMedia(kind: MediaCardKind) -> [MediaCard] {
-        (record.mediaCards ?? []).filter { $0.mediaKind == kind }
-    }
-
-    private func hasLegacyMedia(_ kind: MediaCardKind) -> Bool {
-        !legacyMedia(kind: kind).isEmpty
-    }
-
-    private func matchingMedia(for artifact: Artifact, kind: MediaCardKind) -> [MediaCard] {
-        legacyMedia(kind: kind).filter { $0.id == artifact.id }
     }
 
     private func coordinate(from artifact: Artifact) -> CLLocationCoordinate2D? {
@@ -603,11 +591,8 @@ struct RecordDetailView: View {
     // MARK: - Photos
 
     private var photoSection: some View {
-        let photoLegacy = legacyMedia(kind: .photo)
         return PhotoEvidenceSection(
-            artifacts: artifacts,
-            record: record,
-            mediaCards: photoLegacy
+            artifacts: artifacts
         )
     }
 
@@ -615,11 +600,10 @@ struct RecordDetailView: View {
 
     private var musicSection: some View {
         let musicArtifact = primaryArtifact(for: .music)
-        let musicLegacy = legacyMedia(kind: .music).first
         return MusicEvidenceSection(
             artifact: musicArtifact,
             record: record,
-            legacyMedia: musicLegacy
+            legacyMedia: nil
         )
     }
 
@@ -628,13 +612,10 @@ struct RecordDetailView: View {
     @ViewBuilder
     private var audioSection: some View {
         let audioArtifact = primaryArtifact(for: .audio)
-        let legacyAudio = legacyMedia(kind: .audio).first
         
-        if audioArtifact != nil || legacyAudio != nil {
+        if audioArtifact != nil {
             AudioEvidenceSection(
                 artifact: audioArtifact,
-                record: record,
-                legacyAudio: legacyAudio,
                 audioDurationString: audioDurationString
             )
         }
@@ -643,9 +624,7 @@ struct RecordDetailView: View {
     @ViewBuilder
     private var linkSection: some View {
         LinkEvidenceSection(
-            artifacts: sectionArtifacts(for: .link),
-            record: record,
-            legacyLinks: legacyMedia(kind: .link)
+            artifacts: sectionArtifacts(for: .link)
         )
     }
 
@@ -770,21 +749,8 @@ struct RecordDetailView: View {
     @ViewBuilder
     private var todoSection: some View {
         TodoEvidenceSection(
-            artifact: primaryArtifact(for: .todo),
-            record: record,
-            legacyTodoPayload: legacyTodoPayload()
+            artifact: primaryArtifact(for: .todo)
         )
-    }
-
-    /// Decodes todo items from artifact payload first, then legacy MediaCard JSON as compatibility fallback.
-    private func legacyTodoPayload() -> (title: String, items: [TodoItem])? {
-        guard let m = legacyMedia(kind: .todo).first,
-              let json = m.caption,
-              let raw = json.data(using: .utf8),
-              let items = try? JSONDecoder().decode([TodoItem].self, from: raw),
-              !items.isEmpty
-        else { return nil }
-        return (m.title ?? t("detail.todo.default_title", "To-Do"), items)
     }
 
     @ViewBuilder
@@ -999,17 +965,9 @@ struct RecordDetailView: View {
             parts.append("Linked to \(entityNames.prefix(3).joined(separator: ", "))")
         }
 
-        if let media = (record.mediaCards ?? []).first(where: { $0.id == artifact.id }) {
-            switch artifact.kind {
-            case .photo:
-                let payload = media.imageData == nil ? "photo metadata" : "photo payload"
-                parts.append(payload)
-            case .audio:
-                let payload = media.audioData == nil ? "voice metadata" : "voice payload"
-                parts.append(payload)
-            default:
-                break
-            }
+        if artifact.kind == .photo || artifact.kind == .audio {
+            let payload = artifact.binaryPayload == nil ? "payload missing" : "payload attached"
+            parts.append(payload)
         }
 
         if let arc = linkedArcs.first(where: { $0.sourceArtifactIDs.contains(artifact.id) }) {

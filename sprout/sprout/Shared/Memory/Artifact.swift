@@ -10,6 +10,8 @@ struct Artifact: Identifiable, Codable, Hashable, Sendable {
     var updatedAt: Date
     var metadata: [String: String]
     var entities: [EntityReference]
+    var binaryPayload: Data?
+    var previewPayload: Data?
 
     init(
         id: UUID = UUID(),
@@ -20,7 +22,9 @@ struct Artifact: Identifiable, Codable, Hashable, Sendable {
         createdAt: Date,
         updatedAt: Date,
         metadata: [String: String] = [:],
-        entities: [EntityReference] = []
+        entities: [EntityReference] = [],
+        binaryPayload: Data? = nil,
+        previewPayload: Data? = nil
     ) {
         self.id = id
         self.kind = kind
@@ -31,5 +35,7 @@ struct Artifact: Identifiable, Codable, Hashable, Sendable {
         self.updatedAt = updatedAt
         self.metadata = metadata
         self.entities = entities
+        self.binaryPayload = binaryPayload
+        self.previewPayload = previewPayload
     }
 }

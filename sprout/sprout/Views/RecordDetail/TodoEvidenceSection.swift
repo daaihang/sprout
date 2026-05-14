@@ -7,18 +7,14 @@ struct TodoEvidenceSection: View {
     @Environment(AppLocalization.self) private var localization
     
     let artifact: Artifact?
-    let record: Record
-    let legacyTodoPayload: (title: String, items: [TodoItem])?
     
     var body: some View {
         if let artifact = artifact {
             let items = decodedTodoItems(from: artifact.textContent)
             if !items.isEmpty {
-                todoCard(title: nonEmpty(artifact.title) ?? localization.t("detail.todo.default_title", "To-Do"),
+                todoCard(title: nonEmpty(artifact.title) ?? localization.string("detail.todo.default_title", default: "To-Do"),
                          items: items)
             }
-        } else if let payload = legacyTodoPayload {
-            todoCard(title: payload.title, items: payload.items)
         }
     }
     
@@ -37,7 +33,7 @@ struct TodoEvidenceSection: View {
                 }
             }
             let doneCount = items.filter(\.isDone).count
-            Text(localization.t("detail.todo.completed", "%d/%d completed", doneCount, items.count))
+            Text(localization.string("detail.todo.completed", default: "%d/%d completed", arguments: [doneCount, items.count]))
                 .font(.caption).foregroundStyle(.secondary).padding(.top, 4)
         }
         .detailCard()

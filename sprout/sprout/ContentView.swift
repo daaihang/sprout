@@ -544,41 +544,7 @@ struct ContentView: View {
             }
         }
 
-        var mediaCards: [MediaCard] = []
-
-        for (index, payload) in photoPayloads.enumerated() {
-            let media = MediaCard()
-            media.id = payload.id
-            media.type = "photo"
-            media.sortIndex = index
-            media.imageData = payload.imageData
-            media.thumbnailData = payload.thumbnailData
-            modelContext.insert(media)
-            mediaCards.append(media)
-        }
-
-        for artifact in aggregate.artifacts {
-            switch artifact.kind {
-            case .audio:
-                guard let audioData = draft?.attachments.audioData else { break }
-                let media = MediaCard()
-                media.id = artifact.id
-                media.type = "audio"
-                media.audioData = audioData
-                media.title = localization.string("content.audio.title", default: "Voice %@", arguments: [shortTimeLabel()])
-                media.caption = aggregate.recordShell.rawText.isEmpty ? speechRecognizer.recognizedText : aggregate.recordShell.rawText
-                media.capturedAt = aggregate.recordShell.createdAt
-                modelContext.insert(media)
-                mediaCards.append(media)
-            case .photo, .music, .todo, .link, .text, .location, .weather, .personMention, .decisionNote, .book, .film, .game, .ticket, .healthMetric:
-                break
-            }
-        }
-
         modelContext.insert(record)
-        if !mediaCards.isEmpty {
-            record.mediaCards = mediaCards
-        }
     }
 
     @MainActor

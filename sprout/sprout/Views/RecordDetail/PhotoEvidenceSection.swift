@@ -8,27 +8,19 @@ struct PhotoEvidenceSection: View {
     @Environment(AppLocalization.self) private var localization
     
     let artifacts: [Artifact]
-    let record: Record
-    let mediaCards: [MediaCard]
     
     var body: some View {
         let photoArtifacts = artifacts.filter { $0.kind == .photo }
-        let hasArtifacts = !photoArtifacts.isEmpty
-        let hasLegacy = !mediaCards.isEmpty
         
-        if hasArtifacts || hasLegacy {
-            let photoPayloads = hasArtifacts ? photoArtifacts.flatMap { artifact in
-                mediaCards.filter { $0.id == artifact.id }
-            } : mediaCards
-            
-            let images: [UIImage] = photoPayloads.compactMap { m in
-                m.imageData.flatMap(UIImage.init(data:))
+        if !photoArtifacts.isEmpty {
+            let images: [UIImage] = photoArtifacts.compactMap { artifact in
+                (artifact.binaryPayload ?? artifact.previewPayload).flatMap(UIImage.init(data:))
             }
             
             let leadArtifact = photoArtifacts.first
             
             VStack(alignment: .leading, spacing: 10) {
-                SectionLabel(icon: "photo.on.rectangle.angled", title: localization.t("detail.section.photos", "Photos"))
+                SectionLabel(icon: "photo.on.rectangle.angled", title: localization.string("detail.section.photos", default: "Photos"))
                 
                 // Photo gallery
                 if images.isEmpty {
@@ -58,7 +50,7 @@ struct PhotoEvidenceSection: View {
                 }
                 
                 // Location metadata
-                let photoLoc = leadArtifact?.metadata["locationName"] ?? photoPayloads.first?.locationName ?? record.location
+                let photoLoc = leadArtifact?.metadata["locationName"] ?? nonEmpty(leadArtifact?.title)
                 if let loc = photoLoc, !loc.isEmpty {
                     Label(loc, systemImage: "location.fill")
                         .font(.caption).foregroundStyle(.secondary)
@@ -67,13 +59,6 @@ struct PhotoEvidenceSection: View {
                 // Summary
                 if let summary = nonEmpty(leadArtifact?.summary) {
                     Text(summary)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                
-                // Legacy caption fallback
-                if let legacyCaption = photoPayloads.first?.caption, !legacyCaption.isEmpty, leadArtifact?.summary == nil {
-                    Text(legacyCaption)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

@@ -7,28 +7,17 @@ struct LinkEvidenceSection: View {
     @Environment(AppLocalization.self) private var localization
     
     let artifacts: [Artifact]
-    let record: Record
-    let legacyLinks: [MediaCard]
     
     var body: some View {
-        if !artifacts.isEmpty || !legacyLinks.isEmpty {
+        if !artifacts.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                SectionLabel(icon: "link", title: localization.t("detail.section.links", "Links"))
+                SectionLabel(icon: "link", title: localization.string("detail.section.links", default: "Links"))
                 ForEach(artifacts, id: \.id) { artifact in
                     if let urlStr = artifact.metadata["url"] ?? nonEmpty(artifact.textContent),
                        let url = URL(string: urlStr) {
                         linkRow(title: nonEmpty(artifact.title) ?? urlStr, 
                                 subtitle: nonEmpty(artifact.summary) ?? url.host ?? urlStr,
                                 url: url)
-                    }
-                }
-                if artifacts.isEmpty {
-                    ForEach(legacyLinks) { m in
-                        if let urlStr = m.url, let url = URL(string: urlStr) {
-                            linkRow(title: m.title ?? urlStr,
-                                    subtitle: url.host ?? urlStr,
-                                    url: url)
-                        }
                     }
                 }
             }

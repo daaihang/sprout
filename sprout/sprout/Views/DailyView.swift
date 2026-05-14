@@ -178,7 +178,7 @@ struct HomeBoardCardWrapper: View {
             if let artifact = artifactTarget {
                 ArtifactDetailView(artifact: artifact)
             } else {
-                fallbackRecordDetailView
+                missingTargetView
             }
         case .record:
             fallbackRecordDetailView
@@ -186,13 +186,13 @@ struct HomeBoardCardWrapper: View {
             if let arc = memoryRepository.temporalArc(for: projection.targetID) {
                 TemporalArcDetailView(arc: arc)
             } else {
-                fallbackRecordDetailView
+                missingTargetView
             }
         case .reflection:
             if let reflection = reflectionTarget {
                 ReflectionDetailView(reflection: reflection)
             } else {
-                fallbackRecordDetailView
+                missingTargetView
             }
         case .system:
             fallbackRecordDetailView
@@ -211,6 +211,14 @@ struct HomeBoardCardWrapper: View {
         RecordDetailView(
             record: projection.record,
             focusedSection: projection.focusedSection
+        )
+    }
+
+    private var missingTargetView: some View {
+        ContentUnavailableView(
+            "Content Unavailable",
+            systemImage: "exclamationmark.triangle",
+            description: Text("The selected memory target is missing from the new architecture store.")
         )
     }
 }

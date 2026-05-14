@@ -70,6 +70,7 @@ struct SproutMemoryAggregateBuilder {
 
     func buildStandaloneAggregate(
         cardType: RecordCardKind,
+        recordID: UUID = UUID(),
         createdAt: Date,
         shellText: String = "",
         emotion: EmotionCardData? = nil,
@@ -157,15 +158,19 @@ struct SproutMemoryAggregateBuilder {
                 )
             }
         case .photo:
-            for (index, _) in photoPayloads.enumerated() {
+            for (index, payload) in photoPayloads.enumerated() {
                 artifacts.append(
                     Artifact(
+                        id: payload.id,
                         kind: .photo,
                         title: photoPayloads.count <= 1 ? "Photo" : "Photo \(index + 1)",
                         summary: trimmed.isEmpty ? "Captured photo" : previewTitle(from: trimmed),
+                        textContent: "",
                         createdAt: createdAt,
                         updatedAt: createdAt,
-                        metadata: ["source": "add_card"]
+                        metadata: ["source": "add_card"],
+                        binaryPayload: payload.imageData,
+                        previewPayload: payload.thumbnailData
                     )
                 )
             }
@@ -224,7 +229,8 @@ struct SproutMemoryAggregateBuilder {
                         textContent: trimmed,
                         createdAt: createdAt,
                         updatedAt: createdAt,
-                        metadata: ["byteCount": String(audioData.count)]
+                        metadata: ["byteCount": String(audioData.count)],
+                        binaryPayload: audioData
                     )
                 )
             }
@@ -239,6 +245,7 @@ struct SproutMemoryAggregateBuilder {
         let knownEntities: [EntityReference] = []
         return SproutMemoryAggregate(
             recordShell: RecordShell(
+                id: recordID,
                 createdAt: createdAt,
                 updatedAt: createdAt,
                 rawText: trimmed,
@@ -274,9 +281,10 @@ struct SproutMemoryAggregateBuilder {
             )
         }
 
-        for (index, _) in photoPayloads.enumerated() {
+        for (index, payload) in photoPayloads.enumerated() {
             artifacts.append(
                 Artifact(
+                    id: payload.id,
                     kind: .photo,
                     title: photoTitle(index: index, totalCount: photoPayloads.count),
                     summary: photoSummary(from: trimmed),
@@ -286,7 +294,9 @@ struct SproutMemoryAggregateBuilder {
                     metadata: [
                         "payloadIndex": String(index),
                         "source": "composer"
-                    ]
+                    ],
+                    binaryPayload: payload.imageData,
+                    previewPayload: payload.thumbnailData
                 )
             )
         }
@@ -359,7 +369,8 @@ struct SproutMemoryAggregateBuilder {
                     updatedAt: createdAt,
                     metadata: [
                         "byteCount": String(audioData.count)
-                    ]
+                    ],
+                    binaryPayload: audioData
                 )
             )
         }
@@ -571,7 +582,9 @@ struct SproutMemoryAggregateBuilder {
             textContent: media.aiDescription ?? "",
             createdAt: media.capturedAt ?? media.createdAt,
             updatedAt: record.updatedAt,
-            metadata: metadata
+            metadata: metadata,
+            binaryPayload: media.imageData ?? media.audioData,
+            previewPayload: media.thumbnailData
         )
     }
 

@@ -59,7 +59,7 @@ struct RecordEvidenceProjector {
 
         let preferredFocusedSection = focusedSection(for: primaryKind, hasText: textArtifact != nil)
         let photoPreviewImage = resolvePhotoPreviewImage(record: record, photoArtifacts: photoArtifacts)
-        let photoCount = max(photoArtifacts.count, legacyMedia(kind: .photo, record: record).count)
+        let photoCount = photoArtifacts.count
 
         let weatherCondition = resolveWeatherCondition(from: weatherArtifact, record: record)
         let mood = MoodType(rawValue: record.mood ?? "")
@@ -123,11 +123,11 @@ struct RecordEvidenceProjector {
         weatherArtifact: Artifact?,
         personArtifact: Artifact?
     ) -> RecordCardKind {
-        if !photoArtifacts.isEmpty || !legacyMedia(kind: .photo, record: record).isEmpty { return .photo }
-        if musicArtifact != nil || !legacyMedia(kind: .music, record: record).isEmpty { return .music }
-        if audioArtifact != nil || !legacyMedia(kind: .audio, record: record).isEmpty { return .audio }
-        if todoArtifact != nil || !legacyMedia(kind: .todo, record: record).isEmpty { return .todo }
-        if linkArtifact != nil || !legacyMedia(kind: .link, record: record).isEmpty { return .link }
+        if !photoArtifacts.isEmpty { return .photo }
+        if musicArtifact != nil { return .music }
+        if audioArtifact != nil { return .audio }
+        if todoArtifact != nil { return .todo }
+        if linkArtifact != nil { return .link }
         if locationArtifact != nil || (record.latitude != nil && record.longitude != nil) { return .map }
         if record.activity?.value != nil { return .activity }
         if let mood = record.mood, !mood.isEmpty { return .emotion }
@@ -183,11 +183,11 @@ struct RecordEvidenceProjector {
             return text
         }
 
-        if let transcript = nonEmpty(audioArtifact?.textContent) ?? nonEmpty(legacyMedia(kind: .audio, record: record).first?.caption) {
+        if let transcript = nonEmpty(audioArtifact?.textContent) {
             return transcript
         }
 
-        if let todo = todoPayload(from: todoArtifact) ?? legacyTodoPayload(record: record) {
+        if let todo = todoPayload(from: todoArtifact) {
             if let title = nonEmpty(todo.title) {
                 return title
             }
@@ -196,7 +196,7 @@ struct RecordEvidenceProjector {
             }
         }
 
-        if let title = nonEmpty(musicArtifact?.title) ?? nonEmpty(legacyMedia(kind: .music, record: record).first?.title) {
+        if let title = nonEmpty(musicArtifact?.title) {
             return title
         }
 
@@ -231,7 +231,7 @@ struct RecordEvidenceProjector {
         todoArtifact: Artifact?,
         musicArtifact: Artifact?
     ) -> String? {
-        if let todo = todoPayload(from: todoArtifact) ?? legacyTodoPayload(record: record) {
+        if let todo = todoPayload(from: todoArtifact) {
             let remaining = todo.items.filter { !$0.isDone }.count
             return localization.string(
                 "timeline.todo.summary",
@@ -247,23 +247,11 @@ struct RecordEvidenceProjector {
             if !components.isEmpty {
                 return components.joined(separator: " · ")
             }
-        } else if let music = legacyMedia(kind: .music, record: record).first {
-            let artist = trimmed(music.caption)
-            let album = trimmed(music.albumName)
-            let components = [artist, album].filter { !$0.isEmpty }
-            if !components.isEmpty {
-                return components.joined(separator: " · ")
-            }
         }
 
-        if audioArtifact != nil {
-            let data = matchingMedia(for: audioArtifact, kind: .audio, record: record).first?.audioData
+        if let audioArtifact {
+            let data = audioArtifact.binaryPayload
             let duration = audioDurationString(from: data)
-            if !duration.isEmpty {
-                return localization.string("timeline.audio.summary", default: "Voice note · %@", arguments: [duration])
-            }
-        } else if let audio = legacyMedia(kind: .audio, record: record).first {
-            let duration = audioDurationString(from: audio.audioData)
             if !duration.isEmpty {
                 return localization.string("timeline.audio.summary", default: "Voice note · %@", arguments: [duration])
             }
@@ -278,19 +266,19 @@ struct RecordEvidenceProjector {
         if artifacts.contains(where: { $0.kind == .text }) {
             labels.append(localization.string("timeline.category.note", default: "Note"))
         }
-        if artifacts.contains(where: { $0.kind == .photo }) || !legacyMedia(kind: .photo, record: record).isEmpty {
+        if artifacts.contains(where: { $0.kind == .photo }) {
             labels.append(localization.string("timeline.category.photo", default: "Photo"))
         }
-        if artifacts.contains(where: { $0.kind == .music }) || !legacyMedia(kind: .music, record: record).isEmpty {
+        if artifacts.contains(where: { $0.kind == .music }) {
             labels.append(localization.string("timeline.category.music", default: "Music"))
         }
-        if artifacts.contains(where: { $0.kind == .audio }) || !legacyMedia(kind: .audio, record: record).isEmpty {
+        if artifacts.contains(where: { $0.kind == .audio }) {
             labels.append(localization.string("timeline.category.audio", default: "Voice"))
         }
-        if artifacts.contains(where: { $0.kind == .todo }) || !legacyMedia(kind: .todo, record: record).isEmpty {
+        if artifacts.contains(where: { $0.kind == .todo }) {
             labels.append(localization.string("timeline.category.todo", default: "To-Do"))
         }
-        if artifacts.contains(where: { $0.kind == .link }) || !legacyMedia(kind: .link, record: record).isEmpty {
+        if artifacts.contains(where: { $0.kind == .link }) {
             labels.append(localization.string("timeline.category.link", default: "Link"))
         }
         if artifacts.contains(where: { $0.kind == .weather }) || !(record.weather ?? "").isEmpty {
@@ -352,14 +340,7 @@ struct RecordEvidenceProjector {
     }
 
     private func resolvePhotoPreviewImage(record: Record, photoArtifacts: [Artifact]) -> UIImage? {
-        let photoMedia: [MediaCard]
-        if let firstArtifact = photoArtifacts.first {
-            photoMedia = matchingMedia(for: firstArtifact, kind: .photo, record: record)
-        } else {
-            photoMedia = legacyMedia(kind: .photo, record: record)
-        }
-
-        if let data = photoMedia.first?.thumbnailData ?? photoMedia.first?.imageData {
+        if let data = photoArtifacts.first?.previewPayload ?? photoArtifacts.first?.binaryPayload {
             return UIImage(data: data)
         }
         return nil
@@ -372,27 +353,8 @@ struct RecordEvidenceProjector {
         return (artifact.title, items)
     }
 
-    private func legacyTodoPayload(record: Record) -> (title: String, items: [TodoItem])? {
-        guard let media = legacyMedia(kind: .todo, record: record).first,
-              let raw = media.caption?.data(using: .utf8),
-              let items = try? JSONDecoder().decode([TodoItem].self, from: raw),
-              !items.isEmpty else {
-            return nil
-        }
-        return (media.title ?? "", items)
-    }
-
     private func firstArtifact(_ kind: ArtifactKind, in artifacts: [Artifact]) -> Artifact? {
         artifacts.first { $0.kind == kind }
-    }
-
-    private func matchingMedia(for artifact: Artifact?, kind: MediaCardKind, record: Record) -> [MediaCard] {
-        guard let artifact else { return [] }
-        return legacyMedia(kind: kind, record: record).filter { $0.id == artifact.id }
-    }
-
-    private func legacyMedia(kind: MediaCardKind, record: Record) -> [MediaCard] {
-        (record.mediaCards ?? []).filter { $0.mediaKind == kind }
     }
 
     private func decodeTodoItems(from text: String) -> [TodoItem] {

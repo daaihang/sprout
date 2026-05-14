@@ -13,6 +13,7 @@ struct AddCardSheet: View {
     @Environment(\.dismiss)      private var dismiss
     @Environment(SproutMemoryRepository.self) private var memoryRepository
     @Environment(AuthSessionManager.self) private var authSession
+    @Environment(CapturePipelineStore.self) private var capturePipeline
 
     var musicService: MusicService
     var selectedDate: Date
@@ -40,6 +41,7 @@ struct AddCardSheet: View {
     @State private var showMusicSheet    = false
     @State private var showLocationSheet = false
     @State private var showPhotosPicker  = false
+    @State private var captureErrorMessage: String? = nil
     private let memoryAggregateBuilder = SproutMemoryAggregateBuilder()
     private let analyzeService = SproutAnalyzeService()
 
@@ -106,6 +108,21 @@ struct AddCardSheet: View {
                 if !images.isEmpty { confirmStandalone(type: "photo") }
             }
         }
+        .alert(
+            localization.string("capture.error.alert_title", default: "Capture failed"),
+            isPresented: Binding(
+                get: { captureErrorMessage != nil },
+                set: { if !$0 { captureErrorMessage = nil } }
+            ),
+            actions: {
+                Button(t("common.ok", "OK")) {
+                    captureErrorMessage = nil
+                }
+            },
+            message: {
+                Text(captureErrorMessage ?? "")
+            }
+        )
     }
 
     // MARK: Grid
@@ -328,6 +345,7 @@ struct AddCardSheet: View {
 
     /// Creates a standalone Record of the given type and inserts it into SwiftData.
     private func confirmStandalone(type selectedCardType: String) {
+        capturePipeline.beginSaving()
         let record    = Record()
         record.createdAt = Date()
         record.updatedAt = record.createdAt
@@ -342,6 +360,7 @@ struct AddCardSheet: View {
             record.intensity = emotionData.intensity
             if !emotionData.note.isEmpty { record.body = emotionData.note }
             modelContext.insert(record)
+            guard persistLocalChanges(recordID: record.id) else { return }
             let aggregate = memoryAggregateBuilder.buildStandaloneAggregate(
                 cardType: cardKind,
                 recordID: record.id,
@@ -366,6 +385,7 @@ struct AddCardSheet: View {
             record.weatherObservedAt = weatherData.observedAt ?? record.createdAt
             record.weatherSource = weatherData.source.rawValue
             modelContext.insert(record)
+            guard persistLocalChanges(recordID: record.id) else { return }
             let aggregate = memoryAggregateBuilder.buildStandaloneAggregate(
                 cardType: cardKind,
                 recordID: record.id,
@@ -382,6 +402,7 @@ struct AddCardSheet: View {
             record.location  = locationData.locationName.isEmpty ? nil : locationData.locationName
             record.body      = locationData.descriptionText
             modelContext.insert(record)
+            guard persistLocalChanges(recordID: record.id) else { return }
             let aggregate = memoryAggregateBuilder.buildStandaloneAggregate(
                 cardType: cardKind,
                 recordID: record.id,
@@ -395,6 +416,7 @@ struct AddCardSheet: View {
 
         case "music":
             modelContext.insert(record)
+            guard persistLocalChanges(recordID: record.id) else { return }
             let aggregate = memoryAggregateBuilder.buildStandaloneAggregate(
                 cardType: cardKind,
                 recordID: record.id,
@@ -408,19 +430,8 @@ struct AddCardSheet: View {
         case "photo":
             Task { @MainActor in
                 let payloads = await preparePhotoMediaPayloads(from: capturedImages)
-                var cards: [MediaCard] = []
-                for (i, payload) in payloads.enumerated() {
-                    let m = MediaCard()
-                    m.id = payload.id
-                    m.type = "photo"
-                    m.sortIndex = i
-                    m.imageData = payload.imageData
-                    m.thumbnailData = payload.thumbnailData
-                    modelContext.insert(m)
-                    cards.append(m)
-                }
                 modelContext.insert(record)
-                if !cards.isEmpty { record.mediaCards = cards }
+                guard persistLocalChanges(recordID: record.id) else { return }
                 let aggregate = memoryAggregateBuilder.buildStandaloneAggregate(
                     cardType: cardKind,
                     recordID: record.id,
@@ -435,6 +446,7 @@ struct AddCardSheet: View {
         case "todo":
             guard !todoData.isEmpty else { return }
             modelContext.insert(record)
+            guard persistLocalChanges(recordID: record.id) else { return }
             let aggregate = memoryAggregateBuilder.buildStandaloneAggregate(
                 cardType: cardKind,
                 recordID: record.id,
@@ -447,6 +459,7 @@ struct AddCardSheet: View {
 
         default:
             modelContext.insert(record)
+            guard persistLocalChanges(recordID: record.id) else { return }
             let aggregate = memoryAggregateBuilder.buildStandaloneAggregate(
                 cardType: cardKind,
                 recordID: record.id,
@@ -462,7 +475,25 @@ struct AddCardSheet: View {
     @MainActor
     private func runPostCaptureAnalysisIfPossible(for aggregate: SproutMemoryAggregate) async {
         guard let session = authSession.currentSession else { return }
-        guard session.mode != "development_stub" || !session.accessToken.isEmpty else { return }
+        guard session.mode != "development_stub" else {
+            capturePipeline.markAnalysisUnavailable(
+                recordID: aggregate.recordShell.id,
+                detail: t("capture.analysis.dev_stub_unavailable", "Development bypass mode skips authenticated AI analysis.")
+            )
+            return
+        }
+        guard !session.accessToken.isEmpty else {
+            capturePipeline.markAnalysisUnavailable(
+                recordID: aggregate.recordShell.id,
+                detail: t("capture.analysis.missing_token", "The session is missing an access token, so AI analysis was skipped.")
+            )
+            return
+        }
+
+        capturePipeline.markAnalyzing(
+            recordID: aggregate.recordShell.id,
+            detail: t("capture.analysis.running", "Sending record aggregate to the analysis service.")
+        )
 
         do {
             let response = try await analyzeService.analyzeRecord(aggregate: aggregate, session: session)
@@ -471,8 +502,26 @@ struct AddCardSheet: View {
                 recordID: aggregate.recordShell.id
             )
             memoryRepository.setAnalysis(snapshot, aggregate: aggregate)
+            capturePipeline.markAnalyzed(recordID: aggregate.recordShell.id)
         } catch {
-            // Capture should remain successful even if analysis fails.
+            capturePipeline.markAnalysisUnavailable(
+                recordID: aggregate.recordShell.id,
+                detail: error.localizedDescription
+            )
+        }
+    }
+
+    @MainActor
+    private func persistLocalChanges(recordID: UUID) -> Bool {
+        do {
+            try modelContext.save()
+            capturePipeline.markSaved(recordID: recordID)
+            return true
+        } catch {
+            let message = error.localizedDescription
+            captureErrorMessage = message
+            capturePipeline.markFailed(recordID: recordID, detail: message)
+            return false
         }
     }
 
