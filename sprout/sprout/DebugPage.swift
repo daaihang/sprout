@@ -34,6 +34,12 @@ struct DebugPage: View {
                     Label("Memory Graph / Arc / Reflection", systemImage: "point.3.connected.trianglepath.dotted")
                 }
             }
+
+            Section("Backend") {
+                NavigationLink(destination: BackendInteractionDebugView()) {
+                    Label("Frontend / Backend Interaction", systemImage: "network")
+                }
+            }
         }
         .listStyle(.insetGrouped)
         .navigationTitle(t("common.debug.title", "Debug"))

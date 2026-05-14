@@ -13,6 +13,7 @@ struct PhaseReflectionCardData {
 }
 
 struct PhaseReflectionCard: View {
+    @Environment(AppLocalization.self) private var localization
     let data: PhaseReflectionCardData?
 
     var body: some View {
@@ -33,7 +34,7 @@ struct PhaseReflectionCard: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 10) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("REFLECTION")
+                    Text(localization.string("common.phase_reflection_badge", default: "REFLECTION"))
                         .font(.system(size: 10, weight: .black, design: .rounded))
                         .tracking(1.3)
                         .foregroundStyle(Color.white.opacity(0.82))
@@ -97,7 +98,7 @@ struct PhaseReflectionCard: View {
             Image(systemName: "sparkles")
                 .font(.system(size: 28, weight: .semibold))
                 .foregroundStyle(Color.white.opacity(0.72))
-            Text("No reflection yet")
+            Text(localization.string("common.no_reflection_yet", default: "No reflection yet"))
                 .font(.system(size: 14, weight: .medium, design: .rounded))
                 .foregroundStyle(Color.white.opacity(0.82))
             Spacer(minLength: 0)

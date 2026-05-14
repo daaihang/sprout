@@ -122,10 +122,10 @@ struct OnboardingFlowView: View {
         snapshot: RecordAnalysisSnapshot
     ) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Stored Memory Effects")
+            Text(localization.string("common.stored_memory_effects", default: "Stored Memory Effects"))
                 .font(.headline)
 
-            Text("This is the v3 memory-layer result after the preview response is mapped into snapshot, graph, and reflection state.")
+            Text(localization.string("common.v3_memory_layer_result", default: "This is the v3 memory-layer result after the preview response is mapped into snapshot, graph, and reflection state."))
                 .font(.footnote)
                 .foregroundStyle(.secondary)
 
@@ -149,7 +149,7 @@ struct OnboardingFlowView: View {
 
             if !memoryView.linkedEntities.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Linked Entities")
+                    Text(localization.string("common.linked_entities", default: "Linked Entities"))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
                     TokenPillRow(
@@ -161,7 +161,7 @@ struct OnboardingFlowView: View {
 
             if let reflection = memoryView.reflection {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Generated Reflection")
+                    Text(localization.string("common.generated_reflection", default: "Generated Reflection"))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
                     Text(reflection.title)

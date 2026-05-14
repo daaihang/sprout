@@ -200,64 +200,11 @@ struct SectionLabel: View {
 }
 
 @MainActor
-struct RecordEvidenceSummaryContent: View {
-    @Environment(AppLocalization.self) private var localization
-    @Environment(SproutMemoryRepository.self) private var memoryRepository
-
-    let record: Record
-    var includeMetaLine: Bool = true
-    var includeAnalysis: Bool = true
-    var maxHeadlineLines: Int = 3
-
-    private var evidence: RecordEvidenceProjector.Projection {
-        RecordEvidenceProjector(localization: localization)
-            .project(record: record, memoryView: memoryRepository.memoryView(for: record.id))
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(evidence.headlineText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Untitled Memory" : evidence.headlineText)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.primary)
-                .lineLimit(maxHeadlineLines)
-
-            if includeMetaLine, let supporting = evidence.supportingText, !supporting.isEmpty {
-                Text(supporting)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            } else if includeMetaLine, !evidence.metaLabels.isEmpty {
-                Text(evidence.metaLabels.joined(separator: " · "))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
-
-            if includeAnalysis,
-               let analysis = evidence.analysis {
-                AnalysisCompactEvidenceView(
-                    analysis: analysis,
-                    showInsight: true,
-                    showEntities: true,
-                    showRetrievalTerms: true,
-                    showReflectionHint: false,
-                    maxEntityCount: 3,
-                    maxRetrievalTermCount: 4
-                )
-            }
-
-            Text(record.createdAt.formatted(date: .abbreviated, time: .shortened))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-    }
-}
-
-@MainActor
-struct RecordShellFallbackSummaryContent: View {
+struct RecordShellSummaryContent: View {
     @Environment(SproutMemoryRepository.self) private var memoryRepository
 
     let recordShell: RecordShell
+    var includeMetaLine: Bool = true
     var includeAnalysis: Bool = true
     var maxHeadlineLines: Int = 3
 
@@ -272,6 +219,23 @@ struct RecordShellFallbackSummaryContent: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.primary)
                 .lineLimit(maxHeadlineLines)
+
+            if includeMetaLine {
+let metaParts: [String] = [
+    recordShell.captureSource.rawValue.replacingOccurrences(of: "_", with: " ").capitalized,
+    recordShell.userMood?.trimmingCharacters(in: .whitespacesAndNewlines),
+].compactMap { value in
+    guard let value, !value.isEmpty else { return nil }
+    return value
+}
+
+                if !metaParts.isEmpty {
+                    Text(metaParts.joined(separator: " · "))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+            }
 
             if includeAnalysis,
                let analysis = memoryRepository.analysis(for: recordShell.id) {
@@ -295,21 +259,11 @@ struct RecordShellFallbackSummaryContent: View {
 
 @MainActor
 struct MemoryRecordDetailView: View {
-    @Environment(\.modelContext) private var modelContext
     @Environment(AppLocalization.self) private var localization
     @Environment(SproutMemoryRepository.self) private var memoryRepository
 
     let recordID: UUID
-    var fallbackRecord: Record? = nil
     var focusedSection: RecordSection = .text
-
-    private var resolvedRecord: Record? {
-        if let fallbackRecord {
-            return fallbackRecord
-        }
-        let records = (try? modelContext.fetch(FetchDescriptor<Record>())) ?? []
-        return records.first { $0.id == recordID }
-    }
 
     private var memoryView: SproutMemoryRepository.RecordMemoryView? {
         memoryRepository.memoryView(for: recordID)
@@ -327,9 +281,7 @@ struct MemoryRecordDetailView: View {
     }
 
     var body: some View {
-        if let resolvedRecord {
-            RecordDetailView(record: resolvedRecord, focusedSection: focusedSection)
-        } else if let memoryView {
+        if let memoryView {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 20) {
                     shellSection(memoryView.recordShell)
@@ -372,8 +324,9 @@ struct MemoryRecordDetailView: View {
     private func shellSection(_ recordShell: RecordShell) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             SectionLabel(icon: "clock.arrow.trianglehead.counterclockwise.rotate.90", title: localization.string("common.memory_shell", default: "Memory Shell"))
-            RecordShellFallbackSummaryContent(
+            RecordShellSummaryContent(
                 recordShell: recordShell,
+                includeMetaLine: true,
                 includeAnalysis: false,
                 maxHeadlineLines: 4
             )

@@ -168,26 +168,28 @@ struct HomeBoardCompositionBuilder {
     func todayInHistoryData(for date: Date) -> TodayInHistoryCardData? {
         let calendar = Calendar.current
         let currentYear = calendar.component(.year, from: date)
-        let matching = allRecordsForSameMonthDay(date: date)
-            .filter { calendar.component(.year, from: $0.createdAt) < currentYear }
-            .sorted { $0.createdAt > $1.createdAt }
+let matching = dependencies.memoryRepository.recordShells
+    .filter {
+        calendar.component(.month, from: $0.createdAt) == calendar.component(.month, from: date)
+            && calendar.component(.day, from: $0.createdAt) == calendar.component(.day, from: date)
+            && calendar.component(.year, from: $0.createdAt) < currentYear
+    }
+    .sorted { $0.createdAt > $1.createdAt }
 
         guard !matching.isEmpty else { return nil }
 
         let monthDay = localizedDate(date, template: "MMMM d")
         return TodayInHistoryCardData(
             monthDayLabel: monthDay,
-            entries: matching.map { record in
-                let projection = evidenceProjector.project(
-                    record: record,
-                    memoryView: dependencies.memoryRepository.memoryView(for: record.id)
-                )
-                return TodayInHistoryEntry(
-                    record: record,
-                    projection: projection,
-                    referenceYear: currentYear
-                )
-            }
+entries: matching.map { recordShell in
+    let memoryView = dependencies.memoryRepository.memoryView(for: recordShell.id)
+    return TodayInHistoryEntry(
+        recordShell: recordShell,
+        artifacts: memoryView?.artifacts ?? [],
+        analysis: memoryView?.analysis,
+        referenceYear: currentYear
+    )
+}
         )
     }
 
@@ -514,27 +516,6 @@ struct HomeBoardCompositionBuilder {
         record.createdAt.timeIntervalSince1970
     }
 
-    private func allRecordsForSameMonthDay(date: Date) -> [Record] {
-        let calendar = Calendar.current
-        let currentYear = calendar.component(.year, from: date)
-        let month = calendar.component(.month, from: date)
-        let day = calendar.component(.day, from: date)
-        let end = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: date)) ?? date
-
-        var descriptor = FetchDescriptor<Record>(
-            predicate: #Predicate<Record> { record in
-                record.createdAt < end
-            },
-            sortBy: [SortDescriptor(\Record.createdAt, order: .reverse)]
-        )
-        descriptor.fetchLimit = 2048
-        let candidates = (try? dependencies.modelContext.fetch(descriptor)) ?? []
-        return candidates.filter {
-            calendar.component(.month, from: $0.createdAt) == month
-                && calendar.component(.day, from: $0.createdAt) == day
-                && calendar.component(.year, from: $0.createdAt) < currentYear
-        }
-    }
 
     private func temporalArcCardData(for arc: TemporalArc) -> TemporalArcCardData {
         TemporalArcCardData(

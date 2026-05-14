@@ -2,11 +2,11 @@ import Foundation
 import SwiftData
 
 @Model
-final class BoardComposition {
+final class Composition {
     var id: UUID = UUID()
     var boardID: UUID = UUID()
     var compositionKey: String = ""
-    var kind: String = BoardCompositionKind.primary.rawValue
+    var kind: String = CompositionKind.primary.rawValue
     var title: String = ""
     var layoutStyle: String = "dashboard_grid"
     var sortOrder: Double = 0
@@ -16,7 +16,7 @@ final class BoardComposition {
     init(
         boardID: UUID,
         compositionKey: String,
-        kind: BoardCompositionKind = .primary,
+        kind: CompositionKind = .primary,
         title: String,
         layoutStyle: String = "dashboard_grid",
         sortOrder: Double = 0,
@@ -34,6 +34,6 @@ final class BoardComposition {
     }
 }
 
-enum BoardCompositionKind: String, Codable, CaseIterable, Sendable {
+enum CompositionKind: String, Codable, CaseIterable, Sendable {
     case primary
 }

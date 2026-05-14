@@ -3,6 +3,7 @@ import Foundation
 struct SproutAnalyzeService {
     private let dateFormatter = ISO8601DateFormatter()
     private let responseMapper = AnalyzeResponseMapper()
+    private let capturePipeline = CapturePipelineStore.shared
 
     func analyzePreview(aggregate: SproutMemoryAggregate) async throws -> SproutAnalyzeResponse {
         try await request(path: "/api/analysis/preview", aggregate: aggregate, bearerToken: nil, analysisReason: "preview")
@@ -80,9 +81,65 @@ struct SproutAnalyzeService {
             )
         )
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        try validate(response: response, data: data)
-        return try JSONDecoder().decode(SproutAnalyzeResponse.self, from: data)
+        let startedAt = Date()
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            await MainActor.run {
+                capturePipeline.recordAnalyzeRequest(
+                    makeRequestRecord(
+                        kind: bearerToken == nil ? "analyze_preview" : "analyze_record",
+                        request: request,
+                        startedAt: startedAt,
+                        response: response,
+                        data: data,
+                        error: nil
+                    )
+                )
+            }
+            try validate(response: response, data: data)
+            return try JSONDecoder().decode(SproutAnalyzeResponse.self, from: data)
+        } catch {
+            await MainActor.run {
+                capturePipeline.recordAnalyzeRequest(
+                    makeRequestRecord(
+                        kind: bearerToken == nil ? "analyze_preview" : "analyze_record",
+                        request: request,
+                        startedAt: startedAt,
+                        response: nil,
+                        data: nil,
+                        error: error
+                    )
+                )
+            }
+            throw error
+        }
+    }
+
+    private func makeRequestRecord(
+        kind: String,
+        request: URLRequest,
+        startedAt: Date,
+        response: URLResponse?,
+        data: Data?,
+        error: Error?
+    ) -> AuthSessionManager.RequestRecord {
+        let httpResponse = response as? HTTPURLResponse
+        return AuthSessionManager.RequestRecord(
+            kind: kind,
+            method: request.httpMethod ?? "POST",
+            url: request.url?.absoluteString ?? MoryConfig.apiBaseURL,
+            requestHeaders: request.allHTTPHeaderFields ?? [:],
+            requestBody: Self.stringBody(from: request.httpBody),
+            startedAt: startedAt,
+            completedAt: Date(),
+            statusCode: httpResponse?.statusCode,
+            responseHeaders: httpResponse?.allHeaderFields.reduce(into: [:]) { partial, item in
+                partial[String(describing: item.key)] = String(describing: item.value)
+            } ?? [:],
+            responseBody: Self.stringBody(from: data),
+            errorDescription: error?.localizedDescription
+        )
     }
 
     private func endpoint(_ path: String) throws -> URL {
@@ -100,6 +157,11 @@ struct SproutAnalyzeService {
             let message = (try? JSONDecoder().decode(ServerErrorResponse.self, from: data).error) ?? "Analyze request failed (\(httpResponse.statusCode))"
             throw OnboardingPreviewError.server(message)
         }
+    }
+
+    private static func stringBody(from data: Data?) -> String? {
+        guard let data, !data.isEmpty else { return nil }
+        return String(data: data, encoding: .utf8) ?? data.base64EncodedString()
     }
 }
 

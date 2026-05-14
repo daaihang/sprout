@@ -1,5 +1,4 @@
 import SwiftUI
-import SwiftData
 
 struct SearchHomeView: View {
     private enum SearchTimeRange: String, CaseIterable, Identifiable {
@@ -91,7 +90,6 @@ struct SearchHomeView: View {
         }
     }
 
-    @Environment(\.modelContext) private var modelContext
     @Environment(AppLocalization.self) private var localization
     @Environment(SproutMemoryRepository.self) private var memoryRepository
 
@@ -491,7 +489,7 @@ struct SearchHomeView: View {
                     browseSection(title: "Memories", subtitle: "Raw capture shells and analyzed records") {
                         ForEach(filteredRecords, id: \.id) { record in
                             NavigationLink {
-                                MemoryRecordDetailView(recordID: record.id, fallbackRecord: fetchRecord(id: record.id))
+                                MemoryRecordDetailView(recordID: record.id)
                             } label: {
                                 recordRow(record)
                             }
@@ -692,13 +690,7 @@ struct SearchHomeView: View {
     }
 
     private func recordRow(_ record: RecordShell) -> some View {
-        Group {
-            if let fullRecord = fetchRecord(id: record.id) {
-                RecordEvidenceSummaryContent(record: fullRecord)
-            } else {
-                RecordShellFallbackSummaryContent(recordShell: record, includeAnalysis: true, maxHeadlineLines: 3)
-            }
-        }
+        RecordShellSummaryContent(recordShell: record, includeMetaLine: true, includeAnalysis: true, maxHeadlineLines: 3)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
         .background(Color.white.opacity(0.78), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -815,11 +807,6 @@ struct SearchHomeView: View {
         formatter.dateStyle = .medium
         formatter.timeStyle = .none
         return formatter.string(from: arc.startDate, to: arc.endDate)
-    }
-
-    private func fetchRecord(id: UUID) -> Record? {
-        let records = (try? modelContext.fetch(FetchDescriptor<Record>())) ?? []
-        return records.first { $0.id == id }
     }
 
     private func filtered<T>(_ items: [T], matching predicate: (T) -> Bool) -> [T] {

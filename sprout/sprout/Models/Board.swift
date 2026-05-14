@@ -2,10 +2,10 @@ import Foundation
 import SwiftData
 
 @Model
-final class DayBoard {
+final class Board {
     var id: UUID = UUID()
     var boardKey: String = ""
-    var kind: String = DayBoardKind.homeDay.rawValue
+    var kind: String = BoardKind.homeDay.rawValue
     var boardDate: Date = Date()
     var title: String = ""
     var createdAt: Date = Date()
@@ -13,7 +13,7 @@ final class DayBoard {
 
     init(
         boardKey: String,
-        kind: DayBoardKind = .homeDay,
+        kind: BoardKind = .homeDay,
         boardDate: Date,
         title: String,
         createdAt: Date = Date(),
@@ -28,6 +28,6 @@ final class DayBoard {
     }
 }
 
-enum DayBoardKind: String, Codable, CaseIterable, Sendable {
+enum BoardKind: String, Codable, CaseIterable, Sendable {
     case homeDay
 }

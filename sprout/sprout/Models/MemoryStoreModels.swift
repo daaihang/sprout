@@ -130,9 +130,9 @@ enum MemoryModelSchema {
     static var allModels: [any PersistentModel.Type] {
         [
             Record.self,
-            DayBoard.self,
-            BoardComposition.self,
-            CompositionItemState.self,
+            Board.self,
+            Composition.self,
+            CompositionItem.self,
             DashboardSystemCardConfig.self,
             ArtifactStoreModel.self,
             RecordAnalysisSnapshotStoreModel.self,

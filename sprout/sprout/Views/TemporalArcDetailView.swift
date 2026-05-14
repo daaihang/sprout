@@ -1,8 +1,6 @@
 import SwiftUI
-import SwiftData
 
 struct TemporalArcDetailView: View {
-    @Environment(\.modelContext) private var modelContext
     @Environment(AppLocalization.self) private var localization
     @Environment(SproutMemoryRepository.self) private var memoryRepository
     let arc: TemporalArc
@@ -17,12 +15,8 @@ struct TemporalArcDetailView: View {
         memoryRepository.arcEvidenceView(for: arc.id)
     }
 
-    private var relatedRecords: [Record] {
-        let records = (try? modelContext.fetch(FetchDescriptor<Record>())) ?? []
-        let ids = Set(currentArc.sourceRecordIDs)
-        return records
-            .filter { ids.contains($0.id) }
-            .sorted { $0.createdAt > $1.createdAt }
+    private var relatedRecords: [RecordShell] {
+        evidenceView?.relatedRecordShells ?? []
     }
 
     private var leadAnalysis: RecordAnalysisSnapshot? {
@@ -253,9 +247,9 @@ struct TemporalArcDetailView: View {
 
             ForEach(relatedRecords, id: \.id) { record in
                 NavigationLink {
-                    MemoryRecordDetailView(recordID: record.id, fallbackRecord: record)
+                    MemoryRecordDetailView(recordID: record.id)
                 } label: {
-                    RecordEvidenceSummaryContent(record: record, includeMetaLine: true, includeAnalysis: false, maxHeadlineLines: 2)
+                    RecordShellSummaryContent(recordShell: record, includeMetaLine: true, includeAnalysis: false, maxHeadlineLines: 2)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(12)
                     .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))

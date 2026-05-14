@@ -2,7 +2,7 @@ import Foundation
 import SwiftData
 
 @Model
-final class CompositionItemState {
+final class CompositionItem {
     var id: UUID = UUID()
     var boardID: UUID = UUID()
     var boardKey: String = ""
@@ -49,7 +49,7 @@ final class CompositionItemState {
     }
 }
 
-extension CompositionItemState {
+extension CompositionItem {
     var span: ContainerSpan {
         ContainerSpan(widthColumns: widthColumns, heightUnits: heightUnits)
     }

@@ -1,58 +1,73 @@
 import SwiftUI
 
+private extension String {
+    var nilIfBlank: String? {
+        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+}
+
 struct TodayInHistoryEntry: Identifiable {
     let id: UUID
-    let record: Record
+    let recordID: UUID
     let date: Date
     let title: String
     let subtitle: String
     let year: Int
     let yearsAgo: Int
 
-    init(record: Record, projection: RecordEvidenceProjector.Projection, referenceYear: Int) {
-        self.id = record.id
-        self.record = record
-        self.date = record.createdAt
-        self.year = Calendar.current.component(.year, from: record.createdAt)
+    init(
+        recordShell: RecordShell,
+        artifacts: [Artifact] = [],
+        analysis: RecordAnalysisSnapshot? = nil,
+        referenceYear: Int
+    ) {
+        self.id = recordShell.id
+        self.recordID = recordShell.id
+        self.date = recordShell.createdAt
+        self.year = Calendar.current.component(.year, from: recordShell.createdAt)
         self.yearsAgo = max(referenceYear - self.year, 0)
-        self.title = TodayInHistoryEntry.makeTitle(from: projection)
-        self.subtitle = TodayInHistoryEntry.makeSubtitle(from: projection)
+        self.title = TodayInHistoryEntry.makeTitle(recordShell: recordShell, artifacts: artifacts)
+        self.subtitle = TodayInHistoryEntry.makeSubtitle(recordShell: recordShell, artifacts: artifacts, analysis: analysis)
     }
 
-    init(record: Record, referenceYear: Int) {
-        self.init(
-            record: record,
-            projection: RecordEvidenceProjector(localization: AppLocalization.shared)
-                .project(record: record, memoryView: nil),
-            referenceYear: referenceYear
-        )
+    private static func makeTitle(recordShell: RecordShell, artifacts: [Artifact]) -> String {
+    let trimmed = recordShell.rawText.trimmingCharacters(in: .whitespacesAndNewlines)
+    if !trimmed.isEmpty {
+        return String(trimmed.prefix(36))
+    }
+    if let locationArtifact = artifacts.first(where: { $0.kind == .location }),
+       let location = locationArtifact.title.nilIfBlank {
+        return String(location.prefix(36))
+    }
+    if artifacts.contains(where: { $0.kind == .photo }) {
+        return localizedString("card.memory.photo_title", default: "Photo Memory")
+    }
+    if let primaryArtifact = artifacts.first,
+       let primaryArtifactTitle = primaryArtifact.title.nilIfBlank {
+        return String(primaryArtifactTitle.prefix(36))
+    }
+    return localizedString("card.memory.default_title", default: "Past Entry")
     }
 
-    private static func makeTitle(from projection: RecordEvidenceProjector.Projection) -> String {
-        let headline = projection.headlineText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !headline.isEmpty {
-            return String(headline.prefix(36))
-        }
-        if let location = projection.linkedLocationName, !location.isEmpty {
-            return location
-        }
-        if projection.primaryKind == .photo {
-            return localizedString("card.memory.photo_title", default: "Photo Memory")
-        }
-        return localizedString("card.memory.default_title", default: "Past Entry")
+    private static func makeSubtitle(recordShell: RecordShell, artifacts: [Artifact], analysis: RecordAnalysisSnapshot?) -> String {
+    if let weatherArtifact = artifacts.first(where: { $0.kind == .weather }),
+       let weather = weatherArtifact.metadata["condition"]?.nilIfBlank {
+        return weather
     }
-
-    private static func makeSubtitle(from projection: RecordEvidenceProjector.Projection) -> String {
-        if let weather = projection.weatherCondition {
-            return weather.label
-        }
-        if let mood = projection.mood {
-            return mood.label
-        }
-        if let person = projection.primaryPersonName, !person.isEmpty {
-            return person
-        }
-        switch projection.primaryKind {
+    if let mood = recordShell.userMood?.nilIfBlank {
+        return mood.capitalized
+    }
+    if let personArtifact = artifacts.first(where: { $0.kind == .personMention }),
+       let person = personArtifact.title.nilIfBlank {
+        return person
+    }
+    if let analysis,
+       let theme = analysis.themes.first(where: { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) {
+        return theme
+    }
+    if let kind = artifacts.first?.kind {
+        switch kind {
         case .photo:
             return localizedString("timeline.category.photo", default: "Photo")
         case .music:
@@ -63,19 +78,17 @@ struct TodayInHistoryEntry: Identifiable {
             return localizedString("timeline.category.todo", default: "To-Do")
         case .link:
             return localizedString("timeline.category.link", default: "Link")
-        case .map:
+        case .location:
             return localizedString("timeline.category.location", default: "Location")
-        case .activity:
-            return localizedString("timeline.category.activity", default: "Activity")
-        case .emotion:
-            return localizedString("timeline.category.emotion", default: "Emotion")
         case .weather:
             return localizedString("timeline.category.weather", default: "Weather")
-        case .people:
+        case .personMention:
             return localizedString("timeline.category.people", default: "People")
-        case .text, .quote, .todayInHistory, .book, .film, .game, .ticket, .health:
+        case .text, .decisionNote, .book, .film, .game, .ticket, .healthMetric:
             return localizedString("timeline.category.note", default: "Note")
         }
+    }
+    return localizedString("timeline.category.note", default: "Note")
     }
 }
 
@@ -179,7 +192,7 @@ struct TodayInHistoryDetailView: View {
 
                         ForEach(group.items) { entry in
                             NavigationLink(
-                                destination: RecordDetailView(record: entry.record)
+                                destination: MemoryRecordDetailView(recordID: entry.recordID)
                             ) {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(entry.title)

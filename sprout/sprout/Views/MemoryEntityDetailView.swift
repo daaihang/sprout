@@ -1,9 +1,7 @@
 import SwiftUI
-import SwiftData
 
 struct MemoryEntityDetailView: View {
     @Environment(AppLocalization.self) private var localization
-    @Environment(\.modelContext) private var modelContext
     @Environment(SproutMemoryRepository.self) private var memoryRepository
 
     let entityID: UUID
@@ -145,7 +143,7 @@ struct MemoryEntityDetailView: View {
             sectionTitle("clock.arrow.trianglehead.counterclockwise.rotate.90", t("memory.entity.related_memories", "Related Memories"))
             ForEach(entityView.relatedRecords, id: \.id) { record in
                 NavigationLink {
-                    MemoryRecordDetailView(recordID: record.id, fallbackRecord: fetchRecord(id: record.id))
+                    MemoryRecordDetailView(recordID: record.id)
                 } label: {
                     relatedRecordRow(record)
                 }
@@ -308,21 +306,10 @@ struct MemoryEntityDetailView: View {
     }
 
     private func relatedRecordRow(_ record: RecordShell) -> some View {
-        Group {
-            if let fullRecord = fetchRecord(id: record.id) {
-                RecordEvidenceSummaryContent(record: fullRecord, includeMetaLine: true, includeAnalysis: false, maxHeadlineLines: 2)
-            } else {
-                RecordShellFallbackSummaryContent(recordShell: record, includeAnalysis: false, maxHeadlineLines: 2)
-            }
-        }
+        RecordShellSummaryContent(recordShell: record, includeMetaLine: true, includeAnalysis: false, maxHeadlineLines: 2)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
         .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-    }
-
-    private func fetchRecord(id: UUID) -> Record? {
-        let records = (try? modelContext.fetch(FetchDescriptor<Record>())) ?? []
-        return records.first { $0.id == id }
     }
 
     private func t(_ key: String, _ defaultValue: String, _ arguments: CVarArg...) -> String {

@@ -5,6 +5,7 @@ struct BackendInteractionDebugView: View {
     @Environment(AppLocalization.self) private var localization
     @Environment(AuthSessionManager.self) private var authSession
     @Environment(InstallExperienceStore.self) private var installExperience
+    @Environment(CapturePipelineStore.self) private var capturePipeline
     @State private var currentNonce = ""
 
     var body: some View {
@@ -97,6 +98,31 @@ struct BackendInteractionDebugView: View {
             Section(t("common.backend.section.refresh", "Refresh 请求调试")) {
                 requestRecordSection(record: authSession.lastRefreshRequest, emptyText: t("common.backend.no_refresh_request", "还没有记录到 Refresh 请求。"))
             }
+
+            Section("Analyze Request Debug") {
+                debugRow(title: "Capture Stage", value: captureStageLabel)
+                debugRow(title: "Capture Detail", value: capturePipeline.detailMessage ?? "-")
+                debugRow(title: "Last Record ID", value: capturePipeline.lastRecordID?.uuidString ?? "-", multiline: true)
+                debugRow(title: "Status Updated At", value: format(date: capturePipeline.lastStatusUpdatedAt))
+
+                Group {
+                    Text(localization.string("common.record_analyze", default: "Record Analyze"))
+                        .font(.subheadline.weight(.semibold))
+                    requestRecordSection(
+                        record: capturePipeline.lastRecordAnalyzeRequest,
+                        emptyText: "还没有记录到 record analyze 请求。"
+                    )
+                }
+
+                Group {
+                    Text(localization.string("common.preview_analyze", default: "Preview Analyze"))
+                        .font(.subheadline.weight(.semibold))
+                    requestRecordSection(
+                        record: capturePipeline.lastPreviewAnalyzeRequest,
+                        emptyText: "还没有记录到 preview analyze 请求。"
+                    )
+                }
+            }
         }
         .listStyle(.insetGrouped)
         .navigationTitle(t("common.backend.title", "前后端交互"))
@@ -162,6 +188,25 @@ struct BackendInteractionDebugView: View {
 
     private var backendHost: String {
         URL(string: MoryConfig.apiBaseURL)?.host ?? "-"
+    }
+
+    private var captureStageLabel: String {
+        switch capturePipeline.stage {
+        case .idle:
+            return "idle"
+        case .saving:
+            return "saving"
+        case .saved:
+            return "saved"
+        case .analyzing:
+            return "analyzing"
+        case .analyzed:
+            return "analyzed"
+        case .analysisUnavailable:
+            return "analysis_unavailable"
+        case .failed:
+            return "failed"
+        }
     }
 
     private func boolText(_ value: Bool) -> String {

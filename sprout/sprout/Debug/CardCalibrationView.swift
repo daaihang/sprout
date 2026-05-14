@@ -361,7 +361,7 @@ struct CardCalibrationView: View {
         case .todayInHistory:
             let data = CalibrationFixtures.todayInHistory(level: contentLevel)
             #if DEBUG
-            let summaries = data.entries.map { $0.record.rawText }.joined(separator: " | ").ifEmpty("-")
+            let summaries = data.entries.map { $0.title }.joined(separator: " | ").ifEmpty("-")
             #else
             let summaries = "-"
             #endif
@@ -819,33 +819,38 @@ private enum CalibrationFixtures {
     }
 
     static func todayInHistory(level: CalibrationContentLevel) -> TodayInHistoryCardData {
-        let year = Calendar.current.component(.year, from: Date())
-        let count: Int
-        switch level {
-        case .short: count = 2
-        case .medium: count = 4
-        case .long: count = 6
-        }
+    let year = Calendar.current.component(.year, from: Date())
+    let count: Int
+    switch level {
+    case .short: count = 2
+    case .medium: count = 4
+    case .long: count = 6
+    }
 
-        let records = (0..<count).map { index -> Record in
-            let record = Record()
-            record.createdAt = Calendar.current.date(byAdding: .year, value: -(index + 1), to: Date()) ?? Date()
-            record.rawText = [
+    let entries = (0..<count).map { index -> TodayInHistoryEntry in
+        let createdAt = Calendar.current.date(byAdding: .year, value: -(index + 1), to: Date()) ?? Date()
+        let recordShell = RecordShell(
+            createdAt: createdAt,
+            updatedAt: createdAt,
+            rawText: [
                 "Found a quiet street after the rain.",
                 "Finished a draft and finally relaxed.",
                 "Took photos by the river at sunset.",
                 "Met an old friend for noodles and a long talk.",
                 "Stayed up too late tuning small UI details.",
                 "Walked home listening to the same album twice."
-            ][index]
-            return record
-        }
-
-        return TodayInHistoryCardData(
-            monthDayLabel: "May 13",
-            entries: records.map { TodayInHistoryEntry(record: $0, referenceYear: year) }
+            ][index],
+            captureSource: .manual,
+            artifactIDs: []
         )
+        return TodayInHistoryEntry(recordShell: recordShell, referenceYear: year)
     }
+
+    return TodayInHistoryCardData(
+        monthDayLabel: "May 13",
+        entries: entries
+    )
+}
 
     static func book(level: CalibrationContentLevel) -> BookCardData {
         switch level {

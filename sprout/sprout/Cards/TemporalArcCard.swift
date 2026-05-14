@@ -15,6 +15,7 @@ struct TemporalArcCardData {
 }
 
 struct TemporalArcCard: View {
+    @Environment(AppLocalization.self) private var localization
     let data: TemporalArcCardData?
 
     var body: some View {
@@ -51,7 +52,7 @@ struct TemporalArcCard: View {
             Image(systemName: "timeline.selection")
                 .font(.system(size: 28))
                 .foregroundStyle(.secondary.opacity(0.4))
-            Text("No active phase yet")
+            Text(localization.string("common.no_active_phase", default: "No active phase yet"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

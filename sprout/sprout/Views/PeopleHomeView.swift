@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct PeopleHomeView: View {
+    @Environment(AppLocalization.self) private var localization
     @Environment(SproutMemoryRepository.self) private var memoryRepository
 
     private var people: [SproutMemoryRepository.PersonIndexEntry] {
@@ -36,7 +37,7 @@ struct PeopleHomeView: View {
 
     private func featuredSection(_ person: SproutMemoryRepository.PersonIndexEntry) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Featured Person")
+            Text(localization.string("common.featured_person", default: "Featured Person"))
                 .font(.headline)
 
             NavigationLink {
@@ -91,7 +92,7 @@ struct PeopleHomeView: View {
 
     private var peopleListSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("People")
+            Text(localization.string("common.people", default: "People"))
                 .font(.headline)
 
             ForEach(remainingPeople, id: \.id) { person in
@@ -104,7 +105,7 @@ struct PeopleHomeView: View {
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(.primary)
 
-                            Text("Person")
+                            Text(localization.string("common.person", default: "Person"))
                                 .font(.caption2.weight(.semibold))
                                 .foregroundStyle(.blue)
                                 .padding(.horizontal, 8)

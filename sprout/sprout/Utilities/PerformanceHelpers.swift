@@ -129,8 +129,15 @@ struct CachedRemoteImage<Placeholder: View>: View {
 }
 
 struct PreparedPhotoMedia {
+    let id: UUID
     let imageData: Data
     let thumbnailData: Data?
+
+    init(id: UUID = UUID(), imageData: Data, thumbnailData: Data?) {
+        self.id = id
+        self.imageData = imageData
+        self.thumbnailData = thumbnailData
+    }
 }
 
 func preparePhotoMediaPayloads(from images: [UIImage]) async -> [PreparedPhotoMedia] {

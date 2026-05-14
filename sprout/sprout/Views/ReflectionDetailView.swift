@@ -1,8 +1,6 @@
 import SwiftUI
-import SwiftData
 
 struct ReflectionDetailView: View {
-    @Environment(\.modelContext) private var modelContext
     @Environment(AppLocalization.self) private var localization
     @Environment(SproutMemoryRepository.self) private var memoryRepository
 
@@ -21,10 +19,9 @@ struct ReflectionDetailView: View {
         memoryRepository.reflectionEvidenceView(for: reflection.id)
     }
 
-    private var relatedRecords: [Record] {
-        let records = (try? modelContext.fetch(FetchDescriptor<Record>())) ?? []
+    private var relatedRecords: [RecordShell] {
         let ids = Set(currentReflection.sourceRecordIDs)
-        return records
+        return memoryRepository.recordShells
             .filter { ids.contains($0.id) }
             .sorted { $0.createdAt > $1.createdAt }
     }
@@ -198,9 +195,9 @@ struct ReflectionDetailView: View {
 
             ForEach(relatedRecords, id: \.id) { record in
                 NavigationLink {
-                    MemoryRecordDetailView(recordID: record.id, fallbackRecord: record)
+                    MemoryRecordDetailView(recordID: record.id)
                 } label: {
-                    RecordEvidenceSummaryContent(record: record, includeMetaLine: true, includeAnalysis: false, maxHeadlineLines: 2)
+                    RecordShellSummaryContent(recordShell: record, includeMetaLine: true, includeAnalysis: false, maxHeadlineLines: 2)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(12)
                     .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))

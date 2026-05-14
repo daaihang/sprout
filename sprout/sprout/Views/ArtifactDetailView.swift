@@ -1,22 +1,14 @@
 import SwiftUI
-import SwiftData
 
 struct ArtifactDetailView: View {
     @Environment(AppLocalization.self) private var localization
-    @Environment(\.modelContext) private var modelContext
     @Environment(SproutMemoryRepository.self) private var memoryRepository
 
     let artifact: Artifact
 
-    private var relatedRecords: [Record] {
-        let records = (try? modelContext.fetch(FetchDescriptor<Record>())) ?? []
-        let ids = Set(
-            memoryRepository.recordShells
-                .filter { $0.artifactIDs.contains(artifact.id) }
-                .map(\.id)
-        )
-        return records
-            .filter { ids.contains($0.id) }
+    private var relatedRecords: [RecordShell] {
+        memoryRepository.recordShells
+            .filter { $0.artifactIDs.contains(artifact.id) }
             .sorted { $0.createdAt > $1.createdAt }
     }
 
@@ -47,7 +39,7 @@ struct ArtifactDetailView: View {
             }
     }
 
-    private var relatedAnalyses: [(record: Record, analysis: RecordAnalysisSnapshot)] {
+    private var relatedAnalyses: [(record: RecordShell, analysis: RecordAnalysisSnapshot)] {
         relatedRecords.compactMap { record in
             guard let analysis = memoryRepository.analysis(for: record.id) else { return nil }
             return (record: record, analysis: analysis)
@@ -129,9 +121,9 @@ struct ArtifactDetailView: View {
             SectionLabel(icon: "clock.arrow.trianglehead.counterclockwise.rotate.90", title: "Source Memories")
             ForEach(relatedRecords, id: \.id) { record in
                 NavigationLink {
-                    MemoryRecordDetailView(recordID: record.id, fallbackRecord: record)
+                    MemoryRecordDetailView(recordID: record.id)
                 } label: {
-                    RecordEvidenceSummaryContent(record: record, includeMetaLine: true, includeAnalysis: false, maxHeadlineLines: 2)
+                    RecordShellSummaryContent(recordShell: record, includeMetaLine: true, includeAnalysis: false, maxHeadlineLines: 2)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(12)
                     .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))

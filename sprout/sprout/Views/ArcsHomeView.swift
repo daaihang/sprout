@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ArcsHomeView: View {
+    @Environment(AppLocalization.self) private var localization
     @Environment(SproutMemoryRepository.self) private var memoryRepository
     let selectedDate: Date
 
@@ -57,7 +58,7 @@ struct ArcsHomeView: View {
     private func featuredSection(_ arc: TemporalArc) -> some View {
         let evidenceView = memoryRepository.arcEvidenceView(for: arc.id)
         return VStack(alignment: .leading, spacing: 12) {
-            Text("Current Phase")
+            Text(localization.string("common.current_phase", default: "Current Phase"))
                 .font(.headline)
 
             NavigationLink {
@@ -102,7 +103,7 @@ struct ArcsHomeView: View {
 
     private var activeArcListSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Active Phases")
+            Text(localization.string("common.active_phases", default: "Active Phases"))
                 .font(.headline)
 
             ForEach(acceptedArcs, id: \.id) { arc in
@@ -145,10 +146,10 @@ struct ArcsHomeView: View {
 
     private var archivedArcListSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Archived Phases")
+            Text(localization.string("common.archived_phases", default: "Archived Phases"))
                 .font(.headline)
 
-            Text("These phases are no longer in the active layer, but their evidence is still preserved.")
+            Text(localization.string("common.archived_phases_note", default: "These phases are no longer in the active layer, but their evidence is still preserved."))
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
@@ -177,7 +178,7 @@ struct ArcsHomeView: View {
                                 .lineLimit(1)
                         }
 
-                        Text("Archived lifecycle state")
+                        Text(localization.string("common.archived_lifecycle_state", default: "Archived lifecycle state"))
                             .font(.caption2)
                             .foregroundStyle(.secondary.opacity(0.8))
                     }

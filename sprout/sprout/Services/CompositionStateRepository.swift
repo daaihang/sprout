@@ -4,8 +4,8 @@ import SwiftData
 @MainActor
 struct CompositionStateRepository {
     struct ResolvedCompositionContext {
-        let board: DayBoard
-        let composition: BoardComposition
+        let board: Board
+        let composition: Composition
         let boardKey: String
         let compositionKey: String
     }
@@ -22,7 +22,7 @@ struct CompositionStateRepository {
     func compositionContext(for date: Date) -> ResolvedCompositionContext {
         let boardKey = Self.boardKey(for: date)
         let board = board(boardKey: boardKey) ?? {
-            let created = DayBoard(
+            let created = Board(
                 boardKey: boardKey,
                 boardDate: startOfDay(for: date),
                 title: boardTitle(for: date)
@@ -32,7 +32,7 @@ struct CompositionStateRepository {
         }()
         let compositionKey = compositionKey(for: boardKey)
         let composition = composition(boardID: board.id, compositionKey: compositionKey) ?? {
-            let created = BoardComposition(
+            let created = Composition(
                 boardID: board.id,
                 compositionKey: compositionKey,
                 title: board.title
@@ -65,9 +65,9 @@ struct CompositionStateRepository {
         "\(boardKey):primary"
     }
 
-    func board(boardKey: String) -> DayBoard? {
-        var descriptor = FetchDescriptor<DayBoard>(
-            predicate: #Predicate<DayBoard> { board in
+    func board(boardKey: String) -> Board? {
+        var descriptor = FetchDescriptor<Board>(
+            predicate: #Predicate<Board> { board in
                 board.boardKey == boardKey
             }
         )
@@ -75,9 +75,9 @@ struct CompositionStateRepository {
         return try? modelContext.fetch(descriptor).first
     }
 
-    func composition(boardID: UUID, compositionKey: String) -> BoardComposition? {
-        var descriptor = FetchDescriptor<BoardComposition>(
-            predicate: #Predicate<BoardComposition> { composition in
+    func composition(boardID: UUID, compositionKey: String) -> Composition? {
+        var descriptor = FetchDescriptor<Composition>(
+            predicate: #Predicate<Composition> { composition in
                 composition.boardID == boardID && composition.compositionKey == compositionKey
             }
         )
@@ -85,9 +85,9 @@ struct CompositionStateRepository {
         return try? modelContext.fetch(descriptor).first
     }
 
-    func state(compositionKey: String, itemKey: String) -> CompositionItemState? {
-        var descriptor = FetchDescriptor<CompositionItemState>(
-            predicate: #Predicate<CompositionItemState> { state in
+    func state(compositionKey: String, itemKey: String) -> CompositionItem? {
+        var descriptor = FetchDescriptor<CompositionItem>(
+            predicate: #Predicate<CompositionItem> { state in
                 state.compositionKey == compositionKey && state.itemKey == itemKey
             }
         )
@@ -146,7 +146,7 @@ struct CompositionStateRepository {
             return
         }
 
-        let created = CompositionItemState(
+        let created = CompositionItem(
             boardID: boardID,
             boardKey: boardKey,
             compositionID: compositionID,

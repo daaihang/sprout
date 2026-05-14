@@ -14,7 +14,7 @@ struct DailyView: View {
     let topContentInset: CGFloat
 
     @Query private var records: [Record]
-    @Query private var compositionStates: [CompositionItemState]
+    @Query private var compositionStates: [CompositionItem]
     @Query(sort: \DashboardSystemCardConfig.dashboardOrder, order: .forward) private var systemConfigs: [DashboardSystemCardConfig]
     private var compositionStateRepository: CompositionStateRepository {
         CompositionStateRepository(modelContext: modelContext)
@@ -43,10 +43,10 @@ struct DailyView: View {
         )
         let boardKey = CompositionStateRepository.boardKey(for: start)
         _compositionStates = Query(
-            filter: #Predicate<CompositionItemState> { state in
+            filter: #Predicate<CompositionItem> { state in
                 state.boardKey == boardKey
             },
-            sort: \CompositionItemState.updatedAt,
+            sort: \CompositionItem.updatedAt,
             order: .reverse
         )
         self.date = date
@@ -181,7 +181,7 @@ struct HomeBoardCardWrapper: View {
                 missingTargetView
             }
         case .record:
-            fallbackRecordDetailView
+            recordDetailView
         case .arc:
             if let arc = memoryRepository.temporalArc(for: projection.targetID) {
                 TemporalArcDetailView(arc: arc)
@@ -195,7 +195,7 @@ struct HomeBoardCardWrapper: View {
                 missingTargetView
             }
         case .system:
-            fallbackRecordDetailView
+            recordDetailView
         }
     }
 
@@ -207,11 +207,10 @@ struct HomeBoardCardWrapper: View {
         memoryRepository.reflections.first { $0.id == projection.targetID }
     }
 
-    private var fallbackRecordDetailView: some View {
+    private var recordDetailView: some View {
         MemoryRecordDetailView(
-            recordID: projection.record.id,
-            fallbackRecord: projection.record,
-            focusedSection: projection.focusedSection
+        recordID: projection.record.id,
+        focusedSection: projection.focusedSection
         )
     }
 

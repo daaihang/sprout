@@ -365,28 +365,33 @@ struct CardDebugView: View {
     }
 
     func makeTodayInHistorySample(entryCount: Int) -> TodayInHistoryCardData {
-        let calendar = Calendar.current
-        let currentYear = calendar.component(.year, from: Date())
-        let records = (0..<entryCount).map { index -> Record in
-            let record = Record()
-            let yearsAgo = index + 1
-            record.createdAt = calendar.date(byAdding: .year, value: -yearsAgo, to: Date()) ?? Date()
-            record.rawText = [
+    let calendar = Calendar.current
+    let currentYear = calendar.component(.year, from: Date())
+    let entries = (0..<entryCount).map { index -> TodayInHistoryEntry in
+        let yearsAgo = index + 1
+        let createdAt = calendar.date(byAdding: .year, value: -yearsAgo, to: Date()) ?? Date()
+        let recordShell = RecordShell(
+            createdAt: createdAt,
+            updatedAt: createdAt,
+            rawText: [
                 "那天在公园里拍到了很好看的光影。",
                 "第一次去了新的咖啡馆，记住了窗边的位置。",
                 "和老朋友散步，聊了很久。",
                 "完成了一个重要项目，晚上吃了庆祝晚餐。",
                 "在路上听到喜欢的歌，突然很开心。",
                 "整理旧照片时想起了很多事情。",
-            ][index % 6]
-            return record
-        }
-
-        return TodayInHistoryCardData(
-            monthDayLabel: "May 11",
-            entries: records.map { TodayInHistoryEntry(record: $0, referenceYear: currentYear) }
+            ][index % 6],
+            captureSource: .manual,
+            artifactIDs: []
         )
+        return TodayInHistoryEntry(recordShell: recordShell, referenceYear: currentYear)
     }
+
+    return TodayInHistoryCardData(
+        monthDayLabel: "May 11",
+        entries: entries
+    )
+}
 
     func addTodoItem() {
         let trimmed = newTodoText.trimmingCharacters(in: .whitespacesAndNewlines)

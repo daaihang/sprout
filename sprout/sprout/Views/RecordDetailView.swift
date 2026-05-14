@@ -994,14 +994,34 @@ private extension Array where Element: Hashable {
 // MARK: - Preview
 
 #Preview {
-    NavigationStack {
-        RecordDetailView(record: {
-            let r = Record()
-            r.rawText = "今天读到了一句话，让人感触很深：生活不是等待暴风雨过去，而是学会在雨中起舞。"
-            r.userMood = MoodType.calm.rawValue
-            r.userIntensity = 4
-            r.captureSource = .composer
-            return r
-        }(), focusedSection: .text)
+    let repository = SproutMemoryRepository()
+    let createdAt = Date()
+    let aggregate = SproutMemoryAggregate(
+        recordShell: RecordShell(
+            createdAt: createdAt,
+            updatedAt: createdAt,
+            rawText: "今天读到了一句话，让人感触很深：生活不是等待暴风雨过去，而是学会在雨中起舞。",
+            captureSource: .composer,
+            artifactIDs: [],
+            userMood: MoodType.calm.rawValue,
+            userIntensity: 4
+        ),
+        artifacts: [
+            Artifact(
+                kind: .text,
+                title: "一句触动很深的话",
+                summary: "关于在变化中学会行动的提醒。",
+                textContent: "今天读到了一句话，让人感触很深：生活不是等待暴风雨过去，而是学会在雨中起舞。",
+                createdAt: createdAt,
+                updatedAt: createdAt
+            )
+        ],
+        knownEntities: []
+    )
+    try? repository.upsertAggregate(aggregate)
+
+    return NavigationStack {
+        MemoryRecordDetailView(recordID: aggregate.recordShell.id, focusedSection: .text)
     }
+    .environment(repository)
 }

@@ -23,6 +23,7 @@ struct ReflectionInboxView: View {
         }
     }
 
+    @Environment(AppLocalization.self) private var localization
     @Environment(SproutMemoryRepository.self) private var memoryRepository
 
     @State private var query = ""
@@ -73,16 +74,16 @@ struct ReflectionInboxView: View {
             .padding(.bottom, 40)
         }
         .background(Color.clear)
-        .navigationTitle("Reflection Inbox")
+        .navigationTitle(localization.string("common.reflection_inbox", default: "Reflection Inbox"))
         .navigationBarTitleDisplayMode(.inline)
-        .searchable(text: $query, prompt: "Search reflections")
+        .searchable(text: $query, prompt: localization.string("content.search_prompt", default: "Search reflections"))
     }
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Reflection Inbox")
                 .font(.largeTitle.weight(.semibold))
-            Text("Save what matters, dismiss what doesn't, and keep phase reflections visible as your memory system grows.")
+            Text(localization.string("content.reflection_inbox_subtitle", default: "Save what matters, dismiss what doesn't, and keep phase reflections visible as your memory system grows."))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }

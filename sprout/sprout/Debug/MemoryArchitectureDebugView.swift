@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct MemoryArchitectureDebugView: View {
+    @Environment(AppLocalization.self) private var localization
     @Environment(SproutMemoryRepository.self) private var memoryRepository
 
     private var recentAnalyses: [RecordAnalysisSnapshot] {
@@ -88,16 +89,16 @@ struct MemoryArchitectureDebugView: View {
             debugRow("Temporal Arcs", "\(memoryRepository.temporalArcs.count)")
             debugRow("Reflections", "\(memoryRepository.reflections.count)")
         } header: {
-            Text("Snapshot")
+            Text(localization.string("common.snapshot", default: "Snapshot"))
         } footer: {
-            Text("This page mirrors the v3 memory stack directly: capture shells, artifacts, analyses, graph, arcs, and reflections.")
+            Text(localization.string("common.mirror_v3_memory_stack", default: "This page mirrors the v3 memory stack directly: capture shells, artifacts, analyses, graph, arcs, and reflections."))
         }
     }
 
     private var recentAnalysesSection: some View {
         Section {
             if recentAnalyses.isEmpty {
-                Text("No analysis snapshots stored yet.")
+                Text(localization.string("common.no_analysis_snapshots", default: "No analysis snapshots stored yet."))
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(recentAnalyses, id: \.id) { analysis in
@@ -120,16 +121,16 @@ struct MemoryArchitectureDebugView: View {
                 }
             }
         } header: {
-            Text("Recent Analyses")
+            Text(localization.string("common.recent_analyses", default: "Recent Analyses"))
         } footer: {
-            Text("Candidate edge count shows whether AI is proposing graph structure, not just prose.")
+            Text(localization.string("common.candidate_edge_note", default: "Candidate edge count shows whether AI is proposing graph structure, not just prose."))
         }
     }
 
     private var graphSection: some View {
         Section {
             if strongestEdges.isEmpty {
-                Text("No entity relationships accumulated yet.")
+                Text(localization.string("common.no_entity_relationships", default: "No entity relationships accumulated yet."))
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(strongestEdges, id: \.id) { edge in
@@ -144,7 +145,7 @@ struct MemoryArchitectureDebugView: View {
                             SignalPill(title: "\(edge.sourceRecordIDs.count) records", tint: .green)
                             SignalPill(title: "\(edge.sourceArtifactIDs.count) artifacts", tint: .orange)
                         }
-                        Text("Last seen \(edge.lastSeenAt.formatted(date: .abbreviated, time: .shortened))")
+                        Text(localization.string("common.last_seen_at", default: "Last seen %@", arguments: [edge.lastSeenAt.formatted(date: .abbreviated, time: .shortened)]))
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
@@ -152,16 +153,16 @@ struct MemoryArchitectureDebugView: View {
                 }
             }
         } header: {
-            Text("Graph Evidence")
+            Text(localization.string("common.graph_evidence", default: "Graph Evidence"))
         } footer: {
-            Text("This is the long-term semantic layer. If this stays empty, entity pages and phase building remain shallow.")
+            Text(localization.string("common.long_term_semantic_layer", default: "This is the long-term semantic layer. If this stays empty, entity pages and phase building remain shallow."))
         }
     }
 
     private var arcSection: some View {
         Section {
             if recentArcs.isEmpty {
-                Text("No temporal arcs built yet.")
+                Text(localization.string("common.no_temporal_arcs", default: "No temporal arcs built yet."))
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(recentArcs, id: \.id) { arc in
@@ -182,16 +183,16 @@ struct MemoryArchitectureDebugView: View {
                 }
             }
         } header: {
-            Text("Temporal Arcs")
+            Text(localization.string("common.temporal_arcs", default: "Temporal Arcs"))
         } footer: {
-            Text("Arcs should emerge from repeated structure. If records are analyzed but arcs stay empty, Phase 5 is not really alive yet.")
+            Text(localization.string("common.arcs_emergence_note", default: "Arcs should emerge from repeated structure. If records are analyzed but arcs stay empty, Phase 5 is not really alive yet."))
         }
     }
 
     private var reflectionSection: some View {
         Section {
             if recentReflections.isEmpty {
-                Text("No reflections generated yet.")
+                Text(localization.string("common.no_reflections_yet_debug", default: "No reflections generated yet."))
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(recentReflections, id: \.id) { reflection in
@@ -212,9 +213,9 @@ struct MemoryArchitectureDebugView: View {
                 }
             }
         } header: {
-            Text("Reflections")
+            Text(localization.string("common.reflections", default: "Reflections"))
         } footer: {
-            Text("Reflection is the top layer. It should sit on top of analysis, graph, and arcs instead of replacing them.")
+            Text(localization.string("common.reflection_top_layer", default: "Reflection is the top layer. It should sit on top of analysis, graph, and arcs instead of replacing them."))
         }
     }
 
@@ -226,9 +227,9 @@ struct MemoryArchitectureDebugView: View {
             debugRow("Saved Reflections", "\(savedReflectionCount)")
             debugRow("Dismissed Reflections", "\(dismissedReflectionCount)")
         } header: {
-            Text("Lifecycle")
+            Text(localization.string("common.lifecycle", default: "Lifecycle"))
         } footer: {
-            Text("This is the management layer. If arcs cannot be archived or reflections cannot move between active, saved, and dismissed states, Phase 5 is still only a static demo.")
+            Text(localization.string("common.management_layer_note", default: "This is the management layer. If arcs cannot be archived or reflections cannot move between active, saved, and dismissed states, Phase 5 is still only a static demo."))
         }
     }
 
