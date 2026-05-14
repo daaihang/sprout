@@ -86,12 +86,13 @@
 - analyze preview 主链已切到 `/api/analysis/preview`
 - `RecordDetailView` 已切到 artifact evidence-first，`text/photo/audio/link/todo/music/map/weather/people` 优先从 `memoryView.artifacts` 和 analysis evidence 读取
 - `RecordTimelineView` 与 `TodayInHistoryCard` 已切到 shared `RecordEvidenceProjector`，preview kind / headline / subtitle / meta 统一改为 artifact-backed evidence-first
+- 搜索页与多个 detail 页的 related memory 摘要已开始共用 shared evidence summary rendering，而不是各自拼接 `Record.body` / `RecordShell.rawText`
 - `MediaCard` 当前仅保留 photo/audio 的 payload backing；music/link/todo 的新写入路径已不再创建 `MediaCard`
 
 剩余：
 
 - `MediaCard` 仍作为 photo/audio payload backing store 存在
-- 搜索页、其他辅助 preview / debug 读取链仍需继续统一到 shared evidence projector
+- 仍有少量 fetch-failure fallback、debug 读取链、局部 section helper 未完全统一到 shared evidence projection
 
 ## 4. 下一阶段动作
 
@@ -99,9 +100,10 @@
 
 1. 继续把 `RecordDetail` 的 section 数据源改为 artifact evidence-first
 2. 把搜索、列表、详情辅助摘要统一收敛到 shared evidence projection
-3. 梳理 `MediaCard` payload 字段，避免重新承载内容真相
-4. 核对移除旧字段后的 SwiftData schema 迁移风险
-5. 开始设计 Graph / Arc 一级体验与 Reflection API 的接口边界
+3. 把 `RecordDetail` 的 section 内部渲染继续抽成更明确的 artifact evidence views
+4. 梳理 `MediaCard` payload 字段，避免重新承载内容真相
+5. 核对移除旧字段后的 SwiftData schema 迁移风险
+6. 开始设计 Graph / Arc 一级体验与 Reflection API 的接口边界
 
 ### 4.2 UI 动作
 

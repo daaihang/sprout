@@ -695,28 +695,21 @@ struct SearchHomeView: View {
     }
 
     private func recordRow(_ record: RecordShell) -> some View {
-        let analysis = memoryRepository.analysis(for: record.id)
-        return VStack(alignment: .leading, spacing: 6) {
-            Text(record.rawText.isEmpty ? "Untitled Memory" : String(record.rawText.prefix(120)))
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.primary)
-                .lineLimit(3)
+        Group {
+            if let fullRecord = fetchRecord(id: record.id) {
+                RecordEvidenceSummaryContent(record: fullRecord)
+            } else {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(record.rawText.isEmpty ? "Untitled Memory" : String(record.rawText.prefix(120)))
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(3)
 
-            if let analysis {
-                AnalysisCompactEvidenceView(
-                    analysis: analysis,
-                    showInsight: true,
-                    showEntities: true,
-                    showRetrievalTerms: true,
-                    showReflectionHint: false,
-                    maxEntityCount: 3,
-                    maxRetrievalTermCount: 4
-                )
+                    Text(record.createdAt.formatted(date: .abbreviated, time: .shortened))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
-
-            Text(record.createdAt.formatted(date: .abbreviated, time: .shortened))
-                .font(.caption)
-                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)

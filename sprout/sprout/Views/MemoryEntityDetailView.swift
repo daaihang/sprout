@@ -312,13 +312,19 @@ struct MemoryEntityDetailView: View {
     }
 
     private func relatedRecordRow(_ record: RecordShell) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(record.rawText.isEmpty ? t("memory.entity.memory.untitled", "Untitled Memory") : String(record.rawText.prefix(100)))
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(.primary)
-            Text(record.createdAt.formatted(date: .abbreviated, time: .shortened))
-                .font(.caption)
-                .foregroundStyle(.secondary)
+        Group {
+            if let fullRecord = fetchRecord(id: record.id) {
+                RecordEvidenceSummaryContent(record: fullRecord, includeMetaLine: true, includeAnalysis: false, maxHeadlineLines: 2)
+            } else {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(record.rawText.isEmpty ? t("memory.entity.memory.untitled", "Untitled Memory") : String(record.rawText.prefix(100)))
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.primary)
+                    Text(record.createdAt.formatted(date: .abbreviated, time: .shortened))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)

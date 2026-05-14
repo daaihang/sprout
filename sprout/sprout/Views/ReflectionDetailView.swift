@@ -201,14 +201,7 @@ struct ReflectionDetailView: View {
                 NavigationLink {
                     RecordDetailView(record: record)
                 } label: {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(record.body.isEmpty ? "Untitled Memory" : String(record.body.prefix(100)))
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(.primary)
-                        Text(record.createdAt.formatted(date: .abbreviated, time: .shortened))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+                    RecordEvidenceSummaryContent(record: record, includeMetaLine: true, includeAnalysis: false, maxHeadlineLines: 2)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(12)
                     .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))

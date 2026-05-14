@@ -129,6 +129,7 @@ Current detail-page truth after this round:
 - `RecordDetailView` now resolves `text/photo/audio/link/todo/music/map/weather/people` from `memoryView.artifacts` first.
 - AI entity evidence is surfaced directly in people/detail evidence areas.
 - `RecordTimelineView` and `TodayInHistoryCard` now use a shared `RecordEvidenceProjector`, so preview kind, headline, subtitle, and meta labels come from the same artifact-backed evidence path as detail.
+- `SearchHomeView`, `ArtifactDetailView`, `ReflectionDetailView`, `TemporalArcDetailView`, and `MemoryEntityDetailView` now reuse shared memory evidence summary rendering for related memory rows instead of hand-built `Record.body` / `RecordShell.rawText` snippets.
 - `Record` and `MediaCard` are retained only as compatibility fallback for older rows and photo/audio payload lookup.
 
 ## Subscription System
@@ -196,7 +197,7 @@ The backend will normalize `AI_BASE_URL=https://api.deepseek.com` to the correct
 
 The current best-practice next steps are:
 
-1. Replace remaining search/list/detail auxiliary preview helpers with shared artifact-backed evidence projection.
-2. Refresh the remaining high-frequency card internals and detail layouts so artifact-backed content also looks intentional.
+1. Replace the remaining residual preview helpers and fetch-failure fallbacks with shared artifact-backed evidence projection.
+2. Continue extracting `RecordDetailView` sections into clearer artifact evidence views, especially for media-heavy and mixed-content sections.
 3. Surface graph and phase objects more directly in navigation and detail views.
 4. Add a dedicated backend Reflection API while keeping iOS local-first.

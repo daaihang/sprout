@@ -185,8 +185,77 @@ struct RecordDetailView: View {
                     return kindLabel(kind)
                 }
                 return "\(artifacts.count) \(kindLabel(kind).lowercased())"
-            }
+        }
         return parts.isEmpty ? "No artifacts attached" : parts.joined(separator: " · ")
+    }
+
+    private var locationCoordinate: CLLocationCoordinate2D? {
+        if let artifact = primaryArtifact(for: .location),
+           let coordinate = coordinate(from: artifact) {
+            return coordinate
+        }
+        if let lat = record.latitude, let lng = record.longitude {
+            return CLLocationCoordinate2D(latitude: lat, longitude: lng)
+        }
+        return nil
+    }
+
+    private var locationTitleText: String? {
+        if let artifact = primaryArtifact(for: .location) {
+            return nonEmpty(artifact.title) ?? evidence.linkedLocationName
+        }
+        return evidence.linkedLocationName
+    }
+
+    private var locationSummaryText: String? {
+        if let artifact = primaryArtifact(for: .location) {
+            return nonEmpty(artifact.summary)
+        }
+        return nil
+    }
+
+    private var weatherEvidence: (condition: WeatherCondition, temperature: Double, locationText: String?, observedAt: Date?, insight: String?)? {
+        if let artifact = primaryArtifact(for: .weather),
+           let condition = WeatherCondition(rawValue: artifact.metadata["condition"] ?? artifact.title) {
+            return (
+                condition: condition,
+                temperature: Double(artifact.metadata["temperature"] ?? "") ?? record.temperature ?? 20,
+                locationText: artifact.metadata["location"] ?? nonEmpty(artifact.summary) ?? evidence.linkedLocationName,
+                observedAt: artifact.createdAt,
+                insight: nonEmpty(artifact.textContent)
+            )
+        }
+        if let condition = evidence.weatherCondition {
+            return (
+                condition: condition,
+                temperature: record.temperature ?? 20,
+                locationText: evidence.linkedLocationName,
+                observedAt: record.weatherObservedAt,
+                insight: nil
+            )
+        }
+        return nil
+    }
+
+    private var resolvedPeople: [PersonCardItem] {
+        if !peopleArtifactRows.isEmpty {
+            return peopleArtifactRows
+        }
+
+        let analysisPeople = analysisPeopleReferences.map {
+            PersonCardItem(
+                id: $0.id,
+                name: $0.name,
+                relationship: $0.kind.badgeLabel,
+                mentionCount: 1
+            )
+        }
+
+        if !analysisPeople.isEmpty {
+            return analysisPeople
+        }
+
+        return (record.mentionedPeople ?? []).map(PersonCardItem.init(person:))
     }
 
     // MARK: Body
@@ -499,63 +568,34 @@ struct RecordDetailView: View {
 
     @ViewBuilder
     private var weatherSection: some View {
-        if let artifact = primaryArtifact(for: .weather),
-           let condition = WeatherCondition(rawValue: artifact.metadata["condition"] ?? artifact.title) {
-            let temp = Double(artifact.metadata["temperature"] ?? "") ?? record.temperature ?? 20
-            let locationText = artifact.metadata["location"] ?? nonEmpty(artifact.summary) ?? record.location
-            let observedAt = artifact.createdAt
+        if let weather = weatherEvidence {
             VStack(alignment: .leading, spacing: 10) {
                 SectionLabel(icon: "cloud.sun.fill", title: t("detail.section.weather", "Weather"))
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("\(Int(temp))°")
+                        Text("\(Int(weather.temperature))°")
                             .font(.system(size: 42, weight: .semibold, design: .rounded))
-                        Text(condition.label).font(.subheadline).foregroundStyle(.secondary)
-                        if let locationText, !locationText.isEmpty {
+                        Text(weather.condition.label).font(.subheadline).foregroundStyle(.secondary)
+                        if let locationText = weather.locationText, !locationText.isEmpty {
                             Label(locationText, systemImage: "location.fill")
                                 .font(.caption).foregroundStyle(.secondary)
                         }
-                        Label(observedAt.formatted(date: .abbreviated, time: .shortened), systemImage: "clock")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Image(systemName: condition.sfSymbol)
-                        .font(.system(size: 48))
-                        .foregroundStyle(condition.color)
-                        .symbolRenderingMode(.multicolor)
-                }
-                if let insight = nonEmpty(artifact.textContent) {
-                    Text(insight)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .detailCard()
-        } else if let weatherStr = record.weather, let condition = WeatherCondition(rawValue: weatherStr) {
-            let temp = record.temperature ?? 20
-            VStack(alignment: .leading, spacing: 10) {
-                SectionLabel(icon: "cloud.sun.fill", title: t("detail.section.weather", "Weather"))
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("\(Int(temp))°")
-                            .font(.system(size: 42, weight: .semibold, design: .rounded))
-                        Text(condition.label).font(.subheadline).foregroundStyle(.secondary)
-                        if let loc = record.location, !loc.isEmpty {
-                            Label(loc, systemImage: "location.fill")
-                                .font(.caption).foregroundStyle(.secondary)
-                        }
-                        if let observedAt = record.weatherObservedAt {
+                        if let observedAt = weather.observedAt {
                             Label(observedAt.formatted(date: .abbreviated, time: .shortened), systemImage: "clock")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
                     }
                     Spacer()
-                    Image(systemName: condition.sfSymbol)
+                    Image(systemName: weather.condition.sfSymbol)
                         .font(.system(size: 48))
-                        .foregroundStyle(condition.color)
+                        .foregroundStyle(weather.condition.color)
                         .symbolRenderingMode(.multicolor)
+                }
+                if let insight = weather.insight {
+                    Text(insight)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
             .detailCard()
@@ -816,9 +856,7 @@ struct RecordDetailView: View {
 
     @ViewBuilder
     private var peopleSection: some View {
-        let people = !peopleArtifactRows.isEmpty
-            ? peopleArtifactRows
-            : (record.mentionedPeople ?? []).map(PersonCardItem.init(person:))
+        let people = resolvedPeople
         if !people.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 SectionLabel(icon: "person.2.fill", title: t("detail.section.people", "People"))
@@ -910,33 +948,20 @@ struct RecordDetailView: View {
 
     @ViewBuilder
     private var mapSection: some View {
-        if let artifact = primaryArtifact(for: .location),
-           let coordinate = coordinate(from: artifact) {
+        if let coordinate = locationCoordinate {
             VStack(alignment: .leading, spacing: 10) {
                 SectionLabel(icon: "map.fill", title: t("detail.section.location", "Location"))
                 MapSnapshotView(coordinate: coordinate)
                     .frame(height: 200)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
-                Text(artifact.title)
-                    .font(.subheadline.weight(.semibold))
-                if let summary = nonEmpty(artifact.summary) {
+                if let title = locationTitleText {
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                }
+                if let summary = locationSummaryText {
                     Text(summary)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                }
-            }
-            .detailCard()
-        } else if let lat = record.latitude, let lng = record.longitude {
-            VStack(alignment: .leading, spacing: 10) {
-                SectionLabel(icon: "map.fill", title: t("detail.section.location", "Location"))
-                MapSnapshotView(
-                    coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lng)
-                )
-                .frame(height: 200)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                if let loc = record.location, !loc.isEmpty {
-                    Label(loc, systemImage: "location.fill")
-                        .font(.subheadline).foregroundStyle(.secondary)
                 }
             }
             .detailCard()
@@ -1146,7 +1171,7 @@ struct RecordDetailView: View {
             Divider()
             HStack(spacing: 16) {
                 Label(formattedDate(record.createdAt), systemImage: "clock")
-                if record.latitude == nil, let loc = record.location, !loc.isEmpty {
+                if record.latitude == nil, let loc = locationTitleText, !loc.isEmpty {
                     Label(loc, systemImage: "location")
                 }
             }

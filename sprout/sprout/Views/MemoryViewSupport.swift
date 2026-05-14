@@ -196,3 +196,57 @@ struct SectionLabel: View {
             .foregroundStyle(.secondary)
     }
 }
+
+@MainActor
+struct RecordEvidenceSummaryContent: View {
+    @Environment(AppLocalization.self) private var localization
+    @Environment(SproutMemoryRepository.self) private var memoryRepository
+
+    let record: Record
+    var includeMetaLine: Bool = true
+    var includeAnalysis: Bool = true
+    var maxHeadlineLines: Int = 3
+
+    private var evidence: RecordEvidenceProjector.Projection {
+        RecordEvidenceProjector(localization: localization)
+            .project(record: record, memoryView: memoryRepository.memoryView(for: record.id))
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(evidence.headlineText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Untitled Memory" : evidence.headlineText)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
+                .lineLimit(maxHeadlineLines)
+
+            if includeMetaLine, let supporting = evidence.supportingText, !supporting.isEmpty {
+                Text(supporting)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            } else if includeMetaLine, !evidence.metaLabels.isEmpty {
+                Text(evidence.metaLabels.joined(separator: " · "))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            if includeAnalysis,
+               let analysis = evidence.analysis {
+                AnalysisCompactEvidenceView(
+                    analysis: analysis,
+                    showInsight: true,
+                    showEntities: true,
+                    showRetrievalTerms: true,
+                    showReflectionHint: false,
+                    maxEntityCount: 3,
+                    maxRetrievalTermCount: 4
+                )
+            }
+
+            Text(record.createdAt.formatted(date: .abbreviated, time: .shortened))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+}
