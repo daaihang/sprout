@@ -1961,6 +1961,91 @@
           }
         }
       }
+    },
+    "content.search_prompt": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search reflections"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "搜索 Reflections"
+          }
+        }
+      }
+    },
+    "content.one_capture_event": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "One capture event creates one or more artifacts, with typed text becoming the primary text artifact."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一次 Capture 事件会创建一个或多个 Artifacts，输入文本会自动成为主文本 Artifact"
+          }
+        }
+      }
+    },
+    "content.phase_title": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phase"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "阶段"
+          }
+        }
+      }
+    },
+    "content.reflection_inbox_subtitle": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save what matters, dismiss what doesn't, and keep phase reflections visible as your memory system grows."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存重要的，忽略不重要的，让阶段 Reflections 在你的记忆系统成长时保持可见"
+          }
+        }
+      }
+    },
+    "content.v3_memory_layer_result": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This is the v3 memory-layer result after the preview response is mapped into snapshot, graph, and reflection state."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这是 v3 记忆层结果，在预览响应映射到快照、图和 Reflection 状态后产生"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

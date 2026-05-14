@@ -52,7 +52,11 @@ struct TemporalArcDetailView: View {
         .navigationTitle(currentArc.title)
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showReflectionEditor) {
-            ReflectionEditView(recordID: nil, arcID: currentArc.id)
+            ReflectionEditView(
+                reflectionID: memoryRepository.linkedReflection(forArcID: currentArc.id)?.id,
+                recordID: nil,
+                arcID: currentArc.id
+            )
         }
     }
 
@@ -121,7 +125,14 @@ struct TemporalArcDetailView: View {
             Button(action: { showReflectionEditor = true }) {
                 HStack(spacing: 8) {
                     Image(systemName: "sparkles")
-                    Text(localization.string("common.create_reflection_for_phase", default: "Create Reflection for Phase"))
+                    Text(
+                        localization.string(
+                            "common.create_reflection_for_phase",
+                            default: memoryRepository.linkedReflection(forArcID: currentArc.id) == nil
+                                ? "Create Reflection for Phase"
+                                : "Edit Reflection for Phase"
+                        )
+                    )
                 }
                 .font(.subheadline.weight(.medium))
                 .frame(maxWidth: .infinity)

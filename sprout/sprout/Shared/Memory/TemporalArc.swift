@@ -7,7 +7,7 @@ enum TemporalArcStatus: String, Codable, CaseIterable, Sendable {
 }
 
 struct TemporalArc: Identifiable, Codable, Hashable, Sendable {
-    let id: UUID
+    var id: UUID
     var title: String
     var summary: String
     var status: TemporalArcStatus

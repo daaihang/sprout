@@ -5,12 +5,30 @@ struct ReflectionEditView: View {
     @Environment(AppLocalization.self) private var localization
     @Environment(SproutMemoryRepository.self) private var memoryRepository
 
+    let reflectionID: UUID?
     let recordID: UUID?
     let arcID: UUID?
 
     @State private var title: String = ""
     @State private var notes: String = ""
     @State private var status: ReflectionStatus = .active
+
+    private var existingReflection: ReflectionSnapshot? {
+        if let reflectionID {
+            return memoryRepository.reflection(reflectionID)
+        }
+        if let arcID {
+            return memoryRepository.linkedReflection(forArcID: arcID)
+        }
+        if let recordID {
+            return memoryRepository.recordReflection(forRecordID: recordID)
+        }
+        return nil
+    }
+
+    private var isEditingExistingReflection: Bool {
+        existingReflection != nil
+    }
 
     private var isValid: Bool {
         !title.trimmingCharacters(in: .whitespaces).isEmpty &&
@@ -53,7 +71,7 @@ struct ReflectionEditView: View {
                     }
                 }
             }
-            .navigationTitle("Create Reflection")
+            .navigationTitle(isEditingExistingReflection ? "Edit Reflection" : "Create Reflection")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -62,30 +80,37 @@ struct ReflectionEditView: View {
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Save") {
+                    Button(isEditingExistingReflection ? "Update" : "Save") {
                         saveReflection()
                     }
                     .disabled(!isValid)
                 }
             }
         }
+        .onAppear(perform: loadExistingReflectionIfNeeded)
     }
 
     private func saveReflection() {
         let reflectionType: ReflectionType = arcID == nil ? .record : .phase
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedNotes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        let sourceRecordIDs = existingReflection?.sourceRecordIDs ?? defaultSourceRecordIDs
+        let sourceArtifactIDs = existingReflection?.sourceArtifactIDs ?? defaultSourceArtifactIDs
+        let sourceEntityIDs = existingReflection?.sourceEntityIDs ?? defaultSourceEntityIDs
+
         let reflection = ReflectionSnapshot(
-            id: UUID(),
+            id: existingReflection?.id ?? UUID(),
             type: reflectionType,
-            title: title.trimmingCharacters(in: .whitespaces),
-            body: notes.trimmingCharacters(in: .whitespaces),
-            evidenceSummary: nil,
-            confidence: nil,
+            title: trimmedTitle,
+            body: trimmedNotes,
+            evidenceSummary: existingReflection?.evidenceSummary,
+            confidence: existingReflection?.confidence,
             status: status,
             linkedTemporalArcID: arcID,
-            sourceRecordIDs: recordID.map { [$0] } ?? [],
-            sourceArtifactIDs: [],
-            sourceEntityIDs: [],
-            createdAt: Date(),
+            sourceRecordIDs: sourceRecordIDs,
+            sourceArtifactIDs: sourceArtifactIDs,
+            sourceEntityIDs: sourceEntityIDs,
+            createdAt: existingReflection?.createdAt ?? Date(),
             savedAt: status == .saved ? Date() : nil,
             dismissedAt: status == .dismissed ? Date() : nil
         )
@@ -93,8 +118,49 @@ struct ReflectionEditView: View {
         memoryRepository.upsertReflection(reflection)
         dismiss()
     }
+
+    private func loadExistingReflectionIfNeeded() {
+        guard let existingReflection else { return }
+        if title.isEmpty {
+            title = existingReflection.title
+        }
+        if notes.isEmpty {
+            notes = existingReflection.body
+        }
+        status = existingReflection.status
+    }
+
+    private var defaultSourceRecordIDs: [UUID] {
+        if let recordID {
+            return [recordID]
+        }
+        if let arcID, let arc = memoryRepository.temporalArc(for: arcID) {
+            return arc.sourceRecordIDs
+        }
+        return []
+    }
+
+    private var defaultSourceArtifactIDs: [UUID] {
+        if let recordID, let memoryView = memoryRepository.memoryView(for: recordID) {
+            return memoryView.artifacts.map(\.id)
+        }
+        if let arcID, let arc = memoryRepository.temporalArc(for: arcID) {
+            return arc.sourceArtifactIDs
+        }
+        return []
+    }
+
+    private var defaultSourceEntityIDs: [UUID] {
+        if let recordID, let memoryView = memoryRepository.memoryView(for: recordID) {
+            return memoryView.linkedEntities.map(\.id)
+        }
+        if let arcID, let evidenceView = memoryRepository.arcEvidenceView(for: arcID) {
+            return evidenceView.linkedEntities.map(\.id)
+        }
+        return []
+    }
 }
 
 #Preview {
-    ReflectionEditView(recordID: UUID(), arcID: nil)
+    ReflectionEditView(reflectionID: nil, recordID: UUID(), arcID: nil)
 }

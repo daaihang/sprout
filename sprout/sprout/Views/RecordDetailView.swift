@@ -271,7 +271,11 @@ struct RecordDetailView: View {
         .navigationTitle(navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showReflectionEditor) {
-            ReflectionEditView(recordID: record.id, arcID: nil)
+            ReflectionEditView(
+                reflectionID: linkedRecordReflection?.id,
+                recordID: record.id,
+                arcID: nil
+            )
         }
     }
 
@@ -921,7 +925,12 @@ struct RecordDetailView: View {
             Button(action: { showReflectionEditor = true }) {
                 HStack(spacing: 8) {
                     Image(systemName: "sparkles")
-                    Text(localization.string("common.create_reflection", default: "Create Reflection"))
+                    Text(
+                        localization.string(
+                            "common.create_reflection",
+                            default: linkedRecordReflection == nil ? "Create Reflection" : "Edit Reflection"
+                        )
+                    )
                 }
                 .font(.subheadline.weight(.medium))
                 .frame(maxWidth: .infinity)

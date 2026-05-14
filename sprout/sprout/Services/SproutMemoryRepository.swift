@@ -33,6 +33,19 @@ final class SproutMemoryRepository {
         var reflections: [ReflectionSnapshot]
     }
 
+    struct PipelineHealthSnapshot: Sendable {
+        var totalRecords: Int
+        var recordsWithArtifacts: Int
+        var recordsWithAnalysis: Int
+        var recordsWithGraphLinks: Int
+        var recordsLinkedToArcs: Int
+        var recordsWithReflections: Int
+        var orphanAnalysisRecordIDs: [UUID]
+        var orphanArtifactIDs: [UUID]
+        var arcsWithoutReflections: [UUID]
+        var reflectionsWithoutArcs: [UUID]
+    }
+
     struct RecordMemoryView: Sendable {
         var recordShell: RecordShell
         var artifacts: [Artifact]
@@ -245,6 +258,10 @@ final class SproutMemoryRepository {
 
     func temporalArc(for arcID: UUID) -> TemporalArc? {
         temporalArcs.first { $0.id == arcID }
+    }
+
+    func reflection(_ reflectionID: UUID) -> ReflectionSnapshot? {
+        reflections.first { $0.id == reflectionID }
     }
 
     func linkedReflection(forArcID arcID: UUID) -> ReflectionSnapshot? {
@@ -768,6 +785,67 @@ final class SproutMemoryRepository {
         )
     }
 
+    func pipelineHealthSnapshot() -> PipelineHealthSnapshot {
+        let recordIDs = Set(recordShells.map(\.id))
+        let acceptedArcRecordIDs = Set(
+            temporalArcs
+                .filter { $0.status == .accepted }
+                .flatMap(\.sourceRecordIDs)
+        )
+        let arcIDs = Set(temporalArcs.map(\.id))
+        let phaseReflectionArcIDs = Set(
+            reflections
+                .filter { $0.type == .phase }
+                .compactMap(\.linkedTemporalArcID)
+        )
+
+        let recordsWithArtifacts = recordShells.filter { !$0.artifactIDs.isEmpty }.count
+        let recordsWithAnalysis = recordShells.filter { analysis(for: $0.id) != nil }.count
+        let recordsWithGraphLinks = recordShells.filter { !linkedEntities(forRecordID: $0.id).isEmpty }.count
+        let recordsLinkedToArcs = recordShells.filter { acceptedArcRecordIDs.contains($0.id) }.count
+        let recordsWithReflections = recordShells.filter { recordReflection(forRecordID: $0.id) != nil }.count
+
+        let orphanAnalysisRecordIDs = analyses
+            .map(\.recordID)
+            .filter { !recordIDs.contains($0) }
+
+        let orphanArtifactIDs = artifacts
+            .filter { artifact in
+                !recordShells.contains { $0.artifactIDs.contains(artifact.id) }
+            }
+            .map(\.id)
+
+        let arcsWithoutReflections = temporalArcs
+            .filter { $0.status == .accepted && linkedReflection(forArcID: $0.id) == nil }
+            .map(\.id)
+
+        let reflectionsWithoutArcs = reflections
+            .filter { reflection in
+                reflection.type == .phase &&
+                (reflection.linkedTemporalArcID == nil || !arcIDs.contains(reflection.linkedTemporalArcID!))
+            }
+            .map(\.id)
+
+        let normalizedArclessReflections = reflectionsWithoutArcs.filter { reflectionID in
+            guard let reflection = reflection(reflectionID) else { return false }
+            guard let arcID = reflection.linkedTemporalArcID else { return true }
+            return !phaseReflectionArcIDs.contains(arcID)
+        }
+
+        return PipelineHealthSnapshot(
+            totalRecords: recordShells.count,
+            recordsWithArtifacts: recordsWithArtifacts,
+            recordsWithAnalysis: recordsWithAnalysis,
+            recordsWithGraphLinks: recordsWithGraphLinks,
+            recordsLinkedToArcs: recordsLinkedToArcs,
+            recordsWithReflections: recordsWithReflections,
+            orphanAnalysisRecordIDs: orphanAnalysisRecordIDs,
+            orphanArtifactIDs: orphanArtifactIDs,
+            arcsWithoutReflections: arcsWithoutReflections,
+            reflectionsWithoutArcs: normalizedArclessReflections
+        )
+    }
+
     private func storageURL() -> URL? {
         FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask)
@@ -812,6 +890,8 @@ final class SproutMemoryRepository {
     }
 
     private func rebuildTemporalArcs() {
+        let existingArcs = temporalArcs
+        let existingPhaseReflections = reflections.filter { $0.type == .phase }
         let bundles = temporalArcService.rebuildAcceptedBundles(
             records: recordShells,
             analyses: analyses,
@@ -819,9 +899,18 @@ final class SproutMemoryRepository {
             artifactEntityLinks: artifactEntityLinks,
             entityNodes: entityNodes
         )
-        temporalArcs = bundles.map(\.arc)
+
+        let preservedBundles = bundles.map {
+            preservePhaseBundle(
+                $0,
+                existingArcs: existingArcs,
+                existingPhaseReflections: existingPhaseReflections
+            )
+        }
+
+        temporalArcs = preservedBundles.map(\.arc)
         reflections.removeAll { $0.type == .phase }
-        reflections.append(contentsOf: bundles.map(\.reflection))
+        reflections.append(contentsOf: preservedBundles.map(\.reflection))
     }
 
     private func upsertRecordReflection(
@@ -838,9 +927,9 @@ final class SproutMemoryRepository {
         let reflection = ReflectionSnapshot(
             id: existing?.id ?? UUID(),
             type: .record,
-            title: recordReflectionTitle(for: analysis, aggregate: aggregate),
-            body: recordReflectionBody(for: analysis, aggregate: aggregate),
-            evidenceSummary: recordReflectionEvidenceSummary(
+            title: existing?.title ?? recordReflectionTitle(for: analysis, aggregate: aggregate),
+            body: existing?.body ?? recordReflectionBody(for: analysis, aggregate: aggregate),
+            evidenceSummary: existing?.evidenceSummary ?? recordReflectionEvidenceSummary(
                 analysis: analysis,
                 artifactCount: aggregate.artifacts.count,
                 entityCount: sourceEntityIDs.count
@@ -995,5 +1084,124 @@ final class SproutMemoryRepository {
             ordered.append(name)
         }
         return ordered
+    }
+
+    private func preservePhaseBundle(
+        _ bundle: SproutTemporalArcService.PhaseBundle,
+        existingArcs: [TemporalArc],
+        existingPhaseReflections: [ReflectionSnapshot]
+    ) -> SproutTemporalArcService.PhaseBundle {
+        guard let existingArc = bestMatchingArc(for: bundle.arc, in: existingArcs) else {
+            return bundle
+        }
+
+        let existingReflection = existingReflection(
+            for: existingArc,
+            in: existingPhaseReflections
+        )
+        let reflectionID = existingReflection?.id ?? existingArc.linkedReflectionID ?? bundle.reflection.id
+
+        var arc = bundle.arc
+        arc.id = existingArc.id
+        arc.status = existingArc.status
+        arc.linkedReflectionID = reflectionID
+        arc.mergedFromArcIDs = existingArc.mergedFromArcIDs
+        arc.mergedIntoArcID = existingArc.mergedIntoArcID
+        arc.lastMergedAt = existingArc.lastMergedAt
+        arc.createdAt = existingArc.createdAt
+        arc.updatedAt = bundle.arc.updatedAt
+
+        let reflection = ReflectionSnapshot(
+            id: reflectionID,
+            type: .phase,
+            title: existingReflection?.title ?? bundle.reflection.title,
+            body: existingReflection?.body ?? bundle.reflection.body,
+            evidenceSummary: existingReflection?.evidenceSummary ?? bundle.reflection.evidenceSummary,
+            confidence: bundle.reflection.confidence ?? existingReflection?.confidence,
+            status: existingReflection?.status ?? bundle.reflection.status,
+            linkedTemporalArcID: arc.id,
+            sourceRecordIDs: bundle.reflection.sourceRecordIDs,
+            sourceArtifactIDs: bundle.reflection.sourceArtifactIDs,
+            sourceEntityIDs: bundle.reflection.sourceEntityIDs,
+            createdAt: existingReflection?.createdAt ?? bundle.reflection.createdAt,
+            savedAt: existingReflection?.savedAt,
+            dismissedAt: existingReflection?.dismissedAt
+        )
+
+        return SproutTemporalArcService.PhaseBundle(arc: arc, reflection: reflection)
+    }
+
+    private func bestMatchingArc(for rebuiltArc: TemporalArc, in existingArcs: [TemporalArc]) -> TemporalArc? {
+        existingArcs
+            .map { arc in (arc: arc, score: arcReuseScore(rebuiltArc, arc)) }
+            .filter { $0.score >= 0.55 }
+            .sorted { lhs, rhs in
+                if lhs.score == rhs.score {
+                    return temporalArcSort(lhs: lhs.arc, rhs: rhs.arc)
+                }
+                return lhs.score > rhs.score
+            }
+            .first?
+            .arc
+    }
+
+    private func existingReflection(
+        for arc: TemporalArc,
+        in existingPhaseReflections: [ReflectionSnapshot]
+    ) -> ReflectionSnapshot? {
+        if let linkedReflectionID = arc.linkedReflectionID,
+           let linked = existingPhaseReflections.first(where: { $0.id == linkedReflectionID }) {
+            return linked
+        }
+
+        let sourceRecordIDs = Set(arc.sourceRecordIDs)
+        return existingPhaseReflections.first {
+            guard $0.type == .phase else { return false }
+            if $0.linkedTemporalArcID == arc.id {
+                return true
+            }
+            return !sourceRecordIDs.isEmpty && Set($0.sourceRecordIDs) == sourceRecordIDs
+        }
+    }
+
+    private func arcReuseScore(_ lhs: TemporalArc, _ rhs: TemporalArc) -> Double {
+        let recordOverlap = overlapScore(lhs.sourceRecordIDs, rhs.sourceRecordIDs)
+        let artifactOverlap = overlapScore(lhs.sourceArtifactIDs, rhs.sourceArtifactIDs)
+        let entityOverlap = overlapScore(lhs.sourceEntityIDs, rhs.sourceEntityIDs)
+        let titleMatch = lhs.title == rhs.title ? 0.1 : 0
+        let intervalScore = intervalReuseScore(lhs, rhs)
+
+        return recordOverlap * 0.50
+            + artifactOverlap * 0.20
+            + entityOverlap * 0.10
+            + intervalScore * 0.10
+            + titleMatch
+    }
+
+    private func overlapScore<T: Hashable>(_ lhs: [T], _ rhs: [T]) -> Double {
+        let left = Set(lhs)
+        let right = Set(rhs)
+        guard !left.isEmpty || !right.isEmpty else { return 0 }
+        let union = left.union(right)
+        guard !union.isEmpty else { return 0 }
+        return Double(left.intersection(right).count) / Double(union.count)
+    }
+
+    private func intervalReuseScore(_ lhs: TemporalArc, _ rhs: TemporalArc) -> Double {
+        let overlapStart = max(lhs.startDate, rhs.startDate)
+        let overlapEnd = min(lhs.endDate, rhs.endDate)
+        let overlap = overlapEnd.timeIntervalSince(overlapStart)
+        if overlap > 0 {
+            let leftDuration = max(lhs.endDate.timeIntervalSince(lhs.startDate), 1)
+            let rightDuration = max(rhs.endDate.timeIntervalSince(rhs.startDate), 1)
+            return min(overlap / min(leftDuration, rightDuration), 1)
+        }
+
+        let boundaryGap = min(
+            abs(lhs.startDate.timeIntervalSince(rhs.endDate)),
+            abs(lhs.endDate.timeIntervalSince(rhs.startDate))
+        )
+        let twoWeeks: TimeInterval = 60 * 60 * 24 * 14
+        return max(0, 1 - boundaryGap / twoWeeks)
     }
 }
