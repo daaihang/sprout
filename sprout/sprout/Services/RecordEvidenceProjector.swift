@@ -31,6 +31,7 @@ struct RecordEvidenceProjector {
 
     func project(record: Record, memoryView: SproutMemoryRepository.RecordMemoryView?) -> Projection {
         let artifacts: [Artifact] = (memoryView?.artifacts ?? []).sorted(by: artifactSort)
+        let recordShell = memoryView?.recordShell
         let analysis = memoryView?.analysis
         let linkedEntities = memoryView?.linkedEntities ?? []
 
@@ -63,7 +64,7 @@ struct RecordEvidenceProjector {
         let photoCount = photoArtifacts.count
 
         let weatherCondition = resolveWeatherCondition(from: weatherArtifact, record: record)
-        let mood = MoodType(rawValue: record.mood ?? "")
+        let mood = MoodType(rawValue: recordShell?.userMood ?? record.userMood ?? "")
         let primaryPersonName = resolvePrimaryPersonName(
             personArtifact: personArtifact,
             linkedEntities: linkedEntities,
@@ -74,7 +75,7 @@ struct RecordEvidenceProjector {
 
         return Projection(
             recordID: record.id,
-            recordShell: memoryView?.recordShell,
+            recordShell: recordShell,
             artifacts: artifacts,
             analysis: analysis,
             linkedEntities: linkedEntities,
@@ -131,8 +132,7 @@ struct RecordEvidenceProjector {
         if todoArtifact != nil { return .todo }
         if linkArtifact != nil { return .link }
         if locationArtifact != nil { return .map }
-        if record.activity?.value != nil { return .activity }
-        if let mood = record.mood, !mood.isEmpty { return .emotion }
+        if let mood = resolvedMoodValue(for: record), !mood.isEmpty { return .emotion }
         if weatherArtifact != nil { return .weather }
         if personArtifact != nil || linkedEntities.contains(where: { $0.kind == .person }) { return .people }
         if textArtifact != nil { return .text }
@@ -158,7 +158,7 @@ struct RecordEvidenceProjector {
         case .map:
             return .map
         case .activity:
-            return .activity
+            return .text
         case .emotion:
             return .emotion
         case .weather:
@@ -202,7 +202,7 @@ struct RecordEvidenceProjector {
             return title
         }
 
-        if let mood = MoodType(rawValue: record.mood ?? "") {
+        if let mood = MoodType(rawValue: resolvedMoodValue(for: record) ?? "") {
             return mood.label
         }
 
@@ -228,7 +228,7 @@ struct RecordEvidenceProjector {
     }
 
     private func resolveSupportingText(
-        record: Record,
+        record _: Record,
         audioArtifact: Artifact?,
         todoArtifact: Artifact?,
         musicArtifact: Artifact?
@@ -286,7 +286,7 @@ struct RecordEvidenceProjector {
         if artifacts.contains(where: { $0.kind == .weather }) {
             labels.append(localization.string("timeline.category.weather", default: "Weather"))
         }
-        if record.mood != nil {
+        if resolvedMoodValue(for: record) != nil {
             labels.append(localization.string("timeline.category.emotion", default: "Emotion"))
         }
         if artifacts.contains(where: { $0.kind == .location }) {
@@ -344,6 +344,14 @@ struct RecordEvidenceProjector {
     private func resolvePhotoPreviewImage(record: Record, photoArtifacts: [Artifact]) -> UIImage? {
         if let data = photoArtifacts.first?.previewPayload ?? photoArtifacts.first?.binaryPayload {
             return UIImage(data: data)
+        }
+        return nil
+    }
+
+    private func resolvedMoodValue(for record: Record) -> String? {
+        let trimmedShellMood = record.userMood?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let trimmedShellMood, !trimmedShellMood.isEmpty {
+            return trimmedShellMood
         }
         return nil
     }

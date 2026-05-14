@@ -13,7 +13,5 @@ final class Decision {
     var reviewAt: Date? = nil
     var updatedAt: Date = Date()
 
-    @Relationship(inverse: \Record.linkedDecisions) var records: [Record]? = nil
-
     init() {}
 }

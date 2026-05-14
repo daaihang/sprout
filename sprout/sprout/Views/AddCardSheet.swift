@@ -457,9 +457,11 @@ struct AddCardSheet: View {
         record.id = aggregate.recordShell.id
         record.createdAt = aggregate.recordShell.createdAt
         record.updatedAt = aggregate.recordShell.updatedAt
-        record.dashboardOrder = aggregate.recordShell.createdAt.timeIntervalSince1970
-        record.mood = aggregate.recordShell.userMood
-        record.intensity = aggregate.recordShell.userIntensity
+        record.captureSource = aggregate.recordShell.captureSource
+        record.rawText = aggregate.recordShell.rawText
+        record.userMood = aggregate.recordShell.userMood
+        record.userIntensity = aggregate.recordShell.userIntensity
+        record.inputContext = aggregate.recordShell.inputContext
         modelContext.insert(record)
     }
 

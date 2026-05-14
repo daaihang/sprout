@@ -39,7 +39,6 @@ struct RecordDetailView: View {
         if primaryArtifact(for: .weather) != nil || evidence.weatherCondition != nil { sections.append(.weather) }
         if !peopleArtifactRows.isEmpty || !analysisPeopleReferences.isEmpty || evidence.primaryPersonName != nil { sections.append(.people) }
         if evidence.mood != nil { sections.append(.emotion) }
-        if record.activity?.value != nil { sections.append(.activity) }
         return sections
     }
 
@@ -482,7 +481,6 @@ struct RecordDetailView: View {
         case .music:    musicSection
         case .audio:    audioSection
         case .link:     linkSection
-        case .activity: activitySection
         case .map:      mapSection
         case .todo:     todoSection
         case .people:   peopleSection
@@ -495,22 +493,12 @@ struct RecordDetailView: View {
 
     private var textSection: some View {
         let bodyText = nonEmpty(textArtifact?.textContent) ?? ""
-        let author = record.tagValue(for: "author")
-        let source = record.tagValue(for: "source")
         return VStack(alignment: .leading, spacing: 8) {
             SectionLabel(icon: "text.alignleft", title: t("detail.section.body", "Body"))
             Text(bodyText)
                 .font(.body)
                 .foregroundStyle(.primary)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            if !author.isEmpty || !source.isEmpty {
-                HStack(spacing: 4) {
-                    if !author.isEmpty { Text("— \(author)") }
-                    if !source.isEmpty { Text("·  \(source)") }
-                }
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            }
         }
         .detailCard()
     }
@@ -520,7 +508,7 @@ struct RecordDetailView: View {
     @ViewBuilder
     private var emotionSection: some View {
         if let mood = evidence.mood {
-            let intensity = record.intensity ?? 3
+            let intensity = memoryView?.recordShell.userIntensity ?? record.userIntensity ?? 3
             VStack(alignment: .leading, spacing: 10) {
                 SectionLabel(icon: "face.smiling", title: t("detail.section.emotion", "Emotion"))
                 HStack(spacing: 14) {
@@ -618,8 +606,6 @@ struct RecordDetailView: View {
         )
     }
 
-    // MARK: - Activity
-
     @ViewBuilder
     private var peopleSection: some View {
         let people = resolvedPeople
@@ -666,44 +652,6 @@ struct RecordDetailView: View {
                             tint: .blue
                         )
                     }
-                }
-            }
-            .detailCard()
-        }
-    }
-
-    @ViewBuilder
-    private var activitySection: some View {
-        if let act = record.activity, let value = act.value {
-            let actType = ActivityType(rawValue: act.type) ?? .steps
-            let formatted = value.truncatingRemainder(dividingBy: 1) == 0
-                ? String(format: "%.0f", value) : String(format: "%.1f", value)
-            VStack(alignment: .leading, spacing: 10) {
-                SectionLabel(icon: actType.sfSymbol, title: actType.label)
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(formatted)
-                        .font(.system(size: 52, weight: .semibold, design: .rounded))
-                        .foregroundStyle(actType.color)
-                    Text(act.unit ?? actType.defaultUnit)
-                        .font(.title3).foregroundStyle(.secondary).offset(y: -4)
-                    Spacer()
-                }
-                if let goal = act.goal, goal > 0 {
-                    let progress = min(value / goal, 1.0)
-                    GeometryReader { geo in
-                        ZStack(alignment: .leading) {
-                            RoundedRectangle(cornerRadius: 4).fill(actType.color.opacity(0.15)).frame(height: 8)
-                            RoundedRectangle(cornerRadius: 4).fill(actType.color)
-                                .frame(width: geo.size.width * progress, height: 8)
-                        }
-                    }
-                    .frame(height: 8)
-                    Text(t("detail.activity.goal_progress", "Goal %d · %d%%", Int(goal), Int(progress * 100)))
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                if let dur = act.durationMinutes, dur > 0 {
-                    Label(t("detail.activity.duration_minutes", "%d min", dur), systemImage: "clock")
-                        .font(.subheadline).foregroundStyle(.secondary)
                 }
             }
             .detailCard()
@@ -893,23 +841,6 @@ struct RecordDetailView: View {
             }
             .font(.caption).foregroundStyle(.secondary)
 
-            let displayTags = record.tags.filter {
-                !$0.hasPrefix("author:") && !$0.hasPrefix("source:")
-            }
-            if !displayTags.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 6) {
-                        ForEach(displayTags, id: \.self) { tag in
-                            Text(tag)
-                                .font(.caption2)
-                                .padding(.horizontal, 8).padding(.vertical, 3)
-                                .background(Color.accentColor.opacity(0.1), in: Capsule())
-                                .foregroundStyle(Color.accentColor)
-                        }
-                    }
-                }
-            }
-
             Button(action: { showReflectionEditor = true }) {
                 HStack(spacing: 8) {
                     Image(systemName: "sparkles")
@@ -1066,13 +997,10 @@ private extension Array where Element: Hashable {
     NavigationStack {
         RecordDetailView(record: {
             let r = Record()
-            r.body = "今天读到了一句话，让人感触很深：生活不是等待暴风雨过去，而是学会在雨中起舞。"
-            r.mood = MoodType.calm.rawValue
-            r.intensity = 4
-            r.weather = WeatherCondition.partlyCloudy.rawValue
-            r.temperature = 22
-            r.location = "北京"
-            r.tags = ["author:佚名", "reading"]
+            r.rawText = "今天读到了一句话，让人感触很深：生活不是等待暴风雨过去，而是学会在雨中起舞。"
+            r.userMood = MoodType.calm.rawValue
+            r.userIntensity = 4
+            r.captureSource = .composer
             return r
         }(), focusedSection: .text)
     }

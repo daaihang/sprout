@@ -17,7 +17,5 @@ final class Activity {
     var isCompleted: Bool = false
     var updatedAt: Date = Date()
 
-    @Relationship(inverse: \Record.activity) var record: Record? = nil
-
     init() {}
 }

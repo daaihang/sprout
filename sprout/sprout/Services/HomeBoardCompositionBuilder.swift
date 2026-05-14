@@ -511,7 +511,7 @@ struct HomeBoardCompositionBuilder {
     }
 
     private func normalizedOrder(for record: Record) -> Double {
-        record.dashboardOrder == 0 ? record.createdAt.timeIntervalSince1970 : record.dashboardOrder
+        record.createdAt.timeIntervalSince1970
     }
 
     private func allRecordsForSameMonthDay(date: Date) -> [Record] {

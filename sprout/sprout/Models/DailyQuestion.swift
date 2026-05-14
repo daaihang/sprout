@@ -10,7 +10,5 @@ final class DailyQuestion {
     var answeredAt: Date? = nil
     var isAnswered: Bool = false
 
-    @Relationship(inverse: \Record.dailyQuestion) var record: Record? = nil
-
     init() {}
 }

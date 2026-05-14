@@ -361,7 +361,7 @@ struct CardCalibrationView: View {
         case .todayInHistory:
             let data = CalibrationFixtures.todayInHistory(level: contentLevel)
             #if DEBUG
-            let summaries = data.entries.map { $0.record.body }.joined(separator: " | ").ifEmpty("-")
+            let summaries = data.entries.map { $0.record.rawText }.joined(separator: " | ").ifEmpty("-")
             #else
             let summaries = "-"
             #endif
@@ -830,7 +830,7 @@ private enum CalibrationFixtures {
         let records = (0..<count).map { index -> Record in
             let record = Record()
             record.createdAt = Calendar.current.date(byAdding: .year, value: -(index + 1), to: Date()) ?? Date()
-            record.body = [
+            record.rawText = [
                 "Found a quiet street after the rain.",
                 "Finished a draft and finally relaxed.",
                 "Took photos by the river at sunset.",

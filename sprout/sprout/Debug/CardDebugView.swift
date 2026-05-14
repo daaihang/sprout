@@ -371,7 +371,7 @@ struct CardDebugView: View {
             let record = Record()
             let yearsAgo = index + 1
             record.createdAt = calendar.date(byAdding: .year, value: -yearsAgo, to: Date()) ?? Date()
-            record.body = [
+            record.rawText = [
                 "那天在公园里拍到了很好看的光影。",
                 "第一次去了新的咖啡馆，记住了窗边的位置。",
                 "和老朋友散步，聊了很久。",

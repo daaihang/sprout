@@ -39,7 +39,8 @@ struct SproutMemoryAggregateBuilder {
                 captureSource: captureSource,
                 artifactIDs: artifacts.map(\.id),
                 userMood: draft.attachments.mood?.rawValue,
-                userIntensity: draft.attachments.mood == nil ? nil : draft.attachments.intensity
+                userIntensity: draft.attachments.mood == nil ? nil : draft.attachments.intensity,
+                inputContext: draft.attachments.captureSummarySegments.joined(separator: " · ").nilIfBlank
             ),
             artifacts: artifacts,
             knownEntities: knownEntities
@@ -47,16 +48,31 @@ struct SproutMemoryAggregateBuilder {
     }
 
     func build(record: Record) -> SproutMemoryAggregate {
-        let artifacts = buildArtifacts(record: record)
+        let artifacts: [Artifact]
+        if record.rawText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            artifacts = []
+        } else {
+            artifacts = [
+                Artifact(
+                    kind: .text,
+                    title: previewTitle(from: record.rawText),
+                    summary: record.rawText,
+                    textContent: record.rawText,
+                    createdAt: record.createdAt,
+                    updatedAt: record.updatedAt
+                )
+            ]
+        }
         let recordShell = RecordShell(
             id: record.id,
             createdAt: record.createdAt,
             updatedAt: record.updatedAt,
-            rawText: artifacts.first(where: { $0.kind == .text })?.textContent ?? "",
-            captureSource: .composer,
+            rawText: record.rawText,
+            captureSource: record.captureSource,
             artifactIDs: artifacts.map(\.id),
-            userMood: record.mood,
-            userIntensity: record.intensity
+            userMood: record.userMood,
+            userIntensity: record.userIntensity,
+            inputContext: record.inputContext
         )
         return SproutMemoryAggregate(
             recordShell: recordShell,
@@ -249,7 +265,8 @@ struct SproutMemoryAggregateBuilder {
                 captureSource: .manual,
                 artifactIDs: artifacts.map(\.id),
                 userMood: emotion?.mood.rawValue,
-                userIntensity: emotion?.intensity
+                userIntensity: emotion?.intensity,
+                inputContext: presentationKind.rawValue
             ),
             artifacts: artifacts,
             knownEntities: knownEntities
@@ -423,34 +440,6 @@ struct SproutMemoryAggregateBuilder {
 
         return artifacts
     }
-
-    private func buildArtifacts(record: Record) -> [Artifact] {
-        var artifacts: [Artifact] = []
-
-        if let decisions = record.linkedDecisions, !decisions.isEmpty {
-            let decisionArtifacts = decisions.map { decision in
-                let summary = decision.context ?? decision.outcome ?? decision.status
-                let textContent = [decision.context, decision.outcome]
-                    .compactMap { $0 }
-                    .joined(separator: "\n")
-
-                return Artifact(
-                    kind: .decisionNote,
-                    title: decision.title,
-                    summary: summary,
-                    textContent: textContent,
-                    createdAt: decision.createdAt,
-                    updatedAt: decision.updatedAt,
-                    metadata: ["status": decision.status],
-                    entities: [EntityReference(kind: .decision, name: decision.title, confidence: nil)]
-                )
-            }
-            artifacts.append(contentsOf: decisionArtifacts)
-        }
-
-        return artifacts
-    }
-
     private func photoTitle(index: Int, totalCount: Int) -> String {
         totalCount <= 1 ? "Photo" : "Photo \(index + 1)"
     }
@@ -464,5 +453,12 @@ struct SproutMemoryAggregateBuilder {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return "Untitled Memory" }
         return String(trimmed.prefix(32))
+    }
+}
+
+private extension String {
+    var nilIfBlank: String? {
+        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 }

@@ -15,8 +15,6 @@ final class Person {
     var reminderIntervalDays: Int? = nil
     @Attribute(.externalStorage) var avatarImageData: Data? = nil
 
-    @Relationship(inverse: \Record.mentionedPeople) var records: [Record]? = nil
-
     init() {}
 }
 

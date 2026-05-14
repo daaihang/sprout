@@ -17,6 +17,7 @@ struct RecordShell: Identifiable, Codable, Hashable, Sendable {
     var artifactIDs: [UUID]
     var userMood: String?
     var userIntensity: Int?
+    var inputContext: String?
 
     init(
         id: UUID = UUID(),
@@ -26,7 +27,8 @@ struct RecordShell: Identifiable, Codable, Hashable, Sendable {
         captureSource: CaptureSource,
         artifactIDs: [UUID],
         userMood: String? = nil,
-        userIntensity: Int? = nil
+        userIntensity: Int? = nil,
+        inputContext: String? = nil
     ) {
         self.id = id
         self.createdAt = createdAt
@@ -36,5 +38,6 @@ struct RecordShell: Identifiable, Codable, Hashable, Sendable {
         self.artifactIDs = artifactIDs
         self.userMood = userMood
         self.userIntensity = userIntensity
+        self.inputContext = inputContext
     }
 }
