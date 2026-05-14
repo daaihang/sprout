@@ -462,7 +462,7 @@ struct ContentView: View {
                 captureSource: .photo,
                 photoPayloads: payloads
             )
-            persistLegacyRecord(
+            persistRecordShell(
                 for: aggregate,
                 draft: draft,
                 parsed: RecordParser.parseBody(""),
@@ -490,7 +490,7 @@ struct ContentView: View {
                 parsed: parsed,
                 photoPayloads: photoPayloads
             )
-            persistLegacyRecord(for: aggregate, draft: draft, parsed: parsed, photoPayloads: photoPayloads)
+            persistRecordShell(for: aggregate, draft: draft, parsed: parsed, photoPayloads: photoPayloads)
             memoryRepository.upsertAggregate(aggregate)
             await runPostCaptureAnalysisIfPossible(for: aggregate)
 
@@ -499,7 +499,7 @@ struct ContentView: View {
     }
 
     @MainActor
-    private func persistLegacyRecord(
+    private func persistRecordShell(
         for aggregate: SproutMemoryAggregate,
         draft: CaptureDraft? = nil,
         parsed: ParsedContent,

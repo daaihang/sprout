@@ -1,6 +1,6 @@
 import SwiftUI
 
-// Legacy drawer implementation kept for rollback/reference.
+// Minimal drawer shell retained as a geometry placeholder while top tabs own the active UI.
 struct HomeTopDrawerView: View {
     @Binding var selectedDate: Date
     @Binding var selectedTag: HomeTopDrawerTag
