@@ -3,26 +3,22 @@ import SwiftData
 
 // MARK: - DailyView
 
-/// Displays the card grid for a single calendar day.
-/// Owns a @Query filtered to [startOfDay, endOfDay) so the grid automatically
-/// updates when records are added, deleted, or when composition-backed projections change.
 struct DailyView: View {
     @Environment(AppLocalization.self) private var localization
-    @Environment(\.modelContext) private var modelContext
     @Environment(SproutMemoryRepository.self) private var memoryRepository
     let date: Date
     let topContentInset: CGFloat
 
-    @Query private var records: [Record]
     @Query private var compositionStates: [CompositionItem]
-    @Query(sort: \DashboardSystemCardConfig.dashboardOrder, order: .forward) private var systemConfigs: [DashboardSystemCardConfig]
+
     private var compositionStateRepository: CompositionStateRepository {
-        CompositionStateRepository(modelContext: modelContext)
+        CompositionStateRepository(modelContext: memoryRepository.modelContext)
     }
+
     private var homeBoardBuilder: HomeBoardCompositionBuilder {
         HomeBoardCompositionBuilder(
             dependencies: .init(
-                modelContext: modelContext,
+                modelContext: memoryRepository.modelContext,
                 memoryRepository: memoryRepository,
                 stateRepository: compositionStateRepository,
                 cardProjector: CompositionProjector(),
@@ -32,15 +28,8 @@ struct DailyView: View {
     }
 
     init(date: Date, topContentInset: CGFloat = 0) {
-        let cal   = Calendar.current
-        let start = cal.startOfDay(for: date)
-        let end   = cal.date(byAdding: .day, value: 1, to: start)!
-        _records = Query(
-            filter: #Predicate<Record> { r in
-                r.createdAt >= start && r.createdAt < end
-            },
-            sort: \Record.createdAt, order: .reverse
-        )
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: date)
         let boardKey = CompositionStateRepository.boardKey(for: start)
         _compositionStates = Query(
             filter: #Predicate<CompositionItem> { state in
@@ -61,9 +50,7 @@ struct DailyView: View {
                 EmptyDayView(date: date)
                     .frame(minHeight: 520)
             } else {
-                CardGridView(
-                    items: gridItems
-                )
+                CardGridView(items: gridItems)
             }
 
             if !recentReflections.isEmpty {
@@ -75,17 +62,24 @@ struct DailyView: View {
         .contentMargins(.bottom, 104, for: .scrollContent)
         .ignoresSafeArea(.container, edges: .bottom)
         .task {
-            homeBoardBuilder.ensureTodayInHistoryConfig(systemConfigs: systemConfigs)
             homeBoardBuilder.ensureCompositionContext(for: date)
         }
+    }
+
+    private var dayRecordShells: [RecordShell] {
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: date)
+        let end = calendar.date(byAdding: .day, value: 1, to: start) ?? start
+        return memoryRepository.recordShells
+            .filter { $0.createdAt >= start && $0.createdAt < end }
+            .sorted { $0.createdAt > $1.createdAt }
     }
 
     private var gridItems: [GridItem] {
         _ = compositionStates.count
         return homeBoardBuilder.buildGridItems(
             for: date,
-            records: records,
-            systemConfigs: systemConfigs
+            recordShells: dayRecordShells
         )
     }
 
@@ -155,9 +149,6 @@ struct DailyView: View {
     }
 }
 
-// MARK: - CardWrapper
-
-/// Wraps a projected home board card with target-aware navigation.
 struct HomeBoardCardWrapper: View {
     @Environment(SproutMemoryRepository.self) private var memoryRepository
     let projection: CompositionProjectionCard
@@ -209,8 +200,8 @@ struct HomeBoardCardWrapper: View {
 
     private var recordDetailView: some View {
         MemoryRecordDetailView(
-        recordID: projection.record.id,
-        focusedSection: projection.focusedSection
+            recordID: projection.recordID,
+            focusedSection: projection.focusedSection
         )
     }
 
@@ -222,8 +213,6 @@ struct HomeBoardCardWrapper: View {
         )
     }
 }
-
-// MARK: - EmptyDayView
 
 struct EmptyDayView: View {
     @Environment(AppLocalization.self) private var localization
@@ -239,29 +228,17 @@ struct EmptyDayView: View {
                 Text(dateLabel)
                     .font(.headline)
                     .foregroundStyle(.primary)
-                Text(t("content.empty.title", "No entries yet"))
+                Text(localization.string("content.empty_day.subtitle", default: "No memories were captured for this day yet."))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                Text(t("content.empty.subtitle", "Use the input bar below to add your first entry today"))
-                    .font(.caption)
-                    .foregroundStyle(.secondary.opacity(0.7))
                     .multilineTextAlignment(.center)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.horizontal, 40)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 24)
     }
 
     private var dateLabel: String {
-        let cal   = Calendar.current
-        let today = cal.startOfDay(for: Date())
-        if cal.isDate(date, inSameDayAs: today) {
-            return t("content.date.today", "Today")
-        }
-        return localization.templateDateString(from: date, template: "MMM d EEEE")
-    }
-
-    private func t(_ key: String, _ defaultValue: String, _ arguments: CVarArg...) -> String {
-        localization.string(key, default: defaultValue, arguments: arguments)
+        localization.templateDateString(from: date, template: "MMMM d")
     }
 }

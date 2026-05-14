@@ -15,6 +15,7 @@ struct CompositionStateRepository {
         var zIndex: Int
         var rotationDegrees: Double
         var scale: Double
+        var isHidden: Bool
     }
 
     let modelContext: ModelContext
@@ -46,10 +47,6 @@ struct CompositionStateRepository {
             boardKey: boardKey,
             compositionKey: compositionKey
         )
-    }
-
-    func boardKey(for date: Date) -> String {
-        Self.boardKey(for: date)
     }
 
     static func boardKey(for date: Date) -> String {
@@ -108,7 +105,8 @@ struct CompositionStateRepository {
                 span: fallbackSpan,
                 zIndex: fallbackZIndex,
                 rotationDegrees: fallbackRotationDegrees,
-                scale: fallbackScale
+                scale: fallbackScale,
+                isHidden: false
             )
         }
 
@@ -116,7 +114,8 @@ struct CompositionStateRepository {
             span: state.span,
             zIndex: state.zIndex,
             rotationDegrees: state.rotationDegrees,
-            scale: state.scale
+            scale: state.scale,
+            isHidden: state.isHidden
         )
     }
 
@@ -131,7 +130,8 @@ struct CompositionStateRepository {
         span: ContainerSpan,
         zIndex: Int,
         rotationDegrees: Double,
-        scale: Double
+        scale: Double,
+        isHidden: Bool = false
     ) {
         if let existing = state(compositionKey: compositionKey, itemKey: itemKey) {
             existing.boardID = boardID
@@ -142,6 +142,7 @@ struct CompositionStateRepository {
             existing.targetID = targetID
             existing.setSpan(span)
             existing.setVisualState(zIndex: zIndex, rotationDegrees: rotationDegrees, scale: scale)
+            existing.setHidden(isHidden)
             try? modelContext.save()
             return
         }
@@ -158,7 +159,8 @@ struct CompositionStateRepository {
             heightUnits: span.heightUnits,
             zIndex: zIndex,
             rotationDegrees: rotationDegrees,
-            scale: scale
+            scale: scale,
+            isHidden: isHidden
         )
         modelContext.insert(created)
         try? modelContext.save()

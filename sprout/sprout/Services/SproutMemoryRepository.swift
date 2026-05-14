@@ -88,6 +88,10 @@ final class SproutMemoryRepository {
     private let temporalArcService = SproutTemporalArcService()
     private let modelContainer: ModelContainer
 
+    var modelContext: ModelContext {
+        modelContainer.mainContext
+    }
+
     var recordShells: [RecordShell] = []
     var artifacts: [Artifact] = []
     var analyses: [RecordAnalysisSnapshot] = []
@@ -141,6 +145,18 @@ final class SproutMemoryRepository {
             sourceEntityIDs: graphResult.resolvedEntityIDs
         )
         try save()
+    }
+
+    func deleteRecordShell(_ recordID: UUID) {
+        recordShells.removeAll { $0.id == recordID }
+        let artifactIDs = Set(artifacts(forRecordID: recordID).map(\.id))
+        artifacts.removeAll { artifactIDs.contains($0.id) }
+        analyses.removeAll { $0.recordID == recordID }
+        reflections.removeAll { $0.sourceRecordIDs.contains(recordID) }
+        entityEdges.removeAll { $0.sourceRecordIDs.contains(recordID) }
+        artifactEntityLinks.removeAll { artifactIDs.contains($0.artifactID) }
+        temporalArcs.removeAll { $0.sourceRecordIDs.contains(recordID) }
+        persistCurrentState()
     }
 
     func recordShell(for recordID: UUID) -> RecordShell? {
@@ -808,9 +824,6 @@ final class SproutMemoryRepository {
         }
     }
 
-    private var modelContext: ModelContext {
-        modelContainer.mainContext
-    }
 
     private func persistCurrentState() {
         do {

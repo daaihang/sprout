@@ -15,7 +15,7 @@ struct CompositionProjectionCard: Identifiable {
     let presentationKey: String
     let targetType: CompositionProjectionTargetType
     let targetID: UUID
-    let record: Record
+    let recordID: UUID
     let focusedSection: RecordSection
     let columns: Int
     let units: Int
@@ -30,15 +30,15 @@ struct CompositionProjector {
     private let artifactRenderer = ArtifactRenderer()
 
     func projectCards(
-        for record: Record,
+        for recordShell: RecordShell,
         memoryRepository: SproutMemoryRepository,
         stateRepository: CompositionStateRepository,
         compositionKey: String
     ) -> [CompositionProjectionCard] {
-        let memoryView = memoryRepository.memoryView(for: record.id)
+        let memoryView = memoryRepository.memoryView(for: recordShell.id)
         let artifacts = memoryView?.artifacts ?? []
         return artifactCards(
-            for: record,
+            for: recordShell,
             artifacts: artifacts,
             stateRepository: stateRepository,
             compositionKey: compositionKey
@@ -46,7 +46,7 @@ struct CompositionProjector {
     }
 
     private func artifactCards(
-        for record: Record,
+        for recordShell: RecordShell,
         artifacts: [Artifact],
         stateRepository: CompositionStateRepository,
         compositionKey: String
@@ -61,12 +61,12 @@ struct CompositionProjector {
             .enumerated()
             .compactMap { index, artifact in
                 let fallbackSpanKey = artifactSpanKey(for: artifact)
-                let fallbackID = "\(record.id.uuidString)-\(fallbackSpanKey)"
+                let fallbackID = "\(recordShell.id.uuidString)-\(fallbackSpanKey)"
                 let section = focusedSection(for: artifact)
 
                 guard let rendered = artifactRenderer.renderCard(
                     for: artifact,
-                    record: record,
+                    recordID: recordShell.id,
                     focusedSection: section,
                     fallbackID: fallbackID,
                     fallbackSpanKey: fallbackSpanKey
@@ -75,7 +75,7 @@ struct CompositionProjector {
                 }
 
                 let fallbackSpan = sizeLimits(for: rendered.presentationKey).defaultSpan
-                let itemKey = "\(record.id.uuidString)-\(rendered.spanKey)"
+                let itemKey = "\(recordShell.id.uuidString)-\(rendered.spanKey)"
                 let fallbackRotation = stickerRotation(for: rendered.id)
                 let fallbackScale = stickerScale(for: rendered.id)
                 let resolvedState = stateRepository.resolvedState(
@@ -94,7 +94,7 @@ struct CompositionProjector {
                     presentationKey: rendered.presentationKey,
                     targetType: .artifact,
                     targetID: artifact.id,
-                    record: rendered.record,
+                    recordID: rendered.recordID,
                     focusedSection: rendered.focusedSection,
                     columns: resolvedState.span.widthColumns,
                     units: resolvedState.span.heightUnits,
@@ -153,5 +153,4 @@ struct CompositionProjector {
             return "artifact-\(artifact.kind.rawValue)-\(artifact.id.uuidString)"
         }
     }
-
 }

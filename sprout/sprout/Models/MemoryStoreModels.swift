@@ -133,7 +133,6 @@ enum MemoryModelSchema {
             Board.self,
             Composition.self,
             CompositionItem.self,
-            DashboardSystemCardConfig.self,
             ArtifactStoreModel.self,
             RecordAnalysisSnapshotStoreModel.self,
             ReflectionSnapshotStoreModel.self,

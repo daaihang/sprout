@@ -5,7 +5,6 @@ enum HomeBoardItemKind: String, Sendable {
     case temporalArc
     case phaseReflection
     case recordReflection
-    case recordCard
 }
 
 struct HomeBoardProminence {
@@ -17,16 +16,14 @@ struct HomeBoardProminence {
 struct HomeBoardProminenceEngine {
     func prominence(
         for kind: HomeBoardItemKind,
-        record: Record? = nil,
         arc: TemporalArc? = nil,
-        reflection: ReflectionSnapshot? = nil,
-        presentationKey: String? = nil
+        reflection: ReflectionSnapshot? = nil
     ) -> HomeBoardProminence {
         switch kind {
         case .systemTodayInHistory:
             return HomeBoardProminence(
                 order: -10_000,
-                fallbackSpan: sizeLimits(for: DashboardSystemCardConfig.todayInHistoryKind).clamped(
+                fallbackSpan: sizeLimits(for: MemoryPresentationKind.todayInHistory.rawValue).clamped(
                     span: ContainerSpan(widthColumns: 4, heightUnits: 4)
                 ),
                 fallbackZIndex: -10_000
@@ -61,19 +58,7 @@ struct HomeBoardProminenceEngine {
                 ),
                 fallbackZIndex: -9_540
             )
-        case .recordCard:
-            let order = record.map(recordOrder(for:)) ?? 0
-            let span = sizeLimits(for: presentationKey ?? "text").defaultSpan
-            return HomeBoardProminence(
-                order: order,
-                fallbackSpan: span,
-                fallbackZIndex: 0
-            )
         }
-    }
-
-    private func recordOrder(for record: Record) -> Double {
-        record.createdAt.timeIntervalSince1970
     }
 
     private func arcHeightUnits(for arc: TemporalArc) -> Int {

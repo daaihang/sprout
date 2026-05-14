@@ -16,6 +16,7 @@ final class CompositionItem {
     var zIndex: Int = 0
     var rotationDegrees: Double = 0
     var scale: Double = 1
+    var isHidden: Bool = false
     var updatedAt: Date = Date()
 
     init(
@@ -31,6 +32,7 @@ final class CompositionItem {
         zIndex: Int = 0,
         rotationDegrees: Double = 0,
         scale: Double = 1,
+        isHidden: Bool = false,
         updatedAt: Date = Date()
     ) {
         self.boardID = boardID
@@ -45,6 +47,7 @@ final class CompositionItem {
         self.zIndex = zIndex
         self.rotationDegrees = rotationDegrees
         self.scale = scale
+        self.isHidden = isHidden
         self.updatedAt = updatedAt
     }
 }
@@ -64,6 +67,11 @@ extension CompositionItem {
         self.zIndex = zIndex
         self.rotationDegrees = rotationDegrees
         self.scale = scale
+        updatedAt = Date()
+    }
+
+    func setHidden(_ hidden: Bool) {
+        isHidden = hidden
         updatedAt = Date()
     }
 }

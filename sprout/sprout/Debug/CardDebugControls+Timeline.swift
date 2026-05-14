@@ -6,42 +6,9 @@ extension CardDebugView {
         Section {
             TextField(t("common.month_day_label", "Month Day Label"), text: $todayInHistoryData.monthDayLabel)
 
-            if let config = todayInHistorySystemConfig {
-                Toggle(
-                    t("common.debug.enable_today_in_history", "Enable Today in History Card"),
-                    isOn: binding(for: config, keyPath: \.isEnabled)
-                )
-
-                Picker(t("common.width", "Width"), selection: allowedWidthBinding(for: config)) {
-                    ForEach(availableWidths(for: config.heightUnits), id: \.self) { width in
-                        Text("\(width)").tag(width)
-                    }
-                }
-                .pickerStyle(.segmented)
-
-                Picker(t("common.height", "Height"), selection: allowedHeightBinding(for: config)) {
-                    ForEach(availableHeights(for: config.widthColumns), id: \.self) { height in
-                        Text("\(height)").tag(height)
-                    }
-                }
-                .pickerStyle(.segmented)
-
-                LabeledContent(t("common.sort", "Sort")) {
-                    Stepper(
-                        "\(Int(config.dashboardOrder))",
-                        value: binding(for: config, keyPath: \.dashboardOrder),
-                        in: -20_000...20_000,
-                        step: 100
-                    )
-                }
-            } else {
-                Button {
-                    createTodayInHistorySystemConfig()
-                } label: {
-                    Label(t("common.debug.create_system_card_config", "Create System Card Config"), systemImage: "plus")
-                }
-                .buttonStyle(.borderedProminent)
-            }
+            Text(t("common.debug.today_in_history_layout_note", "Today in History visibility and layout now come from CompositionItem state in the home board, not a separate system-card config."))
+                .font(.caption)
+                .foregroundStyle(.secondary)
         } header: {
             Text(t("common.debug.controls", "Debug Controls"))
         } footer: {

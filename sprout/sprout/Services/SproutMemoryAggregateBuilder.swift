@@ -47,40 +47,6 @@ struct SproutMemoryAggregateBuilder {
         )
     }
 
-    func build(record: Record) -> SproutMemoryAggregate {
-        let artifacts: [Artifact]
-        if record.rawText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            artifacts = []
-        } else {
-            artifacts = [
-                Artifact(
-                    kind: .text,
-                    title: previewTitle(from: record.rawText),
-                    summary: record.rawText,
-                    textContent: record.rawText,
-                    createdAt: record.createdAt,
-                    updatedAt: record.updatedAt
-                )
-            ]
-        }
-        let recordShell = RecordShell(
-            id: record.id,
-            createdAt: record.createdAt,
-            updatedAt: record.updatedAt,
-            rawText: record.rawText,
-            captureSource: record.captureSource,
-            artifactIDs: artifacts.map(\.id),
-            userMood: record.userMood,
-            userIntensity: record.userIntensity,
-            inputContext: record.inputContext
-        )
-        return SproutMemoryAggregate(
-            recordShell: recordShell,
-            artifacts: artifacts,
-            knownEntities: []
-        )
-    }
-
     func buildStandaloneAggregate(
         presentationKind: MemoryPresentationKind,
         recordID: UUID = UUID(),

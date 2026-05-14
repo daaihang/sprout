@@ -74,7 +74,7 @@ private struct BottomRoundedRectangle: Shape {
 enum HomeTopDrawerTag: String, CaseIterable, Identifiable {
     case cards
     case people
-    case rawRecords
+    case memories
     case arcs
     case reflections
     case search
@@ -83,7 +83,7 @@ enum HomeTopDrawerTag: String, CaseIterable, Identifiable {
     case photos
 
     static var allCases: [HomeTopDrawerTag] {
-        [.cards, .people, .rawRecords, .arcs, .reflections, .search]
+        [.cards, .people, .memories, .arcs, .reflections, .search]
     }
 
     var id: String { rawValue }
@@ -92,8 +92,8 @@ enum HomeTopDrawerTag: String, CaseIterable, Identifiable {
         switch self {
         case .cards:
             return "content.top_drawer.tag.cards"
-        case .rawRecords:
-            return "content.top_drawer.tag.raw_records"
+        case .memories:
+            return "content.top_drawer.tag.memories"
         case .search:
             return "content.top_drawer.tag.search"
         case .arcs:
@@ -115,8 +115,8 @@ enum HomeTopDrawerTag: String, CaseIterable, Identifiable {
         switch self {
         case .cards:
             return "卡片"
-        case .rawRecords:
-            return "原始记录"
+        case .memories:
+            return "记忆"
         case .search:
             return "搜索"
         case .arcs:
@@ -138,7 +138,7 @@ enum HomeTopDrawerTag: String, CaseIterable, Identifiable {
         switch self {
         case .cards:
             return "square.grid.2x2"
-        case .rawRecords:
+        case .memories:
             return "list.bullet.rectangle"
         case .search:
             return "magnifyingglass"
@@ -159,10 +159,10 @@ enum HomeTopDrawerTag: String, CaseIterable, Identifiable {
 
     init(persistedValue: String) {
         switch persistedValue {
-        case Self.cards.rawValue, "flow":
+        case Self.cards.rawValue:
             self = .cards
-        case Self.rawRecords.rawValue:
-            self = .rawRecords
+        case Self.memories.rawValue:
+            self = .memories
         case Self.search.rawValue, Self.decisions.rawValue, Self.map.rawValue, Self.photos.rawValue:
             self = .search
         case Self.arcs.rawValue:

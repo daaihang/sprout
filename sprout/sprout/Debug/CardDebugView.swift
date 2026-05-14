@@ -2,12 +2,9 @@ import SwiftUI
 import PhotosUI
 import MapKit
 import MusicKit
-import SwiftData
 
 struct CardDebugView: View {
     @Environment(AppLocalization.self) var localization
-    @Environment(\.modelContext) var modelContext
-    @Query(sort: \DashboardSystemCardConfig.dashboardOrder, order: .forward) var systemConfigs: [DashboardSystemCardConfig]
 
     let kind: DebugCardKind
 
@@ -311,87 +308,34 @@ struct CardDebugView: View {
             .sorted()
     }
 
-    func allowedWidthBinding(for object: DashboardSystemCardConfig) -> Binding<Int> {
-        Binding(
-            get: {
-                if availableWidths(for: object.heightUnits).contains(object.widthColumns) {
-                    return object.widthColumns
-                }
-                return sizeLimits(for: DashboardSystemCardConfig.todayInHistoryKind)
-                    .clamped(span: object.span)
-                    .widthColumns
-            },
-            set: { object.widthColumns = $0 }
-        )
-    }
-
-    var todayInHistorySystemConfig: DashboardSystemCardConfig? {
-        systemConfigs.first(where: { $0.kind == DashboardSystemCardConfig.todayInHistoryKind })
-    }
-
-    func createTodayInHistorySystemConfig() {
-        let config = DashboardSystemCardConfig(
-            kind: DashboardSystemCardConfig.todayInHistoryKind,
-            isEnabled: true,
-            widthColumns: 4,
-            heightUnits: 4,
-            dashboardOrder: -10_000
-        )
-        modelContext.insert(config)
-    }
-
-    func binding<Value>(
-        for object: DashboardSystemCardConfig,
-        keyPath: ReferenceWritableKeyPath<DashboardSystemCardConfig, Value>
-    ) -> Binding<Value> {
-        Binding(
-            get: { object[keyPath: keyPath] },
-            set: { object[keyPath: keyPath] = $0 }
-        )
-    }
-
-    func allowedHeightBinding(for object: DashboardSystemCardConfig) -> Binding<Int> {
-        Binding(
-            get: {
-                if availableHeights(for: object.widthColumns).contains(object.heightUnits) {
-                    return object.heightUnits
-                }
-                return sizeLimits(for: DashboardSystemCardConfig.todayInHistoryKind)
-                    .clamped(span: object.span)
-                    .heightUnits
-            },
-            set: { object.heightUnits = $0 }
-        )
-    }
-
     func makeTodayInHistorySample(entryCount: Int) -> TodayInHistoryCardData {
-    let calendar = Calendar.current
-    let currentYear = calendar.component(.year, from: Date())
-    let entries = (0..<entryCount).map { index -> TodayInHistoryEntry in
-        let yearsAgo = index + 1
-        let createdAt = calendar.date(byAdding: .year, value: -yearsAgo, to: Date()) ?? Date()
-        let recordShell = RecordShell(
-            createdAt: createdAt,
-            updatedAt: createdAt,
-            rawText: [
-                "那天在公园里拍到了很好看的光影。",
-                "第一次去了新的咖啡馆，记住了窗边的位置。",
-                "和老朋友散步，聊了很久。",
-                "完成了一个重要项目，晚上吃了庆祝晚餐。",
-                "在路上听到喜欢的歌，突然很开心。",
-                "整理旧照片时想起了很多事情。",
-            ][index % 6],
-            captureSource: .manual,
-            artifactIDs: []
-        )
-        return TodayInHistoryEntry(recordShell: recordShell, referenceYear: currentYear)
-    }
+        let calendar = Calendar.current
+        let currentYear = calendar.component(.year, from: Date())
+        let entries = (0..<entryCount).map { index -> TodayInHistoryEntry in
+            let yearsAgo = index + 1
+            let createdAt = calendar.date(byAdding: .year, value: -yearsAgo, to: Date()) ?? Date()
+            let recordShell = RecordShell(
+                createdAt: createdAt,
+                updatedAt: createdAt,
+                rawText: [
+                    "那天在公园里拍到了很好看的光影。",
+                    "第一次去了新的咖啡馆，记住了窗边的位置。",
+                    "和老朋友散步，聊了很久。",
+                    "完成了一个重要项目，晚上吃了庆祝晚餐。",
+                    "在路上听到喜欢的歌，突然很开心。",
+                    "整理旧照片时想起了很多事情。",
+                ][index % 6],
+                captureSource: .manual,
+                artifactIDs: []
+            )
+            return TodayInHistoryEntry(recordShell: recordShell, referenceYear: currentYear)
+        }
 
-    return TodayInHistoryCardData(
-        monthDayLabel: "May 11",
-        entries: entries
-    )
-}
+        return TodayInHistoryCardData(
+            monthDayLabel: "May 11",
+            entries: entries
+        )
+    }
 
     func addTodoItem() {
         let trimmed = newTodoText.trimmingCharacters(in: .whitespacesAndNewlines)

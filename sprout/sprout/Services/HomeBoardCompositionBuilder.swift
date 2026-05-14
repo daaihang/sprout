@@ -13,39 +13,16 @@ struct HomeBoardCompositionBuilder {
 
     let dependencies: Dependencies
 
-    private var evidenceProjector: RecordEvidenceProjector {
-        RecordEvidenceProjector(localization: AppLocalization.shared)
-    }
-
-    func buildGridItems(for date: Date, records: [Record], systemConfigs: [DashboardSystemCardConfig]) -> [GridItem] {
+    func buildGridItems(for date: Date, recordShells: [RecordShell]) -> [GridItem] {
         let compositionContext = dependencies.stateRepository.compositionContext(for: date)
         let compositionKey = compositionContext.compositionKey
 
-        let recordItems = buildRecordEntries(
-            records: records,
-            compositionKey: compositionKey
-        )
-        let systemItems = buildTodayInHistoryEntries(
-            date: date,
-            systemConfigs: systemConfigs,
-            compositionContext: compositionContext
-        )
-        let arcItems = buildTemporalArcEntries(
-            date: date,
-            compositionContext: compositionContext
-        )
-        let reflectionItems = buildPhaseReflectionEntries(
-            date: date,
-            compositionContext: compositionContext
-        )
-        let activeRecordReflectionItems = buildActiveRecordReflectionEntries(
-            date: date,
-            compositionContext: compositionContext
-        )
-        let savedReflectionItems = buildSavedReflectionEntries(
-            date: date,
-            compositionContext: compositionContext
-        )
+        let recordItems = buildRecordEntries(recordShells: recordShells, compositionKey: compositionKey)
+        let systemItems = buildTodayInHistoryEntries(date: date, compositionContext: compositionContext)
+        let arcItems = buildTemporalArcEntries(date: date, compositionContext: compositionContext)
+        let reflectionItems = buildPhaseReflectionEntries(date: date, compositionContext: compositionContext)
+        let activeRecordReflectionItems = buildActiveRecordReflectionEntries(date: date, compositionContext: compositionContext)
+        let savedReflectionItems = buildSavedReflectionEntries(date: date, compositionContext: compositionContext)
 
         return (systemItems + arcItems + reflectionItems + activeRecordReflectionItems + savedReflectionItems + recordItems)
             .sorted { $0.order < $1.order }
@@ -75,7 +52,7 @@ struct HomeBoardCompositionBuilder {
 
     func resizeTodayInHistoryCard(to span: ContainerSpan, on date: Date) {
         let compositionContext = dependencies.stateRepository.compositionContext(for: date)
-        let itemID = "system-\(DashboardSystemCardConfig.todayInHistoryKind)"
+        let itemID = todayInHistoryItemID
         let prominence = dependencies.prominenceEngine.prominence(for: .systemTodayInHistory)
         let fallbackState = dependencies.stateRepository.resolvedState(
             compositionKey: compositionContext.compositionKey,
@@ -96,7 +73,8 @@ struct HomeBoardCompositionBuilder {
             span: span,
             zIndex: fallbackState.zIndex,
             rotationDegrees: fallbackState.rotationDegrees,
-            scale: fallbackState.scale
+            scale: fallbackState.scale,
+            isHidden: false
         )
     }
 
@@ -158,64 +136,47 @@ struct HomeBoardCompositionBuilder {
         )
     }
 
-    func todayInHistoryConfig(from systemConfigs: [DashboardSystemCardConfig]) -> DashboardSystemCardConfig? {
-        guard let existing = systemConfigs.first(where: { $0.kind == DashboardSystemCardConfig.todayInHistoryKind }) else {
-            return nil
-        }
-        return existing.isEnabled ? existing : nil
-    }
-
     func todayInHistoryData(for date: Date) -> TodayInHistoryCardData? {
         let calendar = Calendar.current
         let currentYear = calendar.component(.year, from: date)
-let matching = dependencies.memoryRepository.recordShells
-    .filter {
-        calendar.component(.month, from: $0.createdAt) == calendar.component(.month, from: date)
-            && calendar.component(.day, from: $0.createdAt) == calendar.component(.day, from: date)
-            && calendar.component(.year, from: $0.createdAt) < currentYear
-    }
-    .sorted { $0.createdAt > $1.createdAt }
+        let matching = dependencies.memoryRepository.recordShells
+            .filter {
+                calendar.component(.month, from: $0.createdAt) == calendar.component(.month, from: date)
+                    && calendar.component(.day, from: $0.createdAt) == calendar.component(.day, from: date)
+                    && calendar.component(.year, from: $0.createdAt) < currentYear
+            }
+            .sorted { $0.createdAt > $1.createdAt }
 
         guard !matching.isEmpty else { return nil }
 
         let monthDay = localizedDate(date, template: "MMMM d")
         return TodayInHistoryCardData(
             monthDayLabel: monthDay,
-entries: matching.map { recordShell in
-    let memoryView = dependencies.memoryRepository.memoryView(for: recordShell.id)
-    return TodayInHistoryEntry(
-        recordShell: recordShell,
-        artifacts: memoryView?.artifacts ?? [],
-        analysis: memoryView?.analysis,
-        referenceYear: currentYear
-    )
-}
+            entries: matching.map { recordShell in
+                let memoryView = dependencies.memoryRepository.memoryView(for: recordShell.id)
+                return TodayInHistoryEntry(
+                    recordShell: recordShell,
+                    artifacts: memoryView?.artifacts ?? [],
+                    analysis: memoryView?.analysis,
+                    referenceYear: currentYear
+                )
+            }
         )
     }
 
-    func ensureTodayInHistoryConfig(systemConfigs: [DashboardSystemCardConfig]) {
-        guard systemConfigs.first(where: { $0.kind == DashboardSystemCardConfig.todayInHistoryKind }) == nil else {
-            return
-        }
-        let created = DashboardSystemCardConfig(
-            kind: DashboardSystemCardConfig.todayInHistoryKind,
-            isEnabled: true,
-            widthColumns: 4,
-            heightUnits: 4,
-            dashboardOrder: -10_000
-        )
-        dependencies.modelContext.insert(created)
+    private var todayInHistoryItemID: String {
+        "system-\(MemoryPresentationKind.todayInHistory.rawValue)"
     }
 
     private var todayInHistoryTargetID: UUID {
         UUID(uuidString: "00000000-0000-0000-0000-000000000100") ?? UUID()
     }
 
-    private func buildRecordEntries(records: [Record], compositionKey: String) -> [(order: Double, item: GridItem)] {
-        orderedRecords(records).enumerated().flatMap { index, record in
-            let baseOrder = normalizedOrder(for: record) + Double(index) * 0.001
+    private func buildRecordEntries(recordShells: [RecordShell], compositionKey: String) -> [(order: Double, item: GridItem)] {
+        orderedRecordShells(recordShells).enumerated().flatMap { index, recordShell in
+            let baseOrder = normalizedOrder(for: recordShell) + Double(index) * 0.001
             return dependencies.cardProjector.projectCards(
-                for: record,
+                for: recordShell,
                 memoryRepository: dependencies.memoryRepository,
                 stateRepository: dependencies.stateRepository,
                 compositionKey: compositionKey
@@ -227,7 +188,7 @@ entries: matching.map { recordShell in
                         id: projection.id,
                         projectionTargetType: projection.targetType.rawValue,
                         projectionTargetID: projection.targetID,
-                        recordID: projection.record.id,
+                        recordID: projection.recordID,
                         card: AnyView(HomeBoardCardWrapper(projection: projection)),
                         columns: projection.columns,
                         units: projection.units,
@@ -238,10 +199,10 @@ entries: matching.map { recordShell in
                         deleteActionTitle: "Delete Memory",
                         deleteActionSystemImage: "trash",
                         onResize: { span in
-                            resizeProjection(projection, to: span, on: record.createdAt)
+                            resizeProjection(projection, to: span, on: recordShell.createdAt)
                         },
                         onDelete: {
-                            dependencies.modelContext.delete(projection.record)
+                            dependencies.memoryRepository.deleteRecordShell(projection.recordID)
                         }
                     )
                 )
@@ -251,14 +212,11 @@ entries: matching.map { recordShell in
 
     private func buildTodayInHistoryEntries(
         date: Date,
-        systemConfigs: [DashboardSystemCardConfig],
         compositionContext: CompositionStateRepository.ResolvedCompositionContext
     ) -> [(order: Double, item: GridItem)] {
-        guard let config = todayInHistoryConfig(from: systemConfigs),
-              let memoryData = todayInHistoryData(for: date)
-        else { return [] }
+        guard let memoryData = todayInHistoryData(for: date) else { return [] }
 
-        let itemID = "system-\(DashboardSystemCardConfig.todayInHistoryKind)"
+        let itemID = todayInHistoryItemID
         let prominence = dependencies.prominenceEngine.prominence(for: .systemTodayInHistory)
         let resolvedState = dependencies.stateRepository.resolvedState(
             compositionKey: compositionContext.compositionKey,
@@ -269,6 +227,8 @@ entries: matching.map { recordShell in
             fallbackScale: stickerScale(for: itemID)
         )
 
+        guard !resolvedState.isHidden else { return [] }
+
         return [
             (
                 order: prominence.order,
@@ -278,9 +238,7 @@ entries: matching.map { recordShell in
                     projectionTargetID: todayInHistoryTargetID,
                     recordID: UUID(uuidString: "00000000-0000-0000-0000-000000000001") ?? UUID(),
                     card: AnyView(
-                        NavigationLink(
-                            destination: TodayInHistoryDetailView(selectedDate: date, entries: memoryData.entries)
-                        ) {
+                        NavigationLink(destination: TodayInHistoryDetailView(selectedDate: date, entries: memoryData.entries)) {
                             TodayInHistoryCard(data: memoryData)
                         }
                         .buttonStyle(.plain)
@@ -290,14 +248,27 @@ entries: matching.map { recordShell in
                     zIndex: resolvedState.zIndex,
                     rotationDegrees: resolvedState.rotationDegrees,
                     scale: resolvedState.scale,
-                    availableSpans: availableSpans(for: DashboardSystemCardConfig.todayInHistoryKind),
+                    availableSpans: availableSpans(for: MemoryPresentationKind.todayInHistory.rawValue),
                     deleteActionTitle: "Hide System Card",
                     deleteActionSystemImage: "eye.slash",
                     onResize: { newSpan in
                         resizeTodayInHistoryCard(to: newSpan, on: date)
                     },
                     onDelete: {
-                        config.isEnabled = false
+                        dependencies.stateRepository.upsertState(
+                            boardID: compositionContext.board.id,
+                            boardKey: compositionContext.boardKey,
+                            compositionID: compositionContext.composition.id,
+                            compositionKey: compositionContext.compositionKey,
+                            itemKey: itemID,
+                            targetType: CompositionProjectionTargetType.system.rawValue,
+                            targetID: todayInHistoryTargetID,
+                            span: resolvedState.span,
+                            zIndex: resolvedState.zIndex,
+                            rotationDegrees: resolvedState.rotationDegrees,
+                            scale: resolvedState.scale,
+                            isHidden: true
+                        )
                     }
                 )
             )
@@ -508,14 +479,13 @@ entries: matching.map { recordShell in
         ]
     }
 
-    private func orderedRecords(_ records: [Record]) -> [Record] {
-        records.sorted { normalizedOrder(for: $0) < normalizedOrder(for: $1) }
+    private func orderedRecordShells(_ recordShells: [RecordShell]) -> [RecordShell] {
+        recordShells.sorted { normalizedOrder(for: $0) < normalizedOrder(for: $1) }
     }
 
-    private func normalizedOrder(for record: Record) -> Double {
-        record.createdAt.timeIntervalSince1970
+    private func normalizedOrder(for recordShell: RecordShell) -> Double {
+        recordShell.createdAt.timeIntervalSince1970
     }
-
 
     private func temporalArcCardData(for arc: TemporalArc) -> TemporalArcCardData {
         TemporalArcCardData(

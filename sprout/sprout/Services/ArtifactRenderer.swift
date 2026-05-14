@@ -5,7 +5,7 @@ import MapKit
 struct ArtifactRenderer {
     func renderCard(
         for artifact: Artifact,
-        record: Record,
+        recordID: UUID,
         focusedSection: RecordSection,
         fallbackID: String,
         fallbackSpanKey: String
@@ -17,7 +17,7 @@ struct ArtifactRenderer {
                 spanKey: fallbackSpanKey,
                 presentationKey: "text",
                 section: .text,
-                record: record,
+                recordID: recordID,
                 cardView: AnyView(ArtifactRowView(artifact: artifact, style: .card))
             )
         case .link:
@@ -28,7 +28,7 @@ struct ArtifactRenderer {
                     spanKey: fallbackSpanKey,
                     presentationKey: "link",
                     section: .link,
-                    record: record,
+                    recordID: recordID,
                     cardView: AnyView(ArtifactRowView(artifact: artifact, style: .card))
                 )
             }
@@ -46,7 +46,7 @@ struct ArtifactRenderer {
                 spanKey: fallbackSpanKey,
                 presentationKey: "link",
                 section: .link,
-                record: record,
+                recordID: recordID,
                 cardView: AnyView(LinkCard(data: data))
             )
         case .todo:
@@ -60,7 +60,7 @@ struct ArtifactRenderer {
                 spanKey: fallbackSpanKey,
                 presentationKey: "todo",
                 section: .todo,
-                record: record,
+                recordID: recordID,
                 cardView: items.isEmpty
                     ? AnyView(ArtifactRowView(artifact: artifact, style: .card))
                     : AnyView(TodoCard(data: data))
@@ -78,7 +78,7 @@ struct ArtifactRenderer {
                 spanKey: fallbackSpanKey,
                 presentationKey: "music",
                 section: .music,
-                record: record,
+                recordID: recordID,
                 cardView: AnyView(MusicCard(data: data))
             )
         case .photo:
@@ -97,7 +97,7 @@ struct ArtifactRenderer {
                 spanKey: fallbackSpanKey,
                 presentationKey: "photo",
                 section: .photo,
-                record: record,
+                recordID: recordID,
                 cardView: imagesData.isEmpty
                     ? AnyView(ArtifactRowView(artifact: artifact, style: .card))
                     : AnyView(PhotoCard(data: data))
@@ -116,7 +116,7 @@ struct ArtifactRenderer {
                 spanKey: fallbackSpanKey,
                 presentationKey: "audio",
                 section: .audio,
-                record: record,
+                recordID: recordID,
                 cardView: audioData == nil && artifact.textContent.isEmpty
                     ? AnyView(ArtifactRowView(artifact: artifact, style: .card))
                     : AnyView(AudioCard(data: data))
@@ -133,7 +133,7 @@ struct ArtifactRenderer {
                 spanKey: fallbackSpanKey,
                 presentationKey: "map",
                 section: .map,
-                record: record,
+                recordID: recordID,
                 cardView: coordinate == nil && artifact.title.isEmpty
                     ? AnyView(ArtifactRowView(artifact: artifact, style: .card))
                     : AnyView(MapCard(data: data))
@@ -163,7 +163,7 @@ struct ArtifactRenderer {
                     spanKey: fallbackSpanKey,
                     presentationKey: "weather",
                     section: .weather,
-                    record: record,
+                    recordID: recordID,
                     cardView: AnyView(WeatherCard(data: data))
                 )
             }
@@ -172,7 +172,7 @@ struct ArtifactRenderer {
                 spanKey: fallbackSpanKey,
                 presentationKey: "weather",
                 section: .weather,
-                record: record,
+                recordID: recordID,
                 cardView: AnyView(ArtifactRowView(artifact: artifact, style: .card))
             )
         case .personMention:
@@ -187,7 +187,7 @@ struct ArtifactRenderer {
                 spanKey: fallbackSpanKey,
                 presentationKey: "people",
                 section: .people,
-                record: record,
+                recordID: recordID,
                 cardView: AnyView(PeopleCard(data: PeopleCardData(people: [person])))
             )
         case .decisionNote:
@@ -196,7 +196,7 @@ struct ArtifactRenderer {
                 spanKey: fallbackSpanKey,
                 presentationKey: "text",
                 section: focusedSection == .people ? .people : .text,
-                record: record,
+                recordID: recordID,
                 cardView: AnyView(ArtifactRowView(artifact: artifact, style: .card))
             )
         case .book:
@@ -213,7 +213,7 @@ struct ArtifactRenderer {
                 spanKey: fallbackSpanKey,
                 presentationKey: "book",
                 section: .text,
-                record: record,
+                recordID: recordID,
                 cardView: data.isEmpty
                     ? AnyView(ArtifactRowView(artifact: artifact, style: .card))
                     : AnyView(BookCard(data: data))
@@ -233,7 +233,7 @@ struct ArtifactRenderer {
                 spanKey: fallbackSpanKey,
                 presentationKey: "film",
                 section: .text,
-                record: record,
+                recordID: recordID,
                 cardView: data.isEmpty
                     ? AnyView(ArtifactRowView(artifact: artifact, style: .card))
                     : AnyView(FilmCard(data: data))
@@ -244,7 +244,7 @@ struct ArtifactRenderer {
                 spanKey: fallbackSpanKey,
                 presentationKey: "game",
                 section: .text,
-                record: record,
+                recordID: recordID,
                 cardView: AnyView(ArtifactRowView(artifact: artifact, style: .card))
             )
         case .ticket:
@@ -253,7 +253,7 @@ struct ArtifactRenderer {
                 spanKey: fallbackSpanKey,
                 presentationKey: "ticket",
                 section: .text,
-                record: record,
+                recordID: recordID,
                 cardView: AnyView(ArtifactRowView(artifact: artifact, style: .card))
             )
         case .healthMetric:
@@ -262,7 +262,7 @@ struct ArtifactRenderer {
                 spanKey: fallbackSpanKey,
                 presentationKey: "health",
                 section: .text,
-                record: record,
+                recordID: recordID,
                 cardView: AnyView(ArtifactRowView(artifact: artifact, style: .card))
             )
         }
@@ -273,14 +273,14 @@ struct ArtifactRenderer {
         spanKey: String,
         presentationKey: String,
         section: RecordSection,
-        record: Record,
+        recordID: UUID,
         cardView: AnyView
     ) -> RenderedArtifactCard {
         RenderedArtifactCard(
             id: id,
             spanKey: spanKey,
             presentationKey: presentationKey,
-            record: record,
+            recordID: recordID,
             focusedSection: section,
             cardView: cardView
         )
@@ -326,7 +326,7 @@ struct RenderedArtifactCard {
     let id: String
     let spanKey: String
     let presentationKey: String
-    let record: Record
+    let recordID: UUID
     let focusedSection: RecordSection
     let cardView: AnyView
 }

@@ -13,8 +13,8 @@ struct HomeModeContentView: View {
             switch selectedTag {
             case .cards:
                 HomeCardsPagerView(selectedDate: $selectedDate, topContentInset: cardsTopInset)
-            case .rawRecords:
-                RecordTimelineView(selectedDate: selectedDate)
+            case .memories:
+                MemoryTimelineScrollView(selectedDate: selectedDate)
             case .arcs:
                 ArcsHomeView(selectedDate: selectedDate)
             case .people:
@@ -94,7 +94,7 @@ struct HomeModeContentView: View {
                 "content.home.placeholder.photos",
                 default: "图片墙主页还未接入，先保留这个入口。"
             )
-        case .cards, .rawRecords:
+        case .cards, .memories:
             return ""
         }
     }
