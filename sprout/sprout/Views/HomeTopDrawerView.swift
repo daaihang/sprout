@@ -76,13 +76,14 @@ enum HomeTopDrawerTag: String, CaseIterable, Identifiable {
     case people
     case rawRecords
     case arcs
+    case reflections
     case search
     case decisions
     case map
     case photos
 
     static var allCases: [HomeTopDrawerTag] {
-        [.cards, .people, .rawRecords, .arcs, .search]
+        [.cards, .people, .rawRecords, .arcs, .reflections, .search]
     }
 
     var id: String { rawValue }
@@ -97,6 +98,8 @@ enum HomeTopDrawerTag: String, CaseIterable, Identifiable {
             return "content.top_drawer.tag.search"
         case .arcs:
             return "content.top_drawer.tag.arcs"
+        case .reflections:
+            return "content.top_drawer.tag.reflections"
         case .people:
             return "content.top_drawer.tag.people"
         case .decisions:
@@ -118,6 +121,8 @@ enum HomeTopDrawerTag: String, CaseIterable, Identifiable {
             return "搜索"
         case .arcs:
             return "阶段"
+        case .reflections:
+            return "反思"
         case .people:
             return "人物"
         case .decisions:
@@ -139,6 +144,8 @@ enum HomeTopDrawerTag: String, CaseIterable, Identifiable {
             return "magnifyingglass"
         case .arcs:
             return "timeline.selection"
+        case .reflections:
+            return "sparkles"
         case .people:
             return "person.2"
         case .decisions:

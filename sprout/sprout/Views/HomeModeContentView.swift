@@ -19,6 +19,8 @@ struct HomeModeContentView: View {
                 ArcsHomeView(selectedDate: selectedDate)
             case .people:
                 PeopleHomeView()
+            case .reflections:
+                ReflectionsHomeView()
             case .decisions:
                 placeholderView(for: .decisions)
             case .map:
@@ -73,6 +75,8 @@ struct HomeModeContentView: View {
                 "content.home.placeholder.search",
                 default: "搜索页已接入，会聚合人物、阶段、记忆和碎片内容。"
             )
+        case .reflections:
+            return ""
         case .people:
             return ""
         case .decisions:
