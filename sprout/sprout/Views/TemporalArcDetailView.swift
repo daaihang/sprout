@@ -34,6 +34,9 @@ struct TemporalArcDetailView: View {
                 if let reflection = memoryRepository.linkedReflection(forArcID: currentArc.id) {
                     reflectionSection(reflection)
                 }
+                if let evidenceView, !evidenceView.linkedEntities.isEmpty {
+                    entitySummarySection(evidenceView)
+                }
                 metadata
                 if !relatedRecords.isEmpty {
                     relatedRecordsSection
@@ -137,6 +140,44 @@ struct TemporalArcDetailView: View {
             Text(reflectionSourceExplanation(reflection))
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        }
+        .detailCard()
+    }
+
+    private func entitySummarySection(_ evidenceView: SproutMemoryRepository.ArcEvidenceView) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Entities in This Phase")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            ForEach(evidenceView.linkedEntities, id: \.id) { entity in
+                NavigationLink {
+                    MemoryEntityDetailView(entityID: entity.id)
+                } label: {
+                    HStack(alignment: .top, spacing: 10) {
+                        Text(entity.kind.badgeLabel)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(entity.kind.tintColor)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(entity.kind.tintColor.opacity(0.12), in: Capsule())
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(entity.displayName)
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.primary)
+                            if !entity.summary.isEmpty {
+                                Text(entity.summary)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        Spacer()
+                    }
+                }
+                .buttonStyle(.plain)
+            }
         }
         .detailCard()
     }
