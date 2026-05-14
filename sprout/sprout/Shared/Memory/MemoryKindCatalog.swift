@@ -100,6 +100,7 @@ enum MediaCardKind: String, CaseIterable, Codable, Sendable {
 }
 
 extension Record {
+    /// Legacy-only fallback. Main UI paths should resolve primary kind from artifact-backed evidence.
     var contentFirstCardKind: RecordCardKind? {
         let mediaCards = self.mediaCards ?? []
 

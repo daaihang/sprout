@@ -85,21 +85,23 @@
 - analyze 主链已切到 `/api/analysis/records`
 - analyze preview 主链已切到 `/api/analysis/preview`
 - `RecordDetailView` 已切到 artifact evidence-first，`text/photo/audio/link/todo/music/map/weather/people` 优先从 `memoryView.artifacts` 和 analysis evidence 读取
+- `RecordTimelineView` 与 `TodayInHistoryCard` 已切到 shared `RecordEvidenceProjector`，preview kind / headline / subtitle / meta 统一改为 artifact-backed evidence-first
 - `MediaCard` 当前仅保留 photo/audio 的 payload backing；music/link/todo 的新写入路径已不再创建 `MediaCard`
 
 剩余：
 
 - `MediaCard` 仍作为 photo/audio payload backing store 存在
-- 旧 timeline / preview 路径仍有部分 kind 推断依赖 `Record` 旧关系字段，后续要继续改为 artifact-backed 识别
+- 搜索页、其他辅助 preview / debug 读取链仍需继续统一到 shared evidence projector
 
 ## 4. 下一阶段动作
 
 ### 4.1 结构动作
 
 1. 继续把 `RecordDetail` 的 section 数据源改为 artifact evidence-first
-2. 梳理 `MediaCard` payload 字段，避免重新承载内容真相
-3. 核对移除旧字段后的 SwiftData schema 迁移风险
-4. 开始设计 Graph / Arc 一级体验与 Reflection API 的接口边界
+2. 把搜索、列表、详情辅助摘要统一收敛到 shared evidence projection
+3. 梳理 `MediaCard` payload 字段，避免重新承载内容真相
+4. 核对移除旧字段后的 SwiftData schema 迁移风险
+5. 开始设计 Graph / Arc 一级体验与 Reflection API 的接口边界
 
 ### 4.2 UI 动作
 

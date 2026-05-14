@@ -215,14 +215,20 @@ struct RecordDaySection: Identifiable {
 
 struct RecordTimelineRow: View {
     @Environment(AppLocalization.self) private var localization
+    @Environment(SproutMemoryRepository.self) private var memoryRepository
 
     let record: Record
+
+    private var evidence: RecordEvidenceProjector.Projection {
+        RecordEvidenceProjector(localization: localization)
+            .project(record: record, memoryView: memoryRepository.memoryView(for: record.id))
+    }
 
     var body: some View {
         NavigationLink(
             destination: RecordDetailView(
                 record: record,
-                focusedSection: preferredFocusedSection
+                focusedSection: evidence.preferredFocusedSection
             )
         ) {
             HStack(alignment: .top, spacing: 14) {
@@ -262,46 +268,15 @@ struct RecordTimelineRow: View {
         }
     }
 
-    private var preferredFocusedSection: RecordSection {
-        if !record.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return .text
-        }
-
-        switch primaryContentKind {
-        case .photo:
-            return .photo
-        case .music:
-            return .music
-        case .audio:
-            return .audio
-        case .todo:
-            return .todo
-        case .link:
-            return .link
-        case .map:
-            return .map
-        case .activity:
-            return .activity
-        case .emotion:
-            return .emotion
-        case .weather:
-            return .weather
-        case .people:
-            return .people
-        case .text, .quote, .todayInHistory, .book, .film, .game, .ticket, .health:
-            return .text
-        }
-    }
-
     @ViewBuilder
     private var preview: some View {
-        if primaryContentKind == .photo, let image = photoPreviewImage {
+        if evidence.primaryKind == .photo, let image = evidence.photoPreviewImage {
             Image(uiImage: image)
                 .resizable()
                 .aspectRatio(contentMode: .fill)
                 .frame(width: 62, height: 62)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        } else if primaryContentKind == .emotion, let mood = MoodType(rawValue: record.mood ?? "") {
+        } else if evidence.primaryKind == .emotion, let mood = evidence.mood {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(mood.color.opacity(0.16))
                 .frame(width: 62, height: 62)
@@ -309,12 +284,12 @@ struct RecordTimelineRow: View {
                     Text(mood.emoji)
                         .font(.system(size: 30))
                 )
-        } else if primaryContentKind == .people, let person = record.mentionedPeople?.first {
+        } else if evidence.primaryKind == .people, let initials = evidence.primaryPersonInitials {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(Color.accentColor.opacity(0.14))
                 .frame(width: 62, height: 62)
                 .overlay(
-                    Text(person.initials)
+                    Text(initials)
                         .font(.system(size: 24, weight: .semibold))
                         .foregroundStyle(Color.accentColor)
                 )
@@ -331,18 +306,18 @@ struct RecordTimelineRow: View {
     }
 
     private var previewSymbol: String {
-        switch primaryContentKind {
+        switch evidence.primaryKind {
         case .weather:
-            return (record.weather).flatMap(WeatherCondition.init(rawValue:))?.sfSymbol ?? primaryContentKind.timelineSymbolName
+            return evidence.weatherCondition?.sfSymbol ?? evidence.primaryKind.timelineSymbolName
         default:
-            return primaryContentKind.timelineSymbolName
+            return evidence.primaryKind.timelineSymbolName
         }
     }
 
     private var previewTint: Color {
-        switch primaryContentKind {
+        switch evidence.primaryKind {
         case .weather:
-            return (record.weather).flatMap(WeatherCondition.init(rawValue:))?.color ?? .accentColor
+            return evidence.weatherCondition?.color ?? .accentColor
         case .audio:
             return .orange
         case .music:
@@ -358,181 +333,19 @@ struct RecordTimelineRow: View {
         }
     }
 
-    private var primaryContentKind: RecordCardKind {
-        record.contentFirstCardKind ?? .text
-    }
-
-    private var photoPreviewImage: UIImage? {
-        let photoMedia = (record.mediaCards ?? []).first(where: { $0.mediaKind == .photo })
-        if let data = photoMedia?.thumbnailData ?? photoMedia?.imageData {
-            return UIImage(data: data)
-        }
-        return nil
-    }
-
     private var headlineText: String {
-        let trimmedBody = record.body.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmedBody.isEmpty {
-            return trimmedBody
-        }
-
-        if let audio = firstAudioMedia {
-            let transcript = trimmed(audio.caption)
-            if !transcript.isEmpty {
-            return transcript
-            }
-        }
-
-        if let todoPayload = decodedTodoItems {
-            if !todoPayload.title.isEmpty {
-                return todoPayload.title
-            }
-            if let firstItem = todoPayload.items.first?.text, !firstItem.isEmpty {
-                return firstItem
-            }
-        }
-
-        if let music = firstMusicMedia {
-            let title = trimmed(music.title)
-            if !title.isEmpty {
-                return title
-            }
-        }
-
-        if let mood = MoodType(rawValue: record.mood ?? "") {
-            return mood.label
-        }
-
-        if let weather = (record.weather).flatMap(WeatherCondition.init(rawValue:)) {
-            let tempPrefix = record.temperature.map { "\(Int($0))° " } ?? ""
-            return "\(tempPrefix)\(weather.label)"
-        }
-
-        let location = trimmed(record.location)
-        if !location.isEmpty {
-            return location
-        }
-
-        if let person = record.mentionedPeople?.first {
-            return person.displayName
-        }
-
-        let photoCount = photoMediaCount
-        if photoCount > 0 {
-            return localization.string("timeline.photo.count", default: "%d photos", arguments: [photoCount])
-        }
-
-        return localization.string("detail.navigation.record", default: "Entry")
+        evidence.headlineText
     }
 
     private var supportingText: String? {
-        if let todoPayload = decodedTodoItems {
-            let remaining = todoPayload.items.filter { !$0.isDone }.count
-            return localization.string(
-                "timeline.todo.summary",
-                default: "%d items · %d remaining",
-                arguments: [todoPayload.items.count, remaining]
-            )
-        }
-
-        if let music = firstMusicMedia {
-            let artist = trimmed(music.caption)
-            let album = trimmed(music.albumName)
-            let components = [artist, album].filter { !$0.isEmpty }
-            if !components.isEmpty {
-                return components.joined(separator: " · ")
-            }
-        }
-
-        if let audio = firstAudioMedia {
-            let duration = audioDurationString(from: audio.audioData)
-            if !duration.isEmpty {
-                return localization.string("timeline.audio.summary", default: "Voice note · %@", arguments: [duration])
-            }
-        }
-
-        return nil
+        evidence.supportingText
     }
 
     private var metaLine: String {
-        var components: [String] = []
-        components.append(contentsOf: recordCategoryLabels.prefix(3))
-
-        let location = trimmed(record.location)
-        if !location.isEmpty {
-            components.append(location)
-        }
-
-        return Array(components.prefix(3)).joined(separator: " · ")
-    }
-
-    private var recordCategoryLabels: [String] {
-        var labels: [String] = []
-        let media = record.mediaCards ?? []
-
-        if !record.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            labels.append(localization.string("timeline.category.note", default: "Note"))
-        }
-        if media.contains(where: { $0.mediaKind == .photo }) {
-            labels.append(localization.string("timeline.category.photo", default: "Photo"))
-        }
-        if media.contains(where: { $0.mediaKind == .music }) {
-            labels.append(localization.string("timeline.category.music", default: "Music"))
-        }
-        if media.contains(where: { $0.mediaKind == .audio }) {
-            labels.append(localization.string("timeline.category.audio", default: "Voice"))
-        }
-        if media.contains(where: { $0.mediaKind == .todo }) {
-            labels.append(localization.string("timeline.category.todo", default: "To-Do"))
-        }
-        if media.contains(where: { $0.mediaKind == .link }) {
-            labels.append(localization.string("timeline.category.link", default: "Link"))
-        }
-        if record.weather != nil {
-            labels.append(localization.string("timeline.category.weather", default: "Weather"))
-        }
-        if record.mood != nil {
-            labels.append(localization.string("timeline.category.emotion", default: "Emotion"))
-        }
-        if record.latitude != nil {
-            labels.append(localization.string("timeline.category.location", default: "Location"))
-        }
-        if !(record.mentionedPeople ?? []).isEmpty {
-            labels.append(localization.string("timeline.category.people", default: "People"))
-        }
-
-        return labels
+        evidence.metaLabels.joined(separator: " · ")
     }
 
     private var timeLabel: String {
         localization.templateDateString(from: record.createdAt, template: "HH:mm")
-    }
-
-    private var photoMediaCount: Int {
-        (record.mediaCards ?? []).filter { $0.mediaKind == .photo }.count
-    }
-
-    private var firstMusicMedia: MediaCard? {
-        (record.mediaCards ?? []).first(where: { $0.mediaKind == .music })
-    }
-
-    private var firstAudioMedia: MediaCard? {
-        (record.mediaCards ?? []).first(where: { $0.mediaKind == .audio })
-    }
-
-    private var decodedTodoItems: (title: String, items: [TodoItem])? {
-        guard let media = (record.mediaCards ?? []).first(where: { $0.mediaKind == .todo }),
-              let json = media.caption,
-              let raw = json.data(using: .utf8),
-              let items = try? JSONDecoder().decode([TodoItem].self, from: raw),
-              !items.isEmpty else {
-            return nil
-        }
-
-        return (media.title ?? "", items)
-    }
-
-    private func trimmed(_ value: String?) -> String {
-        (value ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

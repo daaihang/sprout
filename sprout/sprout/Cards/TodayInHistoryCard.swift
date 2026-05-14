@@ -9,40 +9,50 @@ struct TodayInHistoryEntry: Identifiable {
     let year: Int
     let yearsAgo: Int
 
-    init(record: Record, referenceYear: Int) {
+    init(record: Record, projection: RecordEvidenceProjector.Projection, referenceYear: Int) {
         self.id = record.id
         self.record = record
         self.date = record.createdAt
         self.year = Calendar.current.component(.year, from: record.createdAt)
         self.yearsAgo = max(referenceYear - self.year, 0)
-        self.title = TodayInHistoryEntry.makeTitle(for: record)
-        self.subtitle = TodayInHistoryEntry.makeSubtitle(for: record)
+        self.title = TodayInHistoryEntry.makeTitle(from: projection)
+        self.subtitle = TodayInHistoryEntry.makeSubtitle(from: projection)
     }
 
-    private static func makeTitle(for record: Record) -> String {
-        let body = record.body.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !body.isEmpty { return String(body.prefix(36)) }
-        if let location = record.location, !location.isEmpty { return location }
-        if let music = (record.mediaCards ?? []).first(where: { $0.type == "music" })?.title, !music.isEmpty {
-            return music
+    init(record: Record, referenceYear: Int) {
+        self.init(
+            record: record,
+            projection: RecordEvidenceProjector(localization: AppLocalization.shared)
+                .project(record: record, memoryView: nil),
+            referenceYear: referenceYear
+        )
+    }
+
+    private static func makeTitle(from projection: RecordEvidenceProjector.Projection) -> String {
+        let headline = projection.headlineText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !headline.isEmpty {
+            return String(headline.prefix(36))
         }
-        if (record.mediaCards ?? []).contains(where: { $0.type == "photo" }) {
+        if let location = projection.linkedLocationName, !location.isEmpty {
+            return location
+        }
+        if projection.primaryKind == .photo {
             return localizedString("card.memory.photo_title", default: "Photo Memory")
         }
         return localizedString("card.memory.default_title", default: "Past Entry")
     }
 
-    private static func makeSubtitle(for record: Record) -> String {
-        if let weather = record.weather, !weather.isEmpty {
-            return weather
+    private static func makeSubtitle(from projection: RecordEvidenceProjector.Projection) -> String {
+        if let weather = projection.weatherCondition {
+            return weather.label
         }
-        if let mood = record.mood, let moodType = MoodType(rawValue: mood) {
-            return moodType.label
+        if let mood = projection.mood {
+            return mood.label
         }
-        if let person = record.mentionedPeople?.first, !person.name.isEmpty {
-            return person.nickname ?? person.name
+        if let person = projection.primaryPersonName, !person.isEmpty {
+            return person
         }
-        switch record.contentFirstCardKind {
+        switch projection.primaryKind {
         case .photo:
             return localizedString("timeline.category.photo", default: "Photo")
         case .music:
@@ -65,8 +75,6 @@ struct TodayInHistoryEntry: Identifiable {
             return localizedString("timeline.category.people", default: "People")
         case .text, .quote, .todayInHistory, .book, .film, .game, .ticket, .health:
             return localizedString("timeline.category.note", default: "Note")
-        case nil:
-            return localizedString("detail.navigation.record", default: "Entry")
         }
     }
 }

@@ -34,16 +34,21 @@ struct RecordDetailView: View {
         if hasArtifacts(.link) || hasLegacyMedia(.link) { sections.append(.link) }
         if hasArtifacts(.todo) || hasLegacyMedia(.todo) { sections.append(.todo) }
         if hasArtifacts(.music) || hasLegacyMedia(.music) { sections.append(.music) }
-        if primaryArtifact(for: .location) != nil || record.latitude != nil { sections.append(.map) }
-        if primaryArtifact(for: .weather) != nil || record.weather != nil { sections.append(.weather) }
-        if !peopleArtifactRows.isEmpty || !analysisPeopleReferences.isEmpty || !(record.mentionedPeople ?? []).isEmpty { sections.append(.people) }
-        if record.mood != nil { sections.append(.emotion) }
+        if primaryArtifact(for: .location) != nil || evidence.linkedLocationName != nil || record.latitude != nil { sections.append(.map) }
+        if primaryArtifact(for: .weather) != nil || evidence.weatherCondition != nil { sections.append(.weather) }
+        if !peopleArtifactRows.isEmpty || !analysisPeopleReferences.isEmpty || evidence.primaryPersonName != nil { sections.append(.people) }
+        if evidence.mood != nil { sections.append(.emotion) }
         if record.activity?.value != nil { sections.append(.activity) }
         return sections
     }
 
     private var memoryView: SproutMemoryRepository.RecordMemoryView? {
         memoryRepository.memoryView(for: record.id)
+    }
+
+    private var evidence: RecordEvidenceProjector.Projection {
+        RecordEvidenceProjector(localization: localization)
+            .project(record: record, memoryView: memoryView)
     }
 
     private var linkedArcs: [TemporalArc] {
@@ -74,7 +79,7 @@ struct RecordDetailView: View {
     }
 
     private var analysisSnapshot: RecordAnalysisSnapshot? {
-        memoryView?.analysis
+        evidence.analysis
     }
 
     private var peopleArtifactRows: [PersonCardItem] {
@@ -357,8 +362,13 @@ struct RecordDetailView: View {
     }
 
     private var navigationTitle: String {
-        if !record.body.isEmpty { return String(record.body.prefix(24)) }
-        if let loc = record.location, !loc.isEmpty { return loc }
+        let headline = evidence.headlineText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !headline.isEmpty {
+            return String(headline.prefix(24))
+        }
+        if let location = evidence.linkedLocationName, !location.isEmpty {
+            return location
+        }
         return t("detail.navigation.record", "Entry")
     }
 
@@ -366,10 +376,11 @@ struct RecordDetailView: View {
         if let shell = memoryView?.recordShell, !shell.rawText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return String(shell.rawText.prefix(120))
         }
-        if !record.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return String(record.body.prefix(120))
+        let headline = evidence.headlineText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !headline.isEmpty {
+            return String(headline.prefix(120))
         }
-        if let loc = record.location, !loc.isEmpty {
+        if let loc = evidence.linkedLocationName, !loc.isEmpty {
             return loc
         }
         return "Untitled Capture"
@@ -387,15 +398,21 @@ struct RecordDetailView: View {
     }
 
     private var captureSubtitleText: String {
-        if let analysis = memoryView?.analysis {
+        if let supporting = evidence.supportingText, !supporting.isEmpty {
+            return supporting
+        }
+        if let analysis = evidence.analysis {
             let emotion = analysis.emotionLabel.isEmpty ? "Analysis ready" : analysis.emotionLabel.capitalized
             return "\(emotion) · \(artifactCountText)"
+        }
+        if !evidence.metaLabels.isEmpty {
+            return evidence.metaLabels.joined(separator: " · ")
         }
         return artifactCountText
     }
 
     private var artifactCountText: String {
-        let count = memoryView?.artifacts.count ?? 0
+        let count = evidence.artifacts.count
         switch count {
         case 0:
             return "0 artifacts"
@@ -455,7 +472,7 @@ struct RecordDetailView: View {
 
     @ViewBuilder
     private var emotionSection: some View {
-        if let moodStr = record.mood, let mood = MoodType(rawValue: moodStr) {
+        if let mood = evidence.mood {
             let intensity = record.intensity ?? 3
             VStack(alignment: .leading, spacing: 10) {
                 SectionLabel(icon: "face.smiling", title: t("detail.section.emotion", "Emotion"))

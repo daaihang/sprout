@@ -45,7 +45,7 @@ Practical progress against the v3 roadmap:
 Main remaining gaps:
 
 - Several card internals still present legacy UI quality or legacy assumptions.
-- `MediaCard` now exists only as binary payload backing for photo/audio renderers, but some timeline preview paths still infer kind from legacy `Record` relationships.
+- `MediaCard` now exists only as binary payload backing for photo/audio renderers, but other non-home legacy consumers still need to be audited and cut off from old `Record` truth paths.
 - Graph and arc layers are not yet fully exposed as first-class navigation experiences.
 
 Recent high-frequency card refreshes already completed:
@@ -128,6 +128,7 @@ Current detail-page truth after this round:
 
 - `RecordDetailView` now resolves `text/photo/audio/link/todo/music/map/weather/people` from `memoryView.artifacts` first.
 - AI entity evidence is surfaced directly in people/detail evidence areas.
+- `RecordTimelineView` and `TodayInHistoryCard` now use a shared `RecordEvidenceProjector`, so preview kind, headline, subtitle, and meta labels come from the same artifact-backed evidence path as detail.
 - `Record` and `MediaCard` are retained only as compatibility fallback for older rows and photo/audio payload lookup.
 
 ## Subscription System
@@ -195,7 +196,7 @@ The backend will normalize `AI_BASE_URL=https://api.deepseek.com` to the correct
 
 The current best-practice next steps are:
 
-1. Migrate timeline/list preview kind detection from legacy `Record` relationships to artifact-backed evidence views.
+1. Replace remaining search/list/detail auxiliary preview helpers with shared artifact-backed evidence projection.
 2. Refresh the remaining high-frequency card internals and detail layouts so artifact-backed content also looks intentional.
 3. Surface graph and phase objects more directly in navigation and detail views.
 4. Add a dedicated backend Reflection API while keeping iOS local-first.

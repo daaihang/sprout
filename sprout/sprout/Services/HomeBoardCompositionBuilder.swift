@@ -13,6 +13,10 @@ struct HomeBoardCompositionBuilder {
 
     let dependencies: Dependencies
 
+    private var evidenceProjector: RecordEvidenceProjector {
+        RecordEvidenceProjector(localization: AppLocalization.shared)
+    }
+
     func buildGridItems(for date: Date, records: [Record], systemConfigs: [DashboardSystemCardConfig]) -> [GridItem] {
         let compositionContext = dependencies.stateRepository.compositionContext(for: date)
         let compositionKey = compositionContext.compositionKey
@@ -173,7 +177,17 @@ struct HomeBoardCompositionBuilder {
         let monthDay = localizedDate(date, template: "MMMM d")
         return TodayInHistoryCardData(
             monthDayLabel: monthDay,
-            entries: matching.map { TodayInHistoryEntry(record: $0, referenceYear: currentYear) }
+            entries: matching.map { record in
+                let projection = evidenceProjector.project(
+                    record: record,
+                    memoryView: dependencies.memoryRepository.memoryView(for: record.id)
+                )
+                return TodayInHistoryEntry(
+                    record: record,
+                    projection: projection,
+                    referenceYear: currentYear
+                )
+            }
         )
     }
 
