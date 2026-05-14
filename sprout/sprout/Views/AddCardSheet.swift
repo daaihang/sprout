@@ -365,7 +365,7 @@ struct AddCardSheet: View {
                 cardType: cardKind,
                 recordID: record.id,
                 createdAt: record.createdAt,
-                shellText: record.body,
+                textArtifactText: record.body,
                 emotion: emotionData
             )
             memoryRepository.upsertAggregate(aggregate)
@@ -407,7 +407,7 @@ struct AddCardSheet: View {
                 cardType: cardKind,
                 recordID: record.id,
                 createdAt: record.createdAt,
-                shellText: record.body,
+                textArtifactText: record.body,
                 location: locationData
             )
             memoryRepository.upsertAggregate(aggregate)
@@ -464,7 +464,7 @@ struct AddCardSheet: View {
                 cardType: cardKind,
                 recordID: record.id,
                 createdAt: record.createdAt,
-                shellText: record.body
+                textArtifactText: record.body
             )
             memoryRepository.upsertAggregate(aggregate)
             Task { await runPostCaptureAnalysisIfPossible(for: aggregate) }

@@ -5,7 +5,7 @@ struct SproutMemoryAggregateBuilder {
     func buildPreviewAggregate(from text: String) -> SproutMemoryAggregate {
         let now = Date()
         return build(
-            draft: CaptureDraft(shellText: text),
+            draft: CaptureDraft(textArtifactText: text),
             createdAt: now,
             captureSource: .composer,
             parsed: RecordParser.parseBody(text)
@@ -19,7 +19,7 @@ struct SproutMemoryAggregateBuilder {
         parsed: ParsedContent? = nil,
         photoPayloads: [PreparedPhotoMedia] = []
     ) -> SproutMemoryAggregate {
-        let trimmed = draft.trimmedShellText
+        let trimmed = draft.trimmedTextArtifactText
         let parsedContent = parsed ?? RecordParser.parseBody(trimmed)
         let artifacts = buildArtifacts(
             draft: draft,
@@ -72,7 +72,7 @@ struct SproutMemoryAggregateBuilder {
         cardType: RecordCardKind,
         recordID: UUID = UUID(),
         createdAt: Date,
-        shellText: String = "",
+        textArtifactText: String = "",
         emotion: EmotionCardData? = nil,
         weather: WeatherCardData? = nil,
         location: MapCardData? = nil,
@@ -81,7 +81,7 @@ struct SproutMemoryAggregateBuilder {
         photoPayloads: [PreparedPhotoMedia] = [],
         audioData: Data? = nil
     ) -> SproutMemoryAggregate {
-        let trimmed = shellText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = textArtifactText.trimmingCharacters(in: .whitespacesAndNewlines)
         var artifacts: [Artifact] = []
 
         if !trimmed.isEmpty {
@@ -266,7 +266,7 @@ struct SproutMemoryAggregateBuilder {
         photoPayloads: [PreparedPhotoMedia]
     ) -> [Artifact] {
         var artifacts: [Artifact] = []
-        let trimmed = draft.trimmedShellText
+        let trimmed = draft.trimmedTextArtifactText
 
         if !trimmed.isEmpty {
             artifacts.append(

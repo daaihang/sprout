@@ -99,7 +99,7 @@ struct ContentView: View {
             .overlay(alignment: .bottom) {
                 BottomCapsuleBar(
                     isOpen:               $isBarOpen,
-                    inputText:            captureShellTextBinding,
+                    inputText:            captureTextArtifactBinding,
                     focusRequestToken:    composerFocusRequestToken,
                     onAction:             handleComposerAction,
                     onRemoveAttachment:   removeAttachment,
@@ -150,7 +150,7 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showFullscreenEntryComposer) {
             FullscreenEntryComposerSheet(
-                text: captureShellTextBinding,
+                text: captureTextArtifactBinding,
                 attachments: captureAttachmentsBinding,
                 speechRecognizer: speechRecognizer,
                 musicService: musicService,
@@ -249,10 +249,10 @@ struct ContentView: View {
         !isBarOpen && !showFullscreenEntryComposer && captureDraftStore.hasRestorableDraft
     }
 
-    private var captureShellTextBinding: Binding<String> {
+    private var captureTextArtifactBinding: Binding<String> {
         Binding(
-            get: { captureDraftStore.draft.shellText },
-            set: { captureDraftStore.draft.shellText = $0 }
+            get: { captureDraftStore.draft.textArtifactText },
+            set: { captureDraftStore.draft.textArtifactText = $0 }
         )
     }
 
@@ -310,8 +310,8 @@ struct ContentView: View {
     private var draftResumeSubtitle: String {
         let draft = captureDraftStore.draft
         var parts: [String] = []
-        if draft.hasShellText {
-            parts.append("Text note")
+        if draft.hasTextArtifact {
+            parts.append("Text artifact")
         }
         if draft.attachments.hasArtifacts {
             parts.append(draft.attachments.artifactCountLabel)
@@ -453,7 +453,7 @@ struct ContentView: View {
             guard !payloads.isEmpty else { return }
 
             let draft = CaptureDraft(
-                shellText: "",
+                textArtifactText: "",
                 attachments: ComposerAttachments(photos: [image])
             )
             let aggregate = memoryAggregateBuilder.build(
@@ -473,12 +473,12 @@ struct ContentView: View {
         }
     }
 
-    /// Creates a Record from one capture draft: shell note + bundled artifacts.
+    /// Creates a Record from one capture draft: text artifact + bundled artifacts.
     private func insertRecord(from draft: CaptureDraft) {
         guard draft.hasContent else { return }
 
         Task { @MainActor in
-            let trimmed = draft.trimmedShellText
+            let trimmed = draft.trimmedTextArtifactText
             let attachments = draft.attachments
             let createdAt = Date()
             let parsed = RecordParser.parseBody(trimmed)

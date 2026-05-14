@@ -97,19 +97,20 @@ struct ComposerAttachments {
 
 /// Formal input boundary for one capture event before it is turned into a record aggregate.
 struct CaptureDraft {
-    var shellText: String = ""
+    var textArtifactText: String = ""
     var attachments: ComposerAttachments = .init()
 
-    var trimmedShellText: String {
-        shellText.trimmingCharacters(in: .whitespacesAndNewlines)
+    var trimmedTextArtifactText: String {
+        textArtifactText.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    var hasShellText: Bool { !trimmedShellText.isEmpty }
+    var hasTextArtifact: Bool { !trimmedTextArtifactText.isEmpty }
     var hasArtifacts: Bool { attachments.hasArtifacts }
-    var hasContent: Bool { hasShellText || !attachments.isEmpty }
+    var hasContent: Bool { hasTextArtifact || !attachments.isEmpty }
+    var totalArtifactCount: Int { (hasTextArtifact ? 1 : 0) + attachments.artifactCount }
 
     mutating func clear() {
-        shellText = ""
+        textArtifactText = ""
         attachments.clear()
     }
 }

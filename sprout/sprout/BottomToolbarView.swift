@@ -80,15 +80,27 @@ struct BottomCapsuleBar: View {
     private var trimmedRecognizedText: String { recognizedText.trimmingCharacters(in: .whitespacesAndNewlines) }
     private var hasRecognizedText: Bool { !trimmedRecognizedText.isEmpty }
     private var captureHasText: Bool { !trimmedInputText.isEmpty }
+    private var totalArtifactCount: Int { (captureHasText ? 1 : 0) + attachments.artifactCount }
     private var captureBundleSubtitle: String {
         var segments: [String] = []
         if captureHasText {
-            segments.append("Text note")
+            segments.append("Text artifact")
         }
         if attachments.hasArtifacts {
-            segments.append(attachments.artifactCountLabel)
+            let additionalLabel = localization.string(
+                "toolbar.capture.additional_artifacts",
+                default: "%d additional artifacts",
+                arguments: [attachments.artifactCount]
+            )
+            segments.append(additionalLabel)
         }
-        return segments.isEmpty ? "Start with a note, photo, voice clip, person, or place." : segments.joined(separator: " + ")
+        if !segments.isEmpty {
+            return segments.joined(separator: " + ")
+        }
+        return localization.string(
+            "toolbar.capture.bundle_empty",
+            default: "Start with a text artifact, photo, voice clip, person, or place."
+        )
     }
     private var voiceBadgeOffset: CGSize {
         guard isVoiceHolding else { return .zero }
@@ -321,7 +333,7 @@ struct BottomCapsuleBar: View {
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 10) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Capture Bundle")
+                    Text(localization.string("common.capture_bundle", default: "Capture Bundle"))
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.secondary)
 
@@ -330,7 +342,7 @@ struct BottomCapsuleBar: View {
                         .foregroundStyle(.primary)
                 }
 
-                TextField(t("toolbar.input.placeholder", "Write the shell note for this capture"), text: $inputText, axis: .vertical)
+                TextField(t("toolbar.input.placeholder.artifact", "Write the primary text artifact for this capture"), text: $inputText, axis: .vertical)
                     .font(.system(size: 16))
                     .lineLimit(3...8)
                     .focused($inputFocused)
@@ -350,7 +362,7 @@ struct BottomCapsuleBar: View {
                 Divider()
                     .padding(.top, 8)
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Artifacts in This Capture")
+                    Text(localization.string("common.artifacts_in_this_capture", default: "Artifacts in This Capture"))
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(.secondary)
 
@@ -407,7 +419,12 @@ struct BottomCapsuleBar: View {
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(.secondary)
 
-                    Text("This capture currently contains only the shell note. Add artifacts to make it multimodal.")
+                    Text(
+                        localization.string(
+                            "common.text_artifact_only_capture",
+                            default: "This capture already contains a text artifact. Add more artifacts only if you want a multimodal memory."
+                        )
+                    )
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)

@@ -35,12 +35,24 @@ struct FullscreenEntryComposerSheet: View {
     private var captureSummaryTitle: String {
         var pieces: [String] = []
         if !trimmedText.isEmpty {
-            pieces.append("Shell note")
+            pieces.append("Text artifact")
         }
         if attachments.hasArtifacts {
-            pieces.append(attachments.artifactCountLabel)
+            pieces.append(
+                localization.string(
+                    "content.capture.additional_artifacts",
+                    default: "%d additional artifacts",
+                    arguments: [attachments.artifactCount]
+                )
+            )
         }
-        return pieces.isEmpty ? "Build this capture from text and artifacts." : pieces.joined(separator: " + ")
+        if !pieces.isEmpty {
+            return pieces.joined(separator: " + ")
+        }
+        return localization.string(
+            "content.capture.empty_state",
+            default: "Build this capture from artifacts."
+        )
     }
 
     var body: some View {
@@ -48,7 +60,7 @@ struct FullscreenEntryComposerSheet: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 16) {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Capture Bundle")
+                        Text(localization.string("common.capture_bundle", default: "Capture Bundle"))
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(.secondary)
 
@@ -56,7 +68,7 @@ struct FullscreenEntryComposerSheet: View {
                             .font(.system(size: 17, weight: .semibold))
                             .foregroundStyle(.primary)
 
-                        Text("One capture event creates a shell note and can bundle multiple artifacts.")
+                        Text(localization.string("content.capture.artifact_first_explainer", default: "One capture event creates one or more artifacts. Typed text becomes the primary text artifact automatically."))
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(.secondary)
                     }
@@ -168,7 +180,7 @@ struct FullscreenEntryComposerSheet: View {
 
     private var artifactBundleSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Artifacts in This Capture")
+            Text(localization.string("common.artifacts_in_this_capture", default: "Artifacts in This Capture"))
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(.secondary)
 
@@ -227,7 +239,7 @@ struct FullscreenEntryComposerSheet: View {
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(.secondary)
 
-            Text("This capture currently has only the shell note. Add photo, voice, people, location, or music artifacts if needed.")
+            Text(localization.string("common.text_artifact_only_capture_full", default: "This capture currently has only a text artifact. Add photo, voice, people, location, or music artifacts only if needed."))
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
