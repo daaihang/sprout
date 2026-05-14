@@ -34,8 +34,8 @@
 完成情况：
 
 1. 旧数据在 detail / search / board fallback 中不再依赖 `cardType` 兜底
-2. `CompositionProjector` 已优先生成 artifact-backed composition items
-3. `RecordMapper` 仍保留为旧记录 fallback transition layer
+2. `CompositionProjector` 已直接生成 artifact-backed composition items
+3. `RecordMapper` 已从首页投影链移除
 
 ### 2.2 `cardUnits`
 
@@ -80,23 +80,26 @@
 - `Record.cardKind` 不再提供把新语义回写进 `cardType` 的 setter
 - `derivedCardKind` 不再读取 `cardType`
 - `Record.cardType` 已从模型移除
-- `CompositionProjector` 先渲染可直接展示的 artifacts，再用 `RecordMapper` 补齐 legacy sections
+- `CompositionProjector` 直接渲染 artifacts，不再调用 `RecordMapper`
+- photo / audio artifacts 与 `MediaCard` 共享 id，`MediaCard` 只作为二进制 payload backing
 - analyze 主链已切到 `/api/analysis/records`
 - analyze preview 主链已切到 `/api/analysis/preview`
+- `RecordDetailView` 已切到 artifact evidence-first，`text/photo/audio/link/todo/music/map/weather/people` 优先从 `memoryView.artifacts` 和 analysis evidence 读取
+- `MediaCard` 当前仅保留 photo/audio 的 payload backing；music/link/todo 的新写入路径已不再创建 `MediaCard`
 
 剩余：
 
-- `RecordMapper` 仍保留为旧记录 fallback transition layer
-- `MediaCard` 仍作为兼容旧 capture/media payload 的附属对象存在
+- `MediaCard` 仍作为 photo/audio payload backing store 存在
+- 旧 timeline / preview 路径仍有部分 kind 推断依赖 `Record` 旧关系字段，后续要继续改为 artifact-backed 识别
 
 ## 4. 下一阶段动作
 
 ### 4.1 结构动作
 
-1. 继续收缩 `RecordMapper` 的职责，只保留旧记录 fallback 能力
-2. 继续让首页 composition projection 直接消费 `ArtifactRenderer`
-3. 梳理 `MediaCard` 仍承担的真实 payload 职责，避免和 `Artifact` 重复扩张
-4. 核对移除旧字段后的 SwiftData schema 迁移风险
+1. 继续把 `RecordDetail` 的 section 数据源改为 artifact evidence-first
+2. 梳理 `MediaCard` payload 字段，避免重新承载内容真相
+3. 核对移除旧字段后的 SwiftData schema 迁移风险
+4. 开始设计 Graph / Arc 一级体验与 Reflection API 的接口边界
 
 ### 4.2 UI 动作
 

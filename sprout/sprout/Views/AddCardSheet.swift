@@ -344,6 +344,7 @@ struct AddCardSheet: View {
             modelContext.insert(record)
             let aggregate = memoryAggregateBuilder.buildStandaloneAggregate(
                 cardType: cardKind,
+                recordID: record.id,
                 createdAt: record.createdAt,
                 shellText: record.body,
                 emotion: emotionData
@@ -367,6 +368,7 @@ struct AddCardSheet: View {
             modelContext.insert(record)
             let aggregate = memoryAggregateBuilder.buildStandaloneAggregate(
                 cardType: cardKind,
+                recordID: record.id,
                 createdAt: record.createdAt,
                 weather: weatherData
             )
@@ -382,6 +384,7 @@ struct AddCardSheet: View {
             modelContext.insert(record)
             let aggregate = memoryAggregateBuilder.buildStandaloneAggregate(
                 cardType: cardKind,
+                recordID: record.id,
                 createdAt: record.createdAt,
                 shellText: record.body,
                 location: locationData
@@ -391,18 +394,10 @@ struct AddCardSheet: View {
             dismiss()
 
         case "music":
-            let m = MediaCard()
-            m.type             = "music"
-            m.url              = musicData.appleMusicURL?.absoluteString
-            m.title            = musicData.trackName
-            m.caption          = musicData.artistName
-            m.albumName        = musicData.albumName.isEmpty ? nil : musicData.albumName
-            m.artworkURLString = musicData.albumArtworkURL?.absoluteString
-            modelContext.insert(m)
             modelContext.insert(record)
-            record.mediaCards = [m]
             let aggregate = memoryAggregateBuilder.buildStandaloneAggregate(
                 cardType: cardKind,
+                recordID: record.id,
                 createdAt: record.createdAt,
                 music: musicData
             )
@@ -416,6 +411,7 @@ struct AddCardSheet: View {
                 var cards: [MediaCard] = []
                 for (i, payload) in payloads.enumerated() {
                     let m = MediaCard()
+                    m.id = payload.id
                     m.type = "photo"
                     m.sortIndex = i
                     m.imageData = payload.imageData
@@ -427,6 +423,7 @@ struct AddCardSheet: View {
                 if !cards.isEmpty { record.mediaCards = cards }
                 let aggregate = memoryAggregateBuilder.buildStandaloneAggregate(
                     cardType: cardKind,
+                    recordID: record.id,
                     createdAt: record.createdAt,
                     photoPayloads: payloads
                 )
@@ -437,17 +434,10 @@ struct AddCardSheet: View {
 
         case "todo":
             guard !todoData.isEmpty else { return }
-            let m = MediaCard()
-            m.type  = "todo"
-            m.title = todoData.title
-            if let json = try? JSONEncoder().encode(todoData.items) {
-                m.caption = String(data: json, encoding: .utf8)
-            }
-            modelContext.insert(m)
             modelContext.insert(record)
-            record.mediaCards = [m]
             let aggregate = memoryAggregateBuilder.buildStandaloneAggregate(
                 cardType: cardKind,
+                recordID: record.id,
                 createdAt: record.createdAt,
                 todo: todoData
             )
@@ -459,6 +449,7 @@ struct AddCardSheet: View {
             modelContext.insert(record)
             let aggregate = memoryAggregateBuilder.buildStandaloneAggregate(
                 cardType: cardKind,
+                recordID: record.id,
                 createdAt: record.createdAt,
                 shellText: record.body
             )

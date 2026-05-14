@@ -546,6 +546,7 @@ struct ContentView: View {
 
         for (index, payload) in photoPayloads.enumerated() {
             let media = MediaCard()
+            media.id = payload.id
             media.type = "photo"
             media.sortIndex = index
             media.imageData = payload.imageData
@@ -556,19 +557,10 @@ struct ContentView: View {
 
         for artifact in aggregate.artifacts {
             switch artifact.kind {
-            case .music:
-                let media = MediaCard()
-                media.type = "music"
-                media.url = artifact.metadata["url"] ?? parsed.appleMusicURLs.first?.absoluteString
-                media.title = artifact.title
-                media.caption = artifact.summary
-                media.albumName = artifact.metadata["albumName"]
-                media.artworkURLString = artifact.metadata["artworkURLString"]
-                modelContext.insert(media)
-                mediaCards.append(media)
             case .audio:
                 guard let audioData = draft?.attachments.audioData else { break }
                 let media = MediaCard()
+                media.id = artifact.id
                 media.type = "audio"
                 media.audioData = audioData
                 media.title = localization.string("content.audio.title", default: "Voice %@", arguments: [shortTimeLabel()])
@@ -576,22 +568,7 @@ struct ContentView: View {
                 media.capturedAt = aggregate.recordShell.createdAt
                 modelContext.insert(media)
                 mediaCards.append(media)
-            case .todo:
-                let media = MediaCard()
-                media.type = "todo"
-                media.title = artifact.title
-                media.caption = artifact.textContent
-                modelContext.insert(media)
-                mediaCards.append(media)
-            case .link:
-                let media = MediaCard()
-                media.type = "link"
-                media.url = artifact.metadata["url"] ?? artifact.textContent
-                media.title = artifact.title
-                media.caption = artifact.summary
-                modelContext.insert(media)
-                mediaCards.append(media)
-            case .photo, .text, .location, .weather, .personMention, .decisionNote, .book, .film, .game, .ticket, .healthMetric:
+            case .photo, .music, .todo, .link, .text, .location, .weather, .personMention, .decisionNote, .book, .film, .game, .ticket, .healthMetric:
                 break
             }
         }

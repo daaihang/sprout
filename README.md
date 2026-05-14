@@ -32,7 +32,7 @@ Practical progress against the v3 roadmap:
 - Phase 1 `92%`
   Artifact layer exists and modern capture paths already dual-write aggregate data.
 - Phase 2 `95%`
-  Composition state persists by board/day, board resize now refreshes immediately, and the home projection path now prefers artifact-rendered composition items before falling back to legacy record-derived cards.
+  Composition state persists by board/day, board resize now refreshes immediately, and the home projection path now renders artifact-backed composition items directly.
 - Phase 3 `93%`
   Analysis snapshot contract and local persistence are active.
 - Phase 4 `84%`
@@ -44,8 +44,8 @@ Practical progress against the v3 roadmap:
 
 Main remaining gaps:
 
-- `RecordMapper` still survives as a fallback transition layer, but artifact-backed composition projection now runs first.
 - Several card internals still present legacy UI quality or legacy assumptions.
+- `MediaCard` now exists only as binary payload backing for photo/audio renderers, but some timeline preview paths still infer kind from legacy `Record` relationships.
 - Graph and arc layers are not yet fully exposed as first-class navigation experiences.
 
 Recent high-frequency card refreshes already completed:
@@ -113,7 +113,7 @@ not as page-local hacks.
 - Base content such as `body`, `createdAt`, `updatedAt`, `tags`
 - Remaining transitional fields such as `dashboardOrder`
 - Weather and location snapshot fields
-- Legacy relationships around `MediaCard` and related objects
+- Transitional relationships around `MediaCard` for photo/audio payload backing and some older related objects
 
 That is transitional, not final.
 
@@ -123,6 +123,12 @@ The intended direction is:
 - `Artifact` becomes content truth
 - `CompositionItemState` becomes board layout truth
 - `RecordAnalysisSnapshot` / `ReflectionSnapshot` become AI truth
+
+Current detail-page truth after this round:
+
+- `RecordDetailView` now resolves `text/photo/audio/link/todo/music/map/weather/people` from `memoryView.artifacts` first.
+- AI entity evidence is surfaced directly in people/detail evidence areas.
+- `Record` and `MediaCard` are retained only as compatibility fallback for older rows and photo/audio payload lookup.
 
 ## Subscription System
 
@@ -189,7 +195,7 @@ The backend will normalize `AI_BASE_URL=https://api.deepseek.com` to the correct
 
 The current best-practice next steps are:
 
-1. Continue shrinking `RecordMapper` until it only supports old records that have not been artifact-backed.
-2. Continue refreshing high-frequency card internals so the board feels intentional rather than legacy.
+1. Migrate timeline/list preview kind detection from legacy `Record` relationships to artifact-backed evidence views.
+2. Refresh the remaining high-frequency card internals and detail layouts so artifact-backed content also looks intentional.
 3. Surface graph and phase objects more directly in navigation and detail views.
-4. Keep iOS and backend contracts aligned to the v3 document set instead of adding more one-off UI types.
+4. Add a dedicated backend Reflection API while keeping iOS local-first.

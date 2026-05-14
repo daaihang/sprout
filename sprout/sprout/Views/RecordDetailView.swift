@@ -8,6 +8,7 @@ import MapKit
 /// The `focusedSection` parameter determines which content block appears first —
 /// so tapping a MusicCard opens this view with music at the top, while tapping
 /// a QuoteCard shows the text first. All content still follows below.
+@MainActor
 struct RecordDetailView: View {
     @Environment(AppLocalization.self) private var localization
     @Environment(SproutMemoryRepository.self) private var memoryRepository
@@ -27,18 +28,17 @@ struct RecordDetailView: View {
 
     private var availableSections: [RecordSection] {
         var sections: [RecordSection] = []
-        let media = record.mediaCards ?? []
-        if media.contains(where: { $0.mediaKind == .photo })  { sections.append(.photo) }
-        if media.contains(where: { $0.mediaKind == .music })  { sections.append(.music) }
-        if media.contains(where: { $0.mediaKind == .audio })  { sections.append(.audio) }
-        if media.contains(where: { $0.mediaKind == .link })   { sections.append(.link) }
-        if record.latitude != nil                         { sections.append(.map) }
-        if record.activity?.value != nil                  { sections.append(.activity) }
-        if record.mood != nil                             { sections.append(.emotion) }
-        if record.weather != nil                          { sections.append(.weather) }
-        if media.contains(where: { $0.mediaKind == .todo })  { sections.append(.todo) }
-        if !(record.mentionedPeople ?? []).isEmpty       { sections.append(.people) }
-        if !record.body.isEmpty                           { sections.append(.text) }
+        if textArtifact != nil || !record.body.isEmpty { sections.append(.text) }
+        if hasArtifacts(.photo) || hasLegacyMedia(.photo) { sections.append(.photo) }
+        if hasArtifacts(.audio) || hasLegacyMedia(.audio) { sections.append(.audio) }
+        if hasArtifacts(.link) || hasLegacyMedia(.link) { sections.append(.link) }
+        if hasArtifacts(.todo) || hasLegacyMedia(.todo) { sections.append(.todo) }
+        if hasArtifacts(.music) || hasLegacyMedia(.music) { sections.append(.music) }
+        if primaryArtifact(for: .location) != nil || record.latitude != nil { sections.append(.map) }
+        if primaryArtifact(for: .weather) != nil || record.weather != nil { sections.append(.weather) }
+        if !peopleArtifactRows.isEmpty || !analysisPeopleReferences.isEmpty || !(record.mentionedPeople ?? []).isEmpty { sections.append(.people) }
+        if record.mood != nil { sections.append(.emotion) }
+        if record.activity?.value != nil { sections.append(.activity) }
         return sections
     }
 
@@ -63,6 +63,34 @@ struct RecordDetailView: View {
 
     private var linkedRecordReflection: ReflectionSnapshot? {
         memoryView?.reflection
+    }
+
+    private var artifacts: [Artifact] {
+        memoryView?.artifacts ?? []
+    }
+
+    private var textArtifact: Artifact? {
+        primaryArtifact(for: .text)
+    }
+
+    private var analysisSnapshot: RecordAnalysisSnapshot? {
+        memoryView?.analysis
+    }
+
+    private var peopleArtifactRows: [PersonCardItem] {
+        sectionArtifacts(for: .personMention).map { artifact in
+            PersonCardItem(
+                id: artifact.id,
+                name: artifact.title,
+                relationship: artifact.metadata["relationship"] ?? "",
+                mentionCount: 1
+            )
+        }
+    }
+
+    private var analysisPeopleReferences: [EntityReference] {
+        (analysisSnapshot?.entities ?? [])
+            .filter { $0.kind == .person }
     }
 
     private var artifactEntityNamesByArtifactID: [UUID: [String]] {
@@ -93,6 +121,53 @@ struct RecordDetailView: View {
         }
 
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    private func sectionArtifacts(for kind: ArtifactKind) -> [Artifact] {
+        artifacts
+            .filter { $0.kind == kind }
+            .sorted { lhs, rhs in
+                if lhs.createdAt == rhs.createdAt {
+                    return lhs.updatedAt < rhs.updatedAt
+                }
+                return lhs.createdAt < rhs.createdAt
+            }
+    }
+
+    private func primaryArtifact(for kind: ArtifactKind) -> Artifact? {
+        sectionArtifacts(for: kind).first
+    }
+
+    private func hasArtifacts(_ kind: ArtifactKind) -> Bool {
+        primaryArtifact(for: kind) != nil
+    }
+
+    private func legacyMedia(kind: MediaCardKind) -> [MediaCard] {
+        (record.mediaCards ?? []).filter { $0.mediaKind == kind }
+    }
+
+    private func hasLegacyMedia(_ kind: MediaCardKind) -> Bool {
+        !legacyMedia(kind: kind).isEmpty
+    }
+
+    private func matchingMedia(for artifact: Artifact, kind: MediaCardKind) -> [MediaCard] {
+        legacyMedia(kind: kind).filter { $0.id == artifact.id }
+    }
+
+    private func decodedTodoItems(from text: String) -> [TodoItem] {
+        guard let raw = text.data(using: .utf8),
+              let items = try? JSONDecoder().decode([TodoItem].self, from: raw) else {
+            return []
+        }
+        return items
+    }
+
+    private func coordinate(from artifact: Artifact) -> CLLocationCoordinate2D? {
+        guard let latitude = Double(artifact.metadata["latitude"] ?? ""),
+              let longitude = Double(artifact.metadata["longitude"] ?? "") else {
+            return nil
+        }
+        return CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
     }
 
     private var artifactSummaryLine: String {
@@ -183,11 +258,20 @@ struct RecordDetailView: View {
                     NavigationLink {
                         ArtifactDetailView(artifact: artifact)
                     } label: {
-                        ArtifactRowView(
-                            artifact: artifact,
-                            entityNames: artifactEntityNamesByArtifactID[artifact.id] ?? [],
-                            style: .compact
-                        )
+                        VStack(alignment: .leading, spacing: 6) {
+                            ArtifactRowView(
+                                artifact: artifact,
+                                entityNames: artifactEntityNamesByArtifactID[artifact.id] ?? [],
+                                style: .compact
+                            )
+                            if let evidenceLine = artifactEvidenceLine(for: artifact) {
+                                Text(evidenceLine)
+                                    .font(.caption2.weight(.medium))
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(2)
+                                    .padding(.leading, 46)
+                            }
+                        }
                     }
                     .buttonStyle(.plain)
                 }
@@ -346,11 +430,12 @@ struct RecordDetailView: View {
     // MARK: - Text
 
     private var textSection: some View {
+        let bodyText = nonEmpty(textArtifact?.textContent) ?? record.body
         let author = record.tagValue(for: "author")
         let source = record.tagValue(for: "source")
         return VStack(alignment: .leading, spacing: 8) {
             SectionLabel(icon: "text.alignleft", title: t("detail.section.body", "Body"))
-            Text(record.body)
+            Text(bodyText)
                 .font(.body)
                 .foregroundStyle(.primary)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -397,7 +482,40 @@ struct RecordDetailView: View {
 
     @ViewBuilder
     private var weatherSection: some View {
-        if let weatherStr = record.weather, let condition = WeatherCondition(rawValue: weatherStr) {
+        if let artifact = primaryArtifact(for: .weather),
+           let condition = WeatherCondition(rawValue: artifact.metadata["condition"] ?? artifact.title) {
+            let temp = Double(artifact.metadata["temperature"] ?? "") ?? record.temperature ?? 20
+            let locationText = artifact.metadata["location"] ?? nonEmpty(artifact.summary) ?? record.location
+            let observedAt = artifact.createdAt
+            VStack(alignment: .leading, spacing: 10) {
+                SectionLabel(icon: "cloud.sun.fill", title: t("detail.section.weather", "Weather"))
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("\(Int(temp))°")
+                            .font(.system(size: 42, weight: .semibold, design: .rounded))
+                        Text(condition.label).font(.subheadline).foregroundStyle(.secondary)
+                        if let locationText, !locationText.isEmpty {
+                            Label(locationText, systemImage: "location.fill")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        Label(observedAt.formatted(date: .abbreviated, time: .shortened), systemImage: "clock")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Image(systemName: condition.sfSymbol)
+                        .font(.system(size: 48))
+                        .foregroundStyle(condition.color)
+                        .symbolRenderingMode(.multicolor)
+                }
+                if let insight = nonEmpty(artifact.textContent) {
+                    Text(insight)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .detailCard()
+        } else if let weatherStr = record.weather, let condition = WeatherCondition(rawValue: weatherStr) {
             let temp = record.temperature ?? 20
             VStack(alignment: .leading, spacing: 10) {
                 SectionLabel(icon: "cloud.sun.fill", title: t("detail.section.weather", "Weather"))
@@ -431,11 +549,13 @@ struct RecordDetailView: View {
 
     @ViewBuilder
     private var photoSection: some View {
-        let photos = (record.mediaCards ?? []).filter { $0.mediaKind == .photo }
-        if !photos.isEmpty {
-            let images: [UIImage] = photos.compactMap { m in
-                m.imageData.flatMap { UIImage(data: $0) }
+        let photoArtifacts = sectionArtifacts(for: .photo)
+        if !photoArtifacts.isEmpty || hasLegacyMedia(.photo) {
+            let photoPayloads = photoArtifacts.isEmpty ? legacyMedia(kind: .photo) : photoArtifacts.flatMap { matchingMedia(for: $0, kind: .photo) }
+            let images: [UIImage] = photoPayloads.compactMap { m in
+                m.imageData.flatMap(UIImage.init(data:))
             }
+            let leadArtifact = photoArtifacts.first
             VStack(alignment: .leading, spacing: 10) {
                 SectionLabel(icon: "photo.on.rectangle.angled", title: t("detail.section.photos", "Photos"))
                 if images.isEmpty {
@@ -463,10 +583,15 @@ struct RecordDetailView: View {
                     .frame(height: 260)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
-                let photoLoc = photos.first?.locationName ?? record.location
+                let photoLoc = leadArtifact?.metadata["locationName"] ?? photoPayloads.first?.locationName ?? record.location
                 if let loc = photoLoc, !loc.isEmpty {
                     Label(loc, systemImage: "location.fill")
                         .font(.caption).foregroundStyle(.secondary)
+                }
+                if let summary = nonEmpty(leadArtifact?.summary) {
+                    Text(summary)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
             .detailCard()
@@ -477,7 +602,48 @@ struct RecordDetailView: View {
 
     @ViewBuilder
     private var musicSection: some View {
-        if let m = (record.mediaCards ?? []).first(where: { $0.mediaKind == .music }) {
+        if let artifact = primaryArtifact(for: .music) {
+            let artworkURL = artifact.metadata["artworkURLString"].flatMap(URL.init(string:))
+            VStack(alignment: .leading, spacing: 10) {
+                SectionLabel(icon: "music.note", title: t("detail.section.music", "Music"))
+                HStack(spacing: 14) {
+                    Group {
+                        if let artworkURL {
+                            CachedRemoteImage(url: artworkURL, contentMode: .fill) {
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color.secondary.opacity(0.15))
+                                    .overlay(ProgressView())
+                            }
+                        } else {
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(Color.secondary.opacity(0.15))
+                                .overlay(
+                                    Image(systemName: "music.note").font(.title2)
+                                        .foregroundStyle(.secondary.opacity(0.5))
+                                )
+                        }
+                    }
+                    .frame(width: 72, height: 72)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(nonEmpty(artifact.title) ?? t("detail.music.unknown_track", "Unknown Track")).font(.headline).lineLimit(2)
+                        Text(artifact.summary).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                        if let albumName = artifact.metadata["albumName"] ?? nonEmpty(artifact.textContent), !albumName.isEmpty {
+                            Text(albumName)
+                                .font(.caption)
+                                .foregroundStyle(.secondary.opacity(0.8))
+                                .lineLimit(1)
+                        }
+                        if let urlStr = artifact.metadata["url"], let url = URL(string: urlStr) {
+                            Link(t("detail.music.open_apple_music", "Open in Apple Music"), destination: url).font(.caption)
+                        }
+                    }
+                    Spacer()
+                }
+            }
+            .detailCard()
+        } else if let m = legacyMedia(kind: .music).first {
             let artwork: UIImage? = m.thumbnailData.flatMap { UIImage(data: $0) }
             let artworkURL = m.artworkURLString.flatMap(URL.init(string:))
             VStack(alignment: .leading, spacing: 10) {
@@ -528,7 +694,23 @@ struct RecordDetailView: View {
 
     @ViewBuilder
     private var audioSection: some View {
-        if let audio = (record.mediaCards ?? []).first(where: { $0.mediaKind == .audio }) {
+        if let artifact = primaryArtifact(for: .audio) {
+            let audio = matchingMedia(for: artifact, kind: .audio).first
+            VStack(alignment: .leading, spacing: 10) {
+                SectionLabel(icon: "waveform", title: t("detail.section.audio", "Voice"))
+                AudioCard(
+                    data: AudioCardData(
+                        title: nonEmpty(artifact.title) ?? audio?.title ?? "",
+                        audioData: audio?.audioData,
+                        transcriptPreview: nonEmpty(artifact.textContent) ?? audio?.caption ?? "",
+                        durationText: audioDurationString(from: audio?.audioData),
+                        capturedAt: artifact.createdAt
+                    )
+                )
+                .frame(height: 180)
+            }
+            .detailCard()
+        } else if let audio = legacyMedia(kind: .audio).first {
             VStack(alignment: .leading, spacing: 10) {
                 SectionLabel(icon: "waveform", title: t("detail.section.audio", "Voice"))
                 AudioCard(
@@ -548,12 +730,14 @@ struct RecordDetailView: View {
 
     @ViewBuilder
     private var linkSection: some View {
-        let links = (record.mediaCards ?? []).filter { $0.mediaKind == .link }
-        if !links.isEmpty {
+        let artifacts = sectionArtifacts(for: .link)
+        let legacyLinks = legacyMedia(kind: .link)
+        if !artifacts.isEmpty || !legacyLinks.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 SectionLabel(icon: "link", title: t("detail.section.links", "Links"))
-                ForEach(links) { m in
-                    if let urlStr = m.url, let url = URL(string: urlStr) {
+                ForEach(artifacts, id: \.id) { artifact in
+                    if let urlStr = artifact.metadata["url"] ?? nonEmpty(artifact.textContent),
+                       let url = URL(string: urlStr) {
                         HStack(spacing: 12) {
                             RoundedRectangle(cornerRadius: 8)
                                 .fill(Color.accentColor.opacity(0.1))
@@ -563,9 +747,9 @@ struct RecordDetailView: View {
                                         .foregroundStyle(Color.accentColor)
                                 )
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(m.title ?? urlStr)
+                                Text(nonEmpty(artifact.title) ?? urlStr)
                                     .font(.subheadline.weight(.medium)).lineLimit(1)
-                                Text(url.host ?? urlStr)
+                                Text(nonEmpty(artifact.summary) ?? url.host ?? urlStr)
                                     .font(.caption).foregroundStyle(.secondary).lineLimit(1)
                             }
                             Spacer()
@@ -578,6 +762,34 @@ struct RecordDetailView: View {
                                     in: RoundedRectangle(cornerRadius: 10))
                     }
                 }
+                if artifacts.isEmpty {
+                    ForEach(legacyLinks) { m in
+                        if let urlStr = m.url, let url = URL(string: urlStr) {
+                            HStack(spacing: 12) {
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.accentColor.opacity(0.1))
+                                    .frame(width: 36, height: 36)
+                                    .overlay(
+                                        Image(systemName: "safari.fill").font(.system(size: 18))
+                                            .foregroundStyle(Color.accentColor)
+                                    )
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(m.title ?? urlStr)
+                                        .font(.subheadline.weight(.medium)).lineLimit(1)
+                                    Text(url.host ?? urlStr)
+                                        .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                                }
+                                Spacer()
+                                Link(destination: url) {
+                                    Image(systemName: "arrow.up.right.square").foregroundStyle(.secondary)
+                                }
+                            }
+                            .padding(10)
+                            .background(Color.secondary.opacity(0.06),
+                                        in: RoundedRectangle(cornerRadius: 10))
+                        }
+                    }
+                }
             }
             .detailCard()
         }
@@ -587,7 +799,9 @@ struct RecordDetailView: View {
 
     @ViewBuilder
     private var peopleSection: some View {
-        let people = record.mentionedPeople ?? []
+        let people = !peopleArtifactRows.isEmpty
+            ? peopleArtifactRows
+            : (record.mentionedPeople ?? []).map(PersonCardItem.init(person:))
         if !people.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 SectionLabel(icon: "person.2.fill", title: t("detail.section.people", "People"))
@@ -605,8 +819,8 @@ struct RecordDetailView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(person.displayName)
                                 .font(.subheadline.weight(.semibold))
-                            if !person.secondaryLabel.isEmpty {
-                                Text(person.secondaryLabel)
+                            if !person.subtitle.isEmpty {
+                                Text(person.subtitle)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -619,6 +833,17 @@ struct RecordDetailView: View {
                                 .font(.caption.weight(.medium))
                                 .foregroundStyle(.secondary)
                         }
+                    }
+                }
+                if !analysisPeopleReferences.isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("AI Evidence")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        TokenPillRow(
+                            values: analysisPeopleReferences.map { "\($0.kind.badgeLabel): \($0.name)" },
+                            tint: .blue
+                        )
                     }
                 }
             }
@@ -668,7 +893,23 @@ struct RecordDetailView: View {
 
     @ViewBuilder
     private var mapSection: some View {
-        if let lat = record.latitude, let lng = record.longitude {
+        if let artifact = primaryArtifact(for: .location),
+           let coordinate = coordinate(from: artifact) {
+            VStack(alignment: .leading, spacing: 10) {
+                SectionLabel(icon: "map.fill", title: t("detail.section.location", "Location"))
+                MapSnapshotView(coordinate: coordinate)
+                    .frame(height: 200)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                Text(artifact.title)
+                    .font(.subheadline.weight(.semibold))
+                if let summary = nonEmpty(artifact.summary) {
+                    Text(summary)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .detailCard()
+        } else if let lat = record.latitude, let lng = record.longitude {
             VStack(alignment: .leading, spacing: 10) {
                 SectionLabel(icon: "map.fill", title: t("detail.section.location", "Location"))
                 MapSnapshotView(
@@ -689,7 +930,29 @@ struct RecordDetailView: View {
 
     @ViewBuilder
     private var todoSection: some View {
-        if let payload = decodedTodoItems() {
+        if let artifact = primaryArtifact(for: .todo) {
+            let items = decodedTodoItems(from: artifact.textContent)
+            if !items.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    SectionLabel(icon: "checklist", title: nonEmpty(artifact.title) ?? t("detail.todo.default_title", "To-Do"))
+                    ForEach(items) { item in
+                        HStack(spacing: 10) {
+                            Image(systemName: item.isDone ? "checkmark.square.fill" : "square")
+                                .foregroundStyle(item.isDone ? .green : .secondary)
+                                .font(.system(size: 16))
+                            Text(item.text)
+                                .font(.body)
+                                .foregroundStyle(item.isDone ? .secondary : .primary)
+                                .strikethrough(item.isDone)
+                        }
+                    }
+                    let doneCount = items.filter(\.isDone).count
+                    Text(t("detail.todo.completed", "%d/%d completed", doneCount, items.count))
+                        .font(.caption).foregroundStyle(.secondary).padding(.top, 4)
+                }
+                .detailCard()
+            }
+        } else if let payload = legacyTodoPayload() {
             VStack(alignment: .leading, spacing: 10) {
                 SectionLabel(icon: "checklist", title: payload.title)
                 ForEach(payload.items) { item in
@@ -711,9 +974,9 @@ struct RecordDetailView: View {
         }
     }
 
-    /// Decodes todo items from MediaCard JSON. Extracted to avoid var mutation inside ViewBuilder.
-    private func decodedTodoItems() -> (title: String, items: [TodoItem])? {
-        guard let m = (record.mediaCards ?? []).first(where: { $0.mediaKind == .todo }),
+    /// Decodes todo items from artifact payload first, then legacy MediaCard JSON as compatibility fallback.
+    private func legacyTodoPayload() -> (title: String, items: [TodoItem])? {
+        guard let m = legacyMedia(kind: .todo).first,
               let json = m.caption,
               let raw = json.data(using: .utf8),
               let items = try? JSONDecoder().decode([TodoItem].self, from: raw),
@@ -915,6 +1178,33 @@ struct RecordDetailView: View {
         }
     }
 
+    private func artifactEvidenceLine(for artifact: Artifact) -> String? {
+        var parts: [String] = []
+
+        if let entityNames = artifactEntityNamesByArtifactID[artifact.id], !entityNames.isEmpty {
+            parts.append("Linked to \(entityNames.prefix(3).joined(separator: ", "))")
+        }
+
+        if let media = (record.mediaCards ?? []).first(where: { $0.id == artifact.id }) {
+            switch artifact.kind {
+            case .photo:
+                let payload = media.imageData == nil ? "photo metadata" : "photo payload"
+                parts.append(payload)
+            case .audio:
+                let payload = media.audioData == nil ? "voice metadata" : "voice payload"
+                parts.append(payload)
+            default:
+                break
+            }
+        }
+
+        if let arc = linkedArcs.first(where: { $0.sourceArtifactIDs.contains(artifact.id) }) {
+            parts.append("Part of \(arc.title)")
+        }
+
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
     private func shellMetaChip(icon: String, text: String) -> some View {
         Label(text.capitalized, systemImage: icon)
             .font(.caption.weight(.medium))
@@ -933,6 +1223,19 @@ struct RecordDetailView: View {
 
     private func t(_ key: String, _ defaultValue: String, _ arguments: CVarArg...) -> String {
         localization.string(key, default: defaultValue, arguments: arguments)
+    }
+
+    private func nonEmpty(_ text: String?) -> String? {
+        guard let text else { return nil }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+}
+
+private extension String {
+    var nilIfBlank: String? {
+        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 }
 
