@@ -290,7 +290,7 @@ struct RecordDetailView: View {
     private var captureShellHeader: some View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Capture Shell")
+                Text(localization.string("common.capture_shell", default: "Capture Shell"))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
 
@@ -380,7 +380,7 @@ struct RecordDetailView: View {
 
             if let reflection {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Current Reflection")
+                    Text(localization.string("common.current_reflection", default: "Current Reflection"))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
                     Text(reflection.title)
@@ -648,7 +648,6 @@ struct RecordDetailView: View {
             legacyLinks: legacyMedia(kind: .link)
         )
     }
-    }
 
     // MARK: - Activity
 
@@ -690,7 +689,7 @@ struct RecordDetailView: View {
                 }
                 if !analysisPeopleReferences.isEmpty {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("AI Evidence")
+                        Text(localization.string("common.ai_evidence", default: "AI Evidence"))
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
                         TokenPillRow(
@@ -821,7 +820,7 @@ struct RecordDetailView: View {
 
                     if !analysis.retrievalTerms.isEmpty {
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("Retrieval Terms")
+                            Text(localization.string("common.retrieval_terms", default: "Retrieval Terms"))
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(.secondary)
                             TokenPillRow(values: analysis.retrievalTerms, tint: .green)
@@ -896,7 +895,7 @@ struct RecordDetailView: View {
 
             if !linkedArcs.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Related Phases")
+                    Text(localization.string("common.related_phases", default: "Related Phases"))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.secondary)
 
@@ -958,7 +957,7 @@ struct RecordDetailView: View {
             Button(action: { showReflectionEditor = true }) {
                 HStack(spacing: 8) {
                     Image(systemName: "sparkles")
-                    Text("Create Reflection")
+                    Text(localization.string("common.create_reflection", default: "Create Reflection"))
                 }
                 .font(.subheadline.weight(.medium))
                 .frame(maxWidth: .infinity)
@@ -1058,6 +1057,7 @@ struct RecordDetailView: View {
             return ""
         }
     }
+}
 
 private extension String {
     var nilIfBlank: String? {

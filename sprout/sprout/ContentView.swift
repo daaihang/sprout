@@ -353,6 +353,8 @@ struct ContentView: View {
             return "list.bullet.rectangle"
         case .arcs:
             return "timeline.selection"
+        case .reflections:
+            return "sparkles"
         case .search:
             return "magnifyingglass"
         case .decisions, .map, .photos:

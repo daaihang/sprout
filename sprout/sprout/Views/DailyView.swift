@@ -150,6 +150,11 @@ struct DailyView: View {
         .background(Color.secondary.opacity(0.04))
     }
 
+    private func t(_ key: String, _ defaultValue: String, _ arguments: CVarArg...) -> String {
+        localization.string(key, default: defaultValue, arguments: arguments)
+    }
+}
+
 // MARK: - CardWrapper
 
 /// Wraps a projected home board card with target-aware navigation.
@@ -252,4 +257,3 @@ struct EmptyDayView: View {
         localization.string(key, default: defaultValue, arguments: arguments)
     }
 }
-

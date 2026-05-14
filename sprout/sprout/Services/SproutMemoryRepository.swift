@@ -399,6 +399,15 @@ final class SproutMemoryRepository {
         save()
     }
 
+    func upsertReflection(_ reflection: ReflectionSnapshot) {
+        if let index = reflections.firstIndex(where: { $0.id == reflection.id }) {
+            reflections[index] = reflection
+        } else {
+            reflections.append(reflection)
+        }
+        save()
+    }
+
     func dismissReflection(_ reflectionID: UUID) {
         guard let index = reflections.firstIndex(where: { $0.id == reflectionID }) else { return }
         reflections[index].status = .dismissed

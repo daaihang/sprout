@@ -1,8 +1,7 @@
 import SwiftUI
-import SwiftData
 
 struct ReflectionsHomeView: View {
-    @Environment(\.modelContext) private var modelContext
+    @Environment(AppLocalization.self) private var localization
     @Environment(SproutMemoryRepository.self) private var memoryRepository
 
     @State private var selectedSort: SortOption = .recent
@@ -28,9 +27,9 @@ struct ReflectionsHomeView: View {
         case .oldest:
             return reflections.sorted { $0.createdAt < $1.createdAt }
         case .confidence:
-            return reflections.sorted { 
-                let conf1 = $0.confidencePercentage ?? 0
-                let conf2 = $1.confidencePercentage ?? 0
+            return reflections.sorted {
+                let conf1 = $0.confidence ?? 0
+                let conf2 = $1.confidence ?? 0
                 return conf1 > conf2
             }
         }
@@ -40,10 +39,10 @@ struct ReflectionsHomeView: View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Reflections")
+                    Text(localization.string("common.reflections", default: "Reflections"))
                         .font(.largeTitle.weight(.semibold))
                         .foregroundStyle(.primary)
-                    Text("\(sortedReflections.count) total meaning snapshots")
+                    Text(localization.string("common.total_meaning_snapshots", default: "%d total meaning snapshots", arguments: [sortedReflections.count]))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -63,10 +62,10 @@ struct ReflectionsHomeView: View {
                             .foregroundStyle(.secondary.opacity(0.4))
 
                         VStack(spacing: 6) {
-                            Text("No reflections yet")
+                            Text(localization.string("common.no_reflections_yet", default: "No reflections yet"))
                                 .font(.headline)
                                 .foregroundStyle(.primary)
-                            Text("Create your first reflection from a record or phase detail.")
+                            Text(localization.string("common.create_first_reflection", default: "Create your first reflection from a record or phase detail."))
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                                 .multilineTextAlignment(.center)
@@ -101,8 +100,8 @@ struct ReflectionsHomeView: View {
                     .foregroundStyle(.primary)
                     .lineLimit(1)
 
-                if let confidence = reflection.confidencePercentage {
-                    Text("\(Int(confidence))%")
+                if let confidence = reflection.confidence {
+                    Text("\(Int((confidence * 100).rounded()))%")
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(.orange)
                         .padding(.horizontal, 6)
