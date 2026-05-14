@@ -253,6 +253,8 @@ struct RecordDetailView: View {
 
     // MARK: Body
 
+    @State private var showReflectionEditor = false
+
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 24) {
@@ -280,6 +282,9 @@ struct RecordDetailView: View {
         }
         .navigationTitle(navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showReflectionEditor) {
+            ReflectionEditView(recordID: record.id, arcID: nil)
+        }
     }
 
     private var captureShellHeader: some View {
@@ -923,7 +928,7 @@ struct RecordDetailView: View {
     // MARK: - Metadata footer
 
     private var metadataFooter: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             Divider()
             HStack(spacing: 16) {
                 Label(formattedDate(record.createdAt), systemImage: "clock")
@@ -948,6 +953,18 @@ struct RecordDetailView: View {
                         }
                     }
                 }
+            }
+
+            Button(action: { showReflectionEditor = true }) {
+                HStack(spacing: 8) {
+                    Image(systemName: "sparkles")
+                    Text("Create Reflection")
+                }
+                .font(.subheadline.weight(.medium))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(Color.purple.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
+                .foregroundStyle(Color.purple)
             }
         }
     }

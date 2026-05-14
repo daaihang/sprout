@@ -6,6 +6,8 @@ struct TemporalArcDetailView: View {
     @Environment(SproutMemoryRepository.self) private var memoryRepository
     let arc: TemporalArc
 
+    @State private var showReflectionEditor = false
+
     private var currentArc: TemporalArc {
         memoryRepository.temporalArc(for: arc.id) ?? arc
     }
@@ -48,6 +50,9 @@ struct TemporalArcDetailView: View {
         }
         .navigationTitle(currentArc.title)
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showReflectionEditor) {
+            ReflectionEditView(recordID: nil, arcID: currentArc.id)
+        }
     }
 
     private var header: some View {
@@ -108,6 +113,20 @@ struct TemporalArcDetailView: View {
                     }
                     .buttonStyle(.borderedProminent)
                 }
+            }
+
+            Divider()
+
+            Button(action: { showReflectionEditor = true }) {
+                HStack(spacing: 8) {
+                    Image(systemName: "sparkles")
+                    Text("Create Reflection for Phase")
+                }
+                .font(.subheadline.weight(.medium))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(Color.purple.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
+                .foregroundStyle(Color.purple)
             }
         }
         .detailCard()

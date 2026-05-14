@@ -65,6 +65,10 @@ struct DailyView: View {
                     items: gridItems
                 )
             }
+
+            if !recentReflections.isEmpty {
+                recentReflectionsSection
+            }
         }
         .background(Color.clear)
         .contentMargins(.top, topContentInset, for: .scrollContent)
@@ -84,7 +88,67 @@ struct DailyView: View {
             systemConfigs: systemConfigs
         )
     }
-}
+
+    private var recentReflections: [ReflectionSnapshot] {
+        memoryRepository.savedReflectionsForHome(referenceDate: date, limit: 5)
+    }
+
+    private var recentReflectionsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(t("content.recent_reflections", "Recent Reflections"))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 16)
+
+            VStack(spacing: 10) {
+                ForEach(recentReflections, id: \.id) { reflection in
+                    NavigationLink {
+                        ReflectionDetailView(reflection: reflection)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack(spacing: 8) {
+                                Text("💭")
+                                    .font(.subheadline)
+                                Text(reflection.title)
+                                    .font(.subheadline.weight(.medium))
+                                    .lineLimit(2)
+                                    .foregroundStyle(.primary)
+                            }
+
+                            if !reflection.body.isEmpty {
+                                Text(reflection.body.prefix(100))
+                                    .font(.caption)
+                                    .lineLimit(2)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            HStack(spacing: 8) {
+                                if let arcID = reflection.linkedTemporalArcID,
+                                   let arc = memoryRepository.temporalArc(for: arcID) {
+                                    Text("Phase: \(arc.title)")
+                                        .font(.caption2)
+                                        .foregroundStyle(.orange)
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 3)
+                                        .background(Color.orange.opacity(0.12), in: Capsule())
+                                }
+                                Spacer()
+                                Text(reflection.createdAt.formatted(date: .abbreviated, time: .shortened))
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .padding(12)
+                        .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 16)
+        }
+        .padding(.vertical, 16)
+        .background(Color.secondary.opacity(0.04))
+    }
 
 // MARK: - CardWrapper
 
@@ -188,3 +252,4 @@ struct EmptyDayView: View {
         localization.string(key, default: defaultValue, arguments: arguments)
     }
 }
+
