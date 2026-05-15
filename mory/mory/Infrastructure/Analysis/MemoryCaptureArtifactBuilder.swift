@@ -1,0 +1,157 @@
+import Foundation
+
+struct MemoryCaptureArtifactBuilder {
+    func buildArtifacts(from draft: MemoryCaptureDraft, recordID: UUID, createdAt: Date) -> [Artifact] {
+        let explicitArtifacts = draft.artifacts.map { artifactDraft in
+            makeArtifact(from: artifactDraft, fallbackTitle: draft.title, recordID: recordID, createdAt: createdAt)
+        }
+
+        if explicitArtifacts.isEmpty {
+            return [
+                Artifact(
+                    recordID: recordID,
+                    kind: .text,
+                    title: draft.title?.trimmedOrNil ?? draft.rawText.firstMeaningfulLine ?? "Untitled Memory",
+                    summary: draft.rawText.trimmedOrNil ?? "Untitled Memory",
+                    textContent: draft.rawText.trimmedOrNil ?? "Untitled Memory",
+                    payload: .text(draft.rawText.trimmedOrNil ?? "Untitled Memory"),
+                    metadata: [:],
+                    createdAt: createdAt,
+                    updatedAt: createdAt
+                )
+            ]
+        }
+
+        return explicitArtifacts
+    }
+
+    func resolvedRecordRawText(from draft: MemoryCaptureDraft, artifacts: [Artifact]) -> String {
+        if let rawText = draft.rawText.trimmedOrNil {
+            return rawText
+        }
+
+        let artifactSummary = artifacts
+            .compactMap { artifact in
+                artifact.textContent.trimmedOrNil
+                    ?? artifact.summary.trimmedOrNil
+                    ?? artifact.title.trimmedOrNil
+            }
+            .joined(separator: "\n")
+            .trimmedOrNil
+
+        return artifactSummary
+            ?? draft.artifacts.map(\.captureSummary).joined(separator: "\n").trimmedOrNil
+            ?? draft.title?.trimmedOrNil
+            ?? "Untitled Memory"
+    }
+
+    func preferredPrimaryArtifact(from artifacts: [Artifact]) -> Artifact? {
+        artifacts.first(where: { $0.kind == .text && $0.textContent.normalizedNonEmpty != nil })
+            ?? artifacts.first(where: { $0.summary.normalizedNonEmpty != nil })
+            ?? artifacts.first
+    }
+
+    private func makeArtifact(
+        from draft: CaptureArtifactDraft,
+        fallbackTitle: String?,
+        recordID: UUID,
+        createdAt: Date
+    ) -> Artifact {
+        switch draft {
+        case let .text(title, body):
+            let resolvedBody = body.trimmedOrNil ?? "Untitled Memory"
+            return Artifact(
+                recordID: recordID,
+                kind: .text,
+                title: title?.trimmedOrNil ?? fallbackTitle?.trimmedOrNil ?? resolvedBody.firstMeaningfulLine ?? "Untitled Memory",
+                summary: resolvedBody,
+                textContent: resolvedBody,
+                payload: .text(resolvedBody),
+                metadata: [:],
+                createdAt: createdAt,
+                updatedAt: createdAt
+            )
+        case let .photo(title, summary, filename, imageData, thumbnailData):
+            let resolvedSummary = summary.trimmedOrNil ?? "Photo capture"
+            return Artifact(
+                recordID: recordID,
+                kind: .photo,
+                title: title?.trimmedOrNil ?? fallbackTitle?.trimmedOrNil ?? "Photo",
+                summary: resolvedSummary,
+                textContent: resolvedSummary,
+                payload: .media(ArtifactMediaRef(filename: filename, mimeType: "image/jpeg")),
+                mediaRef: ArtifactMediaRef(filename: filename, mimeType: "image/jpeg"),
+                metadata: [:],
+                binaryPayload: imageData,
+                previewPayload: thumbnailData,
+                createdAt: createdAt,
+                updatedAt: createdAt
+            )
+        case let .audio(title, summary, filename, audioData):
+            let resolvedSummary = summary.trimmedOrNil ?? "Audio capture"
+            return Artifact(
+                recordID: recordID,
+                kind: .audio,
+                title: title?.trimmedOrNil ?? fallbackTitle?.trimmedOrNil ?? "Audio",
+                summary: resolvedSummary,
+                textContent: resolvedSummary,
+                payload: .media(ArtifactMediaRef(filename: filename, mimeType: "audio/m4a")),
+                mediaRef: ArtifactMediaRef(filename: filename, mimeType: "audio/m4a"),
+                metadata: [:],
+                binaryPayload: audioData,
+                previewPayload: nil,
+                createdAt: createdAt,
+                updatedAt: createdAt
+            )
+        case let .location(title, summary, latitude, longitude):
+            let resolvedSummary = summary.trimmedOrNil ?? "Location capture"
+            var metadata: [String: String] = [:]
+            if let latitude { metadata["latitude"] = String(latitude) }
+            if let longitude { metadata["longitude"] = String(longitude) }
+            return Artifact(
+                recordID: recordID,
+                kind: .location,
+                title: title?.trimmedOrNil ?? fallbackTitle?.trimmedOrNil ?? "Location",
+                summary: resolvedSummary,
+                textContent: resolvedSummary,
+                payload: .metadata(metadata),
+                metadata: metadata,
+                createdAt: createdAt,
+                updatedAt: createdAt
+            )
+        case let .link(title, url, note):
+            let resolvedSummary = note?.trimmedOrNil ?? url
+            return Artifact(
+                recordID: recordID,
+                kind: .link,
+                title: title?.trimmedOrNil ?? fallbackTitle?.trimmedOrNil ?? url,
+                summary: resolvedSummary,
+                textContent: resolvedSummary,
+                payload: .metadata(["url": url]),
+                metadata: ["url": url],
+                createdAt: createdAt,
+                updatedAt: createdAt
+            )
+        case let .todo(title, note):
+            let resolvedSummary = note?.trimmedOrNil ?? title
+            return Artifact(
+                recordID: recordID,
+                kind: .todo,
+                title: title,
+                summary: resolvedSummary,
+                textContent: resolvedSummary,
+                payload: .metadata(["todo": "true"]),
+                metadata: ["todo": "true"],
+                createdAt: createdAt,
+                updatedAt: createdAt
+            )
+        }
+    }
+}
+
+private extension String {
+    var normalizedNonEmpty: String? {
+        let value = trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty ? nil : value
+    }
+}

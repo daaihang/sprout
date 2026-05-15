@@ -1,4 +1,6 @@
 import SwiftUI
+import PhotosUI
+import AVFoundation
 
 struct CaptureComposerView: View {
     @Environment(\.memoryRepository) private var memoryRepository
@@ -14,6 +16,12 @@ struct CaptureComposerView: View {
     @State private var isSaving = false
     @State private var errorMessage: String?
     @State private var savedStatusMessage: String?
+
+    @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var selectedPhotoData: Data?
+    @State private var selectedPhotoThumbnail: Data?
+    @State private var photoFilename = ""
+    @State private var audioRecorder = AudioRecorderModel()
 
     var onSaved: (() -> Void)?
 
@@ -33,12 +41,90 @@ struct CaptureComposerView: View {
                         }
                     }
                     TextField("Title", text: $title)
-                    TextField(selectedType.primaryPrompt, text: $bodyText, axis: .vertical)
-                        .lineLimit(selectedType == .text ? 4...10 : 2...5)
-                    if let attachmentPrompt = selectedType.attachmentPrompt {
+
+                    switch selectedType {
+                    case .photo:
+                        PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                            if let selectedPhotoData {
+                                if let uiImage = UIImage(data: selectedPhotoData),
+                                   let thumbnailData = uiImage.preparingThumbnail(of: CGSize(width: 200, height: 200))?.jpegData(compressionQuality: 0.7) {
+                                    Image(uiImage: uiImage)
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fit)
+                                        .frame(maxHeight: 200)
+                                        .cornerRadius(8)
+                                }
+                                Text("Photo selected").foregroundStyle(.secondary)
+                            } else {
+                                Label("Select Photo", systemImage: "photo")
+                            }
+                        }
+                        .onChange(of: selectedPhotoItem) { _, newItem in
+                            Task {
+                                if let data = try? await newItem?.loadTransferable(type: Data.self) {
+                                    selectedPhotoData = data
+                                    if let uiImage = UIImage(data: data),
+                                       let thumbnail = uiImage.preparingThumbnail(of: CGSize(width: 200, height: 200)) {
+                                        selectedPhotoThumbnail = thumbnail.jpegData(compressionQuality: 0.7)
+                                    }
+                                    photoFilename = "photo_\(Date().timeIntervalSince1970).jpg"
+                                }
+                            }
+                        }
+                        TextField("Photo note", text: $bodyText, axis: .vertical)
+                            .lineLimit(2...5)
+
+                    case .audio:
+                        VStack(spacing: 12) {
+                            if audioRecorder.isRecording {
+                                HStack {
+                                    Circle()
+                                        .fill(.red)
+                                        .frame(width: 12, height: 12)
+                                        .opacity(audioRecorder.recordingDuration > 0 ? 1 : 0.5)
+                                    Text("Recording... \(Int(audioRecorder.recordingDuration))s")
+                                        .font(.headline)
+                                    Spacer()
+                                    Button(audioRecorder.isRecording ? "Stop" : "Start") {
+                                        audioRecorder.toggleRecording()
+                                    }
+                                    .buttonStyle(.borderedProminent)
+                                    .tint(.red)
+                                }
+                            } else {
+                                Button {
+                                    audioRecorder.toggleRecording()
+                                } label: {
+                                    Label(
+                                        audioRecorder.recordedAudioURL != nil ? "Re-record" : "Start Recording",
+                                        systemImage: "mic.fill"
+                                    )
+                                }
+                                .buttonStyle(.borderedProminent)
+                            }
+
+                            if let url = audioRecorder.recordedAudioURL {
+                                HStack {
+                                    Image(systemName: "waveform")
+                                        .foregroundStyle(.secondary)
+                                    Text(url.lastPathComponent)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                        TextField("Audio note", text: $bodyText, axis: .vertical)
+                            .lineLimit(2...5)
+
+                    default:
+                        TextField(selectedType.primaryPrompt, text: $bodyText, axis: .vertical)
+                            .lineLimit(selectedType == .text ? 4...10 : 2...5)
+                    }
+
+                    if let attachmentPrompt = selectedType.attachmentPrompt, selectedType != .photo && selectedType != .audio {
                         TextField(attachmentPrompt, text: $attachmentValue)
                     }
-                    if let secondaryPrompt = selectedType.secondaryPrompt {
+                    if let secondaryPrompt = selectedType.secondaryPrompt, selectedType != .audio {
                         TextField(secondaryPrompt, text: $secondaryValue)
                     }
                 }
@@ -99,12 +185,12 @@ struct CaptureComposerView: View {
             return [.text(title: normalizedTitle, body: rawText)]
         case .photo:
             let summary = bodyText.trimmedOrNil ?? title.trimmedOrNil ?? "Photo capture"
-            guard let filename = attachmentValue.trimmedOrNil else { return [] }
-            return [.photo(title: normalizedTitle, summary: summary, filename: filename)]
+            guard let filename = photoFilename.trimmedOrNil else { return [] }
+            return [.photo(title: normalizedTitle, summary: summary, filename: filename, imageData: selectedPhotoData, thumbnailData: selectedPhotoThumbnail)]
         case .audio:
             let summary = bodyText.trimmedOrNil ?? title.trimmedOrNil ?? "Audio capture"
-            guard let filename = attachmentValue.trimmedOrNil else { return [] }
-            return [.audio(title: normalizedTitle, summary: summary, filename: filename)]
+            guard let filename = audioRecorder.recordedFilename else { return [] }
+            return [.audio(title: normalizedTitle, summary: summary, filename: filename, audioData: audioRecorder.recordedAudioData)]
         case .location:
             guard bodyText.trimmedOrNil != nil || title.trimmedOrNil != nil || attachmentValue.trimmedOrNil != nil || secondaryValue.trimmedOrNil != nil else {
                 return []
@@ -216,6 +302,82 @@ private enum CaptureInputType: String, CaseIterable, Identifiable {
             return .photo
         case .audio:
             return .audio
+        }
+    }
+}
+
+@MainActor
+final class AudioRecorderModel: ObservableObject {
+    private var audioRecorder: AVAudioRecorder?
+    private var recordingTimer: Timer?
+    private let audioSession = AVAudioSession()
+
+    @Published var isRecording = false
+    @Published var recordingDuration: TimeInterval = 0
+    @Published var recordedAudioURL: URL?
+    @Published var recordedAudioData: Data?
+
+    var recordedFilename: String? {
+        recordedAudioURL?.lastPathComponent
+    }
+
+    init() {
+        setupAudioSession()
+    }
+
+    private func setupAudioSession() {
+        do {
+            try audioSession.setCategory(.playAndRecord, mode: .default)
+            try audioSession.setActive(true)
+        } catch {
+            print("Failed to setup audio session: \(error)")
+        }
+    }
+
+    func toggleRecording() {
+        if isRecording {
+            stopRecording()
+        } else {
+            startRecording()
+        }
+    }
+
+    private func startRecording() {
+        let filename = "audio_\(Date().timeIntervalSince1970).m4a"
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
+
+        let settings: [String: Any] = [
+            AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
+            AVSampleRateKey: 44100,
+            AVNumberOfChannelsKey: 1,
+            AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
+        ]
+
+        do {
+            audioRecorder = try AVAudioRecorder(url: url, settings: settings)
+            audioRecorder?.record()
+            isRecording = true
+            recordingDuration = 0
+
+            recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+                Task { @MainActor in
+                    self?.recordingDuration += 0.1
+                }
+            }
+        } catch {
+            print("Failed to start recording: \(error)")
+        }
+    }
+
+    private func stopRecording() {
+        recordingTimer?.invalidate()
+        recordingTimer = nil
+        audioRecorder?.stop()
+        isRecording = false
+
+        if let url = audioRecorder?.url {
+            recordedAudioURL = url
+            recordedAudioData = try? Data(contentsOf: url)
         }
     }
 }
