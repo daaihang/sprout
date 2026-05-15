@@ -196,6 +196,117 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
             XCTAssertNotNil(status?.lastError)
         }
     }
+
+    func testUpdateMemoryPersistsCorrectionsAndAddsSupportingArtifact() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Draft note",
+                rawText: "Initial wording that needs correction.",
+                mood: "unclear",
+                inputContext: "typed quickly",
+                captureSource: .composer,
+                artifacts: [.text(title: "Draft note", body: "Initial wording that needs correction.")]
+            )
+        )
+
+        let updated = try await repository.updateMemory(
+            recordID: memory.record.id,
+            draft: MemoryEditDraft(
+                rawText: "Corrected wording with clearer intent.",
+                userMood: "focused",
+                inputContext: "rewritten in detail",
+                appendedArtifactText: "Follow-up note with one more concrete detail."
+            )
+        )
+
+        let detail = try XCTUnwrap(updated)
+        XCTAssertEqual(detail.record.rawText, "Corrected wording with clearer intent.")
+        XCTAssertEqual(detail.record.userMood, "focused")
+        XCTAssertEqual(detail.record.inputContext, "rewritten in detail")
+        XCTAssertTrue(detail.artifacts.contains(where: { $0.summary == "Follow-up note with one more concrete detail." }))
+        XCTAssertEqual(detail.pipelineStatus?.stage, .pending)
+    }
+
+    func testMergeTemporalArcReturnsMergedDetailAndArchivesCandidate() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        let first = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Planning walk one",
+                rawText: "Walked with Linh and reviewed quarter planning priorities.",
+                mood: "reflective",
+                inputContext: "typed in debug",
+                captureSource: .composer,
+                artifacts: [.text(title: "Planning walk one", body: "Walked with Linh and reviewed quarter planning priorities.")]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: first.record.id)
+
+        let second = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Planning walk two",
+                rawText: "Another rainy walk with Linh pushed the same planning theme further.",
+                mood: "reflective",
+                inputContext: "typed in debug",
+                captureSource: .composer,
+                artifacts: [.text(title: "Planning walk two", body: "Another rainy walk with Linh pushed the same planning theme further.")]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: second.record.id)
+
+        let arcsBefore = try repository.fetchTemporalArcSummaries(limit: 10)
+        let sourceArc = try XCTUnwrap(arcsBefore.first(where: { $0.arc.sourceRecordIDs.contains(first.record.id) }))
+        XCTAssertNotNil(try repository.fetchTemporalArcDetail(arcID: sourceArc.arc.id)?.mergeCandidate)
+
+        let mergedDetail = try await repository.mergeTemporalArc(arcID: sourceArc.arc.id)
+        let detail = try XCTUnwrap(mergedDetail)
+
+        XCTAssertTrue(detail.summary.arc.sourceRecordIDs.contains(first.record.id))
+        XCTAssertTrue(detail.summary.arc.sourceRecordIDs.contains(second.record.id))
+        XCTAssertNil(detail.mergeCandidate)
+        XCTAssertTrue(detail.reflections.count >= 1)
+    }
+
+    func testReflectionMutationsPersistStatusChanges() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Reflection note",
+                rawText: "Dinner with Linh turned into a planning session with reflective value.",
+                mood: "reflective",
+                inputContext: "typed in debug",
+                captureSource: .composer,
+                artifacts: [.text(title: "Reflection note", body: "Dinner with Linh turned into a planning session with reflective value.")]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: memory.record.id)
+
+        let reflection = try XCTUnwrap(repository.fetchReflectionSummaries(limit: 10).first)
+
+        try await repository.saveReflection(reflectionID: reflection.reflection.id)
+        XCTAssertEqual(try repository.fetchReflectionDetail(reflectionID: reflection.reflection.id)?.summary.reflection.status, .saved)
+
+        try await repository.dismissReflection(reflectionID: reflection.reflection.id)
+        XCTAssertEqual(try repository.fetchReflectionDetail(reflectionID: reflection.reflection.id)?.summary.reflection.status, .dismissed)
+
+        try await repository.archiveReflection(reflectionID: reflection.reflection.id)
+        XCTAssertEqual(try repository.fetchReflectionDetail(reflectionID: reflection.reflection.id)?.summary.reflection.status, .archived)
+    }
 }
 
 private struct StubRecordAnalysisService: RecordAnalysisServing {

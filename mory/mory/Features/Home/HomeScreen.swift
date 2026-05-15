@@ -235,7 +235,7 @@ private struct HomeBoardSection: View {
 
             LazyVGrid(columns: columns, spacing: 12) {
                 ForEach(board.items) { item in
-                    CompositionMemoryCard(item: item)
+                    CompositionBoardCard(item: item)
                 }
             }
         }
@@ -243,7 +243,7 @@ private struct HomeBoardSection: View {
     }
 }
 
-private struct CompositionMemoryCard: View {
+private struct CompositionBoardCard: View {
     let item: HomeBoardItemSnapshot
 
     var body: some View {
@@ -279,7 +279,7 @@ private struct CompositionMemoryCard: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .lineLimit(3)
-                Text(reflection.createdAt.formatted(date: .abbreviated, time: .shortened))
+                Text(reflection.statusLabel)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             case let .system(title, subtitle):

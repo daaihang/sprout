@@ -67,6 +67,56 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         )
     }
 
+    func updateMemory(recordID: UUID, draft: MemoryEditDraft) async throws -> MemoryDetailSnapshot? {
+        guard let existingRecordStore = try modelContext.fetch(
+            FetchDescriptor<RecordShellStore>(predicate: #Predicate { $0.id == recordID })
+        ).first else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+
+        let now = Date.now
+        let trimmedRawText = draft.rawText.trimmedOrNil ?? existingRecordStore.rawText
+        var updatedRecord = existingRecordStore.domainModel
+        updatedRecord.rawText = trimmedRawText
+        updatedRecord.userMood = draft.userMood?.trimmedOrNil
+        updatedRecord.inputContext = draft.inputContext?.trimmedOrNil
+        updatedRecord.updatedAt = now
+
+        existingRecordStore.apply(domainModel: updatedRecord)
+
+        if let appendedArtifactText = draft.appendedArtifactText?.trimmedOrNil {
+            let appendedArtifact = Artifact(
+                recordID: recordID,
+                kind: .text,
+                title: appendedArtifactText.firstMeaningfulLine ?? "Added Note",
+                summary: appendedArtifactText,
+                textContent: appendedArtifactText,
+                payload: .text(appendedArtifactText),
+                metadata: ["origin": "memory_detail_edit"],
+                createdAt: now,
+                updatedAt: now
+            )
+            try upsert(artifact: appendedArtifact)
+            updatedRecord.artifactIDs.append(appendedArtifact.id)
+            updatedRecord.artifactIDs = Array(NSOrderedSet(array: updatedRecord.artifactIDs)) as? [UUID] ?? Array(Set(updatedRecord.artifactIDs))
+            existingRecordStore.apply(domainModel: updatedRecord)
+        }
+
+        try upsertPipelineStatus(
+            MemoryPipelineStatusSnapshot(
+                recordID: recordID,
+                stage: .pending,
+                lastError: nil,
+                lastAttemptAt: nil,
+                completedAt: nil,
+                updatedAt: now
+            )
+        )
+        try save()
+
+        return try fetchMemoryDetail(recordID: recordID)
+    }
+
     func refreshMemoryPipeline(recordID: UUID) async throws {
         guard let record = try fetchRecordShell(id: recordID) else {
             throw CocoaError(.fileNoSuchFile)
@@ -252,6 +302,9 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         }
 
         let graphContext = try loadGraphContext()
+        let analysesByRecordID = Dictionary(
+            uniqueKeysWithValues: graphContext.analyses.map { ($0.recordID, $0) }
+        )
         let memories = try fetchRecentMemories(limit: nil)
             .filter { memory in
                 [
@@ -261,6 +314,14 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
                     memory.record.userMood ?? ""
                 ].containsSearchTerm(needle)
             }
+            .sorted { lhs, rhs in
+                let leftScore = analysesByRecordID[lhs.record.id]?.salienceScore ?? 0
+                let rightScore = analysesByRecordID[rhs.record.id]?.salienceScore ?? 0
+                if leftScore == rightScore {
+                    return lhs.record.updatedAt > rhs.record.updatedAt
+                }
+                return leftScore > rightScore
+            }
             .map(SearchMemoryResultSnapshot.init(memory:))
 
         let entities = graphContext.entities
@@ -268,6 +329,15 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
                 [entity.displayName, entity.canonicalName, entity.summary].containsSearchTerm(needle)
             }
             .map { makeSearchEntityResult(entity: $0, graphContext: graphContext) }
+            .sorted { lhs, rhs in
+                if lhs.arcCount == rhs.arcCount {
+                    if lhs.reflectionCount == rhs.reflectionCount {
+                        return lhs.relatedMemoryCount > rhs.relatedMemoryCount
+                    }
+                    return lhs.reflectionCount > rhs.reflectionCount
+                }
+                return lhs.arcCount > rhs.arcCount
+            }
 
         let arcs = graphContext.arcs
             .filter { arc in
@@ -289,6 +359,12 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
                     )
                 )
             }
+            .sorted { lhs, rhs in
+                if lhs.summary.arc.intensityScore == rhs.summary.arc.intensityScore {
+                    return lhs.summary.arc.updatedAt > rhs.summary.arc.updatedAt
+                }
+                return lhs.summary.arc.intensityScore > rhs.summary.arc.intensityScore
+            }
 
         let reflections = try fetchReflectionSummaries(limit: nil)
             .filter { summary in
@@ -296,6 +372,12 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
                 return [reflection.title, reflection.body, reflection.evidenceSummary].containsSearchTerm(needle)
             }
             .map(SearchReflectionResultSnapshot.init(summary:))
+            .sorted { lhs, rhs in
+                if lhs.summary.reflection.confidence == rhs.summary.reflection.confidence {
+                    return lhs.summary.reflection.createdAt > rhs.summary.reflection.createdAt
+                }
+                return lhs.summary.reflection.confidence > rhs.summary.reflection.confidence
+            }
 
         return SearchSnapshot(
             query: query,
@@ -438,6 +520,10 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     func fetchTemporalArcDetail(arcID: UUID) throws -> TemporalArcDetailSnapshot? {
         let graphContext = try loadGraphContext()
         guard let arc = graphContext.arcs.first(where: { $0.id == arcID }) else { return nil }
+        let mergePreview = temporalArcService.mergePreview(sourceArcID: arcID, arcs: graphContext.arcs)
+        let mergeCandidate = mergePreview.flatMap { preview in
+            graphContext.arcs.first(where: { $0.id == preview.candidateArcID })
+        }
         let summary = TemporalArcSummarySnapshot(
             arc: arc,
             relatedMemories: relatedMemories(
@@ -466,7 +552,23 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             .filter { arc.sourceEntityIDs.contains($0.id) }
             .sorted { $0.updatedAt > $1.updatedAt }
             .map { makeEntityDetailSnapshot(entity: $0, graphContext: graphContext) }
-        return TemporalArcDetailSnapshot(summary: summary, reflections: reflectionSummaries, entityDetails: entityDetails)
+        return TemporalArcDetailSnapshot(
+            summary: summary,
+            reflections: reflectionSummaries,
+            entityDetails: entityDetails,
+            mergeCandidate: mergeCandidate.map { candidateArc in
+                TemporalArcSummarySnapshot(
+                    arc: candidateArc,
+                    relatedMemories: relatedMemories(
+                        recordIDs: candidateArc.sourceRecordIDs,
+                        memoriesByRecordID: graphContext.memoriesByRecordID,
+                        limit: 3
+                    ),
+                    linkedReflection: graphContext.reflections.first(where: { $0.linkedTemporalArcID == candidateArc.id })
+                )
+            },
+            mergeCandidateOverlapScore: mergePreview?.overlapScore
+        )
     }
 
     func acceptTemporalArc(arcID: UUID) async throws {
@@ -489,6 +591,41 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         updated.updatedAt = Date.now
         existing.apply(domainModel: updated)
         try save()
+    }
+
+    func mergeTemporalArc(arcID: UUID) async throws -> TemporalArcDetailSnapshot? {
+        let graphContext = try loadGraphContext()
+        guard let sourceArcStore = try modelContext.fetch(
+            FetchDescriptor<TemporalArcStore>(predicate: #Predicate { $0.id == arcID })
+        ).first else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+        guard let sourceArc = graphContext.arcs.first(where: { $0.id == arcID }) else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+        guard let mergePreview = temporalArcService.mergePreview(sourceArcID: arcID, arcs: graphContext.arcs),
+              let candidateArcStore = try modelContext.fetch(FetchDescriptor<TemporalArcStore>()).first(where: { $0.id == mergePreview.candidateArcID }),
+              let candidateArc = graphContext.arcs.first(where: { $0.id == mergePreview.candidateArcID }) else {
+            return try fetchTemporalArcDetail(arcID: arcID)
+        }
+
+        let linkedReflection = sourceArc.linkedReflectionID.flatMap { linkedID in
+            graphContext.reflections.first(where: { $0.id == linkedID })
+        }
+        let mergeResult = temporalArcService.merge(
+            sourceArc: sourceArc,
+            candidateArc: candidateArc,
+            linkedReflection: linkedReflection
+        )
+
+        sourceArcStore.apply(domainModel: mergeResult.sourceArc)
+        candidateArcStore.apply(domainModel: mergeResult.candidateArc)
+        if let updatedReflection = mergeResult.updatedReflection {
+            try upsert(reflection: updatedReflection)
+        }
+        try save()
+
+        return try fetchTemporalArcDetail(arcID: mergeResult.sourceArc.id)
     }
 
     func fetchReflections(limit: Int? = nil) throws -> [ReflectionSnapshot] {
@@ -553,7 +690,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
                         memoriesByRecordID: graphContext.memoriesByRecordID,
                         limit: 3
                     ),
-                    linkedReflection: graphContext.reflections.first(where: { $0.linkedTemporalArcID == $0.id })
+                    linkedReflection: graphContext.reflections.first(where: { $0.linkedTemporalArcID == reflection.linkedTemporalArcID })
                 )
             },
             entityDetails: entityDetails

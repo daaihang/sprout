@@ -42,6 +42,25 @@ struct ArcDetailView: View {
                         Task { await archiveArc() }
                     }
                     .disabled(isUpdating)
+
+                    if let mergeCandidate = snapshot.mergeCandidate {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Merge Candidate")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text(mergeCandidate.arc.title)
+                                .font(.subheadline.weight(.medium))
+                            if let overlapScore = snapshot.mergeCandidateOverlapScore {
+                                Text("Overlap \(overlapScore.formatted(.number.precision(.fractionLength(2))))")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Button(isUpdating ? "Updating..." : "Merge Arc") {
+                                Task { await mergeArc() }
+                            }
+                            .disabled(isUpdating)
+                        }
+                    }
                 }
 
                 Section("Related Memories") {
@@ -144,6 +163,18 @@ struct ArcDetailView: View {
         do {
             try await memoryRepository.archiveTemporalArc(arcID: arcID)
             await load()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func mergeArc() async {
+        guard !isUpdating else { return }
+        isUpdating = true
+        defer { isUpdating = false }
+        do {
+            snapshot = try await memoryRepository.mergeTemporalArc(arcID: arcID)
+            errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
         }

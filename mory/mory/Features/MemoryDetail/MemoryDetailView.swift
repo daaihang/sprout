@@ -9,6 +9,12 @@ struct MemoryDetailView: View {
     @State private var errorMessage: String?
     @State private var isRefreshingPipeline = false
     @State private var isReloading = false
+    @State private var isEditing = false
+    @State private var draftRawText = ""
+    @State private var draftMood = ""
+    @State private var draftInputContext = ""
+    @State private var draftArtifactText = ""
+    @State private var isSavingEdits = false
 
     var body: some View {
         List {
@@ -38,6 +44,37 @@ struct MemoryDetailView: View {
                     Text(snapshot.record.updatedAt.formatted(date: .abbreviated, time: .shortened))
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                }
+
+                Section("Correction") {
+                    if isEditing {
+                        TextField("Raw Capture", text: $draftRawText, axis: .vertical)
+                            .lineLimit(3...8)
+                        TextField("Mood", text: $draftMood)
+                        TextField("Input Context", text: $draftInputContext, axis: .vertical)
+                            .lineLimit(2...5)
+                        TextField("Add Supporting Artifact", text: $draftArtifactText, axis: .vertical)
+                            .lineLimit(2...5)
+
+                        Button(isSavingEdits ? "Saving..." : "Save Changes") {
+                            Task { await saveEdits() }
+                        }
+                        .disabled(isSavingEdits || draftRawText.trimmedOrNil == nil)
+
+                        Button("Cancel Editing", role: .cancel) {
+                            resetEditDraft(from: snapshot.record)
+                            isEditing = false
+                        }
+                        .disabled(isSavingEdits)
+                    } else {
+                        Text("Correct text, mood, context, or add one more supporting note before rerunning analysis.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        Button("Edit Memory") {
+                            resetEditDraft(from: snapshot.record)
+                            isEditing = true
+                        }
+                    }
                 }
 
                 Section("Artifacts") {
@@ -254,6 +291,9 @@ struct MemoryDetailView: View {
 
         do {
             snapshot = try memoryRepository.fetchMemoryDetail(recordID: recordID)
+            if let snapshot {
+                resetEditDraft(from: snapshot.record)
+            }
             errorMessage = snapshot == nil ? "Memory not found." : nil
         } catch {
             errorMessage = error.localizedDescription
@@ -266,6 +306,38 @@ struct MemoryDetailView: View {
         defer { isRefreshingPipeline = false }
 
         do {
+            try await memoryRepository.refreshMemoryPipeline(recordID: recordID)
+            await load()
+        } catch {
+            errorMessage = error.localizedDescription
+            await load()
+        }
+    }
+
+    private func resetEditDraft(from record: RecordShell) {
+        draftRawText = record.rawText
+        draftMood = record.userMood ?? ""
+        draftInputContext = record.inputContext ?? ""
+        draftArtifactText = ""
+    }
+
+    private func saveEdits() async {
+        guard !isSavingEdits else { return }
+        isSavingEdits = true
+        defer { isSavingEdits = false }
+
+        do {
+            snapshot = try await memoryRepository.updateMemory(
+                recordID: recordID,
+                draft: MemoryEditDraft(
+                    rawText: draftRawText,
+                    userMood: draftMood.trimmedOrNil,
+                    inputContext: draftInputContext.trimmedOrNil,
+                    appendedArtifactText: draftArtifactText.trimmedOrNil
+                )
+            )
+            isEditing = false
+            errorMessage = nil
             try await memoryRepository.refreshMemoryPipeline(recordID: recordID)
             await load()
         } catch {

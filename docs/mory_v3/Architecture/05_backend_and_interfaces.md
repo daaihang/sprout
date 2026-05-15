@@ -28,14 +28,14 @@
 
 ### 4.1 Auth API
 
-- `POST /api/auth/apple`
-- `POST /api/auth/refresh`
+- `POST /auth/apple`
+- `POST /auth/refresh`
 
 ### 4.2 User State API
 
-- `POST /api/onboarding/complete`
+- `POST /api/me/onboarding/complete`
 - `POST /api/push/register`
-- `GET /api/subscription/status`
+- `GET /api/subscription/verify`
 
 ### 4.3 Analysis API
 

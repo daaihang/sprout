@@ -131,6 +131,25 @@ struct MemoryDetailSnapshot: Hashable, Sendable {
     let reflections: [ReflectionSnapshot]
 }
 
+struct MemoryEditDraft: Hashable, Sendable {
+    var rawText: String
+    var userMood: String?
+    var inputContext: String?
+    var appendedArtifactText: String?
+
+    init(
+        rawText: String,
+        userMood: String? = nil,
+        inputContext: String? = nil,
+        appendedArtifactText: String? = nil
+    ) {
+        self.rawText = rawText
+        self.userMood = userMood
+        self.inputContext = inputContext
+        self.appendedArtifactText = appendedArtifactText
+    }
+}
+
 enum MemoryPipelineStage: String, Codable, CaseIterable, Identifiable, Sendable {
     case pending
     case running
@@ -337,6 +356,8 @@ struct TemporalArcDetailSnapshot: Identifiable, Hashable, Sendable {
     let summary: TemporalArcSummarySnapshot
     let reflections: [ReflectionSummarySnapshot]
     let entityDetails: [EntityDetailSnapshot]
+    let mergeCandidate: TemporalArcSummarySnapshot?
+    let mergeCandidateOverlapScore: Double?
 
     var id: UUID { summary.id }
 }
@@ -360,6 +381,7 @@ struct PipelineStatusSummary: Identifiable, Hashable, Sendable {
 @MainActor
 protocol MoryMemoryRepositorying: AnyObject {
     func createMemory(from draft: MemoryCaptureDraft) async throws -> MemorySummary
+    func updateMemory(recordID: UUID, draft: MemoryEditDraft) async throws -> MemoryDetailSnapshot?
     func refreshMemoryPipeline(recordID: UUID) async throws
     func fetchRecentMemories(limit: Int?) throws -> [MemorySummary]
     func fetchHomeBoard(for date: Date, limit: Int) throws -> HomeBoardSnapshot
@@ -379,6 +401,7 @@ protocol MoryMemoryRepositorying: AnyObject {
     func fetchTemporalArcDetail(arcID: UUID) throws -> TemporalArcDetailSnapshot?
     func acceptTemporalArc(arcID: UUID) async throws
     func archiveTemporalArc(arcID: UUID) async throws
+    func mergeTemporalArc(arcID: UUID) async throws -> TemporalArcDetailSnapshot?
     func fetchReflections(limit: Int?) throws -> [ReflectionSnapshot]
     func fetchReflectionSummaries(limit: Int?) throws -> [ReflectionSummarySnapshot]
     func fetchReflectionDetail(reflectionID: UUID) throws -> ReflectionDetailSnapshot?

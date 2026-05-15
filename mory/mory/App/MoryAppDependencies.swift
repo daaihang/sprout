@@ -19,6 +19,7 @@ private final class MissingMemoryRepository: MoryMemoryRepositorying {
     }
 
     func createMemory(from draft: MemoryCaptureDraft) async throws -> MemorySummary { fail() }
+    func updateMemory(recordID: UUID, draft: MemoryEditDraft) async throws -> MemoryDetailSnapshot? { fail() }
     func refreshMemoryPipeline(recordID: UUID) async throws { let _: Void = fail() }
     func fetchRecentMemories(limit: Int?) throws -> [MemorySummary] { fail() }
     func fetchHomeBoard(for date: Date, limit: Int) throws -> HomeBoardSnapshot { fail() }
@@ -38,6 +39,7 @@ private final class MissingMemoryRepository: MoryMemoryRepositorying {
     func fetchTemporalArcDetail(arcID: UUID) throws -> TemporalArcDetailSnapshot? { fail() }
     func acceptTemporalArc(arcID: UUID) async throws { let _: Void = fail() }
     func archiveTemporalArc(arcID: UUID) async throws { let _: Void = fail() }
+    func mergeTemporalArc(arcID: UUID) async throws -> TemporalArcDetailSnapshot? { fail() }
     func fetchReflections(limit: Int?) throws -> [ReflectionSnapshot] { fail() }
     func fetchReflectionSummaries(limit: Int?) throws -> [ReflectionSummarySnapshot] { fail() }
     func fetchReflectionDetail(reflectionID: UUID) throws -> ReflectionDetailSnapshot? { fail() }
