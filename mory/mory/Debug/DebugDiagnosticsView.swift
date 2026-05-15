@@ -8,6 +8,7 @@ struct DebugDiagnosticsView: View {
     @State private var pipelineStatuses: [PipelineStatusSummary] = []
     @State private var errorMessage: String?
     @State private var isSeeding = false
+    @State private var isRebuilding = false
 
     var body: some View {
         List {
@@ -21,6 +22,11 @@ struct DebugDiagnosticsView: View {
                     Text("Fixture record: \(fixture.recordTitle)")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+
+                    Button(isRebuilding ? "Rebuilding..." : "Rerun Analysis + Graph + Arc + Reflection") {
+                        Task { await rebuildFixture(recordID: fixture.recordID) }
+                    }
+                    .disabled(isRebuilding)
                 }
             }
 
@@ -196,6 +202,22 @@ struct DebugDiagnosticsView: View {
             if let latest {
                 fixture = try memoryRepository.fetchDebugFixtureSnapshot(recordID: latest.record.id)
             }
+            graphOverview = try memoryRepository.fetchGraphOverview(limitPerKind: 6, edgeLimit: 8)
+            pipelineStatuses = try memoryRepository.fetchPipelineStatusSummaries(limit: 12)
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func rebuildFixture(recordID: UUID) async {
+        guard !isRebuilding else { return }
+        isRebuilding = true
+        defer { isRebuilding = false }
+
+        do {
+            try await memoryRepository.refreshMemoryPipeline(recordID: recordID)
+            fixture = try memoryRepository.fetchDebugFixtureSnapshot(recordID: recordID)
             graphOverview = try memoryRepository.fetchGraphOverview(limitPerKind: 6, edgeLimit: 8)
             pipelineStatuses = try memoryRepository.fetchPipelineStatusSummaries(limit: 12)
             errorMessage = nil

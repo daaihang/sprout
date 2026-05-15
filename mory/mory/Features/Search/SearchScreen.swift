@@ -50,23 +50,27 @@ struct SearchScreen: View {
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(result.entities) { entityResult in
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(entityResult.entity.displayName)
-                                    .font(.headline)
-                                Text(entityResult.entity.summary.ifEmpty("No summary"))
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                Text("\(entityResult.relatedMemoryCount) memories · \(entityResult.artifactCount) artifacts · \(entityResult.arcCount) arcs")
-                                    .font(.caption)
-                                    .foregroundStyle(.tertiary)
-                                if !entityResult.relatedThemes.isEmpty {
-                                    Text(entityResult.relatedThemes.joined(separator: " · "))
-                                        .font(.caption)
+                            NavigationLink {
+                                EntityDetailView(entityID: entityResult.entity.id)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(entityResult.entity.displayName)
+                                        .font(.headline)
+                                    Text(entityResult.entity.summary.ifEmpty("No summary"))
+                                        .font(.subheadline)
                                         .foregroundStyle(.secondary)
-                                } else if !entityResult.relatedPeople.isEmpty {
-                                    Text(entityResult.relatedPeople.joined(separator: " · "))
+                                    Text("\(entityResult.relatedMemoryCount) memories · \(entityResult.artifactCount) artifacts · \(entityResult.arcCount) arcs")
                                         .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(.tertiary)
+                                    if !entityResult.relatedThemes.isEmpty {
+                                        Text(entityResult.relatedThemes.joined(separator: " · "))
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    } else if !entityResult.relatedPeople.isEmpty {
+                                        Text(entityResult.relatedPeople.joined(separator: " · "))
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
                                 }
                             }
                         }
@@ -79,18 +83,22 @@ struct SearchScreen: View {
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(result.arcs) { arcResult in
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(arcResult.summary.arc.title)
-                                    .font(.headline)
-                                Text(arcResult.summary.arc.summary)
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(2)
-                                if !arcResult.summary.relatedMemories.isEmpty {
-                                    Text(arcResult.summary.relatedMemories.map(\.title).joined(separator: " | "))
-                                        .font(.caption)
-                                        .foregroundStyle(.tertiary)
-                                        .lineLimit(1)
+                            NavigationLink {
+                                ArcDetailView(arcID: arcResult.summary.arc.id)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(arcResult.summary.arc.title)
+                                        .font(.headline)
+                                    Text(arcResult.summary.arc.summary)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(2)
+                                    if !arcResult.summary.relatedMemories.isEmpty {
+                                        Text(arcResult.summary.relatedMemories.map(\.title).joined(separator: " | "))
+                                            .font(.caption)
+                                            .foregroundStyle(.tertiary)
+                                            .lineLimit(1)
+                                    }
                                 }
                             }
                         }
@@ -103,18 +111,22 @@ struct SearchScreen: View {
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(result.reflections) { reflectionResult in
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(reflectionResult.summary.reflection.title)
-                                    .font(.headline)
-                                Text(reflectionResult.summary.reflection.body)
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(2)
-                                if !reflectionResult.summary.relatedMemories.isEmpty {
-                                    Text(reflectionResult.summary.relatedMemories.map(\.title).joined(separator: " | "))
-                                        .font(.caption)
-                                        .foregroundStyle(.tertiary)
-                                        .lineLimit(1)
+                            NavigationLink {
+                                ReflectionDetailView(reflectionID: reflectionResult.summary.reflection.id)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(reflectionResult.summary.reflection.title)
+                                        .font(.headline)
+                                    Text(reflectionResult.summary.reflection.body)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(2)
+                                    if !reflectionResult.summary.relatedMemories.isEmpty {
+                                        Text(reflectionResult.summary.relatedMemories.map(\.title).joined(separator: " | "))
+                                            .font(.caption)
+                                            .foregroundStyle(.tertiary)
+                                            .lineLimit(1)
+                                    }
                                 }
                             }
                         }

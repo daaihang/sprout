@@ -30,12 +30,20 @@ private final class MissingMemoryRepository: MoryMemoryRepositorying {
     func fetchEntityDetails(kind: EntityKind, limit: Int?) throws -> [EntityDetailSnapshot] { fail() }
     func fetchEntityDetail(entityID: UUID) throws -> EntityDetailSnapshot? { fail() }
     func fetchPeopleSummaries(limit: Int?) throws -> [PersonMemorySummary] { fail() }
+    func fetchPersonDetail(entityID: UUID) throws -> PersonDetailSnapshot? { fail() }
     func fetchThemeSummaries(limit: Int?) throws -> [ThemeMemorySummary] { fail() }
     func fetchGraphOverview(limitPerKind: Int?, edgeLimit: Int?) throws -> GraphOverviewSnapshot { fail() }
     func fetchTemporalArcs(limit: Int?) throws -> [TemporalArc] { fail() }
     func fetchTemporalArcSummaries(limit: Int?) throws -> [TemporalArcSummarySnapshot] { fail() }
+    func fetchTemporalArcDetail(arcID: UUID) throws -> TemporalArcDetailSnapshot? { fail() }
+    func acceptTemporalArc(arcID: UUID) async throws { let _: Void = fail() }
+    func archiveTemporalArc(arcID: UUID) async throws { let _: Void = fail() }
     func fetchReflections(limit: Int?) throws -> [ReflectionSnapshot] { fail() }
     func fetchReflectionSummaries(limit: Int?) throws -> [ReflectionSummarySnapshot] { fail() }
+    func fetchReflectionDetail(reflectionID: UUID) throws -> ReflectionDetailSnapshot? { fail() }
+    func saveReflection(reflectionID: UUID) async throws { let _: Void = fail() }
+    func dismissReflection(reflectionID: UUID) async throws { let _: Void = fail() }
+    func archiveReflection(reflectionID: UUID) async throws { let _: Void = fail() }
     func seedDebugFixture() async throws -> DebugMemoryFixtureSnapshot { fail() }
     func fetchDebugFixtureSnapshot(recordID: UUID) throws -> DebugMemoryFixtureSnapshot? { fail() }
 }

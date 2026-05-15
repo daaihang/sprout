@@ -101,6 +101,9 @@ struct MemoryDetailView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text(pipelineStatus.userLabel)
                                 .font(.headline)
+                            Text(pipelineStatus.explanation)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                             if let lastError = pipelineStatus.lastError?.trimmedOrNil {
                                 Text(lastError)
                                     .font(.caption)

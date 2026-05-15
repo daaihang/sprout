@@ -162,6 +162,19 @@ struct MemoryPipelineStatusSnapshot: Identifiable, Hashable, Sendable {
             return "Analysis failed"
         }
     }
+
+    var explanation: String {
+        switch stage {
+        case .pending:
+            return "Your capture is already stored on device. Analysis will be attached after the pipeline runs."
+        case .running:
+            return "The app is building analysis, graph links, arcs, and reflections from the saved capture."
+        case .completed:
+            return "Analysis, graph links, arcs, and reflections are available for this memory."
+        case .failed:
+            return "The memory is safe locally, but the analysis pipeline failed. You can retry from detail or debug."
+        }
+    }
 }
 
 enum CompositionRenderValue: Hashable, Sendable {
@@ -312,6 +325,30 @@ struct DebugMemoryFixtureSnapshot: Hashable, Sendable {
     let chain: DebugMemoryChainSnapshot
 }
 
+struct PersonDetailSnapshot: Identifiable, Hashable, Sendable {
+    let summary: PersonMemorySummary
+    let relatedArcs: [TemporalArcSummarySnapshot]
+    let relatedReflections: [ReflectionSummarySnapshot]
+
+    var id: UUID { summary.id }
+}
+
+struct TemporalArcDetailSnapshot: Identifiable, Hashable, Sendable {
+    let summary: TemporalArcSummarySnapshot
+    let reflections: [ReflectionSummarySnapshot]
+    let entityDetails: [EntityDetailSnapshot]
+
+    var id: UUID { summary.id }
+}
+
+struct ReflectionDetailSnapshot: Identifiable, Hashable, Sendable {
+    let summary: ReflectionSummarySnapshot
+    let linkedArc: TemporalArcSummarySnapshot?
+    let entityDetails: [EntityDetailSnapshot]
+
+    var id: UUID { summary.id }
+}
+
 struct PipelineStatusSummary: Identifiable, Hashable, Sendable {
     let recordID: UUID
     let title: String
@@ -334,12 +371,20 @@ protocol MoryMemoryRepositorying: AnyObject {
     func fetchEntityDetails(kind: EntityKind, limit: Int?) throws -> [EntityDetailSnapshot]
     func fetchEntityDetail(entityID: UUID) throws -> EntityDetailSnapshot?
     func fetchPeopleSummaries(limit: Int?) throws -> [PersonMemorySummary]
+    func fetchPersonDetail(entityID: UUID) throws -> PersonDetailSnapshot?
     func fetchThemeSummaries(limit: Int?) throws -> [ThemeMemorySummary]
     func fetchGraphOverview(limitPerKind: Int?, edgeLimit: Int?) throws -> GraphOverviewSnapshot
     func fetchTemporalArcs(limit: Int?) throws -> [TemporalArc]
     func fetchTemporalArcSummaries(limit: Int?) throws -> [TemporalArcSummarySnapshot]
+    func fetchTemporalArcDetail(arcID: UUID) throws -> TemporalArcDetailSnapshot?
+    func acceptTemporalArc(arcID: UUID) async throws
+    func archiveTemporalArc(arcID: UUID) async throws
     func fetchReflections(limit: Int?) throws -> [ReflectionSnapshot]
     func fetchReflectionSummaries(limit: Int?) throws -> [ReflectionSummarySnapshot]
+    func fetchReflectionDetail(reflectionID: UUID) throws -> ReflectionDetailSnapshot?
+    func saveReflection(reflectionID: UUID) async throws
+    func dismissReflection(reflectionID: UUID) async throws
+    func archiveReflection(reflectionID: UUID) async throws
     func seedDebugFixture() async throws -> DebugMemoryFixtureSnapshot
     func fetchDebugFixtureSnapshot(recordID: UUID) throws -> DebugMemoryFixtureSnapshot?
 }

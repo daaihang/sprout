@@ -21,36 +21,40 @@ struct ReflectionsScreen: View {
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(reflections) { item in
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Text(item.reflection.title)
-                                    .font(.headline)
-                                Spacer()
-                                Text(item.reflection.status.rawValue)
-                                    .font(.caption)
+                        NavigationLink {
+                            ReflectionDetailView(reflectionID: item.reflection.id)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Text(item.reflection.title)
+                                        .font(.headline)
+                                    Spacer()
+                                    Text(item.reflection.statusLabel)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Text(item.reflection.body)
+                                    .font(.subheadline)
                                     .foregroundStyle(.secondary)
-                            }
-                            Text(item.reflection.body)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(3)
-                            Text(item.reflection.evidenceSummary)
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(2)
-                            if let linkedArc = item.linkedArc {
-                                Text(linkedArc.title)
-                                    .font(.footnote.weight(.medium))
-                                    .foregroundStyle(.secondary)
-                            }
-                            if !item.relatedMemories.isEmpty {
-                                Text(item.relatedMemories.map(\.title).joined(separator: " | "))
+                                    .lineLimit(3)
+                                Text(item.reflection.evidenceSummary)
                                     .font(.footnote)
                                     .foregroundStyle(.secondary)
                                     .lineLimit(2)
+                                if let linkedArc = item.linkedArc {
+                                    Text(linkedArc.title)
+                                        .font(.footnote.weight(.medium))
+                                        .foregroundStyle(.secondary)
+                                }
+                                if !item.relatedMemories.isEmpty {
+                                    Text(item.relatedMemories.map(\.title).joined(separator: " | "))
+                                        .font(.footnote)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(2)
+                                }
                             }
+                            .padding(.vertical, 4)
                         }
-                        .padding(.vertical, 4)
                     }
                 }
             }

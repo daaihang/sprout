@@ -99,6 +99,25 @@ enum ReflectionStatus: String, Codable, CaseIterable, Identifiable, Sendable {
     var id: String { rawValue }
 }
 
+extension ReflectionStatus {
+    var label: String {
+        switch self {
+        case .suggested:
+            return "Suggested"
+        case .saved:
+            return "Saved"
+        case .archived:
+            return "Archived"
+        case .dismissed:
+            return "Dismissed"
+        }
+    }
+}
+
+extension ReflectionSnapshot {
+    var statusLabel: String { status.label }
+}
+
 struct ReflectionSnapshot: Identifiable, Codable, Hashable, Sendable {
     let id: UUID
     var type: ReflectionType

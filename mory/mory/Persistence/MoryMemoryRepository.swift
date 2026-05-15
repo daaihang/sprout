@@ -354,6 +354,20 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         return applyLimit(limit, to: summaries)
     }
 
+    func fetchPersonDetail(entityID: UUID) throws -> PersonDetailSnapshot? {
+        guard let entity = try fetchEntityDetail(entityID: entityID) else {
+            return nil
+        }
+        guard let personSummary = try fetchPeopleSummaries(limit: nil).first(where: { $0.entity.id == entityID }) else {
+            return nil
+        }
+        return PersonDetailSnapshot(
+            summary: personSummary,
+            relatedArcs: entity.relatedArcs,
+            relatedReflections: entity.relatedReflections
+        )
+    }
+
     func fetchGraphOverview(limitPerKind: Int? = nil, edgeLimit: Int? = nil) throws -> GraphOverviewSnapshot {
         let graphContext = try loadGraphContext()
         let groupedEntities = Dictionary(grouping: graphContext.entities, by: \.kind)
@@ -421,6 +435,62 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         }
     }
 
+    func fetchTemporalArcDetail(arcID: UUID) throws -> TemporalArcDetailSnapshot? {
+        let graphContext = try loadGraphContext()
+        guard let arc = graphContext.arcs.first(where: { $0.id == arcID }) else { return nil }
+        let summary = TemporalArcSummarySnapshot(
+            arc: arc,
+            relatedMemories: relatedMemories(
+                recordIDs: arc.sourceRecordIDs,
+                memoriesByRecordID: graphContext.memoriesByRecordID,
+                limit: 3
+            ),
+            linkedReflection: graphContext.reflections.first(where: { $0.linkedTemporalArcID == arc.id })
+        )
+        let reflectionSummaries = graphContext.reflections
+            .filter { $0.linkedTemporalArcID == arc.id || $0.sourceRecordIDs.contains(where: { arc.sourceRecordIDs.contains($0) }) }
+            .sorted { $0.createdAt > $1.createdAt }
+            .map { reflection in
+                let linkedArc = reflection.linkedTemporalArcID.flatMap { id in graphContext.arcs.first(where: { $0.id == id }) }
+                return ReflectionSummarySnapshot(
+                    reflection: reflection,
+                    linkedArc: linkedArc,
+                    relatedMemories: relatedMemories(
+                        recordIDs: mergeUniqueIDs(reflection.sourceRecordIDs, arc.sourceRecordIDs),
+                        memoriesByRecordID: graphContext.memoriesByRecordID,
+                        limit: 3
+                    )
+                )
+            }
+        let entityDetails = graphContext.entities
+            .filter { arc.sourceEntityIDs.contains($0.id) }
+            .sorted { $0.updatedAt > $1.updatedAt }
+            .map { makeEntityDetailSnapshot(entity: $0, graphContext: graphContext) }
+        return TemporalArcDetailSnapshot(summary: summary, reflections: reflectionSummaries, entityDetails: entityDetails)
+    }
+
+    func acceptTemporalArc(arcID: UUID) async throws {
+        guard let existing = try modelContext.fetch(FetchDescriptor<TemporalArcStore>(predicate: #Predicate { $0.id == arcID })).first else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+        var updated = existing.domainModel
+        updated.status = .accepted
+        updated.updatedAt = Date.now
+        existing.apply(domainModel: updated)
+        try save()
+    }
+
+    func archiveTemporalArc(arcID: UUID) async throws {
+        guard let existing = try modelContext.fetch(FetchDescriptor<TemporalArcStore>(predicate: #Predicate { $0.id == arcID })).first else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+        var updated = existing.domainModel
+        updated.status = .archived
+        updated.updatedAt = Date.now
+        existing.apply(domainModel: updated)
+        try save()
+    }
+
     func fetchReflections(limit: Int? = nil) throws -> [ReflectionSnapshot] {
         let reflections = try modelContext.fetch(
             FetchDescriptor<ReflectionSnapshotStore>(
@@ -452,6 +522,62 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
                 )
             )
         }
+    }
+
+    func fetchReflectionDetail(reflectionID: UUID) throws -> ReflectionDetailSnapshot? {
+        let graphContext = try loadGraphContext()
+        guard let reflection = graphContext.reflections.first(where: { $0.id == reflectionID }) else { return nil }
+        let linkedArc = reflection.linkedTemporalArcID.flatMap { arcID in
+            graphContext.arcs.first(where: { $0.id == arcID })
+        }
+        let summary = ReflectionSummarySnapshot(
+            reflection: reflection,
+            linkedArc: linkedArc,
+            relatedMemories: relatedMemories(
+                recordIDs: linkedArc.map { mergeUniqueIDs(reflection.sourceRecordIDs, $0.sourceRecordIDs) } ?? reflection.sourceRecordIDs,
+                memoriesByRecordID: graphContext.memoriesByRecordID,
+                limit: 3
+            )
+        )
+        let entityDetails = graphContext.entities
+            .filter { reflection.sourceEntityIDs.contains($0.id) }
+            .sorted { $0.updatedAt > $1.updatedAt }
+            .map { makeEntityDetailSnapshot(entity: $0, graphContext: graphContext) }
+        return ReflectionDetailSnapshot(
+            summary: summary,
+            linkedArc: linkedArc.map {
+                TemporalArcSummarySnapshot(
+                    arc: $0,
+                    relatedMemories: relatedMemories(
+                        recordIDs: $0.sourceRecordIDs,
+                        memoriesByRecordID: graphContext.memoriesByRecordID,
+                        limit: 3
+                    ),
+                    linkedReflection: graphContext.reflections.first(where: { $0.linkedTemporalArcID == $0.id })
+                )
+            },
+            entityDetails: entityDetails
+        )
+    }
+
+    func saveReflection(reflectionID: UUID) async throws {
+        try updateReflectionStatus(reflectionID: reflectionID, status: .saved)
+    }
+
+    func dismissReflection(reflectionID: UUID) async throws {
+        try updateReflectionStatus(reflectionID: reflectionID, status: .dismissed)
+    }
+
+    func archiveReflection(reflectionID: UUID) async throws {
+        try updateReflectionStatus(reflectionID: reflectionID, status: .archived)
+    }
+
+    func rerunGraphArcReflection(recordID: UUID) async throws {
+        guard let record = try fetchRecordShell(id: recordID) else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+        let artifacts = try fetchArtifacts(recordID: recordID)
+        try await runArchitecturePipeline(record: record, artifacts: artifacts)
     }
 
     func seedDebugFixture() async throws -> DebugMemoryFixtureSnapshot {
@@ -723,6 +849,30 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             return updated
         }
         return reflection
+    }
+
+    private func updateReflectionStatus(reflectionID: UUID, status: ReflectionStatus) throws {
+        guard let existing = try modelContext.fetch(
+            FetchDescriptor<ReflectionSnapshotStore>(predicate: #Predicate { $0.id == reflectionID })
+        ).first else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+        var updated = existing.domainModel
+        updated.status = status
+        switch status {
+        case .saved:
+            updated.savedAt = updated.savedAt ?? Date.now
+            updated.dismissedAt = nil
+        case .dismissed:
+            updated.dismissedAt = Date.now
+        case .archived:
+            break
+        case .suggested:
+            updated.savedAt = nil
+            updated.dismissedAt = nil
+        }
+        existing.apply(domainModel: updated)
+        try save()
     }
 
     private func ensureHomeBoard(for date: Date) throws -> BoardStore {
