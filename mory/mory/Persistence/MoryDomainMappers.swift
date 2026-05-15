@@ -260,7 +260,9 @@ extension EntityNodeStore {
             kindRawValue: domainModel.kind.rawValue,
             displayName: domainModel.displayName,
             canonicalName: domainModel.canonicalName,
+            aliases: domainModel.aliases,
             summary: domainModel.summary,
+            provenanceRecordIDs: domainModel.provenanceRecordIDs,
             createdAt: domainModel.createdAt,
             updatedAt: domainModel.updatedAt,
             confidence: domainModel.confidence
@@ -273,7 +275,9 @@ extension EntityNodeStore {
             kind: EntityKind(rawValue: kindRawValue) ?? .object,
             displayName: displayName,
             canonicalName: canonicalName,
+            aliases: aliases,
             summary: summary,
+            provenanceRecordIDs: provenanceRecordIDs,
             createdAt: createdAt,
             updatedAt: updatedAt,
             confidence: confidence
@@ -285,7 +289,9 @@ extension EntityNodeStore {
         kindRawValue = domainModel.kind.rawValue
         displayName = domainModel.displayName
         canonicalName = domainModel.canonicalName
+        aliases = domainModel.aliases
         summary = domainModel.summary
+        provenanceRecordIDs = domainModel.provenanceRecordIDs
         createdAt = domainModel.createdAt
         updatedAt = domainModel.updatedAt
         confidence = domainModel.confidence
@@ -347,6 +353,9 @@ extension ArtifactEntityLinkStore {
             entityID: domainModel.entityID,
             confidence: domainModel.confidence,
             source: domainModel.source,
+            sourceRecordID: domainModel.sourceRecordID,
+            sourceAnalysisRecordID: domainModel.sourceAnalysisRecordID,
+            evidenceSummary: domainModel.evidenceSummary,
             createdAt: domainModel.createdAt
         )
     }
@@ -358,6 +367,9 @@ extension ArtifactEntityLinkStore {
             entityID: entityID,
             confidence: confidence,
             source: source,
+            sourceRecordID: sourceRecordID,
+            sourceAnalysisRecordID: sourceAnalysisRecordID,
+            evidenceSummary: evidenceSummary,
             createdAt: createdAt
         )
     }
@@ -368,6 +380,9 @@ extension ArtifactEntityLinkStore {
         entityID = domainModel.entityID
         confidence = domainModel.confidence
         source = domainModel.source
+        sourceRecordID = domainModel.sourceRecordID
+        sourceAnalysisRecordID = domainModel.sourceAnalysisRecordID
+        evidenceSummary = domainModel.evidenceSummary
         createdAt = domainModel.createdAt
     }
 }

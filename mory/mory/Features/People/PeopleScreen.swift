@@ -5,6 +5,8 @@ struct PeopleScreen: View {
 
     @State private var people: [EntityDetailSnapshot] = []
     @State private var themes: [EntityDetailSnapshot] = []
+    @State private var places: [EntityDetailSnapshot] = []
+    @State private var decisions: [EntityDetailSnapshot] = []
     @State private var errorMessage: String?
 
     var body: some View {
@@ -18,7 +20,7 @@ struct PeopleScreen: View {
 
             Section("People") {
                 if people.isEmpty {
-                    Text("People entities will appear here once the graph layer starts accumulating person nodes and links.")
+                    Text("People will appear here after captures accumulate into stable graph entities.")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(people, id: \.id) { person in
@@ -33,7 +35,7 @@ struct PeopleScreen: View {
 
             Section("Themes") {
                 if themes.isEmpty {
-                    Text("Theme entities will appear here once the graph layer accumulates reusable theme nodes.")
+                    Text("Themes will appear here after repeated patterns become reusable graph nodes.")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(themes, id: \.id) { theme in
@@ -41,6 +43,36 @@ struct PeopleScreen: View {
                             EntityDetailView(entityID: theme.entity.id)
                         } label: {
                             ThemeRow(theme: theme)
+                        }
+                    }
+                }
+            }
+
+            Section("Places") {
+                if places.isEmpty {
+                    Text("Places will appear here when captures carry reusable place references.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(places, id: \.id) { place in
+                        NavigationLink {
+                            EntityDetailView(entityID: place.entity.id)
+                        } label: {
+                            ThemeRow(theme: place)
+                        }
+                    }
+                }
+            }
+
+            Section("Decisions") {
+                if decisions.isEmpty {
+                    Text("Decisions will appear here when the graph extracts stable decision objects.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(decisions, id: \.id) { decision in
+                        NavigationLink {
+                            EntityDetailView(entityID: decision.entity.id)
+                        } label: {
+                            ThemeRow(theme: decision)
                         }
                     }
                 }
@@ -59,6 +91,8 @@ struct PeopleScreen: View {
         do {
             people = try memoryRepository.fetchEntityDetails(kind: .person, limit: 20)
             themes = try memoryRepository.fetchEntityDetails(kind: .theme, limit: 20)
+            places = try memoryRepository.fetchEntityDetails(kind: .place, limit: 20)
+            decisions = try memoryRepository.fetchEntityDetails(kind: .decision, limit: 20)
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription

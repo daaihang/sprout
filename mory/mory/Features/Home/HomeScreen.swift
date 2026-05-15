@@ -74,14 +74,14 @@ struct HomeScreen: View {
                     if let homeBoard, !homeBoard.items.isEmpty {
                         HomeBoardSection(board: homeBoard)
                     } else {
-                        Text("Your day board will fill as captures land in the composition layer.")
+                        Text("Your day board will start with recent captures, then expand with arcs and reflections.")
                             .foregroundStyle(.secondary)
                     }
                 }
 
                 Section("Pipeline Status") {
                     if pipelineStatuses.isEmpty {
-                        Text("Capture pipeline status will appear here once local memories start accumulating.")
+                        Text("Saved memories will show whether analysis is pending, running, complete, or failed.")
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(pipelineStatuses) { item in

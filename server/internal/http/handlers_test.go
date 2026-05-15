@@ -418,6 +418,85 @@ func TestCanonicalAnalysisRoutesAndSchema(t *testing.T) {
 	}
 }
 
+func TestReflectionRoutes(t *testing.T) {
+	store, err := db.NewSQLiteStore(":memory:")
+	if err != nil {
+		t.Fatalf("new sqlite store: %v", err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+
+	cfg := config.Config{
+		AppEnv:           "test",
+		Port:             "8080",
+		JWTSecret:        "test-secret",
+		JWTIssuer:        "sprout-test",
+		DevAuthEnabled:   true,
+		DevAuthUserID:    "dev-user",
+		DefaultTier:      "seed",
+		SubscriptionMode: "mock",
+		AIMode:           config.AIModeMock,
+		AIProvider:       config.AIProviderMock,
+	}
+	authenticator := auth.NewAuthenticator(cfg.JWTSecret, cfg.JWTIssuer, 24*time.Hour)
+	server := NewServer(Dependencies{
+		Config:        cfg,
+		Logger:        slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Authenticator: authenticator,
+		AppleVerifier: nil,
+		AIProvider:    ai.NewMockProvider(),
+		Subscription:  subscription.NewService("mock", "seed"),
+		PushTokens:    store,
+		UserProfiles:  store,
+	})
+
+	token := issueDevToken(t, server, `{"identity_token":"tester-reflection"}`)
+	body := `{
+		"record_shell":{"id":"r1","raw_text":"Dinner with Linh clarified the quarter plan.","capture_source":"composer","input_context":"typed in debug"},
+		"artifacts":[{"id":"a1","kind":"text","title":"Dinner note","summary":"Planning dinner","text_content":"Dinner with Linh clarified the quarter plan.","metadata":{"source":"composer"}}],
+		"known_entities":[{"id":"p1","kind":"person","name":"Linh","aliases":["Linh Tran"]}]
+	}`
+
+	generateReq := httptest.NewRequest(http.MethodPost, "/api/reflections/generate", bytes.NewBufferString(body))
+	generateReq.Header.Set("Authorization", "Bearer "+token)
+	generateReq.Header.Set("Content-Type", "application/json")
+	generateRec := httptest.NewRecorder()
+	server.Handler().ServeHTTP(generateRec, generateReq)
+	if generateRec.Code != http.StatusOK {
+		t.Fatalf("reflection generate status = %d, body = %s", generateRec.Code, generateRec.Body.String())
+	}
+
+	var generateResp reflectionResponse
+	if err := json.Unmarshal(generateRec.Body.Bytes(), &generateResp); err != nil {
+		t.Fatalf("decode reflection generate response: %v", err)
+	}
+	if strings.TrimSpace(generateResp.Body) == "" {
+		t.Fatalf("expected reflection body")
+	}
+
+	replayBody := `{
+		"record_shell":{"id":"r1","raw_text":"Dinner with Linh clarified the quarter plan.","capture_source":"composer"},
+		"artifacts":[],
+		"linked_arc_id":"arc-1",
+		"prompt":"Restate the reflection with more emphasis on the planning pattern."
+	}`
+	replayReq := httptest.NewRequest(http.MethodPost, "/api/reflections/replay", bytes.NewBufferString(replayBody))
+	replayReq.Header.Set("Authorization", "Bearer "+token)
+	replayReq.Header.Set("Content-Type", "application/json")
+	replayRec := httptest.NewRecorder()
+	server.Handler().ServeHTTP(replayRec, replayReq)
+	if replayRec.Code != http.StatusOK {
+		t.Fatalf("reflection replay status = %d, body = %s", replayRec.Code, replayRec.Body.String())
+	}
+
+	var replayResp reflectionResponse
+	if err := json.Unmarshal(replayRec.Body.Bytes(), &replayResp); err != nil {
+		t.Fatalf("decode reflection replay response: %v", err)
+	}
+	if !strings.Contains(replayResp.Body, "Replay:") {
+		t.Fatalf("expected replay body, got %q", replayResp.Body)
+	}
+}
+
 func issueDevToken(t *testing.T, server *Server, body string) string {
 	t.Helper()
 	req := httptest.NewRequest(http.MethodPost, "/auth/apple", bytes.NewBufferString(body))

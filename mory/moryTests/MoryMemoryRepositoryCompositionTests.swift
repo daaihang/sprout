@@ -25,8 +25,39 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let board = try repository.fetchHomeBoard(for: Date(), limit: 8)
 
         XCTAssertFalse(board.items.isEmpty)
-        XCTAssertTrue(board.items.allSatisfy {
+        XCTAssertTrue(board.items.contains {
             if case .memory = $0.renderValue { return true }
+            return false
+        })
+    }
+
+    func testFetchHomeBoardIncludesArcAndReflectionItemsAfterPipeline() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Rain walk",
+                rawText: "Walked with Linh in the rain and clarified the quarter planning priorities.",
+                mood: "reflective",
+                inputContext: "typed in debug",
+                captureSource: .composer,
+                artifacts: [.text(title: "Rain walk", body: "Walked with Linh in the rain and clarified the quarter planning priorities.")]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: memory.record.id)
+
+        let board = try repository.fetchHomeBoard(for: Date(), limit: 8)
+
+        XCTAssertTrue(board.items.contains {
+            if case .arc = $0.renderValue { return true }
+            return false
+        })
+        XCTAssertTrue(board.items.contains {
+            if case .reflection = $0.renderValue { return true }
             return false
         })
     }
@@ -132,6 +163,33 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertFalse(person.relatedArcs.isEmpty)
         XCTAssertFalse(person.relatedReflections.isEmpty)
         XCTAssertFalse(person.edges.isEmpty)
+    }
+
+    func testGraphUpdaterPreservesAliasesAndProvenance() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: AliasRecordAnalysisService()
+        )
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Alias memory",
+                rawText: "Dinner with Linh Tran clarified the quarter planning priorities.",
+                mood: "focused",
+                inputContext: "typed in debug",
+                captureSource: .composer,
+                artifacts: [.text(title: "Alias memory", body: "Dinner with Linh Tran clarified the quarter planning priorities.")]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: memory.record.id)
+
+        let person = try XCTUnwrap(repository.fetchEntityDetails(kind: .person, limit: 10).first)
+        XCTAssertTrue(person.entity.aliases.contains(where: { $0 == "Linh Tran" }))
+        XCTAssertTrue(person.entity.provenanceRecordIDs.contains(memory.record.id))
+
+        let detail = try XCTUnwrap(repository.fetchMemoryDetail(recordID: memory.record.id))
+        XCTAssertTrue(detail.entities.contains(where: { $0.aliases.contains("Linh Tran") }))
     }
 
     func testSearchReturnsFormalObjectSnapshots() async throws {
@@ -353,5 +411,37 @@ private struct FailingRecordAnalysisService: RecordAnalysisServing {
         knownEntities: [EntityReference]
     ) async throws -> RecordAnalysisSnapshot {
         throw StubError()
+    }
+}
+
+private struct AliasRecordAnalysisService: RecordAnalysisServing {
+    func analyze(
+        record: RecordShell,
+        artifacts: [Artifact],
+        knownEntities: [EntityReference]
+    ) async throws -> RecordAnalysisSnapshot {
+        RecordAnalysisSnapshot(
+            recordID: record.id,
+            summary: "Alias summary",
+            themes: ["planning"],
+            emotionInterpretation: "focused",
+            salienceScore: 0.7,
+            retrievalTerms: ["planning", "linh"],
+            entityMentions: [
+                EntityReference(kind: .person, name: "Linh", aliases: ["Linh Tran"], confidence: 0.92),
+                EntityReference(kind: .theme, name: "planning", confidence: 0.81),
+            ],
+            candidateEdges: [
+                CandidateEntityEdge(
+                    from: EntityReference(kind: .person, name: "Linh", aliases: ["Linh Tran"], confidence: 0.92),
+                    to: EntityReference(kind: .theme, name: "planning", confidence: 0.81),
+                    relationKind: .relatedTo,
+                    confidence: 0.76
+                )
+            ],
+            followUpCandidates: [],
+            reflectionHint: "Track whether Linh and planning keep co-occurring.",
+            createdAt: record.updatedAt
+        )
     }
 }

@@ -22,17 +22,22 @@ struct GraphUpdater {
 
         let resolvedEntityIDs = upsertEntities(
             from: analysis.entityMentions,
+            sourceRecordIDs: linkedRecordIDs,
             createdAt: analysis.createdAt,
             into: &entityNodes
         )
 
         for artifactID in linkedArtifactIDs {
             for entityID in resolvedEntityIDs {
+                let confidence = entityConfidence(for: entityID, references: analysis.entityMentions, entityNodes: entityNodes)
                 upsertArtifactEntityLink(
                     artifactID: artifactID,
                     entityID: entityID,
-                    confidence: analysis.entityMentions.first(where: { $0.id == entityID })?.confidence,
+                    confidence: confidence,
                     source: "analysis",
+                    sourceRecordID: linkedRecordIDs.first,
+                    sourceAnalysisRecordID: analysis.recordID,
+                    evidenceSummary: analysis.summary,
                     createdAt: analysis.createdAt,
                     into: &artifactEntityLinks
                 )
@@ -59,32 +64,48 @@ struct GraphUpdater {
 
     private func upsertEntities(
         from references: [EntityReference],
+        sourceRecordIDs: [UUID],
         createdAt: Date,
         into entityNodes: inout [EntityNode]
     ) -> [UUID] {
         var resolvedIDs: [UUID] = []
 
         for reference in references {
-            if let existingIndex = entityNodes.firstIndex(where: {
-                $0.kind == reference.kind &&
-                $0.displayName.localizedCaseInsensitiveCompare(reference.name) == .orderedSame
-            }) {
+            if let existingIndex = entityNodes.firstIndex(where: { matches(reference: reference, node: $0) }) {
                 entityNodes[existingIndex].updatedAt = createdAt
                 if let confidence = reference.confidence {
                     entityNodes[existingIndex].confidence = confidence
                 }
-                let mergedAliases = [entityNodes[existingIndex].canonicalName] + reference.aliases
-                if let canonical = mergedAliases.first(where: { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) {
-                    entityNodes[existingIndex].canonicalName = canonical
+                entityNodes[existingIndex].aliases = mergeNormalizedStrings(
+                    entityNodes[existingIndex].aliases,
+                    [entityNodes[existingIndex].displayName, entityNodes[existingIndex].canonicalName] + reference.aliases
+                )
+                if !entityNodes[existingIndex].aliases.contains(where: { $0.caseInsensitiveCompare(reference.name) == .orderedSame }) {
+                    entityNodes[existingIndex].aliases.append(reference.name)
                 }
+                entityNodes[existingIndex].canonicalName = preferredCanonicalName(
+                    current: entityNodes[existingIndex].canonicalName,
+                    displayName: entityNodes[existingIndex].displayName,
+                    aliases: entityNodes[existingIndex].aliases
+                )
+                entityNodes[existingIndex].provenanceRecordIDs = mergeUniqueIDs(
+                    entityNodes[existingIndex].provenanceRecordIDs,
+                    sourceRecordIDs
+                )
                 resolvedIDs.append(entityNodes[existingIndex].id)
             } else {
                 let node = EntityNode(
                     id: reference.id,
                     kind: reference.kind,
                     displayName: reference.name,
-                    canonicalName: reference.aliases.first ?? reference.name,
+                    canonicalName: preferredCanonicalName(
+                        current: reference.name,
+                        displayName: reference.name,
+                        aliases: reference.aliases
+                    ),
+                    aliases: mergeNormalizedStrings([], reference.aliases),
                     summary: "",
+                    provenanceRecordIDs: sourceRecordIDs,
                     createdAt: createdAt,
                     updatedAt: createdAt,
                     confidence: reference.confidence
@@ -102,16 +123,30 @@ struct GraphUpdater {
         entityID: UUID,
         confidence: Double?,
         source: String,
+        sourceRecordID: UUID?,
+        sourceAnalysisRecordID: UUID?,
+        evidenceSummary: String,
         createdAt: Date,
         into artifactEntityLinks: inout [ArtifactEntityLink]
     ) {
-        guard !artifactEntityLinks.contains(where: { $0.artifactID == artifactID && $0.entityID == entityID }) else { return }
+        if let existingIndex = artifactEntityLinks.firstIndex(where: { $0.artifactID == artifactID && $0.entityID == entityID }) {
+            artifactEntityLinks[existingIndex].confidence = maxConfidence(existing: artifactEntityLinks[existingIndex].confidence, incoming: confidence)
+            artifactEntityLinks[existingIndex].sourceRecordID = sourceRecordID ?? artifactEntityLinks[existingIndex].sourceRecordID
+            artifactEntityLinks[existingIndex].sourceAnalysisRecordID = sourceAnalysisRecordID ?? artifactEntityLinks[existingIndex].sourceAnalysisRecordID
+            if !evidenceSummary.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                artifactEntityLinks[existingIndex].evidenceSummary = evidenceSummary
+            }
+            return
+        }
         artifactEntityLinks.append(
             ArtifactEntityLink(
                 artifactID: artifactID,
                 entityID: entityID,
                 confidence: confidence,
                 source: source,
+                sourceRecordID: sourceRecordID,
+                sourceAnalysisRecordID: sourceAnalysisRecordID,
+                evidenceSummary: evidenceSummary,
                 createdAt: createdAt
             )
         )
@@ -171,10 +206,66 @@ struct GraphUpdater {
     }
 
     private func resolvedID(for reference: EntityReference, in entityNodes: [EntityNode]) -> UUID? {
-        entityNodes.first {
-            $0.kind == reference.kind &&
-            $0.displayName.localizedCaseInsensitiveCompare(reference.name) == .orderedSame
-        }?.id
+        entityNodes.first(where: { matches(reference: reference, node: $0) })?.id
+    }
+
+    private func matches(reference: EntityReference, node: EntityNode) -> Bool {
+        guard node.kind == reference.kind else { return false }
+        let normalizedReference = reference.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedReference.isEmpty else { return false }
+
+        let candidates = [node.displayName, node.canonicalName] + node.aliases
+        return candidates.contains {
+            $0.trimmingCharacters(in: .whitespacesAndNewlines)
+                .localizedCaseInsensitiveCompare(normalizedReference) == .orderedSame
+        }
+    }
+
+    private func preferredCanonicalName(
+        current: String,
+        displayName: String,
+        aliases: [String]
+    ) -> String {
+        let candidates = [current, displayName] + aliases
+        return candidates.first(where: { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) ?? displayName
+    }
+
+    private func mergeNormalizedStrings(_ lhs: [String], _ rhs: [String]) -> [String] {
+        var seen = Set<String>()
+        var ordered: [String] = []
+
+        for value in lhs + rhs {
+            let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { continue }
+            let key = trimmed.lowercased()
+            guard !seen.contains(key) else { continue }
+            seen.insert(key)
+            ordered.append(trimmed)
+        }
+
+        return ordered
+    }
+
+    private func maxConfidence(existing: Double?, incoming: Double?) -> Double? {
+        switch (existing, incoming) {
+        case let (.some(left), .some(right)):
+            return max(left, right)
+        case let (.some(left), nil):
+            return left
+        case let (nil, .some(right)):
+            return right
+        case (nil, nil):
+            return nil
+        }
+    }
+
+    private func entityConfidence(
+        for entityID: UUID,
+        references: [EntityReference],
+        entityNodes: [EntityNode]
+    ) -> Double? {
+        guard let node = entityNodes.first(where: { $0.id == entityID }) else { return nil }
+        return references.first(where: { matches(reference: $0, node: node) })?.confidence ?? node.confidence
     }
 
     private func upsertEdge(

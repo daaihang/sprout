@@ -1,176 +1,132 @@
 # 03. Composition System
 
-## 1. 当前 UI 架构的优点与问题
+## 1. Composition 的职责
 
-当前首页已经不是传统日记时间轴，而是 container-first 的卡片系统。  
-这是项目已经做对的部分。
+`Composition` 负责把记忆材料组织进一个可持续存在的空间结构。
 
-优点：
+它回答：
 
-- `RecordMapper` 已经在做内容到展示的投影
-- `StickerGridLayout` 已经在做空间排布
-- `CardContainer` 已经引入旋转、缩放、zIndex 等空间线索
+- 哪些对象被放在一起
+- 每个对象多大
+- 每个对象位于哪一层
+- 哪些对象相邻、覆盖或聚类
+- 用户如何通过空间关系组织记忆
 
-问题：
+## 2. 核心对象
 
-- Container 还不是持久化领域对象
-- 布局状态仍依赖 `Record` 上的尺寸覆盖字段
-- 空间关系没有进入 AI 和语义层
+### 2.1 Board
 
-所以现在要做的不是抛弃首页，而是把它从“视觉技巧”升级为“Composition system”。
+`Board` 是展示上下文，例如：
 
-## 2. Composition 的职责
+- day board
+- people board
+- arc board
+- search board
 
-Composition 层负责回答：
+### 2.2 Composition
 
-- 哪些内容在同一个空间中被摆在一起
-- 每个对象多大、在哪里、位于哪一层
-- 哪些内容互相覆盖、相邻或聚类
-- 用户如何在板面上组织记忆
+`Composition` 是某个 board 下的一组空间排布单元。
 
-这层不是纯前端细节。  
-它是记忆系统结构的一部分。
+### 2.3 CompositionItem
 
-## 3. 为什么空间关系本身有意义
+`CompositionItem` 是实际被摆放出来的对象引用。
 
-在记忆产品里，以下信息都是有价值的：
+`targetType` 可以是：
 
-- 用户总把某个人相关内容放在一起
-- 某张图总被放在正中央
-- 某些 artifact 经常成组出现
-- 某类内容经常被压到边缘
+- artifact
+- record
+- arc
+- reflection
+- system
 
-这些并非装饰，而是潜在语义。
+## 3. 持久化边界
 
-如果空间层不持久化，AI 和 graph 永远看不到这些线索。
+应持久化：
 
-## 4. 建议的数据结构
-
-### 4.1 Board
-
-Board 是一个展示上下文容器，例如：
-
-- 某一天首页
-- 某个人物页
-- 某个阶段页
-
-### 4.2 Composition
-
-Composition 是某个 board 下的一组排布单元。
-
-### 4.3 CompositionItem
-
-CompositionItem 代表一个被摆放出来的对象。
-
-建议字段：
-
-- target type
-- target id
-- width/height units
-- x/y hint
-- zIndex
-- rotation
-- scale
-- style
-
-## 5. 布局算法与持久化的边界
-
-### 5.1 应持久化的内容
-
-- item span
-- zIndex
-- rotation
-- scale
+- `span`
+- `zIndex`
+- `rotation`
+- `scale`
+- `hidden`
 - 用户显式调整结果
-- 稳定排序
+- 稳定排序与 item identity
 
-### 5.2 不必持久化的内容
+不应持久化：
 
-- 一次渲染中的临时动画态
-- 每帧计算的像素值
-- 纯响应式导出的最终 frame
+- 像素级 frame
+- 每帧动画状态
+- 瞬时 hover / drag 中间态
 
-换句话说：
+## 4. 首页结构
 
-持久化的是“布局意图与结果”，不是“每次渲染的屏幕坐标”。
+首页的正式结构是：
 
-## 6. 渲染层建议
+`DayBoard -> Composition -> CompositionItem -> Renderer`
 
-现阶段不建议删除所有现有卡片组件。  
-正确做法是加一层：
+其中：
 
-`ArtifactRenderer`
+- `DayBoard` 提供当天上下文
+- `Composition` 提供空间组织
+- `CompositionItem` 提供目标引用与视觉状态
+- `Renderer` 负责选择具体卡片外观
 
-职责：
+### 4.1 Home Composition 最小稳定规则
 
-- 根据 artifact kind 和 composition context 选择合适的视觉呈现
-- 复用现有 `PhotoCard / MusicCard / WeatherCard / PeopleCard ...`
-- 逐步让这些卡片从“业务真相对象”降级为“渲染器实现”
+当前首页正式最小规则是：
 
-## 7. RecordMapper 的重构方向
+- 首页 board 先接 `record` 项，保证 capture 后立即可见
+- 当存在高强度 `arc` 时，首页可插入少量阶段项
+- 当存在 `saved` 或高置信 `suggested` reflection 时，首页可插入少量 reflection 项
+- system item 只保留为未来 recall / prompt 插槽，不反向定义领域真相
 
-当前 `RecordMapper.allCards(record:)` 是过渡期非常关键的中间层，但长期会成为瓶颈。
+这意味着首页不再只是最近记录列表，而是一个最小可持续的 mixed-object composition。
 
-它现在承担了：
+### 4.2 当前允许持久化的 layout 字段
 
-- 读取 record
-- 判断显示哪些卡
-- 构造具体 card data
-- 决定 span
-- 决定 record section
+当前允许用户与系统共同稳定维护的字段是：
 
-长期建议拆成：
+- `widthColumns`
+- `heightUnits`
+- `zIndex`
+- `rotationDegrees`
+- `scale`
+- `isHidden`
 
-1. `RecordAggregateBuilder`
-2. `CompositionProjector`
-3. `ArtifactRenderer`
+当前不做的事：
 
-这能把：
+- 不持久化像素级拖拽坐标
+- 不提前引入复杂自由布局编辑器
+- 不把 layout 状态挂回 `RecordShell`
 
-- 聚合构建
-- 组合投影
-- 视觉渲染
+### 4.3 后续扩展顺序
 
-分成三个稳定步骤。
+- 先把 home board 的 mixed-object composition 稳定下来
+- 再评估 people / arc / search 是否需要独立 board
+- 最后再补用户显式调整与持久化布局编辑能力
+## 5. Renderer 约束
 
-## 8. 首页组合来源建议
+`Renderer` 的职责是根据目标对象和上下文选择视觉表达。
 
-### 8.1 短期
+它可以复用：
 
-首页仍然可由“按天查询 records -> 投影成 composition items”得到。
+- `PhotoCard`
+- `MusicCard`
+- `TodayInHistoryCard`
+- 其他纯展示卡片组件
 
-### 8.2 中期
+但这些卡片组件不再是领域模型。
 
-首页应支持独立的 `DayBoard` / `HomeBoard` 持久化对象。
+## 6. 与 AI 的关系
 
-### 8.3 长期
-
-首页不一定只展示单日 record，而是展示“当前相关的记忆空间”，包括：
-
-- 今日记录
-- 主动回顾
-- 相关人物
-- 阶段入口
-
-## 9. Composition 与 AI 的关系
-
-AI 不需要直接读每个像素，但应该能看到结构化的 composition 信息，例如：
+AI 不需要读每个像素，但应能读到结构化 composition 信号，例如：
 
 - 哪些 artifacts 同组出现
-- 哪个 item 处于视觉主位
+- 哪些对象位于主位
 - 哪些对象长期相邻
+- 哪些系统卡长期被隐藏
 
-这能支持：
+## 7. 设计原则
 
-- spatial reasoning
-- prominence inference
-- grouping hints
-
-## 10. 设计约束
-
-为了避免再次失控，Composition 层应遵守：
-
-1. View 组件不是持久化真相
-2. 布局字段不再继续挂到 `Record`
-3. 卡片类型不是领域模型根
-4. 渲染层可多样，但 Composition 数据结构要稳定
+1. Composition 是数据层，不是 view-only 技巧。
+2. 布局字段不能回挂到 `RecordShell`。
+3. 卡片外观可变化，Composition 结构必须稳定。

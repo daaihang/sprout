@@ -46,8 +46,25 @@ These are the canonical paths used by `server/internal/http/server.go` and `serv
 
 ### 4.4 Reflection API
 
+当前正式基线分两层：
+
+- 客户端本地负责 `ReflectionSnapshot` 的生成、保存、忽略、归档与回放入口治理
+- 服务端当前只冻结最小反思协议，不接管客户端主真相层
+
+正式保留的最小接口为：
+
 - `POST /api/reflections/generate`
 - `POST /api/reflections/replay`
+
+当前用途：
+
+- `generate` 用于按 `RecordShell + Artifact + optional arc context` 请求服务端生成候选反思文案
+- `replay` 用于按既有 reflection 或 arc context 请求服务端重写/重放候选文案
+
+当前实现状态：
+
+- iOS 主链仍以本地 reflection 生成与状态管理为正式路径
+- 服务端 Reflection API 作为协议冻结与后续协同入口，不承担客户端唯一生成路径
 
 ## 5. 协议版本化
 

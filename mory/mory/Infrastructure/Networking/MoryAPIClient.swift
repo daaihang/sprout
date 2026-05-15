@@ -18,6 +18,38 @@ struct MoryAuthResponse: Decodable, Sendable {
 }
 
 struct MoryAPIClient: Sendable {
+    struct ReflectionPayload: Encodable, Sendable {
+        var recordShell: AnalyzeRequestPayload.RecordShellPayload
+        var artifacts: [AnalyzeRequestPayload.ArtifactPayload]
+        var linkedArcID: String?
+        var knownEntities: [AnalyzeRequestPayload.KnownEntityPayload]
+        var prompt: String?
+
+        enum CodingKeys: String, CodingKey {
+            case recordShell = "record_shell"
+            case artifacts
+            case linkedArcID = "linked_arc_id"
+            case knownEntities = "known_entities"
+            case prompt
+        }
+    }
+
+    struct ReflectionResponse: Decodable, Sendable {
+        let title: String
+        let body: String
+        let evidenceSummary: String
+        let confidence: Double
+        let sourceRecordIDs: [String]
+
+        enum CodingKeys: String, CodingKey {
+            case title
+            case body
+            case evidenceSummary = "evidence_summary"
+            case confidence
+            case sourceRecordIDs = "source_record_ids"
+        }
+    }
+
     enum APIError: LocalizedError {
         case invalidResponse
         case unauthorized
@@ -89,6 +121,34 @@ struct MoryAPIClient: Sendable {
 
         let (data, response) = try await session.data(for: request)
         return try decodeResponse(data: data, response: response, as: AnalyzeResponseEnvelope.self)
+    }
+
+    func generateReflection(
+        payload: ReflectionPayload,
+        bearerToken: String
+    ) async throws -> ReflectionResponse {
+        var request = URLRequest(url: configuration.url(for: "/api/reflections/generate"))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
+        request.httpBody = try encoder.encode(payload)
+
+        let (data, response) = try await session.data(for: request)
+        return try decodeResponse(data: data, response: response, as: ReflectionResponse.self)
+    }
+
+    func replayReflection(
+        payload: ReflectionPayload,
+        bearerToken: String
+    ) async throws -> ReflectionResponse {
+        var request = URLRequest(url: configuration.url(for: "/api/reflections/replay"))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
+        request.httpBody = try encoder.encode(payload)
+
+        let (data, response) = try await session.data(for: request)
+        return try decodeResponse(data: data, response: response, as: ReflectionResponse.self)
     }
 
     private func decodeResponse<T: Decodable>(

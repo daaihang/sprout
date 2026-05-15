@@ -47,7 +47,9 @@ struct EntityNode: Identifiable, Codable, Hashable, Sendable {
     var kind: EntityKind
     var displayName: String
     var canonicalName: String
+    var aliases: [String]
     var summary: String
+    var provenanceRecordIDs: [UUID]
     var createdAt: Date
     var updatedAt: Date
     var confidence: Double?
@@ -57,7 +59,9 @@ struct EntityNode: Identifiable, Codable, Hashable, Sendable {
         kind: EntityKind,
         displayName: String,
         canonicalName: String? = nil,
+        aliases: [String] = [],
         summary: String = "",
+        provenanceRecordIDs: [UUID] = [],
         createdAt: Date,
         updatedAt: Date,
         confidence: Double? = nil
@@ -66,7 +70,9 @@ struct EntityNode: Identifiable, Codable, Hashable, Sendable {
         self.kind = kind
         self.displayName = displayName
         self.canonicalName = canonicalName ?? displayName
+        self.aliases = aliases
         self.summary = summary
+        self.provenanceRecordIDs = provenanceRecordIDs
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.confidence = confidence
@@ -116,6 +122,9 @@ struct ArtifactEntityLink: Identifiable, Codable, Hashable, Sendable {
     var entityID: UUID
     var confidence: Double?
     var source: String
+    var sourceRecordID: UUID?
+    var sourceAnalysisRecordID: UUID?
+    var evidenceSummary: String
     var createdAt: Date
 
     init(
@@ -124,6 +133,9 @@ struct ArtifactEntityLink: Identifiable, Codable, Hashable, Sendable {
         entityID: UUID,
         confidence: Double? = nil,
         source: String,
+        sourceRecordID: UUID? = nil,
+        sourceAnalysisRecordID: UUID? = nil,
+        evidenceSummary: String = "",
         createdAt: Date
     ) {
         self.id = id
@@ -131,6 +143,9 @@ struct ArtifactEntityLink: Identifiable, Codable, Hashable, Sendable {
         self.entityID = entityID
         self.confidence = confidence
         self.source = source
+        self.sourceRecordID = sourceRecordID
+        self.sourceAnalysisRecordID = sourceAnalysisRecordID
+        self.evidenceSummary = evidenceSummary
         self.createdAt = createdAt
     }
 }

@@ -17,7 +17,7 @@ struct ArcsScreen: View {
 
             Section("Arcs") {
                 if arcs.isEmpty {
-                    Text("Temporal arcs will appear here once phase-layer accumulation is connected.")
+                    Text("Arcs will appear here when repeated memories cluster into stable time spans.")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(arcs) { item in

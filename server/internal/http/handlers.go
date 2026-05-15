@@ -64,6 +64,22 @@ type analyzeMeta struct {
 	Usage    ai.Usage `json:"usage"`
 }
 
+type reflectionRequest struct {
+    RecordShell   ai.AnalyzeRecordShell     `json:"record_shell"`
+    Artifacts     []ai.AnalyzeArtifact      `json:"artifacts"`
+    LinkedArcID   string                    `json:"linked_arc_id,omitempty"`
+    KnownEntities []ai.KnownEntityReference `json:"known_entities,omitempty"`
+    Prompt        string                    `json:"prompt,omitempty"`
+}
+
+type reflectionResponse struct {
+    Title          string   `json:"title"`
+    Body           string   `json:"body"`
+    EvidenceSummary string  `json:"evidence_summary"`
+    Confidence     float64  `json:"confidence"`
+    SourceRecordIDs []string `json:"source_record_ids"`
+}
+
 func (s *Server) handleHealthz(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{
 		"status": "ok",
@@ -268,6 +284,112 @@ func (s *Server) handleAnalyze(w http.ResponseWriter, r *http.Request) {
 			Usage:    result.Usage,
 		},
 	})
+}
+
+func (s *Server) handleReflectionGenerate(w http.ResponseWriter, r *http.Request) {
+    var req reflectionRequest
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        writeError(w, http.StatusBadRequest, "invalid JSON body")
+        return
+    }
+    if strings.TrimSpace(req.RecordShell.RawText) == "" && len(req.Artifacts) == 0 {
+        writeError(w, http.StatusBadRequest, "record_shell or artifacts are required")
+        return
+    }
+
+    body := strings.TrimSpace(req.Prompt)
+    if body == "" {
+        body = strings.TrimSpace(req.RecordShell.RawText)
+    }
+    if body == "" {
+        parts := make([]string, 0, len(req.Artifacts))
+        for _, artifact := range req.Artifacts {
+            value := strings.TrimSpace(strings.Join([]string{artifact.Title, artifact.Summary, artifact.TextContent}, " "))
+            if value != "" {
+                parts = append(parts, value)
+            }
+        }
+        body = strings.Join(parts, " | ")
+    }
+
+    title := "Reflection Candidate"
+    if strings.TrimSpace(req.RecordShell.RawText) != "" {
+        words := strings.Fields(req.RecordShell.RawText)
+        if len(words) > 4 {
+            words = words[:4]
+        }
+        if len(words) > 0 {
+            title = strings.Join(words, " ")
+        }
+    }
+
+    evidence := strings.TrimSpace(strings.Join([]string{
+        req.RecordShell.RawText,
+        joinArtifactEvidence(req.Artifacts),
+    }, " | "))
+
+    recordIDs := []string{}
+    if strings.TrimSpace(req.RecordShell.ID) != "" {
+        recordIDs = append(recordIDs, strings.TrimSpace(req.RecordShell.ID))
+    }
+
+    writeJSON(w, http.StatusOK, reflectionResponse{
+        Title: title,
+        Body: body,
+        EvidenceSummary: evidence,
+        Confidence: 0.62,
+        SourceRecordIDs: recordIDs,
+    })
+}
+
+func (s *Server) handleReflectionReplay(w http.ResponseWriter, r *http.Request) {
+    var req reflectionRequest
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        writeError(w, http.StatusBadRequest, "invalid JSON body")
+        return
+    }
+    if strings.TrimSpace(req.Prompt) == "" && strings.TrimSpace(req.RecordShell.RawText) == "" {
+        writeError(w, http.StatusBadRequest, "prompt or record_shell.raw_text is required")
+        return
+    }
+
+    prompt := strings.TrimSpace(req.Prompt)
+    if prompt == "" {
+        prompt = strings.TrimSpace(req.RecordShell.RawText)
+    }
+    body := "Replay: " + prompt
+    if req.LinkedArcID != "" {
+        body += " | arc " + strings.TrimSpace(req.LinkedArcID)
+    }
+
+    writeJSON(w, http.StatusOK, reflectionResponse{
+        Title: "Reflection Replay",
+        Body: body,
+        EvidenceSummary: joinArtifactEvidence(req.Artifacts),
+        Confidence: 0.58,
+        SourceRecordIDs: nonEmptyStrings([]string{strings.TrimSpace(req.RecordShell.ID)}),
+    })
+}
+
+func joinArtifactEvidence(artifacts []ai.AnalyzeArtifact) string {
+    values := make([]string, 0, len(artifacts))
+    for _, artifact := range artifacts {
+        candidate := strings.TrimSpace(strings.Join([]string{artifact.Title, artifact.Summary, artifact.TextContent}, " "))
+        if candidate != "" {
+            values = append(values, candidate)
+        }
+    }
+    return strings.Join(values, " | ")
+}
+
+func nonEmptyStrings(values []string) []string {
+    result := make([]string, 0, len(values))
+    for _, value := range values {
+        if trimmed := strings.TrimSpace(value); trimmed != "" {
+            result = append(result, trimmed)
+        }
+    }
+    return result
 }
 
 func (s *Server) handleSubscriptionVerify(w http.ResponseWriter, r *http.Request) {

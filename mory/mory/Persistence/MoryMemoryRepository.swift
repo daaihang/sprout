@@ -191,21 +191,28 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
 
     func fetchHomeBoard(for date: Date, limit: Int = 8) throws -> HomeBoardSnapshot {
         let memories = try fetchRecentMemories(limit: limit)
+        let graphContext = try loadGraphContext()
         let boardStore = try ensureHomeBoard(for: date)
         let compositionStore = try ensureHomeComposition(for: boardStore)
         let itemStores = try ensureHomeBoardItems(
             boardStore: boardStore,
             compositionStore: compositionStore,
-            memories: memories
+            memories: memories,
+            arcs: fetchBoardEligibleArcs(from: graphContext, limit: 2),
+            reflections: fetchBoardEligibleReflections(from: graphContext, limit: 2)
         )
 
         let memoriesByRecordID = Dictionary(uniqueKeysWithValues: memories.map { ($0.record.id, $0) })
+        let arcsByID = Dictionary(uniqueKeysWithValues: graphContext.arcs.map { ($0.id, $0) })
+        let reflectionsByID = Dictionary(uniqueKeysWithValues: graphContext.reflections.map { ($0.id, $0) })
         let items = itemStores
             .sorted { $0.zIndex < $1.zIndex }
             .compactMap { store in
                 resolveHomeBoardItemSnapshot(
                     from: store.domainModel,
-                    memoriesByRecordID: memoriesByRecordID
+                    memoriesByRecordID: memoriesByRecordID,
+                    arcsByID: arcsByID,
+                    reflectionsByID: reflectionsByID
                 )
             }
 
@@ -1066,29 +1073,37 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     private func ensureHomeBoardItems(
         boardStore: BoardStore,
         compositionStore: CompositionStore,
-        memories: [MemorySummary]
+        memories: [MemorySummary],
+        arcs: [TemporalArc],
+        reflections: [ReflectionSnapshot]
     ) throws -> [CompositionItemStore] {
         let descriptor = FetchDescriptor<CompositionItemStore>(sortBy: [SortDescriptor(\.zIndex, order: .forward)])
         var existingItems = try modelContext.fetch(descriptor).filter { $0.boardID == boardStore.id }
-        let existingRecordIDs = Set(existingItems.map(\.targetID))
+        let existingTargets = Set(existingItems.map { "\($0.targetTypeRawValue):\($0.targetID.uuidString)" })
 
-        for (index, memory) in memories.enumerated() where !existingRecordIDs.contains(memory.record.id) {
-            let layout = homeLayoutPattern(index: existingItems.count + index)
+        let candidateItems = buildHomeBoardCandidates(
+            memories: memories,
+            arcs: arcs,
+            reflections: reflections
+        )
+
+        for candidate in candidateItems where !existingTargets.contains(candidate.key) {
+            let layout = homeLayoutPattern(index: existingItems.count, targetType: candidate.targetType)
             let item = CompositionItemStore(
                 id: UUID(),
                 boardID: boardStore.id,
                 boardKey: boardStore.boardKey,
                 compositionID: compositionStore.id,
                 compositionKey: compositionStore.compositionKey,
-                itemKey: "record-\(memory.record.id.uuidString)",
-                targetTypeRawValue: CompositionTargetType.record.rawValue,
-                targetID: memory.record.id,
+                itemKey: candidate.key,
+                targetTypeRawValue: candidate.targetType.rawValue,
+                targetID: candidate.targetID,
                 widthColumns: layout.widthColumns,
                 heightUnits: layout.heightUnits,
                 zIndex: layout.zIndex,
                 rotationDegrees: layout.rotationDegrees,
                 scale: layout.scale,
-                isHidden: false,
+                isHidden: candidate.targetType == .system ? false : candidate.isHidden,
                 updatedAt: Date.now
             )
             modelContext.insert(item)
@@ -1102,8 +1117,24 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             existingItems = try modelContext.fetch(descriptor).filter { $0.boardID == boardStore.id }
         }
 
-        let memoryIDs = Set(memories.map(\.record.id))
-        return existingItems.filter { memoryIDs.contains($0.targetID) }
+        let allowedRecordIDs = Set(memories.map(\.record.id))
+        let allowedArcIDs = Set(arcs.map(\.id))
+        let allowedReflectionIDs = Set(reflections.map(\.id))
+
+        return existingItems.filter { item in
+            switch item.targetTypeRawValue {
+            case CompositionTargetType.record.rawValue:
+                return allowedRecordIDs.contains(item.targetID)
+            case CompositionTargetType.arc.rawValue:
+                return allowedArcIDs.contains(item.targetID)
+            case CompositionTargetType.reflection.rawValue:
+                return allowedReflectionIDs.contains(item.targetID)
+            case CompositionTargetType.system.rawValue:
+                return true
+            default:
+                return false
+            }
+        }
     }
 
     private func homeBoardKey(for date: Date) -> String {
@@ -1114,15 +1145,35 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         return String(format: "home-day-%04d-%02d-%02d", year, month, day)
     }
 
-    private func homeLayoutPattern(index: Int) -> (widthColumns: Int, heightUnits: Int, zIndex: Int, rotationDegrees: Double, scale: Double) {
-        let patterns: [(Int, Int, Double, Double)] = [
-            (2, 2, -1.2, 1.00),
-            (1, 1, 0.8, 0.98),
-            (1, 1, -0.4, 1.00),
-            (2, 1, 1.0, 1.02),
-            (1, 2, -0.8, 0.99),
-            (1, 1, 0.3, 1.00),
-        ]
+    private func homeLayoutPattern(index: Int, targetType: CompositionTargetType) -> (widthColumns: Int, heightUnits: Int, zIndex: Int, rotationDegrees: Double, scale: Double) {
+        let patterns: [(Int, Int, Double, Double)]
+        switch targetType {
+        case .record:
+            patterns = [
+                (2, 2, -1.2, 1.00),
+                (1, 1, 0.8, 0.98),
+                (1, 1, -0.4, 1.00),
+                (2, 1, 1.0, 1.02),
+            ]
+        case .arc:
+            patterns = [
+                (2, 1, -0.6, 1.01),
+                (2, 1, 0.4, 1.00),
+            ]
+        case .reflection:
+            patterns = [
+                (1, 2, -0.3, 0.99),
+                (1, 2, 0.5, 1.00),
+            ]
+        case .system:
+            patterns = [
+                (1, 1, 0, 1.00),
+            ]
+        case .artifact:
+            patterns = [
+                (1, 1, 0, 1.00),
+            ]
+        }
         let pattern = patterns[index % patterns.count]
         return (
             widthColumns: pattern.0,
@@ -1135,7 +1186,9 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
 
     private func resolveHomeBoardItemSnapshot(
         from item: CompositionItem,
-        memoriesByRecordID: [UUID: MemorySummary]
+        memoriesByRecordID: [UUID: MemorySummary],
+        arcsByID: [UUID: TemporalArc],
+        reflectionsByID: [UUID: ReflectionSnapshot]
     ) -> HomeBoardItemSnapshot? {
         switch item.targetType {
         case .record:
@@ -1144,17 +1197,90 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
                 compositionItem: item,
                 renderValue: .memory(memory)
             )
+        case .arc:
+            guard let arc = arcsByID[item.targetID] else { return nil }
+            return HomeBoardItemSnapshot(
+                compositionItem: item,
+                renderValue: .arc(arc)
+            )
+        case .reflection:
+            guard let reflection = reflectionsByID[item.targetID] else { return nil }
+            return HomeBoardItemSnapshot(
+                compositionItem: item,
+                renderValue: .reflection(reflection)
+            )
         case .system:
             return HomeBoardItemSnapshot(
                 compositionItem: item,
                 renderValue: .system(
-                    title: "System Slot",
-                    subtitle: "Reserved system composition item"
+                    title: "Recall Anchor",
+                    subtitle: "A system slot reserved for future resurfacing and prompts."
                 )
             )
-        case .artifact, .arc, .reflection:
+        case .artifact:
             return nil
         }
+    }
+
+    private func buildHomeBoardCandidates(
+        memories: [MemorySummary],
+        arcs: [TemporalArc],
+        reflections: [ReflectionSnapshot]
+    ) -> [(key: String, targetType: CompositionTargetType, targetID: UUID, isHidden: Bool)] {
+        let memoryItems = memories.map {
+            (
+                key: "record-\($0.record.id.uuidString)",
+                targetType: CompositionTargetType.record,
+                targetID: $0.record.id,
+                isHidden: false
+            )
+        }
+        let arcItems = arcs.map {
+            (
+                key: "arc-\($0.id.uuidString)",
+                targetType: CompositionTargetType.arc,
+                targetID: $0.id,
+                isHidden: false
+            )
+        }
+        let reflectionItems = reflections.map {
+            (
+                key: "reflection-\($0.id.uuidString)",
+                targetType: CompositionTargetType.reflection,
+                targetID: $0.id,
+                isHidden: false
+            )
+        }
+
+        return memoryItems + arcItems + reflectionItems
+    }
+
+    private func fetchBoardEligibleArcs(from graphContext: GraphContext, limit: Int) -> [TemporalArc] {
+        Array(
+            graphContext.arcs
+                .filter { $0.status == .accepted || $0.status == .candidate }
+                .sorted {
+                    if $0.intensityScore == $1.intensityScore {
+                        return $0.updatedAt > $1.updatedAt
+                    }
+                    return $0.intensityScore > $1.intensityScore
+                }
+                .prefix(limit)
+        )
+    }
+
+    private func fetchBoardEligibleReflections(from graphContext: GraphContext, limit: Int) -> [ReflectionSnapshot] {
+        Array(
+            graphContext.reflections
+                .filter { $0.status == .saved || $0.status == .suggested }
+                .sorted {
+                    if $0.confidence == $1.confidence {
+                        return $0.createdAt > $1.createdAt
+                    }
+                    return $0.confidence > $1.confidence
+                }
+                .prefix(limit)
+        )
     }
 
     private func loadGraphContext() throws -> GraphContext {

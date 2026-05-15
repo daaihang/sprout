@@ -15,7 +15,7 @@
 - 后端接口
 - 新工程实施顺序
 
-文档不再承担历史比较、兼容设计或旧模型说明。
+文档不再承担历史比较、兼容设计、Prototype 说明或旧模型说明。
 
 ## 2. 文档结构
 
@@ -32,10 +32,10 @@
    分析快照、图谱、阶段和反思系统
 
 5. [05_backend_and_interfaces.md](/Users/z14/Documents/sprout/docs/mory_v3/Architecture/05_backend_and_interfaces.md)
-   后端职责、分析协议与接口边界
+   后端职责、分析协议、反思接口冻结与边界
 
 6. [06_migration_roadmap.md](/Users/z14/Documents/sprout/docs/mory_v3/Architecture/06_migration_roadmap.md)
-   新工程的实现顺序与 phase 路线图
+   新工程的实现顺序与 Phase 验收路线图
 
 7. [07_naming_glossary.md](/Users/z14/Documents/sprout/docs/mory_v3/Architecture/07_naming_glossary.md)
    正式命名表与术语冻结

@@ -36,6 +36,7 @@ type AnalyzeRecordShell struct {
 	CaptureSource string `json:"capture_source,omitempty"`
 	UserMood      string `json:"user_mood,omitempty"`
 	UserIntensity *int   `json:"user_intensity,omitempty"`
+	InputContext  string `json:"input_context,omitempty"`
 }
 
 type AnalyzeArtifact struct {

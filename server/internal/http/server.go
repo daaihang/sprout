@@ -72,6 +72,8 @@ func (s *Server) registerRoutes() {
 	s.mux.Handle("POST /auth/refresh", s.withAuth(http.HandlerFunc(s.handleAuthRefresh)))
 	s.mux.HandleFunc("POST /api/analysis/preview", s.handleAnalyzePreview)
 	s.mux.Handle("POST /api/analysis/records", s.withAuth(http.HandlerFunc(s.handleAnalyze)))
+	s.mux.Handle("POST /api/reflections/generate", s.withAuth(http.HandlerFunc(s.handleReflectionGenerate)))
+	s.mux.Handle("POST /api/reflections/replay", s.withAuth(http.HandlerFunc(s.handleReflectionReplay)))
 	s.mux.Handle("POST /api/me/onboarding/complete", s.withAuth(http.HandlerFunc(s.handleOnboardingComplete)))
 	s.mux.Handle("GET /api/subscription/verify", s.withAuth(http.HandlerFunc(s.handleSubscriptionVerify)))
 	s.mux.Handle("POST /api/push/register", s.withAuth(http.HandlerFunc(s.handlePushRegister)))

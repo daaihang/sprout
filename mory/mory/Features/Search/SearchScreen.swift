@@ -51,7 +51,7 @@ struct SearchScreen: View {
                     } else {
                         ForEach(result.entities) { entityResult in
                             NavigationLink {
-                                EntityDetailView(entityID: entityResult.entity.id)
+                                EntityDestinationView(entityID: entityResult.entity.id, kind: entityResult.entity.kind)
                             } label: {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(entityResult.entity.displayName)

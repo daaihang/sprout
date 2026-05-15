@@ -87,6 +87,42 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AnalyzePreviewResponseEnvelope"
+  /api/reflections/generate:
+    post:
+      summary: Generate a reflection candidate from a record aggregate
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReflectionRequest"
+      responses:
+        "200":
+          description: Reflection candidate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReflectionResponse"
+  /api/reflections/replay:
+    post:
+      summary: Replay or restate a reflection candidate
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReflectionRequest"
+      responses:
+        "200":
+          description: Reflection replay response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReflectionResponse"
   /api/subscription/verify:
     get:
       summary: Verify subscription tier for current user
@@ -160,63 +196,103 @@ components:
         analysis_reason:
           type: string
         record_shell:
-          type: object
-          required: [raw_text]
-          properties:
-            id:
-              type: string
-            created_at:
-              type: string
-            updated_at:
-              type: string
-            raw_text:
-              type: string
-            capture_source:
-              type: string
-            user_mood:
-              type: string
-            user_intensity:
-              type: integer
-            input_context:
-              type: string
+          $ref: "#/components/schemas/RecordShellInput"
         artifacts:
           type: array
           items:
-            type: object
-            required: [kind]
-            properties:
-              id:
-                type: string
-              kind:
-                type: string
-              title:
-                type: string
-              summary:
-                type: string
-              text_content:
-                type: string
-              metadata:
-                type: object
-                additionalProperties:
-                  type: string
+            $ref: "#/components/schemas/ArtifactInput"
         known_entities:
           type: array
           items:
-            type: object
-            required: [kind, name]
-            properties:
-              id:
-                type: string
-              kind:
-                type: string
-              name:
-                type: string
-              aliases:
-                type: array
-                items:
-                  type: string
-              confidence:
-                type: number
+            $ref: "#/components/schemas/KnownEntityInput"
+    RecordShellInput:
+      type: object
+      required: [raw_text]
+      properties:
+        id:
+          type: string
+        created_at:
+          type: string
+        updated_at:
+          type: string
+        raw_text:
+          type: string
+        capture_source:
+          type: string
+        user_mood:
+          type: string
+        user_intensity:
+          type: integer
+        input_context:
+          type: string
+    ArtifactInput:
+      type: object
+      required: [kind]
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+        title:
+          type: string
+        summary:
+          type: string
+        text_content:
+          type: string
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+    KnownEntityInput:
+      type: object
+      required: [kind, name]
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+        name:
+          type: string
+        aliases:
+          type: array
+          items:
+            type: string
+        confidence:
+          type: number
+    ReflectionRequest:
+      type: object
+      required: [record_shell, artifacts]
+      properties:
+        record_shell:
+          $ref: "#/components/schemas/RecordShellInput"
+        artifacts:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArtifactInput"
+        linked_arc_id:
+          type: string
+        known_entities:
+          type: array
+          items:
+            $ref: "#/components/schemas/KnownEntityInput"
+        prompt:
+          type: string
+    ReflectionResponse:
+      type: object
+      required: [title, body, evidence_summary, confidence, source_record_ids]
+      properties:
+        title:
+          type: string
+        body:
+          type: string
+        evidence_summary:
+          type: string
+        confidence:
+          type: number
+        source_record_ids:
+          type: array
+          items:
+            type: string
     AnalyzeResponseEnvelope:
       type: object
       properties:

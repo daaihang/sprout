@@ -92,7 +92,7 @@ struct ArcDetailView: View {
                     } else {
                         ForEach(snapshot.entityDetails) { entity in
                             NavigationLink {
-                                PersonDetailView(entityID: entity.entity.id)
+                                EntityDestinationView(entityID: entity.entity.id, kind: entity.entity.kind)
                             } label: {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(entity.entity.displayName)

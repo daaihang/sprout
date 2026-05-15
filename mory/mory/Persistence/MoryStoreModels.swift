@@ -203,7 +203,9 @@ final class EntityNodeStore {
     var kindRawValue: String
     var displayName: String
     var canonicalName: String
+    var aliases: [String]
     var summary: String
+    var provenanceRecordIDs: [UUID]
     var createdAt: Date
     var updatedAt: Date
     var confidence: Double?
@@ -213,7 +215,9 @@ final class EntityNodeStore {
         kindRawValue: String,
         displayName: String,
         canonicalName: String,
+        aliases: [String] = [],
         summary: String,
+        provenanceRecordIDs: [UUID] = [],
         createdAt: Date,
         updatedAt: Date,
         confidence: Double? = nil
@@ -222,7 +226,9 @@ final class EntityNodeStore {
         self.kindRawValue = kindRawValue
         self.displayName = displayName
         self.canonicalName = canonicalName
+        self.aliases = aliases
         self.summary = summary
+        self.provenanceRecordIDs = provenanceRecordIDs
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.confidence = confidence
@@ -274,6 +280,9 @@ final class ArtifactEntityLinkStore {
     var entityID: UUID
     var confidence: Double?
     var source: String
+    var sourceRecordID: UUID?
+    var sourceAnalysisRecordID: UUID?
+    var evidenceSummary: String
     var createdAt: Date
 
     init(
@@ -282,6 +291,9 @@ final class ArtifactEntityLinkStore {
         entityID: UUID,
         confidence: Double? = nil,
         source: String,
+        sourceRecordID: UUID? = nil,
+        sourceAnalysisRecordID: UUID? = nil,
+        evidenceSummary: String = "",
         createdAt: Date
     ) {
         self.id = id
@@ -289,6 +301,9 @@ final class ArtifactEntityLinkStore {
         self.entityID = entityID
         self.confidence = confidence
         self.source = source
+        self.sourceRecordID = sourceRecordID
+        self.sourceAnalysisRecordID = sourceAnalysisRecordID
+        self.evidenceSummary = evidenceSummary
         self.createdAt = createdAt
     }
 }

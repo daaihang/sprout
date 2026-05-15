@@ -1,209 +1,170 @@
-# 06. Migration Roadmap
+# 06. Build Roadmap
 
-## 1. 迁移目标
+## 1. 路线目标
 
-迁移的目的不是“看起来更先进”，而是解决一个具体问题：
+本路线图用于定义 `Mory v3` 新工程的正式实现顺序。
 
-> 在不打断当前可运行产品的前提下，把 Mory 从 Record-centric 卡片系统过渡到统一记忆本体系统。
+它只描述目标态实现，不描述历史兼容策略。
 
-## 2. 当前现实约束
+## 2. 总体原则
 
-迁移设计必须承认这些现实：
-
-- 当前 iOS 端主数据层是 `SwiftData`
-- 当前首页依赖 `RecordMapper + StickerGridLayout`
-- 当前后端分析协议较窄
-- 当前代码仍在持续演进，不能接受大停机重写
-
-因此路线必须是“分层引入、渐进替换”。
+1. 先冻结对象边界，再写页面。
+2. 先落 5 层模型，再接 UI 壳。
+3. 不保留旧模型。
+4. 不保留兼容层。
+5. 不双写。
 
 ## 3. Phase 0: 文档冻结
 
-### 3.1 目标
+输出物：
 
-在编码前先统一语言。
+- PRD
+- 架构文档
+- 命名表
+- 实施顺序
 
-### 3.2 输出物
+验收标准：
 
-- 新版 PRD
-- 新版技术架构
-- 统一对象命名表
-- 迁移边界说明
+- 团队能用同一组对象语言描述产品、UI、数据和 AI
 
-### 3.3 验收标准
+## 4. Phase 1: Capture + Artifact
 
-团队内部能明确说清：
+目标：
 
-- 什么是 artifact
-- 什么是 composition
-- record 为什么降级
-- AI 为什么只负责 reflection
+- 建立正式 capture 边界
+- 建立内容真相层
 
-## 4. Phase 1: 引入 Artifact
+动作：
 
-### 4.1 目标
+- 定义 `RecordShell`
+- 定义 `Artifact`
+- 打通 composer / photo / audio / location 等 capture 到 artifact 的主写入链
 
-先解决“内容真相层”问题。
+验收标准：
 
-### 4.2 动作
+- 新 capture 全部写入 `RecordShell + Artifact`
 
-- 新增 `Artifact` 模型
-- 保留 `MediaCard` 兼容旧逻辑
-- 新写入链路把文本、照片、音频、地点等转成 artifacts
-- `Record` 与 artifacts 建立引用关系
+## 5. Phase 2: Composition
 
-### 4.3 暂不做的事
+目标：
 
-- 不急着删除所有旧 card model 路径
-- 不急着引入 graph
-- 不急着改所有页面
+- 建立首页与 board 的正式空间结构
 
-### 4.4 验收标准
+动作：
 
-- 新产生的记录可双写 `Record + Artifact`
-- 至少文本、照片、音频、地点能以 artifact 形式存在
+- 定义 `Board / Composition / CompositionItem`
+- 建立 day board
+- 建立首页 renderer
+- 建立可持续的 layout state
 
-## 5. Phase 2: 引入 Composition
+验收标准：
 
-### 5.1 目标
+- 首页完全由 composition 驱动
 
-让首页空间结构进入持久层。
+## 6. Phase 3: Analysis Snapshot
 
-### 5.2 动作
+目标：
 
-- 新增 `Board / Composition / CompositionItem`
-- 把 `dashboardCardSpanOverridesData` 的职责迁出 `Record`
-- 为首页按天生成 `DayBoard`
-- `RecordMapper` 逐步演进为 `CompositionProjector`
+- 让分析结果有稳定落点
 
-### 5.3 验收标准
+动作：
 
-- 首页 item 的尺寸与关键视觉状态不再由 `Record` 直接拥有
-- 同一 artifact 或 record section 可以被稳定地投影到 composition item
+- 定义 `RecordAnalysisSnapshot`
+- 打通 `/api/analysis/records`
+- capture 后异步保存 analysis
 
-## 6. Phase 3: 引入 Analysis Snapshot
+验收标准：
 
-### 6.1 目标
+- 单条记忆分析可持久化并被首页、详情、搜索消费
 
-让 AI 输出有稳定落点。
+## 7. Phase 4: Entity Graph
 
-### 6.2 动作
+目标：
 
-- 新增 `RecordAnalysisSnapshot`
-- 升级后端请求协议为 `record aggregate`
-- capture 后异步写入 analysis snapshot
+- 建立长期关系层
 
-### 6.3 验收标准
+动作：
 
-- 单条记录分析结果可本地持久化
-- UI 可以直接消费 snapshot，而不是临时文案
+- 定义 `EntityNode / EntityEdge / ArtifactEntityLink`
+- 先做 `person / place / theme / decision`
+- 建立增量 graph 更新
 
-## 7. Phase 4: 引入 Entity Graph
+验收标准：
 
-### 7.1 目标
+- 人物页与主题检索不再依赖时间流反查
 
-建立长期关系层。
+## 8. Phase 5: Temporal Arc
 
-### 7.2 动作
+目标：
 
-- 新增 `EntityNode / EntityEdge / ArtifactEntityLink`
-- 先做 person/place/theme/decision 四类
-- 基于 analysis + deterministic signals 增量更新 graph
+- 建立阶段层
 
-### 7.3 验收标准
+动作：
 
-- 人物页和主题检索不再只靠 `Record` 反查
-- 至少一部分关系能被长期累计
+- 定义 `TemporalArc`
+- 建立候选、接受、归档与合并治理
+- 建立阶段详情与阶段列表
 
-## 8. Phase 5: 引入 Temporal Arcs
+验收标准：
 
-### 8.1 目标
+- 用户可以稳定查看阶段对象及其关联材料
 
-从点状记录升级到阶段性理解。
+## 9. Phase 6: Reflection
 
-### 8.2 动作
+目标：
 
-- 新增 `LifePeriod / LifeArc`
-- 基于时间密度、实体密度、主题重复度做阶段候选
-- 用 AI 只做命名和解释，不做全部发现
+- 建立高价值意义层
 
-### 8.3 验收标准
+动作：
 
-- 系统能展示至少基础阶段页
-- 反思可引用阶段对象而不是只引用单条记录
+- 定义 `ReflectionSnapshot`
+- 建立 record reflection 与 arc reflection
+- 建立保存、归档、回放和入口治理
 
-## 9. Phase 6: 清理旧结构
+验收标准：
 
-### 9.1 目标
+- `ReflectionSnapshot` 成为正式可管理对象
+- 客户端已具备保存、忽略、归档、详情查看、从 arc / memory 进入 reflection 的正式链路
+- 服务端 reflection API 至少完成协议冻结，不再与文档冲突
 
-在新体系稳定后移除旧时代遗留。
+## 10. Phase 7: App Shell And Feature Integration
 
-### 9.2 清理对象
+目标：
 
-- `Record.cardType`
-- `Record.cardUnits`
-- `Record.cardWidthColumns`
-- `dashboardCardSpanOverridesData`
-- 部分以 `MediaCard` 为中心的旧路径
+- 用新 UI 壳子接通新结构
 
-### 9.3 验收标准
+动作：
 
-- `Record` 成功降级为 capture shell
-- 首页、分析、检索不再依赖旧字段
+- Home
+- Memories timeline
+- Memory detail
+- Search
+- People
+- Arcs
+- Reflections
 
-## 10. 风险与规避
+验收标准：
 
-### 10.1 风险：双写期间状态不一致
+- `Home / Memories / Search / People / Arcs / Reflections / Debug` 全部只消费新 memory stack
+- 不再存在 Prototype / Shared 旧工程主路径
+- 首页、详情、搜索、对象页之间的对象跳转规则一致
 
-规避：
+## 11. Phase 8: Governance And Polish
 
-- 明确新旧字段优先级
-- 用 migration flags 控制新路径
+目标：
 
-### 10.2 风险：UI 重构过早
+- 建立可持续演进能力
 
-规避：
+动作：
 
-- 先保证底层对象落地
-- 渲染层先复用现有组件
+- dedupe
+- merge provenance
+- search ranking
+- export / import
+- diagnostics
 
-### 10.3 风险：AI 协议升级过快
+验收标准：
 
-规避：
-
-- 版本化接口
-- 先兼容旧请求
-- 新旧 snapshot 可并存
-
-## 11. 迁移顺序的原则
-
-正确顺序是：
-
-1. `Ontology`
-2. `Artifact`
-3. `Composition`
-4. `Analysis Snapshot`
-5. `Graph`
-6. `Temporal Arc`
-7. `Cleanup`
-
-不要颠倒成：
-
-1. 先加更多卡片
-2. 先做更花的 AI
-3. 先做阶段文案
-
-那会继续放大结构问题。
-
-## 12. 最终状态
-
-迁移完成后，理想架构应具备：
-
-- `Record` 只是 capture 壳
-- `Artifact` 是内容真相层
-- `Composition` 是空间组织层
-- `Graph` 是长期关系层
-- `Arc` 是阶段层
-- `Reflection` 是高价值 AI 输出层
-
-到那时，Mory 才真正从“记录 App”进化成“个人记忆操作系统”。
+- entity dedupe / alias / provenance / edge weight 规则有正式定义并落到代码
+- composition、search ranking、debug diagnostics 具备稳定回归门槛
+- 数据、UI、AI 和治理规则形成稳定闭环
