@@ -118,7 +118,7 @@ struct MoryAPIClient: Sendable {
         self.decoder = decoder
     }
 
-    func authenticate() async throws -> MoryAuthResponse {
+    func authenticate(identityToken: String) async throws -> MoryAuthResponse {
         struct Payload: Encodable {
             let identityToken: String
 
@@ -130,7 +130,7 @@ struct MoryAPIClient: Sendable {
         var request = URLRequest(url: configuration.url(for: configuration.authPath))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try encoder.encode(Payload(identityToken: configuration.devAuthIdentityToken))
+        request.httpBody = try encoder.encode(Payload(identityToken: identityToken))
 
         let (data, response) = try await session.data(for: request)
         return try decodeResponse(data: data, response: response, as: MoryAuthResponse.self)
@@ -192,6 +192,16 @@ struct MoryAPIClient: Sendable {
 
     func latestDebugError() async -> DebugErrorSnapshot? {
         await debugTraceBox.current()
+    }
+
+    func refreshToken(bearerToken: String) async throws -> MoryAuthResponse {
+        var request = URLRequest(url: configuration.url(for: "/auth/refresh"))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
+
+        let (data, response) = try await session.data(for: request)
+        return try decodeResponse(data: data, response: response, as: MoryAuthResponse.self)
     }
 
     private func decodeResponse<T: Decodable>(

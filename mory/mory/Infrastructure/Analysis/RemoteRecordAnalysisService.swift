@@ -2,24 +2,64 @@ import Foundation
 
 actor MoryAuthTokenProvider {
     private let apiClient: MoryAPIClient
+    private let credentialStore: KeychainCredentialStore
     private var cachedToken: String?
+    private var tokenExpiresAt: Date?
+    private let refreshMarginSeconds: TimeInterval = 60
 
-    init(apiClient: MoryAPIClient) {
+    init(apiClient: MoryAPIClient, credentialStore: KeychainCredentialStore) {
         self.apiClient = apiClient
+        self.credentialStore = credentialStore
     }
 
     func accessToken() async throws -> String {
-        if let cachedToken {
+        if let cachedToken, let tokenExpiresAt, tokenExpiresAt > Date().addingTimeInterval(refreshMarginSeconds) {
             return cachedToken
         }
 
-        let auth = try await apiClient.authenticate()
+        let identityToken: String
+        #if DEBUG
+        identityToken = (try? await credentialStore.getIdentityToken()) ?? "dev-user"
+        #else
+        identityToken = try await credentialStore.getIdentityToken() ?? {
+            throw AuthTokenError.noIdentityToken
+        }()
+        #endif
+
+        let auth = try await apiClient.authenticate(identityToken: identityToken)
         cachedToken = auth.accessToken
+        tokenExpiresAt = parseExpiresAt(auth.expiresAt)
+        return auth.accessToken
+    }
+
+    func refreshToken(bearerToken: String) async throws -> String {
+        let auth = try await apiClient.refreshToken(bearerToken: bearerToken)
+        cachedToken = auth.accessToken
+        tokenExpiresAt = parseExpiresAt(auth.expiresAt)
         return auth.accessToken
     }
 
     func invalidate() {
         cachedToken = nil
+        tokenExpiresAt = nil
+    }
+
+    private func parseExpiresAt(_ expiresAt: String) -> Date? {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.date(from: expiresAt)
+            ?? ISO8601DateFormatter().date(from: expiresAt)
+    }
+
+    enum AuthTokenError: Error, LocalizedError {
+        case noIdentityToken
+
+        var errorDescription: String? {
+            switch self {
+            case .noIdentityToken:
+                return "No identity token available. Please sign in with Apple."
+            }
+        }
     }
 }
 
