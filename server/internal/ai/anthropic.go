@@ -179,6 +179,112 @@ func (p *AnthropicProvider) Analyze(ctx context.Context, req AnalyzeRequest, use
 	}, nil
 }
 
+func (p *AnthropicProvider) GenerateReflection(ctx context.Context, req ReflectionRequest, user UserContext) (ReflectionResult, error) {
+	return p.runReflection(ctx, req, user, "generate")
+}
+
+func (p *AnthropicProvider) ReplayReflection(ctx context.Context, req ReflectionRequest, user UserContext) (ReflectionResult, error) {
+	return p.runReflection(ctx, req, user, "replay")
+}
+
+func (p *AnthropicProvider) runReflection(
+	ctx context.Context,
+	req ReflectionRequest,
+	user UserContext,
+	mode string,
+) (ReflectionResult, error) {
+	var validateErr error
+	switch mode {
+	case "generate":
+		validateErr = req.ValidateGenerate()
+	case "replay":
+		validateErr = req.ValidateReplay()
+	default:
+		validateErr = fmt.Errorf("unsupported reflection mode %q", mode)
+	}
+	if validateErr != nil {
+		return ReflectionResult{}, validateErr
+	}
+
+	userPrompt, err := buildReflectionUserPrompt(req, user, mode)
+	if err != nil {
+		return ReflectionResult{}, err
+	}
+
+	payload := anthropicRequest{
+		Model:     p.model,
+		MaxTokens: 700,
+		System:    buildReflectionSystemPrompt(mode),
+		Messages: []anthropicMessage{{
+			Role: "user",
+			Content: []anthropicContentRequest{{
+				Type: "text",
+				Text: userPrompt,
+			}},
+		}},
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return ReflectionResult{}, fmt.Errorf("marshal anthropic reflection request: %w", err)
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, p.baseURL, bytes.NewReader(body))
+	if err != nil {
+		return ReflectionResult{}, fmt.Errorf("create anthropic reflection request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("x-api-key", p.apiKey)
+	httpReq.Header.Set("anthropic-version", p.version)
+	if p.heliconeKey != "" {
+		httpReq.Header.Set("Helicone-Auth", "Bearer "+p.heliconeKey)
+		if user.UserID != "" {
+			httpReq.Header.Set("Helicone-User-Id", user.UserID)
+		}
+	}
+
+	resp, err := doRequestWithRetry(ctx, p.client, httpReq, p.maxRetries, p.backoff)
+	if err != nil {
+		return ReflectionResult{}, fmt.Errorf("anthropic reflection request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	responseBody, err := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
+	if err != nil {
+		return ReflectionResult{}, fmt.Errorf("read anthropic reflection response: %w", err)
+	}
+	if resp.StatusCode >= 300 {
+		p.logger.Error(
+			"anthropic reflection response failed",
+			"status", resp.StatusCode,
+			"provider", p.Name(),
+			"mode", mode,
+			"body", truncateBody(responseBody, 2048),
+		)
+		return ReflectionResult{}, fmt.Errorf("anthropic reflection status %d", resp.StatusCode)
+	}
+
+	var decoded anthropicResponse
+	if err := json.Unmarshal(responseBody, &decoded); err != nil {
+		return ReflectionResult{}, fmt.Errorf("decode anthropic reflection response: %w", err)
+	}
+
+	reflectionResp, err := parseReflectionResponse(joinAnthropicText(decoded.Content))
+	if err != nil {
+		return ReflectionResult{}, err
+	}
+
+	return ReflectionResult{
+		Response: reflectionResp,
+		Provider: p.Name(),
+		Model:    decoded.Model,
+		Usage: Usage{
+			InputTokens:  decoded.Usage.InputTokens,
+			OutputTokens: decoded.Usage.OutputTokens,
+		},
+	}, nil
+}
+
 func analyzeResponseTool() anthropicTool {
 	return anthropicTool{
 		Name:        "submit_analyze_response",

@@ -158,6 +158,119 @@ func TestOpenAICompatibleProviderAnalyze(t *testing.T) {
 	}
 }
 
+func TestAnthropicProviderGenerateReflection(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Fatalf("unexpected method %s", r.Method)
+		}
+
+		var req anthropicRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Fatalf("decode anthropic request: %v", err)
+		}
+		if req.System == "" || req.Messages[0].Content[0].Text == "" {
+			t.Fatalf("expected reflection prompt payload")
+		}
+
+		writeTestJSON(w, map[string]any{
+			"model": "claude-test",
+			"content": []map[string]any{
+				{
+					"type": "text",
+					"text": `{"title":"Planning Pattern","body":"Dinner with Linh keeps surfacing as a reliable planning unlock.","evidence_summary":"Dinner note | quarter plan","confidence":0.74,"source_record_ids":["r1"]}`,
+				},
+			},
+			"usage": map[string]any{
+				"input_tokens":  88,
+				"output_tokens": 55,
+			},
+		})
+	}))
+	defer server.Close()
+
+	provider := NewAnthropicProvider(
+		&http.Client{Timeout: 2 * time.Second},
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+		config.Config{
+			AIAPIKey:         "anthropic-key",
+			AIBaseURL:        server.URL,
+			AIModel:          "claude-test",
+			AnthropicVersion: "2023-06-01",
+		},
+	)
+
+	result, err := provider.GenerateReflection(context.Background(), ReflectionRequest{
+		RecordShell: AnalyzeRecordShell{ID: "r1", RawText: "Dinner with Linh clarified the quarter plan."},
+		Artifacts:   []AnalyzeArtifact{{ID: "a1", Kind: "text", Title: "Dinner note"}},
+	}, UserContext{UserID: "user-1", Tier: "grow"})
+	if err != nil {
+		t.Fatalf("anthropic generate reflection: %v", err)
+	}
+	if result.Response.Title != "Planning Pattern" {
+		t.Fatalf("unexpected reflection title %q", result.Response.Title)
+	}
+	if result.Provider != "anthropic" {
+		t.Fatalf("unexpected provider %q", result.Provider)
+	}
+}
+
+func TestOpenAICompatibleProviderReplayReflection(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Fatalf("unexpected method %s", r.Method)
+		}
+
+		var req openAIChatRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Fatalf("decode openai request: %v", err)
+		}
+		if req.ResponseFormat["type"] != "json_object" {
+			t.Fatalf("expected json object response format")
+		}
+
+		writeTestJSON(w, map[string]any{
+			"model": "gpt-test",
+			"choices": []map[string]any{
+				{
+					"message": map[string]any{
+						"content": `{"title":"Reflection Replay","body":"The planning pattern is not random; it keeps appearing around calm post-dinner review.","evidence_summary":"Dinner note","confidence":0.66,"source_record_ids":["r1"]}`,
+					},
+				},
+			},
+			"usage": map[string]any{
+				"prompt_tokens":     20,
+				"completion_tokens": 32,
+			},
+		})
+	}))
+	defer server.Close()
+
+	provider := NewOpenAICompatibleProvider(
+		&http.Client{Timeout: 2 * time.Second},
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+		config.Config{
+			AIAPIKey:  "openai-key",
+			AIBaseURL: server.URL,
+			AIModel:   "gpt-test",
+		},
+	)
+
+	result, err := provider.ReplayReflection(context.Background(), ReflectionRequest{
+		RecordShell: AnalyzeRecordShell{ID: "r1", RawText: "Dinner with Linh clarified the quarter plan."},
+		LinkedArcID: "arc-1",
+		Prompt:      "Restate the reflection with more emphasis on the planning pattern.",
+	}, UserContext{UserID: "user-1", Tier: "grow"})
+	if err != nil {
+		t.Fatalf("openai replay reflection: %v", err)
+	}
+	if result.Response.Title != "Reflection Replay" {
+		t.Fatalf("unexpected reflection title %q", result.Response.Title)
+	}
+	if result.Provider != "openai_compatible" {
+		t.Fatalf("unexpected provider %q", result.Provider)
+	}
+}
+
 func TestResolveOpenAICompatibleEndpoint(t *testing.T) {
 	tests := []struct {
 		name string

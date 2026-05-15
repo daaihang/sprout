@@ -399,6 +399,15 @@ struct DebugPipelineTraceSnapshot: Hashable, Sendable {
     let failedStage: String?
 }
 
+struct ReflectionServiceResult: Hashable, Sendable {
+    let title: String
+    let body: String
+    let evidenceSummary: String
+    let confidence: Double
+    let sourceRecordIDs: [UUID]
+    let debugTrace: DebugPipelineTraceSnapshot
+}
+
 struct DebugTargetSnapshot: Hashable, Sendable {
     let targetType: DebugAnalysisTarget
     let memory: MemorySummary?
@@ -493,6 +502,23 @@ protocol RecordAnalysisServing: Sendable {
         artifacts: [Artifact],
         knownEntities: [EntityReference]
     ) async throws -> RecordAnalysisSnapshot
+
+    func generateReflection(
+        record: RecordShell,
+        artifacts: [Artifact],
+        linkedArcID: UUID?,
+        knownEntities: [EntityReference],
+        prompt: String?
+    ) async throws -> ReflectionServiceResult
+
+    func replayReflection(
+        reflection: ReflectionSnapshot,
+        linkedArc: TemporalArc?,
+        record: RecordShell?,
+        artifacts: [Artifact],
+        knownEntities: [EntityReference],
+        prompt: String?
+    ) async throws -> ReflectionServiceResult
 
     func latestDebugTrace() async -> DebugPipelineTraceSnapshot?
 }

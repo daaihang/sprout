@@ -73,11 +73,12 @@ type reflectionRequest struct {
 }
 
 type reflectionResponse struct {
-    Title          string   `json:"title"`
-    Body           string   `json:"body"`
-    EvidenceSummary string  `json:"evidence_summary"`
-    Confidence     float64  `json:"confidence"`
-    SourceRecordIDs []string `json:"source_record_ids"`
+    Title           string      `json:"title"`
+    Body            string      `json:"body"`
+    EvidenceSummary string      `json:"evidence_summary"`
+    Confidence      float64     `json:"confidence"`
+    SourceRecordIDs []string    `json:"source_record_ids"`
+    Meta            analyzeMeta `json:"meta"`
 }
 
 func (s *Server) handleHealthz(w http.ResponseWriter, _ *http.Request) {
@@ -287,109 +288,95 @@ func (s *Server) handleAnalyze(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleReflectionGenerate(w http.ResponseWriter, r *http.Request) {
+    claims, ok := auth.ClaimsFromContext(r.Context())
+    if !ok {
+        writeError(w, http.StatusUnauthorized, "missing auth claims")
+        return
+    }
+
     var req reflectionRequest
     if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
         writeError(w, http.StatusBadRequest, "invalid JSON body")
         return
     }
-    if strings.TrimSpace(req.RecordShell.RawText) == "" && len(req.Artifacts) == 0 {
-        writeError(w, http.StatusBadRequest, "record_shell or artifacts are required")
+
+    providerReq := ai.ReflectionRequest(req)
+    if err := providerReq.ValidateGenerate(); err != nil {
+        writeError(w, http.StatusBadRequest, "invalid reflection generate request")
         return
     }
 
-    body := strings.TrimSpace(req.Prompt)
-    if body == "" {
-        body = strings.TrimSpace(req.RecordShell.RawText)
-    }
-    if body == "" {
-        parts := make([]string, 0, len(req.Artifacts))
-        for _, artifact := range req.Artifacts {
-            value := strings.TrimSpace(strings.Join([]string{artifact.Title, artifact.Summary, artifact.TextContent}, " "))
-            if value != "" {
-                parts = append(parts, value)
-            }
+    result, err := s.aiProvider.GenerateReflection(r.Context(), providerReq, ai.UserContext{
+        UserID: claims.UserID,
+        Tier:   claims.Tier,
+    })
+    if err != nil {
+        if errors.Is(err, ai.ErrInvalidAnalyzeRequest) {
+            writeError(w, http.StatusBadRequest, "invalid reflection generate request")
+            return
         }
-        body = strings.Join(parts, " | ")
-    }
-
-    title := "Reflection Candidate"
-    if strings.TrimSpace(req.RecordShell.RawText) != "" {
-        words := strings.Fields(req.RecordShell.RawText)
-        if len(words) > 4 {
-            words = words[:4]
-        }
-        if len(words) > 0 {
-            title = strings.Join(words, " ")
-        }
-    }
-
-    evidence := strings.TrimSpace(strings.Join([]string{
-        req.RecordShell.RawText,
-        joinArtifactEvidence(req.Artifacts),
-    }, " | "))
-
-    recordIDs := []string{}
-    if strings.TrimSpace(req.RecordShell.ID) != "" {
-        recordIDs = append(recordIDs, strings.TrimSpace(req.RecordShell.ID))
+        writeError(w, http.StatusBadGateway, fmt.Sprintf("reflection generate failed: %v", err))
+        return
     }
 
     writeJSON(w, http.StatusOK, reflectionResponse{
-        Title: title,
-        Body: body,
-        EvidenceSummary: evidence,
-        Confidence: 0.62,
-        SourceRecordIDs: recordIDs,
+        Title:           result.Response.Title,
+        Body:            result.Response.Body,
+        EvidenceSummary: result.Response.EvidenceSummary,
+        Confidence:      result.Response.Confidence,
+        SourceRecordIDs: result.Response.SourceRecordIDs,
+        Meta: analyzeMeta{
+            Provider: result.Provider,
+            Model:    result.Model,
+            Usage:    result.Usage,
+        },
     })
 }
 
 func (s *Server) handleReflectionReplay(w http.ResponseWriter, r *http.Request) {
+    claims, ok := auth.ClaimsFromContext(r.Context())
+    if !ok {
+        writeError(w, http.StatusUnauthorized, "missing auth claims")
+        return
+    }
+
     var req reflectionRequest
     if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
         writeError(w, http.StatusBadRequest, "invalid JSON body")
         return
     }
-    if strings.TrimSpace(req.Prompt) == "" && strings.TrimSpace(req.RecordShell.RawText) == "" {
-        writeError(w, http.StatusBadRequest, "prompt or record_shell.raw_text is required")
+
+    providerReq := ai.ReflectionRequest(req)
+    if err := providerReq.ValidateReplay(); err != nil {
+        writeError(w, http.StatusBadRequest, "invalid reflection replay request")
         return
     }
 
-    prompt := strings.TrimSpace(req.Prompt)
-    if prompt == "" {
-        prompt = strings.TrimSpace(req.RecordShell.RawText)
-    }
-    body := "Replay: " + prompt
-    if req.LinkedArcID != "" {
-        body += " | arc " + strings.TrimSpace(req.LinkedArcID)
+    result, err := s.aiProvider.ReplayReflection(r.Context(), providerReq, ai.UserContext{
+        UserID: claims.UserID,
+        Tier:   claims.Tier,
+    })
+    if err != nil {
+        if errors.Is(err, ai.ErrInvalidAnalyzeRequest) {
+            writeError(w, http.StatusBadRequest, "invalid reflection replay request")
+            return
+        }
+        writeError(w, http.StatusBadGateway, fmt.Sprintf("reflection replay failed: %v", err))
+        return
     }
 
     writeJSON(w, http.StatusOK, reflectionResponse{
-        Title: "Reflection Replay",
-        Body: body,
-        EvidenceSummary: joinArtifactEvidence(req.Artifacts),
-        Confidence: 0.58,
-        SourceRecordIDs: nonEmptyStrings([]string{strings.TrimSpace(req.RecordShell.ID)}),
+        Title:           result.Response.Title,
+        Body:            result.Response.Body,
+        EvidenceSummary: result.Response.EvidenceSummary,
+        Confidence:      result.Response.Confidence,
+        SourceRecordIDs: result.Response.SourceRecordIDs,
+        Meta: analyzeMeta{
+            Provider: result.Provider,
+            Model:    result.Model,
+            Usage:    result.Usage,
+        },
     })
-}
-
-func joinArtifactEvidence(artifacts []ai.AnalyzeArtifact) string {
-    values := make([]string, 0, len(artifacts))
-    for _, artifact := range artifacts {
-        candidate := strings.TrimSpace(strings.Join([]string{artifact.Title, artifact.Summary, artifact.TextContent}, " "))
-        if candidate != "" {
-            values = append(values, candidate)
-        }
-    }
-    return strings.Join(values, " | ")
-}
-
-func nonEmptyStrings(values []string) []string {
-    result := make([]string, 0, len(values))
-    for _, value := range values {
-        if trimmed := strings.TrimSpace(value); trimmed != "" {
-            result = append(result, trimmed)
-        }
-    }
-    return result
 }
 
 func (s *Server) handleSubscriptionVerify(w http.ResponseWriter, r *http.Request) {

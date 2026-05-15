@@ -472,6 +472,9 @@ func TestReflectionRoutes(t *testing.T) {
 	if strings.TrimSpace(generateResp.Body) == "" {
 		t.Fatalf("expected reflection body")
 	}
+	if generateResp.Meta.Provider != "mock" {
+		t.Fatalf("expected reflection meta provider, got %q", generateResp.Meta.Provider)
+	}
 
 	replayBody := `{
 		"record_shell":{"id":"r1","raw_text":"Dinner with Linh clarified the quarter plan.","capture_source":"composer"},
@@ -492,8 +495,11 @@ func TestReflectionRoutes(t *testing.T) {
 	if err := json.Unmarshal(replayRec.Body.Bytes(), &replayResp); err != nil {
 		t.Fatalf("decode reflection replay response: %v", err)
 	}
-	if !strings.Contains(replayResp.Body, "Replay:") {
+	if strings.TrimSpace(replayResp.Body) == "" {
 		t.Fatalf("expected replay body, got %q", replayResp.Body)
+	}
+	if replayResp.Meta.Provider != "mock" {
+		t.Fatalf("expected reflection replay meta provider, got %q", replayResp.Meta.Provider)
 	}
 }
 

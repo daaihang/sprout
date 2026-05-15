@@ -17,7 +17,7 @@ struct ReflectionsScreen: View {
 
             Section("Reflections") {
                 if reflections.isEmpty {
-                    Text("Reflections will appear here after saved captures produce reusable record or arc insights.")
+                    Text("No reflection objects yet. Record-level and arc-level reflections will land here after the pipeline completes.")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(reflections) { item in

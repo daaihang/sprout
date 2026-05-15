@@ -1,116 +1,22 @@
 # 02. Client Domain Model
 
-## 1. 当前客户端模型问题
+## 1. 目标
 
-当前 `sprout` iOS 端已经有一套可运行的 `SwiftData` 模型，但职责混杂明显：
+本文档定义 `Mory v3` 客户端的正式领域模型。
 
-- `Record` 同时承担内容、布局、天气、位置、卡片尺寸、排序
-- `MediaCard` 是内容对象，但被收缩为 `Record` 的附属品
-- `Person` 与 `Decision` 是独立对象，但没有被提升到统一 graph 关系层
+它不保留历史兼容语义，不承担页面临时拼装，也不为旧对象做映射。
 
-这意味着客户端模型正处在“可用但不可长期扩展”的阶段。
+## 2. 五层客户端模型
 
-## 2. 当前模型现状摘要
+### 2.1 Capture Layer
 
-当前主要模型包括：
+对象：
 
-- `Record`
-- `MediaCard`
-- `Person`
-- `Decision`
-- `Activity`
-- `DailyQuestion`
-- `DashboardSystemCardConfig`
-
-其中 `Record` 仍是主聚合根。
-
-## 3. 目标客户端分层
-
-客户端领域模型建议拆成以下几组：
-
-### 3.1 Capture Layer
-
-- `Record`
-- `RecordInputSource`
+- `RecordShell`
+- `CaptureSource`
 - `RecordArtifactLink`
 
-### 3.2 Content Truth Layer
-
-- `Artifact`
-- `ArtifactPayload`
-- `ArtifactMediaRef`
-
-### 3.3 Composition Layer
-
-- `Board`
-- `Composition`
-- `CompositionItem`
-
-### 3.4 Entity Layer
-
-- `EntityNode`
-- `EntityAlias`
-- `EntityEdge`
-- `ArtifactEntityLink`
-
-### 3.5 Reflection Layer
-
-- `RecordAnalysisSnapshot`
-- `ReflectionSnapshot`
-- `ArcReflectionSnapshot`
-
-## 4. Artifact 模型建议
-
-### 4.1 核心字段
-
-建议 `Artifact` 至少包括：
-
-```text
-Artifact
-  id
-  createdAt
-  updatedAt
-  kind
-  subtype
-  source
-  status
-  textContent
-  title
-  summary
-  timeStart
-  timeEnd
-  latitude
-  longitude
-  placeLabel
-  metadataJSON
-```
-
-### 4.2 kind 建议
-
-- `text`
-- `photo`
-- `audio`
-- `music`
-- `link`
-- `weather`
-- `location`
-- `todo`
-- `person_mention`
-- `decision_note`
-- `quote`
-
-### 4.3 设计原则
-
-- `kind` 用于决定基础渲染和处理路径
-- `subtype` 用于细分，不要把所有变体都提升成一级对象
-- 高度动态信息放到 `metadataJSON`
-- 稳定且高频访问的字段显式建模
-
-## 5. Record 模型重定义
-
-### 5.1 保留字段
-
-Record 应保留：
+`RecordShell` 字段：
 
 - `id`
 - `createdAt`
@@ -120,159 +26,175 @@ Record 应保留：
 - `userMood`
 - `userIntensity`
 - `inputContext`
+- `artifactIDs`
 
-### 5.2 弱化字段
+### 2.2 Content Truth Layer
 
-以下字段应逐步从 `Record` 脱离：
+对象：
 
-- `cardType`
-- `cardUnits`
-- `cardWidthColumns`
-- `dashboardCardSpanOverridesData`
+- `Artifact`
+- `ArtifactPayload`
+- `ArtifactMediaRef`
 
-### 5.3 关系调整
+`Artifact` 建议字段：
 
-从：
+- `id`
+- `recordID`
+- `kind`
+- `title`
+- `summary`
+- `textContent`
+- `metadata`
+- `binaryPayload`
+- `previewPayload`
+- `createdAt`
+- `updatedAt`
 
-- `Record owns MediaCard`
+`Artifact.kind` 的正式词表：
 
-调整为：
+- `text`
+- `photo`
+- `audio`
+- `music`
+- `link`
+- `location`
+- `weather`
+- `todo`
+- `document`
 
-- `Record references Artifacts`
+边界规则：
 
-## 6. Composition 客户端模型建议
+- `ArtifactKind` 只表达内容载体类型，不表达图谱语义。
+- `person mention`、`decision fragment`、`theme hint` 不是 `ArtifactKind`。
+- 这些语义应进入 `RecordAnalysisSnapshot`、`EntityNode`、`EntityEdge` 与 `ArtifactEntityLink`。
+- `todo` 是正式一级 kind，不再通过 `note` 或其他过渡命名表示。
 
-### 6.1 Board
+### 2.3 Composition Layer
 
-Board 是某种展示上下文：
+对象：
+
+- `Board`
+- `Composition`
+- `CompositionItem`
+
+`Board` 表示展示上下文，例如：
 
 - home day board
 - people board
 - arc board
-- search result board
+- search board
 
-### 6.2 Composition
+`CompositionItem` 建议字段：
 
-Composition 是一个持久化空间组合对象。
+- `id`
+- `boardID`
+- `boardKey`
+- `compositionID`
+- `compositionKey`
+- `itemKey`
+- `targetType`
+- `targetID`
+- `widthColumns`
+- `heightUnits`
+- `zIndex`
+- `rotationDegrees`
+- `scale`
+- `isHidden`
+- `updatedAt`
 
-建议字段：
+### 2.4 Entity Layer
 
-```text
-Composition
-  id
-  boardID
-  createdAt
-  updatedAt
-  title
-  layoutStyle
-  sortOrder
-```
+对象：
 
-### 6.3 CompositionItem
+- `EntityNode`
+- `EntityEdge`
+- `ArtifactEntityLink`
 
-CompositionItem 负责指向具体渲染对象。
+`EntityNode` 建议字段：
 
-建议字段：
+- `id`
+- `kind`
+- `displayName`
+- `canonicalName`
+- `aliases`
+- `summary`
+- `provenanceRecordIDs`
+- `createdAt`
+- `updatedAt`
+- `confidence`
 
-```text
-CompositionItem
-  id
-  compositionID
-  targetType
-  artifactID?
-  recordID?
-  x
-  y
-  widthUnits
-  heightUnits
-  zIndex
-  rotation
-  scale
-  styleJSON
-```
+`ArtifactEntityLink` 建议字段：
 
-## 7. Entity 模型建议
+- `id`
+- `artifactID`
+- `entityID`
+- `confidence`
+- `source`
+- `sourceRecordID`
+- `sourceAnalysisRecordID`
+- `evidenceSummary`
+- `createdAt`
 
-### 7.1 EntityNode
+### 2.5 Reflection Layer
 
-建议字段：
+对象：
 
-```text
-EntityNode
-  id
-  kind
-  displayName
-  canonicalName
-  summary
-  createdAt
-  updatedAt
-  confidence
-```
+- `RecordAnalysisSnapshot`
+- `ReflectionSnapshot`
+- `TemporalArc`
 
-### 7.2 EntityEdge
+`RecordAnalysisSnapshot` 建议字段：
 
-```text
-EntityEdge
-  id
-  fromEntityID
-  toEntityID
-  relationType
-  weight
-  firstSeenAt
-  lastSeenAt
-  evidenceCount
-```
+- `recordID`
+- `summary`
+- `themes`
+- `emotionInterpretation`
+- `salienceScore`
+- `retrievalTerms`
+- `entityMentions`
+- `candidateEdges`
+- `followUpCandidates`
+- `reflectionHint`
+- `createdAt`
 
-### 7.3 ArtifactEntityLink
+## 3. SwiftData 结构原则
 
-用于把 artifact 与 entity 连接起来，避免所有关系都只能走 `Record`。
+### 3.1 持久化层
 
-## 8. Reflection 客户端模型建议
+SwiftData 负责：
 
-### 8.1 RecordAnalysisSnapshot
+- `RecordShell` store model
+- `Artifact` store model
+- `Board / Composition / CompositionItem`
+- `RecordAnalysisSnapshot` store model
+- `ReflectionSnapshot` store model
+- `EntityNode / EntityEdge / ArtifactEntityLink`
+- `TemporalArc` store model
 
-面向单条 record / capture 的结构化分析。
+### 3.2 非职责
 
-建议包括：
+SwiftData 不负责：
 
-- themes
-- emotionInterpretation
-- salience
-- retrievalTerms
-- detectedEntities
-- followUpCandidates
+- 页面投影逻辑
+- 运行时动画状态
+- 卡片类型扩张
 
-### 8.2 ReflectionSnapshot
+## 4. 客户端依赖方向
 
-面向多对象或阶段的解释性输出。
+目标依赖方向：
 
-建议包括：
+- `App -> Features`
+- `Features -> Domain + UseCase`
+- `UseCase -> Repository`
+- `Repository -> Persistence`
+- `Persistence -> Domain`
 
-- reflectionType
-- sourceRefs
-- title
-- body
-- evidenceSummary
-- confidence
-- status
+UI 不直接操作底层持久化模型。
 
-## 9. 迁移策略
+## 5. 设计原则
 
-客户端模型不能一次性大换血，建议分阶段：
-
-1. 新增 `Artifact`，保留 `MediaCard`
-2. 新写入链路双写
-3. 新增 `Composition`，让首页渐进切换
-4. 新增 `RecordAnalysisSnapshot`
-5. 最后再清理 `Record` 中布局遗留字段
-
-## 10. SwiftData 现实约束
-
-因为当前 App 主存储是 `SwiftData`，所以模型设计要注意：
-
-- 迁移可控
-- 查询成本可控
-- 不要在第一阶段引入过深关系爆炸
-- 对复杂字段使用可演进的 JSON payload
-
-目标不是一开始建最“纯”的模型，而是建一套既可落地又不继续恶化结构的模型。
+1. `RecordShell` 只是 capture 边界。
+2. `Artifact` 是内容真相层。
+3. `Composition` 是空间组织层。
+4. `Entity Graph` 是长期关系层。
+5. `TemporalArc` 与 `Reflection` 是高层理解层。

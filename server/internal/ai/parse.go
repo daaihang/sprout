@@ -20,6 +20,29 @@ func parseAnalyzeResponse(raw string) (AnalyzeResponse, error) {
 	return NormalizeResponse(resp), nil
 }
 
+func parseReflectionResponse(raw string) (ReflectionResponse, error) {
+	candidate := extractJSONObject(raw)
+	if candidate == "" {
+		return ReflectionResponse{}, fmt.Errorf("no JSON object found in reflection model response: %s", summarizeRaw(raw))
+	}
+
+	var resp ReflectionResponse
+	if err := json.Unmarshal([]byte(candidate), &resp); err != nil {
+		return ReflectionResponse{}, fmt.Errorf("decode reflection response: %w; raw=%s", err, summarizeRaw(raw))
+	}
+
+	if strings.TrimSpace(resp.Title) == "" {
+		resp.Title = "Reflection Candidate"
+	}
+	if strings.TrimSpace(resp.Body) == "" {
+		resp.Body = "No reflection generated."
+	}
+	if resp.SourceRecordIDs == nil {
+		resp.SourceRecordIDs = []string{}
+	}
+	return resp, nil
+}
+
 func extractJSONObject(raw string) string {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {

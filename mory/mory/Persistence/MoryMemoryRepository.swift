@@ -19,6 +19,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     private let analysisPipeline = AnalysisPipeline()
     private let temporalArcService = TemporalArcService()
     private let reflectionBuilder = ReflectionBuilder()
+    private var latestReflectionTrace: DebugPipelineTraceSnapshot?
 
     init(
         modelContext: ModelContext,
@@ -868,10 +869,28 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         ).first?.domainModel else {
             throw CocoaError(.fileNoSuchFile)
         }
-        guard let recordID = reflection.sourceRecordIDs.first else {
-            throw CocoaError(.fileNoSuchFile)
-        }
-        try await refreshMemoryPipeline(recordID: recordID)
+        let linkedArc = reflection.linkedTemporalArcID.flatMap { arcID in
+            try? modelContext.fetch(
+                FetchDescriptor<TemporalArcStore>(predicate: #Predicate { $0.id == arcID })
+            ).first?.domainModel
+        } ?? nil
+        let record = try reflection.sourceRecordIDs.first.flatMap { try fetchRecordShell(id: $0) }
+        let artifacts = try record.map { try fetchArtifacts(recordID: $0.id) } ?? []
+        let knownEntities = try linkedEntityReferences(
+            recordID: record?.id,
+            arcID: linkedArc?.id,
+            reflectionID: reflection.id
+        )
+
+        let replayResult = try await analysisService.replayReflection(
+            reflection: reflection,
+            linkedArc: linkedArc,
+            record: record,
+            artifacts: artifacts,
+            knownEntities: knownEntities,
+            prompt: reflection.body
+        )
+        latestReflectionTrace = replayResult.debugTrace
     }
 
     private func resolveDebugTarget(targetType: DebugAnalysisTarget, targetID: UUID?) throws -> DebugTargetSnapshot? {
@@ -936,7 +955,6 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         switch target.targetType {
         case .memory:
             guard let memory = target.memory else { return nil }
-            let pipelineStatus = try fetchPipelineStatus(recordID: memory.record.id)
             let artifacts = try fetchArtifacts(recordID: memory.record.id)
             let analyzePayload = AnalyzeRequestBuilder().build(record: memory.record, artifacts: artifacts)
             let payload = MoryAPIClient.ReflectionPayload(
@@ -950,10 +968,10 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             return DebugReflectionPayloadSnapshot(
                 recordID: memory.record.id,
                 arcID: nil,
-                requestBody: pipelineStatus?.requestBody ?? requestBody,
-                responseBody: pipelineStatus?.responseBody ?? "",
-                lastError: pipelineStatus?.lastError,
-                rawErrorBody: pipelineStatus?.rawErrorBody
+                requestBody: latestReflectionTrace?.requestBody ?? requestBody,
+                responseBody: latestReflectionTrace?.responseBody ?? "",
+                lastError: latestReflectionTrace?.failedStage,
+                rawErrorBody: latestReflectionTrace?.rawErrorBody
             )
         case .arc:
             guard let arc = target.arc else { return nil }
@@ -968,23 +986,60 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             return DebugReflectionPayloadSnapshot(
                 recordID: arc.arc.sourceRecordIDs.first,
                 arcID: arc.arc.id,
-                requestBody: requestBody,
-                responseBody: "",
-                lastError: nil,
-                rawErrorBody: nil
+                requestBody: latestReflectionTrace?.requestBody ?? requestBody,
+                responseBody: latestReflectionTrace?.responseBody ?? "",
+                lastError: latestReflectionTrace?.failedStage,
+                rawErrorBody: latestReflectionTrace?.rawErrorBody
             )
         case .reflection:
             guard let reflection = target.reflection else { return nil }
-            let requestBody = String(data: (try? JSONEncoder().encode(["reflection_id": reflection.reflection.id.uuidString])) ?? Data(), encoding: .utf8) ?? ""
+            struct ReflectionReplayDebugRequest: Encodable {
+                let reflectionID: String
+                let linkedArcID: String?
+
+                enum CodingKeys: String, CodingKey {
+                    case reflectionID = "reflection_id"
+                    case linkedArcID = "linked_arc_id"
+                }
+            }
+            let request = ReflectionReplayDebugRequest(
+                reflectionID: reflection.reflection.id.uuidString,
+                linkedArcID: reflection.linkedArc?.id.uuidString
+            )
+            let requestBody = latestReflectionTrace?.requestBody ?? String(data: (try? JSONEncoder().encode(request)) ?? Data(), encoding: .utf8) ?? ""
             return DebugReflectionPayloadSnapshot(
                 recordID: reflection.reflection.sourceRecordIDs.first,
                 arcID: reflection.linkedArc?.id,
                 requestBody: requestBody,
-                responseBody: reflection.reflection.body,
-                lastError: nil,
-                rawErrorBody: nil
+                responseBody: latestReflectionTrace?.responseBody ?? reflection.reflection.body,
+                lastError: latestReflectionTrace?.failedStage,
+                rawErrorBody: latestReflectionTrace?.rawErrorBody
             )
         }
+    }
+
+    private func linkedEntityReferences(
+        recordID: UUID?,
+        arcID: UUID?,
+        reflectionID: UUID?
+    ) throws -> [EntityReference] {
+        let graphContext = try loadGraphContext()
+        let recordIDs = [recordID]
+            + graphContext.arcs.filter { $0.id == arcID }.flatMap(\.sourceRecordIDs)
+            + graphContext.reflections.filter { $0.id == reflectionID }.flatMap(\.sourceRecordIDs)
+        let targetRecordIDs = Set(recordIDs.compactMap { $0 })
+
+        return graphContext.entities
+            .filter { !Set($0.provenanceRecordIDs).isDisjoint(with: targetRecordIDs) }
+            .map {
+                EntityReference(
+                    id: $0.id,
+                    kind: $0.kind,
+                    name: $0.displayName,
+                    aliases: $0.aliases,
+                    confidence: $0.confidence
+                )
+            }
     }
 
     private func fetchDebugProvenance(targetType: DebugAnalysisTarget, targetID: UUID?) throws -> [DebugProvenanceSnapshot] {
@@ -1894,7 +1949,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             let resolvedSummary = note?.trimmedOrNil ?? title
             return Artifact(
                 recordID: recordID,
-                kind: .note,
+                kind: .todo,
                 title: title,
                 summary: resolvedSummary,
                 textContent: resolvedSummary,

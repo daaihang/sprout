@@ -159,6 +159,52 @@ func (p *MockProvider) Analyze(_ context.Context, req AnalyzeRequest, user UserC
 	}, nil
 }
 
+func (p *MockProvider) GenerateReflection(_ context.Context, req ReflectionRequest, user UserContext) (ReflectionResult, error) {
+	body := strings.TrimSpace(req.Prompt)
+	if body == "" {
+		body = strings.TrimSpace(req.RecordShell.RawText)
+	}
+	if body == "" {
+		body = "A reflection candidate."
+	}
+	resp := ReflectionResponse{
+		Title:          "Reflection Candidate",
+		Body:           body,
+		EvidenceSummary: strings.TrimSpace(strings.Join([]string{req.RecordShell.RawText, strings.Join(extractArtifactSummaries(req.Artifacts), " | ")}, " | ")),
+		Confidence:     0.61,
+		SourceRecordIDs: nonEmptyStrings([]string{req.RecordShell.ID}),
+	}
+	return ReflectionResult{
+		Response: resp,
+		Provider: p.Name(),
+		Model:    "mock-reflection-v1",
+		Usage:    Usage{InputTokens: len(body) / 4, OutputTokens: 48},
+	}, nil
+}
+
+func (p *MockProvider) ReplayReflection(_ context.Context, req ReflectionRequest, user UserContext) (ReflectionResult, error) {
+	body := strings.TrimSpace(req.Prompt)
+	if body == "" {
+		body = strings.TrimSpace(req.RecordShell.RawText)
+	}
+	if body == "" {
+		body = "Reflection replay."
+	}
+	resp := ReflectionResponse{
+		Title:          "Reflection Replay",
+		Body:           body,
+		EvidenceSummary: strings.TrimSpace(strings.Join(extractArtifactSummaries(req.Artifacts), " | ")),
+		Confidence:     0.58,
+		SourceRecordIDs: nonEmptyStrings([]string{req.RecordShell.ID}),
+	}
+	return ReflectionResult{
+		Response: resp,
+		Provider: p.Name(),
+		Model:    "mock-reflection-v1",
+		Usage:    Usage{InputTokens: len(body) / 4, OutputTokens: 42},
+	}, nil
+}
+
 func containsAny(value string, terms ...string) bool {
 	for _, term := range terms {
 		if strings.Contains(value, strings.ToLower(term)) {
@@ -199,4 +245,30 @@ func uniqueStrings(values []string) []string {
 		ordered = append(ordered, value)
 	}
 	return ordered
+}
+
+func extractArtifactSummaries(artifacts []AnalyzeArtifact) []string {
+	values := make([]string, 0, len(artifacts))
+	for _, artifact := range artifacts {
+		candidate := strings.TrimSpace(strings.Join([]string{
+			artifact.Kind,
+			artifact.Title,
+			artifact.Summary,
+			artifact.TextContent,
+		}, " "))
+		if candidate != "" {
+			values = append(values, candidate)
+		}
+	}
+	return values
+}
+
+func nonEmptyStrings(values []string) []string {
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		if trimmed := strings.TrimSpace(value); trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+	return result
 }

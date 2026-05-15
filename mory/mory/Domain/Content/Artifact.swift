@@ -8,7 +8,7 @@ enum ArtifactKind: String, Codable, CaseIterable, Identifiable, Sendable {
     case link
     case location
     case weather
-    case note
+    case todo
     case document
 
     var id: String { rawValue }

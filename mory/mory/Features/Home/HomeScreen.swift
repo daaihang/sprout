@@ -55,7 +55,7 @@ struct HomeScreen: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Capture")
                             .font(.title2.weight(.semibold))
-                        Text("Save something quickly and let it appear in your memory space immediately.")
+                        Text("Save directly into the memory stack, then watch analysis, graph, arcs, and reflections accumulate from the same record.")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                         Button {
@@ -74,7 +74,7 @@ struct HomeScreen: View {
                     if let homeBoard, !homeBoard.items.isEmpty {
                         HomeBoardSection(board: homeBoard)
                     } else {
-                        Text("Your day board will start with recent captures, then expand with arcs and reflections.")
+                        Text("No board items have been composed yet. New captures, accepted arcs, and saved reflections will surface here.")
                             .foregroundStyle(.secondary)
                     }
                 }

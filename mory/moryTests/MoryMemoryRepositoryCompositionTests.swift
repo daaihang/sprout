@@ -291,6 +291,32 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertEqual(detail.pipelineStatus?.stage, .pending)
     }
 
+    func testTodoCapturePersistsCanonicalTodoArtifactKind() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Call landlord",
+                rawText: "Remember to call the landlord before Friday.",
+                mood: "practical",
+                inputContext: "typed in composer",
+                captureSource: .composer,
+                artifacts: [.todo(title: "Call landlord", note: "Before Friday")]
+            )
+        )
+
+        let detail = try XCTUnwrap(repository.fetchMemoryDetail(recordID: memory.record.id))
+        let todoArtifact = try XCTUnwrap(detail.artifacts.first)
+
+        XCTAssertEqual(todoArtifact.kind, .todo)
+        XCTAssertEqual(todoArtifact.title, "Call landlord")
+        XCTAssertEqual(todoArtifact.metadata["todo"], "true")
+    }
+
     func testMergeTemporalArcReturnsMergedDetailAndArchivesCandidate() async throws {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
@@ -445,6 +471,35 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertNotNil(try repository.fetchPipelineStatus(recordID: memory.record.id))
     }
 
+    func testReflectionReplayUsesReflectionContractTrace() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Replay memory",
+                rawText: "Dinner with Linh clarified the quarter planning pattern.",
+                mood: "reflective",
+                inputContext: "typed in debug",
+                captureSource: .composer,
+                artifacts: [.text(title: "Replay memory", body: "Dinner with Linh clarified the quarter planning pattern.")]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: memory.record.id)
+        let reflection = try XCTUnwrap(repository.fetchReflectionSummaries(limit: 1).first)
+
+        try await repository.rerunDebugPipeline(targetType: .reflection, targetID: reflection.reflection.id, mode: .reflectionReplay)
+        let diagnostics = try repository.fetchDebugDiagnostics(targetType: .reflection, targetID: reflection.reflection.id)
+
+        XCTAssertEqual(diagnostics.reflectionPayload?.requestBody, "{\"mode\":\"reflection_replay\"}")
+        XCTAssertEqual(diagnostics.reflectionPayload?.responseBody, "{\"body\":\"Replay reflection body\"}")
+        XCTAssertEqual(diagnostics.reflectionPayload?.lastError, nil)
+        XCTAssertEqual(diagnostics.reflectionPayload?.rawErrorBody, nil)
+    }
+
     func testAnalysisFailurePersistsPipelineTraceForDiagnostics() async throws {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
@@ -531,6 +586,53 @@ private struct StubRecordAnalysisService: RecordAnalysisServing {
             failedStage: nil
         )
     }
+
+    func generateReflection(
+        record: RecordShell,
+        artifacts: [Artifact],
+        linkedArcID: UUID?,
+        knownEntities: [EntityReference],
+        prompt: String?
+    ) async throws -> ReflectionServiceResult {
+        ReflectionServiceResult(
+            title: "Generated reflection",
+            body: prompt ?? record.rawText,
+            evidenceSummary: artifacts.map(\.summary).joined(separator: " | "),
+            confidence: 0.61,
+            sourceRecordIDs: [record.id],
+            debugTrace: DebugPipelineTraceSnapshot(
+                requestBody: "{\"mode\":\"reflection_generate\"}",
+                responseBody: "{\"body\":\"Generated reflection body\"}",
+                rawErrorBody: nil,
+                statusCode: 200,
+                failedStage: nil
+            )
+        )
+    }
+
+    func replayReflection(
+        reflection: ReflectionSnapshot,
+        linkedArc: TemporalArc?,
+        record: RecordShell?,
+        artifacts: [Artifact],
+        knownEntities: [EntityReference],
+        prompt: String?
+    ) async throws -> ReflectionServiceResult {
+        ReflectionServiceResult(
+            title: "Replay reflection",
+            body: "Replay reflection body",
+            evidenceSummary: prompt ?? reflection.body,
+            confidence: 0.58,
+            sourceRecordIDs: reflection.sourceRecordIDs,
+            debugTrace: DebugPipelineTraceSnapshot(
+                requestBody: "{\"mode\":\"reflection_replay\"}",
+                responseBody: "{\"body\":\"Replay reflection body\"}",
+                rawErrorBody: nil,
+                statusCode: 200,
+                failedStage: nil
+            )
+        )
+    }
 }
 
 private struct FailingRecordAnalysisService: RecordAnalysisServing {
@@ -554,6 +656,27 @@ private struct FailingRecordAnalysisService: RecordAnalysisServing {
             statusCode: 503,
             failedStage: "analysis"
         )
+    }
+
+    func generateReflection(
+        record: RecordShell,
+        artifacts: [Artifact],
+        linkedArcID: UUID?,
+        knownEntities: [EntityReference],
+        prompt: String?
+    ) async throws -> ReflectionServiceResult {
+        throw StubError()
+    }
+
+    func replayReflection(
+        reflection: ReflectionSnapshot,
+        linkedArc: TemporalArc?,
+        record: RecordShell?,
+        artifacts: [Artifact],
+        knownEntities: [EntityReference],
+        prompt: String?
+    ) async throws -> ReflectionServiceResult {
+        throw StubError()
     }
 }
 
@@ -595,6 +718,53 @@ private struct AliasRecordAnalysisService: RecordAnalysisServing {
             rawErrorBody: nil,
             statusCode: 200,
             failedStage: nil
+        )
+    }
+
+    func generateReflection(
+        record: RecordShell,
+        artifacts: [Artifact],
+        linkedArcID: UUID?,
+        knownEntities: [EntityReference],
+        prompt: String?
+    ) async throws -> ReflectionServiceResult {
+        ReflectionServiceResult(
+            title: "Alias reflection",
+            body: prompt ?? record.rawText,
+            evidenceSummary: artifacts.map(\.summary).joined(separator: " | "),
+            confidence: 0.63,
+            sourceRecordIDs: [record.id],
+            debugTrace: DebugPipelineTraceSnapshot(
+                requestBody: "{\"mode\":\"reflection_generate\"}",
+                responseBody: "{\"body\":\"Alias reflection body\"}",
+                rawErrorBody: nil,
+                statusCode: 200,
+                failedStage: nil
+            )
+        )
+    }
+
+    func replayReflection(
+        reflection: ReflectionSnapshot,
+        linkedArc: TemporalArc?,
+        record: RecordShell?,
+        artifacts: [Artifact],
+        knownEntities: [EntityReference],
+        prompt: String?
+    ) async throws -> ReflectionServiceResult {
+        ReflectionServiceResult(
+            title: "Alias replay",
+            body: "Alias replay body",
+            evidenceSummary: prompt ?? reflection.body,
+            confidence: 0.57,
+            sourceRecordIDs: reflection.sourceRecordIDs,
+            debugTrace: DebugPipelineTraceSnapshot(
+                requestBody: "{\"mode\":\"reflection_replay\"}",
+                responseBody: "{\"body\":\"Alias replay body\"}",
+                rawErrorBody: nil,
+                statusCode: 200,
+                failedStage: nil
+            )
         )
     }
 }

@@ -22,16 +22,23 @@ Mory 的核心体验不是“页面多”，而是四条闭环是否成立：
 
 输入单位不再是“必须写一条完整日记”，而是：
 
-- 文本
-- 照片
-- 音频
-- 音乐
-- 地点
-- 人物
-- 情绪
-- 链接
-- todo
-- 决策片段
+- `text`
+- `photo`
+- `audio`
+- `music`
+- `location`
+- `weather`
+- `link`
+- `todo`
+- `document`
+
+补充边界：
+
+- `person`
+- `mood`
+- `decision fragment`
+
+可以是 capture 时的显式输入或后续分析语义，但不是一级 `ArtifactKind`。
 
 ### 2.3 产品要求
 

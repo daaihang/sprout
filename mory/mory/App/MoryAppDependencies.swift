@@ -46,6 +46,10 @@ private final class MissingMemoryRepository: MoryMemoryRepositorying {
     func saveReflection(reflectionID: UUID) async throws { let _: Void = fail() }
     func dismissReflection(reflectionID: UUID) async throws { let _: Void = fail() }
     func archiveReflection(reflectionID: UUID) async throws { let _: Void = fail() }
+    func fetchDebugDiagnostics(targetType: DebugAnalysisTarget, targetID: UUID?) throws -> DebugDiagnosticsSnapshot { fail() }
+    func rerunDebugPipeline(targetType: DebugAnalysisTarget, targetID: UUID?, mode: DebugRebuildMode) async throws { let _: Void = fail() }
+    func seedDebugFixtures(count: Int) async throws -> [DebugMemoryFixtureSnapshot] { fail() }
+    func clearDebugFixtures() throws { let _: Void = fail() }
     func seedDebugFixture() async throws -> DebugMemoryFixtureSnapshot { fail() }
     func fetchDebugFixtureSnapshot(recordID: UUID) throws -> DebugMemoryFixtureSnapshot? { fail() }
 }

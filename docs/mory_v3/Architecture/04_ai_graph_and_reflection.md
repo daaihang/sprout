@@ -56,6 +56,7 @@
 - 以聚合对象为输入
 - 用户显式信息优先
 - 多模态内容先结构化，再统一分析
+- `Artifact.kind` 只携带内容载体类型，不把 `person mention`、`decision fragment` 这类语义提前写成 kind
 
 ## 3. Analysis 输出建议
 

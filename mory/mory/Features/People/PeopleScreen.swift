@@ -20,7 +20,7 @@ struct PeopleScreen: View {
 
             Section("People") {
                 if people.isEmpty {
-                    Text("People will appear here after captures accumulate into stable graph entities.")
+                    Text("No stable person entities yet. Run capture and analysis to promote linked people into the graph.")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(people, id: \.id) { person in
@@ -35,7 +35,7 @@ struct PeopleScreen: View {
 
             Section("Themes") {
                 if themes.isEmpty {
-                    Text("Themes will appear here after repeated patterns become reusable graph nodes.")
+                    Text("No stable themes yet. Repeated analysis signals will accumulate here as reusable graph nodes.")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(themes, id: \.id) { theme in
@@ -50,7 +50,7 @@ struct PeopleScreen: View {
 
             Section("Places") {
                 if places.isEmpty {
-                    Text("Places will appear here when captures carry reusable place references.")
+                    Text("No stable places yet. Place entities appear once captures carry reusable location references.")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(places, id: \.id) { place in
@@ -65,7 +65,7 @@ struct PeopleScreen: View {
 
             Section("Decisions") {
                 if decisions.isEmpty {
-                    Text("Decisions will appear here when the graph extracts stable decision objects.")
+                    Text("No stable decisions yet. Decision entities appear once analysis extracts durable choices from records.")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(decisions, id: \.id) { decision in

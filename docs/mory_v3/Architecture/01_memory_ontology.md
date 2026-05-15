@@ -1,26 +1,14 @@
 # 01. Memory Ontology
 
-## 1. 为什么必须先冻结 ontology
+## 1. Ontology 的作用
 
-任何中长期软件，一旦底层对象体系不统一，就会进入以下循环：
+`Mory v3` 必须先冻结统一 ontology，再写 UI、持久化和 AI。
 
-- 新功能需要额外对象
-- 旧对象无法表达新语义
-- 临时加 mapper
-- UI、数据、AI 互相翻译
-- 最终没人再说得清“什么才是真相层”
+否则会出现三个问题：
 
-Mory 当前已经处在这个临界点。
-
-代码现状表明：
-
-- `Record` 被当成内容主根
-- `DashboardCardInfo` 和 `CardContainer` 在承担 UI 投影和布局逻辑
-- AI 协议仍然把记录看成文本请求
-
-这三层没有统一本体。
-
-因此必须先冻结统一 ontology。
+- 内容对象和展示对象混淆
+- AI 输出没有稳定落点
+- 页面不断为对象边界兜底
 
 ## 2. 五层统一记忆本体
 
@@ -28,45 +16,55 @@ Mory 当前已经处在这个临界点。
 
 定义：
 
-> Artifact 是记忆系统中最小的可引用内容对象。
+> Artifact 是系统中最小的可引用记忆材料。
 
-Artifact 的基本特征：
+`ArtifactKind` 的正式一级词表冻结为：
 
-- 可以被多个上层对象引用
-- 可以拥有独立 metadata
-- 不依赖某种固定 UI 形态存在
-- 不以某次 record 的唯一归属为前提
+- `text`
+- `photo`
+- `audio`
+- `music`
+- `link`
+- `location`
+- `weather`
+- `todo`
+- `document`
 
-示例：
+当前 Phase 1 composer 正式写入链只覆盖：
 
-- 一段文字片段
-- 一张照片
-- 一段音频转录
-- 一首歌引用
-- 一个地点快照
-- 一次天气快照
-- 一个链接
-- 一个待办集合
-- 一次人物提及
-- 一个决策片段
+- `text`
+- `photo`
+- `audio`
+- `location`
+- `link`
+- `todo`
 
-Artifact 要解决的是“内容真相层”问题。
+`music / weather / document` 仍属于正式 `ArtifactKind`，但当前主要保留给导入、外部集成或后续 capture 入口。
+
+以下语义不再视为一级 `ArtifactKind`：
+
+- 人物提及
+- 决策片段
+- 情绪信号
+
+它们应作为：
+
+- `RecordShell` 的显式上下文字段
+- `RecordAnalysisSnapshot` 的分析结果
+- `EntityNode / ArtifactEntityLink` 的语义落点
 
 ### 2.2 Layer 2: Composition
 
 定义：
 
-> Composition 是将 artifacts 组织到某个视觉或叙事空间中的持久化对象。
+> Composition 是将 artifacts 组织进某个视觉或叙事空间中的持久化对象。
 
-Composition 负责：
+它表达：
 
-- artifact 如何被放在一起
-- 相对空间关系
-- 尺寸、层级、顺序、旋转等视觉组织结果
-- board 上的叙事上下文
-
-Composition 不是纯 View。  
-它必须进入持久层，因为空间组织本身就是记忆意义的一部分。
+- 大小
+- 层级
+- 相邻关系
+- 叙事上下文
 
 ### 2.3 Layer 3: Semantic Graph
 
@@ -74,47 +72,32 @@ Composition 不是纯 View。
 
 > Semantic Graph 是稳定对象与稳定关系的长期记忆网络。
 
-Graph 节点可包括：
+节点可包括：
 
-- PersonNode
-- PlaceNode
-- ThemeNode
-- DecisionNode
-- MoodNode
-- ProjectNode
-- ArtifactNode
+- Person
+- Place
+- Theme
+- Decision
 
-Graph 边可包括：
+边可包括：
 
-- MENTIONED_WITH
-- OCCURRED_AT
-- RELATED_TO
-- PART_OF
-- REPEATED_IN
-- INFLUENCED_BY
-- NEAR_IN_TIME
-- NEAR_IN_SPACE
-
-Graph 的职责是长期关系表达，而不是一次记录的临时视图。
+- related to
+- mentioned with
+- repeated in
+- decided at
 
 ### 2.4 Layer 4: Temporal Arc
 
 定义：
 
-> Temporal Arc 是将离散材料组织成阶段性人生结构的时间层。
+> Temporal Arc 是将离散材料组织为阶段性结构的时间层。
 
-典型对象：
+它表达：
 
-- LifePeriod
-- LifeArc
-- Chapter
-- Season
-
-Temporal Arc 负责回答：
-
-- 这些材料属于哪段时期
-- 某段状态何时开始、何时减弱
-- 某个主题在一段时间里如何变化
+- 开始与结束
+- 高密度时段
+- 主题演化
+- 关系变化期
 
 ### 2.5 Layer 5: Reflection
 
@@ -122,89 +105,40 @@ Temporal Arc 负责回答：
 
 > Reflection 是在前四层基础上生成的高价值意义层输出。
 
-Reflection 是：
+它负责：
 
-- 结构化理解的语言化表达
-- 模式的解释
-- 关系的解释
-- 阶段的解释
+- 解释模式
+- 解释阶段
+- 解释关系
+- 组织高层回顾
 
-Reflection 不是原始数据，不是布局，不是事实字段。
+## 3. RecordShell 的位置
 
-## 3. Record 在新 ontology 中的位置
+`RecordShell` 是 capture event，而不是宇宙中心。
 
-`Record` 仍然保留，但职责必须改变。
+它只保留：
 
-新的定义：
-
-> Record 是一次 capture event，或者一个时间点上的临时聚合壳。
-
-它适合保留的职责：
-
-- createdAt / updatedAt
-- 输入源
-- capture 场景
-- 用户手填上下文
-- 引用哪些 artifacts
-- 触发分析和排序的边界
-
-它不适合继续承担的职责：
-
-- 一切内容的唯一所有者
-- UI 组合状态的持久化根
-- 长期语义关系中心
+- 时间
+- 输入来源
+- 原始文本
+- 用户显式上下文
+- 对 artifacts 的引用
 
 ## 4. 层间关系
 
-建议层间关系如下：
+建议层间关系：
 
-- `Record -> [ArtifactRef]`
-- `Composition -> [CompositionItem] -> ArtifactRef / RecordRef`
+- `RecordShell -> [ArtifactRef]`
+- `Composition -> [CompositionItem] -> ArtifactRef / RecordRef / ReflectionRef / ArcRef`
 - `Artifact -> [EntityLink]`
 - `EntityNode <-> EntityEdge`
-- `TemporalArc -> [ArtifactRef | RecordRef | EntityRef]`
+- `TemporalArc -> [RecordRef | ArtifactRef | EntityRef]`
 - `Reflection -> source refs`
 
-## 5. 为什么不是直接上 graph database
+## 5. 冻结原则
 
-当前阶段没有必要把“统一 ontology”误解为“必须引入图数据库”。
+新需求进入实现前必须回答：
 
-原因：
-
-- 当前项目仍是本地优先
-- iOS 端主数据层仍以 SwiftData 为现实基础
-- 关系复杂度还没到必须引入独立 graph storage
-- 真正的问题是对象边界，而不是存储技术名称
-
-所以第一原则是：
-
-先用清晰对象建模统一 ontology，后续再决定是否需要专门的 graph storage。
-
-## 6. Ontology 对产品和工程的影响
-
-### 6.1 对产品的影响
-
-- 首页不再只是 cards grid，而是 compositions board
-- 人物页、阶段页、搜索页获得真正的中层支撑
-- 新内容类型不再需要复制整套产品结构
-
-### 6.2 对工程的影响
-
-- 减少 mapper 爆炸
-- 降低 UI 对数据真相的绑架
-- 降低 AI 每次重读全量人生的成本
-
-### 6.3 对 AI 的影响
-
-- 输入协议可围绕稳定对象组织
-- 输出可以落在 artifact / entity / reflection，而不漂浮
-
-## 7. Ontology 冻结原则
-
-从现在开始，新增需求若要进入实现，必须回答：
-
-1. 这个新对象属于哪一层？
-2. 它是事实对象、空间对象、关系对象、阶段对象还是反思对象？
-3. 如果它只是某种渲染方式，为什么要进入领域模型？
-
-答不出来，就不应立即编码。
+1. 它属于哪一层。
+2. 它是事实对象、空间对象、关系对象、阶段对象还是反思对象。
+3. 它是否只是渲染方式，而不该进入领域模型。

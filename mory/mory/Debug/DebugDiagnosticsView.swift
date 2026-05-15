@@ -160,7 +160,7 @@ struct DebugDiagnosticsView: View {
                             PayloadInspector(title: "Pipeline Raw Error", content: rawErrorBody)
                         }
                     } else {
-                        Text("No persisted pipeline trace yet.")
+                        Text("No pipeline trace has been persisted for the current target yet.")
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -190,7 +190,7 @@ struct DebugDiagnosticsView: View {
 
                 Section("Pipeline") {
                     if pipelineStatuses.isEmpty {
-                        Text("No pipeline statuses recorded yet.")
+                        Text("No pipeline status records exist yet. Save a memory or seed a fixture to populate this view.")
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(pipelineStatuses) { item in

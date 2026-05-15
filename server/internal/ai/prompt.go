@@ -49,3 +49,39 @@ func buildAnalyzeUserPrompt(req AnalyzeRequest, user UserContext) (string, error
 	}
 	return string(body), nil
 }
+
+func buildReflectionSystemPrompt(mode string) string {
+	return `You are the reflection service for Sprout.
+Return exactly one JSON object and no markdown.
+The JSON must match this shape:
+{
+  "title": "string",
+  "body": "string",
+  "evidence_summary": "string",
+  "confidence": 0.0,
+  "source_record_ids": ["string"]
+}
+Keep the tone evidence-based, restrained, and specific.
+Do not invent facts beyond the provided record shell, artifacts, linked arc context, and prompt.
+Use short titles and concise reflective bodies. Mode: ` + mode
+}
+
+func buildReflectionUserPrompt(req ReflectionRequest, user UserContext, mode string) (string, error) {
+	payload := map[string]any{
+		"user": map[string]string{
+			"user_id": user.UserID,
+			"tier":    user.Tier,
+		},
+		"mode":           mode,
+		"record_shell":   req.RecordShell,
+		"artifacts":      req.Artifacts,
+		"linked_arc_id":  req.LinkedArcID,
+		"known_entities": req.KnownEntities,
+		"prompt":         req.Prompt,
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return "", fmt.Errorf("marshal reflection prompt payload: %w", err)
+	}
+	return string(body), nil
+}

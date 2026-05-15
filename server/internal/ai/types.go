@@ -12,6 +12,8 @@ var ErrInvalidAnalyzeRequest = errors.New("invalid analyze request")
 type Provider interface {
 	Name() string
 	Analyze(ctx context.Context, req AnalyzeRequest, user UserContext) (AnalyzeResult, error)
+	GenerateReflection(ctx context.Context, req ReflectionRequest, user UserContext) (ReflectionResult, error)
+	ReplayReflection(ctx context.Context, req ReflectionRequest, user UserContext) (ReflectionResult, error)
 }
 
 type UserContext struct {
@@ -109,6 +111,29 @@ type AnalyzeResult struct {
 	Usage    Usage           `json:"usage"`
 }
 
+type ReflectionRequest struct {
+	RecordShell   AnalyzeRecordShell     `json:"record_shell"`
+	Artifacts     []AnalyzeArtifact      `json:"artifacts"`
+	LinkedArcID   string                 `json:"linked_arc_id,omitempty"`
+	KnownEntities []KnownEntityReference `json:"known_entities,omitempty"`
+	Prompt        string                 `json:"prompt,omitempty"`
+}
+
+type ReflectionResponse struct {
+	Title          string   `json:"title"`
+	Body           string   `json:"body"`
+	EvidenceSummary string  `json:"evidence_summary"`
+	Confidence     float64  `json:"confidence"`
+	SourceRecordIDs []string `json:"source_record_ids"`
+}
+
+type ReflectionResult struct {
+	Response ReflectionResponse `json:"response"`
+	Provider string             `json:"provider"`
+	Model    string             `json:"model"`
+	Usage    Usage              `json:"usage"`
+}
+
 func (r AnalyzeRequest) Validate() error {
 	if strings.TrimSpace(r.SchemaVersion) == "" {
 		return ErrInvalidAnalyzeRequest
@@ -152,6 +177,20 @@ func NormalizeResponse(resp AnalyzeResponse) AnalyzeResponse {
 		resp.FollowUp = nil
 	}
 	return resp
+}
+
+func (r ReflectionRequest) ValidateGenerate() error {
+	if strings.TrimSpace(r.RecordShell.RawText) == "" && len(r.Artifacts) == 0 && strings.TrimSpace(r.Prompt) == "" {
+		return ErrInvalidAnalyzeRequest
+	}
+	return nil
+}
+
+func (r ReflectionRequest) ValidateReplay() error {
+	if strings.TrimSpace(r.Prompt) == "" && strings.TrimSpace(r.RecordShell.RawText) == "" {
+		return ErrInvalidAnalyzeRequest
+	}
+	return nil
 }
 
 func oneHourFromNow() string {

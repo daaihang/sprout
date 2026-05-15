@@ -8,6 +8,7 @@ This glossary freezes the canonical product language for `Mory v3`.
 
 - `RecordShell`: the local capture root for one memory entry.
 - `Artifact`: a normalized capture payload attached to a record.
+- `ArtifactKind`: the canonical artifact vocabulary: `text | photo | audio | music | link | location | weather | todo | document`.
 - `Board`: a spatial container for the home surface.
 - `Composition`: the layout plan that arranges items on a board.
 - `CompositionItem`: one positioned item inside a composition.
@@ -22,3 +23,7 @@ This glossary freezes the canonical product language for `Mory v3`.
 ## 3. Usage Rule
 
 Use these names in documentation, code, UI labels, and tests.
+
+Additional boundary rule:
+
+- `person mention`, `decision fragment`, and similar semantic interpretations are not `ArtifactKind`; they belong to analysis and graph outputs.
