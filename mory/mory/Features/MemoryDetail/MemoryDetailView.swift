@@ -8,6 +8,7 @@ struct MemoryDetailView: View {
     @State private var snapshot: MemoryDetailSnapshot?
     @State private var errorMessage: String?
     @State private var isRefreshingPipeline = false
+    @State private var isReloading = false
 
     var body: some View {
         List {
@@ -230,11 +231,27 @@ struct MemoryDetailView: View {
         }
         .navigationTitle("Memory")
         .task(id: recordID) {
+            await autoRefresh()
+        }
+    }
+
+    @MainActor
+    private func autoRefresh() async {
+        await load()
+
+        while !Task.isCancelled {
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            guard !Task.isCancelled else { break }
             await load()
         }
     }
 
+    @MainActor
     private func load() async {
+        guard !isReloading else { return }
+        isReloading = true
+        defer { isReloading = false }
+
         do {
             snapshot = try memoryRepository.fetchMemoryDetail(recordID: recordID)
             errorMessage = snapshot == nil ? "Memory not found." : nil

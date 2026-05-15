@@ -41,6 +41,7 @@ struct HomeScreen: View {
     @State private var homeBoard: HomeBoardSnapshot?
     @State private var pipelineStatuses: [PipelineStatusSummary] = []
     @State private var isPresentingComposer = false
+    @State private var isReloading = false
     @State private var errorMessage: String?
 
     init(surface: Surface = .home) {
@@ -144,7 +145,7 @@ struct HomeScreen: View {
             }
         }
         .task {
-            await reload()
+            await autoRefresh()
         }
         .refreshable {
             await reload()
@@ -156,7 +157,23 @@ struct HomeScreen: View {
         }
     }
 
+    @MainActor
+    private func autoRefresh() async {
+        await reload()
+
+        while !Task.isCancelled {
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            guard !Task.isCancelled else { break }
+            await reload()
+        }
+    }
+
+    @MainActor
     private func reload() async {
+        guard !isReloading else { return }
+        isReloading = true
+        defer { isReloading = false }
+
         do {
             memories = try memoryRepository.fetchRecentMemories(limit: nil)
             if surface == .home {

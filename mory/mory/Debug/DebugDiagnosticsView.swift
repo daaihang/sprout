@@ -9,6 +9,7 @@ struct DebugDiagnosticsView: View {
     @State private var errorMessage: String?
     @State private var isSeeding = false
     @State private var isRebuilding = false
+    @State private var isReloading = false
 
     var body: some View {
         List {
@@ -173,7 +174,42 @@ struct DebugDiagnosticsView: View {
         }
         .navigationTitle("Diagnostics")
         .task {
+            await autoRefresh()
+        }
+    }
+
+    @MainActor
+    private func autoRefresh() async {
+        await refreshLatestFixture()
+
+        while !Task.isCancelled {
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            guard !Task.isCancelled else { break }
             await refreshLatestFixture()
+        }
+    }
+
+    @MainActor
+    private func refreshLatestFixture() async {
+        guard !isReloading else { return }
+        isReloading = true
+        defer { isReloading = false }
+
+        do {
+            let targetRecordID: UUID?
+            if let fixtureRecordID = fixture?.recordID {
+                targetRecordID = fixtureRecordID
+            } else {
+                targetRecordID = try memoryRepository.fetchRecentMemories(limit: 1).first?.record.id
+            }
+            if let targetRecordID {
+                fixture = try memoryRepository.fetchDebugFixtureSnapshot(recordID: targetRecordID)
+            }
+            graphOverview = try memoryRepository.fetchGraphOverview(limitPerKind: 6, edgeLimit: 8)
+            pipelineStatuses = try memoryRepository.fetchPipelineStatusSummaries(limit: 12)
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 
@@ -187,20 +223,6 @@ struct DebugDiagnosticsView: View {
             if let fixture {
                 try await memoryRepository.refreshMemoryPipeline(recordID: fixture.recordID)
                 self.fixture = try memoryRepository.fetchDebugFixtureSnapshot(recordID: fixture.recordID)
-            }
-            graphOverview = try memoryRepository.fetchGraphOverview(limitPerKind: 6, edgeLimit: 8)
-            pipelineStatuses = try memoryRepository.fetchPipelineStatusSummaries(limit: 12)
-            errorMessage = nil
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
-    private func refreshLatestFixture() async {
-        do {
-            let latest = try memoryRepository.fetchRecentMemories(limit: 1).first
-            if let latest {
-                fixture = try memoryRepository.fetchDebugFixtureSnapshot(recordID: latest.record.id)
             }
             graphOverview = try memoryRepository.fetchGraphOverview(limitPerKind: 6, edgeLimit: 8)
             pipelineStatuses = try memoryRepository.fetchPipelineStatusSummaries(limit: 12)

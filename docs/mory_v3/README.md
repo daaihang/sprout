@@ -1,29 +1,26 @@
 # Mory v3 Documentation Set
 
-> 更新时间：2026-05-13  
-> 适用范围：`sprout/` iOS App、`server/` Go Backend、产品规划、信息架构、AI 分析链路、商业化与演进路线
+> 更新时间：2026-05-15  
+> 适用范围：`mory/` 新工程、产品定义、客户端架构、AI 分析、图谱、阶段与反思系统
 
-本目录是面向 `Mory / Sprout` 下一阶段重构与发布准备的新版文档集合。
+本目录是 `Mory v3` 的目标态规范文档。
 
-目标不是继续维护一份“大而全但彼此冲突”的单文件，而是把文档拆成：
+它只描述新项目要实现的对象边界、交互结构、接口约束和实施顺序，不承担以下职责：
 
-- `PRD/`：产品定义、用户价值、功能边界、AI 产品策略、商业化与发布
-- `Architecture/`：统一记忆本体、客户端数据模型、Composition 系统、AI / Graph 层、后端接口、迁移路线
-
-这套文档基于三个输入统一整理：
-
-1. 当前仓库真实代码状态
-2. 已有 `v2.0` 技术架构文档与核心抽象文档
-3. 对当前项目三套世界观断裂问题的系统性评估
+- 不记录旧工程残留
+- 不设计兼容层
+- 不描述双写或临时 fallback
+- 不把历史模型当成正式方案的一部分
 
 ## 阅读顺序
 
-如果你是产品 owner：
+如果你是产品负责人：
 
 1. [PRD/00_prd_index.md](/Users/z14/Documents/sprout/docs/mory_v3/PRD/00_prd_index.md)
 2. [PRD/01_product_vision.md](/Users/z14/Documents/sprout/docs/mory_v3/PRD/01_product_vision.md)
 3. [PRD/03_information_architecture.md](/Users/z14/Documents/sprout/docs/mory_v3/PRD/03_information_architecture.md)
-4. [PRD/05_ai_product_strategy.md](/Users/z14/Documents/sprout/docs/mory_v3/PRD/05_ai_product_strategy.md)
+4. [PRD/04_core_flows_and_requirements.md](/Users/z14/Documents/sprout/docs/mory_v3/PRD/04_core_flows_and_requirements.md)
+5. [PRD/05_ai_product_strategy.md](/Users/z14/Documents/sprout/docs/mory_v3/PRD/05_ai_product_strategy.md)
 
 如果你是架构/工程负责人：
 
@@ -31,19 +28,27 @@
 2. [Architecture/01_memory_ontology.md](/Users/z14/Documents/sprout/docs/mory_v3/Architecture/01_memory_ontology.md)
 3. [Architecture/02_client_domain_model.md](/Users/z14/Documents/sprout/docs/mory_v3/Architecture/02_client_domain_model.md)
 4. [Architecture/03_composition_system.md](/Users/z14/Documents/sprout/docs/mory_v3/Architecture/03_composition_system.md)
-5. [Architecture/06_migration_roadmap.md](/Users/z14/Documents/sprout/docs/mory_v3/Architecture/06_migration_roadmap.md)
-6. [Architecture/07_mac_prototype_v0.1.md](/Users/z14/Documents/sprout/docs/mory_v3/Architecture/07_mac_prototype_v0.1.md)
-7. [Architecture/08_mac_prototype_v0.1_implementation_checklist.md](/Users/z14/Documents/sprout/docs/mory_v3/Architecture/08_mac_prototype_v0.1_implementation_checklist.md)
-8. [Architecture/09_mac_prototype_v0.1_validation_and_handoff.md](/Users/z14/Documents/sprout/docs/mory_v3/Architecture/09_mac_prototype_v0.1_validation_and_handoff.md)
+5. [Architecture/04_ai_graph_and_reflection.md](/Users/z14/Documents/sprout/docs/mory_v3/Architecture/04_ai_graph_and_reflection.md)
+6. [Architecture/05_backend_and_interfaces.md](/Users/z14/Documents/sprout/docs/mory_v3/Architecture/05_backend_and_interfaces.md)
+7. [Architecture/06_migration_roadmap.md](/Users/z14/Documents/sprout/docs/mory_v3/Architecture/06_migration_roadmap.md)
+8. [Architecture/07_naming_glossary.md](/Users/z14/Documents/sprout/docs/mory_v3/Architecture/07_naming_glossary.md)
 
-## 核心结论
+## 核心判断
 
-Mory 的下一阶段不应继续被定义为：
+`Mory v3` 的统一结构是：
 
-`Record -> Cards -> AI`
+`Capture -> Artifact -> Composition -> Entity Graph -> Temporal Arc -> Reflection`
 
-而应被定义为：
+这条链路同时定义：
 
-`Artifacts -> Compositions -> Semantic Graph -> Temporal Arcs -> Reflection`
+- 数据真相层
+- 首页与详情的 UI 组织层
+- AI 的输入和输出边界
+- 人物、阶段、检索和反思能力
 
-这不是一句口号，而是整个产品、数据模型、UI 系统、AI 协议和迁移路线的统一设计中心。
+## 文档原则
+
+1. 只描述目标态，不描述旧架构。
+2. 只定义正式对象，不保留临时层。
+3. 只写可长期存在的边界，不写过渡性命名。
+4. 产品、UI、数据和 AI 必须使用同一组对象语言。
