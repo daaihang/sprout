@@ -1,8 +1,7 @@
-import SwiftData
 import SwiftUI
 
 struct MemoryDetailView: View {
-    @Environment(\.modelContext) private var modelContext
+    @Environment(\.memoryRepository) private var memoryRepository
 
     let recordID: UUID
 
@@ -96,18 +95,10 @@ struct MemoryDetailView: View {
 
     private func load() async {
         do {
-            let repository = MoryMemoryRepository(modelContext: modelContext)
-            snapshot = try repository.fetchMemoryDetail(recordID: recordID)
+            snapshot = try memoryRepository.fetchMemoryDetail(recordID: recordID)
             errorMessage = snapshot == nil ? "Memory not found." : nil
         } catch {
             errorMessage = error.localizedDescription
         }
-    }
-}
-
-private extension String {
-    var trimmedOrNil: String? {
-        let value = trimmingCharacters(in: .whitespacesAndNewlines)
-        return value.isEmpty ? nil : value
     }
 }

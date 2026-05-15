@@ -1,9 +1,8 @@
-import SwiftData
 import SwiftUI
 
 struct CaptureComposerView: View {
+    @Environment(\.memoryRepository) private var memoryRepository
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var modelContext
 
     @State private var title = ""
     @State private var bodyText = ""
@@ -72,39 +71,14 @@ struct CaptureComposerView: View {
         defer { isSaving = false }
 
         do {
-            let repository = MoryMemoryRepository(modelContext: modelContext)
-            let now = Date.now
-            let recordID = UUID()
-            let artifactTitle = normalizedTitle ?? "Untitled Memory"
-            let artifactSummary = bodyText.trimmedOrNil ?? rawText
-            let artifact = Artifact(
-                recordID: recordID,
-                kind: .text,
-                title: artifactTitle,
-                summary: artifactSummary,
-                textContent: rawText,
-                payload: .text(rawText),
-                metadata: [:],
-                createdAt: now,
-                updatedAt: now
-            )
-
-            let recordShell = RecordShell(
-                id: recordID,
-                createdAt: now,
-                updatedAt: now,
-                captureSource: .composer,
+            let draft = MemoryCaptureDraft(
+                title: normalizedTitle,
                 rawText: rawText,
-                userMood: mood.trimmedOrNil,
-                userIntensity: nil,
+                mood: mood.trimmedOrNil,
                 inputContext: inputContext.trimmedOrNil,
-                artifactIDs: [artifact.id]
+                captureSource: .composer
             )
-
-            try repository.upsert(recordShell: recordShell)
-            try repository.upsert(artifact: artifact)
-            try repository.save()
-
+            _ = try memoryRepository.createMemory(from: draft)
             onSaved?()
             dismiss()
         } catch {
@@ -113,15 +87,3 @@ struct CaptureComposerView: View {
     }
 }
 
-private extension String {
-    var trimmedOrNil: String? {
-        let value = trimmingCharacters(in: .whitespacesAndNewlines)
-        return value.isEmpty ? nil : value
-    }
-
-    var firstMeaningfulLine: String? {
-        split(whereSeparator: { $0.isNewline })
-            .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
-            .first(where: { !$0.isEmpty })
-    }
-}

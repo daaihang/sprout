@@ -1,4 +1,3 @@
-import SwiftData
 import SwiftUI
 
 struct HomeScreen: View {
@@ -34,11 +33,12 @@ struct HomeScreen: View {
         }
     }
 
-    @Environment(\.modelContext) private var modelContext
+    @Environment(\.memoryRepository) private var memoryRepository
 
     let surface: Surface
 
     @State private var memories: [MemorySummary] = []
+    @State private var homeBoard: HomeBoardSnapshot?
     @State private var isPresentingComposer = false
     @State private var errorMessage: String?
 
@@ -66,6 +66,15 @@ struct HomeScreen: View {
                         .buttonStyle(.borderedProminent)
                     }
                     .padding(.vertical, 8)
+                }
+
+                Section("Today Board") {
+                    if let homeBoard, !homeBoard.items.isEmpty {
+                        HomeBoardSection(board: homeBoard)
+                    } else {
+                        Text("Your day board will fill as captures land in the composition layer.")
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
 
@@ -124,8 +133,10 @@ struct HomeScreen: View {
 
     private func reload() async {
         do {
-            let repository = MoryMemoryRepository(modelContext: modelContext)
-            memories = try repository.fetchRecentMemories()
+            memories = try memoryRepository.fetchRecentMemories(limit: nil)
+            if surface == .home {
+                homeBoard = try memoryRepository.fetchHomeBoard(for: .now, limit: 8)
+            }
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -161,9 +172,66 @@ private struct MemoryRow: View {
         .padding(.vertical, 4)
     }
 }
-private extension String {
-    var trimmedOrNil: String? {
-        let value = trimmingCharacters(in: .whitespacesAndNewlines)
-        return value.isEmpty ? nil : value
+
+private struct HomeBoardSection: View {
+    let board: HomeBoardSnapshot
+
+    private let columns = [
+        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12),
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(board.board.subtitle)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            LazyVGrid(columns: columns, spacing: 12) {
+                ForEach(board.items) { item in
+                    CompositionMemoryCard(item: item)
+                }
+            }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+private struct CompositionMemoryCard: View {
+    let item: HomeBoardItemSnapshot
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(item.memory?.title ?? "Unresolved Memory")
+                .font(.headline)
+                .lineLimit(2)
+            Text(item.memory?.summaryText ?? "This board item is waiting for its target memory.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .lineLimit(3)
+            Text(item.memory?.record.updatedAt.formatted(date: .abbreviated, time: .shortened) ?? "")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, minHeight: heightForItem(item.compositionItem))
+        .background(backgroundForItem(item.compositionItem))
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .rotationEffect(.degrees(item.compositionItem.rotationDegrees))
+        .scaleEffect(item.compositionItem.scale)
+    }
+
+    private func heightForItem(_ item: CompositionItem) -> CGFloat {
+        CGFloat(max(1, item.heightUnits)) * 110
+    }
+
+    private func backgroundForItem(_ item: CompositionItem) -> some ShapeStyle {
+        let palette: [Color] = [
+            Color(red: 0.95, green: 0.89, blue: 0.79),
+            Color(red: 0.84, green: 0.92, blue: 0.88),
+            Color(red: 0.92, green: 0.86, blue: 0.90),
+            Color(red: 0.88, green: 0.90, blue: 0.96),
+        ]
+        return palette[item.zIndex % palette.count].gradient
     }
 }
