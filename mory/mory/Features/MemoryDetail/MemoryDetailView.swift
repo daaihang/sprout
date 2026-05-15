@@ -65,6 +65,30 @@ struct MemoryDetailView: View {
                                         .font(.body)
                                         .lineLimit(6)
                                 }
+
+                                if let mediaRef = artifact.mediaRef {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Media")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                        Text("\(mediaRef.filename) • \(mediaRef.mimeType)")
+                                            .font(.caption)
+                                    }
+                                }
+
+                                if !artifact.metadata.isEmpty {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Metadata")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                        ForEach(artifact.metadata.keys.sorted(), id: \.self) { key in
+                                            if let value = artifact.metadata[key] {
+                                                Text("\(key): \(value)")
+                                                    .font(.caption)
+                                            }
+                                        }
+                                    }
+                                }
                             }
                             .padding(.vertical, 4)
                         }

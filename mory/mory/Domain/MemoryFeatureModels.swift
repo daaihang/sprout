@@ -1,24 +1,99 @@
 import Foundation
 
+enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
+    case text(title: String?, body: String)
+    case photo(title: String?, summary: String, filename: String)
+    case audio(title: String?, summary: String, filename: String)
+    case location(title: String?, summary: String, latitude: Double?, longitude: Double?)
+    case link(title: String?, url: String, note: String?)
+    case todo(title: String, note: String?)
+
+    var id: String {
+        switch self {
+        case let .text(title, body):
+            return "text-\(title ?? body)"
+        case let .photo(title, summary, _):
+            return "photo-\(title ?? summary)"
+        case let .audio(title, summary, _):
+            return "audio-\(title ?? summary)"
+        case let .location(title, summary, _, _):
+            return "location-\(title ?? summary)"
+        case let .link(title, url, _):
+            return "link-\(title ?? url)"
+        case let .todo(title, note):
+            return "todo-\(title)-\(note ?? "")"
+        }
+    }
+
+    var captureSummary: String {
+        switch self {
+        case let .text(title, body):
+            return [title?.trimmedOrNil, body.trimmedOrNil].compactMap { $0 }.joined(separator: " • ")
+                .trimmedOrNil
+                ?? body.trimmedOrNil
+                ?? title?.trimmedOrNil
+                ?? "Untitled Memory"
+        case let .photo(title, summary, filename):
+            return [title?.trimmedOrNil, summary.trimmedOrNil, filename.trimmedOrNil].compactMap { $0 }.joined(separator: " • ")
+                .trimmedOrNil
+                ?? summary.trimmedOrNil
+                ?? title?.trimmedOrNil
+                ?? filename
+        case let .audio(title, summary, filename):
+            return [title?.trimmedOrNil, summary.trimmedOrNil, filename.trimmedOrNil].compactMap { $0 }.joined(separator: " • ")
+                .trimmedOrNil
+                ?? summary.trimmedOrNil
+                ?? title?.trimmedOrNil
+                ?? filename
+        case let .location(title, summary, latitude, longitude):
+            var components = [title?.trimmedOrNil, summary.trimmedOrNil].compactMap { $0 }
+            if let latitude {
+                components.append(String(latitude))
+            }
+            if let longitude {
+                components.append(String(longitude))
+            }
+            return components.joined(separator: " • ").trimmedOrNil
+                ?? summary.trimmedOrNil
+                ?? title?.trimmedOrNil
+                ?? "Location capture"
+        case let .link(title, url, note):
+            return [title?.trimmedOrNil, note?.trimmedOrNil, url.trimmedOrNil].compactMap { $0 }.joined(separator: " • ")
+                .trimmedOrNil
+                ?? note?.trimmedOrNil
+                ?? title?.trimmedOrNil
+                ?? url
+        case let .todo(title, note):
+            return [title.trimmedOrNil, note?.trimmedOrNil].compactMap { $0 }.joined(separator: " • ")
+                .trimmedOrNil
+                ?? note?.trimmedOrNil
+                ?? title
+        }
+    }
+}
+
 struct MemoryCaptureDraft: Hashable, Sendable {
     var title: String?
     var rawText: String
     var mood: String?
     var inputContext: String?
     var captureSource: CaptureSource
+    var artifacts: [CaptureArtifactDraft]
 
     init(
         title: String? = nil,
         rawText: String,
         mood: String? = nil,
         inputContext: String? = nil,
-        captureSource: CaptureSource = .composer
+        captureSource: CaptureSource = .composer,
+        artifacts: [CaptureArtifactDraft] = []
     ) {
         self.title = title
         self.rawText = rawText
         self.mood = mood
         self.inputContext = inputContext
         self.captureSource = captureSource
+        self.artifacts = artifacts
     }
 }
 

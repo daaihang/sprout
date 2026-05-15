@@ -12,21 +12,8 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     func createMemory(from draft: MemoryCaptureDraft) throws -> MemorySummary {
         let now = Date.now
         let recordID = UUID()
-        let normalizedText = draft.rawText.trimmedOrNil ?? "Untitled Memory"
-        let artifactTitle = draft.title?.trimmedOrNil ?? normalizedText.firstMeaningfulLine ?? "Untitled Memory"
-        let artifactSummary = normalizedText
-
-        let artifact = Artifact(
-            recordID: recordID,
-            kind: .text,
-            title: artifactTitle,
-            summary: artifactSummary,
-            textContent: normalizedText,
-            payload: .text(normalizedText),
-            metadata: [:],
-            createdAt: now,
-            updatedAt: now
-        )
+        let captureArtifacts = buildArtifacts(from: draft, recordID: recordID, createdAt: now)
+        let normalizedText = resolvedRecordRawText(from: draft, artifacts: captureArtifacts)
 
         let recordShell = RecordShell(
             id: recordID,
@@ -37,14 +24,14 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             userMood: draft.mood?.trimmedOrNil,
             userIntensity: nil,
             inputContext: draft.inputContext?.trimmedOrNil,
-            artifactIDs: [artifact.id]
+            artifactIDs: captureArtifacts.map(\.id)
         )
 
         try upsert(recordShell: recordShell)
-        try upsert(artifact: artifact)
+        try captureArtifacts.forEach { try upsert(artifact: $0) }
         try save()
 
-        return makeMemorySummary(record: recordShell, artifacts: [artifact])
+        return makeMemorySummary(record: recordShell, artifacts: captureArtifacts)
     }
 
     func fetchRecordShells() throws -> [RecordShell] {
@@ -622,6 +609,143 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             primaryArtifact: preferredPrimaryArtifact(from: artifacts),
             artifactCount: artifacts.count
         )
+    }
+
+    private func buildArtifacts(from draft: MemoryCaptureDraft, recordID: UUID, createdAt: Date) -> [Artifact] {
+        let explicitArtifacts = draft.artifacts.map { artifactDraft in
+            makeArtifact(from: artifactDraft, fallbackTitle: draft.title, recordID: recordID, createdAt: createdAt)
+        }
+
+        if explicitArtifacts.isEmpty {
+            return [
+                Artifact(
+                    recordID: recordID,
+                    kind: .text,
+                    title: draft.title?.trimmedOrNil ?? draft.rawText.firstMeaningfulLine ?? "Untitled Memory",
+                    summary: draft.rawText.trimmedOrNil ?? "Untitled Memory",
+                    textContent: draft.rawText.trimmedOrNil ?? "Untitled Memory",
+                    payload: .text(draft.rawText.trimmedOrNil ?? "Untitled Memory"),
+                    metadata: [:],
+                    createdAt: createdAt,
+                    updatedAt: createdAt
+                )
+            ]
+        }
+
+        return explicitArtifacts
+    }
+
+    private func resolvedRecordRawText(from draft: MemoryCaptureDraft, artifacts: [Artifact]) -> String {
+        if let rawText = draft.rawText.trimmedOrNil {
+            return rawText
+        }
+
+        let artifactSummary = artifacts
+            .compactMap { artifact in
+                artifact.textContent.trimmedOrNil
+                    ?? artifact.summary.trimmedOrNil
+                    ?? artifact.title.trimmedOrNil
+            }
+            .joined(separator: "\n")
+            .trimmedOrNil
+
+        return artifactSummary
+            ?? draft.artifacts.map(\.captureSummary).joined(separator: "\n").trimmedOrNil
+            ?? draft.title?.trimmedOrNil
+            ?? "Untitled Memory"
+    }
+
+    private func makeArtifact(
+        from draft: CaptureArtifactDraft,
+        fallbackTitle: String?,
+        recordID: UUID,
+        createdAt: Date
+    ) -> Artifact {
+        switch draft {
+        case let .text(title, body):
+            let resolvedBody = body.trimmedOrNil ?? "Untitled Memory"
+            return Artifact(
+                recordID: recordID,
+                kind: .text,
+                title: title?.trimmedOrNil ?? fallbackTitle?.trimmedOrNil ?? resolvedBody.firstMeaningfulLine ?? "Untitled Memory",
+                summary: resolvedBody,
+                textContent: resolvedBody,
+                payload: .text(resolvedBody),
+                metadata: [:],
+                createdAt: createdAt,
+                updatedAt: createdAt
+            )
+        case let .photo(title, summary, filename):
+            let resolvedSummary = summary.trimmedOrNil ?? "Photo capture"
+            return Artifact(
+                recordID: recordID,
+                kind: .photo,
+                title: title?.trimmedOrNil ?? fallbackTitle?.trimmedOrNil ?? "Photo",
+                summary: resolvedSummary,
+                textContent: resolvedSummary,
+                payload: .media(ArtifactMediaRef(filename: filename, mimeType: "image/jpeg")),
+                mediaRef: ArtifactMediaRef(filename: filename, mimeType: "image/jpeg"),
+                metadata: [:],
+                createdAt: createdAt,
+                updatedAt: createdAt
+            )
+        case let .audio(title, summary, filename):
+            let resolvedSummary = summary.trimmedOrNil ?? "Audio capture"
+            return Artifact(
+                recordID: recordID,
+                kind: .audio,
+                title: title?.trimmedOrNil ?? fallbackTitle?.trimmedOrNil ?? "Audio",
+                summary: resolvedSummary,
+                textContent: resolvedSummary,
+                payload: .media(ArtifactMediaRef(filename: filename, mimeType: "audio/m4a")),
+                mediaRef: ArtifactMediaRef(filename: filename, mimeType: "audio/m4a"),
+                metadata: [:],
+                createdAt: createdAt,
+                updatedAt: createdAt
+            )
+        case let .location(title, summary, latitude, longitude):
+            let resolvedSummary = summary.trimmedOrNil ?? "Location capture"
+            var metadata: [String: String] = [:]
+            if let latitude { metadata["latitude"] = String(latitude) }
+            if let longitude { metadata["longitude"] = String(longitude) }
+            return Artifact(
+                recordID: recordID,
+                kind: .location,
+                title: title?.trimmedOrNil ?? fallbackTitle?.trimmedOrNil ?? "Location",
+                summary: resolvedSummary,
+                textContent: resolvedSummary,
+                payload: .metadata(metadata),
+                metadata: metadata,
+                createdAt: createdAt,
+                updatedAt: createdAt
+            )
+        case let .link(title, url, note):
+            let resolvedSummary = note?.trimmedOrNil ?? url
+            return Artifact(
+                recordID: recordID,
+                kind: .link,
+                title: title?.trimmedOrNil ?? fallbackTitle?.trimmedOrNil ?? url,
+                summary: resolvedSummary,
+                textContent: resolvedSummary,
+                payload: .metadata(["url": url]),
+                metadata: ["url": url],
+                createdAt: createdAt,
+                updatedAt: createdAt
+            )
+        case let .todo(title, note):
+            let resolvedSummary = note?.trimmedOrNil ?? title
+            return Artifact(
+                recordID: recordID,
+                kind: .note,
+                title: title,
+                summary: resolvedSummary,
+                textContent: resolvedSummary,
+                payload: .metadata(["todo": "true"]),
+                metadata: ["todo": "true"],
+                createdAt: createdAt,
+                updatedAt: createdAt
+            )
+        }
     }
 
     private func preferredPrimaryArtifact(from artifacts: [Artifact]) -> Artifact? {
