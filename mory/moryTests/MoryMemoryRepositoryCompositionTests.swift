@@ -100,6 +100,63 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         )
         XCTAssertFalse(matchingReflection.relatedMemories.isEmpty)
     }
+
+    func testEntityDetailReturnsRelatedMemoriesThemesArcsAndReflections() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        _ = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Quarter planning walk",
+                rawText: "Walked home with Linh in the rain and clarified the quarter planning priorities.",
+                mood: "reflective",
+                inputContext: "typed in debug",
+                captureSource: .composer,
+                artifacts: [.text(title: "Quarter planning walk", body: "Walked home with Linh in the rain and clarified the quarter planning priorities.")]
+            )
+        )
+
+        let people = try repository.fetchEntityDetails(kind: .person, limit: 10)
+        let person = try XCTUnwrap(people.first(where: { $0.entity.displayName == "Linh" }))
+
+        XCTAssertFalse(person.relatedMemories.isEmpty)
+        XCTAssertTrue(person.relatedThemes.contains("planning"))
+        XCTAssertFalse(person.relatedArcs.isEmpty)
+        XCTAssertFalse(person.relatedReflections.isEmpty)
+        XCTAssertFalse(person.edges.isEmpty)
+    }
+
+    func testSearchReturnsFormalObjectSnapshots() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        _ = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Planning dinner",
+                rawText: "Dinner with Linh turned into a planning session for the next quarter.",
+                mood: "focused",
+                inputContext: "typed in debug",
+                captureSource: .composer,
+                artifacts: [.text(title: "Planning dinner", body: "Dinner with Linh turned into a planning session for the next quarter.")]
+            )
+        )
+
+        let result = try repository.search(query: "planning", limit: 10)
+
+        XCTAssertFalse(result.memories.isEmpty)
+        XCTAssertFalse(result.entities.isEmpty)
+        XCTAssertFalse(result.arcs.isEmpty)
+        XCTAssertFalse(result.reflections.isEmpty)
+        XCTAssertTrue(result.entities.contains(where: { $0.entity.kind == .theme || $0.entity.kind == .person }))
+        XCTAssertTrue(result.arcs.contains(where: { !$0.summary.relatedMemories.isEmpty }))
+        XCTAssertTrue(result.reflections.contains(where: { !$0.summary.relatedMemories.isEmpty }))
+    }
 }
 
 private struct StubRecordAnalysisService: RecordAnalysisServing {

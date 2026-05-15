@@ -3,8 +3,8 @@ import SwiftUI
 struct PeopleScreen: View {
     @Environment(\.memoryRepository) private var memoryRepository
 
-    @State private var people: [PersonMemorySummary] = []
-    @State private var themes: [ThemeMemorySummary] = []
+    @State private var people: [EntityDetailSnapshot] = []
+    @State private var themes: [EntityDetailSnapshot] = []
     @State private var errorMessage: String?
 
     var body: some View {
@@ -38,8 +38,8 @@ struct PeopleScreen: View {
                                     .foregroundStyle(.secondary)
                             }
 
-                            if !person.themeLabels.isEmpty {
-                                Text(person.themeLabels.joined(separator: " · "))
+                            if !person.relatedThemes.isEmpty {
+                                Text(person.relatedThemes.joined(separator: " · "))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -49,6 +49,12 @@ struct PeopleScreen: View {
                                     .font(.footnote)
                                     .foregroundStyle(.secondary)
                                     .lineLimit(2)
+                            }
+
+                            if !person.relatedReflections.isEmpty {
+                                Text("\(person.relatedReflections.count) reflections · \(person.relatedArcs.count) arcs")
+                                    .font(.footnote)
+                                    .foregroundStyle(.tertiary)
                             }
                         }
                         .padding(.vertical, 4)
@@ -84,6 +90,12 @@ struct PeopleScreen: View {
                                     .foregroundStyle(.secondary)
                                     .lineLimit(2)
                             }
+
+                            if !theme.relatedArcs.isEmpty {
+                                Text("\(theme.relatedArcs.count) arcs · \(theme.relatedReflections.count) reflections")
+                                    .font(.footnote)
+                                    .foregroundStyle(.tertiary)
+                            }
                         }
                         .padding(.vertical, 4)
                     }
@@ -101,8 +113,8 @@ struct PeopleScreen: View {
 
     private func load() async {
         do {
-            people = try memoryRepository.fetchPeopleSummaries(limit: 20)
-            themes = try memoryRepository.fetchThemeSummaries(limit: 20)
+            people = try memoryRepository.fetchEntityDetails(kind: .person, limit: 20)
+            themes = try memoryRepository.fetchEntityDetails(kind: .theme, limit: 20)
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription

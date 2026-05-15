@@ -27,14 +27,14 @@ struct SearchScreen: View {
                         Text("No memory matches.")
                             .foregroundStyle(.secondary)
                     } else {
-                        ForEach(result.memories) { memory in
+                        ForEach(result.memories) { memoryResult in
                             NavigationLink {
-                                MemoryDetailView(recordID: memory.record.id)
+                                MemoryDetailView(recordID: memoryResult.memory.record.id)
                             } label: {
                                 VStack(alignment: .leading, spacing: 6) {
-                                    Text(memory.title)
+                                    Text(memoryResult.memory.title)
                                         .font(.headline)
-                                    Text(memory.summaryText)
+                                    Text(memoryResult.memory.summaryText)
                                         .font(.subheadline)
                                         .foregroundStyle(.secondary)
                                         .lineLimit(2)
@@ -49,13 +49,25 @@ struct SearchScreen: View {
                         Text("No entity matches.")
                             .foregroundStyle(.secondary)
                     } else {
-                        ForEach(result.entities) { entity in
+                        ForEach(result.entities) { entityResult in
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(entity.displayName)
+                                Text(entityResult.entity.displayName)
                                     .font(.headline)
-                                Text(entity.summary.ifEmpty("No summary"))
+                                Text(entityResult.entity.summary.ifEmpty("No summary"))
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
+                                Text("\(entityResult.relatedMemoryCount) memories · \(entityResult.artifactCount) artifacts · \(entityResult.arcCount) arcs")
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
+                                if !entityResult.relatedThemes.isEmpty {
+                                    Text(entityResult.relatedThemes.joined(separator: " · "))
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                } else if !entityResult.relatedPeople.isEmpty {
+                                    Text(entityResult.relatedPeople.joined(separator: " · "))
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
                             }
                         }
                     }
@@ -66,14 +78,20 @@ struct SearchScreen: View {
                         Text("No arc matches.")
                             .foregroundStyle(.secondary)
                     } else {
-                        ForEach(result.arcs) { arc in
+                        ForEach(result.arcs) { arcResult in
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(arc.title)
+                                Text(arcResult.summary.arc.title)
                                     .font(.headline)
-                                Text(arc.summary)
+                                Text(arcResult.summary.arc.summary)
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                                     .lineLimit(2)
+                                if !arcResult.summary.relatedMemories.isEmpty {
+                                    Text(arcResult.summary.relatedMemories.map(\.title).joined(separator: " | "))
+                                        .font(.caption)
+                                        .foregroundStyle(.tertiary)
+                                        .lineLimit(1)
+                                }
                             }
                         }
                     }
@@ -84,14 +102,20 @@ struct SearchScreen: View {
                         Text("No reflection matches.")
                             .foregroundStyle(.secondary)
                     } else {
-                        ForEach(result.reflections) { reflection in
+                        ForEach(result.reflections) { reflectionResult in
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(reflection.title)
+                                Text(reflectionResult.summary.reflection.title)
                                     .font(.headline)
-                                Text(reflection.body)
+                                Text(reflectionResult.summary.reflection.body)
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                                     .lineLimit(2)
+                                if !reflectionResult.summary.relatedMemories.isEmpty {
+                                    Text(reflectionResult.summary.relatedMemories.map(\.title).joined(separator: " | "))
+                                        .font(.caption)
+                                        .foregroundStyle(.tertiary)
+                                        .lineLimit(1)
+                                }
                             }
                         }
                     }

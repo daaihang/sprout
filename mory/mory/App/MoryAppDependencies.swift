@@ -24,6 +24,8 @@ private final class MissingMemoryRepository: MoryMemoryRepositorying {
     func fetchMemoryDetail(recordID: UUID) throws -> MemoryDetailSnapshot? { fail() }
     func fetchRecordAnalysis(recordID: UUID) throws -> RecordAnalysisSnapshot? { fail() }
     func search(query: String, limit: Int?) throws -> SearchSnapshot { fail() }
+    func fetchEntityDetails(kind: EntityKind, limit: Int?) throws -> [EntityDetailSnapshot] { fail() }
+    func fetchEntityDetail(entityID: UUID) throws -> EntityDetailSnapshot? { fail() }
     func fetchPeopleSummaries(limit: Int?) throws -> [PersonMemorySummary] { fail() }
     func fetchThemeSummaries(limit: Int?) throws -> [ThemeMemorySummary] { fail() }
     func fetchGraphOverview(limitPerKind: Int?, edgeLimit: Int?) throws -> GraphOverviewSnapshot { fail() }

@@ -149,14 +149,6 @@ struct HomeBoardSnapshot: Hashable, Sendable {
     let items: [HomeBoardItemSnapshot]
 }
 
-struct SearchSnapshot: Hashable, Sendable {
-    var query: String
-    var memories: [MemorySummary]
-    var entities: [EntityNode]
-    var arcs: [TemporalArc]
-    var reflections: [ReflectionSnapshot]
-}
-
 struct PersonMemorySummary: Identifiable, Hashable, Sendable {
     let entity: EntityNode
     let artifactCount: Int
@@ -175,6 +167,57 @@ struct ThemeMemorySummary: Identifiable, Hashable, Sendable {
     let arcCount: Int
 
     var id: UUID { entity.id }
+}
+
+struct EntityDetailSnapshot: Identifiable, Hashable, Sendable {
+    let entity: EntityNode
+    let artifactCount: Int
+    let relatedMemories: [MemorySummary]
+    let relatedThemes: [String]
+    let relatedPeople: [String]
+    let relatedReflections: [ReflectionSummarySnapshot]
+    let relatedArcs: [TemporalArcSummarySnapshot]
+    let edges: [EntityEdge]
+
+    var id: UUID { entity.id }
+}
+
+struct SearchMemoryResultSnapshot: Identifiable, Hashable, Sendable {
+    let memory: MemorySummary
+
+    var id: UUID { memory.id }
+}
+
+struct SearchEntityResultSnapshot: Identifiable, Hashable, Sendable {
+    let entity: EntityNode
+    let artifactCount: Int
+    let relatedMemoryCount: Int
+    let relatedThemes: [String]
+    let relatedPeople: [String]
+    let reflectionCount: Int
+    let arcCount: Int
+
+    var id: UUID { entity.id }
+}
+
+struct SearchArcResultSnapshot: Identifiable, Hashable, Sendable {
+    let summary: TemporalArcSummarySnapshot
+
+    var id: UUID { summary.id }
+}
+
+struct SearchReflectionResultSnapshot: Identifiable, Hashable, Sendable {
+    let summary: ReflectionSummarySnapshot
+
+    var id: UUID { summary.id }
+}
+
+struct SearchSnapshot: Hashable, Sendable {
+    var query: String
+    var memories: [SearchMemoryResultSnapshot]
+    var entities: [SearchEntityResultSnapshot]
+    var arcs: [SearchArcResultSnapshot]
+    var reflections: [SearchReflectionResultSnapshot]
 }
 
 struct GraphEntitySectionSnapshot: Identifiable, Hashable, Sendable {
@@ -241,6 +284,8 @@ protocol MoryMemoryRepositorying: AnyObject {
     func fetchMemoryDetail(recordID: UUID) throws -> MemoryDetailSnapshot?
     func fetchRecordAnalysis(recordID: UUID) throws -> RecordAnalysisSnapshot?
     func search(query: String, limit: Int?) throws -> SearchSnapshot
+    func fetchEntityDetails(kind: EntityKind, limit: Int?) throws -> [EntityDetailSnapshot]
+    func fetchEntityDetail(entityID: UUID) throws -> EntityDetailSnapshot?
     func fetchPeopleSummaries(limit: Int?) throws -> [PersonMemorySummary]
     func fetchThemeSummaries(limit: Int?) throws -> [ThemeMemorySummary]
     func fetchGraphOverview(limitPerKind: Int?, edgeLimit: Int?) throws -> GraphOverviewSnapshot

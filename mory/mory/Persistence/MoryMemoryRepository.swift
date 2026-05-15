@@ -157,6 +157,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             return SearchSnapshot(query: query, memories: [], entities: [], arcs: [], reflections: [])
         }
 
+        let graphContext = try loadGraphContext()
         let memories = try fetchRecentMemories(limit: nil)
             .filter { memory in
                 [
@@ -166,32 +167,41 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
                     memory.record.userMood ?? ""
                 ].containsSearchTerm(needle)
             }
+            .map(SearchMemoryResultSnapshot.init(memory:))
 
-        let entities = try modelContext.fetch(
-            FetchDescriptor<EntityNodeStore>(sortBy: [SortDescriptor(\.updatedAt, order: .reverse)])
-        )
-        .map(\.domainModel)
-        .filter { entity in
-            [entity.displayName, entity.canonicalName, entity.summary].containsSearchTerm(needle)
-        }
+        let entities = graphContext.entities
+            .filter { entity in
+                [entity.displayName, entity.canonicalName, entity.summary].containsSearchTerm(needle)
+            }
+            .map { makeSearchEntityResult(entity: $0, graphContext: graphContext) }
 
-        let arcs = try modelContext.fetch(
-            FetchDescriptor<TemporalArcStore>(sortBy: [SortDescriptor(\.updatedAt, order: .reverse)])
-        )
-        .map(\.domainModel)
-        .filter { arc in
+        let arcs = graphContext.arcs
+            .filter { arc in
             [arc.title, arc.summary, arc.dominantTheme ?? "", arc.dominantEntityName ?? ""].containsSearchTerm(needle)
                 || arc.themeLabels.containsSearchTerm(needle)
                 || arc.entityNames.containsSearchTerm(needle)
-        }
+            }
+            .sorted { $0.updatedAt > $1.updatedAt }
+            .map { arc in
+                SearchArcResultSnapshot(
+                    summary: TemporalArcSummarySnapshot(
+                        arc: arc,
+                        relatedMemories: relatedMemories(
+                            recordIDs: arc.sourceRecordIDs,
+                            memoriesByRecordID: graphContext.memoriesByRecordID,
+                            limit: 3
+                        ),
+                        linkedReflection: graphContext.reflections.first(where: { $0.linkedTemporalArcID == arc.id })
+                    )
+                )
+            }
 
-        let reflections = try modelContext.fetch(
-            FetchDescriptor<ReflectionSnapshotStore>(sortBy: [SortDescriptor(\.createdAt, order: .reverse)])
-        )
-        .map(\.domainModel)
-        .filter { reflection in
-            [reflection.title, reflection.body, reflection.evidenceSummary].containsSearchTerm(needle)
-        }
+        let reflections = try fetchReflectionSummaries(limit: nil)
+            .filter { summary in
+                let reflection = summary.reflection
+                return [reflection.title, reflection.body, reflection.evidenceSummary].containsSearchTerm(needle)
+            }
+            .map(SearchReflectionResultSnapshot.init(summary:))
 
         return SearchSnapshot(
             query: query,
@@ -200,6 +210,23 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             arcs: applyLimit(limit, to: arcs),
             reflections: applyLimit(limit, to: reflections)
         )
+    }
+
+    func fetchEntityDetails(kind: EntityKind, limit: Int? = nil) throws -> [EntityDetailSnapshot] {
+        let graphContext = try loadGraphContext()
+        let entities = graphContext.entities
+            .filter { $0.kind == kind }
+            .sorted { $0.updatedAt > $1.updatedAt }
+            .map { makeEntityDetailSnapshot(entity: $0, graphContext: graphContext) }
+        return applyLimit(limit, to: entities)
+    }
+
+    func fetchEntityDetail(entityID: UUID) throws -> EntityDetailSnapshot? {
+        let graphContext = try loadGraphContext()
+        guard let entity = graphContext.entities.first(where: { $0.id == entityID }) else {
+            return nil
+        }
+        return makeEntityDetailSnapshot(entity: entity, graphContext: graphContext)
     }
 
     func fetchPeopleSummaries(limit: Int? = nil) throws -> [PersonMemorySummary] {
@@ -789,52 +816,116 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     }
 
     private func makePersonSummary(entity: EntityNode, graphContext: GraphContext) -> PersonMemorySummary {
-        let artifactIDs = Set(graphContext.links.filter { $0.entityID == entity.id }.map(\.artifactID))
-        let relatedArtifacts = graphContext.artifacts.filter { artifactIDs.contains($0.id) }
-        let relatedRecordIDs = Array(Set(relatedArtifacts.map(\.recordID)))
-        let relatedMemories = relatedRecordIDs.compactMap { graphContext.memoriesByRecordID[$0] }
-            .sorted { $0.record.updatedAt > $1.record.updatedAt }
-        let themeLabels = Array(
-            Set(
-                graphContext.analyses
-                    .filter { relatedRecordIDs.contains($0.recordID) }
-                    .flatMap(\.themes)
-            )
-        )
-        .sorted()
-        let reflectionCount = graphContext.reflections.filter { $0.sourceEntityIDs.contains(entity.id) }.count
+        let detail = makeEntityDetailSnapshot(entity: entity, graphContext: graphContext)
 
         return PersonMemorySummary(
             entity: entity,
-            artifactCount: relatedArtifacts.count,
-            relatedMemories: Array(relatedMemories.prefix(3)),
-            themeLabels: Array(themeLabels.prefix(3)),
-            reflectionCount: reflectionCount
+            artifactCount: detail.artifactCount,
+            relatedMemories: Array(detail.relatedMemories.prefix(3)),
+            themeLabels: Array(detail.relatedThemes.prefix(3)),
+            reflectionCount: detail.relatedReflections.count
         )
     }
 
     private func makeThemeSummary(entity: EntityNode, graphContext: GraphContext) -> ThemeMemorySummary {
-        let artifactIDs = Set(graphContext.links.filter { $0.entityID == entity.id }.map(\.artifactID))
-        let relatedArtifacts = graphContext.artifacts.filter { artifactIDs.contains($0.id) }
-        let relatedRecordIDs = Array(Set(relatedArtifacts.map(\.recordID)))
-        let relatedMemories = relatedRecordIDs.compactMap { graphContext.memoriesByRecordID[$0] }
-            .sorted { $0.record.updatedAt > $1.record.updatedAt }
-
-        let relatedPeople = Set(
-            graphContext.links
-                .filter { artifactIDs.contains($0.artifactID) }
-                .compactMap { link in
-                    graphContext.entities.first { $0.id == link.entityID && $0.kind == .person }?.displayName
-                }
-        )
-        let arcCount = graphContext.arcs.filter { $0.sourceEntityIDs.contains(entity.id) }.count
+        let detail = makeEntityDetailSnapshot(entity: entity, graphContext: graphContext)
 
         return ThemeMemorySummary(
             entity: entity,
+            artifactCount: detail.artifactCount,
+            relatedMemories: Array(detail.relatedMemories.prefix(3)),
+            relatedPeople: Array(detail.relatedPeople.prefix(3)),
+            arcCount: detail.relatedArcs.count
+        )
+    }
+
+    private func makeEntityDetailSnapshot(entity: EntityNode, graphContext: GraphContext) -> EntityDetailSnapshot {
+        let artifactIDs = Set(graphContext.links.filter { $0.entityID == entity.id }.map(\.artifactID))
+        let relatedArtifacts = graphContext.artifacts.filter { artifactIDs.contains($0.id) }
+        let relatedRecordIDs = Array(Set(relatedArtifacts.map(\.recordID)))
+        let entityMemories = relatedRecordIDs.compactMap { graphContext.memoriesByRecordID[$0] }
+            .sorted { $0.record.updatedAt > $1.record.updatedAt }
+
+        let relatedEntityIDs = Set(
+            graphContext.links
+                .filter { artifactIDs.contains($0.artifactID) }
+                .map(\.entityID)
+        )
+        let relatedEntities = graphContext.entities.filter { relatedEntityIDs.contains($0.id) && $0.id != entity.id }
+        let relatedThemes = relatedEntities
+            .filter { $0.kind == .theme }
+            .map(\.displayName)
+            .uniquedSorted()
+        let relatedPeople = relatedEntities
+            .filter { $0.kind == .person }
+            .map(\.displayName)
+            .uniquedSorted()
+
+        let relatedArcs = graphContext.arcs
+            .filter { $0.sourceEntityIDs.contains(entity.id) }
+            .sorted { $0.updatedAt > $1.updatedAt }
+            .map { arc in
+                TemporalArcSummarySnapshot(
+                    arc: arc,
+                    relatedMemories: relatedMemories(
+                        recordIDs: arc.sourceRecordIDs,
+                        memoriesByRecordID: graphContext.memoriesByRecordID,
+                        limit: 3
+                    ),
+                    linkedReflection: graphContext.reflections.first(where: { $0.linkedTemporalArcID == arc.id })
+                )
+            }
+
+        let relatedReflections = graphContext.reflections
+            .filter { $0.sourceEntityIDs.contains(entity.id) }
+            .sorted { $0.createdAt > $1.createdAt }
+            .map { reflection in
+                let linkedArc = reflection.linkedTemporalArcID.flatMap { arcID in
+                    graphContext.arcs.first(where: { $0.id == arcID })
+                }
+                let relatedIDs = linkedArc.map { mergeUniqueIDs(reflection.sourceRecordIDs, $0.sourceRecordIDs) } ?? reflection.sourceRecordIDs
+                return ReflectionSummarySnapshot(
+                    reflection: reflection,
+                    linkedArc: linkedArc,
+                    relatedMemories: relatedMemories(
+                        recordIDs: relatedIDs,
+                        memoriesByRecordID: graphContext.memoriesByRecordID,
+                        limit: 3
+                    )
+                )
+            }
+
+        let edges = graphContext.edges
+            .filter { $0.fromEntityID == entity.id || $0.toEntityID == entity.id }
+            .sorted {
+                if $0.weight == $1.weight {
+                    return $0.lastSeenAt > $1.lastSeenAt
+                }
+                return $0.weight > $1.weight
+            }
+
+        return EntityDetailSnapshot(
+            entity: entity,
             artifactCount: relatedArtifacts.count,
-            relatedMemories: Array(relatedMemories.prefix(3)),
-            relatedPeople: Array(relatedPeople).sorted().prefix(3).map { $0 },
-            arcCount: arcCount
+            relatedMemories: Array(entityMemories.prefix(5)),
+            relatedThemes: Array(relatedThemes.prefix(5)),
+            relatedPeople: Array(relatedPeople.prefix(5)),
+            relatedReflections: Array(relatedReflections.prefix(5)),
+            relatedArcs: Array(relatedArcs.prefix(5)),
+            edges: Array(edges.prefix(8))
+        )
+    }
+
+    private func makeSearchEntityResult(entity: EntityNode, graphContext: GraphContext) -> SearchEntityResultSnapshot {
+        let detail = makeEntityDetailSnapshot(entity: entity, graphContext: graphContext)
+        return SearchEntityResultSnapshot(
+            entity: entity,
+            artifactCount: detail.artifactCount,
+            relatedMemoryCount: detail.relatedMemories.count,
+            relatedThemes: Array(detail.relatedThemes.prefix(3)),
+            relatedPeople: Array(detail.relatedPeople.prefix(3)),
+            reflectionCount: detail.relatedReflections.count,
+            arcCount: detail.relatedArcs.count
         )
     }
 
@@ -1012,5 +1103,9 @@ private extension Array where Element == String {
             value.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
                 .contains(needle)
         }
+    }
+
+    func uniquedSorted() -> [String] {
+        Array(Set(self)).sorted()
     }
 }
