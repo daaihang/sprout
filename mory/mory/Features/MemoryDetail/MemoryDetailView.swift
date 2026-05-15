@@ -7,6 +7,7 @@ struct MemoryDetailView: View {
 
     @State private var snapshot: MemoryDetailSnapshot?
     @State private var errorMessage: String?
+    @State private var isRefreshingPipeline = false
 
     var body: some View {
         List {
@@ -96,6 +97,24 @@ struct MemoryDetailView: View {
                 }
 
                 Section("Analysis") {
+                    if let pipelineStatus = snapshot.pipelineStatus {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(pipelineStatus.userLabel)
+                                .font(.headline)
+                            if let lastError = pipelineStatus.lastError?.trimmedOrNil {
+                                Text(lastError)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            if pipelineStatus.stage == .failed || pipelineStatus.stage == .pending {
+                                Button(isRefreshingPipeline ? "Retrying..." : "Retry Analysis") {
+                                    Task { await refreshPipeline() }
+                                }
+                                .disabled(isRefreshingPipeline)
+                            }
+                        }
+                    }
+
                     if let analysis = snapshot.analysis {
                         VStack(alignment: .leading, spacing: 8) {
                             Text(analysis.summary)
@@ -218,6 +237,20 @@ struct MemoryDetailView: View {
             errorMessage = snapshot == nil ? "Memory not found." : nil
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    private func refreshPipeline() async {
+        guard !isRefreshingPipeline else { return }
+        isRefreshingPipeline = true
+        defer { isRefreshingPipeline = false }
+
+        do {
+            try await memoryRepository.refreshMemoryPipeline(recordID: recordID)
+            await load()
+        } catch {
+            errorMessage = error.localizedDescription
+            await load()
         }
     }
 }

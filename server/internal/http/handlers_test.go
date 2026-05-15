@@ -350,6 +350,74 @@ func TestAuthAppleRequiresIdentityTokenWhenDevDisabled(t *testing.T) {
 	}
 }
 
+func TestCanonicalAnalysisRoutesAndSchema(t *testing.T) {
+	store, err := db.NewSQLiteStore(":memory:")
+	if err != nil {
+		t.Fatalf("new sqlite store: %v", err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+
+	cfg := config.Config{
+		AppEnv:           "test",
+		Port:             "8080",
+		JWTSecret:        "test-secret",
+		JWTIssuer:        "sprout-test",
+		DevAuthEnabled:   true,
+		DevAuthUserID:    "dev-user",
+		DefaultTier:      "seed",
+		SubscriptionMode: "mock",
+		AIMode:           config.AIModeMock,
+		AIProvider:       config.AIProviderMock,
+	}
+	authenticator := auth.NewAuthenticator(cfg.JWTSecret, cfg.JWTIssuer, 24*time.Hour)
+	server := NewServer(Dependencies{
+		Config:        cfg,
+		Logger:        slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Authenticator: authenticator,
+		AppleVerifier: nil,
+		AIProvider:    ai.NewMockProvider(),
+		Subscription:  subscription.NewService("mock", "seed"),
+		PushTokens:    store,
+		UserProfiles:  store,
+	})
+
+	token := issueDevToken(t, server, `{"identity_token":"tester-schema"}`)
+	body := `{
+		"schema_version":"record_aggregate.v1",
+		"client_version":"mory.v3",
+		"analysis_reason":"capture_ingest",
+		"record_shell":{"raw_text":"A local-first note about Linh.","capture_source":"composer"},
+		"artifacts":[{"id":"a1","kind":"text","title":"Note","summary":"Local-first note","text_content":"A local-first note about Linh.","metadata":{"source":"composer"}}],
+		"known_entities":[{"id":"p1","kind":"person","name":"Linh","aliases":["Linh Tran"]}]
+	}`
+
+	analyzeReq := httptest.NewRequest(http.MethodPost, "/api/analysis/records", bytes.NewBufferString(body))
+	analyzeReq.Header.Set("Authorization", "Bearer "+token)
+	analyzeReq.Header.Set("Content-Type", "application/json")
+	analyzeRec := httptest.NewRecorder()
+	server.Handler().ServeHTTP(analyzeRec, analyzeReq)
+	if analyzeRec.Code != http.StatusOK {
+		t.Fatalf("canonical analyze status = %d, body = %s", analyzeRec.Code, analyzeRec.Body.String())
+	}
+
+	previewReq := httptest.NewRequest(http.MethodPost, "/api/analysis/preview", bytes.NewBufferString(body))
+	previewReq.Header.Set("Content-Type", "application/json")
+	previewRec := httptest.NewRecorder()
+	server.Handler().ServeHTTP(previewRec, previewReq)
+	if previewRec.Code != http.StatusOK {
+		t.Fatalf("canonical preview status = %d, body = %s", previewRec.Code, previewRec.Body.String())
+	}
+
+	legacyReq := httptest.NewRequest(http.MethodPost, "/api/records/analyze", bytes.NewBufferString(body))
+	legacyReq.Header.Set("Authorization", "Bearer "+token)
+	legacyReq.Header.Set("Content-Type", "application/json")
+	legacyRec := httptest.NewRecorder()
+	server.Handler().ServeHTTP(legacyRec, legacyReq)
+	if legacyRec.Code != http.StatusNotFound {
+		t.Fatalf("legacy analyze route should be removed, got %d", legacyRec.Code)
+	}
+}
+
 func issueDevToken(t *testing.T, server *Server, body string) string {
 	t.Helper()
 	req := httptest.NewRequest(http.MethodPost, "/auth/apple", bytes.NewBufferString(body))

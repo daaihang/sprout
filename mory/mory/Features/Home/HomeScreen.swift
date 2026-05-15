@@ -39,6 +39,7 @@ struct HomeScreen: View {
 
     @State private var memories: [MemorySummary] = []
     @State private var homeBoard: HomeBoardSnapshot?
+    @State private var pipelineStatuses: [PipelineStatusSummary] = []
     @State private var isPresentingComposer = false
     @State private var errorMessage: String?
 
@@ -74,6 +75,30 @@ struct HomeScreen: View {
                     } else {
                         Text("Your day board will fill as captures land in the composition layer.")
                             .foregroundStyle(.secondary)
+                    }
+                }
+
+                Section("Pipeline Status") {
+                    if pipelineStatuses.isEmpty {
+                        Text("Capture pipeline status will appear here once local memories start accumulating.")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(pipelineStatuses) { item in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(item.title)
+                                    .font(.headline)
+                                Text(item.status.userLabel)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                if let lastError = item.status.lastError?.trimmedOrNil {
+                                    Text(lastError)
+                                        .font(.caption)
+                                        .foregroundStyle(.orange)
+                                        .lineLimit(2)
+                                }
+                            }
+                            .padding(.vertical, 2)
+                        }
                     }
                 }
             }
@@ -136,6 +161,7 @@ struct HomeScreen: View {
             memories = try memoryRepository.fetchRecentMemories(limit: nil)
             if surface == .home {
                 homeBoard = try memoryRepository.fetchHomeBoard(for: .now, limit: 8)
+                pipelineStatuses = try memoryRepository.fetchPipelineStatusSummaries(limit: 8)
             }
             errorMessage = nil
         } catch {
@@ -164,6 +190,9 @@ private struct MemoryRow: View {
                     Text(mood)
                 }
                 Text("\(summary.artifactCount) artifact\(summary.artifactCount == 1 ? "" : "s")")
+                if let pipelineStatus = summary.pipelineStatus {
+                    Text(pipelineStatus.userLabel)
+                }
                 Text(summary.record.updatedAt.formatted(date: .abbreviated, time: .shortened))
             }
             .font(.caption)

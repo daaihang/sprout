@@ -48,6 +48,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
                 artifacts: [.text(title: "Dinner plan", body: "Met Linh after dinner and mapped the next quarter plan.")]
             )
         )
+        let latestMemory = try XCTUnwrap(repository.fetchRecentMemories(limit: 1).first)
+        try await repository.refreshMemoryPipeline(recordID: latestMemory.record.id)
 
         let themes = try repository.fetchThemeSummaries(limit: 10)
         let overview = try repository.fetchGraphOverview(limitPerKind: 10, edgeLimit: 10)
@@ -76,6 +78,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
                 artifacts: [.text(title: "Late train insight", body: "Missed the express home after dinner with Linh and the quarter plan clicked into place.")]
             )
         )
+        try await repository.refreshMemoryPipeline(recordID: memory.record.id)
 
         let detail = try XCTUnwrap(repository.fetchMemoryDetail(recordID: memory.record.id))
         let arcSummaries = try repository.fetchTemporalArcSummaries(limit: 10)
@@ -118,6 +121,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
                 artifacts: [.text(title: "Quarter planning walk", body: "Walked home with Linh in the rain and clarified the quarter planning priorities.")]
             )
         )
+        let latestMemory = try XCTUnwrap(repository.fetchRecentMemories(limit: 1).first)
+        try await repository.refreshMemoryPipeline(recordID: latestMemory.record.id)
 
         let people = try repository.fetchEntityDetails(kind: .person, limit: 10)
         let person = try XCTUnwrap(people.first(where: { $0.entity.displayName == "Linh" }))
@@ -146,6 +151,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
                 artifacts: [.text(title: "Planning dinner", body: "Dinner with Linh turned into a planning session for the next quarter.")]
             )
         )
+        let latestMemory = try XCTUnwrap(repository.fetchRecentMemories(limit: 1).first)
+        try await repository.refreshMemoryPipeline(recordID: latestMemory.record.id)
 
         let result = try repository.search(query: "planning", limit: 10)
 
@@ -156,6 +163,38 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertTrue(result.entities.contains(where: { $0.entity.kind == .theme || $0.entity.kind == .person }))
         XCTAssertTrue(result.arcs.contains(where: { !$0.summary.relatedMemories.isEmpty }))
         XCTAssertTrue(result.reflections.contains(where: { !$0.summary.relatedMemories.isEmpty }))
+    }
+
+    func testCreateMemoryStillSucceedsWhenAnalysisHasNotRunYet() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: FailingRecordAnalysisService()
+        )
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Offline save",
+                rawText: "This should save even if analysis is unavailable.",
+                mood: "steady",
+                inputContext: "typed in debug",
+                captureSource: .composer,
+                artifacts: [.text(title: "Offline save", body: "This should save even if analysis is unavailable.")]
+            )
+        )
+
+        XCTAssertEqual(memory.record.rawText, "This should save even if analysis is unavailable.")
+        XCTAssertEqual(memory.pipelineStatus?.stage, .pending)
+        XCTAssertNil(try repository.fetchRecordAnalysis(recordID: memory.record.id))
+
+        do {
+            try await repository.refreshMemoryPipeline(recordID: memory.record.id)
+            XCTFail("Expected refresh pipeline to fail when analysis service is unavailable")
+        } catch {
+            let status = try repository.fetchPipelineStatus(recordID: memory.record.id)
+            XCTAssertEqual(status?.stage, .failed)
+            XCTAssertNotNil(status?.lastError)
+        }
     }
 }
 
@@ -189,5 +228,19 @@ private struct StubRecordAnalysisService: RecordAnalysisServing {
             reflectionHint: "Watch for repeated planning moments.",
             createdAt: record.updatedAt
         )
+    }
+}
+
+private struct FailingRecordAnalysisService: RecordAnalysisServing {
+    struct StubError: LocalizedError {
+        var errorDescription: String? { "Analysis service unavailable." }
+    }
+
+    func analyze(
+        record: RecordShell,
+        artifacts: [Artifact],
+        knownEntities: [EntityReference]
+    ) async throws -> RecordAnalysisSnapshot {
+        throw StubError()
     }
 }

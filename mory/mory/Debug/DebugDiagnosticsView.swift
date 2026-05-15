@@ -5,6 +5,7 @@ struct DebugDiagnosticsView: View {
 
     @State private var fixture: DebugMemoryFixtureSnapshot?
     @State private var graphOverview = GraphOverviewSnapshot(entitySections: [], topEdges: [], people: [], themes: [])
+    @State private var pipelineStatuses: [PipelineStatusSummary] = []
     @State private var errorMessage: String?
     @State private var isSeeding = false
 
@@ -34,10 +35,36 @@ struct DebugDiagnosticsView: View {
                 Section("Chain Status") {
                     DebugChainRow(title: "Record", isComplete: true, detail: fixture.chain.record.id.uuidString)
                     DebugChainRow(title: "Artifact", isComplete: !fixture.chain.artifacts.isEmpty, detail: "\(fixture.chain.artifacts.count) item(s)")
-                    DebugChainRow(title: "Analysis", isComplete: fixture.chain.analysis != nil, detail: fixture.chain.analysis?.summary ?? "Missing")
+                    DebugChainRow(
+                        title: "Analysis",
+                        isComplete: fixture.chain.analysis != nil,
+                        detail: fixture.chain.pipelineStatus?.userLabel ?? fixture.chain.analysis?.summary ?? "Missing"
+                    )
                     DebugChainRow(title: "Graph", isComplete: !fixture.chain.entities.isEmpty && !fixture.chain.links.isEmpty, detail: "\(fixture.chain.entities.count) entities / \(fixture.chain.links.count) links")
                     DebugChainRow(title: "Arc", isComplete: !fixture.chain.arcs.isEmpty, detail: fixture.chain.arcs.first?.title ?? "Missing")
                     DebugChainRow(title: "Reflection", isComplete: !fixture.chain.reflections.isEmpty, detail: fixture.chain.reflections.first?.title ?? "Missing")
+                }
+
+                Section("Pipeline Diagnostics") {
+                    if pipelineStatuses.isEmpty {
+                        Text("No pipeline statuses recorded yet.")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(pipelineStatuses) { item in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(item.title)
+                                    .font(.headline)
+                                Text(item.status.userLabel)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                if let lastError = item.status.lastError?.trimmedOrNil {
+                                    Text(lastError)
+                                        .font(.caption)
+                                        .foregroundStyle(.orange)
+                                }
+                            }
+                        }
+                    }
                 }
 
                 Section("Analysis Inspector") {
@@ -151,7 +178,12 @@ struct DebugDiagnosticsView: View {
 
         do {
             fixture = try await DebugSeedService.seed(repository: memoryRepository)
+            if let fixture {
+                try await memoryRepository.refreshMemoryPipeline(recordID: fixture.recordID)
+                self.fixture = try memoryRepository.fetchDebugFixtureSnapshot(recordID: fixture.recordID)
+            }
             graphOverview = try memoryRepository.fetchGraphOverview(limitPerKind: 6, edgeLimit: 8)
+            pipelineStatuses = try memoryRepository.fetchPipelineStatusSummaries(limit: 12)
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -165,6 +197,7 @@ struct DebugDiagnosticsView: View {
                 fixture = try memoryRepository.fetchDebugFixtureSnapshot(recordID: latest.record.id)
             }
             graphOverview = try memoryRepository.fetchGraphOverview(limitPerKind: 6, edgeLimit: 8)
+            pipelineStatuses = try memoryRepository.fetchPipelineStatusSummaries(limit: 12)
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription

@@ -53,7 +53,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AuthResponse"
-  /api/records/analyze:
+  /api/analysis/records:
     post:
       summary: Analyze a journal record
       security:
@@ -71,6 +71,22 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AnalyzeResponseEnvelope"
+  /api/analysis/preview:
+    post:
+      summary: Analyze a journal record preview
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyzeRequest"
+      responses:
+        "200":
+          description: Structured preview analyze response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyzePreviewResponseEnvelope"
   /api/subscription/verify:
     get:
       summary: Verify subscription tier for current user
@@ -135,40 +151,80 @@ components:
               type: string
     AnalyzeRequest:
       type: object
-      required: [record]
+      required: [schema_version, analysis_reason, record_shell, artifacts, known_entities]
       properties:
-        record:
+        schema_version:
+          type: string
+        client_version:
+          type: string
+        analysis_reason:
+          type: string
+        record_shell:
           type: object
-          required: [content]
+          required: [raw_text]
           properties:
             id:
               type: string
-            content:
-              type: string
             created_at:
               type: string
-            tags:
-              type: array
-              items:
-                type: string
-        persons:
+            updated_at:
+              type: string
+            raw_text:
+              type: string
+            capture_source:
+              type: string
+            user_mood:
+              type: string
+            user_intensity:
+              type: integer
+            input_context:
+              type: string
+        artifacts:
           type: array
           items:
             type: object
-            required: [name]
+            required: [kind]
             properties:
               id:
                 type: string
+              kind:
+                type: string
+              title:
+                type: string
+              summary:
+                type: string
+              text_content:
+                type: string
+              metadata:
+                type: object
+                additionalProperties:
+                  type: string
+        known_entities:
+          type: array
+          items:
+            type: object
+            required: [kind, name]
+            properties:
+              id:
+                type: string
+              kind:
+                type: string
               name:
                 type: string
-              relationship:
-                type: string
-              last_mentioned_at:
-                type: string
+              aliases:
+                type: array
+                items:
+                  type: string
+              confidence:
+                type: number
     AnalyzeResponseEnvelope:
       type: object
       properties:
         tags:
+          type: array
+          items:
+            type: string
+        retrieval_terms:
           type: array
           items:
             type: string
@@ -181,32 +237,46 @@ components:
               type: integer
             confidence:
               type: number
-        persons:
+            interpretation:
+              type: string
+        entities:
           type: array
           items:
             type: object
             properties:
+              kind:
+                type: string
               name:
                 type: string
-              action:
+              canonical_name:
                 type: string
-              person_id:
+              aliases:
+                type: array
+                items:
+                  type: string
+              confidence:
+                type: number
+              source_artifact_ids:
+                type: array
+                items:
+                  type: string
+        candidate_edges:
+          type: array
+          items:
+            type: object
+            properties:
+              from_name:
+                type: string
+              from_kind:
+                type: string
+              to_name:
+                type: string
+              to_kind:
+                type: string
+              relation:
                 type: string
               confidence:
                 type: number
-        new_media:
-          type: array
-          items:
-            type: object
-            properties:
-              type:
-                type: string
-              title:
-                type: string
-              creator:
-                type: string
-              search_hint:
-                type: string
         insight:
           type: string
         summary:
@@ -226,6 +296,8 @@ components:
               properties:
                 question:
                   type: string
+                reason:
+                  type: string
                 expires_at:
                   type: string
         meta:
@@ -242,6 +314,13 @@ components:
                   type: integer
                 output_tokens:
                   type: integer
+    AnalyzePreviewResponseEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/AnalyzeResponseEnvelope"
+        - type: object
+          properties:
+            mode:
+              type: string
     SubscriptionStatus:
       type: object
       properties:

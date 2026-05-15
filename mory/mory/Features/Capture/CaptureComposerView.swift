@@ -13,6 +13,7 @@ struct CaptureComposerView: View {
     @State private var secondaryValue = ""
     @State private var isSaving = false
     @State private var errorMessage: String?
+    @State private var savedStatusMessage: String?
 
     var onSaved: (() -> Void)?
 
@@ -52,6 +53,14 @@ struct CaptureComposerView: View {
                     Section {
                         Text(errorMessage)
                             .foregroundStyle(.red)
+                            .font(.footnote)
+                    }
+                }
+
+                if let savedStatusMessage {
+                    Section {
+                        Text(savedStatusMessage)
+                            .foregroundStyle(.secondary)
                             .font(.footnote)
                     }
                 }
@@ -130,11 +139,21 @@ struct CaptureComposerView: View {
                 captureSource: selectedType.captureSource,
                 artifacts: artifactDrafts
             )
-            _ = try await memoryRepository.createMemory(from: draft)
+            let memory = try await memoryRepository.createMemory(from: draft)
+            savedStatusMessage = memory.pipelineStatus?.userLabel ?? "Saved locally"
+            errorMessage = nil
+            Task {
+                do {
+                    try await memoryRepository.refreshMemoryPipeline(recordID: memory.record.id)
+                } catch {
+                    // The memory is already persisted locally. Failure is surfaced from detail/debug surfaces.
+                }
+            }
             onSaved?()
             dismiss()
         } catch {
             errorMessage = error.localizedDescription
+            savedStatusMessage = nil
         }
     }
 }

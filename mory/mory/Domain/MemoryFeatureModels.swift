@@ -101,6 +101,7 @@ struct MemorySummary: Identifiable, Hashable, Sendable {
     let record: RecordShell
     let primaryArtifact: Artifact?
     let artifactCount: Int
+    let pipelineStatus: MemoryPipelineStatusSnapshot?
 
     var id: UUID { record.id }
 
@@ -123,10 +124,44 @@ struct MemoryDetailSnapshot: Hashable, Sendable {
     let record: RecordShell
     let artifacts: [Artifact]
     let analysis: RecordAnalysisSnapshot?
+    let pipelineStatus: MemoryPipelineStatusSnapshot?
     let entities: [EntityNode]
     let edges: [EntityEdge]
     let arcs: [TemporalArc]
     let reflections: [ReflectionSnapshot]
+}
+
+enum MemoryPipelineStage: String, Codable, CaseIterable, Identifiable, Sendable {
+    case pending
+    case running
+    case completed
+    case failed
+
+    var id: String { rawValue }
+}
+
+struct MemoryPipelineStatusSnapshot: Identifiable, Hashable, Sendable {
+    let recordID: UUID
+    let stage: MemoryPipelineStage
+    let lastError: String?
+    let lastAttemptAt: Date?
+    let completedAt: Date?
+    let updatedAt: Date
+
+    var id: UUID { recordID }
+
+    var userLabel: String {
+        switch stage {
+        case .pending:
+            return "Saved locally"
+        case .running:
+            return "Analyzing"
+        case .completed:
+            return "Analysis complete"
+        case .failed:
+            return "Analysis failed"
+        }
+    }
 }
 
 enum CompositionRenderValue: Hashable, Sendable {
@@ -254,6 +289,7 @@ struct DebugMemoryChainSnapshot: Hashable, Sendable {
     let record: RecordShell
     let artifacts: [Artifact]
     let analysis: RecordAnalysisSnapshot?
+    let pipelineStatus: MemoryPipelineStatusSnapshot?
     let entities: [EntityNode]
     let edges: [EntityEdge]
     let links: [ArtifactEntityLink]
@@ -276,13 +312,24 @@ struct DebugMemoryFixtureSnapshot: Hashable, Sendable {
     let chain: DebugMemoryChainSnapshot
 }
 
+struct PipelineStatusSummary: Identifiable, Hashable, Sendable {
+    let recordID: UUID
+    let title: String
+    let status: MemoryPipelineStatusSnapshot
+
+    var id: UUID { recordID }
+}
+
 @MainActor
 protocol MoryMemoryRepositorying: AnyObject {
     func createMemory(from draft: MemoryCaptureDraft) async throws -> MemorySummary
+    func refreshMemoryPipeline(recordID: UUID) async throws
     func fetchRecentMemories(limit: Int?) throws -> [MemorySummary]
     func fetchHomeBoard(for date: Date, limit: Int) throws -> HomeBoardSnapshot
     func fetchMemoryDetail(recordID: UUID) throws -> MemoryDetailSnapshot?
     func fetchRecordAnalysis(recordID: UUID) throws -> RecordAnalysisSnapshot?
+    func fetchPipelineStatus(recordID: UUID) throws -> MemoryPipelineStatusSnapshot?
+    func fetchPipelineStatusSummaries(limit: Int?) throws -> [PipelineStatusSummary]
     func search(query: String, limit: Int?) throws -> SearchSnapshot
     func fetchEntityDetails(kind: EntityKind, limit: Int?) throws -> [EntityDetailSnapshot]
     func fetchEntityDetail(entityID: UUID) throws -> EntityDetailSnapshot?

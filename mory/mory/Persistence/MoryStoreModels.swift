@@ -338,6 +338,32 @@ final class RecordAnalysisSnapshotStore {
 }
 
 @Model
+final class MemoryPipelineStatusStore {
+    @Attribute(.unique) var recordID: UUID
+    var stageRawValue: String
+    var lastError: String?
+    var lastAttemptAt: Date?
+    var completedAt: Date?
+    var updatedAt: Date
+
+    init(
+        recordID: UUID,
+        stageRawValue: String,
+        lastError: String? = nil,
+        lastAttemptAt: Date? = nil,
+        completedAt: Date? = nil,
+        updatedAt: Date
+    ) {
+        self.recordID = recordID
+        self.stageRawValue = stageRawValue
+        self.lastError = lastError
+        self.lastAttemptAt = lastAttemptAt
+        self.completedAt = completedAt
+        self.updatedAt = updatedAt
+    }
+}
+
+@Model
 final class ReflectionSnapshotStore {
     @Attribute(.unique) var id: UUID
     var typeRawValue: String

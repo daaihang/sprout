@@ -71,4 +71,41 @@ final class AnalyzeResponseMapperTests: XCTestCase {
         XCTAssertEqual(snapshot.followUpCandidates.first?.prompt, "What part of this moment do you want to remember a month from now?")
         XCTAssertEqual(snapshot.reflectionHint, "Track whether gratitude clusters around the same people or settings.")
     }
+
+    func testDecodeAndMapResponseWithoutTagsEntitiesAndRetrievalTerms() throws {
+        let json = """
+        {
+          "emotion": {
+            "label": "neutral"
+          },
+          "candidate_edges": [],
+          "insight": "No strong pattern yet.",
+          "summary": "",
+          "follow_up": null,
+          "meta": {
+            "provider": "mock",
+            "model": "mock-analyzer-v1",
+            "usage": {
+              "input_tokens": 5,
+              "output_tokens": 8
+            }
+          }
+        }
+        """
+
+        let envelope = try JSONDecoder().decode(AnalyzeResponseEnvelope.self, from: Data(json.utf8))
+        let snapshot = AnalyzeResponseMapper().map(
+            recordID: UUID(uuidString: "55555555-5555-5555-5555-555555555555")!,
+            response: envelope,
+            createdAt: Date(timeIntervalSince1970: 1_715_000_200)
+        )
+
+        XCTAssertEqual(snapshot.summary, "No strong pattern yet.")
+        XCTAssertTrue(snapshot.themes.isEmpty)
+        XCTAssertTrue(snapshot.retrievalTerms.isEmpty)
+        XCTAssertEqual(snapshot.emotionInterpretation, "neutral")
+        XCTAssertTrue(snapshot.entityMentions.isEmpty)
+        XCTAssertTrue(snapshot.candidateEdges.isEmpty)
+        XCTAssertTrue(snapshot.followUpCandidates.isEmpty)
+    }
 }

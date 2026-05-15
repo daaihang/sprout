@@ -12,6 +12,7 @@ struct MoryPersistenceStack {
         EntityEdgeStore.self,
         ArtifactEntityLinkStore.self,
         RecordAnalysisSnapshotStore.self,
+        MemoryPipelineStatusStore.self,
         ReflectionSnapshotStore.self,
         TemporalArcStore.self,
     ])

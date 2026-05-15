@@ -59,4 +59,31 @@ final class AnalyzeRequestBuilderTests: XCTestCase {
         XCTAssertEqual(payload.knownEntities.first?.kind, "person")
         XCTAssertEqual(payload.knownEntities.first?.name, "Linh")
     }
+
+    func testBuildKeepsCanonicalAnalysisContractFields() throws {
+        let now = Date(timeIntervalSince1970: 1_715_000_001)
+        let record = RecordShell(
+            createdAt: now,
+            updatedAt: now,
+            captureSource: .composer,
+            rawText: "A local-first note.",
+            userMood: nil,
+            userIntensity: nil,
+            inputContext: "debug"
+        )
+
+        let payload = AnalyzeRequestBuilder().build(
+            record: record,
+            artifacts: [],
+            knownEntities: [],
+            analysisReason: "preview"
+        )
+
+        XCTAssertEqual(payload.schemaVersion, "record_aggregate.v1")
+        XCTAssertEqual(payload.analysisReason, "preview")
+        XCTAssertEqual(payload.recordShell.rawText, "A local-first note.")
+        XCTAssertEqual(payload.recordShell.captureSource, "composer")
+        XCTAssertEqual(payload.knownEntities.count, 0)
+        XCTAssertEqual(payload.artifacts.count, 0)
+    }
 }

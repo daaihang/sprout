@@ -48,10 +48,73 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
 
         try upsert(recordShell: recordShell)
         try captureArtifacts.forEach { try upsert(artifact: $0) }
+        try upsertPipelineStatus(
+            MemoryPipelineStatusSnapshot(
+                recordID: recordID,
+                stage: .pending,
+                lastError: nil,
+                lastAttemptAt: nil,
+                completedAt: nil,
+                updatedAt: now
+            )
+        )
         try save()
-        try await runArchitecturePipeline(record: recordShell, artifacts: captureArtifacts)
 
-        return makeMemorySummary(record: recordShell, artifacts: captureArtifacts)
+        return makeMemorySummary(
+            record: recordShell,
+            artifacts: captureArtifacts,
+            pipelineStatus: try fetchPipelineStatus(recordID: recordID)
+        )
+    }
+
+    func refreshMemoryPipeline(recordID: UUID) async throws {
+        guard let record = try fetchRecordShell(id: recordID) else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+        let artifacts = try fetchArtifacts(recordID: recordID)
+        let attemptAt = Date.now
+
+        try upsertPipelineStatus(
+            MemoryPipelineStatusSnapshot(
+                recordID: recordID,
+                stage: .running,
+                lastError: nil,
+                lastAttemptAt: attemptAt,
+                completedAt: nil,
+                updatedAt: attemptAt
+            )
+        )
+        try save()
+
+        do {
+            try await runArchitecturePipeline(record: record, artifacts: artifacts)
+            let completedAt = Date.now
+            try upsertPipelineStatus(
+                MemoryPipelineStatusSnapshot(
+                    recordID: recordID,
+                    stage: .completed,
+                    lastError: nil,
+                    lastAttemptAt: attemptAt,
+                    completedAt: completedAt,
+                    updatedAt: completedAt
+                )
+            )
+            try save()
+        } catch {
+            let failedAt = Date.now
+            try upsertPipelineStatus(
+                MemoryPipelineStatusSnapshot(
+                    recordID: recordID,
+                    stage: .failed,
+                    lastError: error.localizedDescription,
+                    lastAttemptAt: attemptAt,
+                    completedAt: nil,
+                    updatedAt: failedAt
+                )
+            )
+            try save()
+            throw error
+        }
     }
 
     func fetchRecordShells() throws -> [RecordShell] {
@@ -65,7 +128,11 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         let records = try fetchRecordShells()
         let summaries = try records.map { record in
             let artifacts = try fetchArtifacts(recordID: record.id)
-            return makeMemorySummary(record: record, artifacts: artifacts)
+            return makeMemorySummary(
+                record: record,
+                artifacts: artifacts,
+                pipelineStatus: try fetchPipelineStatus(recordID: record.id)
+            )
         }
 
         guard let limit else { return summaries }
@@ -112,6 +179,32 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         return try modelContext.fetch(descriptor).first?.domainModel
     }
 
+    func fetchPipelineStatus(recordID: UUID) throws -> MemoryPipelineStatusSnapshot? {
+        let descriptor = FetchDescriptor<MemoryPipelineStatusStore>(
+            predicate: #Predicate { $0.recordID == recordID }
+        )
+        return try modelContext.fetch(descriptor).first?.domainModel
+    }
+
+    func fetchPipelineStatusSummaries(limit: Int? = nil) throws -> [PipelineStatusSummary] {
+        let statuses = try modelContext.fetch(
+            FetchDescriptor<MemoryPipelineStatusStore>(
+                sortBy: [SortDescriptor(\.updatedAt, order: .reverse)]
+            )
+        ).map(\.domainModel)
+
+        let summaries = try statuses.compactMap { status -> PipelineStatusSummary? in
+            guard let record = try fetchRecordShell(id: status.recordID) else { return nil }
+            return PipelineStatusSummary(
+                recordID: status.recordID,
+                title: record.rawText.firstMeaningfulLine ?? "Untitled Memory",
+                status: status
+            )
+        }
+
+        return applyLimit(limit, to: summaries)
+    }
+
     func fetchMemoryDetail(recordID: UUID) throws -> MemoryDetailSnapshot? {
         guard let record = try fetchRecordShell(id: recordID) else {
             return nil
@@ -136,6 +229,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             record: record,
             artifacts: artifacts,
             analysis: try fetchRecordAnalysis(recordID: recordID),
+            pipelineStatus: try fetchPipelineStatus(recordID: recordID),
             entities: entities,
             edges: edges,
             arcs: arcs,
@@ -383,6 +477,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
 
         let artifacts = try fetchArtifacts(recordID: recordID)
         let analysis = try fetchRecordAnalysis(recordID: recordID)
+        let pipelineStatus = try fetchPipelineStatus(recordID: recordID)
         let links = try modelContext.fetch(FetchDescriptor<ArtifactEntityLinkStore>()).map(\.domainModel)
             .filter { link in artifacts.contains(where: { $0.id == link.artifactID }) }
         let entityIDs = Set(links.map(\.entityID))
@@ -405,6 +500,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
                 record: record,
                 artifacts: artifacts,
                 analysis: analysis,
+                pipelineStatus: pipelineStatus,
                 entities: entities,
                 edges: edges,
                 links: links,
@@ -438,6 +534,18 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             existing.apply(domainModel: recordAnalysis)
         } else {
             modelContext.insert(RecordAnalysisSnapshotStore(domainModel: recordAnalysis))
+        }
+    }
+
+    func upsertPipelineStatus(_ pipelineStatus: MemoryPipelineStatusSnapshot) throws {
+        let recordID = pipelineStatus.recordID
+        let descriptor = FetchDescriptor<MemoryPipelineStatusStore>(
+            predicate: #Predicate { $0.recordID == recordID }
+        )
+        if let existing = try modelContext.fetch(descriptor).first {
+            existing.apply(domainModel: pipelineStatus)
+        } else {
+            modelContext.insert(MemoryPipelineStatusStore(domainModel: pipelineStatus))
         }
     }
 
@@ -929,11 +1037,16 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         )
     }
 
-    private func makeMemorySummary(record: RecordShell, artifacts: [Artifact]) -> MemorySummary {
+    private func makeMemorySummary(
+        record: RecordShell,
+        artifacts: [Artifact],
+        pipelineStatus: MemoryPipelineStatusSnapshot?
+    ) -> MemorySummary {
         MemorySummary(
             record: record,
             primaryArtifact: preferredPrimaryArtifact(from: artifacts),
-            artifactCount: artifacts.count
+            artifactCount: artifacts.count,
+            pipelineStatus: pipelineStatus
         )
     }
 

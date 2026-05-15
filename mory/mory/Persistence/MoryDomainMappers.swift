@@ -425,6 +425,40 @@ extension RecordAnalysisSnapshotStore {
 }
 
 @MainActor
+extension MemoryPipelineStatusStore {
+    convenience init(domainModel: MemoryPipelineStatusSnapshot) {
+        self.init(
+            recordID: domainModel.recordID,
+            stageRawValue: domainModel.stage.rawValue,
+            lastError: domainModel.lastError,
+            lastAttemptAt: domainModel.lastAttemptAt,
+            completedAt: domainModel.completedAt,
+            updatedAt: domainModel.updatedAt
+        )
+    }
+
+    var domainModel: MemoryPipelineStatusSnapshot {
+        MemoryPipelineStatusSnapshot(
+            recordID: recordID,
+            stage: MemoryPipelineStage(rawValue: stageRawValue) ?? .pending,
+            lastError: lastError,
+            lastAttemptAt: lastAttemptAt,
+            completedAt: completedAt,
+            updatedAt: updatedAt
+        )
+    }
+
+    func apply(domainModel: MemoryPipelineStatusSnapshot) {
+        recordID = domainModel.recordID
+        stageRawValue = domainModel.stage.rawValue
+        lastError = domainModel.lastError
+        lastAttemptAt = domainModel.lastAttemptAt
+        completedAt = domainModel.completedAt
+        updatedAt = domainModel.updatedAt
+    }
+}
+
+@MainActor
 extension ReflectionSnapshotStore {
     convenience init(domainModel: ReflectionSnapshot) {
         self.init(
