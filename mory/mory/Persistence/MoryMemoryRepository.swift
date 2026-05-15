@@ -210,6 +210,39 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         return Array(summaries.prefix(limit))
     }
 
+    func fetchTimeline(granularity: TimelineGranularity, limit: Int?) throws -> TimelineSnapshot {
+        let memories = try fetchRecentMemories(limit: limit)
+        let calendar = Calendar.current
+
+        let groups: [TimelineDayGroup]
+        switch granularity {
+        case .day:
+            let grouped = Dictionary(grouping: memories) { memory in
+                calendar.startOfDay(for: memory.record.updatedAt)
+            }
+            groups = grouped.map { date, mems in
+                TimelineDayGroup(date: date, memories: mems.sorted { $0.record.updatedAt > $1.record.updatedAt })
+            }.sorted { $0.date > $1.date }
+        case .week:
+            let grouped = Dictionary(grouping: memories) { memory in
+                calendar.dateInterval(of: .weekOfYear, for: memory.record.updatedAt)?.start ?? calendar.startOfDay(for: memory.record.updatedAt)
+            }
+            groups = grouped.map { date, mems in
+                TimelineDayGroup(date: date, memories: mems.sorted { $0.record.updatedAt > $1.record.updatedAt })
+            }.sorted { $0.date > $1.date }
+        case .month:
+            let grouped = Dictionary(grouping: memories) { memory in
+                let components = calendar.dateComponents([.year, .month], from: memory.record.updatedAt)
+                return calendar.date(from: components) ?? calendar.startOfDay(for: memory.record.updatedAt)
+            }
+            groups = grouped.map { date, mems in
+                TimelineDayGroup(date: date, memories: mems.sorted { $0.record.updatedAt > $1.record.updatedAt })
+            }.sorted { $0.date > $1.date }
+        }
+
+        return TimelineSnapshot(granularity: granularity, groups: groups, totalCount: memories.count)
+    }
+
     func fetchHomeBoard(for date: Date, limit: Int = 8) throws -> HomeBoardSnapshot {
         let memories = try fetchRecentMemories(limit: limit)
         let graphContext = try graphQueryService.load(

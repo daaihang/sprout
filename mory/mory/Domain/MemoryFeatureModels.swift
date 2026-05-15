@@ -362,6 +362,7 @@ protocol MoryMemoryRepositorying: AnyObject {
     func updateMemory(recordID: UUID, draft: MemoryEditDraft) async throws -> MemoryDetailSnapshot?
     func refreshMemoryPipeline(recordID: UUID) async throws
     func fetchRecentMemories(limit: Int?) throws -> [MemorySummary]
+    func fetchTimeline(granularity: TimelineGranularity, limit: Int?) throws -> TimelineSnapshot
     func fetchHomeBoard(for date: Date, limit: Int) throws -> HomeBoardSnapshot
     func fetchMemoryDetail(recordID: UUID) throws -> MemoryDetailSnapshot?
     func fetchRecordAnalysis(recordID: UUID) throws -> RecordAnalysisSnapshot?
@@ -436,4 +437,22 @@ extension String {
     func ifEmpty(_ fallback: String) -> String {
         trimmedOrNil ?? fallback
     }
+}
+
+struct TimelineDayGroup: Identifiable, Hashable, Sendable {
+    let date: Date
+    let memories: [MemorySummary]
+    var id: Date { date }
+    var dayLabel: String { date.formatted(date: .abbreviated, time: .omitted) }
+}
+
+enum TimelineGranularity: String, CaseIterable, Identifiable, Sendable {
+    case day, week, month
+    var id: String { rawValue }
+}
+
+struct TimelineSnapshot: Hashable, Sendable {
+    let granularity: TimelineGranularity
+    let groups: [TimelineDayGroup]
+    let totalCount: Int
 }

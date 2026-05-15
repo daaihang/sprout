@@ -18,6 +18,13 @@ struct MoryRootView: View {
             }
 
             NavigationStack {
+                TimelineScreen()
+            }
+            .tabItem {
+                Label("Timeline", systemImage: "clock")
+            }
+
+            NavigationStack {
                 PeopleScreen()
             }
             .tabItem {
