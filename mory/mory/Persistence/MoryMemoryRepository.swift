@@ -67,6 +67,19 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         )
     }
 
+    func deleteMemory(recordID: UUID) throws {
+        if let record = try modelContext.fetch(FetchDescriptor<RecordShellStore>(predicate: #Predicate { $0.id == recordID })).first {
+            modelContext.delete(record)
+        }
+        let artifacts = try modelContext.fetch(FetchDescriptor<ArtifactStore>(predicate: #Predicate { $0.recordID == recordID }))
+        artifacts.forEach { modelContext.delete($0) }
+        let pipelines = try modelContext.fetch(FetchDescriptor<MemoryPipelineStatusStore>(predicate: #Predicate { $0.recordID == recordID }))
+        pipelines.forEach { modelContext.delete($0) }
+        let analyses = try modelContext.fetch(FetchDescriptor<RecordAnalysisSnapshotStore>(predicate: #Predicate { $0.recordID == recordID }))
+        analyses.forEach { modelContext.delete($0) }
+        try save()
+    }
+
     func updateMemory(recordID: UUID, draft: MemoryEditDraft) async throws -> MemoryDetailSnapshot? {
         guard let existingRecordStore = try modelContext.fetch(
             FetchDescriptor<RecordShellStore>(predicate: #Predicate { $0.id == recordID })
@@ -303,13 +316,13 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             return nil
         }
 
-        let memories = [try makeMemorySummary(record: record)].compactMap { $0 }
+        let artifacts = try fetchArtifacts(recordID: recordID)
+        let memories = [makeMemorySummary(record: record, artifacts: artifacts, pipelineStatus: try fetchPipelineStatus(recordID: recordID))]
         let graphContext = try graphQueryService.load(
             modelContext: modelContext,
             memories: memories,
             recordIDs: Set([recordID])
         )
-        let artifacts = try fetchArtifacts(recordID: recordID)
         let links = graphContext.links.filter { link in artifacts.contains(where: { $0.id == link.artifactID }) }
         let entityIDs = Set(links.map(\.entityID))
         let entities = graphContext.entities.filter { entityIDs.contains($0.id) }
@@ -494,7 +507,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             guard let arcID = reflection.linkedTemporalArcID else { return nil }
             return (arcID, reflection)
         }
-        let reflectionsByArcID = Dictionary(uniqueKeysWithValues: reflectionPairs)
+        let reflectionsByArcID = Dictionary(reflectionPairs, uniquingKeysWith: { first, _ in first })
 
         return arcs.map { arc in
             TemporalArcSummarySnapshot(
@@ -720,7 +733,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
                 artifactsFetcher: fetchArtifacts,
                 latestReflectionTrace: latestReflectionTrace
             )
-            guard let reflectionID = target.reflection?.reflection.id else {
+            guard let reflectionID = target.target?.reflection?.reflection.id else {
                 throw CocoaError(.fileNoSuchFile)
             }
             try await replayDebugReflection(reflectionID: reflectionID)

@@ -9,7 +9,7 @@ struct TimelineScreen: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Picker("Granularity", selection: $selectedGranularity) {
+            Picker("timeline.granularity", selection: $selectedGranularity) {
                 ForEach(TimelineGranularity.allCases) { granularity in
                     Text(granularity.rawValue.capitalized).tag(granularity)
                 }
@@ -24,9 +24,9 @@ struct TimelineScreen: View {
             } else if let timeline {
                 if timeline.groups.isEmpty {
                     ContentUnavailableView(
-                        "No Memories Yet",
+                        "timeline.empty.title",
                         systemImage: "clock",
-                        description: Text("Capture memories to see them appear here organized by time.")
+                        description: Text("timeline.empty.description")
                     )
                 } else {
                     List {
@@ -49,10 +49,10 @@ struct TimelineScreen: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .navigationTitle("Timeline")
+        .navigationTitle("timeline.nav.title")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Text("\(timeline?.totalCount ?? 0) memories")
+                Text("timeline.memoryCount \(timeline?.totalCount ?? 0)")
                     .foregroundStyle(.secondary)
             }
         }

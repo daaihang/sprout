@@ -8,27 +8,27 @@ struct HomeScreen: View {
         var navigationTitle: String {
             switch self {
             case .home:
-                return "Home"
+                return String(localized: "home.nav.title")
             case .memories:
-                return "Memories"
+                return String(localized: "memories.nav.title")
             }
         }
 
         var emptyTitle: String {
             switch self {
             case .home:
-                return "No memories yet"
+                return String(localized: "home.empty.title")
             case .memories:
-                return "Your memory library is empty"
+                return String(localized: "memories.empty.title")
             }
         }
 
         var emptyDescription: String {
             switch self {
             case .home:
-                return "Your first capture will immediately land in the new memory stack."
+                return String(localized: "home.empty.description")
             case .memories:
-                return "New captures will accumulate here as a persistent memory library."
+                return String(localized: "memories.empty.description")
             }
         }
     }
@@ -53,15 +53,15 @@ struct HomeScreen: View {
             if surface == .home {
                 Section {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Capture")
+                        Text("home.capture.title")
                             .font(.title2.weight(.semibold))
-                        Text("Save directly into the memory stack, then watch analysis, graph, arcs, and reflections accumulate from the same record.")
+                        Text("home.capture.description")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                         Button {
                             isPresentingComposer = true
                         } label: {
-                            Label("New Memory", systemImage: "plus.circle.fill")
+                            Label("home.capture.button", systemImage: "plus.circle.fill")
                                 .font(.headline)
                                 .frame(maxWidth: .infinity)
                         }
@@ -70,18 +70,18 @@ struct HomeScreen: View {
                     .padding(.vertical, 8)
                 }
 
-                Section("Today Board") {
+                Section("home.section.board") {
                     if let homeBoard, !homeBoard.items.isEmpty {
                         HomeBoardSection(board: homeBoard)
                     } else {
-                        Text("No board items have been composed yet. New captures, accepted arcs, and saved reflections will surface here.")
+                        Text("home.board.empty")
                             .foregroundStyle(.secondary)
                     }
                 }
 
-                Section("Pipeline Status") {
+                Section("home.section.pipeline") {
                     if pipelineStatuses.isEmpty {
-                        Text("Saved memories will show whether analysis is pending, running, complete, or failed.")
+                        Text("home.pipeline.empty")
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(pipelineStatuses) { item in
@@ -111,7 +111,7 @@ struct HomeScreen: View {
                 }
             }
 
-            Section(surface == .home ? "Recent" : "All Memories") {
+            Section(surface == .home ? String(localized: "home.section.recent") : String(localized: "memories.section.all")) {
                 if memories.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(surface.emptyTitle)
@@ -128,6 +128,13 @@ struct HomeScreen: View {
                         } label: {
                             MemoryRow(summary: memory)
                         }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button(role: .destructive) {
+                                deleteMemory(recordID: memory.id)
+                            } label: {
+                                Label("common.delete", systemImage: "trash")
+                            }
+                        }
                     }
                 }
             }
@@ -139,7 +146,7 @@ struct HomeScreen: View {
                     Button {
                         isPresentingComposer = true
                     } label: {
-                        Label("Capture", systemImage: "plus")
+                        Label("home.capture.title", systemImage: "plus")
                     }
                 }
             }
@@ -185,6 +192,15 @@ struct HomeScreen: View {
             errorMessage = error.localizedDescription
         }
     }
+
+    private func deleteMemory(recordID: UUID) {
+        do {
+            try memoryRepository.deleteMemory(recordID: recordID)
+            memories.removeAll { $0.id == recordID }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
 }
 
 private struct MemoryRow: View {
@@ -206,7 +222,7 @@ private struct MemoryRow: View {
                 if let mood = summary.record.userMood?.trimmedOrNil {
                     Text(mood)
                 }
-                Text("\(summary.artifactCount) artifact\(summary.artifactCount == 1 ? "" : "s")")
+                Text("memory.row.attachments \(summary.artifactCount)")
                 if let pipelineStatus = summary.pipelineStatus {
                     Text(pipelineStatus.userLabel)
                 }

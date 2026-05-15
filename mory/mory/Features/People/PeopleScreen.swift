@@ -18,9 +18,9 @@ struct PeopleScreen: View {
                 }
             }
 
-            Section("People") {
+            Section("people.section.people") {
                 if people.isEmpty {
-                    Text("No stable person entities yet. Run capture and analysis to promote linked people into the graph.")
+                    Text("people.empty.people")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(people, id: \.id) { person in
@@ -33,9 +33,9 @@ struct PeopleScreen: View {
                 }
             }
 
-            Section("Themes") {
+            Section("people.section.themes") {
                 if themes.isEmpty {
-                    Text("No stable themes yet. Repeated analysis signals will accumulate here as reusable graph nodes.")
+                    Text("people.empty.themes")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(themes, id: \.id) { theme in
@@ -48,9 +48,9 @@ struct PeopleScreen: View {
                 }
             }
 
-            Section("Places") {
+            Section("people.section.places") {
                 if places.isEmpty {
-                    Text("No stable places yet. Place entities appear once captures carry reusable location references.")
+                    Text("people.empty.places")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(places, id: \.id) { place in
@@ -63,9 +63,9 @@ struct PeopleScreen: View {
                 }
             }
 
-            Section("Decisions") {
+            Section("people.section.decisions") {
                 if decisions.isEmpty {
-                    Text("No stable decisions yet. Decision entities appear once analysis extracts durable choices from records.")
+                    Text("people.empty.decisions")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(decisions, id: \.id) { decision in
@@ -78,7 +78,7 @@ struct PeopleScreen: View {
                 }
             }
         }
-        .navigationTitle("People")
+        .navigationTitle("people.nav.title")
         .task {
             await load()
         }
@@ -109,7 +109,7 @@ private struct PersonRow: View {
                 Text(person.entity.displayName)
                     .font(.headline)
                 Spacer()
-                Text("\(person.artifactCount) artifacts")
+                Text("common.attachmentCount \(person.artifactCount)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -146,7 +146,7 @@ private struct ThemeRow: View {
                 Text(theme.entity.displayName)
                     .font(.headline)
                 Spacer()
-                Text("\(theme.artifactCount) artifacts")
+                Text("common.attachmentCount \(theme.artifactCount)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -165,7 +165,7 @@ private struct ThemeRow: View {
             }
 
             if !theme.relatedArcs.isEmpty {
-                Text("\(theme.relatedArcs.count) arcs · \(theme.relatedReflections.count) reflections")
+                Text("people.theme.stats \(theme.relatedArcs.count) \(theme.relatedReflections.count)")
                     .font(.footnote)
                     .foregroundStyle(.tertiary)
             }

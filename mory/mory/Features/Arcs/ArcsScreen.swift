@@ -15,9 +15,9 @@ struct ArcsScreen: View {
                 }
             }
 
-            Section("Arcs") {
+            Section("arcs.section.title") {
                 if arcs.isEmpty {
-                    Text("Arcs will appear here when repeated memories cluster into stable time spans.")
+                    Text("arcs.empty.description")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(arcs) { item in
@@ -58,7 +58,7 @@ struct ArcsScreen: View {
                 }
             }
         }
-        .navigationTitle("Arcs")
+        .navigationTitle("arcs.nav.title")
         .task {
             await load()
         }

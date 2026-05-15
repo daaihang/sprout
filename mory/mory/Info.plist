@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>MORY_API_BASE_URL</key>
-	<string>http://127.0.0.1:8080</string>
+	<string>https://sprout-god7g.fly.dev</string>
 	<key>MORY_DEV_AUTH_IDENTITY_TOKEN</key>
 	<string>dev-user</string>
 	<key>NSAppTransportSecurity</key>
@@ -15,6 +15,13 @@
 	<string>Mory needs microphone access to record audio memories.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Mory needs photo library access to attach photos to memories.</string>
+	<key>ITSEncryptionAttributes</key>
+	<dict>
+		<key>ITSEncryptionExportComplianceCode</key>
+		<string></string>
+		<key>ITSEncryptionUses</key>
+		<string>None</string>
+	</dict>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>

@@ -15,9 +15,9 @@ struct ReflectionsScreen: View {
                 }
             }
 
-            Section("Reflections") {
+            Section("reflections.section.title") {
                 if reflections.isEmpty {
-                    Text("No reflection objects yet. Record-level and arc-level reflections will land here after the pipeline completes.")
+                    Text("reflections.empty.description")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(reflections) { item in
@@ -59,7 +59,7 @@ struct ReflectionsScreen: View {
                 }
             }
         }
-        .navigationTitle("Reflections")
+        .navigationTitle("reflections.nav.title")
         .task {
             await load()
         }

@@ -19,7 +19,7 @@ struct ReflectionDetailView: View {
             }
 
             if let snapshot {
-                Section("Reflection") {
+                Section("reflection.section.info") {
                     Text(snapshot.summary.reflection.title)
                         .font(.headline)
                     Text(snapshot.summary.reflection.body)
@@ -31,24 +31,24 @@ struct ReflectionDetailView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                Section("Actions") {
-                    Button(isUpdating ? "Updating..." : "Save Reflection") {
+                Section("reflection.section.actions") {
+                    Button(isUpdating ? String(localized: "common.updating") : String(localized: "reflection.action.save")) {
                         Task { await saveReflection() }
                     }
                     .disabled(isUpdating)
 
-                    Button(isUpdating ? "Updating..." : "Dismiss Reflection") {
+                    Button(isUpdating ? String(localized: "common.updating") : String(localized: "reflection.action.dismiss")) {
                         Task { await dismissReflection() }
                     }
                     .disabled(isUpdating)
 
-                    Button(isUpdating ? "Updating..." : "Archive Reflection") {
+                    Button(isUpdating ? String(localized: "common.updating") : String(localized: "reflection.action.archive")) {
                         Task { await archiveReflection() }
                     }
                     .disabled(isUpdating)
                 }
 
-                Section("Linked Arc") {
+                Section("reflection.section.linkedArc") {
                     if let linkedArc = snapshot.linkedArc {
                         NavigationLink {
                             ArcDetailView(arcID: linkedArc.arc.id)
@@ -63,14 +63,14 @@ struct ReflectionDetailView: View {
                             }
                         }
                     } else {
-                        Text("No linked arc.")
+                        Text("reflection.empty.linkedArc")
                             .foregroundStyle(.secondary)
                     }
                 }
 
-                Section("Related Memories") {
+                Section("common.section.relatedMemories") {
                     if snapshot.summary.relatedMemories.isEmpty {
-                        Text("No related memories yet.")
+                        Text("common.empty.relatedMemories")
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(snapshot.summary.relatedMemories) { memory in
@@ -90,9 +90,9 @@ struct ReflectionDetailView: View {
                     }
                 }
 
-                Section("Entities") {
+                Section("common.section.entities") {
                     if snapshot.entityDetails.isEmpty {
-                        Text("No linked entities.")
+                        Text("common.empty.entities")
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(snapshot.entityDetails) { entity in
@@ -112,7 +112,7 @@ struct ReflectionDetailView: View {
                 }
             }
         }
-        .navigationTitle("Reflection Detail")
+        .navigationTitle("reflection.nav.title")
         .task {
             await load()
         }

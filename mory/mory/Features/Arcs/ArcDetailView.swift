@@ -19,7 +19,7 @@ struct ArcDetailView: View {
             }
 
             if let snapshot {
-                Section("Arc") {
+                Section("arc.section.info") {
                     Text(snapshot.summary.arc.title)
                         .font(.headline)
                     Text(snapshot.summary.arc.summary)
@@ -32,20 +32,20 @@ struct ArcDetailView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                Section("Actions") {
-                    Button(isUpdating ? "Updating..." : "Accept Arc") {
+                Section("arc.section.actions") {
+                    Button(isUpdating ? String(localized: "common.updating") : String(localized: "arc.action.accept")) {
                         Task { await acceptArc() }
                     }
                     .disabled(isUpdating)
 
-                    Button(isUpdating ? "Updating..." : "Archive Arc") {
+                    Button(isUpdating ? String(localized: "common.updating") : String(localized: "arc.action.archive")) {
                         Task { await archiveArc() }
                     }
                     .disabled(isUpdating)
 
                     if let mergeCandidate = snapshot.mergeCandidate {
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("Merge Candidate")
+                            Text("arc.merge.candidate")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             Text(mergeCandidate.arc.title)
@@ -55,7 +55,7 @@ struct ArcDetailView: View {
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
-                            Button(isUpdating ? "Updating..." : "Merge Arc") {
+                            Button(isUpdating ? String(localized: "common.updating") : String(localized: "arc.action.merge")) {
                                 Task { await mergeArc() }
                             }
                             .disabled(isUpdating)
@@ -63,9 +63,9 @@ struct ArcDetailView: View {
                     }
                 }
 
-                Section("Related Memories") {
+                Section("common.section.relatedMemories") {
                     if snapshot.summary.relatedMemories.isEmpty {
-                        Text("No related memories yet.")
+                        Text("common.empty.relatedMemories")
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(snapshot.summary.relatedMemories) { memory in
@@ -85,9 +85,9 @@ struct ArcDetailView: View {
                     }
                 }
 
-                Section("Entities") {
+                Section("common.section.entities") {
                     if snapshot.entityDetails.isEmpty {
-                        Text("No linked entities yet.")
+                        Text("common.empty.entities")
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(snapshot.entityDetails) { entity in
@@ -106,9 +106,9 @@ struct ArcDetailView: View {
                     }
                 }
 
-                Section("Reflections") {
+                Section("common.section.reflections") {
                     if snapshot.reflections.isEmpty {
-                        Text("No reflections linked yet.")
+                        Text("common.empty.reflections")
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(snapshot.reflections) { reflection in
@@ -129,7 +129,7 @@ struct ArcDetailView: View {
                 }
             }
         }
-        .navigationTitle("Arc Detail")
+        .navigationTitle("arc.nav.title")
         .task {
             await load()
         }

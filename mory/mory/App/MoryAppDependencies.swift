@@ -20,8 +20,10 @@ private final class MissingMemoryRepository: MoryMemoryRepositorying {
 
     func createMemory(from draft: MemoryCaptureDraft) async throws -> MemorySummary { fail() }
     func updateMemory(recordID: UUID, draft: MemoryEditDraft) async throws -> MemoryDetailSnapshot? { fail() }
+    func deleteMemory(recordID: UUID) throws { let _: Void = fail() }
     func refreshMemoryPipeline(recordID: UUID) async throws { let _: Void = fail() }
     func fetchRecentMemories(limit: Int?) throws -> [MemorySummary] { fail() }
+    func fetchTimeline(granularity: TimelineGranularity, limit: Int?) throws -> TimelineSnapshot { fail() }
     func fetchHomeBoard(for date: Date, limit: Int) throws -> HomeBoardSnapshot { fail() }
     func fetchMemoryDetail(recordID: UUID) throws -> MemoryDetailSnapshot? { fail() }
     func fetchRecordAnalysis(recordID: UUID) throws -> RecordAnalysisSnapshot? { fail() }

@@ -66,7 +66,21 @@ func main() {
 	defer stop()
 
 	go func() {
-		logger.Info("server starting", "addr", cfg.ListenAddr(), "ai_mode", cfg.AIMode, "ai_provider", cfg.AIProvider)
+		logger.Info("🚀 server starting",
+			"addr", cfg.ListenAddr(),
+			"ai_mode", cfg.AIMode,
+			"ai_provider", cfg.AIProvider,
+			"ai_model", cfg.AIModel,
+			"ai_base_url", cfg.AIBaseURL,
+			"ai_api_key_set", cfg.AIAPIKey != "",
+			"ai_api_key_preview", maskAPIKey(cfg.AIAPIKey),
+			"request_timeout", cfg.RequestTimeout.String(),
+			"http_timeout", cfg.HTTPTimeout.String(),
+			"ai_max_retries", cfg.AIMaxRetries,
+			"ai_retry_backoff", cfg.AIRetryBackoff.String(),
+			"dev_auth_enabled", cfg.DevAuthEnabled,
+			"sqlite_path", cfg.SQLitePath,
+		)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Error("server failed", "error", err)
 			stop()
@@ -80,4 +94,11 @@ func main() {
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		logger.Error("shutdown failed", "error", err)
 	}
+}
+
+func maskAPIKey(key string) string {
+	if len(key) <= 8 {
+		return "***"
+	}
+	return key[:4] + "..." + key[len(key)-4:]
 }

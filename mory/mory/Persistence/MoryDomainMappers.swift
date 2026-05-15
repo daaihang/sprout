@@ -399,7 +399,7 @@ extension RecordAnalysisSnapshotStore {
             summary: domainModel.summary,
             themes: domainModel.themes,
             emotionInterpretation: domainModel.emotionInterpretation,
-            salienceScore: domainModel.salienceScore,
+            salienceScore: domainModel.salienceScore ?? 0,
             retrievalTerms: domainModel.retrievalTerms,
             entityMentionsData: PersistenceCoding.encode(domainModel.entityMentions),
             candidateEdgesData: PersistenceCoding.encode(domainModel.candidateEdges),
@@ -432,7 +432,7 @@ extension RecordAnalysisSnapshotStore {
         summary = domainModel.summary
         themes = domainModel.themes
         emotionInterpretation = domainModel.emotionInterpretation
-        salienceScore = domainModel.salienceScore
+        salienceScore = domainModel.salienceScore ?? 0
         retrievalTerms = domainModel.retrievalTerms
         entityMentionsData = PersistenceCoding.encode(domainModel.entityMentions)
         candidateEdgesData = PersistenceCoding.encode(domainModel.candidateEdges)

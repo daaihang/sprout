@@ -6,12 +6,13 @@ struct MoryApp: App {
     private let sharedModelContainer = MoryPersistenceStack.makeSharedModelContainer()
     private let memoryRepository: any MoryMemoryRepositorying
     private let credentialStore = KeychainCredentialStore()
-    @State private var isSignedIn = false
+    @State private var isSignedIn: Bool
 
     init() {
         let apiConfiguration = MoryAPIConfiguration.fromBundle()
         let apiClient = MoryAPIClient(configuration: apiConfiguration)
-        let tokenProvider = MoryAuthTokenProvider(apiClient: apiClient, credentialStore: KeychainCredentialStore())
+        let store = KeychainCredentialStore()
+        let tokenProvider = MoryAuthTokenProvider(apiClient: apiClient, credentialStore: store)
         let analysisService = RemoteRecordAnalysisService(
             apiClient: apiClient,
             tokenProvider: tokenProvider
@@ -21,7 +22,9 @@ struct MoryApp: App {
             analysisService: analysisService
         )
         #if DEBUG
-        isSignedIn = true
+        _isSignedIn = State(initialValue: true)
+        #else
+        _isSignedIn = State(initialValue: false)
         #endif
     }
 

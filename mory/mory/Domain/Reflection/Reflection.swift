@@ -22,13 +22,13 @@ extension ReflectionStatus {
     var label: String {
         switch self {
         case .suggested:
-            return "Suggested"
+            return String(localized: "reflection.status.suggested")
         case .saved:
-            return "Saved"
+            return String(localized: "reflection.status.saved")
         case .archived:
-            return "Archived"
+            return String(localized: "reflection.status.archived")
         case .dismissed:
-            return "Dismissed"
+            return String(localized: "reflection.status.dismissed")
         }
     }
 }

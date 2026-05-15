@@ -4,12 +4,12 @@ import SwiftData
 struct ArchitecturePipelineExecutor {
     private let graphUpdater = GraphUpdater()
     private let candidateBuilder = TemporalArcCandidateBuilder()
-    private let promoter = TemporalArcPromoter()
+    private let temporalArcService = TemporalArcService()
 
     func run(
         record: RecordShell,
         artifacts: [Artifact],
-        modelContext: any ModelContext,
+        modelContext: ModelContext,
         analysisService: any RecordAnalysisServing,
         upsertRecordAnalysis: @escaping (RecordAnalysisSnapshot) throws -> Void,
         upsertEntityNode: @escaping (EntityNode) throws -> Void,
@@ -81,7 +81,7 @@ struct ArchitecturePipelineExecutor {
         // Step 7: Accept candidate arcs via promoter
         var acceptedArcs: [TemporalArc] = []
         for candidate in candidates {
-            let promotionResult = promoter.promote(
+            let promotionResult = temporalArcService.promote(
                 candidate: candidate,
                 analyses: allAnalyses,
                 artifactEntityLinks: graphUpdate.artifactEntityLinks,
@@ -151,17 +151,17 @@ struct ArchitecturePipelineExecutor {
         try save()
     }
 
-    private func fetchExistingEntityNodes(modelContext: any ModelContext) throws -> [EntityNode] {
+    private func fetchExistingEntityNodes(modelContext: ModelContext) throws -> [EntityNode] {
         let stores = try modelContext.fetch(FetchDescriptor<EntityNodeStore>())
         return stores.map(\.domainModel)
     }
 
-    private func fetchExistingEntityEdges(modelContext: any ModelContext) throws -> [EntityEdge] {
+    private func fetchExistingEntityEdges(modelContext: ModelContext) throws -> [EntityEdge] {
         let stores = try modelContext.fetch(FetchDescriptor<EntityEdgeStore>())
         return stores.map(\.domainModel)
     }
 
-    private func fetchExistingArtifactEntityLinks(modelContext: any ModelContext) throws -> [ArtifactEntityLink] {
+    private func fetchExistingArtifactEntityLinks(modelContext: ModelContext) throws -> [ArtifactEntityLink] {
         let stores = try modelContext.fetch(FetchDescriptor<ArtifactEntityLinkStore>())
         return stores.map(\.domainModel)
     }

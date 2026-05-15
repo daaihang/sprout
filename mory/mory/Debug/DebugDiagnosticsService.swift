@@ -398,7 +398,12 @@ struct DebugDiagnosticsService {
         let record = try reflection.sourceRecordIDs.first.flatMap { recordID in
             try modelContext.fetch(FetchDescriptor<RecordShellStore>(predicate: #Predicate { $0.id == recordID })).first?.domainModel
         }
-        let artifacts: [Artifact] = try record.flatMap { try modelContext.fetch(FetchDescriptor<ArtifactStore>(predicate: #Predicate { $0.recordID == $0.id })).map(\.domainModel) } ?? []
+        let artifacts: [Artifact]
+        if let recordID = record?.id {
+            artifacts = try modelContext.fetch(FetchDescriptor<ArtifactStore>(predicate: #Predicate { $0.recordID == recordID })).map(\.domainModel)
+        } else {
+            artifacts = []
+        }
         let knownEntities = try linkedEntityReferences(
             recordID: record?.id,
             arcID: linkedArc?.id,

@@ -1,6 +1,7 @@
 import SwiftUI
 import PhotosUI
 import AVFoundation
+import Combine
 
 struct CaptureComposerView: View {
     @Environment(\.memoryRepository) private var memoryRepository
@@ -29,18 +30,18 @@ struct CaptureComposerView: View {
         NavigationStack {
             Form {
                 Section {
-                    Text("Everything saved here is local-first. This is the first stable path into the new memory stack.")
+                    Text("capture.localFirst.hint")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
 
-                Section("Capture") {
-                    Picker("Type", selection: $selectedType) {
+                Section("capture.section.capture") {
+                    Picker("capture.picker.type", selection: $selectedType) {
                         ForEach(CaptureInputType.allCases) { type in
                             Text(type.label).tag(type)
                         }
                     }
-                    TextField("Title", text: $title)
+                    TextField("capture.field.title", text: $title)
 
                     switch selectedType {
                     case .photo:
@@ -54,9 +55,9 @@ struct CaptureComposerView: View {
                                         .frame(maxHeight: 200)
                                         .cornerRadius(8)
                                 }
-                                Text("Photo selected").foregroundStyle(.secondary)
+                                Text("capture.photo.selected").foregroundStyle(.secondary)
                             } else {
-                                Label("Select Photo", systemImage: "photo")
+                                Label("capture.photo.select", systemImage: "photo")
                             }
                         }
                         .onChange(of: selectedPhotoItem) { _, newItem in
@@ -82,10 +83,10 @@ struct CaptureComposerView: View {
                                         .fill(.red)
                                         .frame(width: 12, height: 12)
                                         .opacity(audioRecorder.recordingDuration > 0 ? 1 : 0.5)
-                                    Text("Recording... \(Int(audioRecorder.recordingDuration))s")
+                                    Text("capture.audio.recording \(Int(audioRecorder.recordingDuration))")
                                         .font(.headline)
                                     Spacer()
-                                    Button(audioRecorder.isRecording ? "Stop" : "Start") {
+                                    Button(audioRecorder.isRecording ? String(localized: "capture.audio.stop") : String(localized: "capture.audio.start")) {
                                         audioRecorder.toggleRecording()
                                     }
                                     .buttonStyle(.borderedProminent)
@@ -96,7 +97,7 @@ struct CaptureComposerView: View {
                                     audioRecorder.toggleRecording()
                                 } label: {
                                     Label(
-                                        audioRecorder.recordedAudioURL != nil ? "Re-record" : "Start Recording",
+                                        audioRecorder.recordedAudioURL != nil ? String(localized: "capture.audio.rerecord") : String(localized: "capture.audio.startRecording"),
                                         systemImage: "mic.fill"
                                     )
                                 }
@@ -129,9 +130,9 @@ struct CaptureComposerView: View {
                     }
                 }
 
-                Section("Context") {
-                    TextField("Mood", text: $mood)
-                    TextField("Input Context", text: $inputContext, axis: .vertical)
+                Section("capture.section.context") {
+                    TextField("capture.field.mood", text: $mood)
+                    TextField("capture.field.context", text: $inputContext, axis: .vertical)
                         .lineLimit(2...4)
                 }
 
@@ -151,13 +152,13 @@ struct CaptureComposerView: View {
                     }
                 }
             }
-            .navigationTitle("New Memory")
+            .navigationTitle("capture.nav.title")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("common.cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+                    Button("common.save") {
                         Task { await save() }
                     }
                     .disabled(isSaving || !canSave)
@@ -226,7 +227,7 @@ struct CaptureComposerView: View {
                 artifacts: artifactDrafts
             )
             let memory = try await memoryRepository.createMemory(from: draft)
-            savedStatusMessage = memory.pipelineStatus?.userLabel ?? "Saved locally"
+            savedStatusMessage = memory.pipelineStatus?.userLabel ?? String(localized: "pipeline.status.pending")
             errorMessage = nil
             Task {
                 do {
@@ -256,40 +257,40 @@ private enum CaptureInputType: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .text: return "Text"
-        case .photo: return "Photo"
-        case .audio: return "Audio"
-        case .location: return "Location"
-        case .link: return "Link"
-        case .todo: return "Todo"
+        case .text: return String(localized: "capture.type.text")
+        case .photo: return String(localized: "capture.type.photo")
+        case .audio: return String(localized: "capture.type.audio")
+        case .location: return String(localized: "capture.type.location")
+        case .link: return String(localized: "capture.type.link")
+        case .todo: return String(localized: "capture.type.todo")
         }
     }
 
     var primaryPrompt: String {
         switch self {
-        case .text: return "What happened?"
-        case .photo: return "Photo note"
-        case .audio: return "Audio note"
-        case .location: return "Place note"
-        case .link: return "Link note"
-        case .todo: return "Todo detail"
+        case .text: return String(localized: "capture.prompt.text")
+        case .photo: return String(localized: "capture.prompt.photo")
+        case .audio: return String(localized: "capture.prompt.audio")
+        case .location: return String(localized: "capture.prompt.location")
+        case .link: return String(localized: "capture.prompt.link")
+        case .todo: return String(localized: "capture.prompt.todo")
         }
     }
 
     var attachmentPrompt: String? {
         switch self {
-        case .photo: return "Filename"
-        case .audio: return "Filename"
-        case .location: return "Latitude"
-        case .link: return "URL"
+        case .photo: return String(localized: "capture.attachment.filename")
+        case .audio: return String(localized: "capture.attachment.filename")
+        case .location: return String(localized: "capture.attachment.latitude")
+        case .link: return String(localized: "capture.attachment.url")
         case .text, .todo: return nil
         }
     }
 
     var secondaryPrompt: String? {
         switch self {
-        case .location: return "Longitude"
-        case .todo: return "Optional note"
+        case .location: return String(localized: "capture.secondary.longitude")
+        case .todo: return String(localized: "capture.secondary.note")
         case .text, .photo, .audio, .link: return nil
         }
     }

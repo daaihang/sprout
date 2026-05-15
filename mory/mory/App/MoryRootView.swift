@@ -7,49 +7,49 @@ struct MoryRootView: View {
                 HomeScreen(surface: .home)
             }
             .tabItem {
-                Label("Home", systemImage: "house")
+                Label("tab.home", systemImage: "house")
             }
 
             NavigationStack {
                 HomeScreen(surface: .memories)
             }
             .tabItem {
-                Label("Memories", systemImage: "square.stack")
+                Label("tab.memories", systemImage: "square.stack")
             }
 
             NavigationStack {
                 TimelineScreen()
             }
             .tabItem {
-                Label("Timeline", systemImage: "clock")
+                Label("tab.timeline", systemImage: "clock")
             }
 
             NavigationStack {
                 PeopleScreen()
             }
             .tabItem {
-                Label("People", systemImage: "person.2")
+                Label("tab.people", systemImage: "person.2")
             }
 
             NavigationStack {
                 ArcsScreen()
             }
             .tabItem {
-                Label("Arcs", systemImage: "point.topleft.down.curvedto.point.bottomright.up")
+                Label("tab.arcs", systemImage: "point.topleft.down.curvedto.point.bottomright.up")
             }
 
             NavigationStack {
                 SearchScreen()
             }
             .tabItem {
-                Label("Search", systemImage: "magnifyingglass")
+                Label("tab.search", systemImage: "magnifyingglass")
             }
 
             NavigationStack {
                 ReflectionsScreen()
             }
             .tabItem {
-                Label("Reflections", systemImage: "sparkles.rectangle.stack")
+                Label("tab.reflections", systemImage: "sparkles.rectangle.stack")
             }
 
 #if DEBUG
@@ -57,7 +57,7 @@ struct MoryRootView: View {
                 DebugDiagnosticsView()
             }
             .tabItem {
-                Label("Debug", systemImage: "ladybug")
+                Label("tab.debug", systemImage: "ladybug")
             }
 #endif
         }

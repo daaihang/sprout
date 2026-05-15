@@ -26,7 +26,7 @@ struct SignInView: View {
                     .font(.largeTitle)
                     .fontWeight(.bold)
 
-                Text("Your personal memory companion")
+                Text("signin.subtitle")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -53,7 +53,7 @@ struct SignInView: View {
                 .frame(height: 50)
 
                 #if DEBUG
-                Button("Continue as Guest") {
+                Button("signin.guest") {
                     onSignedIn?()
                 }
                 .foregroundStyle(.secondary)
@@ -78,13 +78,17 @@ struct SignInView: View {
 
         switch result {
         case .success:
+            errorMessage = nil
             onSignedIn?()
         case .failure(let error):
-            if let authError = error as? AppleAuthService.AppleAuthError {
-                errorMessage = authError.localizedDescription
-            } else {
-                errorMessage = error.localizedDescription
+            if let asError = error as? ASAuthorizationError, asError.code == .canceled {
+                // User cancelled — silently dismiss, no error shown
+                return
             }
+            if let authError = error as? AppleAuthService.AppleAuthError, case .cancelled = authError {
+                return
+            }
+            errorMessage = error.localizedDescription
         }
     }
 }

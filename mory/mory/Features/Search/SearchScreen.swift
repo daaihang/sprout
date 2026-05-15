@@ -17,14 +17,14 @@ struct SearchScreen: View {
             }
 
             if query.trimmedOrNil == nil {
-                Section("Search") {
-                    Text("Search memories, entities, arcs, and reflections from the same memory stack.")
+                Section("search.section.search") {
+                    Text("search.hint")
                         .foregroundStyle(.secondary)
                 }
             } else {
-                Section("Memories") {
+                Section("search.section.memories") {
                     if result.memories.isEmpty {
-                        Text("No memory matches.")
+                        Text("search.empty.memories")
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(result.memories) { memoryResult in
@@ -44,9 +44,9 @@ struct SearchScreen: View {
                     }
                 }
 
-                Section("Entities") {
+                Section("search.section.entities") {
                     if result.entities.isEmpty {
-                        Text("No entity matches.")
+                        Text("search.empty.entities")
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(result.entities) { entityResult in
@@ -56,10 +56,10 @@ struct SearchScreen: View {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(entityResult.entity.displayName)
                                         .font(.headline)
-                                    Text(entityResult.entity.summary.ifEmpty("No summary"))
+                                    Text(entityResult.entity.summary.ifEmpty(String(localized: "common.noSummary")))
                                         .font(.subheadline)
                                         .foregroundStyle(.secondary)
-                                    Text("\(entityResult.relatedMemoryCount) memories · \(entityResult.artifactCount) artifacts · \(entityResult.arcCount) arcs")
+                                    Text("search.entity.stats \(entityResult.relatedMemoryCount) \(entityResult.artifactCount) \(entityResult.arcCount)")
                                         .font(.caption)
                                         .foregroundStyle(.tertiary)
                                     if !entityResult.relatedThemes.isEmpty {
@@ -77,9 +77,9 @@ struct SearchScreen: View {
                     }
                 }
 
-                Section("Arcs") {
+                Section("search.section.arcs") {
                     if result.arcs.isEmpty {
-                        Text("No arc matches.")
+                        Text("search.empty.arcs")
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(result.arcs) { arcResult in
@@ -105,9 +105,9 @@ struct SearchScreen: View {
                     }
                 }
 
-                Section("Reflections") {
+                Section("search.section.reflections") {
                     if result.reflections.isEmpty {
-                        Text("No reflection matches.")
+                        Text("search.empty.reflections")
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(result.reflections) { reflectionResult in
@@ -134,8 +134,8 @@ struct SearchScreen: View {
                 }
             }
         }
-        .navigationTitle("Search")
-        .searchable(text: $query, prompt: "Search memories, people, arcs")
+        .navigationTitle("search.nav.title")
+        .searchable(text: $query, prompt: "search.prompt")
         .task(id: query) {
             await load()
         }

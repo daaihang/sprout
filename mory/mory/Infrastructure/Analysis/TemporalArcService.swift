@@ -7,7 +7,7 @@ struct ReflectionBuilder {
             title: "Record Reflection",
             body: analysis.summary,
             evidenceSummary: artifacts.map(\.summary).filter { !$0.isEmpty }.joined(separator: " | "),
-            confidence: min(max(analysis.salienceScore, 0), 1),
+            confidence: min(max(analysis.salienceScore ?? 0, 0), 1),
             status: .suggested,
             sourceRecordIDs: [record.id],
             sourceArtifactIDs: artifacts.map(\.id),

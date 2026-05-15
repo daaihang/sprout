@@ -177,26 +177,26 @@ struct MemoryPipelineStatusSnapshot: Identifiable, Hashable, Sendable {
     var userLabel: String {
         switch stage {
         case .pending:
-            return "Saved locally"
+            return String(localized: "pipeline.status.pending")
         case .running:
-            return "Analyzing"
+            return String(localized: "pipeline.status.running")
         case .completed:
-            return "Analysis complete"
+            return String(localized: "pipeline.status.completed")
         case .failed:
-            return "Analysis failed"
+            return String(localized: "pipeline.status.failed")
         }
     }
 
     var explanation: String {
         switch stage {
         case .pending:
-            return "Your capture is already stored on device. Analysis will be attached after the pipeline runs."
+            return String(localized: "pipeline.explain.pending")
         case .running:
-            return "The app is building analysis, graph links, arcs, and reflections from the saved capture."
+            return String(localized: "pipeline.explain.running")
         case .completed:
-            return "Analysis, graph links, arcs, and reflections are available for this memory."
+            return String(localized: "pipeline.explain.completed")
         case .failed:
-            return "The memory is safe locally, but the analysis pipeline failed. You can retry from detail or debug."
+            return String(localized: "pipeline.explain.failed")
         }
     }
 }
@@ -360,6 +360,7 @@ struct PipelineStatusSummary: Identifiable, Hashable, Sendable {
 protocol MoryMemoryRepositorying: AnyObject {
     func createMemory(from draft: MemoryCaptureDraft) async throws -> MemorySummary
     func updateMemory(recordID: UUID, draft: MemoryEditDraft) async throws -> MemoryDetailSnapshot?
+    func deleteMemory(recordID: UUID) throws
     func refreshMemoryPipeline(recordID: UUID) async throws
     func fetchRecentMemories(limit: Int?) throws -> [MemorySummary]
     func fetchTimeline(granularity: TimelineGranularity, limit: Int?) throws -> TimelineSnapshot

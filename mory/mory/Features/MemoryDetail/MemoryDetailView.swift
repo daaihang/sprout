@@ -19,14 +19,14 @@ struct MemoryDetailView: View {
     var body: some View {
         List {
             if let snapshot {
-                Section("Record") {
-                    LabeledContent("Source", value: snapshot.record.captureSource.rawValue)
+                Section("memory.section.record") {
+                    LabeledContent("memory.label.source", value: snapshot.record.captureSource.rawValue)
                     if let mood = snapshot.record.userMood {
-                        LabeledContent("Mood", value: mood)
+                        LabeledContent("memory.label.mood", value: mood)
                     }
                     if let inputContext = snapshot.record.inputContext {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Input Context")
+                            Text("memory.label.context")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             Text(inputContext)
@@ -35,7 +35,7 @@ struct MemoryDetailView: View {
                         .padding(.vertical, 2)
                     }
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Raw Capture")
+                        Text("memory.label.rawCapture")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         Text(snapshot.record.rawText)
@@ -46,40 +46,40 @@ struct MemoryDetailView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                Section("Correction") {
+                Section("memory.section.correction") {
                     if isEditing {
-                        TextField("Raw Capture", text: $draftRawText, axis: .vertical)
+                        TextField("memory.label.rawCapture", text: $draftRawText, axis: .vertical)
                             .lineLimit(3...8)
-                        TextField("Mood", text: $draftMood)
-                        TextField("Input Context", text: $draftInputContext, axis: .vertical)
+                        TextField("memory.label.mood", text: $draftMood)
+                        TextField("memory.label.context", text: $draftInputContext, axis: .vertical)
                             .lineLimit(2...5)
-                        TextField("Add Supporting Artifact", text: $draftArtifactText, axis: .vertical)
+                        TextField("memory.edit.addAttachment", text: $draftArtifactText, axis: .vertical)
                             .lineLimit(2...5)
 
-                        Button(isSavingEdits ? "Saving..." : "Save Changes") {
+                        Button(isSavingEdits ? String(localized: "common.saving") : String(localized: "memory.edit.saveChanges")) {
                             Task { await saveEdits() }
                         }
                         .disabled(isSavingEdits || draftRawText.trimmedOrNil == nil)
 
-                        Button("Cancel Editing", role: .cancel) {
+                        Button("memory.edit.cancel", role: .cancel) {
                             resetEditDraft(from: snapshot.record)
                             isEditing = false
                         }
                         .disabled(isSavingEdits)
                     } else {
-                        Text("Correct text, mood, context, or add one more supporting note before rerunning analysis.")
+                        Text("memory.edit.hint")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
-                        Button("Edit Memory") {
+                        Button("memory.edit.button") {
                             resetEditDraft(from: snapshot.record)
                             isEditing = true
                         }
                     }
                 }
 
-                Section("Artifacts") {
+                Section("memory.section.attachments") {
                     if snapshot.artifacts.isEmpty {
-                        Text("No artifacts linked yet.")
+                        Text("memory.empty.attachments")
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(snapshot.artifacts) { artifact in
@@ -107,7 +107,7 @@ struct MemoryDetailView: View {
 
                                 if let mediaRef = artifact.mediaRef {
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text("Media")
+                                        Text("memory.label.media")
                                             .font(.caption)
                                             .foregroundStyle(.secondary)
                                         Text("\(mediaRef.filename) • \(mediaRef.mimeType)")
@@ -117,7 +117,7 @@ struct MemoryDetailView: View {
 
                                 if !artifact.metadata.isEmpty {
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text("Metadata")
+                                        Text("memory.label.metadata")
                                             .font(.caption)
                                             .foregroundStyle(.secondary)
                                         ForEach(artifact.metadata.keys.sorted(), id: \.self) { key in
@@ -134,7 +134,7 @@ struct MemoryDetailView: View {
                     }
                 }
 
-                Section("Analysis") {
+                Section("memory.section.analysis") {
                     if let pipelineStatus = snapshot.pipelineStatus {
                         VStack(alignment: .leading, spacing: 8) {
                             Text(pipelineStatus.userLabel)
@@ -148,7 +148,7 @@ struct MemoryDetailView: View {
                                     .foregroundStyle(.secondary)
                             }
                             if pipelineStatus.stage == .failed || pipelineStatus.stage == .pending {
-                                Button(isRefreshingPipeline ? "Retrying..." : "Retry Analysis") {
+                                Button(isRefreshingPipeline ? String(localized: "memory.analysis.retrying") : String(localized: "memory.analysis.retry")) {
                                     Task { await refreshPipeline() }
                                 }
                                 .disabled(isRefreshingPipeline)
@@ -172,14 +172,14 @@ struct MemoryDetailView: View {
                             }
                         }
                     } else {
-                        Text("No analysis snapshot.")
+                        Text("memory.empty.analysis")
                             .foregroundStyle(.secondary)
                     }
                 }
 
-                Section("Entities") {
+                Section("common.section.entities") {
                     if snapshot.entities.isEmpty {
-                        Text("No linked entities.")
+                        Text("common.empty.entities")
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(snapshot.entities) { entity in
@@ -200,16 +200,16 @@ struct MemoryDetailView: View {
                     }
                 }
 
-                Section("Edges") {
+                Section("memory.section.edges") {
                     if snapshot.edges.isEmpty {
-                        Text("No graph edges.")
+                        Text("memory.empty.edges")
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(snapshot.edges.prefix(6)) { edge in
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(edge.relationKind.rawValue)
                                     .font(.headline)
-                                Text("\(edge.sourceRecordIDs.count) records · \(edge.sourceArtifactIDs.count) artifacts")
+                                Text("memory.edge.stats \(edge.sourceRecordIDs.count) \(edge.sourceArtifactIDs.count)")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -218,9 +218,9 @@ struct MemoryDetailView: View {
                     }
                 }
 
-                Section("Temporal Arcs") {
+                Section("common.section.arcs") {
                     if snapshot.arcs.isEmpty {
-                        Text("No temporal arcs linked yet.")
+                        Text("common.empty.arcs")
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(snapshot.arcs) { arc in
@@ -237,9 +237,9 @@ struct MemoryDetailView: View {
                     }
                 }
 
-                Section("Reflections") {
+                Section("common.section.reflections") {
                     if snapshot.reflections.isEmpty {
-                        Text("No reflections linked yet.")
+                        Text("common.empty.reflections")
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(snapshot.reflections) { reflection in
@@ -266,7 +266,7 @@ struct MemoryDetailView: View {
                 }
             }
         }
-        .navigationTitle("Memory")
+        .navigationTitle("memory.nav.title")
         .task(id: recordID) {
             await autoRefresh()
         }
@@ -294,7 +294,7 @@ struct MemoryDetailView: View {
             if let snapshot {
                 resetEditDraft(from: snapshot.record)
             }
-            errorMessage = snapshot == nil ? "Memory not found." : nil
+            errorMessage = snapshot == nil ? String(localized: "memory.error.notFound") : nil
         } catch {
             errorMessage = error.localizedDescription
         }

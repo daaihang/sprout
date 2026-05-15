@@ -18,21 +18,21 @@ struct PersonDetailView: View {
             }
 
             if let snapshot {
-                Section("Person") {
+                Section("person.section.info") {
                     Text(snapshot.summary.entity.displayName)
                         .font(.headline)
                     if let summary = snapshot.summary.entity.summary.trimmedOrNil {
                         Text(summary)
                             .foregroundStyle(.secondary)
                     }
-                    Text("\(snapshot.summary.artifactCount) artifacts · \(snapshot.summary.reflectionCount) reflections")
+                    Text("person.stats \(snapshot.summary.artifactCount) \(snapshot.summary.reflectionCount)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
 
-                Section("Related Memories") {
+                Section("common.section.relatedMemories") {
                     if snapshot.summary.relatedMemories.isEmpty {
-                        Text("No related memories yet.")
+                        Text("common.empty.relatedMemories")
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(snapshot.summary.relatedMemories) { memory in
@@ -52,9 +52,9 @@ struct PersonDetailView: View {
                     }
                 }
 
-                Section("Themes") {
+                Section("common.section.themes") {
                     if snapshot.summary.themeLabels.isEmpty {
-                        Text("No themes linked yet.")
+                        Text("common.empty.themes")
                             .foregroundStyle(.secondary)
                     } else {
                         Text(snapshot.summary.themeLabels.joined(separator: " · "))
@@ -62,9 +62,9 @@ struct PersonDetailView: View {
                     }
                 }
 
-                Section("Arcs") {
+                Section("common.section.arcs") {
                     if snapshot.relatedArcs.isEmpty {
-                        Text("No arcs linked yet.")
+                        Text("common.empty.arcs")
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(snapshot.relatedArcs) { arc in
@@ -84,9 +84,9 @@ struct PersonDetailView: View {
                     }
                 }
 
-                Section("Reflections") {
+                Section("common.section.reflections") {
                     if snapshot.relatedReflections.isEmpty {
-                        Text("No reflections linked yet.")
+                        Text("common.empty.reflections")
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(snapshot.relatedReflections) { reflection in
@@ -107,7 +107,7 @@ struct PersonDetailView: View {
                 }
             }
         }
-        .navigationTitle("Person")
+        .navigationTitle("person.nav.title")
         .task {
             await load()
         }
