@@ -184,7 +184,7 @@ struct DebugMemoryFixtureSnapshot: Hashable, Sendable {
 
 @MainActor
 protocol MoryMemoryRepositorying: AnyObject {
-    func createMemory(from draft: MemoryCaptureDraft) throws -> MemorySummary
+    func createMemory(from draft: MemoryCaptureDraft) async throws -> MemorySummary
     func fetchRecentMemories(limit: Int?) throws -> [MemorySummary]
     func fetchHomeBoard(for date: Date, limit: Int) throws -> HomeBoardSnapshot
     func fetchMemoryDetail(recordID: UUID) throws -> MemoryDetailSnapshot?
@@ -193,8 +193,16 @@ protocol MoryMemoryRepositorying: AnyObject {
     func fetchPeopleSummaries(limit: Int?) throws -> [PersonMemorySummary]
     func fetchTemporalArcs(limit: Int?) throws -> [TemporalArc]
     func fetchReflections(limit: Int?) throws -> [ReflectionSnapshot]
-    func seedDebugFixture() throws -> DebugMemoryFixtureSnapshot
+    func seedDebugFixture() async throws -> DebugMemoryFixtureSnapshot
     func fetchDebugFixtureSnapshot(recordID: UUID) throws -> DebugMemoryFixtureSnapshot?
+}
+
+protocol RecordAnalysisServing: Sendable {
+    func analyze(
+        record: RecordShell,
+        artifacts: [Artifact],
+        knownEntities: [EntityReference]
+    ) async throws -> RecordAnalysisSnapshot
 }
 
 extension String {

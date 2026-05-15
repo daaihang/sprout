@@ -24,11 +24,10 @@ struct AnalyzeResponseMapper {
     }
 
     private func normalizedThemes(from response: AnalyzeResponseEnvelope) -> [String] {
-        var values = response.themes
         let themeEntities = response.entities
             .filter { $0.kind.lowercased() == EntityKind.theme.rawValue }
             .map(\.name)
-        values.append(contentsOf: themeEntities)
+        var values = themeEntities
         values.append(contentsOf: response.tags)
         return Array(NSOrderedSet(array: values.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty })) as? [String] ?? values
     }
@@ -54,8 +53,14 @@ struct AnalyzeResponseMapper {
 
     private func retrievalTerms(from response: AnalyzeResponseEnvelope) -> [String] {
         let entityNames = response.entities.map(\.name)
-        let values = response.retrievalTerms + response.tags + response.themes + entityNames
-        return Array(NSOrderedSet(array: values.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty })) as? [String] ?? values
+        let values = response.retrievalTerms + response.tags + normalizedThemes(from: response) + entityNames
+        return Array(
+            NSOrderedSet(
+                array: values.filter {
+                    !$0.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty
+                }
+            )
+        ) as? [String] ?? values
     }
 
     private func inferEntities(from response: AnalyzeResponseEnvelope) -> [EntityReference] {
@@ -182,7 +187,6 @@ struct AnalyzeResponseEnvelope: Codable, Sendable {
     }
 
     var tags: [String]
-    var themes: [String]
     var retrievalTerms: [String]
     var emotion: Emotion
     var entities: [Entity]
@@ -195,7 +199,6 @@ struct AnalyzeResponseEnvelope: Codable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case tags
-        case themes
         case retrievalTerms = "retrieval_terms"
         case emotion
         case entities
@@ -205,5 +208,43 @@ struct AnalyzeResponseEnvelope: Codable, Sendable {
         case salienceScore = "salience_score"
         case followUp = "follow_up"
         case reflectionHint = "reflection_hint"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        tags = try container.decodeIfPresent([String].self, forKey: .tags) ?? []
+        retrievalTerms = try container.decodeIfPresent([String].self, forKey: .retrievalTerms) ?? []
+        emotion = try container.decode(Emotion.self, forKey: .emotion)
+        entities = try container.decodeIfPresent([Entity].self, forKey: .entities) ?? []
+        candidateEdges = try container.decodeIfPresent([CandidateEdge].self, forKey: .candidateEdges) ?? []
+        insight = try container.decode(String.self, forKey: .insight)
+        summary = try container.decodeIfPresent(String.self, forKey: .summary)
+        salienceScore = try container.decodeIfPresent(Double.self, forKey: .salienceScore)
+        followUp = try container.decodeIfPresent(FollowUp.self, forKey: .followUp)
+        reflectionHint = try container.decodeIfPresent(String.self, forKey: .reflectionHint)
+    }
+
+    init(
+        tags: [String],
+        retrievalTerms: [String],
+        emotion: Emotion,
+        entities: [Entity],
+        candidateEdges: [CandidateEdge],
+        insight: String,
+        summary: String?,
+        salienceScore: Double?,
+        followUp: FollowUp?,
+        reflectionHint: String?
+    ) {
+        self.tags = tags
+        self.retrievalTerms = retrievalTerms
+        self.emotion = emotion
+        self.entities = entities
+        self.candidateEdges = candidateEdges
+        self.insight = insight
+        self.summary = summary
+        self.salienceScore = salienceScore
+        self.followUp = followUp
+        self.reflectionHint = reflectionHint
     }
 }

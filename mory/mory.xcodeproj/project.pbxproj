@@ -6,33 +6,56 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXContainerItemProxy section */
+		82EC81AE1F8849FC82087434 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0299B2FD2FB67EFD00A1072C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 0299B3042FB67EFD00A1072C;
+			remoteInfo = mory;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
-		0299B10F2FB48EFF00A1072C /* mory.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = mory.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		0299B3052FB67EFD00A1072C /* mory.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = mory.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		55BF848E9023419E8CF915D0 /* moryTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = moryTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		0299B11C2FB48F0100A1072C /* Exceptions for "mory" folder in "mory" target */ = {
+		0299B3122FB67EFE00A1072C /* Exceptions for "mory" folder in "mory" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
-			target = 0299B10E2FB48EFF00A1072C /* mory */;
+			target = 0299B3042FB67EFD00A1072C /* mory */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		0299B1112FB48EFF00A1072C /* mory */ = {
+		0299B3072FB67EFD00A1072C /* mory */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				0299B11C2FB48F0100A1072C /* Exceptions for "mory" folder in "mory" target */,
+				0299B3122FB67EFE00A1072C /* Exceptions for "mory" folder in "mory" target */,
 			);
 			path = mory;
+			sourceTree = "<group>";
+		};
+		FE1B59B8A14E41E8B2108F47 /* moryTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = moryTests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		0299B10C2FB48EFF00A1072C /* Frameworks */ = {
+		0299B3022FB67EFD00A1072C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		450B6FD9BD23438D90DDB5E9 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -42,18 +65,20 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		0299B1062FB48EFF00A1072C = {
+		0299B2FC2FB67EFD00A1072C = {
 			isa = PBXGroup;
 			children = (
-				0299B1112FB48EFF00A1072C /* mory */,
-				0299B1102FB48EFF00A1072C /* Products */,
+				0299B3072FB67EFD00A1072C /* mory */,
+				FE1B59B8A14E41E8B2108F47 /* moryTests */,
+				0299B3062FB67EFD00A1072C /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		0299B1102FB48EFF00A1072C /* Products */ = {
+		0299B3062FB67EFD00A1072C /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				0299B10F2FB48EFF00A1072C /* mory.app */,
+				0299B3052FB67EFD00A1072C /* mory.app */,
+				55BF848E9023419E8CF915D0 /* moryTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -61,64 +86,95 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		0299B10E2FB48EFF00A1072C /* mory */ = {
+		0299B3042FB67EFD00A1072C /* mory */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 0299B11D2FB48F0100A1072C /* Build configuration list for PBXNativeTarget "mory" */;
+			buildConfigurationList = 0299B3132FB67EFE00A1072C /* Build configuration list for PBXNativeTarget "mory" */;
 			buildPhases = (
-				0299B10B2FB48EFF00A1072C /* Sources */,
-				0299B10C2FB48EFF00A1072C /* Frameworks */,
-				0299B10D2FB48EFF00A1072C /* Resources */,
+				0299B3012FB67EFD00A1072C /* Sources */,
+				0299B3022FB67EFD00A1072C /* Frameworks */,
+				0299B3032FB67EFD00A1072C /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				0299B1112FB48EFF00A1072C /* mory */,
+				0299B3072FB67EFD00A1072C /* mory */,
 			);
 			name = mory;
 			packageProductDependencies = (
 			);
 			productName = mory;
-			productReference = 0299B10F2FB48EFF00A1072C /* mory.app */;
+			productReference = 0299B3052FB67EFD00A1072C /* mory.app */;
 			productType = "com.apple.product-type.application";
+		};
+		FD523E239F3A435BB0DACC9C /* moryTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8C52C016F72C4EA0B3154AE8 /* Build configuration list for PBXNativeTarget "moryTests" */;
+			buildPhases = (
+				A7AFCBAF5BDD4E058D9448D3 /* Sources */,
+				450B6FD9BD23438D90DDB5E9 /* Frameworks */,
+				A7596694C3BE4D26A0EA222A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				C3684EC9422A4D59AA8E117B /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				FE1B59B8A14E41E8B2108F47 /* moryTests */,
+			);
+			name = moryTests;
+			packageProductDependencies = (
+			);
+			productName = moryTests;
+			productReference = 55BF848E9023419E8CF915D0 /* moryTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		0299B1072FB48EFF00A1072C /* Project object */ = {
+		0299B2FD2FB67EFD00A1072C /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 2640;
 				LastUpgradeCheck = 2640;
 				TargetAttributes = {
-					0299B10E2FB48EFF00A1072C = {
+					0299B3042FB67EFD00A1072C = {
 						CreatedOnToolsVersion = 26.4.1;
 					};
 				};
 			};
-			buildConfigurationList = 0299B10A2FB48EFF00A1072C /* Build configuration list for PBXProject "mory" */;
+			buildConfigurationList = 0299B3002FB67EFD00A1072C /* Build configuration list for PBXProject "mory" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
 				Base,
 			);
-			mainGroup = 0299B1062FB48EFF00A1072C;
+			mainGroup = 0299B2FC2FB67EFD00A1072C;
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
-			productRefGroup = 0299B1102FB48EFF00A1072C /* Products */;
+			productRefGroup = 0299B3062FB67EFD00A1072C /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				0299B10E2FB48EFF00A1072C /* mory */,
+				0299B3042FB67EFD00A1072C /* mory */,
+				FD523E239F3A435BB0DACC9C /* moryTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		0299B10D2FB48EFF00A1072C /* Resources */ = {
+		0299B3032FB67EFD00A1072C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A7596694C3BE4D26A0EA222A /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -128,7 +184,14 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		0299B10B2FB48EFF00A1072C /* Sources */ = {
+		0299B3012FB67EFD00A1072C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A7AFCBAF5BDD4E058D9448D3 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -137,8 +200,16 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		C3684EC9422A4D59AA8E117B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 0299B3042FB67EFD00A1072C /* mory */;
+			targetProxy = 82EC81AE1F8849FC82087434 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
-		0299B11E2FB48F0100A1072C /* Debug */ = {
+		0299B3142FB67EFE00A1072C /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -159,6 +230,7 @@
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = mory;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -184,7 +256,7 @@
 			};
 			name = Debug;
 		};
-		0299B11F2FB48F0100A1072C /* Release */ = {
+		0299B3152FB67EFE00A1072C /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -205,6 +277,7 @@
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = mory;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -230,7 +303,7 @@
 			};
 			name = Release;
 		};
-		0299B1202FB48F0100A1072C /* Debug */ = {
+		0299B3162FB67EFE00A1072C /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -292,7 +365,7 @@
 			};
 			name = Debug;
 		};
-		0299B1212FB48F0100A1072C /* Release */ = {
+		0299B3172FB67EFE00A1072C /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -346,28 +419,79 @@
 			};
 			name = Release;
 		};
+		02D58AE428AF41ED9510BC91 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5Q43XZCDJ5;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				MARKETING_VERSION = 0.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.speculolabs.moryTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/mory.app/mory";
+			};
+			name = Release;
+		};
+		0EADE3E4C096490282AE5984 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5Q43XZCDJ5;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				MARKETING_VERSION = 0.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.speculolabs.moryTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/mory.app/mory";
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		0299B10A2FB48EFF00A1072C /* Build configuration list for PBXProject "mory" */ = {
+		0299B3002FB67EFD00A1072C /* Build configuration list for PBXProject "mory" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				0299B1202FB48F0100A1072C /* Debug */,
-				0299B1212FB48F0100A1072C /* Release */,
+				0299B3162FB67EFE00A1072C /* Debug */,
+				0299B3172FB67EFE00A1072C /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		0299B11D2FB48F0100A1072C /* Build configuration list for PBXNativeTarget "mory" */ = {
+		0299B3132FB67EFE00A1072C /* Build configuration list for PBXNativeTarget "mory" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				0299B11E2FB48F0100A1072C /* Debug */,
-				0299B11F2FB48F0100A1072C /* Release */,
+				0299B3142FB67EFE00A1072C /* Debug */,
+				0299B3152FB67EFE00A1072C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		8C52C016F72C4EA0B3154AE8 /* Build configuration list for PBXNativeTarget "moryTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0EADE3E4C096490282AE5984 /* Debug */,
+				02D58AE428AF41ED9510BC91 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
-	rootObject = 0299B1072FB48EFF00A1072C /* Project object */;
+	rootObject = 0299B2FD2FB67EFD00A1072C /* Project object */;
 }

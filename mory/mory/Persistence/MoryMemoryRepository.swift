@@ -4,16 +4,20 @@ import SwiftData
 @MainActor
 final class MoryMemoryRepository: MoryMemoryRepositorying {
     private let modelContext: ModelContext
-    private let analysisService = LocalRecordAnalysisService()
+    private let analysisService: any RecordAnalysisServing
     private let analysisPipeline = AnalysisPipeline()
     private let temporalArcService = TemporalArcService()
     private let reflectionBuilder = ReflectionBuilder()
 
-    init(modelContext: ModelContext) {
+    init(
+        modelContext: ModelContext,
+        analysisService: any RecordAnalysisServing
+    ) {
         self.modelContext = modelContext
+        self.analysisService = analysisService
     }
 
-    func createMemory(from draft: MemoryCaptureDraft) throws -> MemorySummary {
+    func createMemory(from draft: MemoryCaptureDraft) async throws -> MemorySummary {
         let now = Date.now
         let recordID = UUID()
         let captureArtifacts = buildArtifacts(from: draft, recordID: recordID, createdAt: now)
@@ -33,8 +37,8 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
 
         try upsert(recordShell: recordShell)
         try captureArtifacts.forEach { try upsert(artifact: $0) }
-        try runArchitecturePipeline(record: recordShell, artifacts: captureArtifacts)
         try save()
+        try await runArchitecturePipeline(record: recordShell, artifacts: captureArtifacts)
 
         return makeMemorySummary(record: recordShell, artifacts: captureArtifacts)
     }
@@ -237,7 +241,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         return applyLimit(limit, to: reflections)
     }
 
-    func seedDebugFixture() throws -> DebugMemoryFixtureSnapshot {
+    func seedDebugFixture() async throws -> DebugMemoryFixtureSnapshot {
         let draft = MemoryCaptureDraft(
             title: "Late train, quiet insight",
             rawText: "Missed the express home after dinner with Linh and ended up walking twenty minutes in the rain. It felt frustrating at first, but the walk made the next quarter plan click into place.",
@@ -245,7 +249,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             inputContext: "post-dinner voice memo transcribed to text",
             captureSource: .manual
         )
-        let memory = try createMemory(from: draft)
+        let memory = try await createMemory(from: draft)
 
         guard let snapshot = try fetchDebugFixtureSnapshot(recordID: memory.record.id) else {
             throw CocoaError(.coderInvalidValue)
@@ -369,7 +373,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         }
     }
 
-    private func runArchitecturePipeline(record: RecordShell, artifacts: [Artifact]) throws {
+    private func runArchitecturePipeline(record: RecordShell, artifacts: [Artifact]) async throws {
         let existingAnalyses = try modelContext.fetch(FetchDescriptor<RecordAnalysisSnapshotStore>()).map(\.domainModel)
         let existingEntityNodes = try modelContext.fetch(FetchDescriptor<EntityNodeStore>()).map(\.domainModel)
         let existingEntityEdges = try modelContext.fetch(FetchDescriptor<EntityEdgeStore>()).map(\.domainModel)
@@ -382,8 +386,21 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         ).map(\.domainModel)
         let allRecords = try fetchRecordShells()
         let allArtifacts = try modelContext.fetch(FetchDescriptor<ArtifactStore>()).map(\.domainModel)
+        let knownEntities = existingEntityNodes.map {
+            EntityReference(
+                id: $0.id,
+                kind: $0.kind,
+                name: $0.displayName,
+                aliases: $0.canonicalName == $0.displayName ? [] : [$0.canonicalName],
+                confidence: $0.confidence
+            )
+        }
 
-        let analysis = analysisService.analyze(record: record, artifacts: artifacts)
+        let analysis = try await analysisService.analyze(
+            record: record,
+            artifacts: artifacts,
+            knownEntities: knownEntities
+        )
         try upsert(recordAnalysis: analysis)
 
         let pipelineResult = analysisPipeline.applyAnalysis(
@@ -449,6 +466,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
 
         try arcsByID.values.forEach { try upsert(temporalArc: $0) }
         try reflectionsByID.values.forEach { try upsert(reflection: $0) }
+        try save()
     }
 
     private func resolvedRecordReflection(

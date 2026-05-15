@@ -18,7 +18,7 @@ private final class MissingMemoryRepository: MoryMemoryRepositorying {
         fatalError("Memory repository dependency was not injected.")
     }
 
-    func createMemory(from draft: MemoryCaptureDraft) throws -> MemorySummary { fail() }
+    func createMemory(from draft: MemoryCaptureDraft) async throws -> MemorySummary { fail() }
     func fetchRecentMemories(limit: Int?) throws -> [MemorySummary] { fail() }
     func fetchHomeBoard(for date: Date, limit: Int) throws -> HomeBoardSnapshot { fail() }
     func fetchMemoryDetail(recordID: UUID) throws -> MemoryDetailSnapshot? { fail() }
@@ -27,6 +27,6 @@ private final class MissingMemoryRepository: MoryMemoryRepositorying {
     func fetchPeopleSummaries(limit: Int?) throws -> [PersonMemorySummary] { fail() }
     func fetchTemporalArcs(limit: Int?) throws -> [TemporalArc] { fail() }
     func fetchReflections(limit: Int?) throws -> [ReflectionSnapshot] { fail() }
-    func seedDebugFixture() throws -> DebugMemoryFixtureSnapshot { fail() }
+    func seedDebugFixture() async throws -> DebugMemoryFixtureSnapshot { fail() }
     func fetchDebugFixtureSnapshot(recordID: UUID) throws -> DebugMemoryFixtureSnapshot? { fail() }
 }

@@ -130,7 +130,7 @@ struct CaptureComposerView: View {
                 captureSource: selectedType.captureSource,
                 artifacts: artifactDrafts
             )
-            _ = try memoryRepository.createMemory(from: draft)
+            _ = try await memoryRepository.createMemory(from: draft)
             onSaved?()
             dismiss()
         } catch {

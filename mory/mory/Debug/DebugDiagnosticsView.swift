@@ -126,7 +126,7 @@ struct DebugDiagnosticsView: View {
         defer { isSeeding = false }
 
         do {
-            fixture = try DebugSeedService.seed(repository: memoryRepository)
+            fixture = try await DebugSeedService.seed(repository: memoryRepository)
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
