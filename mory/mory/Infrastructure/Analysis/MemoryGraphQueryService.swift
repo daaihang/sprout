@@ -209,6 +209,28 @@ struct MemoryGraphContext {
             edges: entityEdges
         )
     }
+
+    func makePersonSummary(entity: EntityNode) -> PersonMemorySummary {
+        let detail = makeEntityDetailSnapshot(entity: entity)
+        return PersonMemorySummary(
+            entity: entity,
+            artifactCount: detail.artifactCount,
+            relatedMemories: Array(detail.relatedMemories.prefix(3)),
+            themeLabels: Array(detail.relatedThemes.prefix(3)),
+            reflectionCount: detail.relatedReflections.count
+        )
+    }
+
+    func makeThemeSummary(entity: EntityNode) -> ThemeMemorySummary {
+        let detail = makeEntityDetailSnapshot(entity: entity)
+        return ThemeMemorySummary(
+            entity: entity,
+            artifactCount: detail.artifactCount,
+            relatedMemories: Array(detail.relatedMemories.prefix(3)),
+            relatedPeople: Array(detail.relatedPeople.prefix(3)),
+            arcCount: detail.relatedArcs.count
+        )
+    }
 }
 
 enum TemporalArcStatus: String, Codable, CaseIterable, Identifiable, Sendable {

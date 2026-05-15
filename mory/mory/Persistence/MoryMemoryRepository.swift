@@ -11,6 +11,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     private let memorySearchService = MemorySearchService()
     private let captureArtifactBuilder = MemoryCaptureArtifactBuilder()
     private let temporalArcService = TemporalArcService()
+    private let debugDiagnosticsService = DebugDiagnosticsService()
     private var latestReflectionTrace: DebugPipelineTraceSnapshot?
 
     init(
@@ -396,9 +397,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             memories: memories,
             entityKinds: [.person]
         )
-        let summaries = personEntities.map { entity in
-            makePersonSummary(entity: entity, graphContext: graphContext)
-        }
+        let summaries = personEntities.map { graphContext.makePersonSummary(entity: $0) }
         return applyLimit(limit, to: summaries)
     }
 
@@ -416,9 +415,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             memories: memories,
             entityKinds: [.theme]
         )
-        let summaries = themeEntities.map { entity in
-            makeThemeSummary(entity: entity, graphContext: graphContext)
-        }
+        let summaries = themeEntities.map { graphContext.makeThemeSummary(entity: $0) }
 
         return applyLimit(limit, to: summaries)
     }
@@ -641,7 +638,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
 
         return reflections.map { reflection in
             let linkedArc = reflection.linkedTemporalArcID.flatMap { arcsByID[$0] }
-            let relatedRecordIDs = linkedArc.map { mergeUniqueIDs(reflection.sourceRecordIDs, $0.sourceRecordIDs) } ?? reflection.sourceRecordIDs
+            let relatedRecordIDs = linkedArc.map { graphContext.mergeUniqueIDs(reflection.sourceRecordIDs, $0.sourceRecordIDs) } ?? reflection.sourceRecordIDs
 
             return ReflectionSummarySnapshot(
                 reflection: reflection,
@@ -687,65 +684,60 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     }
 
     func fetchDebugDiagnostics(targetType: DebugAnalysisTarget, targetID: UUID?) throws -> DebugDiagnosticsSnapshot {
-        let target = try resolveDebugTarget(targetType: targetType, targetID: targetID)
-        let fixture: DebugMemoryFixtureSnapshot?
-        if let target {
-            switch target.targetType {
-            case .memory:
-                if let memory = target.memory {
-                    fixture = try fetchDebugFixtureSnapshot(recordID: memory.record.id)
-                } else {
-                    fixture = nil
-                }
-            case .arc, .reflection:
-                fixture = nil
-            }
-        } else {
-            fixture = nil
-        }
-
-        let provenance = try fetchDebugProvenance(targetType: targetType, targetID: targetID)
-        let analyzePayload = try debugAnalyzePayload(for: target)
-        let reflectionPayload = try debugReflectionPayload(for: target)
-        let pipelineTrace = try resolveDebugRecordID(targetType: targetType, targetID: targetID)
-            .flatMap { try fetchPipelineStatus(recordID: $0) }
-            .map {
-                DebugPipelineTraceSnapshot(
-                    requestBody: $0.requestBody,
-                    responseBody: $0.responseBody,
-                    rawErrorBody: $0.rawErrorBody,
-                    statusCode: $0.lastHTTPStatusCode,
-                    failedStage: $0.failedStage
-                )
-            }
-
-        return DebugDiagnosticsSnapshot(
-            target: target,
-            analyzePayload: analyzePayload,
-            reflectionPayload: reflectionPayload,
-            provenance: provenance,
-            fixture: fixture,
-            pipelineTrace: pipelineTrace
+        let memories = try fetchRecentMemories(limit: nil)
+        return try debugDiagnosticsService.fetchDiagnostics(
+            targetType: targetType,
+            targetID: targetID,
+            modelContext: modelContext,
+            memories: memories,
+            pipelineStatusFetcher: fetchPipelineStatus,
+            recordAnalysisFetcher: fetchRecordAnalysis,
+            artifactsFetcher: fetchArtifacts,
+            latestReflectionTrace: latestReflectionTrace
         )
     }
 
     func rerunDebugPipeline(targetType: DebugAnalysisTarget, targetID: UUID?, mode: DebugRebuildMode) async throws {
+        let memories = try fetchRecentMemories(limit: nil)
+        let graphContext = try graphQueryService.load(modelContext: modelContext, memories: memories)
         switch mode {
         case .analysisOnly:
-            guard let recordID = try resolveDebugRecordID(targetType: targetType, targetID: targetID) else {
-                throw CocoaError(.fileNoSuchFile)
-            }
+            let recordID = try resolveRecordIDViaGraph(targetType: targetType, targetID: targetID, graphContext: graphContext)
+            guard let recordID else { throw CocoaError(.fileNoSuchFile) }
             try await refreshMemoryPipeline(recordID: recordID)
         case .graphArcReflection:
-            guard let recordID = try resolveDebugRecordID(targetType: targetType, targetID: targetID) else {
-                throw CocoaError(.fileNoSuchFile)
-            }
+            let recordID = try resolveRecordIDViaGraph(targetType: targetType, targetID: targetID, graphContext: graphContext)
+            guard let recordID else { throw CocoaError(.fileNoSuchFile) }
             try await rerunGraphArcReflection(recordID: recordID)
         case .reflectionReplay:
-            guard let reflection = try resolveDebugTarget(targetType: targetType, targetID: targetID)?.reflection else {
+            let target = try debugDiagnosticsService.fetchDiagnostics(
+                targetType: targetType,
+                targetID: targetID,
+                modelContext: modelContext,
+                memories: memories,
+                pipelineStatusFetcher: fetchPipelineStatus,
+                recordAnalysisFetcher: fetchRecordAnalysis,
+                artifactsFetcher: fetchArtifacts,
+                latestReflectionTrace: latestReflectionTrace
+            )
+            guard let reflectionID = target.reflection?.reflection.id else {
                 throw CocoaError(.fileNoSuchFile)
             }
-            try await replayDebugReflection(reflectionID: reflection.reflection.id)
+            try await replayDebugReflection(reflectionID: reflectionID)
+        }
+    }
+
+    private func resolveRecordIDViaGraph(targetType: DebugAnalysisTarget, targetID: UUID?, graphContext: MemoryGraphContext) throws -> UUID? {
+        switch targetType {
+        case .memory:
+            if let targetID { return targetID }
+            return try fetchRecentMemories(limit: 1).first?.record.id
+        case .arc:
+            return graphContext.arcs.first(where: { $0.id == targetID })?.sourceRecordIDs.first
+                ?? graphContext.arcs.first?.sourceRecordIDs.first
+        case .reflection:
+            return graphContext.reflections.first(where: { $0.id == targetID })?.sourceRecordIDs.first
+                ?? graphContext.reflections.first?.sourceRecordIDs.first
         }
     }
 
@@ -770,12 +762,11 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     }
 
     func clearDebugFixtures() throws {
-        let records = try fetchRecordShells()
+        let records = try fetchRecordShells().filter {
+            $0.debugFixtureSeededAt != nil || $0.inputContext == "debug fixture seed"
+        }
         for record in records {
-            guard record.debugFixtureSeededAt != nil || record.inputContext == "debug fixture seed" else {
-                continue
-            }
-            try deleteDebugRecord(recordID: record.id)
+            try debugDiagnosticsService.deleteRecord(recordID: record.id, modelContext: modelContext)
         }
         try save()
     }
@@ -817,292 +808,22 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     }
 
     private func replayDebugReflection(reflectionID: UUID) async throws {
-        guard let reflection = try modelContext.fetch(
-            FetchDescriptor<ReflectionSnapshotStore>(predicate: #Predicate { $0.id == reflectionID })
-        ).first?.domainModel else {
-            throw CocoaError(.fileNoSuchFile)
-        }
-        let linkedArc = reflection.linkedTemporalArcID.flatMap { arcID in
-            try? modelContext.fetch(
-                FetchDescriptor<TemporalArcStore>(predicate: #Predicate { $0.id == arcID })
-            ).first?.domainModel
-        } ?? nil
-        let record = try reflection.sourceRecordIDs.first.flatMap { try fetchRecordShell(id: $0) }
-        let artifacts = try record.map { try fetchArtifacts(recordID: $0.id) } ?? []
-        let knownEntities = try linkedEntityReferences(
-            recordID: record?.id,
-            arcID: linkedArc?.id,
-            reflectionID: reflection.id
-        )
-
-        let replayResult = try await analysisService.replayReflection(
-            reflection: reflection,
-            linkedArc: linkedArc,
-            record: record,
-            artifacts: artifacts,
-            knownEntities: knownEntities,
-            prompt: reflection.body
-        )
-        latestReflectionTrace = replayResult.debugTrace
-    }
-
-    private func resolveDebugTarget(targetType: DebugAnalysisTarget, targetID: UUID?) throws -> DebugTargetSnapshot? {
         let memories = try fetchRecentMemories(limit: nil)
-        let graphContext = try graphQueryService.load(
+        try await debugDiagnosticsService.replayReflection(
+            reflectionID: reflectionID,
             modelContext: modelContext,
-            memories: memories
+            memories: memories,
+            analysisService: analysisService
         )
-        switch targetType {
-        case .memory:
-            let memory: MemorySummary?
-            if let targetID {
-                memory = try fetchRecentMemories(limit: nil).first(where: { $0.record.id == targetID })
-            } else {
-                memory = try fetchRecentMemories(limit: 1).first
-            }
-            guard let memory else { return nil }
-            return DebugTargetSnapshot(targetType: .memory, memory: memory, arc: nil, reflection: nil)
-        case .arc:
-            let arc = graphContext.arcs.first(where: { $0.id == targetID }) ?? graphContext.arcs.first
-            guard let arc else { return nil }
-            let summary = TemporalArcSummarySnapshot(
-                arc: arc,
-                relatedMemories: relatedMemories(recordIDs: arc.sourceRecordIDs, memoriesByRecordID: graphContext.memoriesByRecordID, limit: 3),
-                linkedReflection: graphContext.reflections.first(where: { $0.linkedTemporalArcID == arc.id })
-            )
-            return DebugTargetSnapshot(targetType: .arc, memory: nil, arc: summary, reflection: nil)
-        case .reflection:
-            let reflection = graphContext.reflections.first(where: { $0.id == targetID }) ?? graphContext.reflections.first
-            guard let reflection else { return nil }
-            let linkedArc = reflection.linkedTemporalArcID.flatMap { linkedArcID in
-                graphContext.arcs.first(where: { $0.id == linkedArcID })
-            }
-            let summary = ReflectionSummarySnapshot(
-                reflection: reflection,
-                linkedArc: linkedArc,
-                relatedMemories: relatedMemories(recordIDs: reflection.sourceRecordIDs, memoriesByRecordID: graphContext.memoriesByRecordID, limit: 3)
-            )
-            return DebugTargetSnapshot(targetType: .reflection, memory: nil, arc: nil, reflection: summary)
-        }
-    }
-
-    private func debugAnalyzePayload(for target: DebugTargetSnapshot?) throws -> DebugAnalyzePayloadSnapshot? {
-        guard let target, let memory = target.memory else { return nil }
-        let pipelineStatus = try fetchPipelineStatus(recordID: memory.record.id)
-        let artifacts = try fetchArtifacts(recordID: memory.record.id)
-        let request = AnalyzeRequestBuilder().build(
-            record: memory.record,
-            artifacts: artifacts,
-            knownEntities: []
-        )
-        let encoded = pipelineStatus?.requestBody ?? String(data: (try? JSONEncoder().encode(request)) ?? Data(), encoding: .utf8) ?? ""
-        let response = try fetchRecordAnalysis(recordID: memory.record.id)
-        let responseEncoded = pipelineStatus?.responseBody ?? response.flatMap { String(data: (try? JSONEncoder().encode($0)) ?? Data(), encoding: .utf8) } ?? ""
-        return DebugAnalyzePayloadSnapshot(
-            recordID: memory.record.id,
-            requestBody: encoded,
-            responseBody: responseEncoded,
-            lastError: pipelineStatus?.lastError,
-            rawErrorBody: pipelineStatus?.rawErrorBody
-        )
-    }
-
-    private func debugReflectionPayload(for target: DebugTargetSnapshot?) throws -> DebugReflectionPayloadSnapshot? {
-        guard let target else { return nil }
-        switch target.targetType {
-        case .memory:
-            guard let memory = target.memory else { return nil }
-            let artifacts = try fetchArtifacts(recordID: memory.record.id)
-            let analyzePayload = AnalyzeRequestBuilder().build(record: memory.record, artifacts: artifacts)
-            let payload = MoryAPIClient.ReflectionPayload(
-                recordShell: analyzePayload.recordShell,
-                artifacts: analyzePayload.artifacts,
-                linkedArcID: nil,
-                knownEntities: [],
-                prompt: memory.record.rawText
-            )
-            let requestBody = String(data: (try? JSONEncoder().encode(payload)) ?? Data(), encoding: .utf8) ?? ""
-            return DebugReflectionPayloadSnapshot(
-                recordID: memory.record.id,
-                arcID: nil,
-                requestBody: latestReflectionTrace?.requestBody ?? requestBody,
-                responseBody: latestReflectionTrace?.responseBody ?? "",
-                lastError: latestReflectionTrace?.failedStage,
-                rawErrorBody: latestReflectionTrace?.rawErrorBody
-            )
-        case .arc:
-            guard let arc = target.arc else { return nil }
-            let payload = MoryAPIClient.ReflectionPayload(
-                recordShell: AnalyzeRequestBuilder().build(record: RecordShell(createdAt: .now, updatedAt: .now, captureSource: .manual, rawText: arc.arc.summary), artifacts: []).recordShell,
-                artifacts: [],
-                linkedArcID: arc.arc.id.uuidString,
-                knownEntities: [],
-                prompt: arc.arc.summary
-            )
-            let requestBody = String(data: (try? JSONEncoder().encode(payload)) ?? Data(), encoding: .utf8) ?? ""
-            return DebugReflectionPayloadSnapshot(
-                recordID: arc.arc.sourceRecordIDs.first,
-                arcID: arc.arc.id,
-                requestBody: latestReflectionTrace?.requestBody ?? requestBody,
-                responseBody: latestReflectionTrace?.responseBody ?? "",
-                lastError: latestReflectionTrace?.failedStage,
-                rawErrorBody: latestReflectionTrace?.rawErrorBody
-            )
-        case .reflection:
-            guard let reflection = target.reflection else { return nil }
-            struct ReflectionReplayDebugRequest: Encodable {
-                let reflectionID: String
-                let linkedArcID: String?
-
-                enum CodingKeys: String, CodingKey {
-                    case reflectionID = "reflection_id"
-                    case linkedArcID = "linked_arc_id"
-                }
-            }
-            let request = ReflectionReplayDebugRequest(
-                reflectionID: reflection.reflection.id.uuidString,
-                linkedArcID: reflection.linkedArc?.id.uuidString
-            )
-            let requestBody = latestReflectionTrace?.requestBody ?? String(data: (try? JSONEncoder().encode(request)) ?? Data(), encoding: .utf8) ?? ""
-            return DebugReflectionPayloadSnapshot(
-                recordID: reflection.reflection.sourceRecordIDs.first,
-                arcID: reflection.linkedArc?.id,
-                requestBody: requestBody,
-                responseBody: latestReflectionTrace?.responseBody ?? reflection.reflection.body,
-                lastError: latestReflectionTrace?.failedStage,
-                rawErrorBody: latestReflectionTrace?.rawErrorBody
-            )
-        }
-    }
-
-    private func linkedEntityReferences(
-        recordID: UUID?,
-        arcID: UUID?,
-        reflectionID: UUID?
-    ) throws -> [EntityReference] {
-        let memories = try fetchRecentMemories(limit: nil)
-        let graphContext = try graphQueryService.load(
-            modelContext: modelContext,
-            memories: memories
-        )
-        let recordIDs = [recordID]
-            + graphContext.arcs.filter { $0.id == arcID }.flatMap(\.sourceRecordIDs)
-            + graphContext.reflections.filter { $0.id == reflectionID }.flatMap(\.sourceRecordIDs)
-        let targetRecordIDs = Set(recordIDs.compactMap { $0 })
-
-        return graphContext.entities
-            .filter { !Set($0.provenanceRecordIDs).isDisjoint(with: targetRecordIDs) }
-            .map {
-                EntityReference(
-                    id: $0.id,
-                    kind: $0.kind,
-                    name: $0.displayName,
-                    aliases: $0.aliases,
-                    confidence: $0.confidence
-                )
-            }
-    }
-
-    private func fetchDebugProvenance(targetType: DebugAnalysisTarget, targetID: UUID?) throws -> [DebugProvenanceSnapshot] {
-        let memories = try fetchRecentMemories(limit: nil)
-        let graphContext = try graphQueryService.load(
-            modelContext: modelContext,
-            memories: memories
-        )
-        switch targetType {
-        case .memory:
-            let fallbackMemoryID = try fetchRecentMemories(limit: 1).first?.record.id
-            let memoryID = targetID ?? fallbackMemoryID
-            guard let memoryID else { return [] }
-            return graphContext.entities
-                .filter { $0.provenanceRecordIDs.contains(memoryID) }
-                .map { entity in
-                    DebugProvenanceSnapshot(
-                        entityID: entity.id,
-                        aliasCount: entity.aliases.count,
-                        provenanceRecordIDs: entity.provenanceRecordIDs,
-                        linkedArtifactIDs: graphContext.links.filter { $0.entityID == entity.id }.map(\.artifactID),
-                        linkedAnalysisRecordIDs: graphContext.links.filter { $0.entityID == entity.id }.compactMap(\.sourceAnalysisRecordID),
-                        evidenceSummary: graphContext.links.filter { $0.entityID == entity.id }.map(\.evidenceSummary).joined(separator: " | ")
-                    )
-                }
-        case .arc, .reflection:
-            return graphContext.entities.map { entity in
-                DebugProvenanceSnapshot(
-                    entityID: entity.id,
-                    aliasCount: entity.aliases.count,
-                    provenanceRecordIDs: entity.provenanceRecordIDs,
-                    linkedArtifactIDs: graphContext.links.filter { $0.entityID == entity.id }.map(\.artifactID),
-                    linkedAnalysisRecordIDs: graphContext.links.filter { $0.entityID == entity.id }.compactMap(\.sourceAnalysisRecordID),
-                    evidenceSummary: graphContext.links.filter { $0.entityID == entity.id }.map(\.evidenceSummary).joined(separator: " | ")
-                )
-            }
-        }
-    }
-
-    private func deleteDebugRecord(recordID: UUID) throws {
-        if let record = try modelContext.fetch(FetchDescriptor<RecordShellStore>(predicate: #Predicate { $0.id == recordID })).first {
-            modelContext.delete(record)
-        }
-        let artifactStores = try modelContext.fetch(FetchDescriptor<ArtifactStore>(predicate: #Predicate { $0.recordID == recordID }))
-        artifactStores.forEach { modelContext.delete($0) }
-        let pipelineStores = try modelContext.fetch(FetchDescriptor<MemoryPipelineStatusStore>(predicate: #Predicate { $0.recordID == recordID }))
-        pipelineStores.forEach { modelContext.delete($0) }
-        let analysisStores = try modelContext.fetch(FetchDescriptor<RecordAnalysisSnapshotStore>(predicate: #Predicate { $0.recordID == recordID }))
-        analysisStores.forEach { modelContext.delete($0) }
-    }
-
-    private func resolveDebugRecordID(targetType: DebugAnalysisTarget, targetID: UUID?) throws -> UUID? {
-        let target = try resolveDebugTarget(targetType: targetType, targetID: targetID)
-        switch target?.targetType {
-        case .memory:
-            return target?.memory?.record.id
-        case .arc:
-            return target?.arc?.arc.sourceRecordIDs.first
-        case .reflection:
-            return target?.reflection?.reflection.sourceRecordIDs.first
-        case nil:
-            return nil
-        }
     }
 
     func fetchDebugFixtureSnapshot(recordID: UUID) throws -> DebugMemoryFixtureSnapshot? {
-        guard let record = try fetchRecordShell(id: recordID) else {
-            return nil
-        }
-
-        let artifacts = try fetchArtifacts(recordID: recordID)
-        let analysis = try fetchRecordAnalysis(recordID: recordID)
-        let pipelineStatus = try fetchPipelineStatus(recordID: recordID)
-        let links = try modelContext.fetch(FetchDescriptor<ArtifactEntityLinkStore>()).map(\.domainModel)
-            .filter { link in artifacts.contains(where: { $0.id == link.artifactID }) }
-        let entityIDs = Set(links.map(\.entityID))
-        let entities = try modelContext.fetch(FetchDescriptor<EntityNodeStore>()).map(\.domainModel)
-            .filter { entityIDs.contains($0.id) }
-        let edges = try modelContext.fetch(FetchDescriptor<EntityEdgeStore>()).map(\.domainModel)
-            .filter { $0.sourceRecordIDs.contains(recordID) }
-        let arcs = try modelContext.fetch(FetchDescriptor<TemporalArcStore>()).map(\.domainModel)
-            .filter { $0.sourceRecordIDs.contains(recordID) }
-        let reflections = try modelContext.fetch(FetchDescriptor<ReflectionSnapshotStore>()).map(\.domainModel)
-            .filter { reflection in
-                reflection.sourceRecordIDs.contains(recordID)
-                    || arcs.contains(where: { $0.id == reflection.linkedTemporalArcID })
-            }
-
-        return DebugMemoryFixtureSnapshot(
-            recordID: record.id,
-            recordTitle: record.rawText.firstMeaningfulLine ?? "Debug Fixture",
-            chain: DebugMemoryChainSnapshot(
-                record: record,
-                artifacts: artifacts,
-                analysis: analysis,
-                pipelineStatus: pipelineStatus,
-                entities: entities,
-                edges: edges,
-                links: links,
-                arcs: arcs,
-                reflections: reflections
-            )
+        try debugDiagnosticsService.fetchFixtureSnapshot(
+            recordID: recordID,
+            modelContext: modelContext,
+            artifactsFetcher: fetchArtifacts,
+            recordAnalysisFetcher: fetchRecordAnalysis,
+            pipelineStatusFetcher: fetchPipelineStatus
         )
     }
 
@@ -1234,30 +955,6 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         }
         existing.apply(domainModel: updated)
         try save()
-    }
-
-    private func makePersonSummary(entity: EntityNode, graphContext: MemoryGraphContext) -> PersonMemorySummary {
-        let detail = graphContext.makeEntityDetailSnapshot(entity: entity)
-
-        return PersonMemorySummary(
-            entity: entity,
-            artifactCount: detail.artifactCount,
-            relatedMemories: Array(detail.relatedMemories.prefix(3)),
-            themeLabels: Array(detail.relatedThemes.prefix(3)),
-            reflectionCount: detail.relatedReflections.count
-        )
-    }
-
-    private func makeThemeSummary(entity: EntityNode, graphContext: MemoryGraphContext) -> ThemeMemorySummary {
-        let detail = graphContext.makeEntityDetailSnapshot(entity: entity)
-
-        return ThemeMemorySummary(
-            entity: entity,
-            artifactCount: detail.artifactCount,
-            relatedMemories: Array(detail.relatedMemories.prefix(3)),
-            relatedPeople: Array(detail.relatedPeople.prefix(3)),
-            arcCount: detail.relatedArcs.count
-        )
     }
 
     private func makeMemorySummary(
