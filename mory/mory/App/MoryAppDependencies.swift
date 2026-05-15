@@ -28,7 +28,9 @@ private final class MissingMemoryRepository: MoryMemoryRepositorying {
     func fetchThemeSummaries(limit: Int?) throws -> [ThemeMemorySummary] { fail() }
     func fetchGraphOverview(limitPerKind: Int?, edgeLimit: Int?) throws -> GraphOverviewSnapshot { fail() }
     func fetchTemporalArcs(limit: Int?) throws -> [TemporalArc] { fail() }
+    func fetchTemporalArcSummaries(limit: Int?) throws -> [TemporalArcSummarySnapshot] { fail() }
     func fetchReflections(limit: Int?) throws -> [ReflectionSnapshot] { fail() }
+    func fetchReflectionSummaries(limit: Int?) throws -> [ReflectionSummarySnapshot] { fail() }
     func seedDebugFixture() async throws -> DebugMemoryFixtureSnapshot { fail() }
     func fetchDebugFixtureSnapshot(recordID: UUID) throws -> DebugMemoryFixtureSnapshot? { fail() }
 }

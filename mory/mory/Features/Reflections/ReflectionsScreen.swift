@@ -3,7 +3,7 @@ import SwiftUI
 struct ReflectionsScreen: View {
     @Environment(\.memoryRepository) private var memoryRepository
 
-    @State private var reflections: [ReflectionSnapshot] = []
+    @State private var reflections: [ReflectionSummarySnapshot] = []
     @State private var errorMessage: String?
 
     var body: some View {
@@ -20,24 +20,35 @@ struct ReflectionsScreen: View {
                     Text("Reflection objects will appear here once analysis and arc reflection are connected.")
                         .foregroundStyle(.secondary)
                 } else {
-                    ForEach(reflections) { reflection in
+                    ForEach(reflections) { item in
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
-                                Text(reflection.title)
+                                Text(item.reflection.title)
                                     .font(.headline)
                                 Spacer()
-                                Text(reflection.status.rawValue)
+                                Text(item.reflection.status.rawValue)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
-                            Text(reflection.body)
+                            Text(item.reflection.body)
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                                 .lineLimit(3)
-                            Text(reflection.evidenceSummary)
+                            Text(item.reflection.evidenceSummary)
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
                                 .lineLimit(2)
+                            if let linkedArc = item.linkedArc {
+                                Text(linkedArc.title)
+                                    .font(.footnote.weight(.medium))
+                                    .foregroundStyle(.secondary)
+                            }
+                            if !item.relatedMemories.isEmpty {
+                                Text(item.relatedMemories.map(\.title).joined(separator: " | "))
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(2)
+                            }
                         }
                         .padding(.vertical, 4)
                     }
@@ -55,7 +66,7 @@ struct ReflectionsScreen: View {
 
     private func load() async {
         do {
-            reflections = try memoryRepository.fetchReflections(limit: 20)
+            reflections = try memoryRepository.fetchReflectionSummaries(limit: 20)
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription

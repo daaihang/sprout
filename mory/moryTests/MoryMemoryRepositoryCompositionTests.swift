@@ -58,6 +58,48 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertTrue(overview.entitySections.contains(where: { $0.kind == .theme && $0.entities.contains(where: { $0.displayName == "planning" }) }))
         XCTAssertFalse(overview.topEdges.isEmpty)
     }
+
+    func testDetailArcAndReflectionQueriesReturnLinkedSnapshots() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Late train insight",
+                rawText: "Missed the express home after dinner with Linh and the quarter plan clicked into place.",
+                mood: "reflective",
+                inputContext: "typed in debug",
+                captureSource: .composer,
+                artifacts: [.text(title: "Late train insight", body: "Missed the express home after dinner with Linh and the quarter plan clicked into place.")]
+            )
+        )
+
+        let detail = try XCTUnwrap(repository.fetchMemoryDetail(recordID: memory.record.id))
+        let arcSummaries = try repository.fetchTemporalArcSummaries(limit: 10)
+        let reflectionSummaries = try repository.fetchReflectionSummaries(limit: 10)
+
+        XCTAssertNotNil(detail.analysis)
+        XCTAssertFalse(detail.entities.isEmpty)
+        XCTAssertFalse(detail.edges.isEmpty)
+        XCTAssertFalse(detail.arcs.isEmpty)
+        XCTAssertFalse(detail.reflections.isEmpty)
+
+        let matchingArc = try XCTUnwrap(arcSummaries.first(where: { $0.arc.sourceRecordIDs.contains(memory.record.id) }))
+        XCTAssertFalse(matchingArc.relatedMemories.isEmpty)
+        XCTAssertEqual(matchingArc.relatedMemories.first?.record.id, memory.record.id)
+        XCTAssertNotNil(matchingArc.linkedReflection)
+
+        let matchingReflection = try XCTUnwrap(
+            reflectionSummaries.first(where: {
+                $0.reflection.sourceRecordIDs.contains(memory.record.id) ||
+                $0.linkedArc?.sourceRecordIDs.contains(memory.record.id) == true
+            })
+        )
+        XCTAssertFalse(matchingReflection.relatedMemories.isEmpty)
+    }
 }
 
 private struct StubRecordAnalysisService: RecordAnalysisServing {

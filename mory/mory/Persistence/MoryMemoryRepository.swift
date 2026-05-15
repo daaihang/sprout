@@ -117,10 +117,29 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             return nil
         }
 
+        let graphContext = try loadGraphContext()
+        let artifacts = try fetchArtifacts(recordID: recordID)
+        let links = graphContext.links.filter { link in artifacts.contains(where: { $0.id == link.artifactID }) }
+        let entityIDs = Set(links.map(\.entityID))
+        let entities = graphContext.entities.filter { entityIDs.contains($0.id) }
+        let arcs = graphContext.arcs.filter { $0.sourceRecordIDs.contains(recordID) }
+        let reflections = graphContext.reflections.filter { reflection in
+            reflection.sourceRecordIDs.contains(recordID)
+                || arcs.contains(where: { $0.id == reflection.linkedTemporalArcID })
+        }
+        let edgeIDs = Set(entities.map(\.id))
+        let edges = graphContext.edges.filter {
+            edgeIDs.contains($0.fromEntityID) || edgeIDs.contains($0.toEntityID) || $0.sourceRecordIDs.contains(recordID)
+        }
+
         return MemoryDetailSnapshot(
             record: record,
-            artifacts: try fetchArtifacts(recordID: recordID),
-            analysis: try fetchRecordAnalysis(recordID: recordID)
+            artifacts: artifacts,
+            analysis: try fetchRecordAnalysis(recordID: recordID),
+            entities: entities,
+            edges: edges,
+            arcs: arcs,
+            reflections: reflections
         )
     }
 
@@ -255,6 +274,32 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         return applyLimit(limit, to: arcs)
     }
 
+    func fetchTemporalArcSummaries(limit: Int? = nil) throws -> [TemporalArcSummarySnapshot] {
+        let graphContext = try loadGraphContext()
+        let arcs = applyLimit(
+            limit,
+            to: graphContext.arcs.sorted { $0.updatedAt > $1.updatedAt }
+        )
+
+        let reflectionPairs: [(UUID, ReflectionSnapshot)] = graphContext.reflections.compactMap { reflection in
+            guard let arcID = reflection.linkedTemporalArcID else { return nil }
+            return (arcID, reflection)
+        }
+        let reflectionsByArcID = Dictionary(uniqueKeysWithValues: reflectionPairs)
+
+        return arcs.map { arc in
+            TemporalArcSummarySnapshot(
+                arc: arc,
+                relatedMemories: relatedMemories(
+                    recordIDs: arc.sourceRecordIDs,
+                    memoriesByRecordID: graphContext.memoriesByRecordID,
+                    limit: 3
+                ),
+                linkedReflection: reflectionsByArcID[arc.id]
+            )
+        }
+    }
+
     func fetchReflections(limit: Int? = nil) throws -> [ReflectionSnapshot] {
         let reflections = try modelContext.fetch(
             FetchDescriptor<ReflectionSnapshotStore>(
@@ -262,6 +307,30 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             )
         ).map(\.domainModel)
         return applyLimit(limit, to: reflections)
+    }
+
+    func fetchReflectionSummaries(limit: Int? = nil) throws -> [ReflectionSummarySnapshot] {
+        let graphContext = try loadGraphContext()
+        let reflections = applyLimit(
+            limit,
+            to: graphContext.reflections.sorted { $0.createdAt > $1.createdAt }
+        )
+        let arcsByID = Dictionary(uniqueKeysWithValues: graphContext.arcs.map { ($0.id, $0) })
+
+        return reflections.map { reflection in
+            let linkedArc = reflection.linkedTemporalArcID.flatMap { arcsByID[$0] }
+            let relatedRecordIDs = linkedArc.map { mergeUniqueIDs(reflection.sourceRecordIDs, $0.sourceRecordIDs) } ?? reflection.sourceRecordIDs
+
+            return ReflectionSummarySnapshot(
+                reflection: reflection,
+                linkedArc: linkedArc,
+                relatedMemories: relatedMemories(
+                    recordIDs: relatedRecordIDs,
+                    memoriesByRecordID: graphContext.memoriesByRecordID,
+                    limit: 3
+                )
+            )
+        }
     }
 
     func seedDebugFixture() async throws -> DebugMemoryFixtureSnapshot {
@@ -701,6 +770,22 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             arcs: arcs,
             memoriesByRecordID: memoriesByRecordID
         )
+    }
+
+    private func relatedMemories(
+        recordIDs: [UUID],
+        memoriesByRecordID: [UUID: MemorySummary],
+        limit: Int
+    ) -> [MemorySummary] {
+        recordIDs
+            .compactMap { memoriesByRecordID[$0] }
+            .sorted { $0.record.updatedAt > $1.record.updatedAt }
+            .prefix(limit)
+            .map { $0 }
+    }
+
+    private func mergeUniqueIDs(_ lhs: [UUID], _ rhs: [UUID]) -> [UUID] {
+        Array(NSOrderedSet(array: lhs + rhs)) as? [UUID] ?? Array(Set(lhs + rhs))
     }
 
     private func makePersonSummary(entity: EntityNode, graphContext: GraphContext) -> PersonMemorySummary {

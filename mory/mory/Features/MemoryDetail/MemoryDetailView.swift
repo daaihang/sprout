@@ -95,10 +95,105 @@ struct MemoryDetailView: View {
                     }
                 }
 
-                Section("Next Layers") {
-                    Text("Analysis snapshot, entity graph accumulation, and reflection outputs will attach here on top of the same record and artifact IDs.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                Section("Analysis") {
+                    if let analysis = snapshot.analysis {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(analysis.summary)
+                                .font(.body)
+                            if !analysis.themes.isEmpty {
+                                Text(analysis.themes.joined(separator: " · "))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            if !analysis.retrievalTerms.isEmpty {
+                                Text(analysis.retrievalTerms.joined(separator: ", "))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    } else {
+                        Text("No analysis snapshot.")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Section("Entities") {
+                    if snapshot.entities.isEmpty {
+                        Text("No linked entities.")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(snapshot.entities) { entity in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(entity.displayName)
+                                    .font(.headline)
+                                Text(entity.kind.rawValue)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                if let summary = entity.summary.trimmedOrNil {
+                                    Text(summary)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .padding(.vertical, 2)
+                        }
+                    }
+                }
+
+                Section("Edges") {
+                    if snapshot.edges.isEmpty {
+                        Text("No graph edges.")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(snapshot.edges.prefix(6)) { edge in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(edge.relationKind.rawValue)
+                                    .font(.headline)
+                                Text("\(edge.sourceRecordIDs.count) records · \(edge.sourceArtifactIDs.count) artifacts")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.vertical, 2)
+                        }
+                    }
+                }
+
+                Section("Temporal Arcs") {
+                    if snapshot.arcs.isEmpty {
+                        Text("No temporal arcs linked yet.")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(snapshot.arcs) { arc in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(arc.title)
+                                    .font(.headline)
+                                Text(arc.summary)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(3)
+                            }
+                            .padding(.vertical, 2)
+                        }
+                    }
+                }
+
+                Section("Reflections") {
+                    if snapshot.reflections.isEmpty {
+                        Text("No reflections linked yet.")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(snapshot.reflections) { reflection in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(reflection.title)
+                                    .font(.headline)
+                                Text(reflection.body)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(3)
+                            }
+                            .padding(.vertical, 2)
+                        }
+                    }
                 }
             } else if let errorMessage {
                 Section {

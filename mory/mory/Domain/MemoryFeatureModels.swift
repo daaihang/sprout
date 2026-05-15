@@ -123,6 +123,10 @@ struct MemoryDetailSnapshot: Hashable, Sendable {
     let record: RecordShell
     let artifacts: [Artifact]
     let analysis: RecordAnalysisSnapshot?
+    let entities: [EntityNode]
+    let edges: [EntityEdge]
+    let arcs: [TemporalArc]
+    let reflections: [ReflectionSnapshot]
 }
 
 enum CompositionRenderValue: Hashable, Sendable {
@@ -187,6 +191,22 @@ struct GraphOverviewSnapshot: Hashable, Sendable {
     let themes: [ThemeMemorySummary]
 }
 
+struct TemporalArcSummarySnapshot: Identifiable, Hashable, Sendable {
+    let arc: TemporalArc
+    let relatedMemories: [MemorySummary]
+    let linkedReflection: ReflectionSnapshot?
+
+    var id: UUID { arc.id }
+}
+
+struct ReflectionSummarySnapshot: Identifiable, Hashable, Sendable {
+    let reflection: ReflectionSnapshot
+    let linkedArc: TemporalArc?
+    let relatedMemories: [MemorySummary]
+
+    var id: UUID { reflection.id }
+}
+
 struct DebugMemoryChainSnapshot: Hashable, Sendable {
     let record: RecordShell
     let artifacts: [Artifact]
@@ -225,7 +245,9 @@ protocol MoryMemoryRepositorying: AnyObject {
     func fetchThemeSummaries(limit: Int?) throws -> [ThemeMemorySummary]
     func fetchGraphOverview(limitPerKind: Int?, edgeLimit: Int?) throws -> GraphOverviewSnapshot
     func fetchTemporalArcs(limit: Int?) throws -> [TemporalArc]
+    func fetchTemporalArcSummaries(limit: Int?) throws -> [TemporalArcSummarySnapshot]
     func fetchReflections(limit: Int?) throws -> [ReflectionSnapshot]
+    func fetchReflectionSummaries(limit: Int?) throws -> [ReflectionSummarySnapshot]
     func seedDebugFixture() async throws -> DebugMemoryFixtureSnapshot
     func fetchDebugFixtureSnapshot(recordID: UUID) throws -> DebugMemoryFixtureSnapshot?
 }

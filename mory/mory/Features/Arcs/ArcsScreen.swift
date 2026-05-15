@@ -3,7 +3,7 @@ import SwiftUI
 struct ArcsScreen: View {
     @Environment(\.memoryRepository) private var memoryRepository
 
-    @State private var arcs: [TemporalArc] = []
+    @State private var arcs: [TemporalArcSummarySnapshot] = []
     @State private var errorMessage: String?
 
     var body: some View {
@@ -20,23 +20,34 @@ struct ArcsScreen: View {
                     Text("Temporal arcs will appear here once phase-layer accumulation is connected.")
                         .foregroundStyle(.secondary)
                 } else {
-                    ForEach(arcs) { arc in
+                    ForEach(arcs) { item in
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
-                                Text(arc.title)
+                                Text(item.arc.title)
                                     .font(.headline)
                                 Spacer()
-                                Text(arc.status.rawValue)
+                                Text(item.arc.status.rawValue)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
-                            Text(arc.summary)
+                            Text(item.arc.summary)
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                                 .lineLimit(3)
-                            Text("\(arc.startDate.formatted(date: .abbreviated, time: .omitted)) - \(arc.endDate.formatted(date: .abbreviated, time: .omitted))")
+                            Text("\(item.arc.startDate.formatted(date: .abbreviated, time: .omitted)) - \(item.arc.endDate.formatted(date: .abbreviated, time: .omitted))")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
+                            if !item.relatedMemories.isEmpty {
+                                Text(item.relatedMemories.map(\.title).joined(separator: " | "))
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(2)
+                            }
+                            if let reflection = item.linkedReflection {
+                                Text(reflection.title)
+                                    .font(.footnote.weight(.medium))
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                         .padding(.vertical, 4)
                     }
@@ -54,7 +65,7 @@ struct ArcsScreen: View {
 
     private func load() async {
         do {
-            arcs = try memoryRepository.fetchTemporalArcs(limit: 20)
+            arcs = try memoryRepository.fetchTemporalArcSummaries(limit: 20)
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
