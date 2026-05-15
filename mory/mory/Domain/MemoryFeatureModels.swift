@@ -81,6 +81,32 @@ struct PersonMemorySummary: Identifiable, Hashable, Sendable {
     var id: UUID { entity.id }
 }
 
+struct DebugMemoryChainSnapshot: Hashable, Sendable {
+    let record: RecordShell
+    let artifacts: [Artifact]
+    let analysis: RecordAnalysisSnapshot?
+    let entities: [EntityNode]
+    let edges: [EntityEdge]
+    let links: [ArtifactEntityLink]
+    let arcs: [TemporalArc]
+    let reflections: [ReflectionSnapshot]
+
+    var isCompleteChain: Bool {
+        !artifacts.isEmpty
+            && analysis != nil
+            && !entities.isEmpty
+            && !links.isEmpty
+            && !arcs.isEmpty
+            && !reflections.isEmpty
+    }
+}
+
+struct DebugMemoryFixtureSnapshot: Hashable, Sendable {
+    let recordID: UUID
+    let recordTitle: String
+    let chain: DebugMemoryChainSnapshot
+}
+
 @MainActor
 protocol MoryMemoryRepositorying: AnyObject {
     func createMemory(from draft: MemoryCaptureDraft) throws -> MemorySummary
@@ -92,6 +118,8 @@ protocol MoryMemoryRepositorying: AnyObject {
     func fetchPeopleSummaries(limit: Int?) throws -> [PersonMemorySummary]
     func fetchTemporalArcs(limit: Int?) throws -> [TemporalArc]
     func fetchReflections(limit: Int?) throws -> [ReflectionSnapshot]
+    func seedDebugFixture() throws -> DebugMemoryFixtureSnapshot
+    func fetchDebugFixtureSnapshot(recordID: UUID) throws -> DebugMemoryFixtureSnapshot?
 }
 
 extension String {

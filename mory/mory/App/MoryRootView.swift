@@ -44,6 +44,13 @@ struct MoryRootView: View {
             .tabItem {
                 Label("Reflections", systemImage: "sparkles.rectangle.stack")
             }
+
+            NavigationStack {
+                DebugDiagnosticsView()
+            }
+            .tabItem {
+                Label("Debug", systemImage: "ladybug")
+            }
         }
     }
 }

@@ -245,6 +245,178 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         return applyLimit(limit, to: reflections)
     }
 
+    func seedDebugFixture() throws -> DebugMemoryFixtureSnapshot {
+        let now = Date.now
+        let draft = MemoryCaptureDraft(
+            title: "Late train, quiet insight",
+            rawText: "Missed the express home after dinner with Linh and ended up walking twenty minutes in the rain. It felt frustrating at first, but the walk made the next quarter plan click into place.",
+            mood: "reflective",
+            inputContext: "post-dinner voice memo transcribed to text",
+            captureSource: .manual
+        )
+        let memory = try createMemory(from: draft)
+
+        let analysis = RecordAnalysisSnapshot(
+            recordID: memory.record.id,
+            summary: "A disrupted commute turned into a planning insight after a rain walk.",
+            themes: ["transition", "career planning", "weather"],
+            emotionInterpretation: "Frustration softened into clarity and forward motion.",
+            salienceScore: 0.86,
+            retrievalTerms: ["Linh", "rain walk", "quarter plan", "late train"],
+            entityMentions: [
+                EntityReference(kind: .person, name: "Linh", confidence: 0.98),
+                EntityReference(kind: .theme, name: "career planning", confidence: 0.84),
+                EntityReference(kind: .place, name: "Downtown station", confidence: 0.72),
+            ],
+            candidateEdges: [
+                CandidateEntityEdge(
+                    from: EntityReference(kind: .person, name: "Linh"),
+                    to: EntityReference(kind: .theme, name: "career planning"),
+                    relationKind: .mentionedWith,
+                    confidence: 0.71
+                )
+            ],
+            followUpCandidates: [
+                FollowUpCandidate(prompt: "Capture the quarter plan outline before tomorrow morning.", reason: "The insight is still fresh.")
+            ],
+            reflectionHint: "This record may become part of a broader transition arc.",
+            createdAt: now
+        )
+        try upsert(recordAnalysis: analysis)
+
+        let person = EntityNode(
+            kind: .person,
+            displayName: "Linh",
+            summary: "Friend connected to planning and grounding conversations.",
+            createdAt: now,
+            updatedAt: now,
+            confidence: 0.98
+        )
+        let theme = EntityNode(
+            kind: .theme,
+            displayName: "Career Planning",
+            summary: "Quarter planning and transition decisions.",
+            createdAt: now,
+            updatedAt: now,
+            confidence: 0.84
+        )
+        let place = EntityNode(
+            kind: .place,
+            displayName: "Downtown Station",
+            summary: "Transit node associated with the rain walk.",
+            createdAt: now,
+            updatedAt: now,
+            confidence: 0.72
+        )
+        try upsert(entityNode: person)
+        try upsert(entityNode: theme)
+        try upsert(entityNode: place)
+
+        let artifactIDs = memory.record.artifactIDs
+        let links = artifactIDs.flatMap { artifactID in
+            [
+                ArtifactEntityLink(artifactID: artifactID, entityID: person.id, confidence: 0.98, source: "debug-fixture", createdAt: now),
+                ArtifactEntityLink(artifactID: artifactID, entityID: theme.id, confidence: 0.84, source: "debug-fixture", createdAt: now),
+                ArtifactEntityLink(artifactID: artifactID, entityID: place.id, confidence: 0.72, source: "debug-fixture", createdAt: now),
+            ]
+        }
+        try links.forEach { try upsert(artifactEntityLink: $0) }
+
+        let edge = EntityEdge(
+            fromEntityID: person.id,
+            toEntityID: theme.id,
+            relationKind: .mentionedWith,
+            weight: 1,
+            firstSeenAt: now,
+            lastSeenAt: now,
+            evidenceCount: 1,
+            sourceArtifactIDs: artifactIDs,
+            sourceRecordIDs: [memory.record.id]
+        )
+        try upsert(entityEdge: edge)
+
+        let arc = TemporalArc(
+            title: "Quarter Pivot",
+            summary: "A small travel disruption surfaced a larger planning transition already forming.",
+            status: .accepted,
+            dominantTheme: "career planning",
+            dominantEntityName: "Linh",
+            themeLabels: ["career planning", "transition"],
+            entityNames: ["Linh", "Downtown Station"],
+            sourceRecordIDs: [memory.record.id],
+            sourceArtifactIDs: artifactIDs,
+            sourceEntityIDs: [person.id, theme.id, place.id],
+            startDate: now.addingTimeInterval(-86_400),
+            endDate: now,
+            intensityScore: 0.74,
+            clusterStrength: 0.68,
+            createdAt: now,
+            updatedAt: now
+        )
+        try upsert(temporalArc: arc)
+
+        let reflection = ReflectionSnapshot(
+            type: .record,
+            title: "Disruption became direction",
+            body: "The missed train mattered less than what the slower walk created: space to notice that the quarter plan was already emotionally decided.",
+            evidenceSummary: "Grounded in the rain walk capture, the transit disruption, and the planning theme linkage.",
+            confidence: 0.81,
+            status: .saved,
+            linkedTemporalArcID: arc.id,
+            sourceRecordIDs: [memory.record.id],
+            sourceArtifactIDs: artifactIDs,
+            sourceEntityIDs: [person.id, theme.id, place.id],
+            createdAt: now,
+            savedAt: now
+        )
+        try upsert(reflection: reflection)
+
+        try save()
+
+        guard let snapshot = try fetchDebugFixtureSnapshot(recordID: memory.record.id) else {
+            throw CocoaError(.coderInvalidValue)
+        }
+        return snapshot
+    }
+
+    func fetchDebugFixtureSnapshot(recordID: UUID) throws -> DebugMemoryFixtureSnapshot? {
+        guard let record = try fetchRecordShell(id: recordID) else {
+            return nil
+        }
+
+        let artifacts = try fetchArtifacts(recordID: recordID)
+        let analysis = try fetchRecordAnalysis(recordID: recordID)
+        let links = try modelContext.fetch(FetchDescriptor<ArtifactEntityLinkStore>()).map(\.domainModel)
+            .filter { link in artifacts.contains(where: { $0.id == link.artifactID }) }
+        let entityIDs = Set(links.map(\.entityID))
+        let entities = try modelContext.fetch(FetchDescriptor<EntityNodeStore>()).map(\.domainModel)
+            .filter { entityIDs.contains($0.id) }
+        let edges = try modelContext.fetch(FetchDescriptor<EntityEdgeStore>()).map(\.domainModel)
+            .filter { $0.sourceRecordIDs.contains(recordID) }
+        let arcs = try modelContext.fetch(FetchDescriptor<TemporalArcStore>()).map(\.domainModel)
+            .filter { $0.sourceRecordIDs.contains(recordID) }
+        let reflections = try modelContext.fetch(FetchDescriptor<ReflectionSnapshotStore>()).map(\.domainModel)
+            .filter { reflection in
+                reflection.sourceRecordIDs.contains(recordID)
+                    || arcs.contains(where: { $0.id == reflection.linkedTemporalArcID })
+            }
+
+        return DebugMemoryFixtureSnapshot(
+            recordID: record.id,
+            recordTitle: record.rawText.firstMeaningfulLine ?? "Debug Fixture",
+            chain: DebugMemoryChainSnapshot(
+                record: record,
+                artifacts: artifacts,
+                analysis: analysis,
+                entities: entities,
+                edges: edges,
+                links: links,
+                arcs: arcs,
+                reflections: reflections
+            )
+        )
+    }
+
     func upsert(recordShell: RecordShell) throws {
         let descriptor = FetchDescriptor<RecordShellStore>(predicate: #Predicate { $0.id == recordShell.id })
         if let existing = try modelContext.fetch(descriptor).first {
@@ -260,6 +432,60 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             existing.apply(domainModel: artifact)
         } else {
             modelContext.insert(ArtifactStore(domainModel: artifact))
+        }
+    }
+
+    func upsert(recordAnalysis: RecordAnalysisSnapshot) throws {
+        let descriptor = FetchDescriptor<RecordAnalysisSnapshotStore>(predicate: #Predicate { $0.id == recordAnalysis.id })
+        if let existing = try modelContext.fetch(descriptor).first {
+            existing.apply(domainModel: recordAnalysis)
+        } else {
+            modelContext.insert(RecordAnalysisSnapshotStore(domainModel: recordAnalysis))
+        }
+    }
+
+    func upsert(entityNode: EntityNode) throws {
+        let descriptor = FetchDescriptor<EntityNodeStore>(predicate: #Predicate { $0.id == entityNode.id })
+        if let existing = try modelContext.fetch(descriptor).first {
+            existing.apply(domainModel: entityNode)
+        } else {
+            modelContext.insert(EntityNodeStore(domainModel: entityNode))
+        }
+    }
+
+    func upsert(entityEdge: EntityEdge) throws {
+        let descriptor = FetchDescriptor<EntityEdgeStore>(predicate: #Predicate { $0.id == entityEdge.id })
+        if let existing = try modelContext.fetch(descriptor).first {
+            existing.apply(domainModel: entityEdge)
+        } else {
+            modelContext.insert(EntityEdgeStore(domainModel: entityEdge))
+        }
+    }
+
+    func upsert(artifactEntityLink: ArtifactEntityLink) throws {
+        let descriptor = FetchDescriptor<ArtifactEntityLinkStore>(predicate: #Predicate { $0.id == artifactEntityLink.id })
+        if let existing = try modelContext.fetch(descriptor).first {
+            existing.apply(domainModel: artifactEntityLink)
+        } else {
+            modelContext.insert(ArtifactEntityLinkStore(domainModel: artifactEntityLink))
+        }
+    }
+
+    func upsert(temporalArc: TemporalArc) throws {
+        let descriptor = FetchDescriptor<TemporalArcStore>(predicate: #Predicate { $0.id == temporalArc.id })
+        if let existing = try modelContext.fetch(descriptor).first {
+            existing.apply(domainModel: temporalArc)
+        } else {
+            modelContext.insert(TemporalArcStore(domainModel: temporalArc))
+        }
+    }
+
+    func upsert(reflection: ReflectionSnapshot) throws {
+        let descriptor = FetchDescriptor<ReflectionSnapshotStore>(predicate: #Predicate { $0.id == reflection.id })
+        if let existing = try modelContext.fetch(descriptor).first {
+            existing.apply(domainModel: reflection)
+        } else {
+            modelContext.insert(ReflectionSnapshotStore(domainModel: reflection))
         }
     }
 
