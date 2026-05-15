@@ -4,6 +4,7 @@ struct DebugDiagnosticsView: View {
     @Environment(\.memoryRepository) private var memoryRepository
 
     @State private var fixture: DebugMemoryFixtureSnapshot?
+    @State private var graphOverview = GraphOverviewSnapshot(entitySections: [], topEdges: [], people: [], themes: [])
     @State private var errorMessage: String?
     @State private var isSeeding = false
 
@@ -58,15 +59,38 @@ struct DebugDiagnosticsView: View {
                 }
 
                 Section("Graph Diagnostics") {
-                    if fixture.chain.entities.isEmpty {
+                    if graphOverview.entitySections.isEmpty {
                         Text("No entities.")
                             .foregroundStyle(.secondary)
                     } else {
-                        ForEach(fixture.chain.entities) { entity in
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(entity.displayName)
+                        ForEach(graphOverview.entitySections) { section in
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(section.kind.rawValue.capitalized)
                                     .font(.headline)
-                                Text(entity.kind.rawValue)
+                                ForEach(section.entities.prefix(3)) { entity in
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(entity.displayName)
+                                            .font(.subheadline)
+                                        Text(entity.kind.rawValue)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Section("Edge Diagnostics") {
+                    if graphOverview.topEdges.isEmpty {
+                        Text("No graph edges.")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(graphOverview.topEdges.prefix(5)) { edge in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("\(edge.relationKind.rawValue) · weight \(edge.weight.formatted(.number.precision(.fractionLength(2))))")
+                                    .font(.headline)
+                                Text("\(edge.sourceRecordIDs.count) records / \(edge.sourceArtifactIDs.count) artifacts")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -127,6 +151,7 @@ struct DebugDiagnosticsView: View {
 
         do {
             fixture = try await DebugSeedService.seed(repository: memoryRepository)
+            graphOverview = try memoryRepository.fetchGraphOverview(limitPerKind: 6, edgeLimit: 8)
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -139,6 +164,7 @@ struct DebugDiagnosticsView: View {
             if let latest {
                 fixture = try memoryRepository.fetchDebugFixtureSnapshot(recordID: latest.record.id)
             }
+            graphOverview = try memoryRepository.fetchGraphOverview(limitPerKind: 6, edgeLimit: 8)
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription

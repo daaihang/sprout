@@ -125,9 +125,16 @@ struct MemoryDetailSnapshot: Hashable, Sendable {
     let analysis: RecordAnalysisSnapshot?
 }
 
+enum CompositionRenderValue: Hashable, Sendable {
+    case memory(MemorySummary)
+    case arc(TemporalArc)
+    case reflection(ReflectionSnapshot)
+    case system(title: String, subtitle: String)
+}
+
 struct HomeBoardItemSnapshot: Identifiable, Hashable, Sendable {
     let compositionItem: CompositionItem
-    let memory: MemorySummary?
+    let renderValue: CompositionRenderValue
 
     var id: UUID { compositionItem.id }
 }
@@ -154,6 +161,30 @@ struct PersonMemorySummary: Identifiable, Hashable, Sendable {
     let reflectionCount: Int
 
     var id: UUID { entity.id }
+}
+
+struct ThemeMemorySummary: Identifiable, Hashable, Sendable {
+    let entity: EntityNode
+    let artifactCount: Int
+    let relatedMemories: [MemorySummary]
+    let relatedPeople: [String]
+    let arcCount: Int
+
+    var id: UUID { entity.id }
+}
+
+struct GraphEntitySectionSnapshot: Identifiable, Hashable, Sendable {
+    let kind: EntityKind
+    let entities: [EntityNode]
+
+    var id: String { kind.rawValue }
+}
+
+struct GraphOverviewSnapshot: Hashable, Sendable {
+    let entitySections: [GraphEntitySectionSnapshot]
+    let topEdges: [EntityEdge]
+    let people: [PersonMemorySummary]
+    let themes: [ThemeMemorySummary]
 }
 
 struct DebugMemoryChainSnapshot: Hashable, Sendable {
@@ -191,6 +222,8 @@ protocol MoryMemoryRepositorying: AnyObject {
     func fetchRecordAnalysis(recordID: UUID) throws -> RecordAnalysisSnapshot?
     func search(query: String, limit: Int?) throws -> SearchSnapshot
     func fetchPeopleSummaries(limit: Int?) throws -> [PersonMemorySummary]
+    func fetchThemeSummaries(limit: Int?) throws -> [ThemeMemorySummary]
+    func fetchGraphOverview(limitPerKind: Int?, edgeLimit: Int?) throws -> GraphOverviewSnapshot
     func fetchTemporalArcs(limit: Int?) throws -> [TemporalArc]
     func fetchReflections(limit: Int?) throws -> [ReflectionSnapshot]
     func seedDebugFixture() async throws -> DebugMemoryFixtureSnapshot
