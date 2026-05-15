@@ -5,6 +5,17 @@ struct ArcsHomeView: View {
     @Environment(SproutMemoryRepository.self) private var memoryRepository
     let selectedDate: Date
 
+    private var candidateArcs: [TemporalArc] {
+        memoryRepository.temporalArcs
+            .filter { $0.status == .candidate }
+            .sorted {
+                if $0.intensityScore == $1.intensityScore {
+                    return $0.endDate > $1.endDate
+                }
+                return $0.intensityScore > $1.intensityScore
+            }
+    }
+
     private var acceptedArcs: [TemporalArc] {
         memoryRepository.temporalArcs
             .filter { $0.status == .accepted }
@@ -37,13 +48,16 @@ struct ArcsHomeView: View {
                 if let featuredArc {
                     featuredSection(featuredArc)
                 }
+                if !candidateArcs.isEmpty {
+                    candidateArcListSection
+                }
                 if !acceptedArcs.isEmpty {
                     activeArcListSection
                 }
                 if !archivedArcs.isEmpty {
                     archivedArcListSection
                 } else {
-                    if acceptedArcs.isEmpty {
+                    if acceptedArcs.isEmpty && candidateArcs.isEmpty {
                         emptyState
                     }
                 }
@@ -95,6 +109,43 @@ struct ArcsHomeView: View {
                         recordCount: reflection.sourceRecordIDs.count
                     ))
                     .frame(height: 164)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private var candidateArcListSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(localization.string("common.candidate_phases", default: "Candidate Phases"))
+                .font(.headline)
+
+            Text("These phases are being formed and need your approval to become active.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            ForEach(candidateArcs, id: \.id) { arc in
+                NavigationLink {
+                    TemporalArcDetailView(arc: arc)
+                } label: {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 8) {
+                            Text(arc.title)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.primary)
+                            SignalPill(title: "Candidate", tint: .orange)
+                        }
+                        Text(arc.summary)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(3)
+                        Text(dateRangeText(for: arc))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary.opacity(0.8))
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(14)
+                    .background(Color.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
                 .buttonStyle(.plain)
             }

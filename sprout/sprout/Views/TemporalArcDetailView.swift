@@ -6,6 +6,7 @@ struct TemporalArcDetailView: View {
     let arc: TemporalArc
 
     @State private var showReflectionEditor = false
+    @State private var isProcessing = false
 
     private var currentArc: TemporalArc {
         memoryRepository.temporalArc(for: arc.id) ?? arc
@@ -112,6 +113,26 @@ struct TemporalArcDetailView: View {
                     }
                     .buttonStyle(.borderedProminent)
                 }
+
+                if currentArc.status == .candidate {
+                    Button("Accept Phase") {
+                        Task {
+                            try? await memoryRepository.acceptTemporalArc(arcID: currentArc.id)
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.green)
+                }
+
+                if currentArc.status == .accepted {
+                    Button("Merge Phase") {
+                        Task {
+                            try? await memoryRepository.mergeTemporalArc(arcID: currentArc.id)
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.blue)
+                }
             }
 
             Divider()
@@ -136,6 +157,10 @@ struct TemporalArcDetailView: View {
             }
         }
         .detailCard()
+    }
+
+    private var arcDetailSnapshot: TemporalArcDetailSnapshot? {
+        try? memoryRepository.fetchTemporalArcDetail(arcID: currentArc.id)
     }
 
     private func reflectionSection(_ reflection: ReflectionSnapshot) -> some View {

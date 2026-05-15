@@ -85,15 +85,23 @@ struct MoryAPIClient: Sendable {
         let error: String?
     }
 
-    private final class DebugTraceBox: @unchecked Sendable {
+    private actor DebugTraceStore {
         var latest: DebugErrorSnapshot?
+
+        func update(_ snapshot: DebugErrorSnapshot?) {
+            latest = snapshot
+        }
+
+        func current() -> DebugErrorSnapshot? {
+            latest
+        }
     }
 
     private let configuration: MoryAPIConfiguration
     private let session: URLSession
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
-    private let debugTraceBox = DebugTraceBox()
+    private let debugTraceBox = DebugTraceStore()
 
     init(
         configuration: MoryAPIConfiguration,
@@ -182,8 +190,8 @@ struct MoryAPIClient: Sendable {
         }
     }
 
-    func latestDebugError() -> DebugErrorSnapshot? {
-        debugTraceBox.latest
+    func latestDebugError() async -> DebugErrorSnapshot? {
+        await debugTraceBox.current()
     }
 
     private func decodeResponse<T: Decodable>(
@@ -252,12 +260,13 @@ struct MoryAPIClient: Sendable {
         failedStage: String,
         errorDescription: String
     ) {
-        debugTraceBox.latest = DebugErrorSnapshot(
+        let snapshot = DebugErrorSnapshot(
             statusCode: statusCode,
             responseBody: responseBody,
             rawErrorBody: rawErrorBody,
             failedStage: failedStage,
             errorDescription: errorDescription
         )
+        Task { await debugTraceBox.update(snapshot) }
     }
 }

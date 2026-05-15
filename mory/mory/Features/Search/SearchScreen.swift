@@ -150,9 +150,3 @@ struct SearchScreen: View {
         }
     }
 }
-
-private extension String {
-    func ifEmpty(_ fallback: String) -> String {
-        trimmedOrNil ?? fallback
-    }
-}

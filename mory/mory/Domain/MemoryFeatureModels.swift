@@ -322,108 +322,6 @@ struct ReflectionSummarySnapshot: Identifiable, Hashable, Sendable {
     var id: UUID { reflection.id }
 }
 
-struct DebugMemoryChainSnapshot: Hashable, Sendable {
-    let record: RecordShell
-    let artifacts: [Artifact]
-    let analysis: RecordAnalysisSnapshot?
-    let pipelineStatus: MemoryPipelineStatusSnapshot?
-    let entities: [EntityNode]
-    let edges: [EntityEdge]
-    let links: [ArtifactEntityLink]
-    let arcs: [TemporalArc]
-    let reflections: [ReflectionSnapshot]
-
-    var isCompleteChain: Bool {
-        !artifacts.isEmpty
-            && analysis != nil
-            && !entities.isEmpty
-            && !links.isEmpty
-            && !arcs.isEmpty
-            && !reflections.isEmpty
-    }
-}
-
-struct DebugMemoryFixtureSnapshot: Hashable, Sendable {
-    let recordID: UUID
-    let recordTitle: String
-    let chain: DebugMemoryChainSnapshot
-}
-
-enum DebugAnalysisTarget: String, Codable, CaseIterable, Identifiable, Sendable {
-    case memory
-    case arc
-    case reflection
-
-    var id: String { rawValue }
-}
-
-enum DebugRebuildMode: String, Codable, CaseIterable, Identifiable, Sendable {
-    case analysisOnly
-    case graphArcReflection
-    case reflectionReplay
-
-    var id: String { rawValue }
-}
-
-struct DebugAnalyzePayloadSnapshot: Hashable, Sendable {
-    let recordID: UUID
-    let requestBody: String
-    let responseBody: String
-    let lastError: String?
-    let rawErrorBody: String?
-}
-
-struct DebugReflectionPayloadSnapshot: Hashable, Sendable {
-    let recordID: UUID?
-    let arcID: UUID?
-    let requestBody: String
-    let responseBody: String
-    let lastError: String?
-    let rawErrorBody: String?
-}
-
-struct DebugProvenanceSnapshot: Hashable, Sendable {
-    let entityID: UUID
-    let aliasCount: Int
-    let provenanceRecordIDs: [UUID]
-    let linkedArtifactIDs: [UUID]
-    let linkedAnalysisRecordIDs: [UUID]
-    let evidenceSummary: String
-}
-
-struct DebugPipelineTraceSnapshot: Hashable, Sendable {
-    let requestBody: String?
-    let responseBody: String?
-    let rawErrorBody: String?
-    let statusCode: Int?
-    let failedStage: String?
-}
-
-struct ReflectionServiceResult: Hashable, Sendable {
-    let title: String
-    let body: String
-    let evidenceSummary: String
-    let confidence: Double
-    let sourceRecordIDs: [UUID]
-    let debugTrace: DebugPipelineTraceSnapshot
-}
-
-struct DebugTargetSnapshot: Hashable, Sendable {
-    let targetType: DebugAnalysisTarget
-    let memory: MemorySummary?
-    let arc: TemporalArcSummarySnapshot?
-    let reflection: ReflectionSummarySnapshot?
-}
-
-struct DebugDiagnosticsSnapshot: Hashable, Sendable {
-    let target: DebugTargetSnapshot?
-    let analyzePayload: DebugAnalyzePayloadSnapshot?
-    let reflectionPayload: DebugReflectionPayloadSnapshot?
-    let provenance: [DebugProvenanceSnapshot]
-    let fixture: DebugMemoryFixtureSnapshot?
-    let pipelineTrace: DebugPipelineTraceSnapshot?
-}
-
 struct PersonDetailSnapshot: Identifiable, Hashable, Sendable {
     let summary: PersonMemorySummary
     let relatedArcs: [TemporalArcSummarySnapshot]
@@ -533,5 +431,9 @@ extension String {
         split(whereSeparator: { $0.isNewline })
             .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
             .first(where: { !$0.isEmpty })
+    }
+
+    func ifEmpty(_ fallback: String) -> String {
+        trimmedOrNil ?? fallback
     }
 }

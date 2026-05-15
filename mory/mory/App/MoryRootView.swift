@@ -45,12 +45,14 @@ struct MoryRootView: View {
                 Label("Reflections", systemImage: "sparkles.rectangle.stack")
             }
 
+#if DEBUG
             NavigationStack {
                 DebugDiagnosticsView()
             }
             .tabItem {
                 Label("Debug", systemImage: "ladybug")
             }
+#endif
         }
     }
 }

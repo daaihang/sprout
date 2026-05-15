@@ -93,7 +93,7 @@ struct RemoteRecordAnalysisService: RecordAnalysisServing {
             )
             return responseMapper.map(recordID: record.id, response: response, createdAt: record.updatedAt)
         } catch {
-            let apiTrace = apiClient.latestDebugError()
+            let apiTrace = await apiClient.latestDebugError()
             await debugTraceStore.set(
                 DebugPipelineTraceSnapshot(
                     requestBody: requestBody,
@@ -185,7 +185,7 @@ struct RemoteRecordAnalysisService: RecordAnalysisServing {
             }
             return try await persistReflectionSuccess(response: response, requestBody: requestBody)
         } catch {
-            let apiTrace = apiClient.latestDebugError()
+            let apiTrace = await apiClient.latestDebugError()
             let trace = DebugPipelineTraceSnapshot(
                 requestBody: requestBody,
                 responseBody: apiTrace?.responseBody,

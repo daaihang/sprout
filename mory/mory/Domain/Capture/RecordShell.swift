@@ -11,25 +11,6 @@ enum CaptureSource: String, Codable, CaseIterable, Identifiable, Sendable {
     var id: String { rawValue }
 }
 
-struct RecordArtifactLink: Identifiable, Codable, Hashable, Sendable {
-    let id: UUID
-    var recordID: UUID
-    var artifactID: UUID
-    var createdAt: Date
-
-    init(
-        id: UUID = UUID(),
-        recordID: UUID,
-        artifactID: UUID,
-        createdAt: Date
-    ) {
-        self.id = id
-        self.recordID = recordID
-        self.artifactID = artifactID
-        self.createdAt = createdAt
-    }
-}
-
 struct RecordShell: Identifiable, Codable, Hashable, Sendable {
     let id: UUID
     var createdAt: Date

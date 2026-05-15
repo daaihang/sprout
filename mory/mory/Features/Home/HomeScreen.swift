@@ -247,52 +247,55 @@ private struct CompositionBoardCard: View {
     let item: HomeBoardItemSnapshot
 
     var body: some View {
+        Group {
+            switch item.renderValue {
+            case let .memory(memory):
+                NavigationLink {
+                    MemoryDetailView(recordID: memory.record.id)
+                } label: {
+                    cardBody
+                }
+                .buttonStyle(.plain)
+            case let .arc(arc):
+                NavigationLink {
+                    ArcDetailView(arcID: arc.id)
+                } label: {
+                    cardBody
+                }
+                .buttonStyle(.plain)
+            case let .reflection(reflection):
+                NavigationLink {
+                    ReflectionDetailView(reflectionID: reflection.id)
+                } label: {
+                    cardBody
+                }
+                .buttonStyle(.plain)
+            case .system:
+                cardBody
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var cardBody: some View {
         VStack(alignment: .leading, spacing: 8) {
             switch item.renderValue {
             case let .memory(memory):
-                Text(memory.title)
-                    .font(.headline)
-                    .lineLimit(2)
-                Text(memory.summaryText)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(3)
-                Text(memory.record.updatedAt.formatted(date: .abbreviated, time: .shortened))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Text(memory.title).font(.headline).lineLimit(2)
+                Text(memory.summaryText).font(.subheadline).foregroundStyle(.secondary).lineLimit(3)
+                Text(memory.record.updatedAt.formatted(date: .abbreviated, time: .shortened)).font(.caption).foregroundStyle(.secondary)
             case let .arc(arc):
-                Text(arc.title)
-                    .font(.headline)
-                    .lineLimit(2)
-                Text(arc.summary)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(3)
-                Text(arc.updatedAt.formatted(date: .abbreviated, time: .shortened))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Text(arc.title).font(.headline).lineLimit(2)
+                Text(arc.summary).font(.subheadline).foregroundStyle(.secondary).lineLimit(3)
+                Text(arc.updatedAt.formatted(date: .abbreviated, time: .shortened)).font(.caption).foregroundStyle(.secondary)
             case let .reflection(reflection):
-                Text(reflection.title)
-                    .font(.headline)
-                    .lineLimit(2)
-                Text(reflection.body)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(3)
-                Text(reflection.statusLabel)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Text(reflection.title).font(.headline).lineLimit(2)
+                Text(reflection.body).font(.subheadline).foregroundStyle(.secondary).lineLimit(3)
+                Text(reflection.statusLabel).font(.caption).foregroundStyle(.secondary)
             case let .system(title, subtitle):
-                Text(title)
-                    .font(.headline)
-                    .lineLimit(2)
-                Text(subtitle)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(3)
-                Text(item.compositionItem.itemKey)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Text(title).font(.headline).lineLimit(2)
+                Text(subtitle).font(.subheadline).foregroundStyle(.secondary).lineLimit(3)
+                Text(item.compositionItem.itemKey).font(.caption).foregroundStyle(.secondary)
             }
         }
         .padding(14)

@@ -22,6 +22,9 @@ final class SproutMemoryRepository {
         var placeNames: [String]
         var arcTitles: [String]
         var lastSeenAt: Date?
+        var graphCentrality: Double
+        var totalEdgeWeight: Double
+        var totalEvidenceCount: Int
 
         var id: UUID { entity.id }
     }
@@ -376,6 +379,208 @@ final class SproutMemoryRepository {
         persistCurrentState()
     }
 
+    // MARK: - Protocol-Conformant Governance Methods
+
+    func fetchTemporalArcSummaries(limit: Int?) throws -> [TemporalArcSummarySnapshot] {
+        let summaries = temporalArcs
+            .sorted(by: temporalArcSort)
+            .map { arc -> TemporalArcSummarySnapshot in
+                let relatedRecords = recordShells
+                    .filter { arc.sourceRecordIDs.contains($0.id) }
+                    .sorted { $0.createdAt > $1.createdAt }
+                let relatedMemories = relatedRecords.prefix(5).map { record -> MemorySummary in
+                    let recordArtifacts = artifacts.filter { $0.recordID == record.id }
+                    let primaryArtifact = recordArtifacts.first
+                    let pipelineStatus = fetchPipelineStatusSnapshot(for: record.id)
+                    return MemorySummary(
+                        record: record,
+                        primaryArtifact: primaryArtifact,
+                        artifactCount: recordArtifacts.count,
+                        pipelineStatus: pipelineStatus
+                    )
+                }
+                let linkedReflection = self.linkedReflection(forArcID: arc.id)
+                return TemporalArcSummarySnapshot(
+                    arc: arc,
+                    relatedMemories: Array(relatedMemories),
+                    linkedReflection: linkedReflection
+                )
+            }
+        if let limit {
+            return Array(summaries.prefix(limit))
+        }
+        return summaries
+    }
+
+    func fetchTemporalArcDetail(arcID: UUID) throws -> TemporalArcDetailSnapshot? {
+        guard let arc = temporalArcs.first(where: { $0.id == arcID }) else { return nil }
+        let summaries = try fetchTemporalArcSummaries(limit: nil)
+        guard let summary = summaries.first(where: { $0.arc.id == arcID }) else { return nil }
+
+        let reflections = self.reflections
+            .filter { $0.type == .phase && $0.linkedTemporalArcID == arcID }
+            .sorted { $0.createdAt > $1.createdAt }
+            .map { reflection -> ReflectionSummarySnapshot in
+                let reflectionRecords = recordShells
+                    .filter { reflection.sourceRecordIDs.contains($0.id) }
+                    .sorted { $0.createdAt > $1.createdAt }
+                let reflectionMemories = reflectionRecords.prefix(5).map { record -> MemorySummary in
+                    let recordArtifacts = artifacts.filter { $0.recordID == record.id }
+                    let primaryArtifact = recordArtifacts.first
+                    let pipelineStatus = fetchPipelineStatusSnapshot(for: record.id)
+                    return MemorySummary(
+                        record: record,
+                        primaryArtifact: primaryArtifact,
+                        artifactCount: recordArtifacts.count,
+                        pipelineStatus: pipelineStatus
+                    )
+                }
+                let linkedArc = temporalArcs.first { $0.id == reflection.linkedTemporalArcID }
+                return ReflectionSummarySnapshot(
+                    reflection: reflection,
+                    linkedArc: linkedArc,
+                    relatedMemories: Array(reflectionMemories)
+                )
+            }
+
+        let entityDetails = entityNodes
+            .filter { arc.sourceEntityIDs.contains($0.id) || arc.entityNames.contains($0.displayName) }
+            .prefix(10)
+            .map { entity -> EntityDetailSnapshot in
+                let entityArtifacts = artifacts.filter { artifact in
+                    artifactEntityLinks.contains { $0.entityID == entity.id && artifact.artifactID == $0.artifactID }
+                }
+                let entityRecords = recordShells
+                    .filter { entityArtifacts.contains { $0.recordID == $1.id } }
+                    .prefix(5)
+                    .map { record -> MemorySummary in
+                        let recordArtifacts = artifacts.filter { $0.recordID == record.id }
+                        let primaryArtifact = recordArtifacts.first
+                        let pipelineStatus = fetchPipelineStatusSnapshot(for: record.id)
+                        return MemorySummary(
+                            record: record,
+                            primaryArtifact: primaryArtifact,
+                            artifactCount: recordArtifacts.count,
+                            pipelineStatus: pipelineStatus
+                        )
+                    }
+                let relatedThemes = arc.themeLabels
+                let relatedPeople = arc.entityNames
+                let relatedArcs = temporalArcs
+                    .filter { $0.sourceEntityIDs.contains(entity.id) && $0.id != arcID }
+                    .sorted(by: temporalArcSort)
+                    .prefix(3)
+                let entityEdges = self.entityEdges.filter { $0.sourceID == entity.id || $0.targetID == entity.id }
+                return EntityDetailSnapshot(
+                    entity: entity,
+                    artifactCount: entityArtifacts.count,
+                    relatedMemories: Array(entityRecords),
+                    relatedThemes: relatedThemes,
+                    relatedPeople: relatedPeople,
+                    relatedReflections: [],
+                    relatedArcs: Array(relatedArcs),
+                    edges: entityEdges
+                )
+            }
+
+        var mergeCandidate: TemporalArcSummarySnapshot?
+        var mergeCandidateOverlapScore: Double?
+        if arc.status == .accepted {
+            if let preview = temporalArcService.mergePreview(sourceArcID: arcID, arcs: temporalArcs) {
+                mergeCandidate = summaries.first { $0.arc.id == preview.candidateArcID }
+                mergeCandidateOverlapScore = preview.overlapScore
+            }
+        }
+
+        return TemporalArcDetailSnapshot(
+            summary: summary,
+            reflections: reflections,
+            entityDetails: Array(entityDetails),
+            mergeCandidate: mergeCandidate,
+            mergeCandidateOverlapScore: mergeCandidateOverlapScore
+        )
+    }
+
+    func acceptTemporalArc(arcID: UUID) async throws {
+        guard let index = temporalArcs.firstIndex(where: { $0.id == arcID }) else {
+            throw RepositoryError.arcNotFound
+        }
+        temporalArcs[index].status = .accepted
+        temporalArcs[index].updatedAt = .now
+        persistCurrentState()
+    }
+
+    func mergeTemporalArc(arcID: UUID) async throws -> TemporalArcDetailSnapshot? {
+        guard let baseArc = temporalArcs.first(where: { $0.id == arcID }),
+              baseArc.status == .accepted else {
+            throw RepositoryError.arcNotFound
+        }
+        guard let preview = temporalArcService.mergePreview(sourceArcID: arcID, arcs: temporalArcs),
+              let candidateArc = temporalArcs.first(where: { $0.id == preview.candidateArcID }) else {
+            return try fetchTemporalArcDetail(arcID: arcID)
+        }
+        let linkedReflection = self.linkedReflection(forArcID: arcID)
+        let result = temporalArcService.merge(
+            sourceArc: baseArc,
+            candidateArc: candidateArc,
+            linkedReflection: linkedReflection
+        )
+
+        if let index = temporalArcs.firstIndex(where: { $0.id == result.sourceArc.id }) {
+            temporalArcs[index] = result.sourceArc
+        }
+        if let candidateIndex = temporalArcs.firstIndex(where: { $0.id == result.candidateArc.id }) {
+            temporalArcs[candidateIndex] = result.candidateArc
+        }
+        if let candidateReflectionID = result.candidateReflectionIDToRemove {
+            reflections.removeAll { $0.id == candidateReflectionID }
+        }
+        if let updatedReflection = result.updatedReflection {
+            upsertReflection(updatedReflection)
+        }
+
+        persistCurrentState()
+        return try fetchTemporalArcDetail(arcID: result.sourceArc.id)
+    }
+
+    private func fetchPipelineStatusSnapshot(for recordID: UUID) -> MemoryPipelineStatusSnapshot? {
+        if let analysis = analyses.first(where: { $0.recordID == recordID }) {
+            return MemoryPipelineStatusSnapshot(
+                recordID: recordID,
+                stage: .completed,
+                lastError: nil,
+                requestBody: nil,
+                responseBody: nil,
+                rawErrorBody: nil,
+                lastHTTPStatusCode: nil,
+                failedStage: nil,
+                lastAttemptAt: nil,
+                completedAt: analysis.createdAt,
+                updatedAt: analysis.createdAt
+            )
+        }
+        if let shell = recordShells.first(where: { $0.id == recordID }) {
+            return MemoryPipelineStatusSnapshot(
+                recordID: recordID,
+                stage: .pending,
+                lastError: nil,
+                requestBody: nil,
+                responseBody: nil,
+                rawErrorBody: nil,
+                lastHTTPStatusCode: nil,
+                failedStage: nil,
+                lastAttemptAt: nil,
+                completedAt: nil,
+                updatedAt: shell.updatedAt
+            )
+        }
+        return nil
+    }
+
+    enum RepositoryError: Error {
+        case arcNotFound
+    }
+
     func saveReflection(_ reflectionID: UUID) {
         guard let index = reflections.firstIndex(where: { $0.id == reflectionID }) else { return }
         reflections[index].status = .saved
@@ -609,6 +814,11 @@ final class SproutMemoryRepository {
                     .map(\.title)
                 let lastSeenAt = entityView.relatedRecords.first?.createdAt ?? person.updatedAt
 
+                let connectedEdges = entityEdges.filter { $0.fromEntityID == person.id || $0.toEntityID == person.id }
+                let totalEdgeWeight = connectedEdges.reduce(0) { $0 + $1.weight }
+                let totalEvidenceCount = connectedEdges.reduce(0) { $0 + $1.evidenceCount }
+                let graphCentrality = totalEdgeWeight + Double(totalEvidenceCount) * 0.5 + Double(connectedEdges.count) * 0.3
+
                 return PersonIndexEntry(
                     entity: person,
                     relatedRecordCount: entityView.relatedRecords.count,
@@ -617,7 +827,10 @@ final class SproutMemoryRepository {
                     themeNames: Array(themeNames.prefix(3)),
                     placeNames: Array(placeNames.prefix(3)),
                     arcTitles: arcTitles,
-                    lastSeenAt: lastSeenAt
+                    lastSeenAt: lastSeenAt,
+                    graphCentrality: graphCentrality,
+                    totalEdgeWeight: totalEdgeWeight,
+                    totalEvidenceCount: totalEvidenceCount
                 )
             }
             .sorted(by: peopleIndexSort)
@@ -1412,18 +1625,18 @@ final class SproutMemoryRepository {
     }
 
     private func peopleIndexSort(lhs: PersonIndexEntry, rhs: PersonIndexEntry) -> Bool {
-        if lhs.relatedRecordCount == rhs.relatedRecordCount {
-            if lhs.relatedArtifactCount == rhs.relatedArtifactCount {
-                switch (lhs.lastSeenAt, rhs.lastSeenAt) {
-                case let (left?, right?) where left != right:
-                    return left > right
-                default:
-                    return lhs.entity.displayName.localizedCaseInsensitiveCompare(rhs.entity.displayName) == .orderedAscending
-                }
-            }
-            return lhs.relatedArtifactCount > rhs.relatedArtifactCount
+        if lhs.graphCentrality != rhs.graphCentrality {
+            return lhs.graphCentrality > rhs.graphCentrality
         }
-        return lhs.relatedRecordCount > rhs.relatedRecordCount
+        if lhs.totalEdgeWeight != rhs.totalEdgeWeight {
+            return lhs.totalEdgeWeight > rhs.totalEdgeWeight
+        }
+        if lhs.totalEvidenceCount == rhs.totalEvidenceCount {
+            if lhs.lastSeenAt != rhs.lastSeenAt {
+                return lhs.lastSeenAt ?? .distantPast > rhs.lastSeenAt ?? .distantPast
+            }
+        }
+        return lhs.totalEvidenceCount > rhs.totalEvidenceCount
     }
 
     private func searchTokens(for query: String) -> [String] {

@@ -350,7 +350,6 @@ private struct PayloadInspector: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .frame(minHeight: 140, maxHeight: 280)
         }
     }
 }
@@ -373,11 +372,5 @@ private struct DebugChainRow: View {
             }
         }
         .padding(.vertical, 2)
-    }
-}
-
-private extension String {
-    func ifEmpty(_ fallback: String) -> String {
-        trimmedOrNil ?? fallback
     }
 }
