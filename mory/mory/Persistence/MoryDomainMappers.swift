@@ -28,7 +28,8 @@ extension RecordShellStore {
             userMood: domainModel.userMood,
             userIntensity: domainModel.userIntensity,
             inputContext: domainModel.inputContext,
-            artifactIDs: domainModel.artifactIDs
+            artifactIDs: domainModel.artifactIDs,
+            debugFixtureSeededAt: domainModel.debugFixtureSeededAt
         )
     }
 
@@ -42,7 +43,8 @@ extension RecordShellStore {
             userMood: userMood,
             userIntensity: userIntensity,
             inputContext: inputContext,
-            artifactIDs: artifactIDs
+            artifactIDs: artifactIDs,
+            debugFixtureSeededAt: debugFixtureSeededAt
         )
     }
 
@@ -56,6 +58,7 @@ extension RecordShellStore {
         userIntensity = domainModel.userIntensity
         inputContext = domainModel.inputContext
         artifactIDs = domainModel.artifactIDs
+        debugFixtureSeededAt = domainModel.debugFixtureSeededAt
     }
 }
 
@@ -446,6 +449,11 @@ extension MemoryPipelineStatusStore {
             recordID: domainModel.recordID,
             stageRawValue: domainModel.stage.rawValue,
             lastError: domainModel.lastError,
+            requestBody: domainModel.requestBody,
+            responseBody: domainModel.responseBody,
+            rawErrorBody: domainModel.rawErrorBody,
+            lastHTTPStatusCode: domainModel.lastHTTPStatusCode,
+            failedStage: domainModel.failedStage,
             lastAttemptAt: domainModel.lastAttemptAt,
             completedAt: domainModel.completedAt,
             updatedAt: domainModel.updatedAt
@@ -457,6 +465,11 @@ extension MemoryPipelineStatusStore {
             recordID: recordID,
             stage: MemoryPipelineStage(rawValue: stageRawValue) ?? .pending,
             lastError: lastError,
+            requestBody: requestBody,
+            responseBody: responseBody,
+            rawErrorBody: rawErrorBody,
+            lastHTTPStatusCode: lastHTTPStatusCode,
+            failedStage: failedStage,
             lastAttemptAt: lastAttemptAt,
             completedAt: completedAt,
             updatedAt: updatedAt
@@ -467,6 +480,11 @@ extension MemoryPipelineStatusStore {
         recordID = domainModel.recordID
         stageRawValue = domainModel.stage.rawValue
         lastError = domainModel.lastError
+        requestBody = domainModel.requestBody
+        responseBody = domainModel.responseBody
+        rawErrorBody = domainModel.rawErrorBody
+        lastHTTPStatusCode = domainModel.lastHTTPStatusCode
+        failedStage = domainModel.failedStage
         lastAttemptAt = domainModel.lastAttemptAt
         completedAt = domainModel.completedAt
         updatedAt = domainModel.updatedAt

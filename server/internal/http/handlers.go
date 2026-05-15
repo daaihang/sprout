@@ -236,7 +236,7 @@ func (s *Server) handleAnalyzePreview(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, "invalid analyze request")
 			return
 		}
-		writeError(w, http.StatusBadGateway, "analysis request failed")
+		writeError(w, http.StatusBadGateway, fmt.Sprintf("analysis request failed: %v", err))
 		return
 	}
 
@@ -272,7 +272,7 @@ func (s *Server) handleAnalyze(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, "invalid analyze request")
 			return
 		}
-		writeError(w, http.StatusBadGateway, "analysis request failed")
+		writeError(w, http.StatusBadGateway, fmt.Sprintf("analysis request failed: %v", err))
 		return
 	}
 

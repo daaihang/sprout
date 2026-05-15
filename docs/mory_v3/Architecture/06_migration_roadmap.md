@@ -168,3 +168,9 @@
 - entity dedupe / alias / provenance / edge weight 规则有正式定义并落到代码
 - composition、search ranking、debug diagnostics 具备稳定回归门槛
 - 数据、UI、AI 和治理规则形成稳定闭环
+
+当前实现备注：
+
+- diagnostics 已进入正式验收台，包含 target selection、layered rerun、payload inspector、provenance inspector、fixture management
+- pipeline status 已承载 debug trace，包含 request / response / raw error / status code / failed stage
+- clear debug fixtures 仅会清理显式标记的 debug fixture 记录，不会删除真实 memory

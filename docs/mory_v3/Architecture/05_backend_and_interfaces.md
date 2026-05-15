@@ -65,6 +65,7 @@ These are the canonical paths used by `server/internal/http/server.go` and `serv
 
 - iOS 主链仍以本地 reflection 生成与状态管理为正式路径
 - 服务端 Reflection API 作为协议冻结与后续协同入口，不承担客户端唯一生成路径
+- 客户端 diagnostics 可以展示 reflection / analysis 的 request、response、raw error 和 failed stage，用于排查协同链路问题
 
 ## 5. 协议版本化
 

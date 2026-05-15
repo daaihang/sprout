@@ -125,6 +125,7 @@ func (p *OpenAICompatibleProvider) Analyze(ctx context.Context, req AnalyzeReque
 
 	resp, err := doRequestWithRetry(ctx, p.client, httpReq, p.maxRetries, p.backoff)
 	if err != nil {
+		p.logger.Error("openai-compatible request failed", "provider", p.Name(), "error", err)
 		return AnalyzeResult{}, fmt.Errorf("openai-compatible request failed: %w", err)
 	}
 	defer resp.Body.Close()
@@ -134,12 +135,24 @@ func (p *OpenAICompatibleProvider) Analyze(ctx context.Context, req AnalyzeReque
 		return AnalyzeResult{}, fmt.Errorf("read openai response: %w", err)
 	}
 	if resp.StatusCode >= 300 {
-		p.logger.Error("openai-compatible response failed", "status", resp.StatusCode, "provider", p.Name())
-		return AnalyzeResult{}, fmt.Errorf("openai-compatible status %d", resp.StatusCode)
+		p.logger.Error(
+			"openai-compatible response failed",
+			"status", resp.StatusCode,
+			"provider", p.Name(),
+			"body", truncateBody(responseBody, 2048),
+		)
+		return AnalyzeResult{}, fmt.Errorf("openai-compatible status %d: %s", resp.StatusCode, truncateBody(responseBody, 256))
 	}
 
 	var decoded openAIChatResponse
 	if err := json.Unmarshal(responseBody, &decoded); err != nil {
+		p.logger.Error(
+			"openai-compatible decode failed",
+			"provider", p.Name(),
+			"status", resp.StatusCode,
+			"body", truncateBody(responseBody, 2048),
+			"error", err,
+		)
 		return AnalyzeResult{}, fmt.Errorf("decode openai response: %w", err)
 	}
 	if len(decoded.Choices) == 0 {
@@ -161,6 +174,13 @@ func (p *OpenAICompatibleProvider) Analyze(ctx context.Context, req AnalyzeReque
 			OutputTokens: decoded.Usage.CompletionTokens,
 		},
 	}, nil
+}
+
+func truncateBody(body []byte, limit int) string {
+	if len(body) <= limit {
+		return string(body)
+	}
+	return string(body[:limit]) + "…"
 }
 
 func flattenOpenAIContent(content any) string {

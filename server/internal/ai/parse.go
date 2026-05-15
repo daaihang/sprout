@@ -9,12 +9,12 @@ import (
 func parseAnalyzeResponse(raw string) (AnalyzeResponse, error) {
 	candidate := extractJSONObject(raw)
 	if candidate == "" {
-		return AnalyzeResponse{}, fmt.Errorf("no JSON object found in model response")
+		return AnalyzeResponse{}, fmt.Errorf("no JSON object found in model response: %s", summarizeRaw(raw))
 	}
 
 	var resp AnalyzeResponse
 	if err := json.Unmarshal([]byte(candidate), &resp); err != nil {
-		return AnalyzeResponse{}, fmt.Errorf("decode analyze response: %w", err)
+		return AnalyzeResponse{}, fmt.Errorf("decode analyze response: %w; raw=%s", err, summarizeRaw(raw))
 	}
 
 	return NormalizeResponse(resp), nil
@@ -32,4 +32,12 @@ func extractJSONObject(raw string) string {
 		return ""
 	}
 	return raw[start : end+1]
+}
+
+func summarizeRaw(raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if len(trimmed) <= 256 {
+		return trimmed
+	}
+	return trimmed[:256] + "…"
 }

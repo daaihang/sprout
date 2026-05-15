@@ -12,6 +12,7 @@ final class RecordShellStore {
     var userIntensity: Int?
     var inputContext: String?
     var artifactIDs: [UUID]
+    var debugFixtureSeededAt: Date?
 
     init(
         id: UUID,
@@ -22,7 +23,8 @@ final class RecordShellStore {
         userMood: String? = nil,
         userIntensity: Int? = nil,
         inputContext: String? = nil,
-        artifactIDs: [UUID] = []
+        artifactIDs: [UUID] = [],
+        debugFixtureSeededAt: Date? = nil
     ) {
         self.id = id
         self.createdAt = createdAt
@@ -33,6 +35,7 @@ final class RecordShellStore {
         self.userIntensity = userIntensity
         self.inputContext = inputContext
         self.artifactIDs = artifactIDs
+        self.debugFixtureSeededAt = debugFixtureSeededAt
     }
 }
 
@@ -357,6 +360,11 @@ final class MemoryPipelineStatusStore {
     @Attribute(.unique) var recordID: UUID
     var stageRawValue: String
     var lastError: String?
+    var requestBody: String?
+    var responseBody: String?
+    var rawErrorBody: String?
+    var lastHTTPStatusCode: Int?
+    var failedStage: String?
     var lastAttemptAt: Date?
     var completedAt: Date?
     var updatedAt: Date
@@ -365,6 +373,11 @@ final class MemoryPipelineStatusStore {
         recordID: UUID,
         stageRawValue: String,
         lastError: String? = nil,
+        requestBody: String? = nil,
+        responseBody: String? = nil,
+        rawErrorBody: String? = nil,
+        lastHTTPStatusCode: Int? = nil,
+        failedStage: String? = nil,
         lastAttemptAt: Date? = nil,
         completedAt: Date? = nil,
         updatedAt: Date
@@ -372,6 +385,11 @@ final class MemoryPipelineStatusStore {
         self.recordID = recordID
         self.stageRawValue = stageRawValue
         self.lastError = lastError
+        self.requestBody = requestBody
+        self.responseBody = responseBody
+        self.rawErrorBody = rawErrorBody
+        self.lastHTTPStatusCode = lastHTTPStatusCode
+        self.failedStage = failedStage
         self.lastAttemptAt = lastAttemptAt
         self.completedAt = completedAt
         self.updatedAt = updatedAt

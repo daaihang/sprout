@@ -1,192 +1,150 @@
 # 04. AI, Graph And Reflection
 
-## 1. 当前 AI 层的核心问题
+## 1. 三层能力划分
 
-当前后端分析接口仍把“记录”主要视为文本内容。  
-这对 demo 足够，但对真实产品不够。
+### 1.1 Analysis Layer
 
-原因：
+输入单位：`Record Aggregate`
 
-- 实际记录已经是多模态聚合
-- AI 输出没有稳定落库位置
-- 长期关系和阶段理解没有中层结构
-- 每次高层理解都可能被迫重读大量内容
+输出对象：`RecordAnalysisSnapshot`
 
-因此必须把 AI、Graph、Reflection 一起设计，而不是孤立设计 prompt。
+目标：快速理解单次 capture 及其关联 artifacts。
 
-## 2. 三层能力划分
+### 1.2 Graph Layer
 
-### 2.1 Analysis Layer
+输入单位：analysis result + deterministic signals
 
-目标：快速看懂单次输入。  
-输入单位：`Record Aggregate`。  
-输出：`RecordAnalysisSnapshot`。
+输出对象：
 
-### 2.2 Graph Layer
+- `EntityNode`
+- `EntityEdge`
+- `ArtifactEntityLink`
 
-目标：把稳定对象和关系写入长期语义层。  
-输入单位：analysis result + deterministic signals。  
-输出：entity nodes / edges / links。
+目标：沉淀长期稳定对象与关系。
 
-### 2.3 Reflection Layer
+### 1.3 Reflection Layer
 
-目标：在已有结构之上生成高价值意义。  
-输入单位：entities + arcs + grouped artifacts。  
-输出：reflection snapshot。
+输入单位：entities + arcs + grouped artifacts
 
-## 3. Record Aggregate 输入协议建议
+输出对象：`ReflectionSnapshot`
 
-当前协议应从：
+目标：生成高价值意义层解释。
 
-- `record.content`
-- `persons[]`
-
-升级为：
+## 2. Record Aggregate 输入协议
 
 ```json
 {
   "schema_version": "record_aggregate.v1",
-  "reason": "create|edit|manual|background",
-  "record": {
+  "analysis_reason": "capture_ingest|edit|manual|background",
+  "record_shell": {
     "id": "string",
     "created_at": "RFC3339",
     "updated_at": "RFC3339",
     "raw_text": "string",
     "user_mood": "string",
     "user_intensity": 3,
-    "capture_source": "composer|voice|photo|import"
+    "capture_source": "composer|voice|photo|import",
+    "input_context": "string"
   },
   "artifacts": [],
-  "known_entities": [],
-  "context": {
-    "location": {},
-    "weather": {},
-    "activity": {},
-    "linked_decisions": []
-  }
+  "known_entities": []
 }
 ```
 
 关键原则：
 
-- 以聚合对象为输入，而不是只传一段文本
+- 以聚合对象为输入
 - 用户显式信息优先
-- 多模态内容先文本化摘要，再统一分析
+- 多模态内容先结构化，再统一分析
 
-## 4. Analysis 输出建议
+## 3. Analysis 输出建议
 
-建议 `RecordAnalysisSnapshot` 包含：
+`RecordAnalysisSnapshot` 至少包括：
 
 - `summary`
 - `themes`
-- `emotion_interpretation`
-- `salience_score`
-- `retrieval_terms`
-- `entity_mentions`
-- `candidate_edges`
-- `follow_up_candidates`
-- `reflection_hint`
+- `emotionInterpretation`
+- `salienceScore`
+- `retrievalTerms`
+- `entityMentions`
+- `candidateEdges`
+- `followUpCandidates`
+- `reflectionHint`
 
-这些输出分成两类：
+## 4. Graph 更新策略
 
-- 稳定结构：可以落库
-- 表达性文案：可以展示，但不是唯一真相
+1. analysis 给出候选实体和候选关系
+2. 本地进行实体消歧与规则累积
+3. 边权重通过 deterministic 统计更新
+4. 复杂解释只在需要时调用 AI
 
-## 5. Graph 更新策略
+当前第一版治理字段包括：
 
-Graph 不应每次都靠大模型“重建人生图谱”。  
-推荐策略：
+- `EntityNode.aliases`
+- `EntityNode.provenanceRecordIDs`
+- `ArtifactEntityLink.sourceRecordID`
+- `ArtifactEntityLink.sourceAnalysisRecordID`
+- `ArtifactEntityLink.evidenceSummary`
 
-1. 基础对象解析由 analysis 给出候选
-2. 实体消歧由本地/规则/轻量服务辅助
-3. 边权重主要由 deterministic 累积更新
-4. 只有复杂关系解释才调用 AI
+当前 diagnostics 正式语义包括：
 
-这样能把成本压住。
+- `analysis_reason` 作为请求原因字段进入 analysis contract
+- pipeline trace 至少保留 request body、response body、raw error body、failed stage、status code
+- provenance diagnostics 至少保留 entity aliases、provenance record ids、artifact links、analysis evidence
 
-## 6. Entity 类型建议
+## 5. Temporal Arc
 
-第一阶段只建议做这些：
+`TemporalArc` 用于把离散 record 与 artifact 组织为阶段对象。
 
-- `person`
-- `place`
-- `theme`
-- `decision`
+它至少需要：
 
-第二阶段再考虑：
+- 标题
+- 摘要
+- 状态
+- 时间范围
+- source record ids
+- source artifact ids
+- source entity ids
+- linked reflection id
 
-- `project`
-- `emotion_pattern`
-- `life_phase`
+## 6. Reflection 触发策略
 
-## 7. Reflection 触发策略
-
-Reflection 不应和每次 capture 强绑定。  
 建议触发时机：
 
 - 重要单条记录完成后
-- 某实体近期频繁出现
+- 某实体近期高频出现
 - 某主题跨周重复出现
-- 某阶段结束时
+- 某阶段收束时
 - 用户主动请求复盘时
 
-## 8. Reflection 数据结构建议
+## 7. AI 风格约束
 
-建议 `ReflectionSnapshot` 至少包括：
+Mory 中 AI 输出必须：
 
-- `id`
-- `type`
-- `source_record_ids`
-- `source_artifact_ids`
-- `source_entity_ids`
-- `source_arc_ids`
-- `title`
-- `body`
-- `evidence_summary`
-- `confidence`
-- `created_at`
-- `dismissed_at`
-- `saved_at`
-
-## 9. AI 风格约束
-
-Mory 中 AI 输出必须遵守：
-
-- 不诊断
-- 不夸张人格判断
-- 不把单条记录上升为绝对结论
-- 不为了“有洞察”而捏造模式
-
-理想语气：
-
-- 观察式
 - 证据导向
-- 保留余地
-- 对用户有尊重
+- 语气克制
+- 不做诊断
+- 不捏造模式
+- 明确保留不确定性
 
-## 10. 本地与服务端职责分工
+## 8. 本地与服务端分工
 
-### 10.1 本地
+本地负责：
 
 - artifact 持久化
-- deterministic 聚合
-- graph 局部统计
-- reflection 展示与状态管理
+- graph 累积
+- arc 管理
+- reflection 状态管理
 
-### 10.2 服务端
+服务端负责：
 
-- 托管模型调用
-- 分析协议演进
-- 统一 prompt / provider 适配
-- 可选的轻量聚合服务
+- 模型调用
+- 协议版本化
+- prompt 管理
+- 统一 provider 适配
 
-## 11. 成本控制原则
+debug diagnostics 的正式边界：
 
-必须坚持：
-
-- 轻分析比深反思多
-- 增量更新比全量重算多
-- 结构化输出比 prose 优先
-- deterministic 先行，AI 后置
-
-否则随着数据积累，AI 成本会快速失控。
+- 客户端 diagnostics 页面优先展示本地持久化的 pipeline trace
+- 无 trace 时才允许展示 reconstructed fallback
+- diagnostics 的目标是排查失败点，不是替代正式业务对象

@@ -365,6 +365,129 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         try await repository.archiveReflection(reflectionID: reflection.reflection.id)
         XCTAssertEqual(try repository.fetchReflectionDetail(reflectionID: reflection.reflection.id)?.summary.reflection.status, .archived)
     }
+
+    func testClearDebugFixturesDoesNotDeleteRealRecords() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        _ = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Real memory",
+                rawText: "A real saved memory.",
+                mood: "steady",
+                inputContext: "real user capture",
+                captureSource: .composer,
+                artifacts: [.text(title: "Real memory", body: "A real saved memory.")]
+            )
+        )
+        _ = try await repository.seedDebugFixtures(count: 1)
+
+        try repository.clearDebugFixtures()
+
+        let remaining = try repository.fetchRecentMemories(limit: nil)
+        XCTAssertEqual(remaining.count, 1)
+        XCTAssertEqual(remaining.first?.record.inputContext, "real user capture")
+    }
+
+    func testFetchDebugDiagnosticsReturnsPersistedPipelineTrace() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Trace memory",
+                rawText: "Trace this analysis request.",
+                mood: "focused",
+                inputContext: "typed in debug",
+                captureSource: .composer,
+                artifacts: [.text(title: "Trace memory", body: "Trace this analysis request.")]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: memory.record.id)
+
+        let diagnostics = try repository.fetchDebugDiagnostics(targetType: .memory, targetID: memory.record.id)
+        XCTAssertEqual(diagnostics.pipelineTrace?.statusCode, 200)
+        XCTAssertEqual(diagnostics.analyzePayload?.requestBody, "{\"analysis_reason\":\"capture_ingest\"}")
+        XCTAssertEqual(diagnostics.analyzePayload?.responseBody, "{\"summary\":\"Stub summary\"}")
+    }
+
+    func testRerunDebugPipelineModesResolveCorrectTargets() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Rerun memory",
+                rawText: "Dinner with Linh turned into another planning moment.",
+                mood: "reflective",
+                inputContext: "typed in debug",
+                captureSource: .composer,
+                artifacts: [.text(title: "Rerun memory", body: "Dinner with Linh turned into another planning moment.")]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: memory.record.id)
+
+        try await repository.rerunDebugPipeline(targetType: .memory, targetID: memory.record.id, mode: .analysisOnly)
+        let arc = try XCTUnwrap(repository.fetchTemporalArcSummaries(limit: 1).first)
+        try await repository.rerunDebugPipeline(targetType: .arc, targetID: arc.arc.id, mode: .graphArcReflection)
+        let reflection = try XCTUnwrap(repository.fetchReflectionSummaries(limit: 1).first)
+        try await repository.rerunDebugPipeline(targetType: .reflection, targetID: reflection.reflection.id, mode: .reflectionReplay)
+
+        XCTAssertNotNil(try repository.fetchPipelineStatus(recordID: memory.record.id))
+    }
+
+    func testAnalysisFailurePersistsPipelineTraceForDiagnostics() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: FailingRecordAnalysisService()
+        )
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Failing trace",
+                rawText: "The analysis will fail here.",
+                mood: "uneasy",
+                inputContext: "typed in debug",
+                captureSource: .composer,
+                artifacts: [.text(title: "Failing trace", body: "The analysis will fail here.")]
+            )
+        )
+
+        await XCTAssertThrowsErrorAsync {
+            try await repository.refreshMemoryPipeline(recordID: memory.record.id)
+        }
+
+        let status = try XCTUnwrap(repository.fetchPipelineStatus(recordID: memory.record.id))
+        let diagnostics = try repository.fetchDebugDiagnostics(targetType: .memory, targetID: memory.record.id)
+
+        XCTAssertEqual(status.stage, .failed)
+        XCTAssertEqual(status.lastHTTPStatusCode, 503)
+        XCTAssertEqual(status.failedStage, "analysis")
+        XCTAssertEqual(diagnostics.pipelineTrace?.rawErrorBody, "{\"error\":\"analysis unavailable\"}")
+        XCTAssertEqual(diagnostics.analyzePayload?.rawErrorBody, "{\"error\":\"analysis unavailable\"}")
+    }
+}
+
+private func XCTAssertThrowsErrorAsync(
+    _ expression: @escaping () async throws -> Void,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) async {
+    do {
+        try await expression()
+        XCTFail("Expected async throw", file: file, line: line)
+    } catch {
+    }
 }
 
 private struct StubRecordAnalysisService: RecordAnalysisServing {
@@ -398,6 +521,16 @@ private struct StubRecordAnalysisService: RecordAnalysisServing {
             createdAt: record.updatedAt
         )
     }
+
+    func latestDebugTrace() async -> DebugPipelineTraceSnapshot? {
+        DebugPipelineTraceSnapshot(
+            requestBody: "{\"analysis_reason\":\"capture_ingest\"}",
+            responseBody: "{\"summary\":\"Stub summary\"}",
+            rawErrorBody: nil,
+            statusCode: 200,
+            failedStage: nil
+        )
+    }
 }
 
 private struct FailingRecordAnalysisService: RecordAnalysisServing {
@@ -411,6 +544,16 @@ private struct FailingRecordAnalysisService: RecordAnalysisServing {
         knownEntities: [EntityReference]
     ) async throws -> RecordAnalysisSnapshot {
         throw StubError()
+    }
+
+    func latestDebugTrace() async -> DebugPipelineTraceSnapshot? {
+        DebugPipelineTraceSnapshot(
+            requestBody: "{\"analysis_reason\":\"capture_ingest\"}",
+            responseBody: nil,
+            rawErrorBody: "{\"error\":\"analysis unavailable\"}",
+            statusCode: 503,
+            failedStage: "analysis"
+        )
     }
 }
 
@@ -442,6 +585,16 @@ private struct AliasRecordAnalysisService: RecordAnalysisServing {
             followUpCandidates: [],
             reflectionHint: "Track whether Linh and planning keep co-occurring.",
             createdAt: record.updatedAt
+        )
+    }
+
+    func latestDebugTrace() async -> DebugPipelineTraceSnapshot? {
+        DebugPipelineTraceSnapshot(
+            requestBody: "{\"analysis_reason\":\"capture_ingest\"}",
+            responseBody: "{\"summary\":\"Alias summary\"}",
+            rawErrorBody: nil,
+            statusCode: 200,
+            failedStage: nil
         )
     }
 }

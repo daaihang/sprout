@@ -43,7 +43,8 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             userMood: draft.mood?.trimmedOrNil,
             userIntensity: nil,
             inputContext: draft.inputContext?.trimmedOrNil,
-            artifactIDs: captureArtifacts.map(\.id)
+            artifactIDs: captureArtifacts.map(\.id),
+            debugFixtureSeededAt: draft.inputContext == "debug fixture seed" ? now : nil
         )
 
         try upsert(recordShell: recordShell)
@@ -53,6 +54,11 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
                 recordID: recordID,
                 stage: .pending,
                 lastError: nil,
+                requestBody: nil,
+                responseBody: nil,
+                rawErrorBody: nil,
+                lastHTTPStatusCode: nil,
+                failedStage: nil,
                 lastAttemptAt: nil,
                 completedAt: nil,
                 updatedAt: now
@@ -107,6 +113,11 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
                 recordID: recordID,
                 stage: .pending,
                 lastError: nil,
+                requestBody: nil,
+                responseBody: nil,
+                rawErrorBody: nil,
+                lastHTTPStatusCode: nil,
+                failedStage: nil,
                 lastAttemptAt: nil,
                 completedAt: nil,
                 updatedAt: now
@@ -129,6 +140,11 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
                 recordID: recordID,
                 stage: .running,
                 lastError: nil,
+                requestBody: try fetchPipelineStatus(recordID: recordID)?.requestBody,
+                responseBody: nil,
+                rawErrorBody: nil,
+                lastHTTPStatusCode: nil,
+                failedStage: nil,
                 lastAttemptAt: attemptAt,
                 completedAt: nil,
                 updatedAt: attemptAt
@@ -138,12 +154,18 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
 
         do {
             try await runArchitecturePipeline(record: record, artifacts: artifacts)
+            let trace = await analysisService.latestDebugTrace()
             let completedAt = Date.now
             try upsertPipelineStatus(
                 MemoryPipelineStatusSnapshot(
                     recordID: recordID,
                     stage: .completed,
                     lastError: nil,
+                    requestBody: trace?.requestBody,
+                    responseBody: trace?.responseBody,
+                    rawErrorBody: nil,
+                    lastHTTPStatusCode: trace?.statusCode,
+                    failedStage: nil,
                     lastAttemptAt: attemptAt,
                     completedAt: completedAt,
                     updatedAt: completedAt
@@ -151,12 +173,18 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             )
             try save()
         } catch {
+            let trace = await analysisService.latestDebugTrace()
             let failedAt = Date.now
             try upsertPipelineStatus(
                 MemoryPipelineStatusSnapshot(
                     recordID: recordID,
                     stage: .failed,
                     lastError: error.localizedDescription,
+                    requestBody: trace?.requestBody,
+                    responseBody: trace?.responseBody,
+                    rawErrorBody: trace?.rawErrorBody,
+                    lastHTTPStatusCode: trace?.statusCode,
+                    failedStage: trace?.failedStage,
                     lastAttemptAt: attemptAt,
                     completedAt: nil,
                     updatedAt: failedAt
@@ -704,6 +732,100 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         )
     }
 
+    func fetchDebugDiagnostics(targetType: DebugAnalysisTarget, targetID: UUID?) throws -> DebugDiagnosticsSnapshot {
+        let target = try resolveDebugTarget(targetType: targetType, targetID: targetID)
+        let fixture: DebugMemoryFixtureSnapshot?
+        if let target {
+            switch target.targetType {
+            case .memory:
+                if let memory = target.memory {
+                    fixture = try fetchDebugFixtureSnapshot(recordID: memory.record.id)
+                } else {
+                    fixture = nil
+                }
+            case .arc, .reflection:
+                fixture = nil
+            }
+        } else {
+            fixture = nil
+        }
+
+        let provenance = try fetchDebugProvenance(targetType: targetType, targetID: targetID)
+        let analyzePayload = try debugAnalyzePayload(for: target)
+        let reflectionPayload = try debugReflectionPayload(for: target)
+        let pipelineTrace = try resolveDebugRecordID(targetType: targetType, targetID: targetID)
+            .flatMap { try fetchPipelineStatus(recordID: $0) }
+            .map {
+                DebugPipelineTraceSnapshot(
+                    requestBody: $0.requestBody,
+                    responseBody: $0.responseBody,
+                    rawErrorBody: $0.rawErrorBody,
+                    statusCode: $0.lastHTTPStatusCode,
+                    failedStage: $0.failedStage
+                )
+            }
+
+        return DebugDiagnosticsSnapshot(
+            target: target,
+            analyzePayload: analyzePayload,
+            reflectionPayload: reflectionPayload,
+            provenance: provenance,
+            fixture: fixture,
+            pipelineTrace: pipelineTrace
+        )
+    }
+
+    func rerunDebugPipeline(targetType: DebugAnalysisTarget, targetID: UUID?, mode: DebugRebuildMode) async throws {
+        switch mode {
+        case .analysisOnly:
+            guard let recordID = try resolveDebugRecordID(targetType: targetType, targetID: targetID) else {
+                throw CocoaError(.fileNoSuchFile)
+            }
+            try await refreshMemoryPipeline(recordID: recordID)
+        case .graphArcReflection:
+            guard let recordID = try resolveDebugRecordID(targetType: targetType, targetID: targetID) else {
+                throw CocoaError(.fileNoSuchFile)
+            }
+            try await rerunGraphArcReflection(recordID: recordID)
+        case .reflectionReplay:
+            guard let reflection = try resolveDebugTarget(targetType: targetType, targetID: targetID)?.reflection else {
+                throw CocoaError(.fileNoSuchFile)
+            }
+            try await replayDebugReflection(reflectionID: reflection.reflection.id)
+        }
+    }
+
+    func seedDebugFixtures(count: Int) async throws -> [DebugMemoryFixtureSnapshot] {
+        let fixtureCount = max(1, count)
+        var fixtures: [DebugMemoryFixtureSnapshot] = []
+        for index in 0..<fixtureCount {
+            let draft = MemoryCaptureDraft(
+                title: "Debug fixture \(index + 1)",
+                rawText: "Fixture \(index + 1) with Linh and a planning note.",
+                mood: "reflective",
+                inputContext: "debug fixture seed",
+                captureSource: .manual
+            )
+            let memory = try await createMemory(from: draft)
+            try await refreshMemoryPipeline(recordID: memory.record.id)
+            if let fixture = try fetchDebugFixtureSnapshot(recordID: memory.record.id) {
+                fixtures.append(fixture)
+            }
+        }
+        return fixtures
+    }
+
+    func clearDebugFixtures() throws {
+        let records = try fetchRecordShells()
+        for record in records {
+            guard record.debugFixtureSeededAt != nil || record.inputContext == "debug fixture seed" else {
+                continue
+            }
+            try deleteDebugRecord(recordID: record.id)
+        }
+        try save()
+    }
+
     func saveReflection(reflectionID: UUID) async throws {
         try updateReflectionStatus(reflectionID: reflectionID, status: .saved)
     }
@@ -738,6 +860,190 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             throw CocoaError(.coderInvalidValue)
         }
         return snapshot
+    }
+
+    private func replayDebugReflection(reflectionID: UUID) async throws {
+        guard let reflection = try modelContext.fetch(
+            FetchDescriptor<ReflectionSnapshotStore>(predicate: #Predicate { $0.id == reflectionID })
+        ).first?.domainModel else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+        guard let recordID = reflection.sourceRecordIDs.first else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+        try await refreshMemoryPipeline(recordID: recordID)
+    }
+
+    private func resolveDebugTarget(targetType: DebugAnalysisTarget, targetID: UUID?) throws -> DebugTargetSnapshot? {
+        let graphContext = try loadGraphContext()
+        switch targetType {
+        case .memory:
+            let memory: MemorySummary?
+            if let targetID {
+                memory = try fetchRecentMemories(limit: nil).first(where: { $0.record.id == targetID })
+            } else {
+                memory = try fetchRecentMemories(limit: 1).first
+            }
+            guard let memory else { return nil }
+            return DebugTargetSnapshot(targetType: .memory, memory: memory, arc: nil, reflection: nil)
+        case .arc:
+            let arc = graphContext.arcs.first(where: { $0.id == targetID }) ?? graphContext.arcs.first
+            guard let arc else { return nil }
+            let summary = TemporalArcSummarySnapshot(
+                arc: arc,
+                relatedMemories: relatedMemories(recordIDs: arc.sourceRecordIDs, memoriesByRecordID: graphContext.memoriesByRecordID, limit: 3),
+                linkedReflection: graphContext.reflections.first(where: { $0.linkedTemporalArcID == arc.id })
+            )
+            return DebugTargetSnapshot(targetType: .arc, memory: nil, arc: summary, reflection: nil)
+        case .reflection:
+            let reflection = graphContext.reflections.first(where: { $0.id == targetID }) ?? graphContext.reflections.first
+            guard let reflection else { return nil }
+            let linkedArc = reflection.linkedTemporalArcID.flatMap { linkedArcID in
+                graphContext.arcs.first(where: { $0.id == linkedArcID })
+            }
+            let summary = ReflectionSummarySnapshot(
+                reflection: reflection,
+                linkedArc: linkedArc,
+                relatedMemories: relatedMemories(recordIDs: reflection.sourceRecordIDs, memoriesByRecordID: graphContext.memoriesByRecordID, limit: 3)
+            )
+            return DebugTargetSnapshot(targetType: .reflection, memory: nil, arc: nil, reflection: summary)
+        }
+    }
+
+    private func debugAnalyzePayload(for target: DebugTargetSnapshot?) throws -> DebugAnalyzePayloadSnapshot? {
+        guard let target, let memory = target.memory else { return nil }
+        let pipelineStatus = try fetchPipelineStatus(recordID: memory.record.id)
+        let artifacts = try fetchArtifacts(recordID: memory.record.id)
+        let request = AnalyzeRequestBuilder().build(
+            record: memory.record,
+            artifacts: artifacts,
+            knownEntities: []
+        )
+        let encoded = pipelineStatus?.requestBody ?? String(data: (try? JSONEncoder().encode(request)) ?? Data(), encoding: .utf8) ?? ""
+        let response = try fetchRecordAnalysis(recordID: memory.record.id)
+        let responseEncoded = pipelineStatus?.responseBody ?? response.flatMap { String(data: (try? JSONEncoder().encode($0)) ?? Data(), encoding: .utf8) } ?? ""
+        return DebugAnalyzePayloadSnapshot(
+            recordID: memory.record.id,
+            requestBody: encoded,
+            responseBody: responseEncoded,
+            lastError: pipelineStatus?.lastError,
+            rawErrorBody: pipelineStatus?.rawErrorBody
+        )
+    }
+
+    private func debugReflectionPayload(for target: DebugTargetSnapshot?) throws -> DebugReflectionPayloadSnapshot? {
+        guard let target else { return nil }
+        switch target.targetType {
+        case .memory:
+            guard let memory = target.memory else { return nil }
+            let pipelineStatus = try fetchPipelineStatus(recordID: memory.record.id)
+            let artifacts = try fetchArtifacts(recordID: memory.record.id)
+            let analyzePayload = AnalyzeRequestBuilder().build(record: memory.record, artifacts: artifacts)
+            let payload = MoryAPIClient.ReflectionPayload(
+                recordShell: analyzePayload.recordShell,
+                artifacts: analyzePayload.artifacts,
+                linkedArcID: nil,
+                knownEntities: [],
+                prompt: memory.record.rawText
+            )
+            let requestBody = String(data: (try? JSONEncoder().encode(payload)) ?? Data(), encoding: .utf8) ?? ""
+            return DebugReflectionPayloadSnapshot(
+                recordID: memory.record.id,
+                arcID: nil,
+                requestBody: pipelineStatus?.requestBody ?? requestBody,
+                responseBody: pipelineStatus?.responseBody ?? "",
+                lastError: pipelineStatus?.lastError,
+                rawErrorBody: pipelineStatus?.rawErrorBody
+            )
+        case .arc:
+            guard let arc = target.arc else { return nil }
+            let payload = MoryAPIClient.ReflectionPayload(
+                recordShell: AnalyzeRequestBuilder().build(record: RecordShell(createdAt: .now, updatedAt: .now, captureSource: .manual, rawText: arc.arc.summary), artifacts: []).recordShell,
+                artifacts: [],
+                linkedArcID: arc.arc.id.uuidString,
+                knownEntities: [],
+                prompt: arc.arc.summary
+            )
+            let requestBody = String(data: (try? JSONEncoder().encode(payload)) ?? Data(), encoding: .utf8) ?? ""
+            return DebugReflectionPayloadSnapshot(
+                recordID: arc.arc.sourceRecordIDs.first,
+                arcID: arc.arc.id,
+                requestBody: requestBody,
+                responseBody: "",
+                lastError: nil,
+                rawErrorBody: nil
+            )
+        case .reflection:
+            guard let reflection = target.reflection else { return nil }
+            let requestBody = String(data: (try? JSONEncoder().encode(["reflection_id": reflection.reflection.id.uuidString])) ?? Data(), encoding: .utf8) ?? ""
+            return DebugReflectionPayloadSnapshot(
+                recordID: reflection.reflection.sourceRecordIDs.first,
+                arcID: reflection.linkedArc?.id,
+                requestBody: requestBody,
+                responseBody: reflection.reflection.body,
+                lastError: nil,
+                rawErrorBody: nil
+            )
+        }
+    }
+
+    private func fetchDebugProvenance(targetType: DebugAnalysisTarget, targetID: UUID?) throws -> [DebugProvenanceSnapshot] {
+        let graphContext = try loadGraphContext()
+        switch targetType {
+        case .memory:
+            let fallbackMemoryID = try fetchRecentMemories(limit: 1).first?.record.id
+            let memoryID = targetID ?? fallbackMemoryID
+            guard let memoryID else { return [] }
+            return graphContext.entities
+                .filter { $0.provenanceRecordIDs.contains(memoryID) }
+                .map { entity in
+                    DebugProvenanceSnapshot(
+                        entityID: entity.id,
+                        aliasCount: entity.aliases.count,
+                        provenanceRecordIDs: entity.provenanceRecordIDs,
+                        linkedArtifactIDs: graphContext.links.filter { $0.entityID == entity.id }.map(\.artifactID),
+                        linkedAnalysisRecordIDs: graphContext.links.filter { $0.entityID == entity.id }.compactMap(\.sourceAnalysisRecordID),
+                        evidenceSummary: graphContext.links.filter { $0.entityID == entity.id }.map(\.evidenceSummary).joined(separator: " | ")
+                    )
+                }
+        case .arc, .reflection:
+            return graphContext.entities.map { entity in
+                DebugProvenanceSnapshot(
+                    entityID: entity.id,
+                    aliasCount: entity.aliases.count,
+                    provenanceRecordIDs: entity.provenanceRecordIDs,
+                    linkedArtifactIDs: graphContext.links.filter { $0.entityID == entity.id }.map(\.artifactID),
+                    linkedAnalysisRecordIDs: graphContext.links.filter { $0.entityID == entity.id }.compactMap(\.sourceAnalysisRecordID),
+                    evidenceSummary: graphContext.links.filter { $0.entityID == entity.id }.map(\.evidenceSummary).joined(separator: " | ")
+                )
+            }
+        }
+    }
+
+    private func deleteDebugRecord(recordID: UUID) throws {
+        if let record = try modelContext.fetch(FetchDescriptor<RecordShellStore>(predicate: #Predicate { $0.id == recordID })).first {
+            modelContext.delete(record)
+        }
+        let artifactStores = try modelContext.fetch(FetchDescriptor<ArtifactStore>(predicate: #Predicate { $0.recordID == recordID }))
+        artifactStores.forEach { modelContext.delete($0) }
+        let pipelineStores = try modelContext.fetch(FetchDescriptor<MemoryPipelineStatusStore>(predicate: #Predicate { $0.recordID == recordID }))
+        pipelineStores.forEach { modelContext.delete($0) }
+        let analysisStores = try modelContext.fetch(FetchDescriptor<RecordAnalysisSnapshotStore>(predicate: #Predicate { $0.recordID == recordID }))
+        analysisStores.forEach { modelContext.delete($0) }
+    }
+
+    private func resolveDebugRecordID(targetType: DebugAnalysisTarget, targetID: UUID?) throws -> UUID? {
+        let target = try resolveDebugTarget(targetType: targetType, targetID: targetID)
+        switch target?.targetType {
+        case .memory:
+            return target?.memory?.record.id
+        case .arc:
+            return target?.arc?.arc.sourceRecordIDs.first
+        case .reflection:
+            return target?.reflection?.reflection.sourceRecordIDs.first
+        case nil:
+            return nil
+        }
     }
 
     func fetchDebugFixtureSnapshot(recordID: UUID) throws -> DebugMemoryFixtureSnapshot? {

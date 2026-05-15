@@ -163,6 +163,11 @@ struct MemoryPipelineStatusSnapshot: Identifiable, Hashable, Sendable {
     let recordID: UUID
     let stage: MemoryPipelineStage
     let lastError: String?
+    let requestBody: String?
+    let responseBody: String?
+    let rawErrorBody: String?
+    let lastHTTPStatusCode: Int?
+    let failedStage: String?
     let lastAttemptAt: Date?
     let completedAt: Date?
     let updatedAt: Date
@@ -344,6 +349,72 @@ struct DebugMemoryFixtureSnapshot: Hashable, Sendable {
     let chain: DebugMemoryChainSnapshot
 }
 
+enum DebugAnalysisTarget: String, Codable, CaseIterable, Identifiable, Sendable {
+    case memory
+    case arc
+    case reflection
+
+    var id: String { rawValue }
+}
+
+enum DebugRebuildMode: String, Codable, CaseIterable, Identifiable, Sendable {
+    case analysisOnly
+    case graphArcReflection
+    case reflectionReplay
+
+    var id: String { rawValue }
+}
+
+struct DebugAnalyzePayloadSnapshot: Hashable, Sendable {
+    let recordID: UUID
+    let requestBody: String
+    let responseBody: String
+    let lastError: String?
+    let rawErrorBody: String?
+}
+
+struct DebugReflectionPayloadSnapshot: Hashable, Sendable {
+    let recordID: UUID?
+    let arcID: UUID?
+    let requestBody: String
+    let responseBody: String
+    let lastError: String?
+    let rawErrorBody: String?
+}
+
+struct DebugProvenanceSnapshot: Hashable, Sendable {
+    let entityID: UUID
+    let aliasCount: Int
+    let provenanceRecordIDs: [UUID]
+    let linkedArtifactIDs: [UUID]
+    let linkedAnalysisRecordIDs: [UUID]
+    let evidenceSummary: String
+}
+
+struct DebugPipelineTraceSnapshot: Hashable, Sendable {
+    let requestBody: String?
+    let responseBody: String?
+    let rawErrorBody: String?
+    let statusCode: Int?
+    let failedStage: String?
+}
+
+struct DebugTargetSnapshot: Hashable, Sendable {
+    let targetType: DebugAnalysisTarget
+    let memory: MemorySummary?
+    let arc: TemporalArcSummarySnapshot?
+    let reflection: ReflectionSummarySnapshot?
+}
+
+struct DebugDiagnosticsSnapshot: Hashable, Sendable {
+    let target: DebugTargetSnapshot?
+    let analyzePayload: DebugAnalyzePayloadSnapshot?
+    let reflectionPayload: DebugReflectionPayloadSnapshot?
+    let provenance: [DebugProvenanceSnapshot]
+    let fixture: DebugMemoryFixtureSnapshot?
+    let pipelineTrace: DebugPipelineTraceSnapshot?
+}
+
 struct PersonDetailSnapshot: Identifiable, Hashable, Sendable {
     let summary: PersonMemorySummary
     let relatedArcs: [TemporalArcSummarySnapshot]
@@ -408,6 +479,10 @@ protocol MoryMemoryRepositorying: AnyObject {
     func saveReflection(reflectionID: UUID) async throws
     func dismissReflection(reflectionID: UUID) async throws
     func archiveReflection(reflectionID: UUID) async throws
+    func fetchDebugDiagnostics(targetType: DebugAnalysisTarget, targetID: UUID?) throws -> DebugDiagnosticsSnapshot
+    func rerunDebugPipeline(targetType: DebugAnalysisTarget, targetID: UUID?, mode: DebugRebuildMode) async throws
+    func seedDebugFixtures(count: Int) async throws -> [DebugMemoryFixtureSnapshot]
+    func clearDebugFixtures() throws
     func seedDebugFixture() async throws -> DebugMemoryFixtureSnapshot
     func fetchDebugFixtureSnapshot(recordID: UUID) throws -> DebugMemoryFixtureSnapshot?
 }
@@ -418,6 +493,8 @@ protocol RecordAnalysisServing: Sendable {
         artifacts: [Artifact],
         knownEntities: [EntityReference]
     ) async throws -> RecordAnalysisSnapshot
+
+    func latestDebugTrace() async -> DebugPipelineTraceSnapshot?
 }
 
 extension String {
