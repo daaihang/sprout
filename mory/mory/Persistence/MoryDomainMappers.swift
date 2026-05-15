@@ -1,5 +1,22 @@
 import Foundation
 
+@MainActor
+private enum PersistenceCoding {
+    static let encoder = JSONEncoder()
+    static let decoder = JSONDecoder()
+
+    static func encode<T: Encodable>(_ value: T?) -> Data? {
+        guard let value else { return nil }
+        return try? encoder.encode(value)
+    }
+
+    static func decode<T: Decodable>(_ type: T.Type, from data: Data?) -> T? {
+        guard let data else { return nil }
+        return try? decoder.decode(type, from: data)
+    }
+}
+
+@MainActor
 extension RecordShellStore {
     convenience init(domainModel: RecordShell) {
         self.init(
@@ -42,6 +59,7 @@ extension RecordShellStore {
     }
 }
 
+@MainActor
 extension ArtifactStore {
     convenience init(domainModel: Artifact) {
         self.init(
@@ -51,9 +69,9 @@ extension ArtifactStore {
             title: domainModel.title,
             summary: domainModel.summary,
             textContent: domainModel.textContent,
-            payload: domainModel.payload,
-            mediaRef: domainModel.mediaRef,
-            metadata: domainModel.metadata,
+            payloadData: PersistenceCoding.encode(domainModel.payload),
+            mediaRefData: PersistenceCoding.encode(domainModel.mediaRef),
+            metadataData: PersistenceCoding.encode(domainModel.metadata),
             binaryPayload: domainModel.binaryPayload,
             previewPayload: domainModel.previewPayload,
             createdAt: domainModel.createdAt,
@@ -69,9 +87,9 @@ extension ArtifactStore {
             title: title,
             summary: summary,
             textContent: textContent,
-            payload: payload,
-            mediaRef: mediaRef,
-            metadata: metadata,
+            payload: PersistenceCoding.decode(ArtifactPayload.self, from: payloadData),
+            mediaRef: PersistenceCoding.decode(ArtifactMediaRef.self, from: mediaRefData),
+            metadata: PersistenceCoding.decode([String: String].self, from: metadataData) ?? [:],
             binaryPayload: binaryPayload,
             previewPayload: previewPayload,
             createdAt: createdAt,
@@ -86,9 +104,9 @@ extension ArtifactStore {
         title = domainModel.title
         summary = domainModel.summary
         textContent = domainModel.textContent
-        payload = domainModel.payload
-        mediaRef = domainModel.mediaRef
-        metadata = domainModel.metadata
+        payloadData = PersistenceCoding.encode(domainModel.payload)
+        mediaRefData = PersistenceCoding.encode(domainModel.mediaRef)
+        metadataData = PersistenceCoding.encode(domainModel.metadata)
         binaryPayload = domainModel.binaryPayload
         previewPayload = domainModel.previewPayload
         createdAt = domainModel.createdAt
@@ -96,6 +114,7 @@ extension ArtifactStore {
     }
 }
 
+@MainActor
 extension BoardStore {
     convenience init(domainModel: Board) {
         self.init(
@@ -135,6 +154,7 @@ extension BoardStore {
     }
 }
 
+@MainActor
 extension CompositionStore {
     convenience init(domainModel: Composition) {
         self.init(
@@ -171,6 +191,7 @@ extension CompositionStore {
     }
 }
 
+@MainActor
 extension CompositionItemStore {
     convenience init(domainModel: CompositionItem) {
         self.init(
@@ -231,6 +252,7 @@ extension CompositionItemStore {
     }
 }
 
+@MainActor
 extension EntityNodeStore {
     convenience init(domainModel: EntityNode) {
         self.init(
@@ -270,6 +292,7 @@ extension EntityNodeStore {
     }
 }
 
+@MainActor
 extension EntityEdgeStore {
     convenience init(domainModel: EntityEdge) {
         self.init(
@@ -315,6 +338,7 @@ extension EntityEdgeStore {
     }
 }
 
+@MainActor
 extension ArtifactEntityLinkStore {
     convenience init(domainModel: ArtifactEntityLink) {
         self.init(
@@ -348,6 +372,7 @@ extension ArtifactEntityLinkStore {
     }
 }
 
+@MainActor
 extension RecordAnalysisSnapshotStore {
     convenience init(domainModel: RecordAnalysisSnapshot) {
         self.init(
@@ -358,9 +383,9 @@ extension RecordAnalysisSnapshotStore {
             emotionInterpretation: domainModel.emotionInterpretation,
             salienceScore: domainModel.salienceScore,
             retrievalTerms: domainModel.retrievalTerms,
-            entityMentions: domainModel.entityMentions,
-            candidateEdges: domainModel.candidateEdges,
-            followUpCandidates: domainModel.followUpCandidates,
+            entityMentionsData: PersistenceCoding.encode(domainModel.entityMentions),
+            candidateEdgesData: PersistenceCoding.encode(domainModel.candidateEdges),
+            followUpCandidatesData: PersistenceCoding.encode(domainModel.followUpCandidates),
             reflectionHint: domainModel.reflectionHint,
             createdAt: domainModel.createdAt
         )
@@ -375,9 +400,9 @@ extension RecordAnalysisSnapshotStore {
             emotionInterpretation: emotionInterpretation,
             salienceScore: salienceScore,
             retrievalTerms: retrievalTerms,
-            entityMentions: entityMentions,
-            candidateEdges: candidateEdges,
-            followUpCandidates: followUpCandidates,
+            entityMentions: PersistenceCoding.decode([EntityReference].self, from: entityMentionsData) ?? [],
+            candidateEdges: PersistenceCoding.decode([CandidateEntityEdge].self, from: candidateEdgesData) ?? [],
+            followUpCandidates: PersistenceCoding.decode([FollowUpCandidate].self, from: followUpCandidatesData) ?? [],
             reflectionHint: reflectionHint,
             createdAt: createdAt
         )
@@ -391,14 +416,15 @@ extension RecordAnalysisSnapshotStore {
         emotionInterpretation = domainModel.emotionInterpretation
         salienceScore = domainModel.salienceScore
         retrievalTerms = domainModel.retrievalTerms
-        entityMentions = domainModel.entityMentions
-        candidateEdges = domainModel.candidateEdges
-        followUpCandidates = domainModel.followUpCandidates
+        entityMentionsData = PersistenceCoding.encode(domainModel.entityMentions)
+        candidateEdgesData = PersistenceCoding.encode(domainModel.candidateEdges)
+        followUpCandidatesData = PersistenceCoding.encode(domainModel.followUpCandidates)
         reflectionHint = domainModel.reflectionHint
         createdAt = domainModel.createdAt
     }
 }
 
+@MainActor
 extension ReflectionSnapshotStore {
     convenience init(domainModel: ReflectionSnapshot) {
         self.init(
@@ -456,6 +482,7 @@ extension ReflectionSnapshotStore {
     }
 }
 
+@MainActor
 extension TemporalArcStore {
     convenience init(domainModel: TemporalArc) {
         self.init(

@@ -44,9 +44,9 @@ final class ArtifactStore {
     var title: String
     var summary: String
     var textContent: String
-    var payload: ArtifactPayload?
-    var mediaRef: ArtifactMediaRef?
-    var metadata: [String: String]
+    var payloadData: Data?
+    var mediaRefData: Data?
+    var metadataData: Data?
     @Attribute(.externalStorage) var binaryPayload: Data?
     @Attribute(.externalStorage) var previewPayload: Data?
     var createdAt: Date
@@ -59,9 +59,9 @@ final class ArtifactStore {
         title: String,
         summary: String,
         textContent: String,
-        payload: ArtifactPayload? = nil,
-        mediaRef: ArtifactMediaRef? = nil,
-        metadata: [String: String] = [:],
+        payloadData: Data? = nil,
+        mediaRefData: Data? = nil,
+        metadataData: Data? = nil,
         binaryPayload: Data? = nil,
         previewPayload: Data? = nil,
         createdAt: Date,
@@ -73,9 +73,9 @@ final class ArtifactStore {
         self.title = title
         self.summary = summary
         self.textContent = textContent
-        self.payload = payload
-        self.mediaRef = mediaRef
-        self.metadata = metadata
+        self.payloadData = payloadData
+        self.mediaRefData = mediaRefData
+        self.metadataData = metadataData
         self.binaryPayload = binaryPayload
         self.previewPayload = previewPayload
         self.createdAt = createdAt
@@ -302,9 +302,9 @@ final class RecordAnalysisSnapshotStore {
     var emotionInterpretation: String
     var salienceScore: Double
     var retrievalTerms: [String]
-    var entityMentions: [EntityReference]
-    var candidateEdges: [CandidateEntityEdge]
-    var followUpCandidates: [FollowUpCandidate]
+    var entityMentionsData: Data?
+    var candidateEdgesData: Data?
+    var followUpCandidatesData: Data?
     var reflectionHint: String?
     var createdAt: Date
 
@@ -316,9 +316,9 @@ final class RecordAnalysisSnapshotStore {
         emotionInterpretation: String,
         salienceScore: Double,
         retrievalTerms: [String],
-        entityMentions: [EntityReference] = [],
-        candidateEdges: [CandidateEntityEdge] = [],
-        followUpCandidates: [FollowUpCandidate] = [],
+        entityMentionsData: Data? = nil,
+        candidateEdgesData: Data? = nil,
+        followUpCandidatesData: Data? = nil,
         reflectionHint: String? = nil,
         createdAt: Date
     ) {
@@ -329,9 +329,9 @@ final class RecordAnalysisSnapshotStore {
         self.emotionInterpretation = emotionInterpretation
         self.salienceScore = salienceScore
         self.retrievalTerms = retrievalTerms
-        self.entityMentions = entityMentions
-        self.candidateEdges = candidateEdges
-        self.followUpCandidates = followUpCandidates
+        self.entityMentionsData = entityMentionsData
+        self.candidateEdgesData = candidateEdgesData
+        self.followUpCandidatesData = followUpCandidatesData
         self.reflectionHint = reflectionHint
         self.createdAt = createdAt
     }
