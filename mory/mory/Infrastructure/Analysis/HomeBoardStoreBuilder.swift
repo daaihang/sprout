@@ -35,91 +35,87 @@ struct HomeBoardStoreBuilder: Sendable {
             updatedAt: now
         )
 
+        let itemLimit = min(max(limit, 0), 8)
         var items: [HomeBoardItemSnapshot] = []
-        var zIndex = 0
 
-        // Add recent memories as composition items
-        let memoriesToShow = Array(memories.prefix(limit))
-        for (index, memory) in memoriesToShow.enumerated() {
+        func appendItem(
+            itemKey: String,
+            targetType: CompositionTargetType,
+            targetID: UUID,
+            renderValue: CompositionRenderValue
+        ) {
+            guard items.count < itemLimit else { return }
             let item = CompositionItem(
                 id: UUID(),
                 boardID: boardID,
                 boardKey: board.boardKey,
                 compositionID: compositionID,
                 compositionKey: composition.compositionKey,
+                itemKey: itemKey,
+                targetType: targetType,
+                targetID: targetID,
+                widthColumns: 2,
+                heightUnits: 1,
+                zIndex: items.count,
+                rotationDegrees: rotationForPosition(items.count),
+                scale: 1.0,
+                isHidden: false,
+                updatedAt: now
+            )
+            items.append(
+                HomeBoardItemSnapshot(
+                    compositionItem: item,
+                    renderValue: renderValue
+                )
+            )
+        }
+
+        let memoriesToShow = memories
+            .sorted { $0.record.updatedAt > $1.record.updatedAt }
+            .prefix(3)
+        for memory in memoriesToShow {
+            appendItem(
                 itemKey: "memory-\(memory.id)",
                 targetType: .record,
                 targetID: memory.id,
-                widthColumns: 2,
-                heightUnits: 1,
-                zIndex: zIndex,
-                rotationDegrees: rotationForPosition(index),
-                scale: 1.0,
-                isHidden: false,
-                updatedAt: now
-            )
-            let homeItem = HomeBoardItemSnapshot(
-                compositionItem: item,
                 renderValue: .memory(memory)
             )
-            items.append(homeItem)
-            zIndex += 1
         }
 
-        // Add accepted arcs from graph context
-        let acceptedArcs = graphContext.arcs.filter { $0.status == .accepted }
-        for (index, arc) in acceptedArcs.prefix(4).enumerated() {
-            let item = CompositionItem(
-                id: UUID(),
-                boardID: boardID,
-                boardKey: board.boardKey,
-                compositionID: compositionID,
-                compositionKey: composition.compositionKey,
+        let acceptedArcs = graphContext.arcs
+            .filter { $0.status == .accepted }
+            .sorted { $0.updatedAt > $1.updatedAt }
+        for arc in acceptedArcs {
+            appendItem(
                 itemKey: "arc-\(arc.id)",
                 targetType: .arc,
                 targetID: arc.id,
-                widthColumns: 2,
-                heightUnits: 1,
-                zIndex: zIndex,
-                rotationDegrees: rotationForPosition(memoriesToShow.count + index),
-                scale: 1.0,
-                isHidden: false,
-                updatedAt: now
-            )
-            let homeItem = HomeBoardItemSnapshot(
-                compositionItem: item,
                 renderValue: .arc(arc)
             )
-            items.append(homeItem)
-            zIndex += 1
         }
 
-        // Add saved reflections from graph context
-        let savedReflections = graphContext.reflections.filter { $0.status == .saved }
-        for (index, reflection) in savedReflections.prefix(4).enumerated() {
-            let item = CompositionItem(
-                id: UUID(),
-                boardID: boardID,
-                boardKey: board.boardKey,
-                compositionID: compositionID,
-                compositionKey: composition.compositionKey,
+        let suggestedReflections = graphContext.reflections
+            .filter { $0.status == .suggested }
+            .sorted { $0.createdAt > $1.createdAt }
+        for reflection in suggestedReflections {
+            appendItem(
                 itemKey: "reflection-\(reflection.id)",
                 targetType: .reflection,
                 targetID: reflection.id,
-                widthColumns: 2,
-                heightUnits: 1,
-                zIndex: zIndex,
-                rotationDegrees: rotationForPosition(memoriesToShow.count + acceptedArcs.count + index),
-                scale: 1.0,
-                isHidden: false,
-                updatedAt: now
-            )
-            let homeItem = HomeBoardItemSnapshot(
-                compositionItem: item,
                 renderValue: .reflection(reflection)
             )
-            items.append(homeItem)
-            zIndex += 1
+        }
+
+        if memories.count < 3 {
+            appendItem(
+                itemKey: "home-onboarding",
+                targetType: .system,
+                targetID: boardID,
+                renderValue: .system(
+                    title: "Welcome to Mory",
+                    subtitle: "Record your first memories. Storylines and reflections will appear here."
+                )
+            )
         }
 
         return HomeBoardSnapshot(

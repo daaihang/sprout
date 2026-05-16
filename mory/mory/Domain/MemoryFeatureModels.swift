@@ -111,6 +111,7 @@ struct MemoryCaptureDraft: Hashable, Sendable {
 struct MemorySummary: Identifiable, Hashable, Sendable {
     let record: RecordShell
     let primaryArtifact: Artifact?
+    let contextArtifacts: [Artifact]
     let artifactCount: Int
     let pipelineStatus: MemoryPipelineStatusSnapshot?
 

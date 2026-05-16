@@ -31,6 +31,135 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         })
     }
 
+    func testFetchHomeBoardLimitsMemoryCardsToRecentThree() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        for index in 1...4 {
+            _ = try await repository.createMemory(
+                from: MemoryCaptureDraft(
+                    title: "Memory \(index)",
+                    rawText: "Memory \(index) with Linh and planning.",
+                    mood: "focused",
+                    inputContext: "typed in debug",
+                    captureSource: .composer,
+                    artifacts: [.text(title: "Memory \(index)", body: "Memory \(index) with Linh and planning.")]
+                )
+            )
+        }
+
+        let board = try repository.fetchHomeBoard(for: Date(), limit: 8)
+        let memoryItems = board.items.compactMap { item -> MemorySummary? in
+            if case let .memory(memory) = item.renderValue { return memory }
+            return nil
+        }
+
+        XCTAssertEqual(memoryItems.count, 3)
+        XCTAssertEqual(memoryItems.map(\.title), ["Memory 4", "Memory 3", "Memory 2"])
+        XCTAssertFalse(memoryItems.contains { $0.title == "Memory 1" })
+    }
+
+    func testFetchHomeBoardCarriesContextArtifactsOnMemoryCards() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        _ = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Context walk",
+                rawText: "Walked home with context attached.",
+                mood: "reflective",
+                inputContext: "typed in debug",
+                captureSource: .composer,
+                artifacts: [
+                    .text(title: "Context walk", body: "Walked home with context attached."),
+                    .location(title: "Cafe", summary: "Cafe on Nanjing Road", latitude: 31.2, longitude: 121.4),
+                    .weather(condition: "Cloudy", temperatureCelsius: 22, humidity: 0.6, windSpeedKmh: 8, uvIndex: 2),
+                    .music(trackName: "Dreams", artistName: "Fleetwood Mac", albumName: "Rumours", durationSeconds: 257, artworkURL: nil)
+                ]
+            )
+        )
+
+        let board = try repository.fetchHomeBoard(for: Date(), limit: 8)
+        let memory = try XCTUnwrap(board.items.compactMap { item -> MemorySummary? in
+            if case let .memory(memory) = item.renderValue { return memory }
+            return nil
+        }.first)
+
+        XCTAssertEqual(Set(memory.contextArtifacts.map(\.kind)), Set([.location, .weather, .music]))
+        XCTAssertTrue(memory.contextArtifacts.contains { $0.summary.contains("Cafe on Nanjing Road") })
+        XCTAssertTrue(memory.contextArtifacts.contains { $0.summary.contains("Cloudy") })
+        XCTAssertTrue(memory.contextArtifacts.contains { $0.summary.contains("Dreams") })
+    }
+
+    func testFetchHomeBoardAddsGuidanceWhenFewerThanThreeMemories() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        _ = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "First memory",
+                rawText: "First memory with Linh.",
+                mood: "reflective",
+                inputContext: "typed in debug",
+                captureSource: .composer,
+                artifacts: [.text(title: "First memory", body: "First memory with Linh.")]
+            )
+        )
+
+        let board = try repository.fetchHomeBoard(for: Date(), limit: 8)
+
+        XCTAssertTrue(board.items.contains {
+            if case .system = $0.renderValue { return true }
+            return false
+        })
+    }
+
+    func testFetchHomeBoardUsesSuggestedReflectionsAndIgnoresSavedOnlyReflections() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Reflection source",
+                rawText: "Walked with Linh in the rain and clarified the quarter planning priorities.",
+                mood: "reflective",
+                inputContext: "typed in debug",
+                captureSource: .composer,
+                artifacts: [.text(title: "Reflection source", body: "Walked with Linh in the rain and clarified the quarter planning priorities.")]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: memory.record.id)
+
+        var board = try repository.fetchHomeBoard(for: Date(), limit: 8)
+        let suggestedReflection = try XCTUnwrap(board.items.compactMap { item -> ReflectionSnapshot? in
+            if case let .reflection(reflection) = item.renderValue { return reflection }
+            return nil
+        }.first)
+        XCTAssertEqual(suggestedReflection.status, .suggested)
+
+        for reflection in try repository.fetchReflections(limit: nil) where reflection.status == .suggested {
+            try await repository.saveReflection(reflectionID: reflection.id)
+        }
+        board = try repository.fetchHomeBoard(for: Date(), limit: 8)
+
+        XCTAssertFalse(board.items.contains {
+            if case .reflection = $0.renderValue { return true }
+            return false
+        })
+    }
+
     func testFetchHomeBoardIncludesArcAndReflectionItemsAfterPipeline() async throws {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(

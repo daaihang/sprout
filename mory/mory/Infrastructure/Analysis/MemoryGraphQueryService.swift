@@ -13,7 +13,6 @@ struct MemoryGraphQueryService {
 
         let links = try fetchLinks(modelContext: modelContext, recordIDs: allRecordIDs)
         let entityIDs = Set(links.map(\.entityID))
-        let artifactIDs = Set(links.map(\.artifactID))
 
         let entities = try fetchEntities(modelContext: modelContext, entityIDs: entityIDs, entityKinds: entityKinds)
         let edges = try fetchEdges(modelContext: modelContext, entityIDs: entityIDs, recordIDs: allRecordIDs)
@@ -130,7 +129,7 @@ struct MemoryGraphContext {
     func relatedMemories(recordIDs: [UUID], limit: Int) -> [MemorySummary] {
         let matched = recordIDs.compactMap { memoriesByRecordID[$0] }
         let unique = Array(NSOrderedSet(array: matched)) as? [MemorySummary] ?? matched
-        return Array(unique.prefix(limit))
+        return Array(unique.sorted { $0.record.updatedAt > $1.record.updatedAt }.prefix(limit))
     }
 
     func mergeUniqueIDs(_ first: [UUID], _ second: [UUID]) -> [UUID] {
@@ -196,7 +195,20 @@ struct MemoryGraphContext {
             themeEntities.contains { $0.displayName == name }
         }
 
-        let provenanceMemories = relatedMemories(recordIDs: entity.provenanceRecordIDs, limit: 5)
+        let artifactRecordIDs = artifactLinks.flatMap { link -> [UUID] in
+            [link.sourceRecordID, link.sourceAnalysisRecordID].compactMap { $0 }
+        }
+        let arcRecordIDs = entityArcs.flatMap(\.sourceRecordIDs)
+        let reflectionRecordIDs = entityReflections.flatMap { reflection -> [UUID] in
+            let linkedArcRecordIDs = reflection.linkedTemporalArcID
+                .flatMap { arcID in arcs.first { $0.id == arcID }?.sourceRecordIDs } ?? []
+            return mergeUniqueIDs(reflection.sourceRecordIDs, linkedArcRecordIDs)
+        }
+        let relatedRecordIDs = mergeUniqueIDs(
+            mergeUniqueIDs(entity.provenanceRecordIDs, artifactRecordIDs),
+            mergeUniqueIDs(arcRecordIDs, reflectionRecordIDs)
+        )
+        let provenanceMemories = relatedMemories(recordIDs: relatedRecordIDs, limit: 5)
 
         return EntityDetailSnapshot(
             entity: entity,

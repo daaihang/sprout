@@ -384,7 +384,7 @@ struct DebugDiagnosticsService {
         modelContext: ModelContext,
         memories: [MemorySummary],
         analysisService: any RecordAnalysisServing
-    ) async throws {
+    ) async throws -> DebugPipelineTraceSnapshot? {
         guard let reflection = try modelContext.fetch(
             FetchDescriptor<ReflectionSnapshotStore>(predicate: #Predicate { $0.id == reflectionID })
         ).first?.domainModel else {
@@ -412,7 +412,7 @@ struct DebugDiagnosticsService {
             memories: memories
         )
 
-        let _ = try await analysisService.replayReflection(
+        let result = try await analysisService.replayReflection(
             reflection: reflection,
             linkedArc: linkedArc,
             record: record,
@@ -420,5 +420,6 @@ struct DebugDiagnosticsService {
             knownEntities: knownEntities,
             prompt: reflection.body
         )
+        return result.debugTrace
     }
 }

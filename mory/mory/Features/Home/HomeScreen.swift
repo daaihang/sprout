@@ -299,11 +299,14 @@ private struct CompositionBoardCard: View {
             case let .memory(memory):
                 Text(memory.title).font(.headline).lineLimit(2)
                 Text(memory.summaryText).font(.subheadline).foregroundStyle(.secondary).lineLimit(3)
+                if let contextSummary = contextSummary(for: memory) {
+                    Text(contextSummary).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                }
                 Text(memory.record.updatedAt.formatted(date: .abbreviated, time: .shortened)).font(.caption).foregroundStyle(.secondary)
             case let .arc(arc):
                 Text(arc.title).font(.headline).lineLimit(2)
                 Text(arc.summary).font(.subheadline).foregroundStyle(.secondary).lineLimit(3)
-                Text(arc.updatedAt.formatted(date: .abbreviated, time: .shortened)).font(.caption).foregroundStyle(.secondary)
+                Text("\(arc.sourceRecordIDs.count) memories | Ongoing").font(.caption).foregroundStyle(.secondary)
             case let .reflection(reflection):
                 Text(reflection.title).font(.headline).lineLimit(2)
                 Text(reflection.body).font(.subheadline).foregroundStyle(.secondary).lineLimit(3)
@@ -320,6 +323,15 @@ private struct CompositionBoardCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .rotationEffect(.degrees(item.compositionItem.rotationDegrees))
         .scaleEffect(item.compositionItem.scale)
+    }
+
+    private func contextSummary(for memory: MemorySummary) -> String? {
+        memory.contextArtifacts
+            .map(\.summary)
+            .compactMap(\.trimmedOrNil)
+            .prefix(3)
+            .joined(separator: " | ")
+            .trimmedOrNil
     }
 
     private func heightForItem(_ item: CompositionItem) -> CGFloat {

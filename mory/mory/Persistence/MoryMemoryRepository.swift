@@ -329,7 +329,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     }
 
     func fetchHomeBoard(for date: Date, limit: Int = 8) throws -> HomeBoardSnapshot {
-        let memories = try fetchRecentMemories(limit: limit)
+        let memories = try fetchRecentMemories(limit: nil)
         let graphContext = try graphQueryService.load(
             modelContext: modelContext,
             memories: memories
@@ -445,8 +445,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         let memories = try fetchRecentMemories(limit: nil)
         let graphContext = try graphQueryService.load(
             modelContext: modelContext,
-            memories: memories,
-            entityKinds: [kind]
+            memories: memories
         )
         let entities = graphContext.entities
             .filter { $0.kind == kind }
@@ -807,7 +806,12 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             guard let reflectionID = target.target?.reflection?.reflection.id else {
                 throw CocoaError(.fileNoSuchFile)
             }
-            try await replayDebugReflection(reflectionID: reflectionID)
+            let trace = try await replayDebugReflection(reflectionID: reflectionID)
+            if let trace {
+                latestReflectionTrace = trace
+            } else {
+                latestReflectionTrace = await analysisService.latestDebugTrace()
+            }
         }
     }
 
@@ -891,9 +895,9 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         return snapshot
     }
 
-    private func replayDebugReflection(reflectionID: UUID) async throws {
+    private func replayDebugReflection(reflectionID: UUID) async throws -> DebugPipelineTraceSnapshot? {
         let memories = try fetchRecentMemories(limit: nil)
-        try await debugDiagnosticsService.replayReflection(
+        return try await debugDiagnosticsService.replayReflection(
             reflectionID: reflectionID,
             modelContext: modelContext,
             memories: memories,
@@ -1046,9 +1050,15 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         artifacts: [Artifact],
         pipelineStatus: MemoryPipelineStatusSnapshot?
     ) -> MemorySummary {
-        MemorySummary(
+        let contextKinds: Set<ArtifactKind> = [.location, .weather, .music]
+        let contextArtifacts = artifacts
+            .filter { contextKinds.contains($0.kind) }
+            .sorted { $0.updatedAt > $1.updatedAt }
+
+        return MemorySummary(
             record: record,
             primaryArtifact: captureArtifactBuilder.preferredPrimaryArtifact(from: artifacts),
+            contextArtifacts: contextArtifacts,
             artifactCount: artifacts.count,
             pipelineStatus: pipelineStatus
         )
