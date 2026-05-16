@@ -29,6 +29,8 @@ struct CaptureComposerView: View {
     @State private var transcriptionText = ""
     @State private var transcriptionDuration: TimeInterval?
 
+    @StateObject private var permissionManager = ContextPermissionManager(locationService: LocationContextService())
+
     var onSaved: (() -> Void)?
 
     var body: some View {
@@ -196,6 +198,42 @@ struct CaptureComposerView: View {
                         .lineLimit(2...4)
                 }
 
+                if permissionManager.anyMissing {
+                    Section {
+                        Text("capture.context.autoCollectHint")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        if permissionManager.locationStatus != .authorized {
+                            Button {
+                                Task { await permissionManager.requestLocationIfNeeded() }
+                            } label: {
+                                Label(
+                                    permissionManager.locationStatus == .denied
+                                        ? String(localized: "capture.context.locationOpenSettings")
+                                        : String(localized: "capture.context.enableLocation"),
+                                    systemImage: "mappin.and.ellipse"
+                                )
+                            }
+                            .disabled(permissionManager.locationStatus == .denied)
+                        }
+                        if permissionManager.musicStatus != .authorized {
+                            Button {
+                                Task { await permissionManager.requestMusicIfNeeded() }
+                            } label: {
+                                Label(
+                                    permissionManager.musicStatus == .denied
+                                        ? String(localized: "capture.context.musicOpenSettings")
+                                        : String(localized: "capture.context.enableMusic"),
+                                    systemImage: "music.note"
+                                )
+                            }
+                            .disabled(permissionManager.musicStatus == .denied)
+                        }
+                    } header: {
+                        Text("capture.section.contextAuto")
+                    }
+                }
+
                 if let errorMessage {
                     Section {
                         Text(errorMessage)
@@ -213,6 +251,9 @@ struct CaptureComposerView: View {
                 }
             }
             .navigationTitle("capture.nav.title")
+            .onAppear {
+                permissionManager.refresh()
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("common.cancel") { dismiss() }

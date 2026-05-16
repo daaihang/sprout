@@ -753,6 +753,108 @@
         }
       }
     },
+    "capture.section.contextAuto" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto context"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动上下文"
+          }
+        }
+      }
+    },
+    "capture.context.autoCollectHint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mory can attach location, weather, and now-playing music to each memory if you grant access."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "授权后，Mory 会为每条记忆自动附加位置、天气和正在播放的音乐。"
+          }
+        }
+      }
+    },
+    "capture.context.enableLocation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enable Location"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开启位置权限"
+          }
+        }
+      }
+    },
+    "capture.context.enableMusic" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enable Apple Music access"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开启 Apple Music 访问"
+          }
+        }
+      }
+    },
+    "capture.context.locationOpenSettings" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Location denied — open Settings to enable"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "位置权限已拒绝 — 请在系统设置中开启"
+          }
+        }
+      }
+    },
+    "capture.context.musicOpenSettings" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple Music denied — open Settings to enable"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple Music 权限已拒绝 — 请在系统设置中开启"
+          }
+        }
+      }
+    },
     "capture.type.audio" : {
       "extractionState" : "manual",
       "localizations" : {

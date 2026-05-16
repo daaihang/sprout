@@ -22,6 +22,10 @@ final class LocationContextService: NSObject, CLLocationManagerDelegate, Sendabl
         return status == .authorizedWhenInUse || status == .authorizedAlways
     }
 
+    var authorizationStatus: CLAuthorizationStatus {
+        manager.authorizationStatus
+    }
+
     func requestPermission() {
         if manager.authorizationStatus == .notDetermined {
             manager.requestWhenInUseAuthorization()

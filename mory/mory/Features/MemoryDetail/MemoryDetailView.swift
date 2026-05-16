@@ -83,53 +83,8 @@ struct MemoryDetailView: View {
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(snapshot.artifacts) { artifact in
-                            VStack(alignment: .leading, spacing: 6) {
-                                HStack {
-                                    Text(artifact.title)
-                                        .font(.headline)
-                                    Spacer(minLength: 12)
-                                    Text(artifact.kind.rawValue)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-
-                                if let summary = artifact.summary.trimmedOrNil {
-                                    Text(summary)
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                }
-
-                                if let body = artifact.textContent.trimmedOrNil {
-                                    Text(body)
-                                        .font(.body)
-                                        .lineLimit(6)
-                                }
-
-                                if let mediaRef = artifact.mediaRef {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text("memory.label.media")
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                        Text("\(mediaRef.filename) • \(mediaRef.mimeType)")
-                                            .font(.caption)
-                                    }
-                                }
-
-                                if !artifact.metadata.isEmpty {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text("memory.label.metadata")
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                        ForEach(artifact.metadata.keys.sorted(), id: \.self) { key in
-                                            if let value = artifact.metadata[key] {
-                                                Text("\(key): \(value)")
-                                                    .font(.caption)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            .padding(.vertical, 4)
+                            ArtifactRowView(artifact: artifact)
+                                .padding(.vertical, 4)
                         }
                     }
                 }
@@ -337,6 +292,192 @@ struct MemoryDetailView: View {
         } catch {
             errorMessage = error.localizedDescription
             await load()
+        }
+    }
+}
+
+private struct ArtifactRowView: View {
+    let artifact: Artifact
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Image(systemName: iconName(for: artifact.kind))
+                    .foregroundStyle(iconColor(for: artifact.kind))
+                Text(artifact.title)
+                    .font(.headline)
+                Spacer(minLength: 12)
+                Text(artifact.kind.rawValue)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            switch artifact.kind {
+            case .weather:
+                WeatherArtifactBody(metadata: artifact.metadata, fallbackSummary: artifact.summary)
+            case .music:
+                MusicArtifactBody(metadata: artifact.metadata, fallbackSummary: artifact.summary)
+            case .location:
+                LocationArtifactBody(metadata: artifact.metadata, summary: artifact.summary)
+            default:
+                GenericArtifactBody(artifact: artifact)
+            }
+        }
+    }
+
+    private func iconName(for kind: ArtifactKind) -> String {
+        switch kind {
+        case .text: return "text.alignleft"
+        case .photo: return "photo"
+        case .audio: return "waveform"
+        case .music: return "music.note"
+        case .link: return "link"
+        case .location: return "mappin.and.ellipse"
+        case .weather: return "cloud.sun"
+        case .todo: return "checkmark.circle"
+        case .document: return "doc.text"
+        }
+    }
+
+    private func iconColor(for kind: ArtifactKind) -> Color {
+        switch kind {
+        case .weather: return .blue
+        case .music: return .pink
+        case .location: return .green
+        case .photo: return .orange
+        case .audio: return .purple
+        default: return .secondary
+        }
+    }
+}
+
+private struct WeatherArtifactBody: View {
+    let metadata: [String: String]
+    let fallbackSummary: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if let condition = metadata["condition"], let tempStr = metadata["temperatureCelsius"], let temp = Double(tempStr) {
+                Text("\(condition) · \(String(format: "%.0f", temp))°C")
+                    .font(.subheadline)
+            } else if let s = fallbackSummary.trimmedOrNil {
+                Text(s).font(.subheadline).foregroundStyle(.secondary)
+            }
+            HStack(spacing: 12) {
+                if let humStr = metadata["humidity"], let hum = Double(humStr) {
+                    Label("\(String(format: "%.0f", hum * 100))%", systemImage: "humidity")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                if let windStr = metadata["windSpeedKmh"], let wind = Double(windStr) {
+                    Label("\(String(format: "%.1f", wind)) km/h", systemImage: "wind")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                if let uv = metadata["uvIndex"] {
+                    Label("UV \(uv)", systemImage: "sun.max")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+}
+
+private struct MusicArtifactBody: View {
+    let metadata: [String: String]
+    let fallbackSummary: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            if let urlString = metadata["artworkURL"], let url = URL(string: urlString) {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image.resizable().scaledToFill()
+                    default:
+                        Color.secondary.opacity(0.1)
+                    }
+                }
+                .frame(width: 56, height: 56)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                if let track = metadata["trackName"], !track.isEmpty {
+                    Text(track).font(.subheadline).lineLimit(1)
+                }
+                if let artist = metadata["artistName"], !artist.isEmpty {
+                    Text(artist).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                }
+                if let album = metadata["albumName"], !album.isEmpty {
+                    Text(album).font(.caption2).foregroundStyle(.tertiary).lineLimit(1)
+                }
+                if metadata["trackName"] == nil, let s = fallbackSummary.trimmedOrNil {
+                    Text(s).font(.subheadline).foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+}
+
+private struct LocationArtifactBody: View {
+    let metadata: [String: String]
+    let summary: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if let s = summary.trimmedOrNil {
+                Text(s).font(.subheadline)
+            }
+            if let lat = metadata["latitude"], let lon = metadata["longitude"] {
+                Text("\(lat), \(lon)")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+    }
+}
+
+private struct GenericArtifactBody: View {
+    let artifact: Artifact
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if let summary = artifact.summary.trimmedOrNil {
+                Text(summary)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            if let body = artifact.textContent.trimmedOrNil {
+                Text(body)
+                    .font(.body)
+                    .lineLimit(6)
+            }
+
+            if let mediaRef = artifact.mediaRef {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("memory.label.media")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text("\(mediaRef.filename) • \(mediaRef.mimeType)")
+                        .font(.caption)
+                }
+            }
+
+            if !artifact.metadata.isEmpty {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("memory.label.metadata")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    ForEach(artifact.metadata.keys.sorted(), id: \.self) { key in
+                        if let value = artifact.metadata[key] {
+                            Text("\(key): \(value)")
+                                .font(.caption)
+                        }
+                    }
+                }
+            }
         }
     }
 }

@@ -27,7 +27,10 @@ Only use the allowed entity kinds.
 Entity "name" and "canonical_name" must be short labels, usually 1 to 4 words.
 Never copy an entire sentence or artifact summary into an entity name.
 For "decision", extract a concise decision label such as "leave current job" instead of repeating the full note.
-If you are unsure, omit the entity instead of inventing or over-expanding it.`
+If you are unsure, omit the entity instead of inventing or over-expanding it.
+Artifacts with kind "weather", "music", or "location" are ambient context auto-captured at recording time, not the user's primary subject.
+Use them to enrich tags (e.g. weather mood), retrieval_terms (e.g. place name, track name), and at most one "place" or "theme" entity if clearly salient.
+Do not promote ambient context into "decision" entities or central insights.`
 }
 
 func buildAnalyzeUserPrompt(req AnalyzeRequest, user UserContext) (string, error) {
