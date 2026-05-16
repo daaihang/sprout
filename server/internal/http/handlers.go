@@ -71,6 +71,7 @@ type reflectionRequest struct {
     LinkedArcID   string                    `json:"linked_arc_id,omitempty"`
     KnownEntities []ai.KnownEntityReference `json:"known_entities,omitempty"`
     Prompt        string                    `json:"prompt,omitempty"`
+    DebugOptions  *ai.DebugOptions          `json:"debug_options,omitempty"`
 }
 
 type reflectionResponse struct {
