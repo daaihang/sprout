@@ -7,11 +7,13 @@ struct MoryAuthResponse: Decodable, Sendable {
     }
 
     let accessToken: String
+    let refreshToken: String?
     let expiresAt: String
     let user: User
 
     enum CodingKeys: String, CodingKey {
         case accessToken = "access_token"
+        case refreshToken = "refresh_token"
         case expiresAt = "expires_at"
         case user
     }
@@ -194,11 +196,11 @@ struct MoryAPIClient: Sendable {
         await debugTraceBox.current()
     }
 
-    func refreshToken(bearerToken: String) async throws -> MoryAuthResponse {
-        var request = URLRequest(url: configuration.url(for: "/auth/refresh"))
+    func refreshToken(refreshToken: String) async throws -> MoryAuthResponse {
+        var request = URLRequest(url: configuration.url(for: "/api/auth/refresh"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer \(refreshToken)", forHTTPHeaderField: "Authorization")
 
         let (data, response) = try await session.data(for: request)
         return try decodeResponse(data: data, response: response, as: MoryAuthResponse.self)

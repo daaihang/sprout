@@ -20,6 +20,7 @@ type authAppleRequest struct {
 
 type authResponse struct {
 	AccessToken             string   `json:"access_token"`
+	RefreshToken            string   `json:"refresh_token,omitempty"`
 	ExpiresAt               string   `json:"expires_at"`
 	User                    authUser `json:"user"`
 	Mode                    string   `json:"mode"`
@@ -167,15 +168,16 @@ func (s *Server) handleAuthApple(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, claims, err := s.authenticator.IssueToken(userID, status.Tier)
+	accessToken, accessClaims, refreshToken, _, err := s.authenticator.IssueToken(userID, status.Tier)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to issue token")
 		return
 	}
 
 	writeJSON(w, http.StatusOK, authResponse{
-		AccessToken: token,
-		ExpiresAt:   unixToRFC3339(claims.Expiry),
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		ExpiresAt:    unixToRFC3339(accessClaims.Expiry),
 		User: authUser{
 			ID:   userID,
 			Tier: status.Tier,
@@ -187,13 +189,24 @@ func (s *Server) handleAuthApple(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleAuthRefresh(w http.ResponseWriter, r *http.Request) {
-	claims, ok := auth.ClaimsFromContext(r.Context())
-	if !ok {
-		writeError(w, http.StatusUnauthorized, "missing auth claims")
+	authorization := strings.TrimSpace(r.Header.Get("Authorization"))
+	if !strings.HasPrefix(authorization, "Bearer ") {
+		writeError(w, http.StatusUnauthorized, "missing bearer token")
 		return
 	}
 
-	token, refreshed, err := s.authenticator.RefreshToken(claims)
+	refreshToken := strings.TrimSpace(strings.TrimPrefix(authorization, "Bearer "))
+	refreshClaims, err := s.authenticator.ValidateRefreshToken(refreshToken)
+	if err != nil {
+		if errors.Is(err, auth.ErrExpiredToken) {
+			writeError(w, http.StatusUnauthorized, "refresh token expired")
+			return
+		}
+		writeError(w, http.StatusUnauthorized, "invalid refresh token")
+		return
+	}
+
+	accessToken, refreshed, newRefreshToken, _, err := s.authenticator.IssueToken(refreshClaims.UserID, refreshClaims.Tier)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to refresh token")
 		return
@@ -205,8 +218,9 @@ func (s *Server) handleAuthRefresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, authResponse{
-		AccessToken: token,
-		ExpiresAt:   unixToRFC3339(refreshed.Expiry),
+		AccessToken:  accessToken,
+		RefreshToken: newRefreshToken,
+		ExpiresAt:    unixToRFC3339(refreshed.Expiry),
 		User: authUser{
 			ID:   refreshed.UserID,
 			Tier: refreshed.Tier,

@@ -1,8 +1,37 @@
 import Foundation
 import Security
 
+// MARK: - Stored Credential
+
+struct AuthCredential: Codable, Sendable {
+    let accessToken: String
+    let refreshToken: String
+    let expiresAt: Date?
+    let userID: String
+    let identityToken: String?
+
+    var isExpired: Bool {
+        guard let expiresAt else { return false }
+        // Treat as expired 5 minutes early to avoid edge-case failures
+        return Date() >= expiresAt.addingTimeInterval(-300)
+    }
+
+    var isGuest: Bool { userID == "guest" }
+
+    static let guest = AuthCredential(
+        accessToken: "guest",
+        refreshToken: "guest",
+        expiresAt: nil,
+        userID: "guest",
+        identityToken: nil
+    )
+}
+
+// MARK: - Keychain Store
+
 actor KeychainCredentialStore {
     private let service = "com.mory.sprout"
+    private let account = "mory-auth"
 
     enum KeychainError: Error, LocalizedError {
         case duplicateItem
@@ -21,13 +50,16 @@ actor KeychainCredentialStore {
         }
     }
 
-    func save(identityToken: String, userIdentifier: String) throws {
-        let data = try JSONEncoder().encode(["identityToken": identityToken, "userIdentifier": userIdentifier])
+    // MARK: - Full credential (v4)
+
+    func saveCredential(_ credential: AuthCredential) throws {
+        let data = try JSONEncoder().encode(credential)
 
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: "mory-auth",
+            kSecAttrAccount as String: account,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
             kSecValueData as String: data
         ]
 
@@ -40,23 +72,55 @@ actor KeychainCredentialStore {
         }
     }
 
+    func loadCredential() -> AuthCredential? {
+        guard let data = try? getData() else { return nil }
+        // Try v4 format first (AuthCredential)
+        if let credential = try? JSONDecoder().decode(AuthCredential.self, from: data) {
+            return credential
+        }
+        // Fallback: v3 format (dictionary with identityToken + userIdentifier)
+        if let dict = try? JSONDecoder().decode([String: String].self, from: data),
+           let identityToken = dict["identityToken"],
+           let userId = dict["userIdentifier"] {
+            return AuthCredential(
+                accessToken: "",
+                refreshToken: "",
+                expiresAt: nil,
+                userID: userId,
+                identityToken: identityToken
+            )
+        }
+        return nil
+    }
+
+    // MARK: - Legacy compatibility (v3 API)
+
+    func save(identityToken: String, userIdentifier: String) throws {
+        let credential = AuthCredential(
+            accessToken: "",
+            refreshToken: "",
+            expiresAt: nil,
+            userID: userIdentifier,
+            identityToken: identityToken
+        )
+        try saveCredential(credential)
+    }
+
     func getIdentityToken() throws -> String? {
-        guard let data = try getData() else { return nil }
-        let decoded = try JSONDecoder().decode([String: String].self, from: data)
-        return decoded["identityToken"]
+        loadCredential()?.identityToken
     }
 
     func getUserIdentifier() throws -> String? {
-        guard let data = try getData() else { return nil }
-        let decoded = try JSONDecoder().decode([String: String].self, from: data)
-        return decoded["userIdentifier"]
+        loadCredential()?.userID
     }
+
+    // MARK: - Delete
 
     func delete() throws {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: "mory-auth"
+            kSecAttrAccount as String: account
         ]
 
         let status = SecItemDelete(query as CFDictionary)
@@ -65,15 +129,18 @@ actor KeychainCredentialStore {
         }
     }
 
+    // MARK: - Private
+
     private func update(data: Data) throws {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: "mory-auth"
+            kSecAttrAccount as String: account
         ]
 
         let attributes: [String: Any] = [
-            kSecValueData as String: data
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
         ]
 
         let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
@@ -86,7 +153,7 @@ actor KeychainCredentialStore {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: "mory-auth",
+            kSecAttrAccount as String: account,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne
         ]

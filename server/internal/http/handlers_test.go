@@ -53,10 +53,11 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 	})
 
 	token := issueDevToken(t, server, `{"identity_token":"tester-1"}`)
+	refreshToken := issueDevRefreshToken(t, server, `{"identity_token":"tester-1"}`)
 
 	t.Run("auth response includes onboarding state", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/auth/refresh", nil)
-		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Authorization", "Bearer "+refreshToken)
 		rec := httptest.NewRecorder()
 
 		server.Handler().ServeHTTP(rec, req)
@@ -151,7 +152,7 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 		}
 
 		refreshReq := httptest.NewRequest(http.MethodPost, "/auth/refresh", nil)
-		refreshReq.Header.Set("Authorization", "Bearer "+token)
+		refreshReq.Header.Set("Authorization", "Bearer "+refreshToken)
 		refreshRec := httptest.NewRecorder()
 
 		server.Handler().ServeHTTP(refreshRec, refreshReq)
@@ -207,6 +208,48 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 			t.Fatalf("unexpected stored token after update: %+v", updated)
 		}
 	})
+}
+
+func TestRefreshRequiresRefreshToken(t *testing.T) {
+	store, err := db.NewSQLiteStore(":memory:")
+	if err != nil {
+		t.Fatalf("new sqlite store: %v", err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+
+	cfg := config.Config{
+		AppEnv:           "test",
+		Port:             "8080",
+		JWTSecret:        "test-secret",
+		JWTIssuer:        "sprout-test",
+		DevAuthEnabled:   true,
+		DevAuthUserID:    "dev-user",
+		DefaultTier:      "seed",
+		SubscriptionMode: "mock",
+		AIMode:           config.AIModeMock,
+		AIProvider:       config.AIProviderMock,
+	}
+	authenticator := auth.NewAuthenticator(cfg.JWTSecret, cfg.JWTIssuer, 24*time.Hour)
+	server := NewServer(Dependencies{
+		Config:        cfg,
+		Logger:        slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Authenticator: authenticator,
+		AppleVerifier: nil,
+		AIProvider:    ai.NewMockProvider(),
+		Subscription:  subscription.NewService("mock", "seed"),
+		PushTokens:    store,
+		UserProfiles:  store,
+	})
+
+	accessToken := issueDevToken(t, server, `{"identity_token":"tester-refresh"}`)
+	req := httptest.NewRequest(http.MethodPost, "/auth/refresh", nil)
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	rec := httptest.NewRecorder()
+
+	server.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 when using access token on refresh endpoint, got %d body=%s", rec.Code, rec.Body.String())
+	}
 }
 
 func TestUnauthorizedAnalyze(t *testing.T) {
@@ -519,6 +562,27 @@ func issueDevToken(t *testing.T, server *Server, body string) string {
 		t.Fatalf("decode auth response: %v", err)
 	}
 	return resp.AccessToken
+}
+
+func issueDevRefreshToken(t *testing.T, server *Server, body string) string {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodPost, "/auth/apple", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	server.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("auth status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+
+	var resp authResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode auth response: %v", err)
+	}
+	if strings.TrimSpace(resp.RefreshToken) == "" {
+		t.Fatalf("expected refresh token in auth response")
+	}
+	return resp.RefreshToken
 }
 
 type failingAppleVerifier struct {

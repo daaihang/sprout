@@ -13,10 +13,11 @@
    - `AI_MODEL`
    - `AI_API_KEY`
    - `AI_BASE_URL` for OpenAI-compatible backends if needed
-   - For DeepSeek specifically, use:
-     - `AI_PROVIDER=openai_compatible`
-     - `AI_MODEL=deepseek-v4-pro`
-     - `AI_BASE_URL=https://api.deepseek.com`
+- For DeepSeek specifically, use:
+  - `AI_PROVIDER=openai_compatible`
+  - `AI_MODEL=deepseek-chat`
+  - `AI_BASE_URL=https://api.deepseek.com`
+  - `JWT_TTL=1h`
 5. Deploy with `fly deploy`.
 6. Verify `GET /healthz` returns `200 OK`.
 

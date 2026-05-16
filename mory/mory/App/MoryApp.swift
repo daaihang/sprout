@@ -6,37 +6,44 @@ struct MoryApp: App {
     private let sharedModelContainer = MoryPersistenceStack.makeSharedModelContainer()
     private let memoryRepository: any MoryMemoryRepositorying
     private let credentialStore = KeychainCredentialStore()
-    @State private var isSignedIn: Bool
+    @State private var authManager: AuthSessionManager
 
     init() {
         let apiConfiguration = MoryAPIConfiguration.fromBundle()
-        let apiClient = MoryAPIClient(configuration: apiConfiguration)
-        let store = KeychainCredentialStore()
-        let tokenProvider = MoryAuthTokenProvider(apiClient: apiClient, credentialStore: store)
+        let client = MoryAPIClient(configuration: apiConfiguration)
+        let tokenProvider = MoryAuthTokenProvider(apiClient: client, credentialStore: credentialStore)
         let analysisService = RemoteRecordAnalysisService(
-            apiClient: apiClient,
+            apiClient: client,
             tokenProvider: tokenProvider
         )
         memoryRepository = MoryMemoryRepository(
             modelContext: sharedModelContainer.mainContext,
             analysisService: analysisService
         )
-        #if DEBUG
-        _isSignedIn = State(initialValue: true)
-        #else
-        _isSignedIn = State(initialValue: false)
-        #endif
+        _authManager = State(initialValue: AuthSessionManager(
+            credentialStore: credentialStore,
+            apiClient: client
+        ))
     }
 
     var body: some Scene {
         WindowGroup {
-            if isSignedIn {
-                MoryRootView()
-                    .environment(\.memoryRepository, memoryRepository)
-            } else {
-                SignInView(credentialStore: credentialStore) {
-                    isSignedIn = true
+            Group {
+                switch authManager.state {
+                case .loading:
+                    ProgressView()
+                case .authenticated:
+                    MoryRootView()
+                        .environment(\.memoryRepository, memoryRepository)
+                case .unauthenticated:
+                    SignInView(
+                        credentialStore: credentialStore,
+                        authManager: authManager
+                    )
                 }
+            }
+            .task {
+                await authManager.checkSession()
             }
         }
         .modelContainer(sharedModelContainer)

@@ -23,45 +23,95 @@ type Claims struct {
 	Issuer string `json:"iss"`
 	Issued int64  `json:"iat"`
 	Expiry int64  `json:"exp"`
+	Kind   string `json:"kind,omitempty"`
 }
 
 type Authenticator struct {
-	secret []byte
-	issuer string
-	ttl    time.Duration
+	secret          []byte
+	issuer          string
+	accessTokenTTL  time.Duration
+	refreshTokenTTL time.Duration
 }
 
 func NewAuthenticator(secret, issuer string, ttl time.Duration) *Authenticator {
+	return NewAuthenticatorWithRefreshTTL(secret, issuer, ttl, 30*24*time.Hour)
+}
+
+func NewAuthenticatorWithRefreshTTL(
+	secret,
+	issuer string,
+	accessTokenTTL,
+	refreshTokenTTL time.Duration,
+) *Authenticator {
 	return &Authenticator{
-		secret: []byte(secret),
-		issuer: issuer,
-		ttl:    ttl,
+		secret:          []byte(secret),
+		issuer:          issuer,
+		accessTokenTTL:  accessTokenTTL,
+		refreshTokenTTL: refreshTokenTTL,
 	}
 }
 
-func (a *Authenticator) IssueToken(userID, tier string) (string, Claims, error) {
+func (a *Authenticator) IssueToken(userID, tier string) (string, Claims, string, Claims, error) {
 	now := time.Now().UTC()
-	claims := Claims{
+	accessClaims := Claims{
 		UserID: userID,
 		Tier:   tier,
 		Issuer: a.issuer,
 		Issued: now.Unix(),
-		Expiry: now.Add(a.ttl).Unix(),
+		Expiry: now.Add(a.accessTokenTTL).Unix(),
+		Kind:   "access",
 	}
 
-	token, err := a.sign(claims)
+	accessToken, err := a.sign(accessClaims)
 	if err != nil {
-		return "", Claims{}, err
+		return "", Claims{}, "", Claims{}, err
 	}
 
-	return token, claims, nil
+	refreshClaims := Claims{
+		UserID: userID,
+		Tier:   tier,
+		Issuer: a.issuer,
+		Issued: now.Unix(),
+		Expiry: now.Add(a.refreshTokenTTL).Unix(),
+		Kind:   "refresh",
+	}
+
+	refreshToken, err := a.sign(refreshClaims)
+	if err != nil {
+		return "", Claims{}, "", Claims{}, err
+	}
+
+	return accessToken, accessClaims, refreshToken, refreshClaims, nil
 }
 
 func (a *Authenticator) RefreshToken(claims Claims) (string, Claims, error) {
-	return a.IssueToken(claims.UserID, claims.Tier)
+	accessToken, accessClaims, _, _, err := a.IssueToken(claims.UserID, claims.Tier)
+	return accessToken, accessClaims, err
+}
+
+func (a *Authenticator) ValidateRefreshToken(token string) (Claims, error) {
+	claims, err := a.validateToken(token)
+	if err != nil {
+		return Claims{}, err
+	}
+	if claims.Kind != "refresh" {
+		return Claims{}, ErrInvalidToken
+	}
+	return claims, nil
 }
 
 func (a *Authenticator) ValidateToken(token string) (Claims, error) {
+	claims, err := a.validateToken(token)
+	if err != nil {
+		return Claims{}, err
+	}
+	if claims.Kind != "" && claims.Kind != "access" {
+		return Claims{}, ErrInvalidToken
+	}
+	return claims, nil
+}
+
+func (a *Authenticator) validateToken(token string) (Claims, error) {
 	parts := strings.Split(token, ".")
 	if len(parts) != 3 {
 		return Claims{}, ErrInvalidToken

@@ -8,7 +8,7 @@ final class AppleAuthService: NSObject, ObservableObject {
     @Published var userIdentifier: String?
     @Published var errorMessage: String?
 
-    private let credentialStore: KeychainCredentialStore
+    let credentialStore: KeychainCredentialStore
     private var continuation: CheckedContinuation<ASAuthorization, Error>?
 
     init(credentialStore: KeychainCredentialStore) {

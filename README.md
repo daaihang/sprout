@@ -184,8 +184,9 @@ Local DeepSeek setup for immediate testing:
 3. Keep:
    - `AI_MODE=live`
    - `AI_PROVIDER=openai_compatible`
-   - `AI_MODEL=deepseek-v4-pro`
+   - `AI_MODEL=deepseek-chat`
    - `AI_BASE_URL=https://api.deepseek.com`
+   - `JWT_TTL=1h`
 4. Run the backend from repo root:
 
 ```sh

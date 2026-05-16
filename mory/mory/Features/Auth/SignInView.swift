@@ -6,11 +6,11 @@ struct SignInView: View {
     @State private var isLoading = false
     @State private var errorMessage: String?
 
-    var onSignedIn: (() -> Void)?
+    private let authManager: AuthSessionManager?
 
-    init(credentialStore: KeychainCredentialStore, onSignedIn: (() -> Void)? = nil) {
+    init(credentialStore: KeychainCredentialStore, authManager: AuthSessionManager? = nil) {
         _authService = StateObject(wrappedValue: AppleAuthService(credentialStore: credentialStore))
-        self.onSignedIn = onSignedIn
+        self.authManager = authManager
     }
 
     var body: some View {
@@ -54,7 +54,9 @@ struct SignInView: View {
 
                 #if DEBUG
                 Button("signin.guest") {
-                    onSignedIn?()
+                    Task {
+                        await authManager?.continueAsGuest()
+                    }
                 }
                 .foregroundStyle(.secondary)
                 #endif
@@ -64,12 +66,6 @@ struct SignInView: View {
             Spacer()
                 .frame(height: 60)
         }
-        .task {
-            await authService.checkExistingCredential()
-            if authService.isAuthorized {
-                onSignedIn?()
-            }
-        }
     }
 
     private func handleSignInResult(_ result: Result<ASAuthorization, Error>) async {
@@ -77,12 +73,29 @@ struct SignInView: View {
         defer { isLoading = false }
 
         switch result {
-        case .success:
+        case .success(let authorization):
+            guard let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential else {
+                errorMessage = "Invalid credential from Apple."
+                return
+            }
+
+            let identityToken = appleIDCredential.identityToken.flatMap { String(data: $0, encoding: .utf8) }
+            let userId = appleIDCredential.user
+
+            // Save identity token via legacy path
+            try? await authService.credentialStore.save(identityToken: identityToken ?? "", userIdentifier: userId)
+
+            // Authenticate with server and persist full credential
+            if let token = identityToken {
+                await authManager?.didSignIn(identityToken: token, userID: userId)
+            } else {
+                await authManager?.didSignIn(identityToken: "", userID: userId)
+            }
+
             errorMessage = nil
-            onSignedIn?()
+
         case .failure(let error):
             if let asError = error as? ASAuthorizationError, asError.code == .canceled {
-                // User cancelled — silently dismiss, no error shown
                 return
             }
             if let authError = error as? AppleAuthService.AppleAuthError, case .cancelled = authError {

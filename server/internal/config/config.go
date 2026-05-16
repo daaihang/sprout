@@ -59,7 +59,7 @@ func Load() (Config, error) {
 		Port:             envString("PORT", "8080"),
 		JWTSecret:        envString("JWT_SECRET", ""),
 		JWTIssuer:        envString("JWT_ISSUER", "sprout-server"),
-		TokenTTL:         envDuration("JWT_TTL", 24*time.Hour),
+		TokenTTL:         envDuration("JWT_TTL", 1*time.Hour),
 		RequestTimeout:   envDuration("REQUEST_TIMEOUT", 15*time.Second),
 		SQLitePath:       envString("SQLITE_PATH", "./sprout.db"),
 		DevAuthEnabled:   envBool("DEV_AUTH_ENABLED", true),

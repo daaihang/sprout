@@ -17,6 +17,35 @@ actor MoryAuthTokenProvider {
             return cachedToken
         }
 
+        if let credential = await credentialStore.loadCredential() {
+            if credential.isGuest {
+                return credential.accessToken
+            }
+
+            if !credential.accessToken.isEmpty,
+               let expiresAt = credential.expiresAt,
+               expiresAt > Date().addingTimeInterval(refreshMarginSeconds) {
+                cachedToken = credential.accessToken
+                tokenExpiresAt = expiresAt
+                return credential.accessToken
+            }
+
+            if !credential.refreshToken.isEmpty {
+                let auth = try await apiClient.refreshToken(refreshToken: credential.refreshToken)
+                let refreshedCredential = AuthCredential(
+                    accessToken: auth.accessToken,
+                    refreshToken: auth.refreshToken ?? credential.refreshToken,
+                    expiresAt: parseExpiresAt(auth.expiresAt),
+                    userID: auth.user.id,
+                    identityToken: credential.identityToken
+                )
+                try await credentialStore.saveCredential(refreshedCredential)
+                cachedToken = refreshedCredential.accessToken
+                tokenExpiresAt = refreshedCredential.expiresAt
+                return refreshedCredential.accessToken
+            }
+        }
+
         let identityToken: String
         #if DEBUG
         identityToken = (try? await credentialStore.getIdentityToken()) ?? "dev-user"
@@ -27,16 +56,17 @@ actor MoryAuthTokenProvider {
         #endif
 
         let auth = try await apiClient.authenticate(identityToken: identityToken)
-        cachedToken = auth.accessToken
-        tokenExpiresAt = parseExpiresAt(auth.expiresAt)
-        return auth.accessToken
-    }
-
-    func refreshToken(bearerToken: String) async throws -> String {
-        let auth = try await apiClient.refreshToken(bearerToken: bearerToken)
-        cachedToken = auth.accessToken
-        tokenExpiresAt = parseExpiresAt(auth.expiresAt)
-        return auth.accessToken
+        let credential = AuthCredential(
+            accessToken: auth.accessToken,
+            refreshToken: auth.refreshToken ?? auth.accessToken,
+            expiresAt: parseExpiresAt(auth.expiresAt),
+            userID: auth.user.id,
+            identityToken: identityToken
+        )
+        try await credentialStore.saveCredential(credential)
+        cachedToken = credential.accessToken
+        tokenExpiresAt = credential.expiresAt
+        return credential.accessToken
     }
 
     func invalidate() {
