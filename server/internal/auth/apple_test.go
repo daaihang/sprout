@@ -42,7 +42,7 @@ func TestVerifyIdentityTokenRS256(t *testing.T) {
 	verifier := &appleIdentityVerifier{
 		client:    &http.Client{Timeout: 2 * time.Second},
 		issuer:    "https://appleid.apple.com",
-		audiences: map[string]struct{}{"com.speculolabs.sprout": {}},
+		audiences: map[string]struct{}{"com.speculolabs.mory": {}},
 		jwksURL:   server.URL,
 		cacheTTL:  time.Hour,
 	}
@@ -50,7 +50,7 @@ func TestVerifyIdentityTokenRS256(t *testing.T) {
 	nonce := "raw-nonce"
 	token := signedAppleJWT(t, privateKey, "test-kid", map[string]any{
 		"iss":   "https://appleid.apple.com",
-		"aud":   "com.speculolabs.sprout",
+		"aud":   "com.speculolabs.mory",
 		"exp":   time.Now().UTC().Add(time.Hour).Unix(),
 		"iat":   time.Now().UTC().Unix(),
 		"sub":   "apple-user-1",
@@ -65,7 +65,7 @@ func TestVerifyIdentityTokenRS256(t *testing.T) {
 	if identity.Subject != "apple-user-1" {
 		t.Fatalf("subject = %q", identity.Subject)
 	}
-	if identity.Audience != "com.speculolabs.sprout" {
+	if identity.Audience != "com.speculolabs.mory" {
 		t.Fatalf("audience = %q", identity.Audience)
 	}
 }

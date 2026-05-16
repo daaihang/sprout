@@ -597,7 +597,7 @@ func fakeAppleJWT(t *testing.T, sub string) string {
 	t.Helper()
 
 	headerJSON := `{"alg":"ES256","kid":"test","typ":"JWT"}`
-	claimsJSON := `{"iss":"https://appleid.apple.com","aud":"com.speculolabs.sprout","exp":4102444800,"sub":"` + sub + `"}`
+	claimsJSON := `{"iss":"https://appleid.apple.com","aud":"com.speculolabs.mory","exp":4102444800,"sub":"` + sub + `"}`
 
 	return base64.RawURLEncoding.EncodeToString([]byte(headerJSON)) + "." +
 		base64.RawURLEncoding.EncodeToString([]byte(claimsJSON)) + "." +

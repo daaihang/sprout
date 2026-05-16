@@ -62,7 +62,7 @@ Recent high-frequency card refreshes already completed:
 Authentication is handled by `AuthSessionManager` in [sprout/sprout/Services/AuthSessionManager.swift](/Users/z14/Documents/sprout/sprout/sprout/Services/AuthSessionManager.swift).
 
 - Sign in with Apple posts to `/auth/apple`.
-- Sessions are stored in the iOS Keychain under `com.speculolabs.sprout.auth`.
+- Sessions are stored in the iOS Keychain via `KeychainCredentialStore` for the `mory` app.
 - `development_stub` mode can bypass backend auth during development.
 - Signed-in onboarding completion posts to `/api/me/onboarding/complete`.
 

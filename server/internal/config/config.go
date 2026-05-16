@@ -66,7 +66,7 @@ func Load() (Config, error) {
 		DevAuthUserID:    envString("DEV_AUTH_USER_ID", "dev-user"),
 		DefaultTier:      envString("DEFAULT_TIER", "seed"),
 		SubscriptionMode: envString("SUBSCRIPTION_MODE", "mock"),
-		AppleAudiences:   envStringList("APPLE_AUDIENCES", []string{"com.speculolabs.sprout"}),
+		AppleAudiences:   envStringList("APPLE_AUDIENCES", []string{"com.speculolabs.mory"}),
 		AppleIssuer:      envString("APPLE_ISSUER", "https://appleid.apple.com"),
 		AppleJWKSURL:     envString("APPLE_JWKS_URL", "https://appleid.apple.com/auth/keys"),
 		AppleJWKSTTL:     envDuration("APPLE_JWKS_TTL", 6*time.Hour),
