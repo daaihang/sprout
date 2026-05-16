@@ -7,6 +7,8 @@ enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
     case location(title: String?, summary: String, latitude: Double?, longitude: Double?)
     case link(title: String?, url: String, note: String?)
     case todo(title: String, note: String?)
+    case weather(condition: String, temperatureCelsius: Double, humidity: Double, windSpeedKmh: Double, uvIndex: Int)
+    case music(trackName: String, artistName: String, albumName: String, durationSeconds: Int, artworkURL: String?)
 
     var id: String {
         switch self {
@@ -22,6 +24,10 @@ enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
             return "link-\(title ?? url)"
         case let .todo(title, note):
             return "todo-\(title)-\(note ?? "")"
+        case let .weather(condition, temp, _, _, _):
+            return "weather-\(condition)-\(temp)"
+        case let .music(trackName, artistName, _, _, _):
+            return "music-\(trackName)-\(artistName)"
         }
     }
 
@@ -68,6 +74,10 @@ enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
                 .trimmedOrNil
                 ?? note?.trimmedOrNil
                 ?? title
+        case let .weather(condition, temp, humidity, _, _):
+            return "\(condition) \(String(format: "%.0f", temp))°C · Humidity \(String(format: "%.0f", humidity * 100))%"
+        case let .music(trackName, artistName, albumName, _, _):
+            return [trackName, artistName, albumName].filter { !$0.isEmpty }.joined(separator: " · ")
         }
     }
 }

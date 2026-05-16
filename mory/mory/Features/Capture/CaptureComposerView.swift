@@ -295,13 +295,17 @@ struct CaptureComposerView: View {
                 ?? artifactDrafts.map(\.captureSummary).joined(separator: "\n").trimmedOrNil
                 ?? title.trimmedOrNil
                 ?? "Untitled Memory"
+
+            let contextCollector = ContextAutoCollector()
+            let contextDrafts = await contextCollector.collectContextDrafts()
+
             let draft = MemoryCaptureDraft(
                 title: normalizedTitle,
                 rawText: rawText,
                 mood: mood.trimmedOrNil,
                 inputContext: inputContext.trimmedOrNil,
                 captureSource: selectedType.captureSource,
-                artifacts: artifactDrafts
+                artifacts: artifactDrafts + contextDrafts
             )
             let memory = try await memoryRepository.createMemory(from: draft)
             savedStatusMessage = memory.pipelineStatus?.userLabel ?? String(localized: "pipeline.status.pending")

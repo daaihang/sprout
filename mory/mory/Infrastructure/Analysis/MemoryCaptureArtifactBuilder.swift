@@ -155,6 +155,48 @@ struct MemoryCaptureArtifactBuilder {
                 createdAt: createdAt,
                 updatedAt: createdAt
             )
+        case let .weather(condition, temp, humidity, windSpeed, uvIndex):
+            let title = "\(condition) \(String(format: "%.0f", temp))°C"
+            let summary = "\(condition) · \(String(format: "%.0f", temp))°C · Humidity \(String(format: "%.0f", humidity * 100))%"
+            let metadata: [String: String] = [
+                "condition": condition,
+                "temperatureCelsius": String(format: "%.1f", temp),
+                "humidity": String(format: "%.2f", humidity),
+                "windSpeedKmh": String(format: "%.1f", windSpeed),
+                "uvIndex": "\(uvIndex)"
+            ]
+            return Artifact(
+                recordID: recordID,
+                kind: .weather,
+                title: title,
+                summary: summary,
+                textContent: summary,
+                payload: .metadata(metadata),
+                metadata: metadata,
+                createdAt: createdAt,
+                updatedAt: createdAt
+            )
+        case let .music(trackName, artistName, albumName, durationSeconds, artworkURL):
+            let title = "\(trackName) – \(artistName)"
+            let summary = [trackName, artistName, albumName].filter { !$0.isEmpty }.joined(separator: " · ")
+            var metadata: [String: String] = [
+                "trackName": trackName,
+                "artistName": artistName,
+                "durationSeconds": "\(durationSeconds)"
+            ]
+            if !albumName.isEmpty { metadata["albumName"] = albumName }
+            if let artworkURL { metadata["artworkURL"] = artworkURL }
+            return Artifact(
+                recordID: recordID,
+                kind: .music,
+                title: title,
+                summary: summary,
+                textContent: summary,
+                payload: .metadata(metadata),
+                metadata: metadata,
+                createdAt: createdAt,
+                updatedAt: createdAt
+            )
         }
     }
 }

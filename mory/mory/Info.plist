@@ -17,6 +17,10 @@
 	<string>Mory uses speech recognition to transcribe audio recordings into text.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Mory needs photo library access to attach photos to memories.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Mory uses your location to enrich memories with place context and current weather.</string>
+	<key>NSAppleMusicUsageDescription</key>
+	<string>Mory reads the currently playing track so memories can capture the music that surrounds them.</string>
 	<key>ITSEncryptionAttributes</key>
 	<dict>
 		<key>ITSEncryptionExportComplianceCode</key>
