@@ -2,7 +2,7 @@ import Foundation
 
 enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
     case text(title: String?, body: String)
-    case photo(title: String?, summary: String, filename: String, imageData: Data?, thumbnailData: Data?)
+    case photo(title: String?, summary: String, filename: String, imageData: Data?, thumbnailData: Data?, ocrText: String = "", photoMetadata: [String: String] = [:])
     case audio(title: String?, summary: String, filename: String, audioData: Data?)
     case location(title: String?, summary: String, latitude: Double?, longitude: Double?)
     case link(title: String?, url: String, note: String?)
@@ -12,7 +12,7 @@ enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
         switch self {
         case let .text(title, body):
             return "text-\(title ?? body)"
-        case let .photo(title, summary, filename, _, _):
+        case let .photo(title, summary, filename, _, _, _, _):
             return "photo-\(title ?? summary)-\(filename)"
         case let .audio(title, summary, filename, _):
             return "audio-\(title ?? summary)-\(filename)"
@@ -33,7 +33,7 @@ enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
                 ?? body.trimmedOrNil
                 ?? title?.trimmedOrNil
                 ?? "Untitled Memory"
-        case let .photo(title, summary, filename, _, _):
+        case let .photo(title, summary, filename, _, _, _, _):
             return [title?.trimmedOrNil, summary.trimmedOrNil, filename.trimmedOrNil].compactMap { $0 }.joined(separator: " • ")
                 .trimmedOrNil
                 ?? summary.trimmedOrNil

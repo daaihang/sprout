@@ -71,17 +71,21 @@ struct MemoryCaptureArtifactBuilder {
                 createdAt: createdAt,
                 updatedAt: createdAt
             )
-        case let .photo(title, summary, filename, imageData, thumbnailData):
+        case let .photo(title, summary, filename, imageData, thumbnailData, ocrText, photoMetadata):
             let resolvedSummary = summary.trimmedOrNil ?? "Photo capture"
+            var textParts: [String] = []
+            if let s = resolvedSummary.trimmedOrNil { textParts.append(s) }
+            if let ocr = ocrText.trimmedOrNil { textParts.append("OCR: \(ocr)") }
+            let textContent = textParts.isEmpty ? resolvedSummary : textParts.joined(separator: "\n")
             return Artifact(
                 recordID: recordID,
                 kind: .photo,
                 title: title?.trimmedOrNil ?? fallbackTitle?.trimmedOrNil ?? "Photo",
                 summary: resolvedSummary,
-                textContent: resolvedSummary,
+                textContent: textContent,
                 payload: .media(ArtifactMediaRef(filename: filename, mimeType: "image/jpeg")),
                 mediaRef: ArtifactMediaRef(filename: filename, mimeType: "image/jpeg"),
-                metadata: [:],
+                metadata: photoMetadata,
                 binaryPayload: imageData,
                 previewPayload: thumbnailData,
                 createdAt: createdAt,

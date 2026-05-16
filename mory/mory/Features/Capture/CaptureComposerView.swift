@@ -22,6 +22,8 @@ struct CaptureComposerView: View {
     @State private var selectedPhotoData: Data?
     @State private var selectedPhotoThumbnail: Data?
     @State private var photoFilename = ""
+    @State private var isProcessingPhoto = false
+    @State private var photoProcessorResult: PhotoArtifactProcessor.Result?
     @State private var audioRecorder = AudioRecorderModel()
 
     var onSaved: (() -> Void)?
@@ -47,8 +49,7 @@ struct CaptureComposerView: View {
                     case .photo:
                         PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
                             if let selectedPhotoData {
-                                if let uiImage = UIImage(data: selectedPhotoData),
-                                   let thumbnailData = uiImage.preparingThumbnail(of: CGSize(width: 200, height: 200))?.jpegData(compressionQuality: 0.7) {
+                                if let uiImage = UIImage(data: selectedPhotoData) {
                                     Image(uiImage: uiImage)
                                         .resizable()
                                         .aspectRatio(contentMode: .fit)
@@ -64,11 +65,38 @@ struct CaptureComposerView: View {
                             Task {
                                 if let data = try? await newItem?.loadTransferable(type: Data.self) {
                                     selectedPhotoData = data
-                                    if let uiImage = UIImage(data: data),
-                                       let thumbnail = uiImage.preparingThumbnail(of: CGSize(width: 200, height: 200)) {
-                                        selectedPhotoThumbnail = thumbnail.jpegData(compressionQuality: 0.7)
-                                    }
-                                    photoFilename = "photo_\(Date().timeIntervalSince1970).jpg"
+                                    let filename = "photo_\(Date().timeIntervalSince1970).jpg"
+                                    photoFilename = filename
+                                    isProcessingPhoto = true
+                                    photoProcessorResult = nil
+                                    let processor = PhotoArtifactProcessor()
+                                    let result = await processor.process(imageData: data, filename: filename)
+                                    selectedPhotoThumbnail = result.thumbnailData
+                                    photoProcessorResult = result
+                                    isProcessingPhoto = false
+                                }
+                            }
+                        }
+                        if isProcessingPhoto {
+                            HStack(spacing: 8) {
+                                ProgressView()
+                                Text("capture.photo.analyzing")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        } else if let result = photoProcessorResult {
+                            VStack(alignment: .leading, spacing: 4) {
+                                if !result.summary.isEmpty {
+                                    Text(result.summary)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(3)
+                                }
+                                if !result.ocrText.isEmpty {
+                                    Text("OCR: \(result.ocrText.prefix(100))")
+                                        .font(.caption2)
+                                        .foregroundStyle(.tertiary)
+                                        .lineLimit(2)
                                 }
                             }
                         }
@@ -176,7 +204,7 @@ struct CaptureComposerView: View {
     }
 
     private var canSave: Bool {
-        !artifactDrafts.isEmpty
+        !isProcessingPhoto && !artifactDrafts.isEmpty
     }
 
     private var artifactDrafts: [CaptureArtifactDraft] {
@@ -185,9 +213,20 @@ struct CaptureComposerView: View {
             guard let rawText = normalizedCaptureText else { return [] }
             return [.text(title: normalizedTitle, body: rawText)]
         case .photo:
-            let summary = bodyText.trimmedOrNil ?? title.trimmedOrNil ?? "Photo capture"
+            let userNote = bodyText.trimmedOrNil ?? title.trimmedOrNil
+            let processorSummary = photoProcessorResult?.summary.trimmedOrNil
+            let summary = userNote ?? processorSummary ?? "Photo capture"
             guard let filename = photoFilename.trimmedOrNil else { return [] }
-            return [.photo(title: normalizedTitle, summary: summary, filename: filename, imageData: selectedPhotoData, thumbnailData: selectedPhotoThumbnail)]
+            let resolvedTitle = normalizedTitle ?? photoProcessorResult?.title.trimmedOrNil
+            return [.photo(
+                title: resolvedTitle,
+                summary: summary,
+                filename: filename,
+                imageData: selectedPhotoData,
+                thumbnailData: selectedPhotoThumbnail,
+                ocrText: photoProcessorResult?.ocrText ?? "",
+                photoMetadata: photoProcessorResult?.metadata ?? [:]
+            )]
         case .audio:
             let summary = bodyText.trimmedOrNil ?? title.trimmedOrNil ?? "Audio capture"
             guard let filename = audioRecorder.recordedFilename else { return [] }

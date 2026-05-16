@@ -447,6 +447,23 @@
         }
       }
     },
+    "capture.photo.analyzing" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Analyzing photo..."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在分析照片..."
+          }
+        }
+      }
+    },
     "capture.photo.select" : {
       "extractionState" : "manual",
       "localizations" : {
