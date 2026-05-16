@@ -17,6 +17,9 @@ struct CaptureComposerView: View {
     @State private var isSaving = false
     @State private var errorMessage: String?
     @State private var savedStatusMessage: String?
+    @State private var stagedArtifactDrafts: [CaptureArtifactDraft] = []
+    @State private var contextPreviewDrafts: [CaptureArtifactDraft] = []
+    @State private var isCollectingContextPreview = false
 
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var selectedPhotoData: Data?
@@ -100,14 +103,14 @@ struct CaptureComposerView: View {
                                         .lineLimit(3)
                                 }
                                 if !result.ocrText.isEmpty {
-                                    Text("OCR: \(result.ocrText.prefix(100))")
+                                    Text("capture.photo.ocrPreview \(String(result.ocrText.prefix(100)))")
                                         .font(.caption2)
                                         .foregroundStyle(.tertiary)
                                         .lineLimit(2)
                                 }
                             }
                         }
-                        TextField("Photo note", text: $bodyText, axis: .vertical)
+                        TextField("capture.photo.notePlaceholder", text: $bodyText, axis: .vertical)
                             .lineLimit(2...5)
 
                     case .audio:
@@ -178,7 +181,7 @@ struct CaptureComposerView: View {
                                 }
                             }
                         }
-                        TextField("Audio note", text: $bodyText, axis: .vertical)
+                        TextField("capture.audio.notePlaceholder", text: $bodyText, axis: .vertical)
                             .lineLimit(2...5)
 
                     case .link:
@@ -237,6 +240,62 @@ struct CaptureComposerView: View {
                     if let secondaryPrompt = selectedType.secondaryPrompt, selectedType != .audio {
                         TextField(secondaryPrompt, text: $secondaryValue)
                     }
+
+                    if !currentArtifactDrafts.isEmpty {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("capture.content.current")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            ForEach(currentArtifactDrafts.indices, id: \.self) { index in
+                                Label(currentArtifactDrafts[index].captureSummary, systemImage: currentArtifactDrafts[index].debugIconName)
+                                    .font(.caption)
+                                    .lineLimit(2)
+                            }
+                        }
+                    }
+
+                    HStack {
+                        Button {
+                            addCurrentContent()
+                        } label: {
+                            Label("capture.action.addContent", systemImage: "plus.circle")
+                        }
+                        .disabled(currentArtifactDrafts.isEmpty)
+
+                        Button(role: .destructive) {
+                            clearCurrentInput()
+                        } label: {
+                            Label("capture.action.clearCurrent", systemImage: "xmark.circle")
+                        }
+                        .disabled(currentArtifactDrafts.isEmpty && bodyText.isEmpty && attachmentValue.isEmpty && secondaryValue.isEmpty)
+                    }
+                }
+
+                Section {
+                    if stagedArtifactDrafts.isEmpty {
+                        Text("capture.content.empty")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(stagedArtifactDrafts.indices, id: \.self) { index in
+                            HStack(alignment: .top) {
+                                Label(stagedArtifactDrafts[index].captureSummary, systemImage: stagedArtifactDrafts[index].debugIconName)
+                                    .font(.subheadline)
+                                    .lineLimit(3)
+                                Spacer()
+                                Button(role: .destructive) {
+                                    stagedArtifactDrafts.remove(at: index)
+                                } label: {
+                                    Image(systemName: "trash")
+                                }
+                                .buttonStyle(.borderless)
+                            }
+                        }
+                    }
+                } header: {
+                    Text("capture.section.addedContent")
+                } footer: {
+                    Text("capture.content.footer")
                 }
 
                 Section("capture.section.context") {
@@ -279,6 +338,38 @@ struct CaptureComposerView: View {
                     } header: {
                         Text("capture.section.contextAuto")
                     }
+                }
+
+                Section {
+                    Button {
+                        Task { await previewAutoContext() }
+                    } label: {
+                        Label(isCollectingContextPreview ? String(localized: "capture.context.collecting") : String(localized: "capture.context.collectPreview"), systemImage: "location.magnifyingglass")
+                    }
+                    .disabled(isCollectingContextPreview)
+
+                    if isCollectingContextPreview {
+                        HStack(spacing: 8) {
+                            ProgressView()
+                            Text("capture.context.collecting")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    } else if contextPreviewDrafts.isEmpty {
+                        Text("capture.context.previewEmpty")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(contextPreviewDrafts.indices, id: \.self) { index in
+                            Label(contextPreviewDrafts[index].captureSummary, systemImage: contextPreviewDrafts[index].debugIconName)
+                                .font(.caption)
+                                .lineLimit(2)
+                        }
+                    }
+                } header: {
+                    Text("capture.section.contextPreview")
+                } footer: {
+                    Text("capture.context.previewFooter")
                 }
 
                 if let errorMessage {
@@ -324,10 +415,10 @@ struct CaptureComposerView: View {
     }
 
     private var canSave: Bool {
-        !isProcessingPhoto && !isTranscribing && !artifactDrafts.isEmpty
+        !isProcessingPhoto && !isTranscribing && !allArtifactDrafts.isEmpty
     }
 
-    private var artifactDrafts: [CaptureArtifactDraft] {
+    private var currentArtifactDrafts: [CaptureArtifactDraft] {
         switch selectedType {
         case .text:
             guard let rawText = normalizedCaptureText else { return [] }
@@ -380,14 +471,26 @@ struct CaptureComposerView: View {
         }
     }
 
+    private var allArtifactDrafts: [CaptureArtifactDraft] {
+        stagedArtifactDrafts + currentArtifactDrafts
+    }
+
+    private var resolvedCaptureSource: CaptureSource {
+        guard stagedArtifactDrafts.isEmpty, currentArtifactDrafts.count == 1 else {
+            return .composer
+        }
+        return selectedType.captureSource
+    }
+
     private func save() async {
         guard !isSaving, canSave else { return }
         isSaving = true
         defer { isSaving = false }
 
         do {
+            let drafts = allArtifactDrafts
             let rawText = normalizedCaptureText
-                ?? artifactDrafts.map(\.captureSummary).joined(separator: "\n").trimmedOrNil
+                ?? drafts.map(\.captureSummary).joined(separator: "\n").trimmedOrNil
                 ?? title.trimmedOrNil
                 ?? "Untitled Memory"
 
@@ -396,8 +499,8 @@ struct CaptureComposerView: View {
                 rawText: rawText,
                 mood: mood.trimmedOrNil,
                 inputContext: inputContext.trimmedOrNil,
-                captureSource: selectedType.captureSource,
-                artifacts: artifactDrafts
+                captureSource: resolvedCaptureSource,
+                artifacts: drafts
             )
 
             let orchestrator = CaptureOrchestrator(memoryRepository: memoryRepository)
@@ -410,6 +513,35 @@ struct CaptureComposerView: View {
             errorMessage = error.localizedDescription
             savedStatusMessage = nil
         }
+    }
+
+    private func addCurrentContent() {
+        let drafts = currentArtifactDrafts
+        guard !drafts.isEmpty else { return }
+        stagedArtifactDrafts.append(contentsOf: drafts)
+        clearCurrentInput()
+    }
+
+    private func clearCurrentInput() {
+        bodyText = ""
+        attachmentValue = ""
+        secondaryValue = ""
+        selectedPhotoItem = nil
+        selectedPhotoData = nil
+        selectedPhotoThumbnail = nil
+        photoFilename = ""
+        photoProcessorResult = nil
+        linkMetadata = nil
+        transcriptionText = ""
+        transcriptionDuration = nil
+        audioRecorder.clearRecording()
+    }
+
+    private func previewAutoContext() async {
+        guard !isCollectingContextPreview else { return }
+        isCollectingContextPreview = true
+        defer { isCollectingContextPreview = false }
+        contextPreviewDrafts = await ContextAutoCollector().collectContextDrafts()
     }
 
     private func transcribeAudio() async {
@@ -436,6 +568,21 @@ struct CaptureComposerView: View {
 
         let extractor = LinkMetadataExtractor()
         linkMetadata = await extractor.extract(urlString: urlString)
+    }
+}
+
+private extension CaptureArtifactDraft {
+    var debugIconName: String {
+        switch self {
+        case .text: return "text.alignleft"
+        case .photo: return "photo"
+        case .audio: return "waveform"
+        case .location: return "mappin.and.ellipse"
+        case .link: return "link"
+        case .todo: return "checklist"
+        case .weather: return "cloud.sun"
+        case .music: return "music.note"
+        }
     }
 }
 
@@ -555,8 +702,9 @@ final class AudioRecorderModel: ObservableObject {
             recordingDuration = 0
 
             recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-                Task { @MainActor in
-                    self?.recordingDuration += 0.1
+                guard let self else { return }
+                MainActor.assumeIsolated {
+                    self.recordingDuration += 0.1
                 }
             }
         } catch {
@@ -574,5 +722,14 @@ final class AudioRecorderModel: ObservableObject {
             recordedAudioURL = url
             recordedAudioData = try? Data(contentsOf: url)
         }
+    }
+
+    func clearRecording() {
+        if isRecording {
+            stopRecording()
+        }
+        recordedAudioURL = nil
+        recordedAudioData = nil
+        recordingDuration = 0
     }
 }

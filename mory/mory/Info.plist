@@ -5,7 +5,7 @@
 	<key>MORY_BUILD_CHANNEL</key>
 	<string>$(MORY_BUILD_CHANNEL)</string>
 	<key>MORY_API_BASE_URL</key>
-	<string>https://sprout-god7g.fly.dev</string>
+	<string>$(MORY_API_BASE_URL)</string>
 	<key>MORY_DEV_AUTH_IDENTITY_TOKEN</key>
 	<string>dev-user</string>
 	<key>NSAppTransportSecurity</key>

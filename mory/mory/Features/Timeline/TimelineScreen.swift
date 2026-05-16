@@ -89,7 +89,11 @@ struct TimelineMemoryRow: View {
 
             HStack {
                 if memory.artifactCount > 0 {
-                    Label("\(memory.artifactCount)", systemImage: "paperclip")
+                    Label {
+                        Text(verbatim: "\(memory.artifactCount)")
+                    } icon: {
+                        Image(systemName: "paperclip")
+                    }
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }

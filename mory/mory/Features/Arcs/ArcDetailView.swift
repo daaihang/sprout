@@ -27,7 +27,7 @@ struct ArcDetailView: View {
                     Text(snapshot.summary.arc.status.rawValue.capitalized)
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text("\(snapshot.summary.arc.startDate.formatted(date: .abbreviated, time: .omitted)) - \(snapshot.summary.arc.endDate.formatted(date: .abbreviated, time: .omitted))")
+                    Text(verbatim: "\(snapshot.summary.arc.startDate.formatted(date: .abbreviated, time: .omitted)) - \(snapshot.summary.arc.endDate.formatted(date: .abbreviated, time: .omitted))")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -51,7 +51,7 @@ struct ArcDetailView: View {
                             Text(mergeCandidate.arc.title)
                                 .font(.subheadline.weight(.medium))
                             if let overlapScore = snapshot.mergeCandidateOverlapScore {
-                                Text("Overlap \(overlapScore.formatted(.number.precision(.fractionLength(2))))")
+                                Text("arc.merge.overlap \(overlapScore.formatted(.number.precision(.fractionLength(2))))")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }

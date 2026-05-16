@@ -1,5 +1,6 @@
 import Foundation
 import CoreLocation
+import MapKit
 
 final class LocationContextService: NSObject, CLLocationManagerDelegate, Sendable {
     private let manager = CLLocationManager()
@@ -36,16 +37,16 @@ final class LocationContextService: NSObject, CLLocationManagerDelegate, Sendabl
         guard isAuthorized else { return nil }
         guard let location = await requestSingleLocation(timeout: 5) else { return nil }
 
-        let placemarks = try? await CLGeocoder().reverseGeocodeLocation(location)
-        let pm = placemarks?.first
-
-        let summary = [pm?.subLocality, pm?.locality, pm?.administrativeArea, pm?.country]
-            .compactMap { $0 }
-            .joined(separator: " ")
+        let mapItem = try? await MKReverseGeocodingRequest(location: location)?.mapItems.first
+        let formattedAddress = mapItem?.addressRepresentations?.fullAddress(includingRegion: true, singleLine: true)
+        let localitySummary = formattedAddress
+            ?? mapItem?.addressRepresentations?.cityWithContext(.full)
+            ?? mapItem?.address?.shortAddress
+            ?? mapItem?.address?.fullAddress
 
         return .location(
-            title: pm?.name,
-            summary: summary.isEmpty ? "\(location.coordinate.latitude), \(location.coordinate.longitude)" : summary,
+            title: mapItem?.name,
+            summary: localitySummary?.trimmedOrNil ?? String(format: "%.6f, %.6f", location.coordinate.latitude, location.coordinate.longitude),
             latitude: location.coordinate.latitude,
             longitude: location.coordinate.longitude
         )

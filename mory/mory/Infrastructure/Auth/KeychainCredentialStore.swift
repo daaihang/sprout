@@ -3,7 +3,7 @@ import Security
 
 // MARK: - Stored Credential
 
-struct AuthCredential: Codable, Sendable {
+nonisolated struct AuthCredential: Codable, Sendable {
     let accessToken: String
     let refreshToken: String
     let expiresAt: Date?

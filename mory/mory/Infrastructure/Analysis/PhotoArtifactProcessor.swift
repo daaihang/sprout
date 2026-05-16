@@ -2,7 +2,7 @@ import Vision
 import UIKit
 import ImageIO
 
-final class PhotoArtifactProcessor: Sendable {
+nonisolated final class PhotoArtifactProcessor: Sendable {
 
     struct Result: Sendable {
         let title: String
@@ -13,17 +13,19 @@ final class PhotoArtifactProcessor: Sendable {
     }
 
     func process(imageData: Data, filename: String) async -> Result {
+        await Task.detached(priority: .userInitiated) {
+            Self.processImageData(imageData: imageData, filename: filename)
+        }.value
+    }
+
+    nonisolated private static func processImageData(imageData: Data, filename: String) -> Result {
         let image = UIImage(data: imageData)
         let cgImage = image?.cgImage
 
-        async let classification = classifyImage(cgImage)
-        async let ocrText = recognizeText(cgImage)
-        async let exif = extractEXIF(imageData)
+        let classLabels = classifyImage(cgImage)
+        let ocr = recognizeText(cgImage)
+        let metadata = extractEXIF(imageData)
         let thumbnail = generateThumbnail(image, maxDimension: 600)
-
-        let classLabels = await classification
-        let ocr = await ocrText
-        let metadata = await exif
 
         let title = classLabels.first ?? filename
         let summary = buildSummary(labels: classLabels, ocrText: ocr)
@@ -37,46 +39,39 @@ final class PhotoArtifactProcessor: Sendable {
         )
     }
 
-    private func classifyImage(_ cgImage: CGImage?) async -> [String] {
+    nonisolated private static func classifyImage(_ cgImage: CGImage?) -> [String] {
         guard let cgImage else { return [] }
-        return await withCheckedContinuation { continuation in
-            let request = VNClassifyImageRequest { request, _ in
-                let results = (request.results as? [VNClassificationObservation]) ?? []
-                let labels = results
-                    .filter { $0.confidence > 0.3 }
-                    .prefix(5)
-                    .map { $0.identifier }
-                continuation.resume(returning: labels)
-            }
-            do {
-                try VNImageRequestHandler(cgImage: cgImage).perform([request])
-            } catch {
-                continuation.resume(returning: [])
-            }
+        let request = VNClassifyImageRequest()
+        do {
+            try VNImageRequestHandler(cgImage: cgImage).perform([request])
+        } catch {
+            return []
         }
+
+        return (request.results ?? [])
+            .filter { $0.confidence > 0.3 }
+            .prefix(5)
+            .map { $0.identifier }
     }
 
-    private func recognizeText(_ cgImage: CGImage?) async -> String {
+    nonisolated private static func recognizeText(_ cgImage: CGImage?) -> String {
         guard let cgImage else { return "" }
-        return await withCheckedContinuation { continuation in
-            let request = VNRecognizeTextRequest { request, _ in
-                let results = (request.results as? [VNRecognizedTextObservation]) ?? []
-                let text = results
-                    .compactMap { $0.topCandidates(1).first?.string }
-                    .joined(separator: "\n")
-                continuation.resume(returning: text)
-            }
-            request.recognitionLanguages = Self.recognitionLanguages()
-            request.recognitionLevel = .accurate
-            do {
-                try VNImageRequestHandler(cgImage: cgImage).perform([request])
-            } catch {
-                continuation.resume(returning: "")
-            }
+        let request = VNRecognizeTextRequest()
+        request.recognitionLanguages = Self.recognitionLanguages()
+        request.recognitionLevel = .accurate
+
+        do {
+            try VNImageRequestHandler(cgImage: cgImage).perform([request])
+        } catch {
+            return ""
         }
+
+        return (request.results ?? [])
+            .compactMap { $0.topCandidates(1).first?.string }
+            .joined(separator: "\n")
     }
 
-    private static func recognitionLanguages() -> [String] {
+    nonisolated private static func recognitionLanguages() -> [String] {
         var languages: [String] = []
         for localeId in Locale.preferredLanguages {
             let locale = Locale(identifier: localeId)
@@ -99,7 +94,7 @@ final class PhotoArtifactProcessor: Sendable {
         return Array(Set(languages)).prefix(4).map { $0 }
     }
 
-    private func extractEXIF(_ data: Data) async -> [String: String] {
+    nonisolated private static func extractEXIF(_ data: Data) -> [String: String] {
         guard let source = CGImageSourceCreateWithData(data as CFData, nil),
               let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [String: Any]
         else { return [:] }
@@ -119,7 +114,7 @@ final class PhotoArtifactProcessor: Sendable {
         return metadata
     }
 
-    private func generateThumbnail(_ image: UIImage?, maxDimension: CGFloat) -> Data {
+    nonisolated private static func generateThumbnail(_ image: UIImage?, maxDimension: CGFloat) -> Data {
         guard let image else { return Data() }
         let scale = min(maxDimension / image.size.width, maxDimension / image.size.height, 1.0)
         let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)
@@ -129,7 +124,7 @@ final class PhotoArtifactProcessor: Sendable {
         }
     }
 
-    private func buildSummary(labels: [String], ocrText: String) -> String {
+    nonisolated private static func buildSummary(labels: [String], ocrText: String) -> String {
         var parts: [String] = []
         if !labels.isEmpty {
             parts.append(labels.joined(separator: ", "))

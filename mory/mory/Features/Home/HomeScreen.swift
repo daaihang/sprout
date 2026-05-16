@@ -306,7 +306,7 @@ private struct CompositionBoardCard: View {
             case let .arc(arc):
                 Text(arc.title).font(.headline).lineLimit(2)
                 Text(arc.summary).font(.subheadline).foregroundStyle(.secondary).lineLimit(3)
-                Text("\(arc.sourceRecordIDs.count) memories | Ongoing").font(.caption).foregroundStyle(.secondary)
+                Text("home.board.arc.ongoing \(arc.sourceRecordIDs.count)").font(.caption).foregroundStyle(.secondary)
             case let .reflection(reflection):
                 Text(reflection.title).font(.headline).lineLimit(2)
                 Text(reflection.body).font(.subheadline).foregroundStyle(.secondary).lineLimit(3)

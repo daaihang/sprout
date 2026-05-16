@@ -37,7 +37,7 @@ struct ArcsScreen: View {
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                                     .lineLimit(3)
-                                Text("\(item.arc.startDate.formatted(date: .abbreviated, time: .omitted)) - \(item.arc.endDate.formatted(date: .abbreviated, time: .omitted))")
+                                Text(verbatim: "\(item.arc.startDate.formatted(date: .abbreviated, time: .omitted)) - \(item.arc.endDate.formatted(date: .abbreviated, time: .omitted))")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                                 if !item.relatedMemories.isEmpty {

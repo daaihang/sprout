@@ -358,19 +358,27 @@ private struct WeatherArtifactBody: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             if let condition = metadata["condition"], let tempStr = metadata["temperatureCelsius"], let temp = Double(tempStr) {
-                Text("\(condition) · \(String(format: "%.0f", temp))°C")
+                Text(verbatim: "\(condition) · \(String(format: "%.0f", temp))°C")
                     .font(.subheadline)
             } else if let s = fallbackSummary.trimmedOrNil {
                 Text(s).font(.subheadline).foregroundStyle(.secondary)
             }
             HStack(spacing: 12) {
                 if let humStr = metadata["humidity"], let hum = Double(humStr) {
-                    Label("\(String(format: "%.0f", hum * 100))%", systemImage: "humidity")
+                    Label {
+                        Text(verbatim: "\(String(format: "%.0f", hum * 100))%")
+                    } icon: {
+                        Image(systemName: "humidity")
+                    }
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 if let windStr = metadata["windSpeedKmh"], let wind = Double(windStr) {
-                    Label("\(String(format: "%.1f", wind)) km/h", systemImage: "wind")
+                    Label {
+                        Text(verbatim: "\(String(format: "%.1f", wind)) km/h")
+                    } icon: {
+                        Image(systemName: "wind")
+                    }
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -430,7 +438,7 @@ private struct LocationArtifactBody: View {
                 Text(s).font(.subheadline)
             }
             if let lat = metadata["latitude"], let lon = metadata["longitude"] {
-                Text("\(lat), \(lon)")
+                Text(verbatim: "\(lat), \(lon)")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }
@@ -460,7 +468,7 @@ private struct GenericArtifactBody: View {
                     Text("memory.label.media")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text("\(mediaRef.filename) • \(mediaRef.mimeType)")
+                    Text(verbatim: "\(mediaRef.filename) • \(mediaRef.mimeType)")
                         .font(.caption)
                 }
             }
@@ -472,7 +480,7 @@ private struct GenericArtifactBody: View {
                         .foregroundStyle(.secondary)
                     ForEach(artifact.metadata.keys.sorted(), id: \.self) { key in
                         if let value = artifact.metadata[key] {
-                            Text("\(key): \(value)")
+                            Text(verbatim: "\(key): \(value)")
                                 .font(.caption)
                         }
                     }
