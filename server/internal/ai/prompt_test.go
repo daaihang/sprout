@@ -88,7 +88,8 @@ func TestBuildAnalyzeSystemPromptMentionsContextKinds(t *testing.T) {
 func TestBuildAnalyzeSystemPromptRejectsTechnicalEntityNoise(t *testing.T) {
 	sys := buildAnalyzeSystemPrompt()
 	for _, needle := range []string{
-		`Never create entities named "theme", "OCR", "ORC", "photo", "image", "caption", "artifact", "text", "unknown", or "untitled"`,
+		`Never create entities named "theme", "OCR", "ORC", "photo", "image", "caption", "artifact", "text", "unknown", "untitled"`,
+		`"quality tuning", "quality tuning lab", "debug", "fixture", or "scenario"`,
 		"Do not turn artifact-processing labels, OCR labels, or visual classifier labels into entities.",
 		"return entities: [], candidate_edges: [], salience_score <= 0.25",
 	} {
@@ -126,9 +127,23 @@ func TestStrictPromptProfileAddsConservativeRules(t *testing.T) {
 		"Prompt profile: strict.",
 		"Prefer omission over weak inference.",
 		"Single ordinary records should usually produce no story-level inference.",
+		"single photo, OCR, receipt, debug, or quality-tuning captures",
 	} {
 		if !strings.Contains(sys, needle) {
 			t.Errorf("strict prompt missing %q; got: %s", needle, sys)
+		}
+	}
+}
+
+func TestAnalyzePromptIgnoresDebugProvenance(t *testing.T) {
+	sys := buildAnalyzeSystemPromptForProfile("balanced")
+	for _, needle := range []string{
+		`"quality tuning lab"`,
+		"Ignore debug provenance strings",
+		"must never become tags, themes, entities, candidate edges, summaries, salience evidence, reflection hints, or storyline anchors",
+	} {
+		if !strings.Contains(sys, needle) {
+			t.Errorf("analyze prompt missing debug provenance rule %q; got: %s", needle, sys)
 		}
 	}
 }

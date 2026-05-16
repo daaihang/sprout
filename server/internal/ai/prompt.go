@@ -32,8 +32,9 @@ Entity "name" and "canonical_name" must be short labels, usually 1 to 4 words.
 Never copy an entire sentence or artifact summary into an entity name.
 For "decision", extract a concise decision label such as "leave current job" instead of repeating the full note.
 If you are unsure, omit the entity instead of inventing or over-expanding it.
-Never create entities named "theme", "OCR", "ORC", "photo", "image", "caption", "artifact", "text", "unknown", or "untitled".
+Never create entities named "theme", "OCR", "ORC", "photo", "image", "caption", "artifact", "text", "unknown", "untitled", "quality tuning", "quality tuning lab", "debug", "fixture", or "scenario".
 Do not turn artifact-processing labels, OCR labels, or visual classifier labels into entities.
+Ignore debug provenance strings such as "quality tuning lab: <scenario>"; they exist only for test traceability and must never become tags, themes, entities, candidate edges, summaries, salience evidence, reflection hints, or storyline anchors.
 Only create a "theme" entity for a real recurring life theme such as "career transition" or "family caregiving"; never use a generic tag or technical label as a theme.
 Artifacts with kind "weather", "music", or "location" are ambient context auto-captured at recording time, not the user's primary subject.
 Use them to enrich tags (e.g. weather mood), retrieval_terms (e.g. place name, track name), and at most one "place" or "theme" entity if clearly salient.
@@ -48,12 +49,12 @@ func buildAnalyzeUserPrompt(req AnalyzeRequest, user UserContext) (string, error
 			"user_id": user.UserID,
 			"tier":    user.Tier,
 		},
-		"schema_version": req.SchemaVersion,
-		"client_version": req.ClientVersion,
+		"schema_version":  req.SchemaVersion,
+		"client_version":  req.ClientVersion,
 		"analysis_reason": req.AnalysisReason,
-		"record_shell": req.RecordShell,
-		"artifacts": req.Artifacts,
-		"known_entities": req.KnownEntities,
+		"record_shell":    req.RecordShell,
+		"artifacts":       req.Artifacts,
+		"known_entities":  req.KnownEntities,
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
@@ -112,7 +113,8 @@ func profileInstruction(profile string) string {
 Prompt profile: strict.
 Be more conservative than balanced mode. Prefer omission over weak inference.
 Only emit entities, candidate edges, high salience, or reflection confidence when the evidence is explicit and repeatable.
-Single ordinary records should usually produce no story-level inference.`
+Single ordinary records should usually produce no story-level inference.
+For single photo, OCR, receipt, debug, or quality-tuning captures, use entities: [], candidate_edges: [], salience_score <= 0.25, and reflection_hint: "" unless the user-written content explicitly names a real person, place, decision, or recurring life theme.`
 	case "experimental":
 		return `
 Prompt profile: experimental.

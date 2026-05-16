@@ -147,6 +147,60 @@ final class AnalyzeResponseMapperTests: XCTestCase {
         XCTAssertFalse(snapshot.themes.contains("ORC"))
     }
 
+    func testFiltersDebugTuningLabelsFromEntitiesAndThemeAnchors() throws {
+        let json = """
+        {
+          "tags": ["quality tuning", "quality tuning lab", "receipt"],
+          "emotion": {"label": "neutral"},
+          "entities": [
+            {"kind": "theme", "name": "quality tuning", "confidence": 0.99},
+            {"kind": "theme", "name": "quality tuning lab", "confidence": 0.99},
+            {"kind": "theme", "name": "debug scenario", "confidence": 0.99},
+            {"kind": "theme", "name": "receipt review", "confidence": 0.82}
+          ],
+          "candidate_edges": [
+            {"from_name": "quality tuning", "from_kind": "theme", "to_name": "receipt review", "to_kind": "theme", "relation": "related_to", "confidence": 0.92}
+          ],
+          "insight": "A receipt capture used for debug.",
+          "summary": "A receipt capture used for debug.",
+          "salience_score": 0.24,
+          "retrieval_terms": ["quality tuning", "receipt"],
+          "reflection_hint": "",
+          "follow_up": null
+        }
+        """
+
+        let envelope = try JSONDecoder().decode(AnalyzeResponseEnvelope.self, from: Data(json.utf8))
+        let snapshot = AnalyzeResponseMapper().map(recordID: UUID(), response: envelope)
+
+        XCTAssertEqual(snapshot.entityMentions.map(\.name), ["receipt review"])
+        XCTAssertTrue(snapshot.candidateEdges.isEmpty)
+
+        let policy = EntityQualityPolicy(thresholds: .defaults)
+        XCTAssertFalse(policy.usefulThemeLabel("quality tuning"))
+        XCTAssertFalse(policy.usefulThemeLabel("quality tuning lab"))
+        XCTAssertFalse(policy.usefulThemeLabel("debug scenario"))
+    }
+
+    func testDefaultArcPolicyRejectsWeakDebugScenarioCluster() throws {
+        let candidate = TemporalArcCandidate(
+            titleHint: "receipt / quality tuning",
+            themeLabels: ["receipt"],
+            entityNames: [],
+            recordIDs: [UUID(), UUID()],
+            artifactIDs: [],
+            startDate: Date(timeIntervalSince1970: 1),
+            endDate: Date(timeIntervalSince1970: 2),
+            intensityScore: 4.5,
+            clusterStrength: 0.474985
+        )
+
+        let result = ArcQualityPolicy(thresholds: .defaults).evaluate(candidate)
+
+        XCTAssertFalse(result.passed)
+        XCTAssertEqual(result.reason, "cluster strength below threshold")
+    }
+
     func testTagsDoNotFallbackIntoThemeEntitiesWhenEntitiesAreEmpty() throws {
         let json = """
         {

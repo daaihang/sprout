@@ -21,7 +21,7 @@ struct QualityTuningThresholds: Codable, Equatable, Sendable {
         entityMinimumConfidence: 0.55,
         themeDecisionMinimumConfidence: 0.65,
         arcMinimumRecordCount: 2,
-        arcMinimumClusterStrength: 0.45,
+        arcMinimumClusterStrength: 0.55,
         arcMinimumIntensityScore: 4.0,
         reflectionMinimumRecordSalience: 0.75,
         reflectionMinimumEvidenceCharacters: 100,
@@ -103,9 +103,12 @@ struct EntityQualityPolicy: Sendable {
     }
     private let bannedExactNames: Set<String> = [
         "theme", "themes", "ocr", "orc", "photo", "photos", "image", "images",
-        "caption", "artifact", "artifacts", "text", "unknown", "untitled", "none", "n/a"
+        "caption", "artifact", "artifacts", "text", "unknown", "untitled", "none", "n/a",
+        "quality tuning", "quality tuning lab", "tuning lab", "debug", "fixture", "scenario"
     ]
-    private let bannedShortTokens: Set<String> = ["ocr", "orc", "photo", "image", "caption", "artifact"]
+    private let bannedShortTokens: Set<String> = [
+        "ocr", "orc", "photo", "image", "caption", "artifact", "debug", "fixture", "scenario", "tuning"
+    ]
 
     init(thresholds: QualityTuningThresholds? = nil) {
         self.configuredThresholds = thresholds
