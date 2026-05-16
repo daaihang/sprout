@@ -13,7 +13,9 @@ final class WeatherContextService: Sendable {
             temperatureCelsius: current.temperature.converted(to: .celsius).value,
             humidity: current.humidity,
             windSpeedKmh: current.wind.speed.converted(to: .kilometersPerHour).value,
-            uvIndex: current.uvIndex.value
+            uvIndex: current.uvIndex.value,
+            latitude: location.coordinate.latitude,
+            longitude: location.coordinate.longitude
         )
     }
 }

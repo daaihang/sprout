@@ -67,6 +67,67 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         )
     }
 
+    func appendArtifacts(recordID: UUID, drafts: [CaptureArtifactDraft]) async throws -> MemorySummary? {
+        guard !drafts.isEmpty else {
+            guard let record = try fetchRecordShell(id: recordID) else { return nil }
+            return try makeMemorySummary(
+                record: record,
+                artifacts: fetchArtifacts(recordID: recordID),
+                pipelineStatus: fetchPipelineStatus(recordID: recordID)
+            )
+        }
+
+        guard let recordStore = try modelContext.fetch(
+            FetchDescriptor<RecordShellStore>(predicate: #Predicate { $0.id == recordID })
+        ).first else {
+            return nil
+        }
+
+        let now = Date.now
+        let draft = MemoryCaptureDraft(rawText: recordStore.rawText, artifacts: drafts)
+        let newArtifacts = captureArtifactBuilder.buildArtifacts(from: draft, recordID: recordID, createdAt: now)
+        guard !newArtifacts.isEmpty else {
+            return try makeMemorySummary(
+                record: recordStore.domainModel,
+                artifacts: fetchArtifacts(recordID: recordID),
+                pipelineStatus: fetchPipelineStatus(recordID: recordID)
+            )
+        }
+
+        for artifact in newArtifacts {
+            try upsert(artifact: artifact)
+        }
+
+        var updatedRecord = recordStore.domainModel
+        updatedRecord.artifactIDs.append(contentsOf: newArtifacts.map(\.id))
+        updatedRecord.artifactIDs = Array(NSOrderedSet(array: updatedRecord.artifactIDs)) as? [UUID] ?? Array(Set(updatedRecord.artifactIDs))
+        updatedRecord.updatedAt = now
+        recordStore.apply(domainModel: updatedRecord)
+
+        try upsertPipelineStatus(
+            MemoryPipelineStatusSnapshot(
+                recordID: recordID,
+                stage: .pending,
+                lastError: nil,
+                requestBody: try fetchPipelineStatus(recordID: recordID)?.requestBody,
+                responseBody: nil,
+                rawErrorBody: nil,
+                lastHTTPStatusCode: nil,
+                failedStage: nil,
+                lastAttemptAt: nil,
+                completedAt: nil,
+                updatedAt: now
+            )
+        )
+        try save()
+
+        return try makeMemorySummary(
+            record: updatedRecord,
+            artifacts: fetchArtifacts(recordID: recordID),
+            pipelineStatus: fetchPipelineStatus(recordID: recordID)
+        )
+    }
+
     func deleteMemory(recordID: UUID) throws {
         if let record = try modelContext.fetch(FetchDescriptor<RecordShellStore>(predicate: #Predicate { $0.id == recordID })).first {
             modelContext.delete(record)

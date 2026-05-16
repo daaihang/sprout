@@ -317,6 +317,78 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertEqual(todoArtifact.metadata["todo"], "true")
     }
 
+    func testAppendContextArtifactsPersistsWeatherLocationMusicAndResetsPipeline() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Context memory",
+                rawText: "A regular capture that should receive automatic context.",
+                captureSource: .composer,
+                artifacts: [.text(title: "Context memory", body: "A regular capture that should receive automatic context.")]
+            )
+        )
+
+        let updated = try await repository.appendArtifacts(
+            recordID: memory.record.id,
+            drafts: [
+                .location(title: "Office", summary: "Shanghai Jing'an", latitude: 31.23, longitude: 121.47),
+                .weather(condition: "Cloudy", temperatureCelsius: 22, humidity: 0.65, windSpeedKmh: 12, uvIndex: 3, latitude: 31.23, longitude: 121.47),
+                .music(trackName: "Intro", artistName: "The Band", albumName: "Morning", durationSeconds: 180, artworkURL: "https://example.com/art.jpg"),
+            ]
+        )
+
+        XCTAssertEqual(updated?.artifactCount, 4)
+        XCTAssertEqual(updated?.pipelineStatus?.stage, .pending)
+
+        let detail = try XCTUnwrap(repository.fetchMemoryDetail(recordID: memory.record.id))
+        XCTAssertTrue(detail.artifacts.contains(where: { $0.kind == .location && $0.metadata["latitude"] == "31.23" }))
+        XCTAssertTrue(detail.artifacts.contains(where: { $0.kind == .weather && $0.metadata["temperatureCelsius"] == "22.0" && $0.metadata["longitude"] == "121.47" }))
+        XCTAssertTrue(detail.artifacts.contains(where: { $0.kind == .music && $0.metadata["artworkURL"] == "https://example.com/art.jpg" }))
+    }
+
+    func testLinkCapturePersistsMetadataSummaryAndPreviewPayload() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+        let preview = Data([0x01, 0x02, 0x03])
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: nil,
+                rawText: "Useful article",
+                captureSource: .composer,
+                artifacts: [
+                    .link(
+                        title: "Extracted page title",
+                        url: "https://example.com/article",
+                        note: "Useful article",
+                        summary: "Example Blog",
+                        metadata: ["siteName": "Example Blog", "ogImage": "https://example.com/og.jpg"],
+                        thumbnailData: preview
+                    )
+                ]
+            )
+        )
+
+        let detail = try XCTUnwrap(repository.fetchMemoryDetail(recordID: memory.record.id))
+        let link = try XCTUnwrap(detail.artifacts.first(where: { $0.kind == .link }))
+
+        XCTAssertEqual(link.title, "Extracted page title")
+        XCTAssertEqual(link.summary, "Example Blog")
+        XCTAssertEqual(link.textContent, "Example Blog\nUseful article")
+        XCTAssertEqual(link.metadata["url"], "https://example.com/article")
+        XCTAssertEqual(link.metadata["siteName"], "Example Blog")
+        XCTAssertEqual(link.metadata["ogImage"], "https://example.com/og.jpg")
+        XCTAssertEqual(link.previewPayload, preview)
+    }
+
     func testMergeTemporalArcReturnsMergedDetailAndArchivesCandidate() async throws {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(

@@ -129,16 +129,24 @@ struct MemoryCaptureArtifactBuilder {
                 createdAt: createdAt,
                 updatedAt: createdAt
             )
-        case let .link(title, url, note):
-            let resolvedSummary = note?.trimmedOrNil ?? url
+        case let .link(title, url, note, summary, metadata, thumbnailData):
+            let resolvedSummary = summary?.trimmedOrNil ?? note?.trimmedOrNil ?? url
+            let textContent = [summary?.trimmedOrNil, note?.trimmedOrNil]
+                .compactMap { $0 }
+                .joined(separator: "\n")
+                .trimmedOrNil
+                ?? resolvedSummary
+            var resolvedMetadata = metadata
+            resolvedMetadata["url"] = url
             return Artifact(
                 recordID: recordID,
                 kind: .link,
                 title: title?.trimmedOrNil ?? fallbackTitle?.trimmedOrNil ?? url,
                 summary: resolvedSummary,
-                textContent: resolvedSummary,
-                payload: .metadata(["url": url]),
-                metadata: ["url": url],
+                textContent: textContent,
+                payload: .metadata(resolvedMetadata),
+                metadata: resolvedMetadata,
+                previewPayload: thumbnailData,
                 createdAt: createdAt,
                 updatedAt: createdAt
             )
@@ -155,16 +163,18 @@ struct MemoryCaptureArtifactBuilder {
                 createdAt: createdAt,
                 updatedAt: createdAt
             )
-        case let .weather(condition, temp, humidity, windSpeed, uvIndex):
+        case let .weather(condition, temp, humidity, windSpeed, uvIndex, latitude, longitude):
             let title = "\(condition) \(String(format: "%.0f", temp))°C"
             let summary = "\(condition) · \(String(format: "%.0f", temp))°C · Humidity \(String(format: "%.0f", humidity * 100))%"
-            let metadata: [String: String] = [
+            var metadata: [String: String] = [
                 "condition": condition,
                 "temperatureCelsius": String(format: "%.1f", temp),
                 "humidity": String(format: "%.2f", humidity),
                 "windSpeedKmh": String(format: "%.1f", windSpeed),
                 "uvIndex": "\(uvIndex)"
             ]
+            if let latitude { metadata["latitude"] = String(latitude) }
+            if let longitude { metadata["longitude"] = String(longitude) }
             return Artifact(
                 recordID: recordID,
                 kind: .weather,

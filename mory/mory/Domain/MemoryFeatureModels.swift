@@ -5,9 +5,9 @@ enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
     case photo(title: String?, summary: String, filename: String, imageData: Data?, thumbnailData: Data?, ocrText: String = "", photoMetadata: [String: String] = [:])
     case audio(title: String?, summary: String, filename: String, audioData: Data?, transcriptionText: String = "")
     case location(title: String?, summary: String, latitude: Double?, longitude: Double?)
-    case link(title: String?, url: String, note: String?)
+    case link(title: String?, url: String, note: String?, summary: String? = nil, metadata: [String: String] = [:], thumbnailData: Data? = nil)
     case todo(title: String, note: String?)
-    case weather(condition: String, temperatureCelsius: Double, humidity: Double, windSpeedKmh: Double, uvIndex: Int)
+    case weather(condition: String, temperatureCelsius: Double, humidity: Double, windSpeedKmh: Double, uvIndex: Int, latitude: Double? = nil, longitude: Double? = nil)
     case music(trackName: String, artistName: String, albumName: String, durationSeconds: Int, artworkURL: String?)
 
     var id: String {
@@ -20,11 +20,11 @@ enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
             return "audio-\(title ?? summary)-\(filename)"
         case let .location(title, summary, _, _):
             return "location-\(title ?? summary)"
-        case let .link(title, url, _):
+        case let .link(title, url, _, _, _, _):
             return "link-\(title ?? url)"
         case let .todo(title, note):
             return "todo-\(title)-\(note ?? "")"
-        case let .weather(condition, temp, _, _, _):
+        case let .weather(condition, temp, _, _, _, _, _):
             return "weather-\(condition)-\(temp)"
         case let .music(trackName, artistName, _, _, _):
             return "music-\(trackName)-\(artistName)"
@@ -63,9 +63,10 @@ enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
                 ?? summary.trimmedOrNil
                 ?? title?.trimmedOrNil
                 ?? "Location capture"
-        case let .link(title, url, note):
-            return [title?.trimmedOrNil, note?.trimmedOrNil, url.trimmedOrNil].compactMap { $0 }.joined(separator: " • ")
+        case let .link(title, url, note, summary, _, _):
+            return [title?.trimmedOrNil, summary?.trimmedOrNil, note?.trimmedOrNil, url.trimmedOrNil].compactMap { $0 }.joined(separator: " • ")
                 .trimmedOrNil
+                ?? summary?.trimmedOrNil
                 ?? note?.trimmedOrNil
                 ?? title?.trimmedOrNil
                 ?? url
@@ -74,7 +75,7 @@ enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
                 .trimmedOrNil
                 ?? note?.trimmedOrNil
                 ?? title
-        case let .weather(condition, temp, humidity, _, _):
+        case let .weather(condition, temp, humidity, _, _, _, _):
             return "\(condition) \(String(format: "%.0f", temp))°C · Humidity \(String(format: "%.0f", humidity * 100))%"
         case let .music(trackName, artistName, albumName, _, _):
             return [trackName, artistName, albumName].filter { !$0.isEmpty }.joined(separator: " · ")
@@ -369,6 +370,7 @@ struct PipelineStatusSummary: Identifiable, Hashable, Sendable {
 @MainActor
 protocol MoryMemoryRepositorying: AnyObject {
     func createMemory(from draft: MemoryCaptureDraft) async throws -> MemorySummary
+    func appendArtifacts(recordID: UUID, drafts: [CaptureArtifactDraft]) async throws -> MemorySummary?
     func updateMemory(recordID: UUID, draft: MemoryEditDraft) async throws -> MemoryDetailSnapshot?
     func deleteMemory(recordID: UUID) throws
     func refreshMemoryPipeline(recordID: UUID) async throws

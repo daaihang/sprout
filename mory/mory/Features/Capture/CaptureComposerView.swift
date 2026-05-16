@@ -28,6 +28,8 @@ struct CaptureComposerView: View {
     @State private var isTranscribing = false
     @State private var transcriptionText = ""
     @State private var transcriptionDuration: TimeInterval?
+    @State private var linkMetadata: LinkMetadataResult?
+    @State private var isFetchingLinkPreview = false
 
     @StateObject private var permissionManager = ContextPermissionManager(locationService: LocationContextService())
 
@@ -179,12 +181,57 @@ struct CaptureComposerView: View {
                         TextField("Audio note", text: $bodyText, axis: .vertical)
                             .lineLimit(2...5)
 
+                    case .link:
+                        TextField("capture.attachment.url", text: $attachmentValue)
+                            .keyboardType(.URL)
+                            .textInputAutocapitalization(.never)
+                            .onChange(of: attachmentValue) { _, newValue in
+                                Task { await fetchLinkPreview(urlString: newValue) }
+                            }
+                        if isFetchingLinkPreview {
+                            HStack(spacing: 8) {
+                                ProgressView()
+                                Text("capture.link.fetching")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        } else if let meta = linkMetadata {
+                            VStack(alignment: .leading, spacing: 4) {
+                                if let imageData = meta.imageData,
+                                   let image = UIImage(data: imageData) {
+                                    Image(uiImage: image)
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fill)
+                                        .frame(height: 96)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                }
+                                if let title = meta.title {
+                                    Text(title)
+                                        .font(.subheadline)
+                                        .lineLimit(2)
+                                }
+                                if let summary = meta.summary {
+                                    Text(summary)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(2)
+                                }
+                                if let site = meta.siteName {
+                                    Text(site)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                        TextField("capture.prompt.link", text: $bodyText, axis: .vertical)
+                            .lineLimit(2...5)
+
                     default:
                         TextField(selectedType.primaryPrompt, text: $bodyText, axis: .vertical)
                             .lineLimit(selectedType == .text ? 4...10 : 2...5)
                     }
 
-                    if let attachmentPrompt = selectedType.attachmentPrompt, selectedType != .photo && selectedType != .audio {
+                    if let attachmentPrompt = selectedType.attachmentPrompt, selectedType != .photo && selectedType != .audio && selectedType != .link {
                         TextField(attachmentPrompt, text: $attachmentValue)
                     }
                     if let secondaryPrompt = selectedType.secondaryPrompt, selectedType != .audio {
@@ -319,7 +366,14 @@ struct CaptureComposerView: View {
             return [.location(title: normalizedTitle, summary: bodyText.trimmedOrNil ?? title.trimmedOrNil ?? "Location capture", latitude: latitude, longitude: longitude)]
         case .link:
             guard let url = attachmentValue.trimmedOrNil else { return [] }
-            return [.link(title: normalizedTitle, url: url, note: bodyText.trimmedOrNil)]
+            return [.link(
+                title: normalizedTitle ?? linkMetadata?.title,
+                url: linkMetadata?.url ?? url,
+                note: bodyText.trimmedOrNil,
+                summary: linkMetadata?.summary,
+                metadata: linkMetadata?.metadata ?? ["url": url],
+                thumbnailData: linkMetadata?.imageData
+            )]
         case .todo:
             guard let title = normalizedTitle ?? bodyText.trimmedOrNil else { return [] }
             return [.todo(title: title, note: secondaryValue.trimmedOrNil ?? bodyText.trimmedOrNil)]
@@ -337,27 +391,19 @@ struct CaptureComposerView: View {
                 ?? title.trimmedOrNil
                 ?? "Untitled Memory"
 
-            let contextCollector = ContextAutoCollector()
-            let contextDrafts = await contextCollector.collectContextDrafts()
-
             let draft = MemoryCaptureDraft(
                 title: normalizedTitle,
                 rawText: rawText,
                 mood: mood.trimmedOrNil,
                 inputContext: inputContext.trimmedOrNil,
                 captureSource: selectedType.captureSource,
-                artifacts: artifactDrafts + contextDrafts
+                artifacts: artifactDrafts
             )
-            let memory = try await memoryRepository.createMemory(from: draft)
+
+            let orchestrator = CaptureOrchestrator(memoryRepository: memoryRepository)
+            let memory = try await orchestrator.capture(draft: draft)
             savedStatusMessage = memory.pipelineStatus?.userLabel ?? String(localized: "pipeline.status.pending")
             errorMessage = nil
-            Task {
-                do {
-                    try await memoryRepository.refreshMemoryPipeline(recordID: memory.record.id)
-                } catch {
-                    // The memory is already persisted locally. Failure is surfaced from detail/debug surfaces.
-                }
-            }
             onSaved?()
             dismiss()
         } catch {
@@ -376,6 +422,20 @@ struct CaptureComposerView: View {
             transcriptionText = result.transcription
             transcriptionDuration = result.duration
         }
+    }
+
+    private func fetchLinkPreview(urlString: String) async {
+        guard urlString.trimmedOrNil != nil else {
+            linkMetadata = nil
+            isFetchingLinkPreview = false
+            return
+        }
+
+        isFetchingLinkPreview = true
+        defer { isFetchingLinkPreview = false }
+
+        let extractor = LinkMetadataExtractor()
+        linkMetadata = await extractor.extract(urlString: urlString)
     }
 }
 

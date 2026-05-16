@@ -19,6 +19,7 @@ private final class MissingMemoryRepository: MoryMemoryRepositorying {
     }
 
     func createMemory(from draft: MemoryCaptureDraft) async throws -> MemorySummary { fail() }
+    func appendArtifacts(recordID: UUID, drafts: [CaptureArtifactDraft]) async throws -> MemorySummary? { fail() }
     func updateMemory(recordID: UUID, draft: MemoryEditDraft) async throws -> MemoryDetailSnapshot? { fail() }
     func deleteMemory(recordID: UUID) throws { let _: Void = fail() }
     func refreshMemoryPipeline(recordID: UUID) async throws { let _: Void = fail() }
