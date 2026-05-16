@@ -117,7 +117,7 @@ func (p *OpenAICompatibleProvider) Analyze(ctx context.Context, req AnalyzeReque
 		return AnalyzeResult{}, err
 	}
 
-	systemPrompt := buildAnalyzeSystemPrompt()
+	systemPrompt := buildAnalyzeSystemPromptForProfile(req.DebugOptions.PromptProfileOrDefault())
 	payload := openAIChatRequest{
 		Model:          p.model,
 		ResponseFormat: map[string]string{"type": "json_object"},
@@ -274,7 +274,7 @@ func (p *OpenAICompatibleProvider) runReflection(
 		return ReflectionResult{}, err
 	}
 
-	systemPrompt := buildReflectionSystemPrompt(mode)
+	systemPrompt := buildReflectionSystemPromptForProfile(mode, req.DebugOptions.PromptProfileOrDefault())
 	payload := openAIChatRequest{
 		Model:          p.model,
 		ResponseFormat: map[string]string{"type": "json_object"},

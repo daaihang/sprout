@@ -106,7 +106,7 @@ func (p *AnthropicProvider) Analyze(ctx context.Context, req AnalyzeRequest, use
 		return AnalyzeResult{}, err
 	}
 
-	systemPrompt := buildAnalyzeSystemPrompt()
+	systemPrompt := buildAnalyzeSystemPromptForProfile(req.DebugOptions.PromptProfileOrDefault())
 	payload := anthropicRequest{
 		Model:     p.model,
 		MaxTokens: 800,
@@ -266,7 +266,7 @@ func (p *AnthropicProvider) runReflection(
 		return ReflectionResult{}, err
 	}
 
-	systemPrompt := buildReflectionSystemPrompt(mode)
+	systemPrompt := buildReflectionSystemPromptForProfile(mode, req.DebugOptions.PromptProfileOrDefault())
 	payload := anthropicRequest{
 		Model:     p.model,
 		MaxTokens: 700,

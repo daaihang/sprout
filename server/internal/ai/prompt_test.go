@@ -84,3 +84,51 @@ func TestBuildAnalyzeSystemPromptMentionsContextKinds(t *testing.T) {
 		}
 	}
 }
+
+func TestBuildAnalyzeSystemPromptRejectsTechnicalEntityNoise(t *testing.T) {
+	sys := buildAnalyzeSystemPrompt()
+	for _, needle := range []string{
+		`Never create entities named "theme", "OCR", "ORC", "photo", "image", "caption", "artifact", "text", "unknown", or "untitled"`,
+		"Do not turn artifact-processing labels, OCR labels, or visual classifier labels into entities.",
+		"return entities: [], candidate_edges: [], salience_score <= 0.25",
+	} {
+		if !strings.Contains(sys, needle) {
+			t.Errorf("system prompt missing quality rule %q; got: %s", needle, sys)
+		}
+	}
+}
+
+func TestBuildReflectionSystemPromptAsksForLowConfidenceWhenEvidenceIsWeak(t *testing.T) {
+	sys := buildReflectionSystemPrompt("generate")
+	for _, needle := range []string{
+		"Do not infer a life pattern from a single ordinary photo",
+		"return low confidence below 0.4",
+	} {
+		if !strings.Contains(sys, needle) {
+			t.Errorf("reflection prompt missing quality rule %q; got: %s", needle, sys)
+		}
+	}
+}
+
+func TestPromptProfileDefaultsToBalanced(t *testing.T) {
+	var opts *DebugOptions
+	if got := opts.PromptProfileOrDefault(); got != "balanced" {
+		t.Fatalf("nil debug options default = %q, want balanced", got)
+	}
+	if got := (&DebugOptions{PromptProfile: "unknown"}).PromptProfileOrDefault(); got != "balanced" {
+		t.Fatalf("unknown debug profile = %q, want balanced", got)
+	}
+}
+
+func TestStrictPromptProfileAddsConservativeRules(t *testing.T) {
+	sys := buildAnalyzeSystemPromptForProfile("strict")
+	for _, needle := range []string{
+		"Prompt profile: strict.",
+		"Prefer omission over weak inference.",
+		"Single ordinary records should usually produce no story-level inference.",
+	} {
+		if !strings.Contains(sys, needle) {
+			t.Errorf("strict prompt missing %q; got: %s", needle, sys)
+		}
+	}
+}

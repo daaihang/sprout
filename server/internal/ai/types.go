@@ -28,6 +28,7 @@ type AnalyzeRequest struct {
 	RecordShell   AnalyzeRecordShell     `json:"record_shell"`
 	Artifacts     []AnalyzeArtifact      `json:"artifacts"`
 	KnownEntities []KnownEntityReference `json:"known_entities"`
+	DebugOptions  *DebugOptions          `json:"debug_options,omitempty"`
 }
 
 type AnalyzeRecordShell struct {
@@ -117,6 +118,25 @@ type ReflectionRequest struct {
 	LinkedArcID   string                 `json:"linked_arc_id,omitempty"`
 	KnownEntities []KnownEntityReference `json:"known_entities,omitempty"`
 	Prompt        string                 `json:"prompt,omitempty"`
+	DebugOptions  *DebugOptions          `json:"debug_options,omitempty"`
+}
+
+type DebugOptions struct {
+	PromptProfile string `json:"prompt_profile,omitempty"`
+}
+
+func (d *DebugOptions) PromptProfileOrDefault() string {
+	if d == nil {
+		return "balanced"
+	}
+	switch strings.ToLower(strings.TrimSpace(d.PromptProfile)) {
+	case "strict":
+		return "strict"
+	case "experimental":
+		return "experimental"
+	default:
+		return "balanced"
+	}
 }
 
 type ReflectionResponse struct {

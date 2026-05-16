@@ -207,6 +207,8 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/KnownEntityInput"
+        debug_options:
+          $ref: "#/components/schemas/DebugOptions"
     RecordShellInput:
       type: object
       required: [raw_text]
@@ -279,6 +281,16 @@ components:
             $ref: "#/components/schemas/KnownEntityInput"
         prompt:
           type: string
+        debug_options:
+          $ref: "#/components/schemas/DebugOptions"
+    DebugOptions:
+      type: object
+      description: Optional debug-only tuning controls. Omit in normal clients.
+      properties:
+        prompt_profile:
+          type: string
+          enum: [strict, balanced, experimental]
+          default: balanced
     ReflectionResponse:
       type: object
       required: [title, body, evidence_summary, confidence, source_record_ids]
