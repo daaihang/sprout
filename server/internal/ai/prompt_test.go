@@ -89,9 +89,13 @@ func TestBuildAnalyzeSystemPromptRejectsTechnicalEntityNoise(t *testing.T) {
 	sys := buildAnalyzeSystemPrompt()
 	for _, needle := range []string{
 		`Never create entities named "theme", "OCR", "ORC", "photo", "image", "caption", "artifact", "text", "unknown", "untitled"`,
-		`"quality tuning", "quality tuning lab", "debug", "fixture", or "scenario"`,
+		`"quality tuning", "quality tuning lab", "debug", "fixture", "scenario", "receipt", "screenshot", "bookmark", or "link"`,
 		"Do not turn artifact-processing labels, OCR labels, or visual classifier labels into entities.",
 		"return entities: [], candidate_edges: [], salience_score <= 0.25",
+		"Emotion alone is not enough for a reflection.",
+		"first-person speech transcript that names a recurring constraint",
+		"protect mornings for writing before meetings",
+		"Multiple ambient artifacts near the same time do not create a storyline by themselves.",
 	} {
 		if !strings.Contains(sys, needle) {
 			t.Errorf("system prompt missing quality rule %q; got: %s", needle, sys)
@@ -104,6 +108,10 @@ func TestBuildReflectionSystemPromptAsksForLowConfidenceWhenEvidenceIsWeak(t *te
 	for _, needle := range []string{
 		"Do not infer a life pattern from a single ordinary photo",
 		"return low confidence below 0.4",
+		"Do not turn one short emotional sentence into a life pattern.",
+		"Treat repeated concrete decisions, named people, commitments, or recurring constraints as stronger evidence",
+		"first-person voice transcripts about a recurring constraint",
+		"protected creative time",
 	} {
 		if !strings.Contains(sys, needle) {
 			t.Errorf("reflection prompt missing quality rule %q; got: %s", needle, sys)

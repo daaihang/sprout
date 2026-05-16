@@ -26,7 +26,8 @@ struct ArchitecturePipelineExecutor {
         save: @escaping () throws -> Void
     ) async throws {
         // Step 1: Fetch known entities for context (limit to 20 most recent)
-        let existingEntityNodes = try fetchExistingEntityNodes(modelContext: modelContext)
+        let activeRecordScope = QualityTuningRuntime.activeRecordScope
+        let existingEntityNodes = try fetchExistingEntityNodes(modelContext: modelContext, recordScope: activeRecordScope)
         let knownEntities = existingEntityNodes
             .sorted { $0.updatedAt > $1.updatedAt }
             .prefix(20)
@@ -57,8 +58,8 @@ struct ArchitecturePipelineExecutor {
             linkedArtifactIDs: record.artifactIDs,
             linkedRecordIDs: [record.id],
             existingEntityNodes: existingEntityNodes,
-            existingEntityEdges: try fetchExistingEntityEdges(modelContext: modelContext),
-            existingArtifactEntityLinks: try fetchExistingArtifactEntityLinks(modelContext: modelContext)
+            existingEntityEdges: try fetchExistingEntityEdges(modelContext: modelContext, recordScope: activeRecordScope),
+            existingArtifactEntityLinks: try fetchExistingArtifactEntityLinks(modelContext: modelContext, recordScope: activeRecordScope)
         )
 
         // Step 5: Persist graph updates
@@ -74,16 +75,17 @@ struct ArchitecturePipelineExecutor {
         try save()
 
         // Step 6: Build TemporalArcCandidates
-        let candidateRecords = try fetchExistingRecordShells(modelContext: modelContext)
-        let candidateAnalyses = try fetchExistingAnalyses(modelContext: modelContext, replacingWith: analysis)
-        let candidateArtifacts = try fetchExistingArtifacts(modelContext: modelContext)
-        let existingArcs = try fetchExistingTemporalArcs(modelContext: modelContext)
+        let candidateRecords = try fetchExistingRecordShells(modelContext: modelContext, recordScope: activeRecordScope)
+        let candidateAnalyses = try fetchExistingAnalyses(modelContext: modelContext, replacingWith: analysis, recordScope: activeRecordScope)
+        let candidateArtifacts = try fetchExistingArtifacts(modelContext: modelContext, recordScope: activeRecordScope)
+        let existingArcs = try fetchExistingTemporalArcs(modelContext: modelContext, recordScope: activeRecordScope)
         let candidates = candidateBuilder.buildCandidates(
             records: candidateRecords,
             analyses: candidateAnalyses,
             artifacts: candidateArtifacts,
             artifactEntityLinks: graphUpdate.artifactEntityLinks,
             entityNodes: graphUpdate.entityNodes,
+            focusRecordID: record.id,
             maxCandidates: 3
         )
 
@@ -118,7 +120,12 @@ struct ArchitecturePipelineExecutor {
                 knownEntities: Array(knownEntities),
                 prompt: analysis.reflectionHint
             )
-            if reflectionQualityPolicy.shouldStoreRecordReflection(reflectionResult).passed {
+            if reflectionQualityPolicy.shouldStoreRecordReflection(
+                reflectionResult,
+                record: record,
+                artifacts: artifacts,
+                analysis: analysis
+            ).passed {
                 let reflection = ReflectionSnapshot(
                     type: .record,
                     title: reflectionResult.title,
@@ -142,26 +149,36 @@ struct ArchitecturePipelineExecutor {
         try save()
     }
 
-    private func fetchExistingRecordShells(modelContext: ModelContext) throws -> [RecordShell] {
-        try modelContext.fetch(FetchDescriptor<RecordShellStore>()).map(\.domainModel)
+    private func fetchExistingRecordShells(modelContext: ModelContext, recordScope: Set<UUID>?) throws -> [RecordShell] {
+        let records = try modelContext.fetch(FetchDescriptor<RecordShellStore>()).map(\.domainModel)
+        guard let recordScope else { return records }
+        return records.filter { recordScope.contains($0.id) }
     }
 
     private func fetchExistingAnalyses(
         modelContext: ModelContext,
-        replacingWith current: RecordAnalysisSnapshot
+        replacingWith current: RecordAnalysisSnapshot,
+        recordScope: Set<UUID>?
     ) throws -> [RecordAnalysisSnapshot] {
         var analyses = try modelContext.fetch(FetchDescriptor<RecordAnalysisSnapshotStore>()).map(\.domainModel)
         analyses.removeAll { $0.recordID == current.recordID }
         analyses.append(current)
+        if let recordScope {
+            analyses.removeAll { !recordScope.contains($0.recordID) }
+        }
         return analyses
     }
 
-    private func fetchExistingArtifacts(modelContext: ModelContext) throws -> [Artifact] {
-        try modelContext.fetch(FetchDescriptor<ArtifactStore>()).map(\.domainModel)
+    private func fetchExistingArtifacts(modelContext: ModelContext, recordScope: Set<UUID>?) throws -> [Artifact] {
+        let artifacts = try modelContext.fetch(FetchDescriptor<ArtifactStore>()).map(\.domainModel)
+        guard let recordScope else { return artifacts }
+        return artifacts.filter { recordScope.contains($0.recordID) }
     }
 
-    private func fetchExistingTemporalArcs(modelContext: ModelContext) throws -> [TemporalArc] {
-        try modelContext.fetch(FetchDescriptor<TemporalArcStore>()).map(\.domainModel)
+    private func fetchExistingTemporalArcs(modelContext: ModelContext, recordScope: Set<UUID>?) throws -> [TemporalArc] {
+        let arcs = try modelContext.fetch(FetchDescriptor<TemporalArcStore>()).map(\.domainModel)
+        guard let recordScope else { return arcs }
+        return arcs.filter { !$0.sourceRecordIDs.isEmpty && $0.sourceRecordIDs.allSatisfy { recordScope.contains($0) } }
     }
 
     private func hasExistingArc(for candidate: TemporalArcCandidate, existingArcs: [TemporalArc]) -> Bool {
@@ -171,18 +188,30 @@ struct ArchitecturePipelineExecutor {
         }
     }
 
-    private func fetchExistingEntityNodes(modelContext: ModelContext) throws -> [EntityNode] {
+    private func fetchExistingEntityNodes(modelContext: ModelContext, recordScope: Set<UUID>?) throws -> [EntityNode] {
         let stores = try modelContext.fetch(FetchDescriptor<EntityNodeStore>())
-        return stores.map(\.domainModel)
+        let nodes = stores.map(\.domainModel)
+        guard let recordScope else { return nodes }
+        return nodes.filter { node in
+            !node.provenanceRecordIDs.isEmpty && node.provenanceRecordIDs.contains { recordScope.contains($0) }
+        }
     }
 
-    private func fetchExistingEntityEdges(modelContext: ModelContext) throws -> [EntityEdge] {
+    private func fetchExistingEntityEdges(modelContext: ModelContext, recordScope: Set<UUID>?) throws -> [EntityEdge] {
         let stores = try modelContext.fetch(FetchDescriptor<EntityEdgeStore>())
-        return stores.map(\.domainModel)
+        let edges = stores.map(\.domainModel)
+        guard let recordScope else { return edges }
+        return edges.filter { edge in
+            !edge.sourceRecordIDs.isEmpty && edge.sourceRecordIDs.contains { recordScope.contains($0) }
+        }
     }
 
-    private func fetchExistingArtifactEntityLinks(modelContext: ModelContext) throws -> [ArtifactEntityLink] {
+    private func fetchExistingArtifactEntityLinks(modelContext: ModelContext, recordScope: Set<UUID>?) throws -> [ArtifactEntityLink] {
         let stores = try modelContext.fetch(FetchDescriptor<ArtifactEntityLinkStore>())
-        return stores.map(\.domainModel)
+        let links = stores.map(\.domainModel)
+        guard let recordScope else { return links }
+        return links.filter { link in
+            link.sourceRecordID.map { recordScope.contains($0) } ?? false
+        }
     }
 }

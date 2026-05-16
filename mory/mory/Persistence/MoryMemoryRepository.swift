@@ -880,10 +880,14 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         QualityTuningRuntime.isEnabled = true
         QualityTuningRuntime.promptProfile = request.promptProfile
         QualityTuningRuntime.thresholds = request.thresholds
+        QualityTuningRuntime.activeRecordScope = []
+        defer { QualityTuningRuntime.activeRecordScope = nil }
 
         var createdMemories: [MemorySummary] = []
-        for draft in makeQualityTuningDrafts(from: request.scenario) {
+        let sessionID = UUID()
+        for draft in makeQualityTuningDrafts(from: request.scenario, sessionID: sessionID) {
             let memory = try await createMemory(from: draft)
+            QualityTuningRuntime.activeRecordScope = Set(createdMemories.map(\.record.id) + [memory.record.id])
             try await refreshMemoryPipeline(recordID: memory.record.id)
             createdMemories.append(memory)
         }
@@ -919,18 +923,19 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             rawResponseBody: diagnostics.analyzePayload?.responseBody ?? "",
             filteredSummary: makeQualityTuningFilteredSummary(diagnostics),
             storedSummary: makeQualityTuningStoredSummary(diagnostics: diagnostics, arcs: arcs, reflections: reflections),
-            gates: makeQualityTuningGateSnapshots(diagnostics),
+            gates: makeQualityTuningGateSnapshots(diagnostics, expectation: request.scenario.expectation),
             createdAt: .now
         )
     }
 
-    private func makeQualityTuningDrafts(from scenario: QualityTuningScenario) -> [MemoryCaptureDraft] {
+    private func makeQualityTuningDrafts(from scenario: QualityTuningScenario, sessionID: UUID) -> [MemoryCaptureDraft] {
         func draft(title: String, body: String, mood: String?, context: String, source: CaptureSource, artifacts: [CaptureArtifactDraft]) -> MemoryCaptureDraft {
             MemoryCaptureDraft(
                 title: title,
                 rawText: body,
                 mood: mood,
                 inputContext: [
+                    "quality tuning session: \(sessionID.uuidString)",
                     "quality tuning lab: \(scenario.id.rawValue)",
                     context.trimmedOrNil
                 ].compactMap { $0 }.joined(separator: "\n"),
@@ -964,6 +969,19 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             return [
                 draft(title: "Weak related - calendar", body: "Calendar reminder to move the dentist appointment.", mood: nil, context: scenario.context, source: .composer, artifacts: [.text(title: "Weak related - calendar", body: "Calendar reminder to move the dentist appointment.")]),
                 draft(title: "Weak related - grocery", body: "Buy lemons, rice, and paper towels after work.", mood: nil, context: scenario.context, source: .composer, artifacts: [.text(title: "Weak related - grocery", body: "Buy lemons, rice, and paper towels after work.")]),
+                draft(title: scenario.title, body: scenario.body, mood: scenario.mood, context: scenario.context, source: scenario.captureSource, artifacts: scenario.artifacts)
+            ]
+        case .denseUnrelatedHistory:
+            return [
+                draft(title: "Dense history - dentist", body: "Move the dentist appointment from Tuesday to Thursday.", mood: nil, context: scenario.context, source: .composer, artifacts: [.text(title: "Dense history - dentist", body: "Move the dentist appointment from Tuesday to Thursday.")]),
+                draft(title: "Dense history - groceries", body: "Buy lemons, rice, paper towels, and batteries after work.", mood: nil, context: scenario.context, source: .composer, artifacts: [.text(title: "Dense history - groceries", body: "Buy lemons, rice, paper towels, and batteries after work.")]),
+                draft(title: "Dense history - receipt", body: "Receipt photo import with weak OCR and no personal meaning.", mood: nil, context: scenario.context, source: .photo, artifacts: [.photo(title: "Receipt screenshot", summary: "OCR ORC receipt image artifact", filename: "dense_receipt.jpg", imageData: nil, thumbnailData: nil, ocrText: "OCR ORC receipt image artifact")]),
+                draft(title: scenario.title, body: scenario.body, mood: scenario.mood, context: scenario.context, source: scenario.captureSource, artifacts: scenario.artifacts)
+            ]
+        case .recurringCareerHistory:
+            return [
+                draft(title: "Career transition - first", body: "I noticed relief after admitting to Linh that the current launch scope is too wide.", mood: "relieved", context: scenario.context, source: .composer, artifacts: [.text(title: "Career transition - first", body: "I noticed relief after admitting to Linh that the current launch scope is too wide.")]),
+                draft(title: "Career transition - second", body: "During planning I chose the smaller launch scope and wrote down the roles I need to hand off.", mood: "focused", context: scenario.context, source: .composer, artifacts: [.text(title: "Career transition - second", body: "During planning I chose the smaller launch scope and wrote down the roles I need to hand off.")]),
                 draft(title: scenario.title, body: scenario.body, mood: scenario.mood, context: scenario.context, source: scenario.captureSource, artifacts: scenario.artifacts)
             ]
         default:
@@ -1030,7 +1048,10 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         ].joined(separator: "\n")
     }
 
-    private func makeQualityTuningGateSnapshots(_ diagnostics: DebugDiagnosticsSnapshot) -> [QualityTuningGateSnapshot] {
+    private func makeQualityTuningGateSnapshots(
+        _ diagnostics: DebugDiagnosticsSnapshot,
+        expectation: QualityTuningExpectation
+    ) -> [QualityTuningGateSnapshot] {
         guard let chain = diagnostics.fixture?.chain else {
             return [.init(title: "Target", passed: false, detail: "No fixture chain.")]
         }
@@ -1053,18 +1074,28 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         }
 
         if chain.arcs.isEmpty {
-            gates.append(.init(title: "Arc gate", passed: false, detail: "No stored arc for target record."))
+            let pass = expectation != .arcExpected
+            gates.append(.init(
+                title: "Arc gate",
+                passed: pass,
+                detail: pass ? "No stored arc for target record, as expected." : "No stored arc for target record."
+            ))
         } else {
             for arc in chain.arcs {
-                gates.append(.init(title: "Arc \(arc.title)", passed: true, detail: "records \(arc.sourceRecordIDs.count) · cluster \(arc.clusterStrength)"))
+                gates.append(.init(
+                    title: "Arc \(arc.title)",
+                    passed: expectation != .noArcNoReflection,
+                    detail: "records \(arc.sourceRecordIDs.count) · cluster \(arc.clusterStrength)"
+                ))
             }
         }
 
         if let analysis = chain.analysis {
             let result = reflectionPolicy.shouldRequestRecordReflection(record: chain.record, artifacts: chain.artifacts, analysis: analysis)
+            let pass = expectation == .noArcNoReflection ? !result.passed : (result.passed || expectation == .inspectOnly)
             gates.append(.init(
                 title: "Record reflection request",
-                passed: result.passed,
+                passed: pass,
                 detail: [result.reason, result.metric].compactMap(\.self).joined(separator: " · ")
             ))
         }

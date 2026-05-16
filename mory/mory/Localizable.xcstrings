@@ -1,6 +1,9 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%lld" : {
+
+    },
     "Action Log (%lld)" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -17,6 +20,9 @@
           }
         }
       }
+    },
+    "Arc min records: %lld" : {
+
     },
     "arc.action.accept" : {
       "extractionState" : "manual",
@@ -1616,6 +1622,9 @@
         }
       }
     },
+    "Copy All Reports" : {
+
+    },
     "Copy Auth Report" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1632,6 +1641,27 @@
           }
         }
       }
+    },
+    "Copy Full Report" : {
+
+    },
+    "Core Batch runs strict and balanced profiles over the high-signal input and history scenarios." : {
+
+    },
+    "Custom body override" : {
+
+    },
+    "Custom Content" : {
+
+    },
+    "Custom context override" : {
+
+    },
+    "Custom mood override" : {
+
+    },
+    "Custom title override" : {
+
     },
     "Debug" : {
       "extractionState" : "manual",
@@ -4795,6 +4825,125 @@
         }
       }
     },
+    "debug.quality.arc" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arc gate"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "故事线门控"
+          }
+        }
+      }
+    },
+    "debug.quality.arc.filtered" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No accepted arc. Requires at least two related memories with enough shared signal."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有通过的故事线。需要至少两条相关记忆，并且有足够共享信号。"
+          }
+        }
+      }
+    },
+    "debug.quality.empty" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No quality gate data is available for this target yet."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当前目标还没有质量门控数据。"
+          }
+        }
+      }
+    },
+    "debug.quality.entity" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entity gate"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "实体门控"
+          }
+        }
+      }
+    },
+    "debug.quality.footer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shows how Phase 7 quality gates treat raw model output and current pipeline results."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "展示 Phase 7 质量门控如何处理模型原始输出和当前管线结果。"
+          }
+        }
+      }
+    },
+    "debug.quality.noTarget" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quality target"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "质量目标"
+          }
+        }
+      }
+    },
+    "debug.quality.recordReflection" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Record reflection gate"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "单条感悟门控"
+          }
+        }
+      }
+    },
     "debug.result.summary" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4914,23 +5063,6 @@
         }
       }
     },
-    "debug.section.qualityGates" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Quality Gates"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "质量门控"
-          }
-        }
-      }
-    },
     "debug.section.customDiagnostic" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5012,6 +5144,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "来源"
+          }
+        }
+      }
+    },
+    "debug.section.qualityGates" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quality Gates"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "质量门控"
           }
         }
       }
@@ -6138,121 +6287,19 @@
         }
       }
     },
-    "debug.quality.arc" : {
+    "debug.value.accepted" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Arc gate"
+            "value" : "accepted"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "故事线门控"
-          }
-        }
-      }
-    },
-    "debug.quality.arc.filtered" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No accepted arc. Requires at least two related memories with enough shared signal."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "没有通过的故事线。需要至少两条相关记忆，并且有足够共享信号。"
-          }
-        }
-      }
-    },
-    "debug.quality.empty" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No quality gate data is available for this target yet."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "当前目标还没有质量门控数据。"
-          }
-        }
-      }
-    },
-    "debug.quality.entity" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Entity gate"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "实体门控"
-          }
-        }
-      }
-    },
-    "debug.quality.footer" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Shows how Phase 7 quality gates treat raw model output and current pipeline results."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "展示 Phase 7 质量门控如何处理模型原始输出和当前管线结果。"
-          }
-        }
-      }
-    },
-    "debug.quality.noTarget" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Quality target"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "质量目标"
-          }
-        }
-      }
-    },
-    "debug.quality.recordReflection" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Record reflection gate"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "单条感悟门控"
+            "value" : "已通过"
           }
         }
       }
@@ -6274,23 +6321,6 @@
         }
       }
     },
-    "debug.value.accepted" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "accepted"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "已通过"
-          }
-        }
-      }
-    },
     "debug.value.denied" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6304,23 +6334,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已拒绝"
-          }
-        }
-      }
-    },
-    "debug.value.filtered" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "filtered"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "已过滤"
           }
         }
       }
@@ -6355,6 +6368,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已启用"
+          }
+        }
+      }
+    },
+    "debug.value.filtered" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "filtered"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已过滤"
           }
         }
       }
@@ -6512,6 +6542,18 @@
         }
       }
     },
+    "Disable tuning runtime" : {
+
+    },
+    "Disabled" : {
+
+    },
+    "Each run creates real local memories and calls the configured Go API through the normal pipeline." : {
+
+    },
+    "Enabled" : {
+
+    },
     "entity.nav.title" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6546,6 +6588,18 @@
         }
       }
     },
+    "Error" : {
+
+    },
+    "Execution" : {
+
+    },
+    "Expectation: %@" : {
+
+    },
+    "FAIL" : {
+
+    },
     "Failed Stage: %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6562,6 +6616,9 @@
           }
         }
       }
+    },
+    "Filtered" : {
+
     },
     "home.board.arc.ongoing %lld" : {
       "extractionState" : "manual",
@@ -6800,6 +6857,12 @@
           }
         }
       }
+    },
+    "Leave fields empty to use the selected preset." : {
+
+    },
+    "Local Gate Overrides" : {
+
     },
     "memories.empty.description" : {
       "extractionState" : "manual",
@@ -7362,6 +7425,9 @@
         }
       }
     },
+    "PASS" : {
+
+    },
     "people.empty.decisions" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7736,6 +7802,24 @@
         }
       }
     },
+    "Profile: %@" : {
+
+    },
+    "Prompt profile" : {
+
+    },
+    "Quality Tuning Lab" : {
+
+    },
+    "Raw Response" : {
+
+    },
+    "Records: %@" : {
+
+    },
+    "Reflection evidence chars: %lld" : {
+
+    },
     "reflection.action.archive" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8008,6 +8092,39 @@
         }
       }
     },
+    "Request" : {
+
+    },
+    "Reset defaults" : {
+
+    },
+    "Run All Presets" : {
+
+    },
+    "Run Core Batch" : {
+
+    },
+    "Run History" : {
+
+    },
+    "Run Selected Scenario" : {
+
+    },
+    "Run Strict + Balanced Matrix" : {
+
+    },
+    "Running..." : {
+
+    },
+    "Runs use the real memory repository and will appear in Home, Timeline, Search, Arcs, and Reflections." : {
+
+    },
+    "Runtime override" : {
+
+    },
+    "Scenario" : {
+
+    },
     "search.empty.arcs" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8262,6 +8379,9 @@
           }
         }
       }
+    },
+    "Stored" : {
+
     },
     "tab.arcs" : {
       "extractionState" : "manual",

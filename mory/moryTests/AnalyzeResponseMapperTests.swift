@@ -156,10 +156,10 @@ final class AnalyzeResponseMapperTests: XCTestCase {
             {"kind": "theme", "name": "quality tuning", "confidence": 0.99},
             {"kind": "theme", "name": "quality tuning lab", "confidence": 0.99},
             {"kind": "theme", "name": "debug scenario", "confidence": 0.99},
-            {"kind": "theme", "name": "receipt review", "confidence": 0.82}
+            {"kind": "theme", "name": "pottery class", "confidence": 0.82}
           ],
           "candidate_edges": [
-            {"from_name": "quality tuning", "from_kind": "theme", "to_name": "receipt review", "to_kind": "theme", "relation": "related_to", "confidence": 0.92}
+            {"from_name": "quality tuning", "from_kind": "theme", "to_name": "pottery class", "to_kind": "theme", "relation": "related_to", "confidence": 0.92}
           ],
           "insight": "A receipt capture used for debug.",
           "summary": "A receipt capture used for debug.",
@@ -173,13 +173,14 @@ final class AnalyzeResponseMapperTests: XCTestCase {
         let envelope = try JSONDecoder().decode(AnalyzeResponseEnvelope.self, from: Data(json.utf8))
         let snapshot = AnalyzeResponseMapper().map(recordID: UUID(), response: envelope)
 
-        XCTAssertEqual(snapshot.entityMentions.map(\.name), ["receipt review"])
+        XCTAssertEqual(snapshot.entityMentions.map(\.name), ["pottery class"])
         XCTAssertTrue(snapshot.candidateEdges.isEmpty)
 
         let policy = EntityQualityPolicy(thresholds: .defaults)
         XCTAssertFalse(policy.usefulThemeLabel("quality tuning"))
         XCTAssertFalse(policy.usefulThemeLabel("quality tuning lab"))
         XCTAssertFalse(policy.usefulThemeLabel("debug scenario"))
+        XCTAssertFalse(policy.usefulThemeLabel("receipt review"))
     }
 
     func testDefaultArcPolicyRejectsWeakDebugScenarioCluster() throws {
@@ -192,13 +193,92 @@ final class AnalyzeResponseMapperTests: XCTestCase {
             startDate: Date(timeIntervalSince1970: 1),
             endDate: Date(timeIntervalSince1970: 2),
             intensityScore: 4.5,
-            clusterStrength: 0.474985
+            clusterStrength: 0.474985,
+            averageSalience: 0.7
         )
 
         let result = ArcQualityPolicy(thresholds: .defaults).evaluate(candidate)
 
         XCTAssertFalse(result.passed)
         XCTAssertEqual(result.reason, "cluster strength below threshold")
+    }
+
+    func testFocusedArcCandidateIncludesCurrentRecordAfterSimilarHistory() throws {
+        let baseDate = Date(timeIntervalSince1970: 1_715_000_000)
+        let recordIDs = [UUID(), UUID(), UUID()]
+        let artifactIDs = [UUID(), UUID(), UUID()]
+        let records = zip(recordIDs, artifactIDs).enumerated().map { index, pair in
+            RecordShell(
+                id: pair.0,
+                createdAt: baseDate.addingTimeInterval(Double(index)),
+                updatedAt: baseDate.addingTimeInterval(Double(index)),
+                captureSource: .composer,
+                rawText: [
+                    "I noticed relief after admitting to Linh that the current launch scope is too wide.",
+                    "During planning I chose the smaller launch scope and wrote down the roles I need to hand off.",
+                    "Third note about the same career transition: I told Linh the smaller launch scope is the version I can actually stand behind.",
+                ][index],
+                artifactIDs: [pair.1]
+            )
+        }
+        let artifacts = zip(records, artifactIDs).map { record, artifactID in
+            Artifact(
+                id: artifactID,
+                recordID: record.id,
+                kind: .text,
+                title: "Career transition",
+                summary: record.rawText,
+                textContent: record.rawText,
+                createdAt: record.createdAt,
+                updatedAt: record.updatedAt
+            )
+        }
+        let linhID = UUID()
+        let entityNodes = [
+            EntityNode(
+                id: linhID,
+                kind: .person,
+                displayName: "Linh",
+                provenanceRecordIDs: recordIDs,
+                createdAt: baseDate,
+                updatedAt: baseDate,
+                confidence: 0.95
+            )
+        ]
+        let links = zip(artifactIDs, recordIDs).map { artifactID, recordID in
+            ArtifactEntityLink(
+                artifactID: artifactID,
+                entityID: linhID,
+                confidence: 0.95,
+                source: "analysis",
+                sourceRecordID: recordID,
+                createdAt: baseDate
+            )
+        }
+        let analyses = recordIDs.map {
+            RecordAnalysisSnapshot(
+                recordID: $0,
+                summary: "Career transition and launch scope.",
+                themes: ["career transition", "launch scope"],
+                emotionInterpretation: "focused",
+                salienceScore: 0.7,
+                createdAt: baseDate
+            )
+        }
+
+        let candidates = TemporalArcCandidateBuilder().buildCandidates(
+            records: records,
+            analyses: analyses,
+            artifacts: artifacts,
+            artifactEntityLinks: links,
+            entityNodes: entityNodes,
+            focusRecordID: recordIDs[2],
+            maxCandidates: 3
+        )
+
+        XCTAssertEqual(candidates.count, 1)
+        XCTAssertTrue(candidates[0].recordIDs.contains(recordIDs[2]))
+        XCTAssertGreaterThanOrEqual(Set(candidates[0].recordIDs).count, 2)
     }
 
     func testTagsDoNotFallbackIntoThemeEntitiesWhenEntitiesAreEmpty() throws {
@@ -269,6 +349,26 @@ final class AnalyzeResponseMapperTests: XCTestCase {
         var strict = QualityTuningThresholds.defaults
         strict.entityMinimumConfidence = 0.80
         XCTAssertFalse(EntityQualityPolicy(thresholds: strict).evaluate(entity).passed)
+    }
+
+    func testQualityTuningPresetMatrixCoversInputAndHistoryVariation() throws {
+        let scenarios = QualityTuningScenarioID.allCases.map(QualityTuningScenario.preset)
+        let titles = Set(scenarios.map(\.title))
+
+        XCTAssertTrue(titles.contains("Terse neutral text"))
+        XCTAssertTrue(titles.contains("High emotion short text"))
+        XCTAssertTrue(titles.contains("Photo with real subject"))
+        XCTAssertTrue(titles.contains("Ambient context only"))
+        XCTAssertTrue(titles.contains("Dense unrelated history"))
+        XCTAssertTrue(titles.contains("Recurring career history"))
+        XCTAssertTrue(scenarios.contains { $0.captureSource == .audio })
+        XCTAssertTrue(scenarios.contains { $0.artifacts.contains { artifact in
+            if case .link = artifact { return true }
+            return false
+        }})
+        XCTAssertTrue(scenarios.contains { $0.expectation == .arcExpected })
+        XCTAssertTrue(scenarios.contains { $0.expectation == .noArcNoReflection })
+        XCTAssertGreaterThanOrEqual(scenarios.count, 14)
     }
 
     func testPhotoArtifactProcessorHandlesVisionFailuresWithoutContinuationCrash() async throws {

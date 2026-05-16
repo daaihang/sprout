@@ -11,6 +11,7 @@ struct TemporalArcCandidate: Identifiable, Sendable {
     var endDate: Date
     var intensityScore: Double
     var clusterStrength: Double
+    var averageSalience: Double
     var dominantTheme: String?
     var dominantEntityName: String?
 
@@ -25,6 +26,7 @@ struct TemporalArcCandidate: Identifiable, Sendable {
         endDate: Date,
         intensityScore: Double,
         clusterStrength: Double,
+        averageSalience: Double,
         dominantTheme: String? = nil,
         dominantEntityName: String? = nil
     ) {
@@ -38,6 +40,7 @@ struct TemporalArcCandidate: Identifiable, Sendable {
         self.endDate = endDate
         self.intensityScore = intensityScore
         self.clusterStrength = clusterStrength
+        self.averageSalience = averageSalience
         self.dominantTheme = dominantTheme
         self.dominantEntityName = dominantEntityName
     }
@@ -48,7 +51,13 @@ struct TemporalArcCandidateBuilder {
     private let maximumRecordGap: TimeInterval = 60 * 60 * 24 * 10
     private let minimumSeedSimilarity = 0.33
     private let minimumExpansionSimilarity = 0.22
+    private let minimumFallbackSalience = 0.5
     private let entityQualityPolicy = EntityQualityPolicy()
+    private let stopwords: Set<String> = [
+        "about", "after", "again", "around", "before", "current", "during", "first", "from",
+        "have", "into", "keep", "landed", "later", "need", "note", "notes", "same",
+        "that", "their", "there", "this", "three", "told", "with", "work"
+    ]
 
     func buildCandidates(
         records: [RecordShell],
@@ -56,6 +65,7 @@ struct TemporalArcCandidateBuilder {
         artifacts: [Artifact],
         artifactEntityLinks: [ArtifactEntityLink],
         entityNodes: [EntityNode],
+        focusRecordID: UUID? = nil,
         maxCandidates: Int
     ) -> [TemporalArcCandidate] {
         let artifactIndex = Dictionary(uniqueKeysWithValues: artifacts.map { ($0.id, $0) })
@@ -75,6 +85,34 @@ struct TemporalArcCandidateBuilder {
             }
 
         guard !recordContexts.isEmpty else { return [] }
+
+        if let focusRecordID, let focus = recordContexts.first(where: { $0.record.id == focusRecordID }) {
+            var cluster = [focus]
+            for candidate in recordContexts where candidate.record.id != focusRecordID {
+                guard abs(candidate.record.updatedAt.timeIntervalSince(focus.record.updatedAt)) <= clusteringWindow else { continue }
+                guard isCloseEnough(candidate.record, toAnyOf: [focus.record]) else { continue }
+
+                let similarity = similarityScore(between: cluster, and: candidate)
+                if cluster.count == 1 {
+                    guard similarity >= minimumSeedSimilarity else { continue }
+                } else {
+                    guard similarity >= minimumExpansionSimilarity else { continue }
+                }
+                cluster.append(candidate)
+            }
+
+            if cluster.count == 1,
+               let fallback = bestAdjacentPair(for: focus, within: recordContexts, excluding: [focus.record.id]) {
+                cluster.append(fallback)
+            }
+
+            if cluster.count == 1 {
+                let fallbackCluster = recurringFallbackCluster(for: focus, within: recordContexts)
+                cluster.append(contentsOf: fallbackCluster)
+            }
+
+            return buildCandidate(from: cluster).map { [$0] } ?? []
+        }
 
         var consumedRecordIDs = Set<UUID>()
         var candidates: [TemporalArcCandidate] = []
@@ -193,6 +231,7 @@ struct TemporalArcCandidateBuilder {
             endDate: last.record.updatedAt,
             intensityScore: intensityScore,
             clusterStrength: clusterStrength,
+            averageSalience: averageSalience,
             dominantTheme: themeLabels.first,
             dominantEntityName: entityNames.first
         )
@@ -227,10 +266,43 @@ struct TemporalArcCandidateBuilder {
 
     private func pairSimilarity(between lhs: RecordContext, and rhs: RecordContext) -> Double {
         let themeOverlap = overlapScore(lhs.themeLabels, rhs.themeLabels)
-        let entityOverlap = overlapScore(Array(lhs.entityIDs), Array(rhs.entityIDs))
+        let entityIDOverlap = overlapScore(Array(lhs.entityIDs), Array(rhs.entityIDs))
+        let entityNameOverlap = overlapScore(lhs.entityNames.map(normalizeAnchor), rhs.entityNames.map(normalizeAnchor))
+        let entityOverlap = max(entityIDOverlap, entityNameOverlap)
         let textOverlap = overlapScore(Array(lhs.textBag), Array(rhs.textBag))
         let timeProximity = timeProximityScore(lhs.record.updatedAt, rhs.record.updatedAt)
         return themeOverlap * 0.35 + entityOverlap * 0.35 + textOverlap * 0.10 + timeProximity * 0.20
+    }
+
+    private func recurringFallbackCluster(for focus: RecordContext, within contexts: [RecordContext]) -> [RecordContext] {
+        contexts
+            .filter {
+                $0.record.id != focus.record.id &&
+                    abs($0.record.updatedAt.timeIntervalSince(focus.record.updatedAt)) <= maximumRecordGap &&
+                    hasRecurringAnchor(between: focus, and: $0)
+            }
+            .sorted { lhs, rhs in
+                let leftSimilarity = pairSimilarity(between: focus, and: lhs)
+                let rightSimilarity = pairSimilarity(between: focus, and: rhs)
+                if leftSimilarity == rightSimilarity {
+                    return lhs.record.updatedAt > rhs.record.updatedAt
+                }
+                return leftSimilarity > rightSimilarity
+            }
+            .prefix(4)
+            .map { $0 }
+    }
+
+    private func hasRecurringAnchor(between lhs: RecordContext, and rhs: RecordContext) -> Bool {
+        guard lhs.salienceScore >= minimumFallbackSalience, rhs.salienceScore >= minimumFallbackSalience else { return false }
+
+        let sharedThemes = Set(lhs.themeLabels.map(normalizeAnchor)).intersection(Set(rhs.themeLabels.map(normalizeAnchor)))
+        if !sharedThemes.isEmpty { return true }
+
+        let sharedEntities = Set(lhs.entityNames.map(normalizeAnchor)).intersection(Set(rhs.entityNames.map(normalizeAnchor)))
+        if !sharedEntities.isEmpty { return true }
+
+        return lhs.textBag.intersection(rhs.textBag).count >= 2
     }
 
     private func isCloseEnough(_ record: RecordShell, toAnyOf clusterRecords: [RecordShell]) -> Bool {
@@ -269,8 +341,16 @@ struct TemporalArcCandidateBuilder {
         let corpus = ([recordText] + artifactTexts).joined(separator: " ").lowercased()
         let tokens = corpus
             .components(separatedBy: CharacterSet.alphanumerics.inverted)
-            .filter { $0.count >= 4 }
+            .filter { $0.count >= 4 && !stopwords.contains($0) && entityQualityPolicy.usefulThemeLabel($0) }
         return Set(tokens)
+    }
+
+    private func normalizeAnchor(_ value: String) -> String {
+        value
+            .lowercased()
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { !$0.isEmpty && !stopwords.contains($0) }
+            .joined(separator: " ")
     }
 
     private func frequencyMap(for values: [String]) -> [String: Int] {

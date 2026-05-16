@@ -1593,6 +1593,45 @@ private struct DebugQualityTuningLabView: View {
             }
 
             Section {
+                Button {
+                    Task { await runSelectedScenario() }
+                } label: {
+                    Label(isRunning ? "Running..." : "Run Selected Scenario", systemImage: "play.circle")
+                }
+                .disabled(isRunning)
+                Button {
+                    Task { await runCoreBatch() }
+                } label: {
+                    Label(isRunning ? "Running..." : "Run Core Batch", systemImage: "checklist.checked")
+                }
+                .disabled(isRunning)
+                Button {
+                    Task { await runAllScenarios() }
+                } label: {
+                    Label(isRunning ? "Running..." : "Run All Presets", systemImage: "play.circle.fill")
+                }
+                .disabled(isRunning)
+                Button {
+                    Task { await runStrictBalancedMatrix() }
+                } label: {
+                    Label(isRunning ? "Running..." : "Run Strict + Balanced Matrix", systemImage: "square.grid.2x2")
+                }
+                .disabled(isRunning)
+                if !reports.isEmpty {
+                    Button {
+                        UIPasteboard.general.string = reports.map(\.exportText).joined(separator: "\n\n")
+                        showCopiedToast("All tuning reports copied")
+                    } label: {
+                        Label("Copy All Reports", systemImage: "doc.on.doc.fill")
+                    }
+                }
+            } header: {
+                Text("Execution")
+            } footer: {
+                Text("Core Batch runs strict and balanced profiles over the high-signal input and history scenarios.")
+            }
+
+            Section {
                 TextField("Custom title override", text: $customTitle)
                 TextField("Custom body override", text: $customBody, axis: .vertical)
                     .lineLimit(3...8)
@@ -1611,6 +1650,7 @@ private struct DebugQualityTuningLabView: View {
                 Stepper("Arc min records: \(thresholds.arcMinimumRecordCount)", value: $thresholds.arcMinimumRecordCount, in: 1...5)
                 thresholdSlider("Arc cluster strength", value: $thresholds.arcMinimumClusterStrength, range: 0.1...0.95)
                 thresholdSlider("Arc intensity", value: $thresholds.arcMinimumIntensityScore, range: 0.5...10)
+                thresholdSlider("Arc average salience", value: $thresholds.arcMinimumAverageSalience, range: 0.1...0.95)
                 thresholdSlider("Reflection salience", value: $thresholds.reflectionMinimumRecordSalience, range: 0.1...0.95)
                 Stepper("Reflection evidence chars: \(thresholds.reflectionMinimumEvidenceCharacters)", value: $thresholds.reflectionMinimumEvidenceCharacters, in: 0...500, step: 10)
                 thresholdSlider("Reflection confidence", value: $thresholds.reflectionMinimumResultConfidence, range: 0.1...0.95)
@@ -1640,6 +1680,12 @@ private struct DebugQualityTuningLabView: View {
                     Label(isRunning ? "Running..." : "Run All Presets", systemImage: "play.circle.fill")
                 }
                 .disabled(isRunning)
+                Button {
+                    Task { await runStrictBalancedMatrix() }
+                } label: {
+                    Label(isRunning ? "Running..." : "Run Strict + Balanced Matrix", systemImage: "square.grid.2x2")
+                }
+                .disabled(isRunning)
             } footer: {
                 Text("Each run creates real local memories and calls the configured Go API through the normal pipeline.")
             }
@@ -1661,6 +1707,12 @@ private struct DebugQualityTuningLabView: View {
 
             if !reports.isEmpty {
                 Section {
+                    Button {
+                        UIPasteboard.general.string = reports.map(\.exportText).joined(separator: "\n\n")
+                        showCopiedToast("All tuning reports copied")
+                    } label: {
+                        Label("Copy All Reports", systemImage: "doc.on.doc.fill")
+                    }
                     ForEach(reports) { report in
                         NavigationLink {
                             DebugQualityTuningReportView(report: report)
@@ -1752,6 +1804,68 @@ private struct DebugQualityTuningLabView: View {
             } catch {
                 errorMessage = "\(id.title): \(error.localizedDescription)"
                 break
+            }
+        }
+    }
+
+    private func runCoreBatch() async {
+        guard !isRunning else { return }
+        let ids: [QualityTuningScenarioID] = [
+            .terseNeutralText,
+            .highEmotionShortText,
+            .photoOCRNoise,
+            .linkCapture,
+            .speechTranscript,
+            .multiArtifactContext,
+            .twoRelatedEvents,
+            .weakRelatedEvents,
+            .denseUnrelatedHistory,
+            .recurringCareerHistory,
+        ]
+        isRunning = true
+        defer { isRunning = false }
+        errorMessage = nil
+        for profile in [QualityTuningPromptProfile.strict, .balanced] {
+            for id in ids {
+                do {
+                    let report = try await memoryRepository.runQualityTuningScenario(
+                        QualityTuningRunRequest(
+                            scenario: QualityTuningScenario.preset(id),
+                            promptProfile: profile,
+                            thresholds: thresholds
+                        )
+                    )
+                    latestReport = report
+                    reports.insert(report, at: 0)
+                } catch {
+                    errorMessage = "\(profile.rawValue) / \(id.title): \(error.localizedDescription)"
+                    return
+                }
+            }
+        }
+    }
+
+    private func runStrictBalancedMatrix() async {
+        guard !isRunning else { return }
+        isRunning = true
+        defer { isRunning = false }
+        errorMessage = nil
+        for profile in [QualityTuningPromptProfile.strict, .balanced] {
+            for id in QualityTuningScenarioID.allCases {
+                do {
+                    let report = try await memoryRepository.runQualityTuningScenario(
+                        QualityTuningRunRequest(
+                            scenario: QualityTuningScenario.preset(id),
+                            promptProfile: profile,
+                            thresholds: thresholds
+                        )
+                    )
+                    latestReport = report
+                    reports.insert(report, at: 0)
+                } catch {
+                    errorMessage = "\(profile.rawValue) / \(id.title): \(error.localizedDescription)"
+                    return
+                }
             }
         }
     }
