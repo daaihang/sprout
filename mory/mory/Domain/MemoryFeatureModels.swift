@@ -405,6 +405,8 @@ protocol MoryMemoryRepositorying: AnyObject {
     func rerunDebugPipeline(targetType: DebugAnalysisTarget, targetID: UUID?, mode: DebugRebuildMode) async throws
     func seedDebugFixtures(count: Int) async throws -> [DebugMemoryFixtureSnapshot]
     func clearDebugFixtures() throws
+    func clearAllLocalData() throws
+    func runQualityTuningScenario(_ request: QualityTuningRunRequest) async throws -> QualityTuningRunReport
     func seedDebugFixture() async throws -> DebugMemoryFixtureSnapshot
     func fetchDebugFixtureSnapshot(recordID: UUID) throws -> DebugMemoryFixtureSnapshot?
 }

@@ -1,6 +1,8 @@
 import Foundation
 
 struct AnalyzeResponseMapper {
+    private let entityQualityPolicy = EntityQualityPolicy()
+
     func map(recordID: UUID, response: AnalyzeResponseEnvelope, createdAt: Date = .now) -> RecordAnalysisSnapshot {
         RecordAnalysisSnapshot(
             recordID: recordID,
@@ -29,7 +31,8 @@ struct AnalyzeResponseMapper {
             .map(\.name)
         var values = themeEntities
         values.append(contentsOf: response.tags)
-        return Array(NSOrderedSet(array: values.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty })) as? [String] ?? values
+        let filtered = values.filter { entityQualityPolicy.usefulThemeLabel($0) }
+        return Array(NSOrderedSet(array: filtered)) as? [String] ?? filtered
     }
 
     private func buildEmotionInterpretation(from response: AnalyzeResponseEnvelope) -> String {
@@ -52,24 +55,22 @@ struct AnalyzeResponseMapper {
     }
 
     private func retrievalTerms(from response: AnalyzeResponseEnvelope) -> [String] {
-        let entityNames = response.entities.map(\.name)
+        let entityNames = response.entities
+            .compactMap(mapEntity)
+            .map(\.name)
         let values = response.retrievalTerms + response.tags + normalizedThemes(from: response) + entityNames
         return Array(
             NSOrderedSet(
                 array: values.filter {
-                    !$0.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty
+                    let trimmed = $0.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+                    return !trimmed.isEmpty && entityQualityPolicy.usefulThemeLabel(trimmed)
                 }
             )
         ) as? [String] ?? values
     }
 
     private func inferEntities(from response: AnalyzeResponseEnvelope) -> [EntityReference] {
-        var results = response.entities.compactMap(mapEntity)
-        if results.isEmpty {
-            results = normalizedThemes(from: response).prefix(4).map {
-                EntityReference(kind: .theme, name: $0)
-            }
-        }
+        let results = entityQualityPolicy.filter(response.entities.compactMap(mapEntity))
         return Array(results.prefix(8))
     }
 
@@ -86,7 +87,8 @@ struct AnalyzeResponseMapper {
     }
 
     private func inferCandidateEdges(from response: AnalyzeResponseEnvelope) -> [CandidateEntityEdge] {
-        response.candidateEdges.compactMap { edge in
+        let entityPolicy = entityQualityPolicy
+        return response.candidateEdges.compactMap { edge -> CandidateEntityEdge? in
             guard
                 let fromKind = EntityKind(rawValue: edge.fromKind.lowercased()),
                 let toKind = EntityKind(rawValue: edge.toKind.lowercased()),
@@ -95,12 +97,20 @@ struct AnalyzeResponseMapper {
                 return nil
             }
 
-            return CandidateEntityEdge(
-                from: EntityReference(kind: fromKind, name: edge.fromName),
-                to: EntityReference(kind: toKind, name: edge.toName),
+            let candidate = CandidateEntityEdge(
+                from: EntityReference(kind: fromKind, name: edge.fromName, confidence: edge.confidence),
+                to: EntityReference(kind: toKind, name: edge.toName, confidence: edge.confidence),
                 relationKind: relationKind,
                 confidence: edge.confidence
             )
+            guard
+                entityPolicy.evaluate(candidate.from).passed,
+                entityPolicy.evaluate(candidate.to).passed,
+                (edge.confidence ?? 0) >= 0.55
+            else {
+                return nil
+            }
+            return candidate
         }
     }
 
@@ -130,7 +140,7 @@ struct AnalyzeResponseMapper {
     }
 }
 
-struct AnalyzeResponseEnvelope: Codable, Sendable {
+nonisolated struct AnalyzeResponseEnvelope: Codable, Sendable {
     struct Emotion: Codable, Sendable {
         var label: String
         var intensity: Double?

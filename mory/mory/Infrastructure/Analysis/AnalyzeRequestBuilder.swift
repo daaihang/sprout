@@ -9,7 +9,8 @@ struct AnalyzeRequestBuilder {
         knownEntities: [EntityReference] = [],
         analysisReason: String = "manual",
         schemaVersion: String = "record_aggregate.v1",
-        clientVersion: String = "mory.v3"
+        clientVersion: String = "mory.v3",
+        debugOptions: AnalyzeRequestPayload.DebugOptionsPayload? = AnalyzeRequestPayload.DebugOptionsPayload.current()
     ) -> AnalyzeRequestPayload {
         AnalyzeRequestPayload(
             schemaVersion: schemaVersion,
@@ -43,7 +44,8 @@ struct AnalyzeRequestBuilder {
                     aliases: entity.aliases,
                     confidence: entity.confidence
                 )
-            }
+            },
+            debugOptions: debugOptions
         )
     }
 }
@@ -97,12 +99,26 @@ struct AnalyzeRequestPayload: Codable, Sendable {
         var confidence: Double?
     }
 
+    struct DebugOptionsPayload: Codable, Sendable {
+        var promptProfile: String
+
+        enum CodingKeys: String, CodingKey {
+            case promptProfile = "prompt_profile"
+        }
+
+        static func current() -> DebugOptionsPayload? {
+            guard QualityTuningRuntime.isEnabled else { return nil }
+            return DebugOptionsPayload(promptProfile: QualityTuningRuntime.promptProfile.rawValue)
+        }
+    }
+
     var schemaVersion: String
     var clientVersion: String
     var analysisReason: String
     var recordShell: RecordShellPayload
     var artifacts: [ArtifactPayload]
     var knownEntities: [KnownEntityPayload]
+    var debugOptions: DebugOptionsPayload?
 
     enum CodingKeys: String, CodingKey {
         case schemaVersion = "schema_version"
@@ -111,5 +127,6 @@ struct AnalyzeRequestPayload: Codable, Sendable {
         case recordShell = "record_shell"
         case artifacts
         case knownEntities = "known_entities"
+        case debugOptions = "debug_options"
     }
 }

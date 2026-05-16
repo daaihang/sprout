@@ -26,6 +26,7 @@ struct MoryAPIClient: Sendable {
         var linkedArcID: String?
         var knownEntities: [AnalyzeRequestPayload.KnownEntityPayload]
         var prompt: String?
+        var debugOptions: AnalyzeRequestPayload.DebugOptionsPayload? = AnalyzeRequestPayload.DebugOptionsPayload.current()
 
         enum CodingKeys: String, CodingKey {
             case recordShell = "record_shell"
@@ -33,6 +34,7 @@ struct MoryAPIClient: Sendable {
             case linkedArcID = "linked_arc_id"
             case knownEntities = "known_entities"
             case prompt
+            case debugOptions = "debug_options"
         }
     }
 

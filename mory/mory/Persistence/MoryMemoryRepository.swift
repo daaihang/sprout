@@ -38,7 +38,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             userIntensity: nil,
             inputContext: draft.inputContext?.trimmedOrNil,
             artifactIDs: captureArtifacts.map(\.id),
-            debugFixtureSeededAt: draft.inputContext == "debug fixture seed" ? now : nil
+            debugFixtureSeededAt: draft.inputContext?.hasPrefix("debug fixture seed") == true ? now : nil
         )
 
         try upsert(recordShell: recordShell)
@@ -857,6 +857,239 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             try debugDiagnosticsService.deleteRecord(recordID: record.id, modelContext: modelContext)
         }
         try save()
+    }
+
+    func clearAllLocalData() throws {
+        try deleteAll(CompositionItemStore.self)
+        try deleteAll(CompositionStore.self)
+        try deleteAll(BoardStore.self)
+        try deleteAll(ArtifactEntityLinkStore.self)
+        try deleteAll(EntityEdgeStore.self)
+        try deleteAll(EntityNodeStore.self)
+        try deleteAll(RecordAnalysisSnapshotStore.self)
+        try deleteAll(MemoryPipelineStatusStore.self)
+        try deleteAll(ReflectionSnapshotStore.self)
+        try deleteAll(TemporalArcStore.self)
+        try deleteAll(ArtifactStore.self)
+        try deleteAll(RecordShellStore.self)
+        latestReflectionTrace = nil
+        try save()
+    }
+
+    func runQualityTuningScenario(_ request: QualityTuningRunRequest) async throws -> QualityTuningRunReport {
+        QualityTuningRuntime.isEnabled = true
+        QualityTuningRuntime.promptProfile = request.promptProfile
+        QualityTuningRuntime.thresholds = request.thresholds
+
+        var createdMemories: [MemorySummary] = []
+        for draft in makeQualityTuningDrafts(from: request.scenario) {
+            let memory = try await createMemory(from: draft)
+            try await refreshMemoryPipeline(recordID: memory.record.id)
+            createdMemories.append(memory)
+        }
+
+        guard let last = createdMemories.last else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+
+        let diagnostics = try fetchDebugDiagnostics(targetType: .memory, targetID: last.record.id)
+        let reportRecordIDs = createdMemories.map(\.record.id)
+        let arcs = try fetchTemporalArcs(limit: nil).filter { arc in
+            arc.sourceRecordIDs.contains { reportRecordIDs.contains($0) }
+        }
+        let reflections = try fetchReflections(limit: nil).filter { reflection in
+            reflection.sourceRecordIDs.contains { reportRecordIDs.contains($0) }
+                || arcs.contains(where: { $0.id == reflection.linkedTemporalArcID })
+        }
+        let expectationPassed = evaluateQualityTuningExpectation(
+            request.scenario.expectation,
+            recordIDs: reportRecordIDs,
+            arcs: arcs,
+            reflections: reflections
+        )
+
+        return QualityTuningRunReport(
+            scenarioTitle: request.scenario.title,
+            promptProfile: request.promptProfile,
+            thresholdsSummary: request.thresholds.summary,
+            recordIDs: reportRecordIDs,
+            expectation: request.scenario.expectation,
+            expectationPassed: expectationPassed,
+            requestBody: diagnostics.analyzePayload?.requestBody ?? "",
+            rawResponseBody: diagnostics.analyzePayload?.responseBody ?? "",
+            filteredSummary: makeQualityTuningFilteredSummary(diagnostics),
+            storedSummary: makeQualityTuningStoredSummary(diagnostics: diagnostics, arcs: arcs, reflections: reflections),
+            gates: makeQualityTuningGateSnapshots(diagnostics),
+            createdAt: .now
+        )
+    }
+
+    private func makeQualityTuningDrafts(from scenario: QualityTuningScenario) -> [MemoryCaptureDraft] {
+        func draft(title: String, body: String, mood: String?, context: String, source: CaptureSource, artifacts: [CaptureArtifactDraft]) -> MemoryCaptureDraft {
+            MemoryCaptureDraft(
+                title: title,
+                rawText: body,
+                mood: mood,
+                inputContext: [
+                    "quality tuning lab: \(scenario.id.rawValue)",
+                    context.trimmedOrNil
+                ].compactMap { $0 }.joined(separator: "\n"),
+                captureSource: source,
+                artifacts: artifacts.isEmpty ? [.text(title: title, body: body)] : artifacts
+            )
+        }
+
+        switch scenario.id {
+        case .twoRelatedEvents:
+            let firstBody = "First planning walk with Linh clarified the launch checklist and the decision to reduce scope."
+            return [
+                draft(
+                    title: "Two related events - first",
+                    body: firstBody,
+                    mood: scenario.mood,
+                    context: scenario.context,
+                    source: scenario.captureSource,
+                    artifacts: [.text(title: "Two related events - first", body: firstBody)]
+                ),
+                draft(
+                    title: scenario.title,
+                    body: scenario.body,
+                    mood: scenario.mood,
+                    context: scenario.context,
+                    source: scenario.captureSource,
+                    artifacts: scenario.artifacts
+                )
+            ]
+        case .weakRelatedEvents:
+            return [
+                draft(title: "Weak related - calendar", body: "Calendar reminder to move the dentist appointment.", mood: nil, context: scenario.context, source: .composer, artifacts: [.text(title: "Weak related - calendar", body: "Calendar reminder to move the dentist appointment.")]),
+                draft(title: "Weak related - grocery", body: "Buy lemons, rice, and paper towels after work.", mood: nil, context: scenario.context, source: .composer, artifacts: [.text(title: "Weak related - grocery", body: "Buy lemons, rice, and paper towels after work.")]),
+                draft(title: scenario.title, body: scenario.body, mood: scenario.mood, context: scenario.context, source: scenario.captureSource, artifacts: scenario.artifacts)
+            ]
+        default:
+            return [
+                draft(
+                    title: scenario.title,
+                    body: scenario.body,
+                    mood: scenario.mood,
+                    context: scenario.context,
+                    source: scenario.captureSource,
+                    artifacts: scenario.artifacts
+                )
+            ]
+        }
+    }
+
+    private func evaluateQualityTuningExpectation(
+        _ expectation: QualityTuningExpectation,
+        recordIDs: [UUID],
+        arcs: [TemporalArc],
+        reflections: [ReflectionSnapshot]
+    ) -> Bool {
+        switch expectation {
+        case .noArcNoReflection:
+            return arcs.isEmpty && reflections.isEmpty
+        case .arcExpected:
+            let recordIDSet = Set(recordIDs)
+            return arcs.contains { Set($0.sourceRecordIDs).intersection(recordIDSet).count >= 2 }
+        case .reflectionAllowed:
+            return !reflections.isEmpty
+        case .inspectOnly:
+            return true
+        }
+    }
+
+    private func makeQualityTuningFilteredSummary(_ diagnostics: DebugDiagnosticsSnapshot) -> String {
+        guard let analysis = diagnostics.fixture?.chain.analysis else {
+            return "No stored analysis snapshot."
+        }
+        return [
+            "summary: \(analysis.summary)",
+            "themes: \(analysis.themes.joined(separator: ", ").ifEmpty("none"))",
+            "salience: \(analysis.salienceScore.map { String(format: "%.2f", $0) } ?? "none")",
+            "entities: \(analysis.entityMentions.map { "\($0.kind.rawValue):\($0.name)" }.joined(separator: ", ").ifEmpty("none"))",
+            "candidate_edges: \(analysis.candidateEdges.count)",
+            "reflection_hint: \(analysis.reflectionHint?.trimmedOrNil ?? "none")"
+        ].joined(separator: "\n")
+    }
+
+    private func makeQualityTuningStoredSummary(
+        diagnostics: DebugDiagnosticsSnapshot,
+        arcs: [TemporalArc],
+        reflections: [ReflectionSnapshot]
+    ) -> String {
+        guard let chain = diagnostics.fixture?.chain else {
+            return "No fixture chain."
+        }
+        return [
+            "artifacts: \(chain.artifacts.count)",
+            "entities: \(chain.entities.map(\.displayName).joined(separator: ", ").ifEmpty("none"))",
+            "edges: \(chain.edges.count)",
+            "arcs: \(arcs.map { "\($0.title) [\($0.sourceRecordIDs.count) records]" }.joined(separator: ", ").ifEmpty("none"))",
+            "reflections: \(reflections.map { "\($0.title) [\($0.status.rawValue)]" }.joined(separator: ", ").ifEmpty("none"))"
+        ].joined(separator: "\n")
+    }
+
+    private func makeQualityTuningGateSnapshots(_ diagnostics: DebugDiagnosticsSnapshot) -> [QualityTuningGateSnapshot] {
+        guard let chain = diagnostics.fixture?.chain else {
+            return [.init(title: "Target", passed: false, detail: "No fixture chain.")]
+        }
+
+        let entityPolicy = EntityQualityPolicy()
+        let reflectionPolicy = ReflectionQualityPolicy()
+        var gates: [QualityTuningGateSnapshot] = []
+
+        if let rawEntities = rawQualityTuningEntities(from: diagnostics.analyzePayload?.responseBody), !rawEntities.isEmpty {
+            for entity in rawEntities {
+                let result = entityPolicy.evaluate(entity)
+                gates.append(.init(
+                    title: "Entity \(entity.kind.rawValue): \(entity.name)",
+                    passed: result.passed,
+                    detail: [result.reason, result.metric].compactMap(\.self).joined(separator: " · ")
+                ))
+            }
+        } else {
+            gates.append(.init(title: "Entity gate", passed: true, detail: "No raw entities to filter."))
+        }
+
+        if chain.arcs.isEmpty {
+            gates.append(.init(title: "Arc gate", passed: false, detail: "No stored arc for target record."))
+        } else {
+            for arc in chain.arcs {
+                gates.append(.init(title: "Arc \(arc.title)", passed: true, detail: "records \(arc.sourceRecordIDs.count) · cluster \(arc.clusterStrength)"))
+            }
+        }
+
+        if let analysis = chain.analysis {
+            let result = reflectionPolicy.shouldRequestRecordReflection(record: chain.record, artifacts: chain.artifacts, analysis: analysis)
+            gates.append(.init(
+                title: "Record reflection request",
+                passed: result.passed,
+                detail: [result.reason, result.metric].compactMap(\.self).joined(separator: " · ")
+            ))
+        }
+
+        return gates
+    }
+
+    private func rawQualityTuningEntities(from responseBody: String?) -> [EntityReference]? {
+        guard
+            let data = responseBody?.data(using: .utf8),
+            let envelope = try? JSONDecoder().decode(AnalyzeResponseEnvelope.self, from: data)
+        else {
+            return nil
+        }
+        return envelope.entities.compactMap { entity in
+            guard let kind = EntityKind(rawValue: entity.kind.lowercased()) else { return nil }
+            return EntityReference(kind: kind, name: entity.name, aliases: entity.aliases ?? [], confidence: entity.confidence)
+        }
+    }
+
+    private func deleteAll<T: PersistentModel>(_ type: T.Type) throws {
+        let stores = try modelContext.fetch(FetchDescriptor<T>())
+        for store in stores {
+            modelContext.delete(store)
+        }
     }
 
     func saveReflection(reflectionID: UUID) async throws {

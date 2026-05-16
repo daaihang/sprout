@@ -48,6 +48,7 @@ struct TemporalArcCandidateBuilder {
     private let maximumRecordGap: TimeInterval = 60 * 60 * 24 * 10
     private let minimumSeedSimilarity = 0.33
     private let minimumExpansionSimilarity = 0.22
+    private let entityQualityPolicy = EntityQualityPolicy()
 
     func buildCandidates(
         records: [RecordShell],
@@ -134,7 +135,7 @@ struct TemporalArcCandidateBuilder {
                 .map(\.entityID)
         )
         let entityNames = linkedEntityIDs.compactMap { entityIndex[$0]?.displayName }.sorted()
-        let themeLabels = Array(Set(analysis?.themes ?? [])).sorted()
+        let themeLabels = Array(Set((analysis?.themes ?? []).filter(entityQualityPolicy.usefulThemeLabel))).sorted()
         let textBag = buildTextBag(
             recordText: record.rawText,
             artifactTexts: record.artifactIDs.compactMap { artifactIndex[$0]?.summary }

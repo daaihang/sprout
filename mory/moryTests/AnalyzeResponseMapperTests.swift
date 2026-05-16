@@ -1,4 +1,5 @@
 import XCTest
+import UIKit
 @testable import mory
 
 final class AnalyzeResponseMapperTests: XCTestCase {
@@ -107,5 +108,127 @@ final class AnalyzeResponseMapperTests: XCTestCase {
         XCTAssertTrue(snapshot.entityMentions.isEmpty)
         XCTAssertTrue(snapshot.candidateEdges.isEmpty)
         XCTAssertTrue(snapshot.followUpCandidates.isEmpty)
+    }
+
+    func testFiltersTechnicalNoiseEntitiesAndEdges() throws {
+        let json = """
+        {
+          "tags": ["theme", "OCR", "planning"],
+          "emotion": {"label": "neutral"},
+          "entities": [
+            {"kind": "theme", "name": "theme", "confidence": 0.99},
+            {"kind": "theme", "name": "OCR", "confidence": 0.99},
+            {"kind": "theme", "name": "ORC", "confidence": 0.99},
+            {"kind": "object", "name": "photo", "confidence": 0.99},
+            {"kind": "theme", "name": "planning rhythm", "confidence": 0.82},
+            {"kind": "person", "name": "Linh", "confidence": 0.91}
+          ],
+          "candidate_edges": [
+            {"from_name": "OCR", "from_kind": "theme", "to_name": "Linh", "to_kind": "person", "relation": "related_to", "confidence": 0.92},
+            {"from_name": "planning rhythm", "from_kind": "theme", "to_name": "Linh", "to_kind": "person", "relation": "related_to", "confidence": 0.92}
+          ],
+          "insight": "A useful planning note.",
+          "summary": "A useful planning note.",
+          "salience_score": 0.72,
+          "retrieval_terms": ["OCR", "planning rhythm"],
+          "reflection_hint": "Track whether planning rhythm repeats.",
+          "follow_up": null
+        }
+        """
+
+        let envelope = try JSONDecoder().decode(AnalyzeResponseEnvelope.self, from: Data(json.utf8))
+        let snapshot = AnalyzeResponseMapper().map(recordID: UUID(), response: envelope)
+
+        XCTAssertEqual(Set(snapshot.entityMentions.map(\.name)), Set(["planning rhythm", "Linh"]))
+        XCTAssertEqual(snapshot.candidateEdges.count, 1)
+        XCTAssertEqual(snapshot.candidateEdges.first?.from.name, "planning rhythm")
+        XCTAssertFalse(snapshot.themes.contains("theme"))
+        XCTAssertFalse(snapshot.themes.contains("OCR"))
+        XCTAssertFalse(snapshot.themes.contains("ORC"))
+    }
+
+    func testTagsDoNotFallbackIntoThemeEntitiesWhenEntitiesAreEmpty() throws {
+        let json = """
+        {
+          "tags": ["planning", "reflection"],
+          "emotion": {"label": "neutral"},
+          "entities": [],
+          "candidate_edges": [],
+          "insight": "A small note.",
+          "summary": "A small note.",
+          "salience_score": 0.35,
+          "retrieval_terms": ["planning"],
+          "reflection_hint": "",
+          "follow_up": null
+        }
+        """
+
+        let envelope = try JSONDecoder().decode(AnalyzeResponseEnvelope.self, from: Data(json.utf8))
+        let snapshot = AnalyzeResponseMapper().map(recordID: UUID(), response: envelope)
+
+        XCTAssertTrue(snapshot.entityMentions.isEmpty)
+        XCTAssertEqual(snapshot.themes, ["planning", "reflection"])
+    }
+
+    func testAnalyzeRequestBuilderIncludesPromptProfileDebugOption() throws {
+        let previousEnabled = QualityTuningRuntime.isEnabled
+        let previousProfile = QualityTuningRuntime.promptProfile
+        QualityTuningRuntime.isEnabled = true
+        QualityTuningRuntime.promptProfile = .strict
+        defer {
+            QualityTuningRuntime.isEnabled = previousEnabled
+            QualityTuningRuntime.promptProfile = previousProfile
+        }
+
+        let record = RecordShell(
+            createdAt: .now,
+            updatedAt: .now,
+            captureSource: .composer,
+            rawText: "Debug tuning payload."
+        )
+        let payload = AnalyzeRequestBuilder().build(record: record, artifacts: [])
+
+        XCTAssertEqual(payload.debugOptions?.promptProfile, "strict")
+    }
+
+    func testAnalyzeRequestBuilderOmitsDebugOptionsByDefault() throws {
+        let previousEnabled = QualityTuningRuntime.isEnabled
+        QualityTuningRuntime.isEnabled = false
+        defer { QualityTuningRuntime.isEnabled = previousEnabled }
+
+        let record = RecordShell(
+            createdAt: .now,
+            updatedAt: .now,
+            captureSource: .composer,
+            rawText: "Normal payload."
+        )
+        let payload = AnalyzeRequestBuilder().build(record: record, artifacts: [])
+
+        XCTAssertNil(payload.debugOptions)
+    }
+
+    func testQualityTuningOverrideChangesEntityGateVerdict() throws {
+        let entity = EntityReference(kind: .person, name: "Linh", aliases: [], confidence: 0.60)
+
+        XCTAssertTrue(EntityQualityPolicy(thresholds: .defaults).evaluate(entity).passed)
+
+        var strict = QualityTuningThresholds.defaults
+        strict.entityMinimumConfidence = 0.80
+        XCTAssertFalse(EntityQualityPolicy(thresholds: strict).evaluate(entity).passed)
+    }
+
+    func testPhotoArtifactProcessorHandlesVisionFailuresWithoutContinuationCrash() async throws {
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: 64, height: 64))
+        let data = renderer.jpegData(withCompressionQuality: 0.8) { context in
+            UIColor.white.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 64, height: 64))
+            UIColor.black.setFill()
+            context.fill(CGRect(x: 16, y: 16, width: 32, height: 32))
+        }
+
+        let result = await PhotoArtifactProcessor().process(imageData: data, filename: "debug.jpg")
+
+        XCTAssertFalse(result.title.isEmpty)
+        XCTAssertFalse(result.thumbnailData.isEmpty)
     }
 }

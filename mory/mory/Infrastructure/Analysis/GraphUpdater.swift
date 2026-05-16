@@ -8,6 +8,8 @@ struct GraphUpdateResult: Sendable {
 }
 
 struct GraphUpdater {
+    private let entityQualityPolicy = EntityQualityPolicy()
+
     func apply(
         analysis: RecordAnalysisSnapshot,
         linkedArtifactIDs: [UUID],
@@ -19,9 +21,10 @@ struct GraphUpdater {
         var entityNodes = existingEntityNodes
         var entityEdges = existingEntityEdges
         var artifactEntityLinks = existingArtifactEntityLinks
+        let entityMentions = entityQualityPolicy.filter(analysis.entityMentions)
 
         let resolvedEntityIDs = upsertEntities(
-            from: analysis.entityMentions,
+            from: entityMentions,
             sourceRecordIDs: linkedRecordIDs,
             createdAt: analysis.createdAt,
             into: &entityNodes
@@ -46,7 +49,7 @@ struct GraphUpdater {
 
         rebuildEdgesForLatestAnalysis(
             entityIDs: resolvedEntityIDs,
-            candidateEdges: analysis.candidateEdges,
+            candidateEdges: filteredCandidateEdges(analysis.candidateEdges),
             timestamp: analysis.createdAt,
             linkedArtifactIDs: linkedArtifactIDs,
             linkedRecordIDs: linkedRecordIDs,
@@ -60,6 +63,14 @@ struct GraphUpdater {
             artifactEntityLinks: artifactEntityLinks,
             resolvedEntityIDs: resolvedEntityIDs
         )
+    }
+
+    private func filteredCandidateEdges(_ edges: [CandidateEntityEdge]) -> [CandidateEntityEdge] {
+        edges.filter {
+            entityQualityPolicy.evaluate($0.from).passed &&
+            entityQualityPolicy.evaluate($0.to).passed &&
+            ($0.confidence ?? 0) >= 0.55
+        }
     }
 
     private func upsertEntities(

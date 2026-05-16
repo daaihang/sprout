@@ -46,6 +46,14 @@ final class AppRuntimeEnvironmentTests: XCTestCase {
         XCTAssertFalse(publicTestFlight.allowsDebugTools)
         XCTAssertFalse(appStore.allowsDebugTools)
     }
+
+    func testDefaultAPIBaseURLMatchesRuntimeTarget() {
+        #if targetEnvironment(simulator)
+        XCTAssertEqual(MoryAPIConfiguration.defaultBaseURL.absoluteString, "http://127.0.0.1:8080")
+        #else
+        XCTAssertEqual(MoryAPIConfiguration.defaultBaseURL.absoluteString, "https://sprout-god7g.fly.dev")
+        #endif
+    }
 }
 
 @MainActor
@@ -176,7 +184,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
             analysisService: StubRecordAnalysisService()
         )
 
-        let memory = try await repository.createMemory(
+        _ = try await repository.createMemory(
             from: MemoryCaptureDraft(
                 title: "Reflection source",
                 rawText: "Walked with Linh in the rain and clarified the quarter planning priorities.",
@@ -184,6 +192,16 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
                 inputContext: "typed in debug",
                 captureSource: .composer,
                 artifacts: [.text(title: "Reflection source", body: "Walked with Linh in the rain and clarified the quarter planning priorities.")]
+            )
+        )
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Reflection source repeat",
+                rawText: "Another walk with Linh brought the same quarter planning rhythm back into focus.",
+                mood: "reflective",
+                inputContext: "typed in debug",
+                captureSource: .composer,
+                artifacts: [.text(title: "Reflection source repeat", body: "Another walk with Linh brought the same quarter planning rhythm back into focus.")]
             )
         )
         try await repository.refreshMemoryPipeline(recordID: memory.record.id)
@@ -213,7 +231,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
             analysisService: StubRecordAnalysisService()
         )
 
-        let memory = try await repository.createMemory(
+        _ = try await repository.createMemory(
             from: MemoryCaptureDraft(
                 title: "Rain walk",
                 rawText: "Walked with Linh in the rain and clarified the quarter planning priorities.",
@@ -221,6 +239,16 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
                 inputContext: "typed in debug",
                 captureSource: .composer,
                 artifacts: [.text(title: "Rain walk", body: "Walked with Linh in the rain and clarified the quarter planning priorities.")]
+            )
+        )
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Rain walk repeat",
+                rawText: "A second rainy walk with Linh returned to the same quarter planning priorities.",
+                mood: "reflective",
+                inputContext: "typed in debug",
+                captureSource: .composer,
+                artifacts: [.text(title: "Rain walk repeat", body: "A second rainy walk with Linh returned to the same quarter planning priorities.")]
             )
         )
         try await repository.refreshMemoryPipeline(recordID: memory.record.id)
@@ -235,6 +263,101 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
             if case .reflection = $0.renderValue { return true }
             return false
         })
+    }
+
+    func testSingleLowSignalMemoryDoesNotGenerateArcOrReflection() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: LowSignalRecordAnalysisService()
+        )
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Photo",
+                rawText: "",
+                mood: nil,
+                inputContext: "photo capture",
+                captureSource: .photo,
+                artifacts: [.photo(title: "Photo", summary: "OCR", filename: "noise.jpg", imageData: nil, thumbnailData: nil, ocrText: "OCR")]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: memory.record.id)
+
+        XCTAssertTrue(try repository.fetchTemporalArcSummaries(limit: nil).isEmpty)
+        XCTAssertTrue(try repository.fetchReflectionSummaries(limit: nil).isEmpty)
+        XCTAssertTrue(try repository.fetchGraphOverview(limitPerKind: 10, edgeLimit: 10).entitySections.allSatisfy { section in
+            section.entities.allSatisfy { entity in
+                !["theme", "OCR", "ORC", "photo", "image"].contains(entity.displayName)
+            }
+        })
+    }
+
+    func testTwoRelatedMemoriesCanGenerateArc() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        let first = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Planning walk one",
+                rawText: "Walked with Linh and reviewed quarter planning priorities.",
+                mood: "reflective",
+                inputContext: "typed in debug",
+                captureSource: .composer,
+                artifacts: [.text(title: "Planning walk one", body: "Walked with Linh and reviewed quarter planning priorities.")]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: first.record.id)
+        let second = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Planning walk two",
+                rawText: "Another walk with Linh pushed the same planning theme further.",
+                mood: "reflective",
+                inputContext: "typed in debug",
+                captureSource: .composer,
+                artifacts: [.text(title: "Planning walk two", body: "Another walk with Linh pushed the same planning theme further.")]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: second.record.id)
+
+        let arcs = try repository.fetchTemporalArcSummaries(limit: 10)
+        let arc = try XCTUnwrap(arcs.first)
+        XCTAssertEqual(Set(arc.arc.sourceRecordIDs).count, 2)
+        XCTAssertTrue(arc.arc.sourceRecordIDs.contains(second.record.id))
+    }
+
+    func testQualityTuningRunCreatesRealMemoryAndReport() async throws {
+        let previousEnabled = QualityTuningRuntime.isEnabled
+        let previousProfile = QualityTuningRuntime.promptProfile
+        let previousThresholds = QualityTuningRuntime.thresholds
+        defer {
+            QualityTuningRuntime.isEnabled = previousEnabled
+            QualityTuningRuntime.promptProfile = previousProfile
+            QualityTuningRuntime.thresholds = previousThresholds
+        }
+
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+        let request = QualityTuningRunRequest(
+            scenario: .preset(.ordinaryShortText),
+            promptProfile: .strict,
+            thresholds: .defaults
+        )
+
+        let report = try await repository.runQualityTuningScenario(request)
+
+        XCTAssertEqual(report.promptProfile, .strict)
+        XCTAssertEqual(report.recordIDs.count, 1)
+        XCTAssertFalse(report.requestBody.isEmpty)
+        XCTAssertFalse(report.rawResponseBody.isEmpty)
+        XCTAssertTrue(report.storedSummary.contains("artifacts:"))
+        XCTAssertEqual(try repository.fetchRecentMemories(limit: nil).count, 1)
     }
 
     func testFetchGraphOverviewReturnsPeopleThemesAndEdgesFromGraphLayer() async throws {
@@ -274,7 +397,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
             analysisService: StubRecordAnalysisService()
         )
 
-        let memory = try await repository.createMemory(
+        _ = try await repository.createMemory(
             from: MemoryCaptureDraft(
                 title: "Late train insight",
                 rawText: "Missed the express home after dinner with Linh and the quarter plan clicked into place.",
@@ -282,6 +405,16 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
                 inputContext: "typed in debug",
                 captureSource: .composer,
                 artifacts: [.text(title: "Late train insight", body: "Missed the express home after dinner with Linh and the quarter plan clicked into place.")]
+            )
+        )
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Late train insight repeat",
+                rawText: "Another quiet walk with Linh made the same quarter planning pattern visible again.",
+                mood: "reflective",
+                inputContext: "typed in debug",
+                captureSource: .composer,
+                artifacts: [.text(title: "Late train insight repeat", body: "Another quiet walk with Linh made the same quarter planning pattern visible again.")]
             )
         )
         try await repository.refreshMemoryPipeline(recordID: memory.record.id)
@@ -325,6 +458,16 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
                 inputContext: "typed in debug",
                 captureSource: .composer,
                 artifacts: [.text(title: "Quarter planning walk", body: "Walked home with Linh in the rain and clarified the quarter planning priorities.")]
+            )
+        )
+        _ = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Quarter planning follow-up",
+                rawText: "A follow-up walk with Linh kept returning to the same planning priorities.",
+                mood: "reflective",
+                inputContext: "typed in debug",
+                captureSource: .composer,
+                artifacts: [.text(title: "Quarter planning follow-up", body: "A follow-up walk with Linh kept returning to the same planning priorities.")]
             )
         )
         let latestMemory = try XCTUnwrap(repository.fetchRecentMemories(limit: 1).first)
@@ -382,6 +525,16 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
                 inputContext: "typed in debug",
                 captureSource: .composer,
                 artifacts: [.text(title: "Planning dinner", body: "Dinner with Linh turned into a planning session for the next quarter.")]
+            )
+        )
+        _ = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Planning dinner repeat",
+                rawText: "Another dinner with Linh circled back to the same planning session and quarter priorities.",
+                mood: "focused",
+                inputContext: "typed in debug",
+                captureSource: .composer,
+                artifacts: [.text(title: "Planning dinner repeat", body: "Another dinner with Linh circled back to the same planning session and quarter priorities.")]
             )
         )
         let latestMemory = try XCTUnwrap(repository.fetchRecentMemories(limit: 1).first)
@@ -697,7 +850,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
             analysisService: StubRecordAnalysisService()
         )
 
-        let memory = try await repository.createMemory(
+        _ = try await repository.createMemory(
             from: MemoryCaptureDraft(
                 title: "Rerun memory",
                 rawText: "Dinner with Linh turned into another planning moment.",
@@ -705,6 +858,16 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
                 inputContext: "typed in debug",
                 captureSource: .composer,
                 artifacts: [.text(title: "Rerun memory", body: "Dinner with Linh turned into another planning moment.")]
+            )
+        )
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Rerun memory repeat",
+                rawText: "Another dinner with Linh repeated the same planning moment.",
+                mood: "reflective",
+                inputContext: "typed in debug",
+                captureSource: .composer,
+                artifacts: [.text(title: "Rerun memory repeat", body: "Another dinner with Linh repeated the same planning moment.")]
             )
         )
         try await repository.refreshMemoryPipeline(recordID: memory.record.id)
@@ -803,7 +966,7 @@ private struct StubRecordAnalysisService: RecordAnalysisServing {
             summary: "Stub summary",
             themes: ["planning"],
             emotionInterpretation: "reflective",
-            salienceScore: 0.6,
+            salienceScore: 0.86,
             retrievalTerms: ["planning", "rain"],
             entityMentions: [
                 EntityReference(kind: .person, name: "Linh", confidence: 0.9),
@@ -843,9 +1006,9 @@ private struct StubRecordAnalysisService: RecordAnalysisServing {
     ) async throws -> ReflectionServiceResult {
         ReflectionServiceResult(
             title: "Generated reflection",
-            body: prompt ?? record.rawText,
+            body: "This planning pattern has enough evidence to be worth reviewing because it connects a concrete memory, a repeated person, and a clear decision-making theme.",
             evidenceSummary: artifacts.map(\.summary).joined(separator: " | "),
-            confidence: 0.61,
+            confidence: 0.76,
             sourceRecordIDs: [record.id],
             debugTrace: DebugPipelineTraceSnapshot(
                 requestBody: "{\"mode\":\"reflection_generate\"}",
@@ -927,6 +1090,78 @@ private struct FailingRecordAnalysisService: RecordAnalysisServing {
     }
 }
 
+private struct LowSignalRecordAnalysisService: RecordAnalysisServing {
+    func analyze(
+        record: RecordShell,
+        artifacts: [Artifact],
+        knownEntities: [EntityReference]
+    ) async throws -> RecordAnalysisSnapshot {
+        RecordAnalysisSnapshot(
+            recordID: record.id,
+            summary: "Low signal photo.",
+            themes: ["theme", "OCR"],
+            emotionInterpretation: "neutral",
+            salienceScore: 0.2,
+            retrievalTerms: ["OCR", "photo"],
+            entityMentions: [
+                EntityReference(kind: .theme, name: "theme", confidence: 0.99),
+                EntityReference(kind: .theme, name: "OCR", confidence: 0.99),
+                EntityReference(kind: .object, name: "photo", confidence: 0.99),
+            ],
+            candidateEdges: [],
+            followUpCandidates: [],
+            reflectionHint: "",
+            createdAt: record.updatedAt
+        )
+    }
+
+    func latestDebugTrace() async -> DebugPipelineTraceSnapshot? {
+        DebugPipelineTraceSnapshot(
+            requestBody: "{\"analysis_reason\":\"capture_ingest\"}",
+            responseBody: "{\"summary\":\"Low signal photo\"}",
+            rawErrorBody: nil,
+            statusCode: 200,
+            failedStage: nil
+        )
+    }
+
+    func generateReflection(
+        record: RecordShell,
+        artifacts: [Artifact],
+        linkedArcID: UUID?,
+        knownEntities: [EntityReference],
+        prompt: String?
+    ) async throws -> ReflectionServiceResult {
+        XCTFail("Low signal memories should not request reflection generation.")
+        return ReflectionServiceResult(
+            title: "Unexpected",
+            body: "Unexpected",
+            evidenceSummary: "",
+            confidence: 0,
+            sourceRecordIDs: [record.id],
+            debugTrace: nil
+        )
+    }
+
+    func replayReflection(
+        reflection: ReflectionSnapshot,
+        linkedArc: TemporalArc?,
+        record: RecordShell?,
+        artifacts: [Artifact],
+        knownEntities: [EntityReference],
+        prompt: String?
+    ) async throws -> ReflectionServiceResult {
+        ReflectionServiceResult(
+            title: "Replay",
+            body: "Replay",
+            evidenceSummary: "",
+            confidence: 0,
+            sourceRecordIDs: reflection.sourceRecordIDs,
+            debugTrace: nil
+        )
+    }
+}
+
 private struct AliasRecordAnalysisService: RecordAnalysisServing {
     func analyze(
         record: RecordShell,
@@ -938,7 +1173,7 @@ private struct AliasRecordAnalysisService: RecordAnalysisServing {
             summary: "Alias summary",
             themes: ["planning"],
             emotionInterpretation: "focused",
-            salienceScore: 0.7,
+            salienceScore: 0.86,
             retrievalTerms: ["planning", "linh"],
             entityMentions: [
                 EntityReference(kind: .person, name: "Linh", aliases: ["Linh Tran"], confidence: 0.92),
@@ -977,9 +1212,9 @@ private struct AliasRecordAnalysisService: RecordAnalysisServing {
     ) async throws -> ReflectionServiceResult {
         ReflectionServiceResult(
             title: "Alias reflection",
-            body: prompt ?? record.rawText,
+            body: "This alias planning pattern has enough evidence to be worth reviewing because it connects a concrete memory, a repeated person, and a clear decision-making theme.",
             evidenceSummary: artifacts.map(\.summary).joined(separator: " | "),
-            confidence: 0.63,
+            confidence: 0.76,
             sourceRecordIDs: [record.id],
             debugTrace: DebugPipelineTraceSnapshot(
                 requestBody: "{\"mode\":\"reflection_generate\"}",
