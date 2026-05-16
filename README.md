@@ -1,70 +1,105 @@
 # Sprout
 
-Sprout is currently in the Mory v3 migration: from a record-centric journaling app toward a local-first personal memory system.
+Sprout is a local-first personal memory system built on **Mory v4**.
 
-The target architecture is:
+The v3 release established the five-layer memory ontology and end-to-end pipeline. The v4 release extends the system with multimodal inputs (photos, audio, music, weather, location, links), automated context collection, AI speed optimization, and persistent authentication.
 
-`Artifact -> Composition -> Analysis Snapshot -> Graph -> Temporal Arc -> Reflection`
+## Architecture
 
-The codebase already contains most of these layers, but they are still being progressively wired together and old `Record`-centric paths are still being removed.
+```
+Artifact → Composition → Analysis Snapshot → Graph → Temporal Arc → Reflection
+```
 
-## Current Shape
+| Layer | Purpose |
+|-------|---------|
+| **Artifact** | Raw capture content: text, photo, audio, weather, location, music, link |
+| **Composition** | Board/day layout state persisted via `CompositionItemState` |
+| **Analysis Snapshot** | AI-generated summary, entities, and reasoning from `RecordAnalysisSnapshot` |
+| **Graph** | Entity nodes and relationships via `EntityNode` / `EntityEdge` |
+| **Temporal Arc** | Storyline candidates promoted from related memories via `TemporalArc` |
+| **Reflection** | AI-generated insights surfaced via `ReflectionSnapshot` |
 
-- `sprout/sprout/Models`
-  SwiftData models for legacy capture objects and transition-era persisted layout objects such as `Record`, `MediaCard`, and `CompositionItemState`.
-- `sprout/sprout/Shared/Memory`
-  v3 memory-domain models including `Artifact`, `RecordShell`, `RecordAnalysisSnapshot`, `ReflectionSnapshot`, `EntityNode`, `EntityEdge`, `ArtifactEntityLink`, and `TemporalArc`.
-- `sprout/sprout/Services`
-  Aggregate building, composition projection, parsing, AI-response mapping, repositories, external integrations, auth, and subscriptions.
-- `sprout/sprout/Cards`
-  SwiftUI renderers for memory surfaces. These are being gradually repositioned from old business-card components into artifact/composition renderers.
-- `sprout/sprout/Views`
-  Main screens, capture flows, detail pages, onboarding, and home navigation.
-- `server/`
-  Go backend for auth, lightweight user state, and AI provider orchestration.
+v4 does **not** change this ontology. It extends Artifact from "text only" to "photo / audio / weather / location / music / link", each with corresponding AI processing rules and automated collection.
 
-## Migration Status
+## Current Implementation Status
 
-Practical progress against the v3 roadmap:
+v4 is being implemented across 8 phases. Phase 0 and Phase 1 are complete.
 
-- Phase 0 `100%`
-  Ontology and architecture docs are frozen.
-- Phase 1 `92%`
-  Artifact layer exists and modern capture paths already dual-write aggregate data.
-- Phase 2 `95%`
-  Composition state persists by board/day, board resize now refreshes immediately, and the home projection path now renders artifact-backed composition items directly.
-- Phase 3 `93%`
-  Analysis snapshot contract and local persistence are active.
-- Phase 4 `84%`
-  Graph models and update logic exist, but UI consumption is still partial.
-- Phase 5 `86%`
-  Temporal arcs and phase reflections exist, but the page-level user experience is still incomplete.
-- Phase 6 `98%`
-  Legacy cleanup is deep into physical removal; old per-record span fields, override storage, and `cardType` have been removed from `Record`.
+| Phase | Content | Status |
+|-------|---------|--------|
+| Phase 0 | Auth persistence (Apple login + Keychain token refresh) | **Complete** |
+| Phase 1 | AI speed optimization (parallel pipeline + prompt trimming) | **Complete** |
+| Phase 2 | Photo AI parsing (Vision → text artifact → analyze) | Pending |
+| Phase 3 | Audio transcription (Speech → rawText → analyze) | Pending |
+| Phase 4 | Automated context collection (weather / location / music) | Pending |
+| Phase 5 | Link URL preview (metadata extraction → link artifact) | Pending |
+| Phase 6 | Home board data connection (real memory / arc / reflection cards) | Pending |
+| Phase 7 | AI content governance (entity deduplication, arc coherence, reflection quality) | Pending |
 
-Main remaining gaps:
+**Total estimated effort: ~14 days**
 
-- Several card internals still present legacy UI quality or legacy assumptions.
-- `MediaCard` now exists only as binary payload backing for photo/audio renderers, but other non-home legacy consumers still need to be audited and cut off from old `Record` truth paths.
-- Graph and arc layers are not yet fully exposed as first-class navigation experiences.
+Release milestones:
+- `v4.0-alpha.1`: Phase 0 + 1 → ready
+- `v4.0-alpha.2`: Phase 0–3 → multimodal input ready
+- `v4.0-beta.1`: Phase 0–4 → context-aware capture ready
+- `v4.0-beta.2`: Phase 0–6 → homepage fully live
+- `v4.0`: Phase 0–7 → all features delivered
 
-Recent high-frequency card refreshes already completed:
+## Code Structure
 
-- `QuoteCard`
-- `PhotoCard`
-- `PhaseReflectionCard`
-- `MusicCard`
-- `PeopleCard`
-- `MapCard`
+```
+mory/mory/
+├── App/
+│   └── ...App entry point
+├── Domain/
+│   ├── Analysis/      — RecordAnalysisSnapshot, ReflectionSnapshot
+│   ├── Capture/       — Capture drafts, artifact building
+│   ├── Composition/   — Board/day layout state
+│   ├── Content/       — Artifact, RecordShell, EntityNode, EntityEdge
+│   ├── Graph/         — Entity graph models
+│   └── Reflection/    — Reflection models
+├── Features/
+│   ├── Arcs/          — Temporal arc browsing
+│   ├── Auth/          — Apple login, Keychain-backed sessions
+│   ├── Capture/       — CaptureComposerView (Phase 2–5: multimodal + auto-context)
+│   ├── Entities/      — People/entity detail views
+│   ├── Home/          — HomeScreen (Phase 6: real data cards)
+│   ├── MemoryDetail/  — Memory detail with artifact evidence
+│   ├── People/        — People tab
+│   ├── Reflections/   — Reflection browsing
+│   ├── Search/        — Search functionality
+│   └── Timeline/      — Timeline view
+├── Infrastructure/
+│   ├── Analysis/
+│   │   ├── AnalyzeRequestBuilder.swift          (extended for v4 artifacts)
+│   │   ├── ArchitecturePipelineExecutor.swift    (Phase 1: parallelized)
+│   │   └── MemoryCaptureArtifactBuilder.swift
+│   ├── Auth/
+│   │   ├── AppleAuthService.swift                (Phase 0: persistence added)
+│   │   └── KeychainCredentialStore.swift         (Phase 0: token refresh added)
+│   └── Networking/  — API client, server handlers
+├── Persistence/      — SwiftData models (Record, CompositionItemState, MediaCard)
+└── Debug/            — Debug diagnostics
+
+server/
+├── cmd/server/        — Go backend entry point
+├── internal/ai/       — AI provider abstraction (anthropic / openai_compatible)
+├── internal/auth/     — Apple auth, JWT issuance
+└── internal/handlers/ — API endpoints (analysis, onboarding)
+```
 
 ## Authentication
 
-Authentication is handled by `AuthSessionManager` in [sprout/sprout/Services/AuthSessionManager.swift](/Users/z14/Documents/sprout/sprout/sprout/Services/AuthSessionManager.swift).
+Handled by `AuthSessionManager` in `mory/mory/Features/Auth/AuthSessionManager.swift`.
 
-- Sign in with Apple posts to `/auth/apple`.
-- Sessions are stored in the iOS Keychain via `KeychainCredentialStore` for the `mory` app.
-- `development_stub` mode can bypass backend auth during development.
-- Signed-in onboarding completion posts to `/api/me/onboarding/complete`.
+- Sign in with Apple posts to `/auth/apple`
+- Sessions stored in iOS Keychain via `KeychainCredentialStore` (mory app)
+- `development_stub` mode bypasses backend auth during development
+- Onboarding completion posts to `/api/me/onboarding/complete`
+
+Phase 0 completion (c75267df):
+- Apple login tokens persist across cold starts — no re-login required
+- JWT refresh is handled by `KeychainCredentialStore`
 
 The app flows through `AuthGateView`:
 
@@ -75,131 +110,99 @@ The app flows through `AuthGateView`:
 
 ## AI Analysis Contract
 
-AI analysis is now record-aggregate based.
+AI analysis is record-aggregate based.
 
-- Onboarding preview posts to `/api/analysis/preview`.
-- Signed-in capture analysis posts to `/api/analysis/records`.
-- The payload carries `schema_version`, `analysis_reason`, `record_shell`, `artifacts`, and `known_entities`.
-- iOS maps the response into `RecordAnalysisSnapshot`, then uses deterministic local services to update graph and reflection state.
+- Onboarding preview posts to `/api/analysis/preview`
+- Signed-in capture analysis posts to `/api/analysis/records`
+- Payload carries `schema_version`, `analysis_reason`, `record_shell`, `artifacts`, and `known_entities`
+- iOS maps response into `RecordAnalysisSnapshot`, then uses local services to update graph and reflection state
 
-The Go backend keeps AI provider abstraction behind the server boundary.
+Phase 1 completion (292c01b1):
+- `ArchitecturePipelineExecutor` runs Analyze and Reflection in parallel (~53s → <15s)
+- Prompts trimmed for speed
+- NotificationCenter replaces polling for analysis completion
 
+The backend keeps AI provider abstraction behind the server boundary:
 - `AI_PROVIDER=anthropic`
 - `AI_PROVIDER=openai_compatible`
 
-OpenAI-compatible vendors such as DeepSeek should be integrated through backend configuration, not by direct client calls.
+OpenAI-compatible vendors (DeepSeek, etc.) integrate through backend configuration, not direct client calls.
 
 ## Home Board
 
-The home experience is moving from container-first UI toward persistent composition.
+The home experience is transitioning from container-first UI to persistent composition.
 
-- `ContainerSpan` remains the visible placement unit.
-- `StickerGridLayout` still renders the board.
-- `CompositionItemState` is now the primary persisted resize state for board items.
-- The current day board refreshes immediately when a user changes card size.
-- Capture timestamps now use real capture time again instead of backfilling non-today entries to the selected page's `23:59`.
+- `ContainerSpan` remains the visible placement unit
+- `StickerGridLayout` still renders the board
+- `CompositionItemState` is the primary persisted resize state for board items
+- Board refreshes immediately on card resize
+- Capture timestamps use real capture time (not backfilled to page's 23:59)
 
-This matters because v3 treats:
-
-- `Record` as a capture event
-- `Composition` as persistent layout meaning
-
-not as page-local hacks.
-
-## Record Storage
-
-`Record` still currently stores:
-
-- Base content such as `body`, `createdAt`, `updatedAt`, `tags`
-- Remaining transitional fields such as `dashboardOrder`
-- Weather and location snapshot fields
-- Transitional relationships around `MediaCard` for photo/audio payload backing and some older related objects
-
-That is transitional, not final.
-
-The intended direction is:
-
-- `Record` becomes a capture shell
-- `Artifact` becomes content truth
-- `CompositionItemState` becomes board layout truth
-- `RecordAnalysisSnapshot` / `ReflectionSnapshot` become AI truth
-
-Current detail-page truth after this round:
-
-- `RecordDetailView` now resolves `text/photo/audio/link/todo/music/map/weather/people` from `memoryView.artifacts` first.
-- AI entity evidence is surfaced directly in people/detail evidence areas.
-- `RecordTimelineView` and `TodayInHistoryCard` now use a shared `RecordEvidenceProjector`, so preview kind, headline, subtitle, and meta labels come from the same artifact-backed evidence path as detail.
-- `SearchHomeView`, `ArtifactDetailView`, `ReflectionDetailView`, `TemporalArcDetailView`, and `MemoryEntityDetailView` now reuse shared memory evidence summary rendering for related memory rows instead of hand-built `Record.body` / `RecordShell.rawText` snippets.
-- Even when the full `Record` is temporarily unavailable, shell-level fallback summaries now go through one shared `RecordShellFallbackSummaryContent` path instead of page-local snippets.
-- `Record` and `MediaCard` are retained only as compatibility fallback for older rows and photo/audio payload lookup.
-
-## Subscription System
-
-Subscriptions are managed by `SubscriptionManager`.
-
-- RevenueCat is the primary subscription backend when linked.
-- StoreKit is the fallback path.
-- If RevenueCat is unavailable in a local build, subscription handling is stubbed.
+Phase 6 target: Today Board renders real memory / arc / reflection cards instead of empty states.
 
 ## Build
 
 Preferred verification command:
 
 ```sh
-xcodebuild -project sprout/sprout.xcodeproj -scheme sprout -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build
+xcodebuild -project mory/mory.xcodeproj -scheme mory -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build
 ```
 
-For filtered output:
+Filtered output:
 
 ```sh
-xcodebuild -project sprout/sprout.xcodeproj -scheme sprout -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build 2>&1 | rg -n 'error:|warning:|BUILD SUCCEEDED|BUILD FAILED'
+xcodebuild -project mory/mory.xcodeproj -scheme mory -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build 2>&1 | rg -n 'error:|warning:|BUILD SUCCEEDED|BUILD FAILED'
 ```
 
 ## Backend
 
-The backend lives in `server/` and is deployed independently from the iOS app.
+Backend lives in `server/` and deploys independently from the iOS app.
 
-- Fly config: [fly.toml](/Users/z14/Documents/sprout/fly.toml)
-- Docker build: [server/Dockerfile](/Users/z14/Documents/sprout/server/Dockerfile)
-- Deployment notes: [server/DEPLOY_FLY.md](/Users/z14/Documents/sprout/server/DEPLOY_FLY.md)
+- Fly config: `fly.toml`
+- Docker build: `server/Dockerfile`
+- Deployment notes: `server/DEPLOY_FLY.md`
 
-Default conservative deployment mode:
+Default conservative deployment (no live AI):
 
-- `AI_MODE=mock`
-- `AI_PROVIDER=mock`
-- `DEV_AUTH_ENABLED=false`
+```
+AI_MODE=mock
+AI_PROVIDER=mock
+DEV_AUTH_ENABLED=false
+```
 
-To switch to live AI:
+To enable live AI, set `AI_MODE=live` and configure `AI_PROVIDER`, `AI_MODEL`, `AI_API_KEY`, and `AI_BASE_URL` for OpenAI-compatible endpoints.
 
-- set `AI_MODE=live`
-- choose `AI_PROVIDER=anthropic` or `openai_compatible`
-- provide `AI_MODEL`
-- provide `AI_API_KEY`
-- provide `AI_BASE_URL` when using a non-default OpenAI-compatible endpoint
+Local DeepSeek setup:
 
-Local DeepSeek setup for immediate testing:
-
-1. Create `server/.env` from [server/.env.example](/Users/z14/Documents/sprout/server/.env.example).
-2. Put your key in `AI_API_KEY=...`.
+1. Create `server/.env` from `server/.env.example`
+2. Set `AI_API_KEY=your_key`
 3. Keep:
    - `AI_MODE=live`
    - `AI_PROVIDER=openai_compatible`
    - `AI_MODEL=deepseek-chat`
    - `AI_BASE_URL=https://api.deepseek.com`
    - `JWT_TTL=1h`
-4. Run the backend from repo root:
+4. Run:
 
 ```sh
 set -a && source server/.env && set +a && go run ./server/cmd/server
 ```
 
-The backend will normalize `AI_BASE_URL=https://api.deepseek.com` to the correct OpenAI-compatible chat completions endpoint automatically.
+The backend normalizes `AI_BASE_URL` to the correct OpenAI-compatible chat completions endpoint automatically.
 
-## Immediate Next Work
+## Immediate Next Work (Phase 2–7)
 
-The current best-practice next steps are:
+1. **Phase 2** — Photo AI parsing: implement `PhotoArtifactProcessor` using Vision, integrate into `CaptureComposerView`, extend `AnalyzeRequestBuilder`
+2. **Phase 3** — Audio transcription: implement `AudioTranscriptionService` using Speech framework, add editable transcription UI
+3. **Phase 4** — Automated context: implement weather / location / music context services, add `ContextAutoCollector`
+4. **Phase 5** — Link preview: implement `LinkMetadataExtractor`, extract og:title / og:image in `CaptureComposerView`
+5. **Phase 6** — Home board connection: wire real memory / arc / reflection data into `HomeScreen`, remove empty-state fallbacks
+6. **Phase 7** — AI content governance: entity deduplication in `GraphUpdater`, quality filtering in `TemporalArcPromoter`, storyline coherence in `TemporalArcCandidateBuilder`
 
-1. Continue extracting `RecordDetailView` sections into clearer artifact evidence views, especially for media-heavy and mixed-content sections.
-2. Audit debug-only and non-primary fallback readers so they do not drift back into user-facing paths.
-3. Surface graph and phase objects more directly in navigation and detail views.
-4. Add a dedicated backend Reflection API while keeping iOS local-first.
+## Documentation
+
+Full v4 specification: [`docs/mory_v4/`](../docs/mory_v4/)
+
+- [PRD Index](../docs/mory_v4/PRD/00_v4_prd_index.md) — product scope and goals
+- [Architecture Index](../docs/mory_v4/Architecture/00_v4_architecture_index.md) — technical architecture
+- [Build Roadmap](../docs/mory_v4/Architecture/07_build_roadmap.md) — phase-by-phase implementation plan
