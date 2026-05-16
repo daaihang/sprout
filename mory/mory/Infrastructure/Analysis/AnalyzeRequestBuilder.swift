@@ -31,7 +31,7 @@ struct AnalyzeRequestBuilder {
                     kind: artifact.kind.rawValue,
                     title: artifact.title,
                     summary: artifact.summary,
-                    textContent: artifact.textContent,
+                    textContent: String(artifact.textContent.prefix(500)),
                     metadata: artifact.metadata
                 )
             },

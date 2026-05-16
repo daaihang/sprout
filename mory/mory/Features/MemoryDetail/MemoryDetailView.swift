@@ -268,18 +268,12 @@ struct MemoryDetailView: View {
         }
         .navigationTitle("memory.nav.title")
         .task(id: recordID) {
-            await autoRefresh()
-        }
-    }
-
-    @MainActor
-    private func autoRefresh() async {
-        await load()
-
-        while !Task.isCancelled {
-            try? await Task.sleep(nanoseconds: 4_000_000_000)
-            guard !Task.isCancelled else { break }
             await load()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .pipelineDidComplete)) { notification in
+            if let id = notification.userInfo?["recordID"] as? UUID, id == recordID {
+                Task { await load() }
+            }
         }
     }
 

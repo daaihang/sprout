@@ -1,6 +1,10 @@
 import Foundation
 import SwiftData
 
+extension Notification.Name {
+    static let pipelineDidComplete = Notification.Name("mory.pipelineDidComplete")
+}
+
 struct ArchitecturePipelineExecutor {
     private let graphUpdater = GraphUpdater()
     private let candidateBuilder = TemporalArcCandidateBuilder()
@@ -19,30 +23,44 @@ struct ArchitecturePipelineExecutor {
         upsertReflection: @escaping (ReflectionSnapshot) throws -> Void,
         save: @escaping () throws -> Void
     ) async throws {
-        // Step 1: Fetch known entities for context
+        // Step 1: Fetch known entities for context (limit to 20 most recent)
         let existingEntityNodes = try fetchExistingEntityNodes(modelContext: modelContext)
-        let knownEntities = existingEntityNodes.map {
-            EntityReference(
-                id: $0.id,
-                kind: $0.kind,
-                name: $0.displayName,
-                aliases: $0.aliases,
-                confidence: $0.confidence
-            )
-        }
+        let knownEntities = existingEntityNodes
+            .sorted { $0.updatedAt > $1.updatedAt }
+            .prefix(20)
+            .map {
+                EntityReference(
+                    id: $0.id,
+                    kind: $0.kind,
+                    name: $0.displayName,
+                    aliases: $0.aliases,
+                    confidence: $0.confidence
+                )
+            }
 
-        // Step 2: Analyze the record
+        // Step 2: Analyze the record (API call)
         let analysis = try await analysisService.analyze(
             record: record,
             artifacts: artifacts,
-            knownEntities: knownEntities
+            knownEntities: Array(knownEntities)
         )
 
         // Step 3: Persist the record analysis snapshot
         try upsertRecordAnalysis(analysis)
         try save()
 
-        // Step 4: Compute entity graph updates using GraphUpdater
+        // === PARALLEL SECTION ===
+        // Fire reflection API call immediately (uses analysis.reflectionHint)
+        // while graph + arc processing runs on the current context.
+        async let reflectionTask = analysisService.generateReflection(
+            record: record,
+            artifacts: artifacts,
+            linkedArcID: nil,
+            knownEntities: Array(knownEntities),
+            prompt: analysis.reflectionHint
+        )
+
+        // Step 4: Compute entity graph updates (runs while reflection API is in-flight)
         let graphUpdate = graphUpdater.apply(
             analysis: analysis,
             linkedArtifactIDs: record.artifactIDs,
@@ -64,15 +82,11 @@ struct ArchitecturePipelineExecutor {
         }
         try save()
 
-        // Step 6: Build TemporalArcCandidates from record+artifacts+analysis
-        let allRecords = [record]
-        let allAnalyses = [analysis]
-        let allArtifacts = artifacts
-
+        // Step 6: Build TemporalArcCandidates
         let candidates = candidateBuilder.buildCandidates(
-            records: allRecords,
-            analyses: allAnalyses,
-            artifacts: allArtifacts,
+            records: [record],
+            analyses: [analysis],
+            artifacts: artifacts,
             artifactEntityLinks: graphUpdate.artifactEntityLinks,
             entityNodes: graphUpdate.entityNodes,
             maxCandidates: 3
@@ -83,7 +97,7 @@ struct ArchitecturePipelineExecutor {
         for candidate in candidates {
             let promotionResult = temporalArcService.promote(
                 candidate: candidate,
-                analyses: allAnalyses,
+                analyses: [analysis],
                 artifactEntityLinks: graphUpdate.artifactEntityLinks,
                 entityNodes: graphUpdate.entityNodes
             )
@@ -93,59 +107,25 @@ struct ArchitecturePipelineExecutor {
         }
         try save()
 
-        // Step 8: Generate reflection via analysisService
-        if let firstArc = acceptedArcs.first {
-            let reflectionResult = try await analysisService.generateReflection(
-                record: record,
-                artifacts: artifacts,
-                linkedArcID: firstArc.id,
-                knownEntities: knownEntities,
-                prompt: analysis.reflectionHint
-            )
+        // === MERGE: await reflection API result + combine with graph data ===
+        let reflectionResult = try await reflectionTask
 
-            let reflection = ReflectionSnapshot(
-                type: .record,
-                title: reflectionResult.title,
-                body: reflectionResult.body,
-                evidenceSummary: reflectionResult.evidenceSummary,
-                confidence: reflectionResult.confidence,
-                status: .suggested,
-                linkedTemporalArcID: firstArc.id,
-                sourceRecordIDs: [record.id],
-                sourceArtifactIDs: artifacts.map(\.id),
-                sourceEntityIDs: graphUpdate.resolvedEntityIDs,
-                createdAt: Date.now,
-                savedAt: nil,
-                dismissedAt: nil
-            )
-            try upsertReflection(reflection)
-        } else {
-            // Fallback: generate a record-level reflection without arc linkage
-            let reflectionResult = try await analysisService.generateReflection(
-                record: record,
-                artifacts: artifacts,
-                linkedArcID: nil,
-                knownEntities: knownEntities,
-                prompt: analysis.reflectionHint
-            )
-
-            let reflection = ReflectionSnapshot(
-                type: .record,
-                title: reflectionResult.title,
-                body: reflectionResult.body,
-                evidenceSummary: reflectionResult.evidenceSummary,
-                confidence: reflectionResult.confidence,
-                status: .suggested,
-                linkedTemporalArcID: nil,
-                sourceRecordIDs: [record.id],
-                sourceArtifactIDs: artifacts.map(\.id),
-                sourceEntityIDs: graphUpdate.resolvedEntityIDs,
-                createdAt: Date.now,
-                savedAt: nil,
-                dismissedAt: nil
-            )
-            try upsertReflection(reflection)
-        }
+        let reflection = ReflectionSnapshot(
+            type: .record,
+            title: reflectionResult.title,
+            body: reflectionResult.body,
+            evidenceSummary: reflectionResult.evidenceSummary,
+            confidence: reflectionResult.confidence,
+            status: .suggested,
+            linkedTemporalArcID: acceptedArcs.first?.id,
+            sourceRecordIDs: [record.id],
+            sourceArtifactIDs: artifacts.map(\.id),
+            sourceEntityIDs: graphUpdate.resolvedEntityIDs,
+            createdAt: Date.now,
+            savedAt: nil,
+            dismissedAt: nil
+        )
+        try upsertReflection(reflection)
 
         // Step 9: Final save
         try save()

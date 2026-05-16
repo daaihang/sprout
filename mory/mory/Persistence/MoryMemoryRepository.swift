@@ -179,6 +179,11 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
                 )
             )
             try save()
+            NotificationCenter.default.post(
+                name: .pipelineDidComplete,
+                object: nil,
+                userInfo: ["recordID": recordID]
+            )
         } catch {
             let trace = await analysisService.latestDebugTrace()
             let failedAt = Date.now
@@ -198,6 +203,11 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
                 )
             )
             try save()
+            NotificationCenter.default.post(
+                name: .pipelineDidComplete,
+                object: nil,
+                userInfo: ["recordID": recordID]
+            )
             throw error
         }
     }

@@ -29,6 +29,13 @@ type openAIChatRequest struct {
 	ResponseFormat map[string]string `json:"response_format,omitempty"`
 	Messages       []openAIMessage   `json:"messages"`
 	Temperature    float64           `json:"temperature"`
+	Thinking       *thinkingConfig   `json:"thinking,omitempty"`
+}
+
+// thinkingConfig controls DeepSeek v4-pro thinking mode.
+// Set Type to "disabled" to use non-thinking (standard chat) mode.
+type thinkingConfig struct {
+	Type string `json:"type"` // "enabled" or "disabled"
 }
 
 type openAIMessage struct {
@@ -91,6 +98,15 @@ func (p *OpenAICompatibleProvider) Name() string {
 	return "openai_compatible"
 }
 
+// thinkingConfig returns a disabled thinking config for DeepSeek v4-pro models.
+// For non-DeepSeek models, returns nil (field omitted from JSON).
+func (p *OpenAICompatibleProvider) thinkingConfig() *thinkingConfig {
+	if strings.Contains(p.model, "deepseek") {
+		return &thinkingConfig{Type: "disabled"}
+	}
+	return nil
+}
+
 func (p *OpenAICompatibleProvider) Analyze(ctx context.Context, req AnalyzeRequest, user UserContext) (AnalyzeResult, error) {
 	if err := req.Validate(); err != nil {
 		return AnalyzeResult{}, err
@@ -110,6 +126,7 @@ func (p *OpenAICompatibleProvider) Analyze(ctx context.Context, req AnalyzeReque
 			{Role: "system", Content: systemPrompt},
 			{Role: "user", Content: userPrompt},
 		},
+		Thinking: p.thinkingConfig(),
 	}
 
 	body, err := json.Marshal(payload)
@@ -266,6 +283,7 @@ func (p *OpenAICompatibleProvider) runReflection(
 			{Role: "system", Content: systemPrompt},
 			{Role: "user", Content: userPrompt},
 		},
+		Thinking: p.thinkingConfig(),
 	}
 
 	body, err := json.Marshal(payload)

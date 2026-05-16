@@ -73,7 +73,7 @@ type AnalyzeResponse struct {
 
 type EmotionResult struct {
 	Label      string   `json:"label"`
-	Intensity  *int     `json:"intensity,omitempty"`
+	Intensity  *float64 `json:"intensity,omitempty"`
 	Confidence *float64 `json:"confidence,omitempty"`
 }
 

@@ -404,7 +404,7 @@ func analyzeResponseTool() anthropicTool {
 					"type": "object",
 					"properties": map[string]any{
 						"label":      map[string]any{"type": "string"},
-						"intensity":  map[string]any{"type": "integer"},
+						"intensity":  map[string]any{"type": "number"},
 						"confidence": map[string]any{"type": "number"},
 					},
 					"required": []string{"label"},

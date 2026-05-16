@@ -133,7 +133,7 @@ struct AnalyzeResponseMapper {
 struct AnalyzeResponseEnvelope: Codable, Sendable {
     struct Emotion: Codable, Sendable {
         var label: String
-        var intensity: Int?
+        var intensity: Double?
         var confidence: Double?
         var interpretation: String?
     }

@@ -133,7 +133,7 @@ func (p *MockProvider) Analyze(_ context.Context, req AnalyzeRequest, user UserC
 		})
 	}
 
-	intensity := 2
+	intensity := 2.0
 	confidence := 0.84
 	resp := NormalizeResponse(AnalyzeResponse{
 		Tags:     tags,

@@ -11,7 +11,7 @@ Return exactly one JSON object and no markdown.
 The JSON must match this shape:
 {
   "tags": ["string"],
-  "emotion": {"label":"string","intensity":1,"confidence":0.0},
+  "emotion": {"label":"string","intensity":1.0,"confidence":0.0},
   "entities": [{"kind":"person|place|theme|decision","name":"string","canonical_name":"string","confidence":0.0,"source_artifact_ids":["string"]}],
   "candidate_edges": [{"from_name":"string","from_kind":"string","to_name":"string","to_kind":"string","relation":"string","confidence":0.0}],
   "insight": "string",
