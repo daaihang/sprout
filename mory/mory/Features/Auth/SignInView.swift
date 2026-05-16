@@ -2,14 +2,13 @@ import SwiftUI
 import AuthenticationServices
 
 struct SignInView: View {
-    @StateObject private var authService: AppleAuthService
     @State private var isLoading = false
     @State private var errorMessage: String?
 
     private let authManager: AuthSessionManager?
 
     init(credentialStore: KeychainCredentialStore, authManager: AuthSessionManager? = nil) {
-        _authService = StateObject(wrappedValue: AppleAuthService(credentialStore: credentialStore))
+        _ = credentialStore
         self.authManager = authManager
     }
 
@@ -82,17 +81,12 @@ struct SignInView: View {
             let identityToken = appleIDCredential.identityToken.flatMap { String(data: $0, encoding: .utf8) }
             let userId = appleIDCredential.user
 
-            // Save identity token via legacy path
-            try? await authService.credentialStore.save(identityToken: identityToken ?? "", userIdentifier: userId)
-
-            // Authenticate with server and persist full credential
-            if let token = identityToken {
-                await authManager?.didSignIn(identityToken: token, userID: userId)
+            let didComplete = await authManager?.didSignIn(identityToken: identityToken ?? "", userID: userId) ?? false
+            if didComplete {
+                errorMessage = nil
             } else {
-                await authManager?.didSignIn(identityToken: "", userID: userId)
+                errorMessage = authManager?.lastErrorMessage ?? "Sign in failed."
             }
-
-            errorMessage = nil
 
         case .failure(let error):
             if let asError = error as? ASAuthorizationError, asError.code == .canceled {

@@ -120,6 +120,10 @@ struct MoryAPIClient: Sendable {
         self.decoder = decoder
     }
 
+    var baseURL: URL {
+        configuration.baseURL
+    }
+
     func authenticate(identityToken: String) async throws -> MoryAuthResponse {
         struct Payload: Encodable {
             let identityToken: String
@@ -134,8 +138,12 @@ struct MoryAPIClient: Sendable {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try encoder.encode(Payload(identityToken: identityToken))
 
-        let (data, response) = try await session.data(for: request)
-        return try decodeResponse(data: data, response: response, as: MoryAuthResponse.self)
+        do {
+            let (data, response) = try await session.data(for: request)
+            return try decodeResponse(data: data, response: response, as: MoryAuthResponse.self, failedStage: "auth_apple")
+        } catch {
+            throw normalize(error: error, failedStage: "auth_apple")
+        }
     }
 
     func analyzeRecords(
@@ -202,8 +210,12 @@ struct MoryAPIClient: Sendable {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(refreshToken)", forHTTPHeaderField: "Authorization")
 
-        let (data, response) = try await session.data(for: request)
-        return try decodeResponse(data: data, response: response, as: MoryAuthResponse.self)
+        do {
+            let (data, response) = try await session.data(for: request)
+            return try decodeResponse(data: data, response: response, as: MoryAuthResponse.self, failedStage: "auth_refresh")
+        } catch {
+            throw normalize(error: error, failedStage: "auth_refresh")
+        }
     }
 
     private func decodeResponse<T: Decodable>(
@@ -228,7 +240,8 @@ struct MoryAPIClient: Sendable {
             }
         case 401:
             let body = String(data: data, encoding: .utf8)
-            setDebugError(statusCode: 401, responseBody: body, rawErrorBody: body, failedStage: failedStage, errorDescription: "unauthorized")
+            let message = (try? decoder.decode(ErrorEnvelope.self, from: data).error) ?? "unauthorized"
+            setDebugError(statusCode: 401, responseBody: body, rawErrorBody: body, failedStage: failedStage, errorDescription: message)
             throw APIError.unauthorized
         default:
             let body = String(data: data, encoding: .utf8)
@@ -244,13 +257,13 @@ struct MoryAPIClient: Sendable {
             case .invalidResponse:
                 setDebugError(statusCode: nil, responseBody: nil, rawErrorBody: nil, failedStage: failedStage, errorDescription: apiError.localizedDescription)
             case .unauthorized:
-                setDebugError(statusCode: 401, responseBody: nil, rawErrorBody: nil, failedStage: failedStage, errorDescription: apiError.localizedDescription)
-            case let .server(statusCode, message, body):
-                setDebugError(statusCode: statusCode, responseBody: body, rawErrorBody: body, failedStage: failedStage, errorDescription: message)
+                break
+            case .server:
+                break
             case let .network(message):
                 setDebugError(statusCode: nil, responseBody: nil, rawErrorBody: nil, failedStage: failedStage, errorDescription: message)
-            case let .decoding(message, body):
-                setDebugError(statusCode: nil, responseBody: body, rawErrorBody: body, failedStage: failedStage, errorDescription: message)
+            case .decoding:
+                break
             }
             return apiError
         }

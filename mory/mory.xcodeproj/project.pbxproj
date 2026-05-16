@@ -243,6 +243,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 0.0.1;
+				MORY_BUILD_CHANNEL = InternalBeta;
 				PRODUCT_BUNDLE_IDENTIFIER = com.speculolabs.mory;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -292,6 +293,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 0.0.1;
+				MORY_BUILD_CHANNEL = Production;
 				PRODUCT_BUNDLE_IDENTIFIER = com.speculolabs.mory;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;

@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>MORY_BUILD_CHANNEL</key>
+	<string>$(MORY_BUILD_CHANNEL)</string>
 	<key>MORY_API_BASE_URL</key>
 	<string>https://sprout-god7g.fly.dev</string>
 	<key>MORY_DEV_AUTH_IDENTITY_TOKEN</key>

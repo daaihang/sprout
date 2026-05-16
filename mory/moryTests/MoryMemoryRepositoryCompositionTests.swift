@@ -2,6 +2,52 @@ import SwiftData
 import XCTest
 @testable import mory
 
+final class AppRuntimeEnvironmentTests: XCTestCase {
+    func testBuildChannelParsesInternalPublicAndProductionValues() {
+        XCTAssertEqual(AppRuntimeEnvironment.BuildChannel(rawBundleValue: "InternalBeta"), .internalBeta)
+        XCTAssertEqual(AppRuntimeEnvironment.BuildChannel(rawBundleValue: "internal_beta"), .internalBeta)
+        XCTAssertEqual(AppRuntimeEnvironment.BuildChannel(rawBundleValue: "PublicBeta"), .publicBeta)
+        XCTAssertEqual(AppRuntimeEnvironment.BuildChannel(rawBundleValue: "production"), .production)
+        XCTAssertEqual(AppRuntimeEnvironment.BuildChannel(rawBundleValue: nil), .unknown)
+    }
+
+    func testDebugToolsAreAllowedOnlyForDevelopmentOrInternalBetaTestFlight() {
+        let debug = AppRuntimeEnvironment(
+            buildChannel: .production,
+            distribution: .debug,
+            bundleIdentifier: "com.speculolabs.mory",
+            version: "0.0.1",
+            buildNumber: "1"
+        )
+        let internalTestFlight = AppRuntimeEnvironment(
+            buildChannel: .internalBeta,
+            distribution: .testFlight,
+            bundleIdentifier: "com.speculolabs.mory",
+            version: "0.0.1",
+            buildNumber: "1"
+        )
+        let publicTestFlight = AppRuntimeEnvironment(
+            buildChannel: .publicBeta,
+            distribution: .testFlight,
+            bundleIdentifier: "com.speculolabs.mory",
+            version: "0.0.1",
+            buildNumber: "1"
+        )
+        let appStore = AppRuntimeEnvironment(
+            buildChannel: .internalBeta,
+            distribution: .appStore,
+            bundleIdentifier: "com.speculolabs.mory",
+            version: "0.0.1",
+            buildNumber: "1"
+        )
+
+        XCTAssertTrue(debug.allowsDebugTools)
+        XCTAssertTrue(internalTestFlight.allowsDebugTools)
+        XCTAssertFalse(publicTestFlight.allowsDebugTools)
+        XCTAssertFalse(appStore.allowsDebugTools)
+    }
+}
+
 @MainActor
 final class MoryMemoryRepositoryCompositionTests: XCTestCase {
     func testFetchHomeBoardReturnsCompositionDrivenMemoryRenderValues() async throws {
@@ -968,4 +1014,155 @@ private struct AliasRecordAnalysisService: RecordAnalysisServing {
             )
         )
     }
+}
+
+@MainActor
+final class AuthSessionManagerTests: XCTestCase {
+    func testAppleSignInFallsBackToLocalSessionWhenServerAuthFails() async throws {
+        let store = KeychainCredentialStore(account: "mory-auth-test-\(UUID().uuidString)", inMemory: true)
+        defer { Task { try? await store.delete() } }
+
+        AuthURLProtocol.responseHandler = { request in
+            XCTAssertEqual(request.url?.path, "/auth/apple")
+            let response = HTTPURLResponse(
+                url: try XCTUnwrap(request.url),
+                statusCode: 401,
+                httpVersion: nil,
+                headerFields: ["Content-Type": "application/json"]
+            )!
+            return (response, Data(#"{"error":"apple audience mismatch"}"#.utf8))
+        }
+        defer { AuthURLProtocol.responseHandler = nil }
+
+        let manager = AuthSessionManager(
+            credentialStore: store,
+            apiClient: makeAuthTestClient()
+        )
+
+        let didComplete = await manager.didSignIn(identityToken: "header.payload.signature", userID: "apple-user-123")
+        let credential = await store.loadCredential()
+        let diagnostics = await manager.fetchDiagnostics()
+
+        XCTAssertTrue(didComplete)
+        XCTAssertEqual(manager.state, .authenticated)
+        XCTAssertEqual(credential?.userID, "apple-user-123")
+        XCTAssertEqual(credential?.accessToken, "")
+        XCTAssertEqual(credential?.identityToken, "header.payload.signature")
+        XCTAssertEqual(diagnostics.lastHTTPStatusCode, 401)
+        XCTAssertEqual(diagnostics.lastFailedStage, "auth_apple")
+        XCTAssertTrue(diagnostics.lastResponseBody?.contains("apple audience mismatch") == true)
+    }
+
+    func testCheckSessionRestoresLocalAppleCredentialWithoutServerToken() async throws {
+        let store = KeychainCredentialStore(account: "mory-auth-test-\(UUID().uuidString)", inMemory: true)
+        defer { Task { try? await store.delete() } }
+
+        try await store.saveCredential(
+            AuthCredential(
+                accessToken: "",
+                refreshToken: "",
+                expiresAt: nil,
+                userID: "apple-user-123",
+                identityToken: "stored-identity-token"
+            )
+        )
+
+        let manager = AuthSessionManager(
+            credentialStore: store,
+            apiClient: makeAuthTestClient()
+        )
+
+        await manager.checkSession()
+        let diagnostics = await manager.fetchDiagnostics()
+
+        XCTAssertEqual(manager.state, .authenticated)
+        XCTAssertEqual(diagnostics.userID, "apple-user-123")
+        XCTAssertFalse(diagnostics.hasAccessToken)
+        XCTAssertTrue(diagnostics.hasIdentityToken)
+        XCTAssertEqual(diagnostics.lastEvent, "Restored local Apple session without server token")
+    }
+
+    func testAppleSignInPersistsServerCredentialWhenServerAuthSucceeds() async throws {
+        let store = KeychainCredentialStore(account: "mory-auth-test-\(UUID().uuidString)", inMemory: true)
+        defer { Task { try? await store.delete() } }
+
+        AuthURLProtocol.responseHandler = { request in
+            XCTAssertEqual(request.url?.path, "/auth/apple")
+            let response = HTTPURLResponse(
+                url: try XCTUnwrap(request.url),
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: ["Content-Type": "application/json"]
+            )!
+            let body = Data(
+                #"""
+                {
+                  "access_token": "access-token",
+                  "refresh_token": "refresh-token",
+                  "expires_at": "2099-01-01T00:00:00Z",
+                  "user": {
+                    "id": "server-user-123",
+                    "tier": "seed"
+                  }
+                }
+                """#.utf8
+            )
+            return (response, body)
+        }
+        defer { AuthURLProtocol.responseHandler = nil }
+
+        let manager = AuthSessionManager(
+            credentialStore: store,
+            apiClient: makeAuthTestClient()
+        )
+
+        let didComplete = await manager.didSignIn(identityToken: "identity-token", userID: "apple-user-123")
+        let credential = await store.loadCredential()
+
+        XCTAssertTrue(didComplete)
+        XCTAssertEqual(manager.state, .authenticated)
+        XCTAssertEqual(credential?.userID, "server-user-123")
+        XCTAssertEqual(credential?.accessToken, "access-token")
+        XCTAssertEqual(credential?.refreshToken, "refresh-token")
+        XCTAssertEqual(credential?.identityToken, "identity-token")
+    }
+
+    private func makeAuthTestClient() -> MoryAPIClient {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [AuthURLProtocol.self]
+        return MoryAPIClient(
+            configuration: MoryAPIConfiguration(baseURL: URL(string: "https://auth.test")!),
+            session: URLSession(configuration: configuration)
+        )
+    }
+}
+
+private final class AuthURLProtocol: URLProtocol {
+    static var responseHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
+
+    override class func canInit(with request: URLRequest) -> Bool {
+        true
+    }
+
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+        request
+    }
+
+    override func startLoading() {
+        guard let responseHandler = Self.responseHandler else {
+            client?.urlProtocol(self, didFailWithError: URLError(.badServerResponse))
+            return
+        }
+
+        do {
+            let (response, data) = try responseHandler(request)
+            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+            client?.urlProtocol(self, didLoad: data)
+            client?.urlProtocolDidFinishLoading(self)
+        } catch {
+            client?.urlProtocol(self, didFailWithError: error)
+        }
+    }
+
+    override func stopLoading() {}
 }

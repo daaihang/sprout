@@ -30,8 +30,20 @@ struct AuthCredential: Codable, Sendable {
 // MARK: - Keychain Store
 
 actor KeychainCredentialStore {
-    private let service = "com.mory.sprout"
-    private let account = "mory-auth"
+    private let service: String
+    private let account: String
+    private let usesInMemoryStore: Bool
+    private var inMemoryCredential: AuthCredential?
+
+    init(
+        service: String = "com.mory.sprout",
+        account: String = "mory-auth",
+        inMemory: Bool = false
+    ) {
+        self.service = service
+        self.account = account
+        self.usesInMemoryStore = inMemory || service == "__memory__"
+    }
 
     enum KeychainError: Error, LocalizedError {
         case duplicateItem
@@ -53,6 +65,11 @@ actor KeychainCredentialStore {
     // MARK: - Full credential (v4)
 
     func saveCredential(_ credential: AuthCredential) throws {
+        if usesInMemoryStore {
+            inMemoryCredential = credential
+            return
+        }
+
         let data = try JSONEncoder().encode(credential)
 
         let query: [String: Any] = [
@@ -73,6 +90,10 @@ actor KeychainCredentialStore {
     }
 
     func loadCredential() -> AuthCredential? {
+        if usesInMemoryStore {
+            return inMemoryCredential
+        }
+
         guard let data = try? getData() else { return nil }
         // Try v4 format first (AuthCredential)
         if let credential = try? JSONDecoder().decode(AuthCredential.self, from: data) {
@@ -117,6 +138,11 @@ actor KeychainCredentialStore {
     // MARK: - Delete
 
     func delete() throws {
+        if usesInMemoryStore {
+            inMemoryCredential = nil
+            return
+        }
+
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,

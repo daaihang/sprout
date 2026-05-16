@@ -6,6 +6,7 @@ struct MoryApp: App {
     private let sharedModelContainer = MoryPersistenceStack.makeSharedModelContainer()
     private let memoryRepository: any MoryMemoryRepositorying
     private let credentialStore = KeychainCredentialStore()
+    private let runtimeEnvironment = AppRuntimeEnvironment.current
     @State private var authManager: AuthSessionManager
 
     init() {
@@ -33,7 +34,10 @@ struct MoryApp: App {
                 case .loading:
                     ProgressView()
                 case .authenticated:
-                    MoryRootView()
+                    MoryRootView(
+                        authManager: authManager,
+                        runtimeEnvironment: runtimeEnvironment
+                    )
                         .environment(\.memoryRepository, memoryRepository)
                 case .unauthenticated:
                     SignInView(

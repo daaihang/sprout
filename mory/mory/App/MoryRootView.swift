@@ -1,6 +1,17 @@
 import SwiftUI
 
 struct MoryRootView: View {
+    let authManager: AuthSessionManager?
+    let runtimeEnvironment: AppRuntimeEnvironment
+
+    init(
+        authManager: AuthSessionManager? = nil,
+        runtimeEnvironment: AppRuntimeEnvironment = .current
+    ) {
+        self.authManager = authManager
+        self.runtimeEnvironment = runtimeEnvironment
+    }
+
     var body: some View {
         TabView {
             NavigationStack {
@@ -52,14 +63,17 @@ struct MoryRootView: View {
                 Label("tab.reflections", systemImage: "sparkles.rectangle.stack")
             }
 
-#if DEBUG
-            NavigationStack {
-                DebugDiagnosticsView()
+            if runtimeEnvironment.allowsDebugTools {
+                NavigationStack {
+                    DebugDiagnosticsView(
+                        authManager: authManager,
+                        runtimeEnvironment: runtimeEnvironment
+                    )
+                }
+                .tabItem {
+                    Label("tab.debug", systemImage: "ladybug")
+                }
             }
-            .tabItem {
-                Label("tab.debug", systemImage: "ladybug")
-            }
-#endif
         }
     }
 }

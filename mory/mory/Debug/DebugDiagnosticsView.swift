@@ -1,11 +1,331 @@
 import SwiftUI
 
 struct DebugDiagnosticsView: View {
+    let authManager: AuthSessionManager?
+    let runtimeEnvironment: AppRuntimeEnvironment
+
+    init(
+        authManager: AuthSessionManager? = nil,
+        runtimeEnvironment: AppRuntimeEnvironment = .current
+    ) {
+        self.authManager = authManager
+        self.runtimeEnvironment = runtimeEnvironment
+    }
+
+    var body: some View {
+        List {
+            Section {
+                NavigationLink {
+                    DebugEnvironmentView(runtimeEnvironment: runtimeEnvironment)
+                } label: {
+                    DebugMenuRow(
+                        icon: "shippingbox",
+                        title: "Build Environment",
+                        subtitle: runtimeEnvironment.label
+                    )
+                }
+
+                NavigationLink {
+                    DebugAuthSessionView(authManager: authManager)
+                } label: {
+                    DebugMenuRow(
+                        icon: "person.badge.key",
+                        title: "Auth Session",
+                        subtitle: "Sign-in state, Keychain credential, and server auth errors"
+                    )
+                }
+
+                NavigationLink {
+                    DebugFullDiagnosticsView(authManager: authManager)
+                } label: {
+                    DebugMenuRow(
+                        icon: "point.3.connected.trianglepath.dotted",
+                        title: "Pipeline Diagnostics",
+                        subtitle: "Target picker, rebuild actions, payloads, provenance, and traces"
+                    )
+                }
+            } header: {
+                Text("Debug")
+            } footer: {
+                Text("Internal diagnostics are enabled for Debug, development installs, and InternalBeta TestFlight builds only.")
+            }
+        }
+        .navigationTitle("debug.title")
+    }
+}
+
+private struct DebugEnvironmentView: View {
+    let runtimeEnvironment: AppRuntimeEnvironment
+
+    var body: some View {
+        List {
+            Section {
+                environmentRow("Build Channel", runtimeEnvironment.buildChannel.label)
+                environmentRow("Distribution", runtimeEnvironment.distribution.rawValue)
+                environmentRow("Debug Tools", runtimeEnvironment.allowsDebugTools ? "enabled" : "disabled")
+                environmentRow("Bundle ID", runtimeEnvironment.bundleIdentifier)
+                environmentRow("Version", runtimeEnvironment.version)
+                environmentRow("Build", runtimeEnvironment.buildNumber)
+            } footer: {
+                Text("iOS can reliably distinguish Debug, development install, TestFlight receipt, and App Store receipt. Internal vs public beta requires the MORY_BUILD_CHANNEL build setting.")
+            }
+        }
+        .navigationTitle("Build Environment")
+    }
+
+    @ViewBuilder
+    private func environmentRow(_ title: String, _ value: String) -> some View {
+        HStack(alignment: .top) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text(value)
+                .font(.caption.monospaced())
+                .multilineTextAlignment(.trailing)
+                .textSelection(.enabled)
+        }
+    }
+}
+
+private struct DebugAuthSessionView: View {
+    let authManager: AuthSessionManager?
+
+    @State private var authDiagnostics: AuthDiagnosticsSnapshot?
+    @State private var errorMessage: String?
+    @State private var copiedToast: String?
+
+    var body: some View {
+        List {
+            if let authDiagnostics {
+                Section {
+                    authRow("State", authDiagnostics.state)
+                    authRow("API Base URL", authDiagnostics.apiBaseURL)
+                    authRow("Stored Credential", authDiagnostics.hasStoredCredential ? "yes" : "no")
+                    authRow("User ID", authDiagnostics.userID ?? "none")
+                    authRow("Guest", authDiagnostics.isGuest ? "yes" : "no")
+                    authRow("Access Token", authDiagnostics.hasAccessToken ? "present" : "missing")
+                    authRow("Refresh Token", authDiagnostics.hasRefreshToken ? "present" : "missing")
+                    authRow("Apple Identity Token", authDiagnostics.hasIdentityToken ? "present" : "missing")
+                    authRow("Expired", authDiagnostics.isExpired ? "yes" : "no")
+                    if let expiresAt = authDiagnostics.expiresAt {
+                        authRow("Expires", expiresAt.formatted(date: .abbreviated, time: .standard))
+                    }
+                    if let lastEvent = authDiagnostics.lastEvent?.trimmedOrNil {
+                        authRow("Last Event", lastEvent)
+                    }
+                    if let lastError = authDiagnostics.lastError?.trimmedOrNil {
+                        errorRow("Auth Error", lastError)
+                    }
+                    if let status = authDiagnostics.lastHTTPStatusCode {
+                        authRow("Last HTTP", "\(status)")
+                    }
+                    if let failedStage = authDiagnostics.lastFailedStage?.trimmedOrNil {
+                        authRow("Failed Stage", failedStage)
+                    }
+                    if let response = authDiagnostics.lastResponseBody?.trimmedOrNil {
+                        payloadRow(title: "Auth Response Body", content: response, recordID: nil)
+                    }
+                    Button {
+                        let report = buildAuthReport(authDiagnostics)
+                        UIPasteboard.general.string = report
+                        showCopiedToast("Auth report copied")
+                    } label: {
+                        Label("Copy Auth Report", systemImage: "doc.on.doc")
+                    }
+                } header: {
+                    Text("Auth Session")
+                } footer: {
+                    Text("Use this to confirm whether sign-in is blocked by Keychain persistence, server auth, or session state.")
+                }
+            } else {
+                Section {
+                    Text("No auth manager attached.")
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if let errorMessage {
+                Section {
+                    errorRow("Auth Diagnostics Error", errorMessage)
+                }
+            }
+        }
+        .navigationTitle("Auth Session")
+        .toolbar {
+            Button {
+                Task { await refresh() }
+            } label: {
+                Label("Refresh", systemImage: "arrow.clockwise")
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if let copiedToast {
+                Text(copiedToast)
+                    .font(.caption.weight(.medium))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .shadow(radius: 4)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .padding(.bottom, 24)
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: copiedToast)
+        .task {
+            await refresh()
+        }
+    }
+
+    @MainActor
+    private func refresh() async {
+        authDiagnostics = await authManager?.fetchDiagnostics()
+        errorMessage = authDiagnostics == nil ? "Auth manager is unavailable." : nil
+    }
+
+    @ViewBuilder
+    private func authRow(_ title: String, _ value: String) -> some View {
+        HStack(alignment: .top) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text(value)
+                .font(.caption.monospaced())
+                .multilineTextAlignment(.trailing)
+                .textSelection(.enabled)
+        }
+    }
+
+    @ViewBuilder
+    private func errorRow(_ label: String, _ message: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+                .font(.caption)
+            VStack(alignment: .leading) {
+                Text(label)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.orange)
+                Text(message)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.orange)
+                    .textSelection(.enabled)
+            }
+            Spacer()
+            copyButton(message, label: "Copy")
+        }
+    }
+
+    @ViewBuilder
+    private func payloadRow(title: String, content: String, recordID: UUID?) -> some View {
+        NavigationLink {
+            PayloadDetailView(title: title, content: content, recordID: recordID)
+        } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.subheadline.weight(.medium))
+                    Text(payloadPreview(content))
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+                Spacer()
+                Text("\(content.count)")
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(.tertiary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func copyButton(_ text: String, label: String) -> some View {
+        Button {
+            UIPasteboard.general.string = text
+            showCopiedToast("\(label) copied")
+        } label: {
+            Image(systemName: "doc.on.clipboard")
+                .font(.caption2)
+        }
+        .buttonStyle(.borderless)
+        .tint(.secondary)
+    }
+
+    private func payloadPreview(_ content: String) -> String {
+        let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { return String(localized: "debug.payload.empty") }
+        let firstLine = trimmed.prefix(120)
+        return String(firstLine) + (trimmed.count > 120 ? "..." : "")
+    }
+
+    private func buildAuthReport(_ auth: AuthDiagnosticsSnapshot) -> String {
+        var lines: [String] = []
+        lines.append("--- Mory Auth Debug Report ---")
+        lines.append("Generated: \(Date.now.formatted(.iso8601))")
+        lines.append("State: \(auth.state)")
+        lines.append("API Base URL: \(auth.apiBaseURL)")
+        lines.append("Stored Credential: \(auth.hasStoredCredential)")
+        lines.append("User ID: \(auth.userID ?? "none")")
+        lines.append("Guest: \(auth.isGuest)")
+        lines.append("Access Token Present: \(auth.hasAccessToken)")
+        lines.append("Refresh Token Present: \(auth.hasRefreshToken)")
+        lines.append("Apple Identity Token Present: \(auth.hasIdentityToken)")
+        lines.append("Expired: \(auth.isExpired)")
+        if let expiresAt = auth.expiresAt { lines.append("Expires: \(expiresAt.formatted(.iso8601))") }
+        if let event = auth.lastEvent?.trimmedOrNil { lines.append("Last Event: \(event)") }
+        if let error = auth.lastError?.trimmedOrNil { lines.append("Last Error: \(error)") }
+        if let status = auth.lastHTTPStatusCode { lines.append("Last HTTP Status: \(status)") }
+        if let stage = auth.lastFailedStage?.trimmedOrNil { lines.append("Failed Stage: \(stage)") }
+        if let body = auth.lastResponseBody?.trimmedOrNil {
+            lines.append("")
+            lines.append("[Auth Response Body]")
+            lines.append(prettyJSON(body))
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    private func showCopiedToast(_ message: String) {
+        copiedToast = message
+        Task {
+            try? await Task.sleep(nanoseconds: 1_800_000_000)
+            copiedToast = nil
+        }
+    }
+}
+
+private struct DebugMenuRow: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundStyle(.blue)
+                .frame(width: 28)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+        }
+        .padding(.vertical, 3)
+    }
+}
+
+private struct DebugFullDiagnosticsView: View {
     @Environment(\.memoryRepository) private var memoryRepository
+    let authManager: AuthSessionManager?
 
     @State private var targetType: DebugAnalysisTarget = .memory
     @State private var selectedTargetID: UUID?
     @State private var targetSummary: String = "Latest memory"
+    @State private var authDiagnostics: AuthDiagnosticsSnapshot?
     @State private var diagnostics: DebugDiagnosticsSnapshot?
     @State private var recentTargets: [DebugTargetRow] = []
     @State private var pipelineStatuses: [PipelineStatusSummary] = []
@@ -18,6 +338,52 @@ struct DebugDiagnosticsView: View {
 
     var body: some View {
         List {
+            // MARK: - Auth Session
+
+            if let authDiagnostics {
+                Section {
+                    authRow("State", authDiagnostics.state)
+                    authRow("API Base URL", authDiagnostics.apiBaseURL)
+                    authRow("Stored Credential", authDiagnostics.hasStoredCredential ? "yes" : "no")
+                    authRow("User ID", authDiagnostics.userID ?? "none")
+                    authRow("Guest", authDiagnostics.isGuest ? "yes" : "no")
+                    authRow("Access Token", authDiagnostics.hasAccessToken ? "present" : "missing")
+                    authRow("Refresh Token", authDiagnostics.hasRefreshToken ? "present" : "missing")
+                    authRow("Apple Identity Token", authDiagnostics.hasIdentityToken ? "present" : "missing")
+                    authRow("Expired", authDiagnostics.isExpired ? "yes" : "no")
+                    if let expiresAt = authDiagnostics.expiresAt {
+                        authRow("Expires", expiresAt.formatted(date: .abbreviated, time: .standard))
+                    }
+                    if let lastEvent = authDiagnostics.lastEvent?.trimmedOrNil {
+                        authRow("Last Event", lastEvent)
+                    }
+                    if let lastError = authDiagnostics.lastError?.trimmedOrNil {
+                        errorRow("Auth Error", lastError)
+                    }
+                    if let status = authDiagnostics.lastHTTPStatusCode {
+                        authRow("Last HTTP", "\(status)")
+                    }
+                    if let failedStage = authDiagnostics.lastFailedStage?.trimmedOrNil {
+                        authRow("Failed Stage", failedStage)
+                    }
+                    if let response = authDiagnostics.lastResponseBody?.trimmedOrNil {
+                        payloadRow(title: "Auth Response Body", content: response, recordID: nil)
+                    }
+                    Button {
+                        let report = buildAuthReport(authDiagnostics)
+                        UIPasteboard.general.string = report
+                        showCopiedToast("Auth report copied")
+                    } label: {
+                        Label("Copy Auth Report", systemImage: "doc.on.doc")
+                            .font(.caption)
+                    }
+                } header: {
+                    Text("Auth Session")
+                } footer: {
+                    Text("Use this to confirm whether sign-in is blocked by Keychain persistence, server auth, or session state.")
+                }
+            }
+
             // MARK: - Target Picker
 
             Section {
@@ -415,6 +781,20 @@ struct DebugDiagnosticsView: View {
     // MARK: - Subviews
 
     @ViewBuilder
+    private func authRow(_ title: String, _ value: String) -> some View {
+        HStack(alignment: .top) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text(value)
+                .font(.caption.monospaced())
+                .multilineTextAlignment(.trailing)
+                .textSelection(.enabled)
+        }
+    }
+
+    @ViewBuilder
     private func payloadRow(title: String, content: String, recordID: UUID?) -> some View {
         NavigationLink {
             PayloadDetailView(title: title, content: content, recordID: recordID)
@@ -556,10 +936,12 @@ struct DebugDiagnosticsView: View {
             selectedTargetID = selected.id
             targetSummary = selected.title
             diagnostics = try memoryRepository.fetchDebugDiagnostics(targetType: targetType, targetID: selectedTargetID)
+            authDiagnostics = await authManager?.fetchDiagnostics()
             recentTargets = try fetchRecentTargets(for: targetType)
             pipelineStatuses = try memoryRepository.fetchPipelineStatusSummaries(limit: 12)
             errorMessage = nil
         } catch {
+            authDiagnostics = await authManager?.fetchDiagnostics()
             errorMessage = error.localizedDescription
         }
     }
@@ -708,6 +1090,32 @@ struct DebugDiagnosticsView: View {
     }
 
     // MARK: - Full Report Builder
+
+    private func buildAuthReport(_ auth: AuthDiagnosticsSnapshot) -> String {
+        var lines: [String] = []
+        lines.append("--- Mory Auth Debug Report ---")
+        lines.append("Generated: \(Date.now.formatted(.iso8601))")
+        lines.append("State: \(auth.state)")
+        lines.append("API Base URL: \(auth.apiBaseURL)")
+        lines.append("Stored Credential: \(auth.hasStoredCredential)")
+        lines.append("User ID: \(auth.userID ?? "none")")
+        lines.append("Guest: \(auth.isGuest)")
+        lines.append("Access Token Present: \(auth.hasAccessToken)")
+        lines.append("Refresh Token Present: \(auth.hasRefreshToken)")
+        lines.append("Apple Identity Token Present: \(auth.hasIdentityToken)")
+        lines.append("Expired: \(auth.isExpired)")
+        if let expiresAt = auth.expiresAt { lines.append("Expires: \(expiresAt.formatted(.iso8601))") }
+        if let event = auth.lastEvent?.trimmedOrNil { lines.append("Last Event: \(event)") }
+        if let error = auth.lastError?.trimmedOrNil { lines.append("Last Error: \(error)") }
+        if let status = auth.lastHTTPStatusCode { lines.append("Last HTTP Status: \(status)") }
+        if let stage = auth.lastFailedStage?.trimmedOrNil { lines.append("Failed Stage: \(stage)") }
+        if let body = auth.lastResponseBody?.trimmedOrNil {
+            lines.append("")
+            lines.append("[Auth Response Body]")
+            lines.append(prettyJSON(body))
+        }
+        return lines.joined(separator: "\n")
+    }
 
     private func buildFullDebugReport(_ diag: DebugDiagnosticsSnapshot) -> String {
         var lines: [String] = []
