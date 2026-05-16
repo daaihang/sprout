@@ -25,6 +25,9 @@ struct CaptureComposerView: View {
     @State private var isProcessingPhoto = false
     @State private var photoProcessorResult: PhotoArtifactProcessor.Result?
     @State private var audioRecorder = AudioRecorderModel()
+    @State private var isTranscribing = false
+    @State private var transcriptionText = ""
+    @State private var transcriptionDuration: TimeInterval?
 
     var onSaved: (() -> Void)?
 
@@ -114,7 +117,7 @@ struct CaptureComposerView: View {
                                     Text("capture.audio.recording \(Int(audioRecorder.recordingDuration))")
                                         .font(.headline)
                                     Spacer()
-                                    Button(audioRecorder.isRecording ? String(localized: "capture.audio.stop") : String(localized: "capture.audio.start")) {
+                                    Button(String(localized: "capture.audio.stop")) {
                                         audioRecorder.toggleRecording()
                                     }
                                     .buttonStyle(.borderedProminent)
@@ -122,6 +125,8 @@ struct CaptureComposerView: View {
                                 }
                             } else {
                                 Button {
+                                    transcriptionText = ""
+                                    transcriptionDuration = nil
                                     audioRecorder.toggleRecording()
                                 } label: {
                                     Label(
@@ -139,6 +144,33 @@ struct CaptureComposerView: View {
                                     Text(url.lastPathComponent)
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                        .onChange(of: audioRecorder.isRecording) { wasRecording, isNowRecording in
+                            if wasRecording && !isNowRecording {
+                                Task { await transcribeAudio() }
+                            }
+                        }
+                        if isTranscribing {
+                            HStack(spacing: 8) {
+                                ProgressView()
+                                Text("capture.audio.transcribing")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        } else if !transcriptionText.isEmpty {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("capture.audio.transcription")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                TextField("capture.audio.editTranscription", text: $transcriptionText, axis: .vertical)
+                                    .lineLimit(3...8)
+                                    .font(.subheadline)
+                                if let duration = transcriptionDuration {
+                                    Text("capture.audio.transcriptionTime \(String(format: "%.1f", duration))")
+                                        .font(.caption2)
+                                        .foregroundStyle(.tertiary)
                                 }
                             }
                         }
@@ -200,11 +232,11 @@ struct CaptureComposerView: View {
     }
 
     private var normalizedCaptureText: String? {
-        bodyText.trimmedOrNil ?? title.trimmedOrNil
+        bodyText.trimmedOrNil ?? title.trimmedOrNil ?? transcriptionText.trimmedOrNil
     }
 
     private var canSave: Bool {
-        !isProcessingPhoto && !artifactDrafts.isEmpty
+        !isProcessingPhoto && !isTranscribing && !artifactDrafts.isEmpty
     }
 
     private var artifactDrafts: [CaptureArtifactDraft] {
@@ -230,7 +262,13 @@ struct CaptureComposerView: View {
         case .audio:
             let summary = bodyText.trimmedOrNil ?? title.trimmedOrNil ?? "Audio capture"
             guard let filename = audioRecorder.recordedFilename else { return [] }
-            return [.audio(title: normalizedTitle, summary: summary, filename: filename, audioData: audioRecorder.recordedAudioData)]
+            return [.audio(
+                title: normalizedTitle,
+                summary: summary,
+                filename: filename,
+                audioData: audioRecorder.recordedAudioData,
+                transcriptionText: transcriptionText
+            )]
         case .location:
             guard bodyText.trimmedOrNil != nil || title.trimmedOrNil != nil || attachmentValue.trimmedOrNil != nil || secondaryValue.trimmedOrNil != nil else {
                 return []
@@ -280,6 +318,18 @@ struct CaptureComposerView: View {
         } catch {
             errorMessage = error.localizedDescription
             savedStatusMessage = nil
+        }
+    }
+
+    private func transcribeAudio() async {
+        guard let audioData = audioRecorder.recordedAudioData else { return }
+        isTranscribing = true
+        defer { isTranscribing = false }
+
+        let service = AudioTranscriptionService()
+        if let result = await service.transcribe(audioData: audioData, filename: audioRecorder.recordedFilename) {
+            transcriptionText = result.transcription
+            transcriptionDuration = result.duration
         }
     }
 }

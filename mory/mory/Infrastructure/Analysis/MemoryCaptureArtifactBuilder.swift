@@ -91,14 +91,20 @@ struct MemoryCaptureArtifactBuilder {
                 createdAt: createdAt,
                 updatedAt: createdAt
             )
-        case let .audio(title, summary, filename, audioData):
+        case let .audio(title, summary, filename, audioData, transcriptionText):
             let resolvedSummary = summary.trimmedOrNil ?? "Audio capture"
+            let textContent: String
+            if let transcript = transcriptionText.trimmedOrNil {
+                textContent = transcript
+            } else {
+                textContent = resolvedSummary
+            }
             return Artifact(
                 recordID: recordID,
                 kind: .audio,
                 title: title?.trimmedOrNil ?? fallbackTitle?.trimmedOrNil ?? "Audio",
                 summary: resolvedSummary,
-                textContent: resolvedSummary,
+                textContent: textContent,
                 payload: .media(ArtifactMediaRef(filename: filename, mimeType: "audio/m4a")),
                 mediaRef: ArtifactMediaRef(filename: filename, mimeType: "audio/m4a"),
                 metadata: [:],
