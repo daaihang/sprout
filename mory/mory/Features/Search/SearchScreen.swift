@@ -20,8 +20,18 @@ struct SearchScreen: View {
                 Section("search.section.search") {
                     Text("search.hint")
                         .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             } else {
+                if result.isPubliclyEmpty {
+                    Section {
+                        MoryPublicEmptyStateView(
+                            state: .search,
+                            onAction: { query = "" }
+                        )
+                    }
+                }
+
                 Section("search.section.memories") {
                     if result.memories.isEmpty {
                         Text("search.empty.memories")
@@ -40,6 +50,7 @@ struct SearchScreen: View {
                                         .lineLimit(2)
                                 }
                             }
+                            .accessibilityElement(children: .combine)
                         }
                     }
                 }
@@ -73,6 +84,7 @@ struct SearchScreen: View {
                                     }
                                 }
                             }
+                            .accessibilityElement(children: .combine)
                         }
                     }
                 }
@@ -101,6 +113,7 @@ struct SearchScreen: View {
                                     }
                                 }
                             }
+                            .accessibilityElement(children: .combine)
                         }
                     }
                 }
@@ -129,6 +142,7 @@ struct SearchScreen: View {
                                     }
                                 }
                             }
+                            .accessibilityElement(children: .combine)
                         }
                     }
                 }
@@ -148,5 +162,11 @@ struct SearchScreen: View {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+}
+
+private extension SearchSnapshot {
+    var isPubliclyEmpty: Bool {
+        memories.isEmpty && entities.isEmpty && arcs.isEmpty && reflections.isEmpty
     }
 }

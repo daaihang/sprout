@@ -99,14 +99,15 @@ struct HomeScreen: View {
                                 Text(item.status.userLabel)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
-                                if let lastError = item.status.lastError?.trimmedOrNil {
-                                    Text(lastError)
+                                if item.status.stage == .failed {
+                                    Text("empty.processingFailed.message")
                                         .font(.caption)
                                         .foregroundStyle(.orange)
-                                        .lineLimit(2)
+                                        .fixedSize(horizontal: false, vertical: true)
                                 }
                             }
                             .padding(.vertical, 2)
+                            .accessibilityElement(children: .combine)
                         }
                     }
                 }
@@ -121,14 +122,10 @@ struct HomeScreen: View {
 
             Section(surface == .home ? String(localized: "home.section.recent") : String(localized: "memories.section.all")) {
                 if memories.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(surface.emptyTitle)
-                            .font(.headline)
-                        Text(surface.emptyDescription)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.vertical, 8)
+                    MoryPublicEmptyStateView(
+                        state: surface == .home ? .today : .memories,
+                        onAction: { isPresentingComposer = true }
+                    )
                 } else {
                     ForEach(memories) { memory in
                         Button {
@@ -137,6 +134,7 @@ struct HomeScreen: View {
                             MemoryRow(summary: memory)
                         }
                         .buttonStyle(.plain)
+                        .accessibilityElement(children: .combine)
                         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                             Button(role: .destructive) {
                                 deleteMemory(recordID: memory.id)
@@ -167,6 +165,8 @@ struct HomeScreen: View {
                     } label: {
                         Label("home.capture.title", systemImage: "plus")
                     }
+                    .accessibilityLabel(Text("home.capture.title"))
+                    .accessibilityHint(Text("empty.action.addMemory"))
                 }
             }
         }
@@ -260,7 +260,7 @@ private struct MemoryRow: View {
                 .lineLimit(3)
 
             HStack(spacing: 10) {
-                Text(summary.record.captureSource.rawValue)
+                Text(summary.record.captureSource.presentationLabel)
                 if let mood = summary.record.userMood?.trimmedOrNil {
                     Text(mood)
                 }
@@ -274,6 +274,19 @@ private struct MemoryRow: View {
             .foregroundStyle(.secondary)
         }
         .padding(.vertical, 4)
+    }
+}
+
+private extension CaptureSource {
+    var presentationLabel: String {
+        switch self {
+        case .composer: return String(localized: "capture.source.composer")
+        case .voice: return String(localized: "capture.source.voice")
+        case .photo: return String(localized: "capture.source.photo")
+        case .audio: return String(localized: "capture.source.audio")
+        case .importFile: return String(localized: "capture.source.importFile")
+        case .manual: return String(localized: "capture.source.manual")
+        }
     }
 }
 
@@ -382,6 +395,7 @@ private struct HomeBoardCard: View {
         }
         .rotationEffect(.degrees(item.compositionItem.rotationDegrees))
         .scaleEffect(item.compositionItem.scale)
+        .accessibilityElement(children: .combine)
     }
 
     private var preferenceMenu: some View {

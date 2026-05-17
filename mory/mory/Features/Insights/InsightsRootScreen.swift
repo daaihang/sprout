@@ -4,6 +4,7 @@ struct InsightsRootScreen: View {
     @Environment(\.memoryRepository) private var memoryRepository
 
     @State private var snapshot: InsightsPresentationSnapshot?
+    @State private var isPresentingComposer = false
     @State private var errorMessage: String?
 
     var body: some View {
@@ -33,13 +34,13 @@ struct InsightsRootScreen: View {
                     SearchScreen()
                 } label: {
                     MoryHubRow(
-                        title: "Search",
-                        subtitle: "Search memories, people, places, themes, decisions, storylines, and reflections.",
+                        title: "insights.hub.search.title",
+                        subtitle: "insights.hub.search.subtitle",
                         systemImage: "magnifyingglass"
                     )
                 }
             } footer: {
-                Text("Insights are based on saved memories, graph links, storylines, and reflections.")
+                Text("insights.hub.footer")
             }
 
             if let errorMessage {
@@ -50,16 +51,25 @@ struct InsightsRootScreen: View {
             }
 
             if let snapshot {
-                Section("Overview") {
+                if snapshot.isPubliclyEmpty {
+                    Section {
+                        MoryPublicEmptyStateView(
+                            state: .insights,
+                            onAction: { isPresentingComposer = true }
+                        )
+                    }
+                }
+
+                Section("insights.section.overview") {
                     HStack {
-                        InsightMetricView(title: "Storylines", value: snapshot.totalStorylineCount)
-                        InsightMetricView(title: "Reflections", value: snapshot.totalReflectionCount)
-                        InsightMetricView(title: "Entities", value: snapshot.totalEntityCount)
+                        InsightMetricView(title: "insights.metric.storylines", value: snapshot.totalStorylineCount)
+                        InsightMetricView(title: "insights.metric.reflections", value: snapshot.totalReflectionCount)
+                        InsightMetricView(title: "insights.metric.entities", value: snapshot.totalEntityCount)
                     }
                 }
 
                 if let highlighted = snapshot.highlightedStoryline {
-                    Section("Highlighted Storyline") {
+                    Section("insights.section.highlightedStoryline") {
                         NavigationLink {
                             ArcDetailView(arcID: highlighted.arc.id)
                         } label: {
@@ -69,8 +79,8 @@ struct InsightsRootScreen: View {
                 }
 
                 insightSection(
-                    title: "Storylines",
-                    empty: "No storylines yet.",
+                    title: "insights.section.storylines",
+                    empty: "empty.insights.storylines",
                     rows: snapshot.storylines
                 ) { item in
                     NavigationLink {
@@ -81,8 +91,8 @@ struct InsightsRootScreen: View {
                 }
 
                 insightSection(
-                    title: "Suggested Reflections",
-                    empty: "No suggested reflections yet.",
+                    title: "insights.section.suggestedReflections",
+                    empty: "empty.insights.reflections",
                     rows: snapshot.suggestedReflections
                 ) { item in
                     NavigationLink {
@@ -93,8 +103,8 @@ struct InsightsRootScreen: View {
                 }
 
                 insightSection(
-                    title: "People",
-                    empty: "No people yet.",
+                    title: "insights.section.people",
+                    empty: "empty.insights.people",
                     rows: snapshot.people
                 ) { item in
                     NavigationLink {
@@ -105,8 +115,8 @@ struct InsightsRootScreen: View {
                 }
 
                 insightSection(
-                    title: "Places",
-                    empty: "No places yet.",
+                    title: "insights.section.places",
+                    empty: "empty.insights.places",
                     rows: snapshot.places
                 ) { item in
                     NavigationLink {
@@ -117,8 +127,8 @@ struct InsightsRootScreen: View {
                 }
 
                 insightSection(
-                    title: "Themes",
-                    empty: "No themes yet.",
+                    title: "insights.section.themes",
+                    empty: "empty.insights.themes",
                     rows: snapshot.themes
                 ) { item in
                     NavigationLink {
@@ -129,8 +139,8 @@ struct InsightsRootScreen: View {
                 }
 
                 insightSection(
-                    title: "Decisions",
-                    empty: "No decisions yet.",
+                    title: "insights.section.decisions",
+                    empty: "empty.insights.decisions",
                     rows: snapshot.decisions
                 ) { item in
                     NavigationLink {
@@ -142,7 +152,7 @@ struct InsightsRootScreen: View {
 
                 if !snapshot.savedReflections.isEmpty {
                     insightSection(
-                        title: "Saved Reflections",
+                        title: "insights.section.savedReflections",
                         empty: "",
                         rows: snapshot.savedReflections
                     ) { item in
@@ -167,6 +177,11 @@ struct InsightsRootScreen: View {
         .refreshable {
             await load()
         }
+        .sheet(isPresented: $isPresentingComposer) {
+            CaptureComposerView {
+                Task { await load() }
+            }
+        }
     }
 
     private func load() async {
@@ -180,8 +195,8 @@ struct InsightsRootScreen: View {
 
     @ViewBuilder
     private func insightSection<Row: Identifiable, Content: View>(
-        title: String,
-        empty: String,
+        title: LocalizedStringKey,
+        empty: LocalizedStringKey,
         rows: [Row],
         @ViewBuilder content: @escaping (Row) -> Content
     ) -> some View {
@@ -189,6 +204,7 @@ struct InsightsRootScreen: View {
             if rows.isEmpty {
                 Text(empty)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             } else {
                 ForEach(rows) { row in
                     content(row)
@@ -199,7 +215,7 @@ struct InsightsRootScreen: View {
 }
 
 private struct InsightMetricView: View {
-    let title: String
+    let title: LocalizedStringKey
     let value: Int
 
     var body: some View {
@@ -211,6 +227,7 @@ private struct InsightMetricView: View {
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -223,7 +240,7 @@ private struct StorylineRow: View {
                 Text(summary.arc.title)
                     .font(.headline)
                 Spacer()
-                Text(summary.arc.status.rawValue)
+                Text(summary.arc.status.presentationLabel)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -231,7 +248,7 @@ private struct StorylineRow: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .lineLimit(3)
-            Text("\(summary.arc.sourceRecordIDs.count) source memories")
+            Text("insights.storyline.sourceCount \(summary.arc.sourceRecordIDs.count)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             if !summary.relatedMemories.isEmpty {
@@ -242,6 +259,7 @@ private struct StorylineRow: View {
             }
         }
         .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -254,7 +272,7 @@ private struct ReflectionInsightRow: View {
                 Text(summary.reflection.title)
                     .font(.headline)
                 Spacer()
-                Text(summary.reflection.status.rawValue)
+                Text(summary.reflection.status.label)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -262,11 +280,12 @@ private struct ReflectionInsightRow: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .lineLimit(3)
-            Text("\(summary.relatedMemories.count) visible sources")
+            Text("insights.reflection.sourceCount \(summary.relatedMemories.count)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
         .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -279,7 +298,7 @@ private struct EntityInsightRow: View {
                 Text(snapshot.entity.displayName)
                     .font(.headline)
                 Spacer()
-                Text(snapshot.entity.kind.rawValue.capitalized)
+                Text(snapshot.entity.kind.presentationLabel)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -289,10 +308,48 @@ private struct EntityInsightRow: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
             }
-            Text("\(snapshot.relatedMemories.count) memories · \(snapshot.relatedArcs.count) storylines · \(snapshot.relatedReflections.count) reflections")
+            Text("insights.entity.stats \(snapshot.relatedMemories.count) \(snapshot.relatedArcs.count) \(snapshot.relatedReflections.count)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
         .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private extension TemporalArcStatus {
+    var presentationLabel: String {
+        switch self {
+        case .candidate: return String(localized: "arc.status.candidate")
+        case .accepted: return String(localized: "arc.status.accepted")
+        case .archived: return String(localized: "arc.status.archived")
+        case .merged: return String(localized: "arc.status.merged")
+        }
+    }
+}
+
+private extension EntityKind {
+    var presentationLabel: String {
+        switch self {
+        case .person: return String(localized: "entity.kind.person")
+        case .place: return String(localized: "entity.kind.place")
+        case .theme: return String(localized: "entity.kind.theme")
+        case .decision: return String(localized: "entity.kind.decision")
+        case .activity: return String(localized: "entity.kind.activity")
+        case .object: return String(localized: "entity.kind.object")
+        }
+    }
+}
+
+private extension InsightsPresentationSnapshot {
+    var isPubliclyEmpty: Bool {
+        highlightedStoryline == nil
+            && storylines.isEmpty
+            && suggestedReflections.isEmpty
+            && savedReflections.isEmpty
+            && people.isEmpty
+            && places.isEmpty
+            && themes.isEmpty
+            && decisions.isEmpty
     }
 }

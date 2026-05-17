@@ -33,6 +33,8 @@ struct QuickCaptureToolbar: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
+                .accessibilityLabel(Text("quickCapture.text"))
+                .accessibilityHint(Text("quickCapture.text.hint"))
 
                 voiceButton
 
@@ -43,6 +45,8 @@ struct QuickCaptureToolbar: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
+                .accessibilityLabel(Text("quickCapture.more"))
+                .accessibilityHint(Text("quickCapture.more.hint"))
             }
             .labelStyle(.iconOnly)
         }
@@ -70,6 +74,7 @@ struct QuickCaptureToolbar: View {
             .clipShape(RoundedRectangle(cornerRadius: MoryCornerRadius.small, style: .continuous))
             .foregroundStyle(audioRecorder.isRecording ? .white : .primary)
             .accessibilityAddTraits(.isButton)
+            .accessibilityLabel(Text("quickCapture.voice"))
             .accessibilityHint(Text("quickCapture.voice.hint"))
             .gesture(
                 DragGesture(minimumDistance: 0)

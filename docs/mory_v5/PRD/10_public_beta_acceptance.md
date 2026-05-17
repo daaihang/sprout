@@ -32,8 +32,9 @@ The public beta should feel unfinished only in the sense that more features are 
 ### 2.3 Technical Gates
 
 - [x] Full iOS test passes.
-- [ ] Core quality batch can run in local test mode.
-- [ ] App launches on simulator and real device.
+- [ ] Core quality batch passes in local test mode.
+- [x] App launches on simulator.
+- [ ] App launches on real device.
 - [x] No blocking SwiftData migration failure.
 - [x] No known recording stop deadlock.
 - [x] No orphan derived data appears in product UI.
@@ -41,12 +42,14 @@ The public beta should feel unfinished only in the sense that more features are 
 ### 2.4 UX Gates
 
 - [ ] Main UI no longer looks like a default List prototype.
-- [ ] Empty states are polished.
+- [x] Empty states are public-facing and actionable.
 - [ ] Cards have distinct visual language.
-- [ ] Buttons have clear icons/labels.
+- [x] Buttons have clear icons/labels.
 - [ ] Text fits at standard and large Dynamic Type.
-- [ ] VoiceOver labels exist for toolbar controls.
-- [ ] Reduced Motion is respected.
+- [x] VoiceOver labels exist for toolbar controls.
+- [x] Reduced Motion is respected in first-run onboarding.
+
+Phase D readiness note: first-run onboarding, public empty-state copy, permission recovery copy, toolbar accessibility labels, and simulator launch are implemented. Formal visual polish, full Dynamic Type review, real-device smoke, and a fully passing local quality batch remain open.
 
 ## 3. Manual Smoke Test
 

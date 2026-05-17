@@ -8,6 +8,7 @@ struct MemoriesRootScreen: View {
     @State private var selectedContext: MemoryLibraryContextFilter = .any
     @State private var selectedInsight: MemoryLibraryInsightFilter = .any
     @State private var snapshot: MemoryLibrarySnapshot?
+    @State private var isPresentingComposer = false
     @State private var errorMessage: String?
 
     private var filter: MemoryLibraryFilter {
@@ -42,7 +43,7 @@ struct MemoriesRootScreen: View {
                     )
                 }
             } footer: {
-                Text("Memories now shows the live library first; timeline and search stay one tap away.")
+                Text("memories.library.footer")
             }
 
             Section {
@@ -65,17 +66,16 @@ struct MemoriesRootScreen: View {
 
             if let snapshot {
                 Section {
-                    Text("Showing \(snapshot.filteredCount) of \(snapshot.totalCount) memories")
+                    Text("memories.library.count \(snapshot.filteredCount) \(snapshot.totalCount)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
 
                 if snapshot.groups.isEmpty {
                     Section {
-                        ContentUnavailableView(
-                            filter.isActive ? "No matching memories" : "No Memories Yet",
-                            systemImage: filter.isActive ? "line.3.horizontal.decrease.circle" : "square.stack",
-                            description: Text(filter.isActive ? "Clear filters or try a broader view." : "Capture a thought from the toolbar to start the library.")
+                        MoryPublicEmptyStateView(
+                            state: filter.isActive ? .filteredMemories : .memories,
+                            onAction: handleEmptyStateAction
                         )
                     }
                 } else {
@@ -87,6 +87,7 @@ struct MemoriesRootScreen: View {
                                 } label: {
                                     MemoryLibraryRowView(row: row)
                                 }
+                                .accessibilityElement(children: .combine)
                             }
                         }
                     }
@@ -109,6 +110,11 @@ struct MemoriesRootScreen: View {
         .onChange(of: selectedPipelineStage) { _, _ in Task { await load() } }
         .onChange(of: selectedContext) { _, _ in Task { await load() } }
         .onChange(of: selectedInsight) { _, _ in Task { await load() } }
+        .sheet(isPresented: $isPresentingComposer) {
+            CaptureComposerView {
+                Task { await load() }
+            }
+        }
     }
 
     private func load() async {
@@ -126,6 +132,14 @@ struct MemoriesRootScreen: View {
         selectedContext = .any
         selectedInsight = .any
     }
+
+    private func handleEmptyStateAction() {
+        if filter.isActive {
+            clearFilters()
+        } else {
+            isPresentingComposer = true
+        }
+    }
 }
 
 private struct MemoryLibraryFilterBar: View {
@@ -140,27 +154,27 @@ private struct MemoryLibraryFilterBar: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("Filters")
+                Text("memories.filters.title")
                     .font(.headline)
                 Spacer()
-                Button("Clear", action: onClear)
+                Button("memories.filters.clear", action: onClear)
                     .disabled(!isActive)
             }
 
             HStack {
                 Menu(artifactTitle) {
-                    Button("Any artifact") { selectedArtifactKind = nil }
+                    Button("memories.filters.anyArtifact") { selectedArtifactKind = nil }
                     ForEach(ArtifactKind.allCases) { kind in
-                        Button(kind.rawValue.capitalized) {
+                        Button(artifactLabel(kind)) {
                             selectedArtifactKind = kind
                         }
                     }
                 }
 
                 Menu(stageTitle) {
-                    Button("Any status") { selectedPipelineStage = nil }
+                    Button("memories.filters.anyStatus") { selectedPipelineStage = nil }
                     ForEach(MemoryPipelineStage.allCases) { stage in
-                        Button(stage.rawValue.capitalized) {
+                        Button(stageLabel(stage)) {
                             selectedPipelineStage = stage
                         }
                     }
@@ -186,12 +200,14 @@ private struct MemoryLibraryFilterBar: View {
             }
 
             if let metadata = snapshot?.metadata {
-                Text("Available: \(metadata.availableArtifactKinds.map(\.rawValue).joined(separator: ", ").ifEmpty("none"))")
+                Text("memories.filters.available \(metadata.availableArtifactKinds.map(artifactLabel).joined(separator: ", ").ifEmpty(String(localized: "common.none")))")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .buttonStyle(.bordered)
+        .accessibilityElement(children: .contain)
     }
 
     private var isActive: Bool {
@@ -199,11 +215,11 @@ private struct MemoryLibraryFilterBar: View {
     }
 
     private var artifactTitle: String {
-        selectedArtifactKind?.rawValue.capitalized ?? "Any artifact"
+        selectedArtifactKind.map(artifactLabel) ?? String(localized: "memories.filters.anyArtifact")
     }
 
     private var stageTitle: String {
-        selectedPipelineStage?.rawValue.capitalized ?? "Any status"
+        selectedPipelineStage.map(stageLabel) ?? String(localized: "memories.filters.anyStatus")
     }
 
     private var contextTitle: String {
@@ -216,19 +232,42 @@ private struct MemoryLibraryFilterBar: View {
 
     private func contextLabel(_ filter: MemoryLibraryContextFilter) -> String {
         switch filter {
-        case .any: return "Any context"
-        case .hasLocation: return "Has location"
-        case .hasWeather: return "Has weather"
-        case .hasMusic: return "Has music"
+        case .any: return String(localized: "memories.filters.anyContext")
+        case .hasLocation: return String(localized: "memories.filters.hasLocation")
+        case .hasWeather: return String(localized: "memories.filters.hasWeather")
+        case .hasMusic: return String(localized: "memories.filters.hasMusic")
         }
     }
 
     private func insightLabel(_ filter: MemoryLibraryInsightFilter) -> String {
         switch filter {
-        case .any: return "Any insight"
-        case .hasStoryline: return "Has storyline"
-        case .hasReflection: return "Has reflection"
-        case .hasEntities: return "Has entities"
+        case .any: return String(localized: "memories.filters.anyInsight")
+        case .hasStoryline: return String(localized: "memories.filters.hasStoryline")
+        case .hasReflection: return String(localized: "memories.filters.hasReflection")
+        case .hasEntities: return String(localized: "memories.filters.hasEntities")
+        }
+    }
+
+    private func artifactLabel(_ kind: ArtifactKind) -> String {
+        switch kind {
+        case .text: return String(localized: "capture.type.text")
+        case .photo: return String(localized: "capture.type.photo")
+        case .audio: return String(localized: "capture.type.audio")
+        case .music: return String(localized: "capture.type.music")
+        case .link: return String(localized: "capture.type.link")
+        case .location: return String(localized: "capture.type.location")
+        case .weather: return String(localized: "capture.type.weather")
+        case .todo: return String(localized: "capture.type.todo")
+        case .document: return String(localized: "capture.type.document")
+        }
+    }
+
+    private func stageLabel(_ stage: MemoryPipelineStage) -> String {
+        switch stage {
+        case .pending: return String(localized: "pipeline.status.pending")
+        case .running: return String(localized: "pipeline.status.running")
+        case .completed: return String(localized: "pipeline.status.completed")
+        case .failed: return String(localized: "pipeline.status.failed")
         }
     }
 }
@@ -258,7 +297,7 @@ private struct MemoryLibraryRowView: View {
 
             HStack(spacing: 6) {
                 ForEach(row.artifactKinds, id: \.self) { kind in
-                    Label(kind.rawValue.capitalized, systemImage: icon(for: kind))
+                    Label(kind.presentationLabel, systemImage: icon(for: kind))
                         .font(.caption2)
                 }
                 if row.hasInsights {
@@ -269,6 +308,7 @@ private struct MemoryLibraryRowView: View {
             .foregroundStyle(.secondary)
         }
         .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
     }
 
     private func icon(for kind: ArtifactKind) -> String {
@@ -282,6 +322,22 @@ private struct MemoryLibraryRowView: View {
         case .weather: return "cloud.sun"
         case .todo: return "checklist"
         case .document: return "doc"
+        }
+    }
+}
+
+private extension ArtifactKind {
+    var presentationLabel: String {
+        switch self {
+        case .text: return String(localized: "capture.type.text")
+        case .photo: return String(localized: "capture.type.photo")
+        case .audio: return String(localized: "capture.type.audio")
+        case .music: return String(localized: "capture.type.music")
+        case .link: return String(localized: "capture.type.link")
+        case .location: return String(localized: "capture.type.location")
+        case .weather: return String(localized: "capture.type.weather")
+        case .todo: return String(localized: "capture.type.todo")
+        case .document: return String(localized: "capture.type.document")
         }
     }
 }

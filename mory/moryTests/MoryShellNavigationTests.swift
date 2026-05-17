@@ -10,6 +10,51 @@ final class MoryShellNavigationTests: XCTestCase {
         XCTAssertEqual(MoryAppTab.publicTabs.map(\.titleKey), ["tab.today", "tab.memories", "tab.insights"])
     }
 
+    func testOnboardingContentIsShortSkippableAndStartsCapture() {
+        XCTAssertEqual(MoryOnboardingStep.completionStorageKey, "mory.onboarding.v1.completed")
+        XCTAssertEqual(MoryOnboardingStep.allCases, [.welcome, .localFirst, .quickCapture, .optionalPermissions])
+        XCTAssertEqual(MoryOnboardingStep.allCases.map(\.titleKey), [
+            "onboarding.welcome.title",
+            "onboarding.localFirst.title",
+            "onboarding.quickCapture.title",
+            "onboarding.optionalPermissions.title"
+        ])
+        XCTAssertEqual(MoryOnboardingStep.allCases.map(\.messageKey), [
+            "onboarding.welcome.message",
+            "onboarding.localFirst.message",
+            "onboarding.quickCapture.message",
+            "onboarding.optionalPermissions.message"
+        ])
+    }
+
+    func testPublicEmptyStatesUseActionableNonDebugCopy() {
+        let states: [MoryPublicEmptyState] = [
+            .today,
+            .memories,
+            .filteredMemories,
+            .insights,
+            .search,
+            .permissionDenied,
+            .processingFailed
+        ]
+
+        XCTAssertEqual(states.map(\.id), [
+            .today,
+            .memories,
+            .filteredMemories,
+            .insights,
+            .search,
+            .permissionDenied,
+            .processingFailed
+        ])
+        XCTAssertTrue(states.allSatisfy(\.hasAction))
+        XCTAssertTrue(states.allSatisfy { !$0.exposesDebugCopy })
+        XCTAssertEqual(MoryPublicEmptyState.today.titleKey, "empty.today.title")
+        XCTAssertEqual(MoryPublicEmptyState.insights.messageKey, "empty.insights.message")
+        XCTAssertEqual(MoryPublicEmptyState.permissionDenied.actionKey, "empty.action.openSettings")
+        XCTAssertEqual(MoryPublicEmptyState.processingFailed.actionKey, "empty.action.retry")
+    }
+
     func testSettingsDiagnosticsRouteIsInternalOnly() {
         XCTAssertTrue(SettingsRoute.visibleRoutes(allowsDebugTools: true).contains(.diagnostics))
         XCTAssertFalse(SettingsRoute.visibleRoutes(allowsDebugTools: false).contains(.diagnostics))

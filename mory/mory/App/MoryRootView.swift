@@ -4,6 +4,7 @@ struct MoryRootView: View {
     let authManager: AuthSessionManager?
     let runtimeEnvironment: AppRuntimeEnvironment
 
+    @AppStorage(MoryOnboardingStep.completionStorageKey) private var hasCompletedOnboarding = false
     @State private var selectedTab: MoryAppTab = .today
     @State private var isPresentingSettings = false
     @State private var isPresentingQuickTextCapture = false
@@ -69,6 +70,12 @@ struct MoryRootView: View {
                 tabRefreshID = UUID()
             }
         }
+        .fullScreenCover(isPresented: onboardingPresentation) {
+            MoryOnboardingView(
+                onSkip: completeOnboarding,
+                onStartFirstMemory: startFirstMemoryFromOnboarding
+            )
+        }
     }
 
     private func tabRoot<Content: View>(@ViewBuilder content: () -> Content) -> some View {
@@ -95,6 +102,30 @@ struct MoryRootView: View {
             } label: {
                 Label("settings.nav.title", systemImage: "person.crop.circle")
             }
+            .accessibilityLabel(Text("settings.nav.title"))
+            .accessibilityHint(Text("settings.nav.hint"))
+        }
+    }
+
+    private var onboardingPresentation: Binding<Bool> {
+        Binding(
+            get: { !hasCompletedOnboarding },
+            set: { isPresented in
+                if !isPresented {
+                    hasCompletedOnboarding = true
+                }
+            }
+        )
+    }
+
+    private func completeOnboarding() {
+        hasCompletedOnboarding = true
+    }
+
+    private func startFirstMemoryFromOnboarding() {
+        hasCompletedOnboarding = true
+        DispatchQueue.main.async {
+            isPresentingQuickTextCapture = true
         }
     }
 }
