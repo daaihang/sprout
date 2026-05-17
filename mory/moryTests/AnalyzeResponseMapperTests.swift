@@ -110,6 +110,37 @@ final class AnalyzeResponseMapperTests: XCTestCase {
         XCTAssertTrue(snapshot.followUpCandidates.isEmpty)
     }
 
+    func testCanonicalEntityNameIsPreservedWithOriginalMentionAsAlias() throws {
+        let json = """
+        {
+          "tags": ["launch plan"],
+          "emotion": {"label": "focused"},
+          "entities": [
+            {
+              "kind": "person",
+              "name": "A. Chen",
+              "canonical_name": "Alex Chen",
+              "confidence": 0.9
+            }
+          ],
+          "candidate_edges": [],
+          "insight": "A. Chen confirmed the quieter launch plan.",
+          "summary": "A. Chen confirmed the quieter launch plan.",
+          "salience_score": 0.7,
+          "retrieval_terms": ["A. Chen", "launch plan"],
+          "reflection_hint": "Check whether this quieter launch plan keeps recurring."
+        }
+        """
+
+        let envelope = try JSONDecoder().decode(AnalyzeResponseEnvelope.self, from: Data(json.utf8))
+        let snapshot = AnalyzeResponseMapper().map(recordID: UUID(), response: envelope)
+
+        let person = try XCTUnwrap(snapshot.entityMentions.first)
+        XCTAssertEqual(person.name, "Alex Chen")
+        XCTAssertTrue(person.aliases.contains("A. Chen"))
+        XCTAssertTrue(snapshot.retrievalTerms.contains("Alex Chen"))
+    }
+
     func testFiltersTechnicalNoiseEntitiesAndEdges() throws {
         let json = """
         {
@@ -203,6 +234,25 @@ final class AnalyzeResponseMapperTests: XCTestCase {
         XCTAssertEqual(result.reason, "cluster strength below threshold")
     }
 
+    func testArcPolicyAllowsThreeRecordSemanticClusterWithModerateAverageSalience() throws {
+        let candidate = TemporalArcCandidate(
+            titleHint: "launch plan around Alexander Chen",
+            themeLabels: ["launch plan", "check-in"],
+            entityNames: ["Alexander Chen"],
+            recordIDs: [UUID(), UUID(), UUID()],
+            artifactIDs: [],
+            startDate: Date(timeIntervalSince1970: 1),
+            endDate: Date(timeIntervalSince1970: 3),
+            intensityScore: 6,
+            clusterStrength: 0.42,
+            averageSalience: 0.48
+        )
+
+        let result = ArcQualityPolicy(thresholds: .defaults).evaluate(candidate)
+
+        XCTAssertTrue(result.passed)
+    }
+
     func testFocusedArcCandidateIncludesCurrentRecordAfterSimilarHistory() throws {
         let baseDate = Date(timeIntervalSince1970: 1_715_000_000)
         let recordIDs = [UUID(), UUID(), UUID()]
@@ -281,6 +331,64 @@ final class AnalyzeResponseMapperTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(Set(candidates[0].recordIDs).count, 2)
     }
 
+    func testFocusedArcCandidateUsesSemanticRecurringAnchorsWithoutEntities() throws {
+        let baseDate = Date(timeIntervalSince1970: 1_715_000_000)
+        let recordIDs = [UUID(), UUID(), UUID()]
+        let artifactIDs = [UUID(), UUID(), UUID()]
+        let texts = [
+            "In January I protected Monday morning for writing and finished the essay before meetings.",
+            "In March I lost the morning block to meetings and the writing slipped again.",
+            "Months later, the same pattern returned: when I protect the first morning block, writing actually happens before meetings.",
+        ]
+        let records = zip(recordIDs, artifactIDs).enumerated().map { index, pair in
+            RecordShell(
+                id: pair.0,
+                createdAt: baseDate.addingTimeInterval(Double(index)),
+                updatedAt: baseDate.addingTimeInterval(Double(index)),
+                captureSource: .composer,
+                rawText: texts[index],
+                artifactIDs: [pair.1]
+            )
+        }
+        let artifacts = zip(records, artifactIDs).map { record, artifactID in
+            Artifact(
+                id: artifactID,
+                recordID: record.id,
+                kind: .text,
+                title: "Writing block",
+                summary: record.rawText,
+                textContent: record.rawText,
+                createdAt: record.createdAt,
+                updatedAt: record.updatedAt
+            )
+        }
+        let analyses = recordIDs.map {
+            RecordAnalysisSnapshot(
+                recordID: $0,
+                summary: "Morning writing block pattern.",
+                themes: ["writing", "morning routine"],
+                emotionInterpretation: "focused",
+                salienceScore: 0.7,
+                createdAt: baseDate
+            )
+        }
+
+        let candidates = TemporalArcCandidateBuilder().buildCandidates(
+            records: records,
+            analyses: analyses,
+            artifacts: artifacts,
+            artifactEntityLinks: [],
+            entityNodes: [],
+            focusRecordID: recordIDs[2],
+            maxCandidates: 3
+        )
+
+        let candidate = try XCTUnwrap(candidates.first)
+        XCTAssertEqual(Set(candidate.recordIDs), Set(recordIDs))
+        XCTAssertGreaterThanOrEqual(candidate.clusterStrength, 0.4)
+        XCTAssertTrue(ArcQualityPolicy().evaluate(candidate).passed)
+    }
+
     func testTagsDoNotFallbackIntoThemeEntitiesWhenEntitiesAreEmpty() throws {
         let json = """
         {
@@ -307,11 +415,14 @@ final class AnalyzeResponseMapperTests: XCTestCase {
     func testAnalyzeRequestBuilderIncludesPromptProfileDebugOption() throws {
         let previousEnabled = QualityTuningRuntime.isEnabled
         let previousProfile = QualityTuningRuntime.promptProfile
+        let previousScope = QualityTuningRuntime.activeRecordScope
         QualityTuningRuntime.isEnabled = true
         QualityTuningRuntime.promptProfile = .strict
+        QualityTuningRuntime.activeRecordScope = []
         defer {
             QualityTuningRuntime.isEnabled = previousEnabled
             QualityTuningRuntime.promptProfile = previousProfile
+            QualityTuningRuntime.activeRecordScope = previousScope
         }
 
         let record = RecordShell(
@@ -349,6 +460,39 @@ final class AnalyzeResponseMapperTests: XCTestCase {
         var strict = QualityTuningThresholds.defaults
         strict.entityMinimumConfidence = 0.80
         XCTAssertFalse(EntityQualityPolicy(thresholds: strict).evaluate(entity).passed)
+    }
+
+    func testExplicitDecisionReflectionCanPassBelowDefaultSalienceFloor() throws {
+        let record = RecordShell(
+            createdAt: .now,
+            updatedAt: .now,
+            captureSource: .composer,
+            rawText: "I spent the morning comparing two launch plans. I decided to protect scope early, and the smaller plan made me feel calmer about the next review."
+        )
+        let artifact = Artifact(
+            recordID: record.id,
+            kind: .text,
+            title: "Launch decision",
+            summary: record.rawText,
+            textContent: record.rawText,
+            createdAt: record.createdAt,
+            updatedAt: record.updatedAt
+        )
+        let analysis = RecordAnalysisSnapshot(
+            recordID: record.id,
+            summary: "The user decided to protect launch scope and noticed calmer decision-making.",
+            themes: ["launch scope", "decision-making", "scope protection"],
+            emotionInterpretation: "reflective",
+            salienceScore: 0.7,
+            retrievalTerms: ["launch plan", "scope", "decision"],
+            reflectionHint: "Consider how protecting scope early might apply to future launch decisions.",
+            createdAt: record.updatedAt
+        )
+
+        let result = ReflectionQualityPolicy().shouldRequestRecordReflection(record: record, artifacts: [artifact], analysis: analysis)
+
+        XCTAssertTrue(result.passed)
+        XCTAssertEqual(result.reason, "explicit decision reflection candidate")
     }
 
     func testQualityTuningPresetMatrixCoversInputAndHistoryVariation() throws {

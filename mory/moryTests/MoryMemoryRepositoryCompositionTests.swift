@@ -231,7 +231,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
             analysisService: StubRecordAnalysisService()
         )
 
-        _ = try await repository.createMemory(
+        let firstMemory = try await repository.createMemory(
             from: MemoryCaptureDraft(
                 title: "Rain walk",
                 rawText: "Walked with Linh in the rain and clarified the quarter planning priorities.",
@@ -241,6 +241,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
                 artifacts: [.text(title: "Rain walk", body: "Walked with Linh in the rain and clarified the quarter planning priorities.")]
             )
         )
+        try await repository.refreshMemoryPipeline(recordID: firstMemory.record.id)
         let memory = try await repository.createMemory(
             from: MemoryCaptureDraft(
                 title: "Rain walk repeat",
@@ -397,7 +398,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
             analysisService: StubRecordAnalysisService()
         )
 
-        _ = try await repository.createMemory(
+        let firstMemory = try await repository.createMemory(
             from: MemoryCaptureDraft(
                 title: "Late train insight",
                 rawText: "Missed the express home after dinner with Linh and the quarter plan clicked into place.",
@@ -407,6 +408,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
                 artifacts: [.text(title: "Late train insight", body: "Missed the express home after dinner with Linh and the quarter plan clicked into place.")]
             )
         )
+        try await repository.refreshMemoryPipeline(recordID: firstMemory.record.id)
         let memory = try await repository.createMemory(
             from: MemoryCaptureDraft(
                 title: "Late train insight repeat",
@@ -450,7 +452,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
             analysisService: StubRecordAnalysisService()
         )
 
-        _ = try await repository.createMemory(
+        let firstMemory = try await repository.createMemory(
             from: MemoryCaptureDraft(
                 title: "Quarter planning walk",
                 rawText: "Walked home with Linh in the rain and clarified the quarter planning priorities.",
@@ -460,6 +462,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
                 artifacts: [.text(title: "Quarter planning walk", body: "Walked home with Linh in the rain and clarified the quarter planning priorities.")]
             )
         )
+        try await repository.refreshMemoryPipeline(recordID: firstMemory.record.id)
         _ = try await repository.createMemory(
             from: MemoryCaptureDraft(
                 title: "Quarter planning follow-up",
@@ -517,7 +520,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
             analysisService: StubRecordAnalysisService()
         )
 
-        _ = try await repository.createMemory(
+        let firstMemory = try await repository.createMemory(
             from: MemoryCaptureDraft(
                 title: "Planning dinner",
                 rawText: "Dinner with Linh turned into a planning session for the next quarter.",
@@ -527,6 +530,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
                 artifacts: [.text(title: "Planning dinner", body: "Dinner with Linh turned into a planning session for the next quarter.")]
             )
         )
+        try await repository.refreshMemoryPipeline(recordID: firstMemory.record.id)
         _ = try await repository.createMemory(
             from: MemoryCaptureDraft(
                 title: "Planning dinner repeat",
@@ -679,6 +683,224 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertTrue(detail.artifacts.contains(where: { $0.kind == .music && $0.metadata["artworkURL"] == "https://example.com/art.jpg" }))
     }
 
+    func testCreateMemoryPersistsSelectedContextInInitialSnapshot() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Morning draft",
+                rawText: "Protected the morning writing block.",
+                captureSource: .composer,
+                artifacts: [
+                    .text(title: "Morning draft", body: "Protected the morning writing block."),
+                    .location(title: "Desk", summary: "Home desk", latitude: 31.2, longitude: 121.4),
+                    .weather(condition: "Clear", temperatureCelsius: 19, humidity: 0.4, windSpeedKmh: 6, uvIndex: 2),
+                    .music(trackName: "Quiet", artistName: "Nils Frahm", albumName: "Solo", durationSeconds: 240, artworkURL: nil)
+                ]
+            )
+        )
+
+        try await repository.refreshMemoryPipeline(recordID: memory.record.id)
+        let detail = try XCTUnwrap(repository.fetchMemoryDetail(recordID: memory.record.id))
+
+        XCTAssertEqual(detail.artifacts.count, 4)
+        XCTAssertEqual(Set(detail.artifacts.map(\.kind)), Set([.text, .location, .weather, .music]))
+        XCTAssertNotNil(detail.analysis)
+    }
+
+    func testDeleteMemoryCascadesDerivedGraphArcReflectionData() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        let first = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Planning one",
+                rawText: "Walked with Linh and reviewed quarter planning priorities.",
+                captureSource: .composer,
+                artifacts: [.text(title: "Planning one", body: "Walked with Linh and reviewed quarter planning priorities.")]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: first.record.id)
+        let second = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Planning two",
+                rawText: "Another walk with Linh returned to the same quarter planning priorities.",
+                captureSource: .composer,
+                artifacts: [.text(title: "Planning two", body: "Another walk with Linh returned to the same quarter planning priorities.")]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: second.record.id)
+
+        let secondArtifactIDs = try repository.fetchArtifacts(recordID: second.record.id).map(\.id)
+        XCTAssertFalse(try repository.fetchTemporalArcSummaries(limit: nil).isEmpty)
+        XCTAssertFalse(try repository.fetchReflectionSummaries(limit: nil).isEmpty)
+
+        try repository.deleteMemory(recordID: second.record.id)
+
+        XCTAssertNil(try repository.fetchMemoryDetail(recordID: second.record.id))
+        XCTAssertNil(try repository.fetchRecordAnalysis(recordID: second.record.id))
+        XCTAssertNil(try repository.fetchPipelineStatus(recordID: second.record.id))
+        XCTAssertTrue(try repository.fetchArtifacts(recordID: second.record.id).isEmpty)
+
+        let context = container.mainContext
+        XCTAssertFalse(try context.fetch(FetchDescriptor<ArtifactEntityLinkStore>()).contains { link in
+            secondArtifactIDs.contains(link.artifactID)
+                || link.sourceRecordID == second.record.id
+                || link.sourceAnalysisRecordID == second.record.id
+        })
+        XCTAssertFalse(try context.fetch(FetchDescriptor<EntityEdgeStore>()).contains { edge in
+            edge.sourceRecordIDs.contains(second.record.id)
+                || edge.sourceArtifactIDs.contains { secondArtifactIDs.contains($0) }
+        })
+        XCTAssertFalse(try context.fetch(FetchDescriptor<TemporalArcStore>()).contains { arc in
+            arc.sourceRecordIDs.contains(second.record.id)
+                || arc.sourceArtifactIDs.contains { secondArtifactIDs.contains($0) }
+        })
+        XCTAssertFalse(try context.fetch(FetchDescriptor<ReflectionSnapshotStore>()).contains { reflection in
+            reflection.sourceRecordIDs.contains(second.record.id)
+                || reflection.sourceArtifactIDs.contains { secondArtifactIDs.contains($0) }
+        })
+        XCTAssertFalse(try context.fetch(FetchDescriptor<EntityNodeStore>()).contains { entity in
+            entity.provenanceRecordIDs.contains(second.record.id)
+        })
+    }
+
+    func testRefreshMemoryPipelinePurgesStaleDerivedDataBeforeRerun() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: TextDrivenRecordAnalysisService()
+        )
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Ava plan",
+                rawText: "Ava helped shape the plan.",
+                captureSource: .composer,
+                artifacts: [.text(title: "Ava plan", body: "Ava helped shape the plan.")]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: memory.record.id)
+        XCTAssertTrue(try repository.fetchPeopleSummaries(limit: nil).contains { $0.entity.displayName == "Ava" })
+
+        _ = try await repository.updateMemory(
+            recordID: memory.record.id,
+            draft: MemoryEditDraft(
+                rawText: "Ben helped reshape the launch decision.",
+                userMood: "focused",
+                inputContext: "rewritten",
+                appendedArtifactText: nil
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: memory.record.id)
+        try await repository.refreshMemoryPipeline(recordID: memory.record.id)
+
+        let people = try repository.fetchPeopleSummaries(limit: nil)
+        XCTAssertFalse(people.contains { $0.entity.displayName == "Ava" })
+        XCTAssertEqual(people.filter { $0.entity.displayName == "Ben" }.count, 1)
+        XCTAssertEqual(try repository.fetchTemporalArcSummaries(limit: nil).count, 0)
+        XCTAssertEqual(try repository.fetchReflectionSummaries(limit: nil).count, 1)
+    }
+
+    func testProductGraphQueriesFilterLegacyOrphanArcsReflectionsAndPeople() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+        let now = Date.now
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Valid source",
+                rawText: "Linh and planning stayed connected.",
+                captureSource: .composer,
+                artifacts: [.text(title: "Valid source", body: "Linh and planning stayed connected.")]
+            )
+        )
+        let validArtifactID = try XCTUnwrap(try repository.fetchArtifacts(recordID: memory.record.id).first?.id)
+        let validEntity = EntityNode(
+            kind: .person,
+            displayName: "Valid Person",
+            provenanceRecordIDs: [memory.record.id],
+            createdAt: now,
+            updatedAt: now,
+            confidence: 0.9
+        )
+        let orphanEntity = EntityNode(
+            kind: .person,
+            displayName: "Orphan Person",
+            provenanceRecordIDs: [UUID()],
+            createdAt: now,
+            updatedAt: now,
+            confidence: 0.9
+        )
+        try repository.upsert(entityNode: validEntity)
+        try repository.upsert(entityNode: orphanEntity)
+        try repository.upsert(artifactEntityLink: ArtifactEntityLink(
+            artifactID: validArtifactID,
+            entityID: validEntity.id,
+            confidence: 0.9,
+            source: "test",
+            sourceRecordID: memory.record.id,
+            sourceAnalysisRecordID: memory.record.id,
+            createdAt: now
+        ))
+        try repository.upsert(temporalArc: TemporalArc(
+            title: "Valid arc",
+            summary: "Valid",
+            status: .candidate,
+            sourceRecordIDs: [memory.record.id],
+            sourceArtifactIDs: [validArtifactID],
+            sourceEntityIDs: [validEntity.id],
+            startDate: now,
+            endDate: now,
+            intensityScore: 0.8,
+            clusterStrength: 0.8,
+            createdAt: now,
+            updatedAt: now
+        ))
+        let missingRecordID = UUID()
+        try repository.upsert(temporalArc: TemporalArc(
+            title: "Orphan arc",
+            summary: "Orphan",
+            status: .candidate,
+            sourceRecordIDs: [memory.record.id, missingRecordID],
+            sourceArtifactIDs: [validArtifactID],
+            sourceEntityIDs: [orphanEntity.id],
+            startDate: now,
+            endDate: now,
+            intensityScore: 0.8,
+            clusterStrength: 0.8,
+            createdAt: now,
+            updatedAt: now
+        ))
+        try repository.upsert(reflection: ReflectionSnapshot(
+            type: .pattern,
+            title: "Orphan reflection",
+            body: "Should not be visible.",
+            evidenceSummary: "missing source",
+            confidence: 0.8,
+            status: .suggested,
+            sourceRecordIDs: [missingRecordID],
+            sourceArtifactIDs: [],
+            createdAt: now
+        ))
+        try repository.save()
+
+        XCTAssertEqual(try repository.fetchTemporalArcs(limit: nil).count, 2)
+        XCTAssertEqual(try repository.fetchTemporalArcSummaries(limit: nil).map(\.arc.title), ["Valid arc"])
+        XCTAssertTrue(try repository.fetchReflectionSummaries(limit: nil).isEmpty)
+        XCTAssertFalse(try repository.fetchPeopleSummaries(limit: nil).contains { $0.entity.displayName == "Orphan Person" })
+    }
+
     func testLinkCapturePersistsMetadataSummaryAndPreviewPayload() async throws {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
@@ -747,6 +969,18 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
             )
         )
         try await repository.refreshMemoryPipeline(recordID: second.record.id)
+
+        let third = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Planning walk three",
+                rawText: "A third check-in with Linh connected the same planning theme to launch scope.",
+                mood: "reflective",
+                inputContext: "typed in debug",
+                captureSource: .composer,
+                artifacts: [.text(title: "Planning walk three", body: "A third check-in with Linh connected the same planning theme to launch scope.")]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: third.record.id)
 
         let arcsBefore = try repository.fetchTemporalArcSummaries(limit: 10)
         let sourceArc = try XCTUnwrap(arcsBefore.first(where: { $0.arc.sourceRecordIDs.contains(first.record.id) }))
@@ -850,7 +1084,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
             analysisService: StubRecordAnalysisService()
         )
 
-        _ = try await repository.createMemory(
+        let firstMemory = try await repository.createMemory(
             from: MemoryCaptureDraft(
                 title: "Rerun memory",
                 rawText: "Dinner with Linh turned into another planning moment.",
@@ -860,6 +1094,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
                 artifacts: [.text(title: "Rerun memory", body: "Dinner with Linh turned into another planning moment.")]
             )
         )
+        try await repository.refreshMemoryPipeline(recordID: firstMemory.record.id)
         let memory = try await repository.createMemory(
             from: MemoryCaptureDraft(
                 title: "Rerun memory repeat",
@@ -989,6 +1224,7 @@ private struct StubRecordAnalysisService: RecordAnalysisServing {
 
     func latestDebugTrace() async -> DebugPipelineTraceSnapshot? {
         DebugPipelineTraceSnapshot(
+            requestID: nil,
             requestBody: "{\"analysis_reason\":\"capture_ingest\"}",
             responseBody: "{\"summary\":\"Stub summary\"}",
             rawErrorBody: nil,
@@ -1011,6 +1247,7 @@ private struct StubRecordAnalysisService: RecordAnalysisServing {
             confidence: 0.76,
             sourceRecordIDs: [record.id],
             debugTrace: DebugPipelineTraceSnapshot(
+                requestID: nil,
                 requestBody: "{\"mode\":\"reflection_generate\"}",
                 responseBody: "{\"body\":\"Generated reflection body\"}",
                 rawErrorBody: nil,
@@ -1035,12 +1272,92 @@ private struct StubRecordAnalysisService: RecordAnalysisServing {
             confidence: 0.58,
             sourceRecordIDs: reflection.sourceRecordIDs,
             debugTrace: DebugPipelineTraceSnapshot(
+                requestID: nil,
                 requestBody: "{\"mode\":\"reflection_replay\"}",
                 responseBody: "{\"body\":\"Replay reflection body\"}",
                 rawErrorBody: nil,
                 statusCode: 200,
                 failedStage: nil
             )
+        )
+    }
+}
+
+private struct TextDrivenRecordAnalysisService: RecordAnalysisServing {
+    func analyze(
+        record: RecordShell,
+        artifacts: [Artifact],
+        knownEntities: [EntityReference]
+    ) async throws -> RecordAnalysisSnapshot {
+        let personName = record.rawText.localizedCaseInsensitiveContains("Ben") ? "Ben" : "Ava"
+        return RecordAnalysisSnapshot(
+            recordID: record.id,
+            summary: "\(personName) helped with a concrete planning decision.",
+            themes: ["planning"],
+            emotionInterpretation: "focused",
+            salienceScore: 0.9,
+            retrievalTerms: ["planning", personName.lowercased()],
+            entityMentions: [
+                EntityReference(kind: .person, name: personName, confidence: 0.95),
+                EntityReference(kind: .theme, name: "planning", confidence: 0.9),
+            ],
+            candidateEdges: [
+                CandidateEntityEdge(
+                    from: EntityReference(kind: .person, name: personName, confidence: 0.95),
+                    to: EntityReference(kind: .theme, name: "planning", confidence: 0.9),
+                    relationKind: .relatedTo,
+                    confidence: 0.82
+                )
+            ],
+            followUpCandidates: [],
+            reflectionHint: "Notice whether this planning decision repeats.",
+            createdAt: record.updatedAt
+        )
+    }
+
+    func latestDebugTrace() async -> DebugPipelineTraceSnapshot? {
+        DebugPipelineTraceSnapshot(
+            requestID: nil,
+            requestBody: "{\"analysis_reason\":\"capture_ingest\"}",
+            responseBody: "{\"summary\":\"Text-driven summary\"}",
+            rawErrorBody: nil,
+            statusCode: 200,
+            failedStage: nil
+        )
+    }
+
+    func generateReflection(
+        record: RecordShell,
+        artifacts: [Artifact],
+        linkedArcID: UUID?,
+        knownEntities: [EntityReference],
+        prompt: String?
+    ) async throws -> ReflectionServiceResult {
+        ReflectionServiceResult(
+            title: "Planning decision reflection",
+            body: "This planning decision is concrete enough to revisit without inventing unrelated context.",
+            evidenceSummary: artifacts.map(\.summary).joined(separator: " | "),
+            confidence: 0.82,
+            sourceRecordIDs: [record.id],
+            debugTrace: nil
+        )
+    }
+
+    func replayReflection(
+        reflection: ReflectionSnapshot,
+        linkedArc: TemporalArc?,
+        record: RecordShell?,
+        artifacts: [Artifact],
+        knownEntities: [EntityReference],
+        prompt: String?
+    ) async throws -> ReflectionServiceResult {
+        ReflectionServiceResult(
+            title: reflection.title,
+            body: reflection.body,
+            evidenceSummary: reflection.evidenceSummary,
+            confidence: reflection.confidence,
+            sourceRecordIDs: reflection.sourceRecordIDs,
+            debugTrace: nil
         )
     }
 }
@@ -1060,6 +1377,7 @@ private struct FailingRecordAnalysisService: RecordAnalysisServing {
 
     func latestDebugTrace() async -> DebugPipelineTraceSnapshot? {
         DebugPipelineTraceSnapshot(
+            requestID: nil,
             requestBody: "{\"analysis_reason\":\"capture_ingest\"}",
             responseBody: nil,
             rawErrorBody: "{\"error\":\"analysis unavailable\"}",
@@ -1117,6 +1435,7 @@ private struct LowSignalRecordAnalysisService: RecordAnalysisServing {
 
     func latestDebugTrace() async -> DebugPipelineTraceSnapshot? {
         DebugPipelineTraceSnapshot(
+            requestID: nil,
             requestBody: "{\"analysis_reason\":\"capture_ingest\"}",
             responseBody: "{\"summary\":\"Low signal photo\"}",
             rawErrorBody: nil,
@@ -1195,6 +1514,7 @@ private struct AliasRecordAnalysisService: RecordAnalysisServing {
 
     func latestDebugTrace() async -> DebugPipelineTraceSnapshot? {
         DebugPipelineTraceSnapshot(
+            requestID: nil,
             requestBody: "{\"analysis_reason\":\"capture_ingest\"}",
             responseBody: "{\"summary\":\"Alias summary\"}",
             rawErrorBody: nil,
@@ -1217,6 +1537,7 @@ private struct AliasRecordAnalysisService: RecordAnalysisServing {
             confidence: 0.76,
             sourceRecordIDs: [record.id],
             debugTrace: DebugPipelineTraceSnapshot(
+                requestID: nil,
                 requestBody: "{\"mode\":\"reflection_generate\"}",
                 responseBody: "{\"body\":\"Alias reflection body\"}",
                 rawErrorBody: nil,
@@ -1241,6 +1562,7 @@ private struct AliasRecordAnalysisService: RecordAnalysisServing {
             confidence: 0.57,
             sourceRecordIDs: reflection.sourceRecordIDs,
             debugTrace: DebugPipelineTraceSnapshot(
+                requestID: nil,
                 requestBody: "{\"mode\":\"reflection_replay\"}",
                 responseBody: "{\"body\":\"Alias replay body\"}",
                 rawErrorBody: nil,
