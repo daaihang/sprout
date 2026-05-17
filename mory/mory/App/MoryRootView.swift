@@ -4,6 +4,9 @@ struct MoryRootView: View {
     let authManager: AuthSessionManager?
     let runtimeEnvironment: AppRuntimeEnvironment
 
+    @State private var selectedTab: MoryAppTab = .today
+    @State private var isPresentingSettings = false
+
     init(
         authManager: AuthSessionManager? = nil,
         runtimeEnvironment: AppRuntimeEnvironment = .current
@@ -13,66 +16,55 @@ struct MoryRootView: View {
     }
 
     var body: some View {
-        TabView {
-            NavigationStack {
+        TabView(selection: $selectedTab) {
+            tabRoot {
                 HomeScreen(surface: .home)
             }
             .tabItem {
-                Label("tab.home", systemImage: "house")
+                Label(LocalizedStringKey(MoryAppTab.today.titleKey), systemImage: MoryAppTab.today.systemImage)
             }
+            .tag(MoryAppTab.today)
 
-            NavigationStack {
-                HomeScreen(surface: .memories)
+            tabRoot {
+                MemoriesRootScreen()
             }
             .tabItem {
-                Label("tab.memories", systemImage: "square.stack")
+                Label(LocalizedStringKey(MoryAppTab.memories.titleKey), systemImage: MoryAppTab.memories.systemImage)
             }
+            .tag(MoryAppTab.memories)
 
-            NavigationStack {
-                TimelineScreen()
+            tabRoot {
+                InsightsRootScreen()
             }
             .tabItem {
-                Label("tab.timeline", systemImage: "clock")
+                Label(LocalizedStringKey(MoryAppTab.insights.titleKey), systemImage: MoryAppTab.insights.systemImage)
             }
+            .tag(MoryAppTab.insights)
+        }
+        .sheet(isPresented: $isPresentingSettings) {
+            SettingsScreen(
+                authManager: authManager,
+                runtimeEnvironment: runtimeEnvironment
+            )
+        }
+    }
 
-            NavigationStack {
-                PeopleScreen()
-            }
-            .tabItem {
-                Label("tab.people", systemImage: "person.2")
-            }
-
-            NavigationStack {
-                ArcsScreen()
-            }
-            .tabItem {
-                Label("tab.arcs", systemImage: "point.topleft.down.curvedto.point.bottomright.up")
-            }
-
-            NavigationStack {
-                SearchScreen()
-            }
-            .tabItem {
-                Label("tab.search", systemImage: "magnifyingglass")
-            }
-
-            NavigationStack {
-                ReflectionsScreen()
-            }
-            .tabItem {
-                Label("tab.reflections", systemImage: "sparkles.rectangle.stack")
-            }
-
-            if runtimeEnvironment.allowsDebugTools {
-                NavigationStack {
-                    DebugDiagnosticsView(
-                        authManager: authManager,
-                        runtimeEnvironment: runtimeEnvironment
-                    )
+    private func tabRoot<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        NavigationStack {
+            content()
+                .toolbar {
+                    settingsToolbar
                 }
-                .tabItem {
-                    Label("tab.debug", systemImage: "ladybug")
-                }
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var settingsToolbar: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                isPresentingSettings = true
+            } label: {
+                Label("settings.nav.title", systemImage: "person.crop.circle")
             }
         }
     }

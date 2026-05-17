@@ -8,7 +8,7 @@ struct HomeScreen: View {
         var navigationTitle: String {
             switch self {
             case .home:
-                return String(localized: "home.nav.title")
+                return String(localized: "tab.today")
             case .memories:
                 return String(localized: "memories.nav.title")
             }
