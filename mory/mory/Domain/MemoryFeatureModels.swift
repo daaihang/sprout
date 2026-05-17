@@ -174,6 +174,7 @@ enum MemoryPipelineStage: String, Codable, CaseIterable, Identifiable, Sendable 
 struct MemoryPipelineStatusSnapshot: Identifiable, Hashable, Sendable {
     let recordID: UUID
     let stage: MemoryPipelineStage
+    let requestID: String?
     let lastError: String?
     let requestBody: String?
     let responseBody: String?
@@ -406,6 +407,8 @@ protocol MoryMemoryRepositorying: AnyObject {
     func seedDebugFixtures(count: Int) async throws -> [DebugMemoryFixtureSnapshot]
     func clearDebugFixtures() throws
     func clearAllLocalData() throws
+    func fetchQualityTuningPreference() throws -> QualityTuningPreference
+    func saveQualityTuningPreference(_ preference: QualityTuningPreference) throws
     func runQualityTuningScenario(_ request: QualityTuningRunRequest) async throws -> QualityTuningRunReport
     func seedDebugFixture() async throws -> DebugMemoryFixtureSnapshot
     func fetchDebugFixtureSnapshot(recordID: UUID) throws -> DebugMemoryFixtureSnapshot?

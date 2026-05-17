@@ -448,6 +448,7 @@ extension MemoryPipelineStatusStore {
         self.init(
             recordID: domainModel.recordID,
             stageRawValue: domainModel.stage.rawValue,
+            requestID: domainModel.requestID,
             lastError: domainModel.lastError,
             requestBody: domainModel.requestBody,
             responseBody: domainModel.responseBody,
@@ -464,6 +465,7 @@ extension MemoryPipelineStatusStore {
         MemoryPipelineStatusSnapshot(
             recordID: recordID,
             stage: MemoryPipelineStage(rawValue: stageRawValue) ?? .pending,
+            requestID: requestID,
             lastError: lastError,
             requestBody: requestBody,
             responseBody: responseBody,
@@ -479,6 +481,7 @@ extension MemoryPipelineStatusStore {
     func apply(domainModel: MemoryPipelineStatusSnapshot) {
         recordID = domainModel.recordID
         stageRawValue = domainModel.stage.rawValue
+        requestID = domainModel.requestID
         lastError = domainModel.lastError
         requestBody = domainModel.requestBody
         responseBody = domainModel.responseBody

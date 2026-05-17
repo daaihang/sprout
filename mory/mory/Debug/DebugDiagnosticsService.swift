@@ -62,6 +62,7 @@ struct DebugDiagnosticsService {
             .flatMap { try pipelineStatusFetcher($0) }
             .map {
                 DebugPipelineTraceSnapshot(
+                    requestID: $0.requestID,
                     requestBody: $0.requestBody,
                     responseBody: $0.responseBody,
                     rawErrorBody: $0.rawErrorBody,

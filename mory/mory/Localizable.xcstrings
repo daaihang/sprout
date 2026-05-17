@@ -1282,6 +1282,9 @@
         }
       }
     },
+    "Clear Lab Data" : {
+
+    },
     "common.attachmentCount %lld" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1645,7 +1648,7 @@
     "Copy Full Report" : {
 
     },
-    "Core Batch runs strict and balanced profiles over the high-signal input and history scenarios." : {
+    "Core Batch runs strict, balanced, and experimental profiles over the high-signal input and history scenarios." : {
 
     },
     "Custom body override" : {
@@ -7802,6 +7805,16 @@
         }
       }
     },
+    "Preference: %@ · schema %lld · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Preference: %1$@ · schema %2$lld · %3$@"
+          }
+        }
+      }
+    },
     "Profile: %@" : {
 
     },
@@ -8095,6 +8108,9 @@
     "Request" : {
 
     },
+    "Request ID: %@" : {
+
+    },
     "Reset defaults" : {
 
     },
@@ -8120,6 +8136,9 @@
 
     },
     "Runtime override" : {
+
+    },
+    "Save Local Preference" : {
 
     },
     "Scenario" : {

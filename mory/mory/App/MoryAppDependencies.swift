@@ -54,6 +54,8 @@ private final class MissingMemoryRepository: MoryMemoryRepositorying {
     func seedDebugFixtures(count: Int) async throws -> [DebugMemoryFixtureSnapshot] { fail() }
     func clearDebugFixtures() throws { let _: Void = fail() }
     func clearAllLocalData() throws { let _: Void = fail() }
+    func fetchQualityTuningPreference() throws -> QualityTuningPreference { fail() }
+    func saveQualityTuningPreference(_ preference: QualityTuningPreference) throws { let _: Void = fail() }
     func runQualityTuningScenario(_ request: QualityTuningRunRequest) async throws -> QualityTuningRunReport { fail() }
     func seedDebugFixture() async throws -> DebugMemoryFixtureSnapshot { fail() }
     func fetchDebugFixtureSnapshot(recordID: UUID) throws -> DebugMemoryFixtureSnapshot? { fail() }

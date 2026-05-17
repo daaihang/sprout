@@ -111,6 +111,12 @@ struct TemporalArcCandidateBuilder {
                 cluster.append(contentsOf: fallbackCluster)
             }
 
+            if cluster.count < 3 {
+                let existingIDs = Set(cluster.map(\.record.id))
+                let semanticCluster = semanticRecurringCluster(for: focus, within: recordContexts, excluding: existingIDs)
+                cluster.append(contentsOf: semanticCluster)
+            }
+
             return buildCandidate(from: cluster).map { [$0] } ?? []
         }
 
@@ -207,7 +213,7 @@ struct TemporalArcCandidateBuilder {
             return (entityFrequency[$0] ?? 0) > (entityFrequency[$1] ?? 0)
         }
 
-        let clusterStrength = averageClusterStrength(for: sortedCluster)
+        let clusterStrength = adjustedClusterStrength(for: sortedCluster)
         let averageSalience = sortedCluster.map(\.salienceScore).reduce(0, +) / Double(sortedCluster.count)
         let intensityScore = scoreCandidate(
             recordCount: sortedCluster.count,
@@ -293,6 +299,31 @@ struct TemporalArcCandidateBuilder {
             .map { $0 }
     }
 
+    private func semanticRecurringCluster(
+        for focus: RecordContext,
+        within contexts: [RecordContext],
+        excluding excludedIDs: Set<UUID>
+    ) -> [RecordContext] {
+        contexts
+            .filter {
+                $0.record.id != focus.record.id &&
+                    !excludedIDs.contains($0.record.id) &&
+                    focus.salienceScore >= 0.65 &&
+                    $0.salienceScore >= 0.35 &&
+                    recurringAnchorCount(between: focus, and: $0) >= 2
+            }
+            .sorted { lhs, rhs in
+                let leftCount = recurringAnchorCount(between: focus, and: lhs)
+                let rightCount = recurringAnchorCount(between: focus, and: rhs)
+                if leftCount == rightCount {
+                    return lhs.salienceScore > rhs.salienceScore
+                }
+                return leftCount > rightCount
+            }
+            .prefix(4)
+            .map { $0 }
+    }
+
     private func hasRecurringAnchor(between lhs: RecordContext, and rhs: RecordContext) -> Bool {
         guard lhs.salienceScore >= minimumFallbackSalience, rhs.salienceScore >= minimumFallbackSalience else { return false }
 
@@ -303,6 +334,26 @@ struct TemporalArcCandidateBuilder {
         if !sharedEntities.isEmpty { return true }
 
         return lhs.textBag.intersection(rhs.textBag).count >= 2
+    }
+
+    private func recurringAnchorCount(between lhs: RecordContext, and rhs: RecordContext) -> Int {
+        let leftAnchors = semanticAnchors(for: lhs)
+        let rightAnchors = semanticAnchors(for: rhs)
+        return leftAnchors.intersection(rightAnchors).count
+    }
+
+    private func recurringAnchorFrequency(in cluster: [RecordContext]) -> [String: Int] {
+        cluster.reduce(into: [:]) { partialResult, context in
+            for anchor in semanticAnchors(for: context) {
+                partialResult[anchor, default: 0] += 1
+            }
+        }
+    }
+
+    private func semanticAnchors(for context: RecordContext) -> Set<String> {
+        let themeAnchors = context.themeLabels.flatMap { anchorTokens(from: $0) }
+        let entityAnchors = context.entityNames.flatMap { anchorTokens(from: $0) }
+        return Set(themeAnchors + entityAnchors).union(context.textBag)
     }
 
     private func isCloseEnough(_ record: RecordShell, toAnyOf clusterRecords: [RecordShell]) -> Bool {
@@ -337,12 +388,29 @@ struct TemporalArcCandidateBuilder {
         return scores.reduce(0, +) / Double(scores.count)
     }
 
+    private func adjustedClusterStrength(for cluster: [RecordContext]) -> Double {
+        let baseStrength = averageClusterStrength(for: cluster)
+        guard cluster.count >= 3 else { return baseStrength }
+        let averageSalience = cluster.map(\.salienceScore).reduce(0, +) / Double(cluster.count)
+        guard averageSalience >= 0.55 else { return baseStrength }
+        let recurringAnchors = recurringAnchorFrequency(in: cluster).filter { $0.value >= 2 }
+        guard recurringAnchors.count >= 2 else { return baseStrength }
+        return max(baseStrength, 0.42)
+    }
+
     private func buildTextBag(recordText: String, artifactTexts: [String]) -> Set<String> {
         let corpus = ([recordText] + artifactTexts).joined(separator: " ").lowercased()
         let tokens = corpus
             .components(separatedBy: CharacterSet.alphanumerics.inverted)
             .filter { $0.count >= 4 && !stopwords.contains($0) && entityQualityPolicy.usefulThemeLabel($0) }
         return Set(tokens)
+    }
+
+    private func anchorTokens(from value: String) -> [String] {
+        value
+            .lowercased()
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { $0.count >= 4 && !stopwords.contains($0) && entityQualityPolicy.usefulThemeLabel($0) }
     }
 
     private func normalizeAnchor(_ value: String) -> String {

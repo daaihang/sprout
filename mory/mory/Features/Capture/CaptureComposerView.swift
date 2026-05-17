@@ -18,8 +18,9 @@ struct CaptureComposerView: View {
     @State private var errorMessage: String?
     @State private var savedStatusMessage: String?
     @State private var stagedArtifactDrafts: [CaptureArtifactDraft] = []
-    @State private var contextPreviewDrafts: [CaptureArtifactDraft] = []
-    @State private var isCollectingContextPreview = false
+    @State private var contextCandidates: [ContextCandidate] = []
+    @State private var isCollectingContext = false
+    @State private var hasLoadedInitialContext = false
 
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var selectedPhotoData: Data?
@@ -311,7 +312,10 @@ struct CaptureComposerView: View {
                             .foregroundStyle(.secondary)
                         if permissionManager.locationStatus != .authorized {
                             Button {
-                                Task { await permissionManager.requestLocationIfNeeded() }
+                                Task {
+                                    await permissionManager.requestLocationIfNeeded()
+                                    await refreshAutoContext()
+                                }
                             } label: {
                                 Label(
                                     permissionManager.locationStatus == .denied
@@ -324,7 +328,10 @@ struct CaptureComposerView: View {
                         }
                         if permissionManager.musicStatus != .authorized {
                             Button {
-                                Task { await permissionManager.requestMusicIfNeeded() }
+                                Task {
+                                    await permissionManager.requestMusicIfNeeded()
+                                    await refreshAutoContext()
+                                }
                             } label: {
                                 Label(
                                     permissionManager.musicStatus == .denied
@@ -342,28 +349,35 @@ struct CaptureComposerView: View {
 
                 Section {
                     Button {
-                        Task { await previewAutoContext() }
+                        Task { await refreshAutoContext() }
                     } label: {
-                        Label(isCollectingContextPreview ? String(localized: "capture.context.collecting") : String(localized: "capture.context.collectPreview"), systemImage: "location.magnifyingglass")
+                        Label(isCollectingContext ? String(localized: "capture.context.collecting") : String(localized: "capture.context.collectPreview"), systemImage: "arrow.clockwise")
                     }
-                    .disabled(isCollectingContextPreview)
+                    .disabled(isCollectingContext)
 
-                    if isCollectingContextPreview {
+                    if isCollectingContext {
                         HStack(spacing: 8) {
                             ProgressView()
                             Text("capture.context.collecting")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
-                    } else if contextPreviewDrafts.isEmpty {
+                    } else if contextCandidates.isEmpty {
                         Text("capture.context.previewEmpty")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     } else {
-                        ForEach(contextPreviewDrafts.indices, id: \.self) { index in
-                            Label(contextPreviewDrafts[index].captureSummary, systemImage: contextPreviewDrafts[index].debugIconName)
-                                .font(.caption)
-                                .lineLimit(2)
+                        ForEach(contextCandidates) { candidate in
+                            Toggle(isOn: contextSelectionBinding(for: candidate.id)) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Label(candidate.draft.captureSummary, systemImage: candidate.draft.debugIconName)
+                                        .font(.caption)
+                                        .lineLimit(2)
+                                    Text(candidate.capturedAt.formatted(date: .omitted, time: .shortened))
+                                        .font(.caption2)
+                                        .foregroundStyle(.tertiary)
+                                }
+                            }
                         }
                     }
                 } header: {
@@ -391,6 +405,7 @@ struct CaptureComposerView: View {
             .navigationTitle("capture.nav.title")
             .onAppear {
                 permissionManager.refresh()
+                Task { await loadInitialAutoContextIfNeeded() }
             }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -415,7 +430,7 @@ struct CaptureComposerView: View {
     }
 
     private var canSave: Bool {
-        !isProcessingPhoto && !isTranscribing && !allArtifactDrafts.isEmpty
+        !isProcessingPhoto && !isTranscribing && !userArtifactDrafts.isEmpty
     }
 
     private var currentArtifactDrafts: [CaptureArtifactDraft] {
@@ -471,8 +486,18 @@ struct CaptureComposerView: View {
         }
     }
 
-    private var allArtifactDrafts: [CaptureArtifactDraft] {
+    private var userArtifactDrafts: [CaptureArtifactDraft] {
         stagedArtifactDrafts + currentArtifactDrafts
+    }
+
+    private var selectedContextDrafts: [CaptureArtifactDraft] {
+        contextCandidates
+            .filter(\.isSelected)
+            .map(\.draft)
+    }
+
+    private var allArtifactDrafts: [CaptureArtifactDraft] {
+        userArtifactDrafts + selectedContextDrafts
     }
 
     private var resolvedCaptureSource: CaptureSource {
@@ -537,11 +562,37 @@ struct CaptureComposerView: View {
         audioRecorder.clearRecording()
     }
 
-    private func previewAutoContext() async {
-        guard !isCollectingContextPreview else { return }
-        isCollectingContextPreview = true
-        defer { isCollectingContextPreview = false }
-        contextPreviewDrafts = await ContextAutoCollector().collectContextDrafts()
+    private func loadInitialAutoContextIfNeeded() async {
+        guard !hasLoadedInitialContext else { return }
+        hasLoadedInitialContext = true
+        await refreshAutoContext()
+    }
+
+    private func refreshAutoContext() async {
+        guard !isCollectingContext else { return }
+        isCollectingContext = true
+        defer { isCollectingContext = false }
+        let collectedAt = Date.now
+        let drafts = await ContextAutoCollector().collectContextDrafts()
+        contextCandidates = drafts.map { draft in
+            ContextCandidate(
+                draft: draft,
+                capturedAt: collectedAt,
+                isSelected: true
+            )
+        }
+    }
+
+    private func contextSelectionBinding(for id: UUID) -> Binding<Bool> {
+        Binding(
+            get: {
+                contextCandidates.first(where: { $0.id == id })?.isSelected ?? false
+            },
+            set: { isSelected in
+                guard let index = contextCandidates.firstIndex(where: { $0.id == id }) else { return }
+                contextCandidates[index].isSelected = isSelected
+            }
+        )
     }
 
     private func transcribeAudio() async {
@@ -569,6 +620,13 @@ struct CaptureComposerView: View {
         let extractor = LinkMetadataExtractor()
         linkMetadata = await extractor.extract(urlString: urlString)
     }
+}
+
+private struct ContextCandidate: Identifiable, Hashable {
+    let id = UUID()
+    var draft: CaptureArtifactDraft
+    var capturedAt: Date
+    var isSelected: Bool
 }
 
 private extension CaptureArtifactDraft {

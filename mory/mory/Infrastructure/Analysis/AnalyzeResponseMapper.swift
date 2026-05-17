@@ -76,12 +76,18 @@ struct AnalyzeResponseMapper {
 
     private func mapEntity(_ entity: AnalyzeResponseEnvelope.Entity) -> EntityReference? {
         guard let kind = EntityKind(rawValue: entity.kind.lowercased()) else { return nil }
-        let name = entity.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let rawName = entity.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let canonicalName = entity.canonicalName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let name = canonicalName?.isEmpty == false ? canonicalName! : rawName
         guard !name.isEmpty else { return nil }
+        var aliases = entity.aliases ?? []
+        if !rawName.isEmpty, rawName.localizedCaseInsensitiveCompare(name) != .orderedSame {
+            aliases.append(rawName)
+        }
         return EntityReference(
             kind: kind,
             name: name,
-            aliases: entity.aliases ?? [],
+            aliases: aliases,
             confidence: entity.confidence
         )
     }

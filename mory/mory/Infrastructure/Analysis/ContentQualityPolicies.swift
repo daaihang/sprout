@@ -6,7 +6,7 @@ struct ContentQualityGateResult: Hashable, Sendable {
     var metric: String?
 }
 
-struct QualityTuningThresholds: Codable, Equatable, Sendable {
+struct QualityTuningThresholds: Codable, Hashable, Sendable {
     var entityMinimumConfidence: Double
     var themeDecisionMinimumConfidence: Double
     var arcMinimumRecordCount: Int
@@ -100,6 +100,14 @@ enum QualityTuningRuntime {
         thresholds == .defaults
     }
 
+    static var isActive: Bool {
+        isEnabled && activeRecordScope != nil
+    }
+
+    static var activeThresholds: QualityTuningThresholds {
+        isActive ? thresholds : .defaults
+    }
+
     static var activeRecordScope: Set<UUID>? {
         get {
             lock.lock()
@@ -117,7 +125,7 @@ enum QualityTuningRuntime {
 struct EntityQualityPolicy: Sendable {
     private let configuredThresholds: QualityTuningThresholds?
     private var thresholds: QualityTuningThresholds {
-        configuredThresholds ?? QualityTuningRuntime.thresholds
+        configuredThresholds ?? QualityTuningRuntime.activeThresholds
     }
     private let bannedExactNames: Set<String> = [
         "theme", "themes", "ocr", "orc", "photo", "photos", "image", "images",
@@ -214,7 +222,7 @@ struct EntityQualityPolicy: Sendable {
 struct ArcQualityPolicy: Sendable {
     private let configuredThresholds: QualityTuningThresholds?
     private var thresholds: QualityTuningThresholds {
-        configuredThresholds ?? QualityTuningRuntime.thresholds
+        configuredThresholds ?? QualityTuningRuntime.activeThresholds
     }
 
     init(thresholds: QualityTuningThresholds? = nil) {
@@ -226,8 +234,9 @@ struct ArcQualityPolicy: Sendable {
         guard uniqueRecordCount >= thresholds.arcMinimumRecordCount else {
             return .init(passed: false, reason: "needs more linked memories", metric: "\(uniqueRecordCount) < \(thresholds.arcMinimumRecordCount)")
         }
-        guard candidate.averageSalience >= thresholds.arcMinimumAverageSalience else {
-            return .init(passed: false, reason: "average salience below threshold", metric: "\(candidate.averageSalience) < \(thresholds.arcMinimumAverageSalience)")
+        let requiredAverageSalience = averageSalienceFloor(for: candidate, uniqueRecordCount: uniqueRecordCount)
+        guard candidate.averageSalience >= requiredAverageSalience else {
+            return .init(passed: false, reason: "average salience below threshold", metric: "\(candidate.averageSalience) < \(requiredAverageSalience)")
         }
         let requiredClusterStrength = relaxedClusterStrengthFloor(for: candidate, uniqueRecordCount: uniqueRecordCount)
         guard candidate.clusterStrength >= requiredClusterStrength else {
@@ -243,17 +252,27 @@ struct ArcQualityPolicy: Sendable {
     }
 
     private func relaxedClusterStrengthFloor(for candidate: TemporalArcCandidate, uniqueRecordCount: Int) -> Double {
-        guard uniqueRecordCount >= 3, candidate.averageSalience >= 0.6 else {
+        guard uniqueRecordCount >= 3, candidate.averageSalience >= 0.45 else {
             return thresholds.arcMinimumClusterStrength
         }
         return min(thresholds.arcMinimumClusterStrength, 0.4)
+    }
+
+    private func averageSalienceFloor(for candidate: TemporalArcCandidate, uniqueRecordCount: Int) -> Double {
+        guard uniqueRecordCount >= 3,
+              candidate.clusterStrength >= 0.42,
+              (!candidate.themeLabels.isEmpty || !candidate.entityNames.isEmpty)
+        else {
+            return thresholds.arcMinimumAverageSalience
+        }
+        return min(thresholds.arcMinimumAverageSalience, 0.45)
     }
 }
 
 struct ReflectionQualityPolicy: Sendable {
     private let configuredThresholds: QualityTuningThresholds?
     private var thresholds: QualityTuningThresholds {
-        configuredThresholds ?? QualityTuningRuntime.thresholds
+        configuredThresholds ?? QualityTuningRuntime.activeThresholds
     }
 
     init(thresholds: QualityTuningThresholds? = nil) {
@@ -267,6 +286,9 @@ struct ReflectionQualityPolicy: Sendable {
         guard salience >= thresholds.reflectionMinimumRecordSalience else {
             if isEligibleVoiceTranscript(record: record, artifacts: artifacts, evidence: evidence, analysis: analysis) {
                 return .init(passed: true, reason: "voice transcript recurring constraint", metric: "salience \(salience)")
+            }
+            if isExplicitDecisionReflectionCandidate(evidence: evidence, analysis: analysis) {
+                return .init(passed: true, reason: "explicit decision reflection candidate", metric: "salience \(salience)")
             }
             return .init(passed: false, reason: "salience below threshold", metric: "\(salience) < \(thresholds.reflectionMinimumRecordSalience)")
         }
@@ -305,9 +327,11 @@ struct ReflectionQualityPolicy: Sendable {
             evidence: evidence,
             analysis: analysis
         )
+        let explicitDecisionEligible = isExplicitDecisionReflectionCandidate(evidence: evidence, analysis: analysis)
 
         if result.confidence < thresholds.reflectionMinimumResultConfidence {
-            guard voiceTranscriptEligible && result.confidence >= 0.35 else {
+            let relaxedMinimum = voiceTranscriptEligible ? 0.35 : (explicitDecisionEligible ? 0.60 : thresholds.reflectionMinimumResultConfidence)
+            guard result.confidence >= relaxedMinimum else {
                 return .init(passed: false, reason: "reflection confidence below threshold", metric: "\(result.confidence) < \(thresholds.reflectionMinimumResultConfidence)")
             }
         }
@@ -319,7 +343,8 @@ struct ReflectionQualityPolicy: Sendable {
         }
 
         if result.confidence < thresholds.reflectionMinimumResultConfidence {
-            return .init(passed: true, reason: "accepted voice transcript reflection", metric: "confidence \(result.confidence)")
+            let reason = voiceTranscriptEligible ? "accepted voice transcript reflection" : "accepted explicit decision reflection"
+            return .init(passed: true, reason: reason, metric: "confidence \(result.confidence)")
         }
         return .init(passed: true, reason: "accepted", metric: "confidence \(result.confidence)")
     }
@@ -356,5 +381,32 @@ struct ReflectionQualityPolicy: Sendable {
         guard recurringSignal && creativeWorkSignal else { return false }
 
         return (analysis.salienceScore ?? 0) >= 0.3
+    }
+
+    private func isExplicitDecisionReflectionCandidate(evidence: String, analysis: RecordAnalysisSnapshot) -> Bool {
+        guard evidence.count >= thresholds.reflectionMinimumEvidenceCharacters else { return false }
+        guard (analysis.salienceScore ?? 0) >= 0.70 else { return false }
+        let hintLength = analysis.reflectionHint?.trimmingCharacters(in: .whitespacesAndNewlines).count ?? 0
+        guard hintLength >= 20 else { return false }
+
+        let corpus = [
+            evidence,
+            analysis.summary,
+            analysis.themes.joined(separator: " "),
+            analysis.retrievalTerms.joined(separator: " ")
+        ].joined(separator: " ").lowercased()
+
+        let decisionSignals = [
+            "decision", "decide", "decided", "chose", "choose", "scope", "protect",
+            "launch", "transition", "onboarding", "plan", "pattern",
+            "决定", "选择", "范围", "保护", "复盘", "砍掉", "保留"
+        ]
+        let reflectionSignals = [
+            "relief", "relieved", "calmer", "clear", "clarity", "noticing", "pattern",
+            "better decisions", "future", "apply", "松了一口气", "清楚", "复盘", "模式"
+        ]
+
+        return decisionSignals.contains { corpus.contains($0) }
+            && reflectionSignals.contains { corpus.contains($0) }
     }
 }

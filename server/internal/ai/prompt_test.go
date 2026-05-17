@@ -95,6 +95,10 @@ func TestBuildAnalyzeSystemPromptRejectsTechnicalEntityNoise(t *testing.T) {
 		"Emotion alone is not enough for a reflection.",
 		"first-person speech transcript that names a recurring constraint",
 		"protect mornings for writing before meetings",
+		"Preserve the user's language. Chinese or mixed Chinese/English notes can be meaningful",
+		"For same-name people, do not merge identities",
+		"Sensitive stress, health, money, or despair language should be handled conservatively",
+		"Metadata-only links, dramatic article titles, screenshots, receipts, menus, invoices, and calendar OCR are carriers",
 		"Multiple ambient artifacts near the same time do not create a storyline by themselves.",
 	} {
 		if !strings.Contains(sys, needle) {
@@ -112,6 +116,7 @@ func TestBuildReflectionSystemPromptAsksForLowConfidenceWhenEvidenceIsWeak(t *te
 		"Treat repeated concrete decisions, named people, commitments, or recurring constraints as stronger evidence",
 		"first-person voice transcripts about a recurring constraint",
 		"protected creative time",
+		"For sensitive stress, health, money, or despair language, stay factual",
 	} {
 		if !strings.Contains(sys, needle) {
 			t.Errorf("reflection prompt missing quality rule %q; got: %s", needle, sys)

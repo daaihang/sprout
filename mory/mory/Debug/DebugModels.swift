@@ -22,6 +22,7 @@ enum DebugRebuildMode: Sendable {
 // MARK: - Debug Pipeline Trace Snapshot
 
 struct DebugPipelineTraceSnapshot: Sendable {
+    let requestID: String?
     let requestBody: String?
     let responseBody: String?
     let rawErrorBody: String?
@@ -123,6 +124,15 @@ enum QualityTuningScenarioID: String, CaseIterable, Identifiable, Sendable {
     case weakRelatedEvents
     case denseUnrelatedHistory
     case recurringCareerHistory
+    case chineseMixedLanguage
+    case codeSwitchShortText
+    case aliasSamePersonHistory
+    case sameNameDifferentPeople
+    case relationshipConflictShift
+    case longTimelineRecurringHistory
+    case sensitiveStressShortText
+    case realOCRScreenshot
+    case linkMetadataTrap
 
     var id: String { rawValue }
 
@@ -143,6 +153,15 @@ enum QualityTuningScenarioID: String, CaseIterable, Identifiable, Sendable {
         case .weakRelatedEvents: "Weak related events"
         case .denseUnrelatedHistory: "Dense unrelated history"
         case .recurringCareerHistory: "Recurring career history"
+        case .chineseMixedLanguage: "Chinese mixed language"
+        case .codeSwitchShortText: "Code-switch short text"
+        case .aliasSamePersonHistory: "Alias same person history"
+        case .sameNameDifferentPeople: "Same-name different people"
+        case .relationshipConflictShift: "Relationship conflict shift"
+        case .longTimelineRecurringHistory: "Long timeline recurring history"
+        case .sensitiveStressShortText: "Sensitive stress short text"
+        case .realOCRScreenshot: "Real OCR screenshot"
+        case .linkMetadataTrap: "Link metadata trap"
         }
     }
 }
@@ -167,14 +186,15 @@ struct QualityTuningScenario: Identifiable, Sendable {
     static func preset(_ id: QualityTuningScenarioID) -> QualityTuningScenario {
         switch id {
         case .ordinaryShortText:
+            let body = "Met Alex after lunch."
             return .init(
                 id: id,
                 title: id.title,
-                body: "Saw a receipt on the desk and took a quick note.",
+                body: body,
                 mood: nil,
                 context: "quality tuning lab: ordinary short text",
                 captureSource: .composer,
-                artifacts: [.text(title: id.title, body: "Saw a receipt on the desk and took a quick note.")],
+                artifacts: [.text(title: id.title, body: body)],
                 expectation: .noArcNoReflection
             )
         case .terseNeutralText:
@@ -291,6 +311,49 @@ struct QualityTuningScenario: Identifiable, Sendable {
         case .recurringCareerHistory:
             let body = "Third note about the same career transition: I told Linh the smaller launch scope is the version I can actually stand behind."
             return .init(id: id, title: id.title, body: body, mood: "resolved", context: "quality tuning lab: recurring career history", captureSource: .composer, artifacts: [.text(title: id.title, body: body)], expectation: .arcExpected)
+        case .chineseMixedLanguage:
+            let body = "今天和 Mira 复盘 launch scope，我决定先砍掉 flashy demo，保留 onboarding flow。这个决定让我松了一口气。"
+            return .init(id: id, title: id.title, body: body, mood: "relieved", context: "quality tuning lab: chinese mixed language", captureSource: .composer, artifacts: [.text(title: id.title, body: body)], expectation: .reflectionAllowed)
+        case .codeSwitchShortText:
+            let body = "和 Alex quick sync after lunch, 没啥特别。"
+            return .init(id: id, title: id.title, body: body, mood: "neutral", context: "quality tuning lab: code-switch short text", captureSource: .composer, artifacts: [.text(title: id.title, body: body)], expectation: .noArcNoReflection)
+        case .aliasSamePersonHistory:
+            let body = "Third check-in with A. Chen confirmed that Alexander wants the quieter launch plan."
+            return .init(id: id, title: id.title, body: body, mood: "focused", context: "quality tuning lab: alias same person history", captureSource: .composer, artifacts: [.text(title: id.title, body: body)], expectation: .arcExpected)
+        case .sameNameDifferentPeople:
+            let body = "Alex from pottery asked about the cracked bowl glaze, unrelated to Alex from work."
+            return .init(id: id, title: id.title, body: body, mood: "warm", context: "quality tuning lab: same-name different people", captureSource: .composer, artifacts: [.text(title: id.title, body: body)], expectation: .noArcNoReflection)
+        case .relationshipConflictShift:
+            let body = "After the tense feedback conversation, Linh and I agreed to write decisions down before the next review instead of debating live."
+            return .init(id: id, title: id.title, body: body, mood: "steady", context: "quality tuning lab: relationship conflict shift", captureSource: .composer, artifacts: [.text(title: id.title, body: body)], expectation: .arcExpected)
+        case .longTimelineRecurringHistory:
+            let body = "Months later, the same pattern returned: when I protect the first morning block, writing actually happens before meetings."
+            return .init(id: id, title: id.title, body: body, mood: "clear", context: "quality tuning lab: long timeline recurring history", captureSource: .composer, artifacts: [.text(title: id.title, body: body)], expectation: .arcExpected)
+        case .sensitiveStressShortText:
+            let body = "I felt hopeless after the bill arrived."
+            return .init(id: id, title: id.title, body: body, mood: "distressed", context: "quality tuning lab: sensitive stress short text", captureSource: .composer, artifacts: [.text(title: id.title, body: body)], expectation: .noArcNoReflection)
+        case .realOCRScreenshot:
+            return .init(
+                id: id,
+                title: id.title,
+                body: "Screenshot import with real-looking OCR and no user explanation.",
+                mood: nil,
+                context: "quality tuning lab: real OCR screenshot",
+                captureSource: .photo,
+                artifacts: [.photo(title: "Calendar screenshot", summary: "Screenshot OCR from calendar", filename: "calendar_screenshot.jpg", imageData: nil, thumbnailData: nil, ocrText: "Tue 10:00 Dentist\n12:30 Lunch\n17:00 Pay invoice\nScreenshot saved from Calendar")],
+                expectation: .noArcNoReflection
+            )
+        case .linkMetadataTrap:
+            return .init(
+                id: id,
+                title: id.title,
+                body: "",
+                mood: nil,
+                context: "quality tuning lab: link metadata trap",
+                captureSource: .composer,
+                artifacts: [.link(title: "How to change your life with one habit", url: "https://example.com/change-your-life", note: nil, summary: "A dramatic article title about transformation, productivity, discipline, and morning routines.")],
+                expectation: .noArcNoReflection
+            )
         }
     }
 }
@@ -313,6 +376,7 @@ struct QualityTuningRunReport: Identifiable, Sendable {
     var scenarioTitle: String
     var promptProfile: QualityTuningPromptProfile
     var thresholdsSummary: String
+    var requestID: String?
     var recordIDs: [UUID]
     var expectation: QualityTuningExpectation
     var expectationPassed: Bool
@@ -330,6 +394,7 @@ struct QualityTuningRunReport: Identifiable, Sendable {
         lines.append("Profile: \(promptProfile.rawValue)")
         lines.append("Created at: \(createdAt.formatted(.iso8601))")
         lines.append("Thresholds: \(thresholdsSummary)")
+        lines.append("Request ID: \(requestID ?? "none")")
         lines.append("Record IDs: \(recordIDs.map(\.uuidString).joined(separator: ", "))")
         lines.append("Expectation: \(expectation.rawValue) -> \(expectationPassed ? "PASS" : "FAIL")")
         lines.append("")
@@ -348,6 +413,32 @@ struct QualityTuningRunReport: Identifiable, Sendable {
         lines.append("--- Raw Response ---")
         lines.append(rawResponseBody)
         return lines.joined(separator: "\n")
+    }
+}
+
+// MARK: - Quality Tuning Preference
+
+struct QualityTuningPreference: Identifiable, Hashable, Sendable {
+    var id: UUID
+    var schemaVersion: Int
+    var syncKey: String
+    var promptProfile: QualityTuningPromptProfile
+    var thresholds: QualityTuningThresholds
+    var notes: String
+    var updatedAt: Date
+
+    static let defaultSyncKey = "quality_tuning.default"
+
+    static var defaults: QualityTuningPreference {
+        QualityTuningPreference(
+            id: UUID(),
+            schemaVersion: 1,
+            syncKey: defaultSyncKey,
+            promptProfile: .balanced,
+            thresholds: .defaults,
+            notes: "Local quality tuning defaults. Reserved for future cloud sync.",
+            updatedAt: .now
+        )
     }
 }
 

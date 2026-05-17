@@ -9,15 +9,32 @@ struct MemoryGraphQueryService {
         recordIDs: Set<UUID>? = nil
     ) throws -> MemoryGraphContext {
         let recordIDSet = Set(memories.map(\.record.id))
-        let allRecordIDs = recordIDs ?? recordIDSet
+        let visibleRecordIDs = recordIDs ?? recordIDSet
+        let existingRecordIDs = Set(
+            try modelContext.fetch(FetchDescriptor<RecordShellStore>()).map(\.id)
+        )
 
-        let links = try fetchLinks(modelContext: modelContext, recordIDs: allRecordIDs)
+        let links = try fetchLinks(modelContext: modelContext, recordIDs: visibleRecordIDs)
         let entityIDs = Set(links.map(\.entityID))
 
         let entities = try fetchEntities(modelContext: modelContext, entityIDs: entityIDs, entityKinds: entityKinds)
-        let edges = try fetchEdges(modelContext: modelContext, entityIDs: entityIDs, recordIDs: allRecordIDs)
-        let arcs = try fetchArcs(modelContext: modelContext, recordIDs: allRecordIDs)
-        let reflections = try fetchReflections(modelContext: modelContext, recordIDs: allRecordIDs, arcIDs: Set(arcs.map(\.id)))
+        let edges = try fetchEdges(
+            modelContext: modelContext,
+            entityIDs: entityIDs,
+            visibleRecordIDs: visibleRecordIDs,
+            existingRecordIDs: existingRecordIDs
+        )
+        let arcs = try fetchArcs(
+            modelContext: modelContext,
+            visibleRecordIDs: visibleRecordIDs,
+            existingRecordIDs: existingRecordIDs
+        )
+        let reflections = try fetchReflections(
+            modelContext: modelContext,
+            visibleRecordIDs: visibleRecordIDs,
+            existingRecordIDs: existingRecordIDs,
+            arcIDs: Set(arcs.map(\.id))
+        )
 
         let memoriesByRecordID = Dictionary(uniqueKeysWithValues: memories.map { ($0.record.id, $0) })
 
@@ -62,32 +79,43 @@ struct MemoryGraphQueryService {
     private func fetchEdges(
         modelContext: ModelContext,
         entityIDs: Set<UUID>,
-        recordIDs: Set<UUID>
+        visibleRecordIDs: Set<UUID>,
+        existingRecordIDs: Set<UUID>
     ) throws -> [EntityEdge] {
         let allStores = try modelContext.fetch(
             FetchDescriptor<EntityEdgeStore>()
         ).map(\.domainModel)
 
         return allStores.filter { edge in
+            guard edge.sourceRecordIDs.allSatisfy({ existingRecordIDs.contains($0) }) else {
+                return false
+            }
             let connectsToTargetEntity = entityIDs.contains(edge.fromEntityID) || entityIDs.contains(edge.toEntityID)
-            let hasSourceRecord = edge.sourceRecordIDs.contains(where: { recordIDs.contains($0) })
+            let hasSourceRecord = edge.sourceRecordIDs.contains(where: { visibleRecordIDs.contains($0) })
             return connectsToTargetEntity || hasSourceRecord
         }
     }
 
-    private func fetchArcs(modelContext: ModelContext, recordIDs: Set<UUID>) throws -> [TemporalArc] {
+    private func fetchArcs(
+        modelContext: ModelContext,
+        visibleRecordIDs: Set<UUID>,
+        existingRecordIDs: Set<UUID>
+    ) throws -> [TemporalArc] {
         let allStores = try modelContext.fetch(
             FetchDescriptor<TemporalArcStore>()
         ).map(\.domainModel)
 
         return allStores.filter { arc in
-            arc.sourceRecordIDs.contains(where: { recordIDs.contains($0) })
+            !arc.sourceRecordIDs.isEmpty
+                && arc.sourceRecordIDs.allSatisfy { existingRecordIDs.contains($0) }
+                && arc.sourceRecordIDs.contains { visibleRecordIDs.contains($0) }
         }
     }
 
     private func fetchReflections(
         modelContext: ModelContext,
-        recordIDs: Set<UUID>,
+        visibleRecordIDs: Set<UUID>,
+        existingRecordIDs: Set<UUID>,
         arcIDs: Set<UUID>
     ) throws -> [ReflectionSnapshot] {
         let allStores = try modelContext.fetch(
@@ -95,9 +123,11 @@ struct MemoryGraphQueryService {
         ).map(\.domainModel)
 
         return allStores.filter { reflection in
-            let hasSourceRecord = reflection.sourceRecordIDs.contains(where: { recordIDs.contains($0) })
+            let hasValidSourceRecords = !reflection.sourceRecordIDs.isEmpty
+                && reflection.sourceRecordIDs.allSatisfy { existingRecordIDs.contains($0) }
+                && reflection.sourceRecordIDs.contains { visibleRecordIDs.contains($0) }
             let linkedToArc = reflection.linkedTemporalArcID.map { arcIDs.contains($0) } ?? false
-            return hasSourceRecord || linkedToArc
+            return hasValidSourceRecords || linkedToArc
         }
     }
 }

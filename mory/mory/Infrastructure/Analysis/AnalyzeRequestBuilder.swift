@@ -107,7 +107,7 @@ struct AnalyzeRequestPayload: Codable, Sendable {
         }
 
         static func current() -> DebugOptionsPayload? {
-            guard QualityTuningRuntime.isEnabled else { return nil }
+            guard QualityTuningRuntime.isActive else { return nil }
             return DebugOptionsPayload(promptProfile: QualityTuningRuntime.promptProfile.rawValue)
         }
     }

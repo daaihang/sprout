@@ -2,6 +2,35 @@ import Foundation
 import SwiftData
 
 @Model
+final class QualityTuningPreferenceStore {
+    @Attribute(.unique) var syncKey: String
+    var id: UUID
+    var schemaVersion: Int
+    var promptProfileRawValue: String
+    var thresholdsData: Data?
+    var notes: String
+    var updatedAt: Date
+
+    init(
+        id: UUID = UUID(),
+        schemaVersion: Int = 1,
+        syncKey: String = QualityTuningPreference.defaultSyncKey,
+        promptProfileRawValue: String,
+        thresholdsData: Data?,
+        notes: String,
+        updatedAt: Date
+    ) {
+        self.id = id
+        self.schemaVersion = schemaVersion
+        self.syncKey = syncKey
+        self.promptProfileRawValue = promptProfileRawValue
+        self.thresholdsData = thresholdsData
+        self.notes = notes
+        self.updatedAt = updatedAt
+    }
+}
+
+@Model
 final class RecordShellStore {
     @Attribute(.unique) var id: UUID
     var createdAt: Date
@@ -359,6 +388,7 @@ final class RecordAnalysisSnapshotStore {
 final class MemoryPipelineStatusStore {
     @Attribute(.unique) var recordID: UUID
     var stageRawValue: String
+    var requestID: String?
     var lastError: String?
     var requestBody: String?
     var responseBody: String?
@@ -372,6 +402,7 @@ final class MemoryPipelineStatusStore {
     init(
         recordID: UUID,
         stageRawValue: String,
+        requestID: String? = nil,
         lastError: String? = nil,
         requestBody: String? = nil,
         responseBody: String? = nil,
@@ -384,6 +415,7 @@ final class MemoryPipelineStatusStore {
     ) {
         self.recordID = recordID
         self.stageRawValue = stageRawValue
+        self.requestID = requestID
         self.lastError = lastError
         self.requestBody = requestBody
         self.responseBody = responseBody

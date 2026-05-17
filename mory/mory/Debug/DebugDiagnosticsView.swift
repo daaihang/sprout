@@ -1557,6 +1557,7 @@ private struct DebugQualityTuningLabView: View {
     @State private var reports: [QualityTuningRunReport] = []
     @State private var errorMessage: String?
     @State private var copiedToast: String?
+    @State private var preference: QualityTuningPreference = .defaults
 
     var body: some View {
         List {
@@ -1588,8 +1589,15 @@ private struct DebugQualityTuningLabView: View {
                 } label: {
                     Label("Disable tuning runtime", systemImage: "power")
                 }
+                Button {
+                    Task { await saveCurrentPreference() }
+                } label: {
+                    Label("Save Local Preference", systemImage: "tray.and.arrow.down")
+                }
             } header: {
                 Text("Quality Tuning Lab")
+            } footer: {
+                Text("Preference: \(preference.syncKey) · schema \(preference.schemaVersion) · \(preference.updatedAt.formatted(date: .abbreviated, time: .shortened))")
             }
 
             Section {
@@ -1625,10 +1633,16 @@ private struct DebugQualityTuningLabView: View {
                         Label("Copy All Reports", systemImage: "doc.on.doc.fill")
                     }
                 }
+                Button(role: .destructive) {
+                    Task { await clearLabData() }
+                } label: {
+                    Label("Clear Lab Data", systemImage: "trash")
+                }
+                .disabled(isRunning)
             } header: {
                 Text("Execution")
             } footer: {
-                Text("Core Batch runs strict and balanced profiles over the high-signal input and history scenarios.")
+                Text("Core Batch runs strict, balanced, and experimental profiles over the high-signal input and history scenarios.")
             }
 
             Section {
@@ -1738,6 +1752,9 @@ private struct DebugQualityTuningLabView: View {
             }
         }
         .navigationTitle("Quality Tuning Lab")
+        .task {
+            await loadPreference()
+        }
         .overlay(alignment: .bottom) {
             if let copiedToast {
                 Text(copiedToast)
@@ -1810,22 +1827,11 @@ private struct DebugQualityTuningLabView: View {
 
     private func runCoreBatch() async {
         guard !isRunning else { return }
-        let ids: [QualityTuningScenarioID] = [
-            .terseNeutralText,
-            .highEmotionShortText,
-            .photoOCRNoise,
-            .linkCapture,
-            .speechTranscript,
-            .multiArtifactContext,
-            .twoRelatedEvents,
-            .weakRelatedEvents,
-            .denseUnrelatedHistory,
-            .recurringCareerHistory,
-        ]
+        let ids = QualityTuningScenarioID.allCases
         isRunning = true
         defer { isRunning = false }
         errorMessage = nil
-        for profile in [QualityTuningPromptProfile.strict, .balanced] {
+        for profile in QualityTuningPromptProfile.allCases {
             for id in ids {
                 do {
                     let report = try await memoryRepository.runQualityTuningScenario(
@@ -1850,7 +1856,7 @@ private struct DebugQualityTuningLabView: View {
         isRunning = true
         defer { isRunning = false }
         errorMessage = nil
-        for profile in [QualityTuningPromptProfile.strict, .balanced] {
+        for profile in QualityTuningPromptProfile.allCases {
             for id in QualityTuningScenarioID.allCases {
                 do {
                     let report = try await memoryRepository.runQualityTuningScenario(
@@ -1867,6 +1873,46 @@ private struct DebugQualityTuningLabView: View {
                     return
                 }
             }
+        }
+    }
+
+    private func loadPreference() async {
+        do {
+            let loaded = try memoryRepository.fetchQualityTuningPreference()
+            preference = loaded
+            promptProfile = loaded.promptProfile
+            thresholds = loaded.thresholds
+            QualityTuningRuntime.promptProfile = loaded.promptProfile
+            QualityTuningRuntime.thresholds = loaded.thresholds
+        } catch {
+            errorMessage = "Load tuning preference: \(error.localizedDescription)"
+        }
+    }
+
+    private func saveCurrentPreference() async {
+        do {
+            var updated = preference
+            updated.promptProfile = promptProfile
+            updated.thresholds = thresholds
+            updated.updatedAt = .now
+            try memoryRepository.saveQualityTuningPreference(updated)
+            preference = updated
+            QualityTuningRuntime.promptProfile = promptProfile
+            QualityTuningRuntime.thresholds = thresholds
+            showCopiedToast("Local tuning preference saved")
+        } catch {
+            errorMessage = "Save tuning preference: \(error.localizedDescription)"
+        }
+    }
+
+    private func clearLabData() async {
+        do {
+            try memoryRepository.clearAllLocalData()
+            latestReport = nil
+            reports.removeAll()
+            showCopiedToast("Lab data cleared")
+        } catch {
+            errorMessage = "Clear lab data: \(error.localizedDescription)"
         }
     }
 
@@ -1963,6 +2009,9 @@ private struct DebugQualityTuningReportBody: View {
                 .font(.caption.monospaced())
                 .foregroundStyle(.secondary)
             Text("Records: \(report.recordIDs.map { $0.uuidString.prefix(8) }.joined(separator: ", "))")
+                .font(.caption.monospaced())
+                .foregroundStyle(.secondary)
+            Text("Request ID: \(report.requestID ?? "none")")
                 .font(.caption.monospaced())
                 .foregroundStyle(.secondary)
             Text(report.thresholdsSummary)
@@ -3214,6 +3263,7 @@ private struct DebugFullDiagnosticsView: View {
 
     private func buildPipelineTraceReport(_ trace: DebugPipelineTraceSnapshot) -> String {
         var lines: [String] = ["--- Pipeline Trace ---"]
+        if let id = trace.requestID?.trimmedOrNil { lines.append("Request ID: \(id)") }
         if let s = trace.failedStage?.trimmedOrNil { lines.append("Failed Stage: \(s)") }
         if let c = trace.statusCode { lines.append("HTTP Status:  \(c)") }
         if let r = trace.requestBody?.trimmedOrNil { lines.append("\n[Request]\n\(prettyJSON(r))") }

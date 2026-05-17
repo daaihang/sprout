@@ -139,6 +139,7 @@ struct RemoteRecordAnalysisService: RecordAnalysisServing {
             let responseBody = String(data: (try? JSONEncoder().encode(response)) ?? Data(), encoding: .utf8)
             await debugTraceStore.set(
                 DebugPipelineTraceSnapshot(
+                    requestID: await apiClient.latestDebugRequestID(),
                     requestBody: requestBody,
                     responseBody: responseBody,
                     rawErrorBody: nil,
@@ -154,6 +155,7 @@ struct RemoteRecordAnalysisService: RecordAnalysisServing {
             let responseBody = String(data: (try? JSONEncoder().encode(response)) ?? Data(), encoding: .utf8)
             await debugTraceStore.set(
                 DebugPipelineTraceSnapshot(
+                    requestID: await apiClient.latestDebugRequestID(),
                     requestBody: requestBody,
                     responseBody: responseBody,
                     rawErrorBody: nil,
@@ -164,8 +166,15 @@ struct RemoteRecordAnalysisService: RecordAnalysisServing {
             return responseMapper.map(recordID: record.id, response: response, createdAt: record.updatedAt)
         } catch {
             let apiTrace = await apiClient.latestDebugError()
+            let requestID: String?
+            if let traceRequestID = apiTrace?.requestID {
+                requestID = traceRequestID
+            } else {
+                requestID = await apiClient.latestDebugRequestID()
+            }
             await debugTraceStore.set(
                 DebugPipelineTraceSnapshot(
+                    requestID: requestID,
                     requestBody: requestBody,
                     responseBody: apiTrace?.responseBody,
                     rawErrorBody: apiTrace?.rawErrorBody,
@@ -256,7 +265,14 @@ struct RemoteRecordAnalysisService: RecordAnalysisServing {
             return try await persistReflectionSuccess(response: response, requestBody: requestBody)
         } catch {
             let apiTrace = await apiClient.latestDebugError()
+            let requestID: String?
+            if let traceRequestID = apiTrace?.requestID {
+                requestID = traceRequestID
+            } else {
+                requestID = await apiClient.latestDebugRequestID()
+            }
             let trace = DebugPipelineTraceSnapshot(
+                requestID: requestID,
                 requestBody: requestBody,
                 responseBody: apiTrace?.responseBody,
                 rawErrorBody: apiTrace?.rawErrorBody,
@@ -300,6 +316,7 @@ struct RemoteRecordAnalysisService: RecordAnalysisServing {
             encoding: .utf8
         )
         let trace = DebugPipelineTraceSnapshot(
+            requestID: await apiClient.latestDebugRequestID(),
             requestBody: requestBody,
             responseBody: responseBody,
             rawErrorBody: nil,

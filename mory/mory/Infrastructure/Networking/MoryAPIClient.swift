@@ -78,6 +78,7 @@ struct MoryAPIClient: Sendable {
     }
 
     struct DebugErrorSnapshot: Sendable {
+        let requestID: String?
         let statusCode: Int?
         let responseBody: String?
         let rawErrorBody: String?
@@ -91,13 +92,23 @@ struct MoryAPIClient: Sendable {
 
     private actor DebugTraceStore {
         var latest: DebugErrorSnapshot?
+        var latestRequestID: String?
 
         func update(_ snapshot: DebugErrorSnapshot?) {
             latest = snapshot
+            latestRequestID = snapshot?.requestID
         }
 
         func current() -> DebugErrorSnapshot? {
             latest
+        }
+
+        func setRequestID(_ requestID: String?) {
+            latestRequestID = requestID
+        }
+
+        func currentRequestID() -> String? {
+            latestRequestID
         }
     }
 
@@ -153,14 +164,18 @@ struct MoryAPIClient: Sendable {
         bearerToken: String
     ) async throws -> AnalyzeResponseEnvelope {
         var request = URLRequest(url: configuration.url(for: configuration.analysisPath))
+        let requestID = makeDebugRequestID(prefix: "analysis")
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
+        request.setValue(requestID, forHTTPHeaderField: "X-Request-ID")
         request.httpBody = try encoder.encode(payload)
 
         do {
             let (data, response) = try await session.data(for: request)
-            return try decodeResponse(data: data, response: response, as: AnalyzeResponseEnvelope.self, failedStage: "analysis")
+            let decoded = try decodeResponse(data: data, response: response, as: AnalyzeResponseEnvelope.self, failedStage: "analysis", requestID: requestID)
+            await debugTraceBox.setRequestID(responseRequestID(response) ?? requestID)
+            return decoded
         } catch {
             throw normalize(error: error, failedStage: "analysis")
         }
@@ -171,14 +186,18 @@ struct MoryAPIClient: Sendable {
         bearerToken: String
     ) async throws -> ReflectionResponse {
         var request = URLRequest(url: configuration.url(for: "/api/reflections/generate"))
+        let requestID = makeDebugRequestID(prefix: "reflection-generate")
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
+        request.setValue(requestID, forHTTPHeaderField: "X-Request-ID")
         request.httpBody = try encoder.encode(payload)
 
         do {
             let (data, response) = try await session.data(for: request)
-            return try decodeResponse(data: data, response: response, as: ReflectionResponse.self, failedStage: "reflection_generate")
+            let decoded = try decodeResponse(data: data, response: response, as: ReflectionResponse.self, failedStage: "reflection_generate", requestID: requestID)
+            await debugTraceBox.setRequestID(responseRequestID(response) ?? requestID)
+            return decoded
         } catch {
             throw normalize(error: error, failedStage: "reflection_generate")
         }
@@ -189,14 +208,18 @@ struct MoryAPIClient: Sendable {
         bearerToken: String
     ) async throws -> ReflectionResponse {
         var request = URLRequest(url: configuration.url(for: "/api/reflections/replay"))
+        let requestID = makeDebugRequestID(prefix: "reflection-replay")
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
+        request.setValue(requestID, forHTTPHeaderField: "X-Request-ID")
         request.httpBody = try encoder.encode(payload)
 
         do {
             let (data, response) = try await session.data(for: request)
-            return try decodeResponse(data: data, response: response, as: ReflectionResponse.self, failedStage: "reflection_replay")
+            let decoded = try decodeResponse(data: data, response: response, as: ReflectionResponse.self, failedStage: "reflection_replay", requestID: requestID)
+            await debugTraceBox.setRequestID(responseRequestID(response) ?? requestID)
+            return decoded
         } catch {
             throw normalize(error: error, failedStage: "reflection_replay")
         }
@@ -204,6 +227,10 @@ struct MoryAPIClient: Sendable {
 
     func latestDebugError() async -> DebugErrorSnapshot? {
         await debugTraceBox.current()
+    }
+
+    func latestDebugRequestID() async -> String? {
+        await debugTraceBox.currentRequestID()
     }
 
     func refreshToken(refreshToken: String) async throws -> MoryAuthResponse {
@@ -224,7 +251,8 @@ struct MoryAPIClient: Sendable {
         data: Data,
         response: URLResponse,
         as type: T.Type,
-        failedStage: String = "analysis"
+        failedStage: String = "analysis",
+        requestID: String? = nil
     ) throws -> T {
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.invalidResponse
@@ -237,18 +265,18 @@ struct MoryAPIClient: Sendable {
             } catch {
                 let body = String(data: data, encoding: .utf8)
                 let apiError = APIError.decoding(error.localizedDescription, body: body)
-                setDebugError(statusCode: httpResponse.statusCode, responseBody: body, rawErrorBody: body, failedStage: failedStage, errorDescription: error.localizedDescription)
+                setDebugError(requestID: responseRequestID(response) ?? requestID, statusCode: httpResponse.statusCode, responseBody: body, rawErrorBody: body, failedStage: failedStage, errorDescription: error.localizedDescription)
                 throw apiError
             }
         case 401:
             let body = String(data: data, encoding: .utf8)
             let message = (try? decoder.decode(ErrorEnvelope.self, from: data).error) ?? "unauthorized"
-            setDebugError(statusCode: 401, responseBody: body, rawErrorBody: body, failedStage: failedStage, errorDescription: message)
+            setDebugError(requestID: responseRequestID(response) ?? requestID, statusCode: 401, responseBody: body, rawErrorBody: body, failedStage: failedStage, errorDescription: message)
             throw APIError.unauthorized
         default:
             let body = String(data: data, encoding: .utf8)
             let message = (try? decoder.decode(ErrorEnvelope.self, from: data).error) ?? HTTPURLResponse.localizedString(forStatusCode: httpResponse.statusCode)
-            setDebugError(statusCode: httpResponse.statusCode, responseBody: body, rawErrorBody: body, failedStage: failedStage, errorDescription: message)
+            setDebugError(requestID: responseRequestID(response) ?? requestID, statusCode: httpResponse.statusCode, responseBody: body, rawErrorBody: body, failedStage: failedStage, errorDescription: message)
             throw APIError.server(statusCode: httpResponse.statusCode, message: message, body: body)
         }
     }
@@ -257,13 +285,13 @@ struct MoryAPIClient: Sendable {
         if let apiError = error as? APIError {
             switch apiError {
             case .invalidResponse:
-                setDebugError(statusCode: nil, responseBody: nil, rawErrorBody: nil, failedStage: failedStage, errorDescription: apiError.localizedDescription)
+                setDebugError(requestID: nil, statusCode: nil, responseBody: nil, rawErrorBody: nil, failedStage: failedStage, errorDescription: apiError.localizedDescription)
             case .unauthorized:
                 break
             case .server:
                 break
             case let .network(message):
-                setDebugError(statusCode: nil, responseBody: nil, rawErrorBody: nil, failedStage: failedStage, errorDescription: message)
+                setDebugError(requestID: nil, statusCode: nil, responseBody: nil, rawErrorBody: nil, failedStage: failedStage, errorDescription: message)
             case .decoding:
                 break
             }
@@ -271,6 +299,7 @@ struct MoryAPIClient: Sendable {
         }
 
         setDebugError(
+            requestID: nil,
             statusCode: nil,
             responseBody: nil,
             rawErrorBody: nil,
@@ -281,6 +310,7 @@ struct MoryAPIClient: Sendable {
     }
 
     private func setDebugError(
+        requestID: String?,
         statusCode: Int?,
         responseBody: String?,
         rawErrorBody: String?,
@@ -288,6 +318,7 @@ struct MoryAPIClient: Sendable {
         errorDescription: String
     ) {
         let snapshot = DebugErrorSnapshot(
+            requestID: requestID,
             statusCode: statusCode,
             responseBody: responseBody,
             rawErrorBody: rawErrorBody,
@@ -295,5 +326,13 @@ struct MoryAPIClient: Sendable {
             errorDescription: errorDescription
         )
         Task { await debugTraceBox.update(snapshot) }
+    }
+
+    private func makeDebugRequestID(prefix: String) -> String {
+        "mory-\(prefix)-\(UUID().uuidString)"
+    }
+
+    private func responseRequestID(_ response: URLResponse) -> String? {
+        (response as? HTTPURLResponse)?.value(forHTTPHeaderField: "X-Request-ID")
     }
 }

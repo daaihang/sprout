@@ -47,6 +47,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             MemoryPipelineStatusSnapshot(
                 recordID: recordID,
                 stage: .pending,
+                requestID: nil,
                 lastError: nil,
                 requestBody: nil,
                 responseBody: nil,
@@ -108,6 +109,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             MemoryPipelineStatusSnapshot(
                 recordID: recordID,
                 stage: .pending,
+                requestID: try fetchPipelineStatus(recordID: recordID)?.requestID,
                 lastError: nil,
                 requestBody: try fetchPipelineStatus(recordID: recordID)?.requestBody,
                 responseBody: nil,
@@ -129,15 +131,12 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     }
 
     func deleteMemory(recordID: UUID) throws {
+        try purgeDerivedData(forRecordIDs: [recordID], includePipelineStatus: true)
         if let record = try modelContext.fetch(FetchDescriptor<RecordShellStore>(predicate: #Predicate { $0.id == recordID })).first {
             modelContext.delete(record)
         }
         let artifacts = try modelContext.fetch(FetchDescriptor<ArtifactStore>(predicate: #Predicate { $0.recordID == recordID }))
         artifacts.forEach { modelContext.delete($0) }
-        let pipelines = try modelContext.fetch(FetchDescriptor<MemoryPipelineStatusStore>(predicate: #Predicate { $0.recordID == recordID }))
-        pipelines.forEach { modelContext.delete($0) }
-        let analyses = try modelContext.fetch(FetchDescriptor<RecordAnalysisSnapshotStore>(predicate: #Predicate { $0.recordID == recordID }))
-        analyses.forEach { modelContext.delete($0) }
         try save()
     }
 
@@ -180,6 +179,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             MemoryPipelineStatusSnapshot(
                 recordID: recordID,
                 stage: .pending,
+                requestID: nil,
                 lastError: nil,
                 requestBody: nil,
                 responseBody: nil,
@@ -202,13 +202,17 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         }
         let artifacts = try fetchArtifacts(recordID: recordID)
         let attemptAt = Date.now
+        let previousStatus = try fetchPipelineStatus(recordID: recordID)
+
+        try purgeDerivedDataForRefresh(recordID: recordID)
 
         try upsertPipelineStatus(
             MemoryPipelineStatusSnapshot(
                 recordID: recordID,
                 stage: .running,
+                requestID: previousStatus?.requestID,
                 lastError: nil,
-                requestBody: try fetchPipelineStatus(recordID: recordID)?.requestBody,
+                requestBody: previousStatus?.requestBody,
                 responseBody: nil,
                 rawErrorBody: nil,
                 lastHTTPStatusCode: nil,
@@ -228,6 +232,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
                 MemoryPipelineStatusSnapshot(
                     recordID: recordID,
                     stage: .completed,
+                    requestID: trace?.requestID,
                     lastError: nil,
                     requestBody: trace?.requestBody,
                     responseBody: trace?.responseBody,
@@ -252,6 +257,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
                 MemoryPipelineStatusSnapshot(
                     recordID: recordID,
                     stage: .failed,
+                    requestID: trace?.requestID,
                     lastError: error.localizedDescription,
                     requestBody: trace?.requestBody,
                     responseBody: trace?.responseBody,
@@ -467,38 +473,30 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     }
 
     func fetchPeopleSummaries(limit: Int? = nil) throws -> [PersonMemorySummary] {
-        let personEntities = try modelContext.fetch(
-            FetchDescriptor<EntityNodeStore>(
-                predicate: #Predicate { $0.kindRawValue == "person" },
-                sortBy: [SortDescriptor(\.updatedAt, order: .reverse)]
-            )
-        ).map(\.domainModel)
-
         let memories = try fetchRecentMemories(limit: nil)
         let graphContext = try graphQueryService.load(
             modelContext: modelContext,
             memories: memories,
             entityKinds: [.person]
         )
-        let summaries = personEntities.map { graphContext.makePersonSummary(entity: $0) }
+        let summaries = graphContext.entities
+            .filter { $0.kind == .person }
+            .sorted { $0.updatedAt > $1.updatedAt }
+            .map { graphContext.makePersonSummary(entity: $0) }
         return applyLimit(limit, to: summaries)
     }
 
     func fetchThemeSummaries(limit: Int? = nil) throws -> [ThemeMemorySummary] {
-        let themeEntities = try modelContext.fetch(
-            FetchDescriptor<EntityNodeStore>(
-                predicate: #Predicate { $0.kindRawValue == "theme" },
-                sortBy: [SortDescriptor(\.updatedAt, order: .reverse)]
-            )
-        ).map(\.domainModel)
-
         let memories = try fetchRecentMemories(limit: nil)
         let graphContext = try graphQueryService.load(
             modelContext: modelContext,
             memories: memories,
             entityKinds: [.theme]
         )
-        let summaries = themeEntities.map { graphContext.makeThemeSummary(entity: $0) }
+        let summaries = graphContext.entities
+            .filter { $0.kind == .theme }
+            .sorted { $0.updatedAt > $1.updatedAt }
+            .map { graphContext.makeThemeSummary(entity: $0) }
 
         return applyLimit(limit, to: summaries)
     }
@@ -876,6 +874,46 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         try save()
     }
 
+    func fetchQualityTuningPreference() throws -> QualityTuningPreference {
+        let syncKey = QualityTuningPreference.defaultSyncKey
+        let descriptor = FetchDescriptor<QualityTuningPreferenceStore>(
+            predicate: #Predicate { $0.syncKey == syncKey }
+        )
+        guard let store = try modelContext.fetch(descriptor).first else {
+            return .defaults
+        }
+        return makeQualityTuningPreference(from: store)
+    }
+
+    func saveQualityTuningPreference(_ preference: QualityTuningPreference) throws {
+        let syncKey = preference.syncKey
+        let descriptor = FetchDescriptor<QualityTuningPreferenceStore>(
+            predicate: #Predicate { $0.syncKey == syncKey }
+        )
+        let data = try JSONEncoder().encode(preference.thresholds)
+        if let store = try modelContext.fetch(descriptor).first {
+            store.id = preference.id
+            store.schemaVersion = preference.schemaVersion
+            store.promptProfileRawValue = preference.promptProfile.rawValue
+            store.thresholdsData = data
+            store.notes = preference.notes
+            store.updatedAt = preference.updatedAt
+        } else {
+            modelContext.insert(
+                QualityTuningPreferenceStore(
+                    id: preference.id,
+                    schemaVersion: preference.schemaVersion,
+                    syncKey: preference.syncKey,
+                    promptProfileRawValue: preference.promptProfile.rawValue,
+                    thresholdsData: data,
+                    notes: preference.notes,
+                    updatedAt: preference.updatedAt
+                )
+            )
+        }
+        try save()
+    }
+
     func runQualityTuningScenario(_ request: QualityTuningRunRequest) async throws -> QualityTuningRunReport {
         QualityTuningRuntime.isEnabled = true
         QualityTuningRuntime.promptProfile = request.promptProfile
@@ -916,6 +954,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             scenarioTitle: request.scenario.title,
             promptProfile: request.promptProfile,
             thresholdsSummary: request.thresholds.summary,
+            requestID: diagnostics.pipelineTrace?.requestID ?? latestReflectionTrace?.requestID,
             recordIDs: reportRecordIDs,
             expectation: request.scenario.expectation,
             expectationPassed: expectationPassed,
@@ -982,6 +1021,30 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             return [
                 draft(title: "Career transition - first", body: "I noticed relief after admitting to Linh that the current launch scope is too wide.", mood: "relieved", context: scenario.context, source: .composer, artifacts: [.text(title: "Career transition - first", body: "I noticed relief after admitting to Linh that the current launch scope is too wide.")]),
                 draft(title: "Career transition - second", body: "During planning I chose the smaller launch scope and wrote down the roles I need to hand off.", mood: "focused", context: scenario.context, source: .composer, artifacts: [.text(title: "Career transition - second", body: "During planning I chose the smaller launch scope and wrote down the roles I need to hand off.")]),
+                draft(title: scenario.title, body: scenario.body, mood: scenario.mood, context: scenario.context, source: scenario.captureSource, artifacts: scenario.artifacts)
+            ]
+        case .aliasSamePersonHistory:
+            return [
+                draft(title: "Alias history - Alexander", body: "Alexander Chen said the current launch plan feels too loud and asked for a quieter rollout.", mood: "focused", context: scenario.context, source: .composer, artifacts: [.text(title: "Alias history - Alexander", body: "Alexander Chen said the current launch plan feels too loud and asked for a quieter rollout.")]),
+                draft(title: "Alias history - Alex", body: "Alex Chen repeated that the quieter launch plan would help the team finish carefully.", mood: "steady", context: scenario.context, source: .composer, artifacts: [.text(title: "Alias history - Alex", body: "Alex Chen repeated that the quieter launch plan would help the team finish carefully.")]),
+                draft(title: scenario.title, body: scenario.body, mood: scenario.mood, context: scenario.context, source: scenario.captureSource, artifacts: scenario.artifacts)
+            ]
+        case .sameNameDifferentPeople:
+            return [
+                draft(title: "Same-name work Alex", body: "Alex from work asked me to reduce launch scope before the review.", mood: "focused", context: scenario.context, source: .composer, artifacts: [.text(title: "Same-name work Alex", body: "Alex from work asked me to reduce launch scope before the review.")]),
+                draft(title: "Same-name neighbor Alex", body: "Alex from the apartment lobby reminded me about the package shelf.", mood: nil, context: scenario.context, source: .composer, artifacts: [.text(title: "Same-name neighbor Alex", body: "Alex from the apartment lobby reminded me about the package shelf.")]),
+                draft(title: scenario.title, body: scenario.body, mood: scenario.mood, context: scenario.context, source: scenario.captureSource, artifacts: scenario.artifacts)
+            ]
+        case .relationshipConflictShift:
+            return [
+                draft(title: "Conflict shift - first", body: "Linh and I argued during the review because decisions were changing live in the room.", mood: "tense", context: scenario.context, source: .composer, artifacts: [.text(title: "Conflict shift - first", body: "Linh and I argued during the review because decisions were changing live in the room.")]),
+                draft(title: "Conflict shift - second", body: "Before the next review, Linh suggested writing scope decisions down so we stop debating from memory.", mood: "careful", context: scenario.context, source: .composer, artifacts: [.text(title: "Conflict shift - second", body: "Before the next review, Linh suggested writing scope decisions down so we stop debating from memory.")]),
+                draft(title: scenario.title, body: scenario.body, mood: scenario.mood, context: scenario.context, source: scenario.captureSource, artifacts: scenario.artifacts)
+            ]
+        case .longTimelineRecurringHistory:
+            return [
+                draft(title: "Long timeline - January", body: "In January I protected Monday morning for writing and finished the essay before meetings.", mood: "calm", context: scenario.context, source: .composer, artifacts: [.text(title: "Long timeline - January", body: "In January I protected Monday morning for writing and finished the essay before meetings.")]),
+                draft(title: "Long timeline - March", body: "In March I lost the morning block to meetings and the writing slipped again.", mood: "frustrated", context: scenario.context, source: .composer, artifacts: [.text(title: "Long timeline - March", body: "In March I lost the morning block to meetings and the writing slipped again.")]),
                 draft(title: scenario.title, body: scenario.body, mood: scenario.mood, context: scenario.context, source: scenario.captureSource, artifacts: scenario.artifacts)
             ]
         default:
@@ -1116,10 +1179,117 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         }
     }
 
+    private func makeQualityTuningPreference(from store: QualityTuningPreferenceStore) -> QualityTuningPreference {
+        let thresholds = store.thresholdsData
+            .flatMap { try? JSONDecoder().decode(QualityTuningThresholds.self, from: $0) }
+            ?? .defaults
+        return QualityTuningPreference(
+            id: store.id,
+            schemaVersion: store.schemaVersion,
+            syncKey: store.syncKey,
+            promptProfile: QualityTuningPromptProfile(rawValue: store.promptProfileRawValue) ?? .balanced,
+            thresholds: thresholds,
+            notes: store.notes,
+            updatedAt: store.updatedAt
+        )
+    }
+
     private func deleteAll<T: PersistentModel>(_ type: T.Type) throws {
         let stores = try modelContext.fetch(FetchDescriptor<T>())
         for store in stores {
             modelContext.delete(store)
+        }
+    }
+
+    private func purgeDerivedDataForRefresh(recordID: UUID) throws {
+        try purgeDerivedData(forRecordIDs: [recordID], includePipelineStatus: false)
+    }
+
+    private func purgeDerivedData(forRecordIDs recordIDs: Set<UUID>, includePipelineStatus: Bool) throws {
+        guard !recordIDs.isEmpty else { return }
+
+        let artifactIDs = Set(
+            try modelContext.fetch(FetchDescriptor<ArtifactStore>())
+                .filter { recordIDs.contains($0.recordID) }
+                .map(\.id)
+        )
+
+        let analysisStores = try modelContext.fetch(FetchDescriptor<RecordAnalysisSnapshotStore>())
+            .filter { recordIDs.contains($0.recordID) }
+        analysisStores.forEach { modelContext.delete($0) }
+
+        if includePipelineStatus {
+            let pipelineStores = try modelContext.fetch(FetchDescriptor<MemoryPipelineStatusStore>())
+                .filter { recordIDs.contains($0.recordID) }
+            pipelineStores.forEach { modelContext.delete($0) }
+        }
+
+        let allLinks = try modelContext.fetch(FetchDescriptor<ArtifactEntityLinkStore>())
+        let linkIDsToDelete = Set(
+            allLinks
+                .filter { link in
+                    artifactIDs.contains(link.artifactID)
+                        || link.sourceRecordID.map { recordIDs.contains($0) } == true
+                        || link.sourceAnalysisRecordID.map { recordIDs.contains($0) } == true
+                }
+                .map(\.id)
+        )
+        allLinks
+            .filter { linkIDsToDelete.contains($0.id) }
+            .forEach { modelContext.delete($0) }
+        let remainingLinkedEntityIDs = Set(
+            allLinks
+                .filter { !linkIDsToDelete.contains($0.id) }
+                .map(\.entityID)
+        )
+
+        let edgeStores = try modelContext.fetch(FetchDescriptor<EntityEdgeStore>())
+            .filter { store in
+                store.sourceRecordIDs.contains { recordIDs.contains($0) }
+                    || store.sourceArtifactIDs.contains { artifactIDs.contains($0) }
+            }
+        edgeStores.forEach { modelContext.delete($0) }
+
+        let arcStores = try modelContext.fetch(FetchDescriptor<TemporalArcStore>())
+        let arcIDsToDelete = Set(
+            arcStores
+                .filter { store in
+                    store.sourceRecordIDs.contains { recordIDs.contains($0) }
+                        || store.sourceArtifactIDs.contains { artifactIDs.contains($0) }
+                }
+                .map(\.id)
+        )
+        arcStores
+            .filter { arcIDsToDelete.contains($0.id) }
+            .forEach { modelContext.delete($0) }
+
+        let reflectionStores = try modelContext.fetch(FetchDescriptor<ReflectionSnapshotStore>())
+            .filter { store in
+                store.sourceRecordIDs.contains { recordIDs.contains($0) }
+                    || store.sourceArtifactIDs.contains { artifactIDs.contains($0) }
+                    || store.linkedTemporalArcID.map { arcIDsToDelete.contains($0) } == true
+            }
+        reflectionStores.forEach { modelContext.delete($0) }
+
+        try purgeEntityProvenance(removing: recordIDs, remainingLinkedEntityIDs: remainingLinkedEntityIDs)
+    }
+
+    private func purgeEntityProvenance(
+        removing recordIDs: Set<UUID>,
+        remainingLinkedEntityIDs: Set<UUID>
+    ) throws {
+        let entityStores = try modelContext.fetch(FetchDescriptor<EntityNodeStore>())
+        for store in entityStores {
+            var entity = store.domainModel
+            let originalProvenance = entity.provenanceRecordIDs
+            entity.provenanceRecordIDs.removeAll { recordIDs.contains($0) }
+
+            if entity.provenanceRecordIDs.isEmpty && !remainingLinkedEntityIDs.contains(entity.id) {
+                modelContext.delete(store)
+            } else if entity.provenanceRecordIDs != originalProvenance {
+                entity.updatedAt = Date.now
+                store.apply(domainModel: entity)
+            }
         }
     }
 
@@ -1136,11 +1306,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     }
 
     func rerunGraphArcReflection(recordID: UUID) async throws {
-        guard let record = try fetchRecordShell(id: recordID) else {
-            throw CocoaError(.fileNoSuchFile)
-        }
-        let artifacts = try fetchArtifacts(recordID: recordID)
-        try await runArchitecturePipeline(record: record, artifacts: artifacts)
+        try await refreshMemoryPipeline(recordID: recordID)
     }
 
     func seedDebugFixture() async throws -> DebugMemoryFixtureSnapshot {
@@ -1198,7 +1364,8 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     }
 
     func upsert(recordAnalysis: RecordAnalysisSnapshot) throws {
-        let descriptor = FetchDescriptor<RecordAnalysisSnapshotStore>(predicate: #Predicate { $0.id == recordAnalysis.id })
+        let recordID = recordAnalysis.recordID
+        let descriptor = FetchDescriptor<RecordAnalysisSnapshotStore>(predicate: #Predicate { $0.recordID == recordID })
         if let existing = try modelContext.fetch(descriptor).first {
             existing.apply(domainModel: recordAnalysis)
         } else {
