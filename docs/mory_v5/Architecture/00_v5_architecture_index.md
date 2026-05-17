@@ -24,6 +24,7 @@ v5 architecture is presentation-first:
 | 06 Account Settings Data Model | Defines settings screens, local preference storage, sync-ready keys, and account state mapping |
 | 07 Accessibility Localization And Motion | Defines accessibility, Dynamic Type, VoiceOver, localization, reduced motion, and text fitting |
 | 08 Rollout Test And Migration Plan | Defines implementation phases, testing, manual QA, and migration safety |
+| 09 Project Structure Health | Defines file placement rules, size guardrails, split priorities, and structure-only commit policy |
 
 ## 3. Layering Rules
 
@@ -80,4 +81,4 @@ mory/mory/
 4. Keep capture state explicit and testable.
 5. Store user preferences locally with sync-ready metadata.
 6. Use debug pages to observe product rules, not to compensate for missing UI.
-
+7. Keep structure-only refactors separate from UI and behavior changes.

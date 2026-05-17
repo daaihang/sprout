@@ -58,6 +58,7 @@ Everything else supports these three surfaces:
 7. [06_account_settings_data_model.md](Architecture/06_account_settings_data_model.md)
 8. [07_accessibility_localization_and_motion.md](Architecture/07_accessibility_localization_and_motion.md)
 9. [08_rollout_test_and_migration_plan.md](Architecture/08_rollout_test_and_migration_plan.md)
+10. [09_project_structure_health.md](Architecture/09_project_structure_health.md)
 
 ## 4. Non-Negotiable v5 Outcomes
 
@@ -118,4 +119,3 @@ v5 should ship in three visible increments:
    - Localization.
    - Performance pass.
    - Manual QA checklist complete.
-
