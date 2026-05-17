@@ -192,3 +192,135 @@ extension UserSettingsPromptTone {
         }
     }
 }
+
+struct SettingsLocalDataExportSnapshot: Codable, Equatable, Sendable {
+    let schemaVersion: Int
+    let exportedAt: Date
+    let settings: UserSettingsPreference
+    let memories: [SettingsExportMemory]
+    let temporalArcs: [SettingsExportArc]
+    let reflections: [SettingsExportReflection]
+
+    @MainActor
+    static func make(repository: any MoryMemoryRepositorying, exportedAt: Date = .now) throws -> SettingsLocalDataExportSnapshot {
+        let settings = try repository.fetchUserSettingsPreference()
+        let memories = try repository.fetchRecentMemories(limit: nil).map { summary in
+            let detail = try repository.fetchMemoryDetail(recordID: summary.record.id)
+            return SettingsExportMemory(summary: summary, detail: detail)
+        }
+        let arcs = try repository.fetchTemporalArcSummaries(limit: nil).map { SettingsExportArc(summary: $0) }
+        let reflections = try repository.fetchReflectionSummaries(limit: nil).map { SettingsExportReflection(summary: $0) }
+        return SettingsLocalDataExportSnapshot(
+            schemaVersion: 1,
+            exportedAt: exportedAt,
+            settings: settings,
+            memories: memories,
+            temporalArcs: arcs,
+            reflections: reflections
+        )
+    }
+
+    func encodedData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(self)
+    }
+}
+
+struct SettingsExportMemory: Codable, Equatable, Sendable {
+    let id: UUID
+    let title: String
+    let rawText: String
+    let mood: String?
+    let inputContext: String?
+    let captureSource: String
+    let createdAt: Date
+    let updatedAt: Date
+    let artifactCount: Int
+    let pipelineStatus: String?
+    let artifacts: [SettingsExportArtifact]
+
+    init(summary: MemorySummary, detail: MemoryDetailSnapshot?) {
+        id = summary.record.id
+        title = summary.title
+        rawText = summary.record.rawText
+        mood = summary.record.userMood
+        inputContext = summary.record.inputContext
+        captureSource = summary.record.captureSource.rawValue
+        createdAt = summary.record.createdAt
+        updatedAt = summary.record.updatedAt
+        artifactCount = summary.artifactCount
+        pipelineStatus = summary.pipelineStatus?.stage.rawValue
+        artifacts = (detail?.artifacts ?? ([summary.primaryArtifact].compactMap { $0 } + summary.contextArtifacts))
+            .map(SettingsExportArtifact.init)
+    }
+}
+
+struct SettingsExportArtifact: Codable, Equatable, Sendable {
+    let id: UUID
+    let kind: String
+    let title: String
+    let summary: String
+    let textContent: String
+    let metadata: [String: String]
+    let mediaFilename: String?
+    let mediaMimeType: String?
+    let binaryByteCount: Int?
+    let previewByteCount: Int?
+
+    init(artifact: Artifact) {
+        id = artifact.id
+        kind = artifact.kind.rawValue
+        title = artifact.title
+        summary = artifact.summary
+        textContent = artifact.textContent
+        metadata = artifact.metadata
+        mediaFilename = artifact.mediaRef?.filename
+        mediaMimeType = artifact.mediaRef?.mimeType
+        binaryByteCount = artifact.binaryPayload?.count
+        previewByteCount = artifact.previewPayload?.count
+    }
+}
+
+struct SettingsExportArc: Codable, Equatable, Sendable {
+    let id: UUID
+    let title: String
+    let summary: String
+    let status: String
+    let sourceRecordIDs: [UUID]
+    let relatedMemoryTitles: [String]
+    let updatedAt: Date
+
+    init(summary: TemporalArcSummarySnapshot) {
+        self.id = summary.arc.id
+        self.title = summary.arc.title
+        self.summary = summary.arc.summary
+        self.status = summary.arc.status.rawValue
+        self.sourceRecordIDs = summary.arc.sourceRecordIDs
+        self.relatedMemoryTitles = summary.relatedMemories.map(\.title)
+        self.updatedAt = summary.arc.updatedAt
+    }
+}
+
+struct SettingsExportReflection: Codable, Equatable, Sendable {
+    let id: UUID
+    let title: String
+    let body: String
+    let status: String
+    let confidence: Double
+    let sourceRecordIDs: [UUID]
+    let relatedMemoryTitles: [String]
+    let createdAt: Date
+
+    init(summary: ReflectionSummarySnapshot) {
+        self.id = summary.reflection.id
+        self.title = summary.reflection.title
+        self.body = summary.reflection.body
+        self.status = summary.reflection.status.rawValue
+        self.confidence = summary.reflection.confidence
+        self.sourceRecordIDs = summary.reflection.sourceRecordIDs
+        self.relatedMemoryTitles = summary.relatedMemories.map(\.title)
+        self.createdAt = summary.reflection.createdAt
+    }
+}

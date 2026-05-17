@@ -10,33 +10,33 @@ The public beta should feel unfinished only in the sense that more features are 
 
 ### 2.1 Product Gates
 
-- [ ] App has exactly three public tabs: Today, Memories, Insights.
-- [ ] Quick capture toolbar appears above tab bar.
-- [ ] Tap text capture works from all tabs.
-- [ ] Press-hold voice capture works from all tabs.
-- [ ] Account / Settings is reachable from all tabs.
-- [ ] Today Board uses typed cards and real data.
+- [x] App has exactly three public tabs: Today, Memories, Insights.
+- [x] Quick capture toolbar appears above tab bar.
+- [x] Tap text capture works from all tabs.
+- [x] Press-hold voice capture works from all tabs.
+- [x] Account / Settings is reachable from all tabs.
+- [x] Today Board uses typed cards and real data.
 - [ ] Memories supports browsing, detail, search, and filters.
 - [ ] Insights unifies storylines, reflections, people, places, themes, decisions.
-- [ ] Public app does not require Debug knowledge.
+- [x] Public app does not require Debug knowledge.
 
 ### 2.2 Trust Gates
 
-- [ ] Privacy explanation exists.
-- [ ] Permission states are visible.
-- [ ] Denied permissions have recovery paths.
-- [ ] Sign out exists.
-- [ ] Data export/delete local data controls exist or are clearly staged.
-- [ ] AI-derived surfaces show source memory access.
+- [x] Privacy explanation exists.
+- [x] Permission states are visible.
+- [x] Denied permissions have recovery paths.
+- [x] Sign out exists.
+- [x] Data export/delete local data controls exist or are clearly staged.
+- [x] AI-derived surfaces show source memory access.
 
 ### 2.3 Technical Gates
 
-- [ ] Full iOS test passes.
+- [x] Full iOS test passes.
 - [ ] Core quality batch can run in local test mode.
 - [ ] App launches on simulator and real device.
-- [ ] No blocking SwiftData migration failure.
-- [ ] No known recording stop deadlock.
-- [ ] No orphan derived data appears in product UI.
+- [x] No blocking SwiftData migration failure.
+- [x] No known recording stop deadlock.
+- [x] No orphan derived data appears in product UI.
 
 ### 2.4 UX Gates
 
@@ -117,4 +117,3 @@ Not allowed for beta:
 - Broken navigation.
 - Recording deadlock.
 - Unrecoverable failed analysis.
-

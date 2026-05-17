@@ -30,6 +30,7 @@ enum SettingsRoute: String, CaseIterable, Hashable, Identifiable, Sendable {
     case account
     case permissions
     case privacy
+    case dataControls
     case capturePreferences
     case appearanceLanguage
     case diagnostics
@@ -47,6 +48,7 @@ enum SettingsRoute: String, CaseIterable, Hashable, Identifiable, Sendable {
         case .account: "settings.account.title"
         case .permissions: "settings.permissions.title"
         case .privacy: "settings.privacy.title"
+        case .dataControls: "settings.data.title"
         case .capturePreferences: "settings.capture.title"
         case .appearanceLanguage: "settings.appearance.title"
         case .diagnostics: "settings.diagnostics.title"
@@ -58,6 +60,7 @@ enum SettingsRoute: String, CaseIterable, Hashable, Identifiable, Sendable {
         case .account: "settings.account.subtitle"
         case .permissions: "settings.permissions.subtitle"
         case .privacy: "settings.privacy.subtitle"
+        case .dataControls: "settings.data.subtitle"
         case .capturePreferences: "settings.capture.subtitle"
         case .appearanceLanguage: "settings.appearance.subtitle"
         case .diagnostics: "settings.diagnostics.subtitle"
@@ -69,6 +72,7 @@ enum SettingsRoute: String, CaseIterable, Hashable, Identifiable, Sendable {
         case .account: "person.crop.circle"
         case .permissions: "hand.raised"
         case .privacy: "lock.shield"
+        case .dataControls: "externaldrive"
         case .capturePreferences: "slider.horizontal.3"
         case .appearanceLanguage: "textformat.size"
         case .diagnostics: "stethoscope"

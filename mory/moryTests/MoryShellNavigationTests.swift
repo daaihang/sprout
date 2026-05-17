@@ -21,6 +21,7 @@ final class MoryShellNavigationTests: XCTestCase {
         XCTAssertTrue(routes.contains(.account))
         XCTAssertTrue(routes.contains(.permissions))
         XCTAssertTrue(routes.contains(.privacy))
+        XCTAssertTrue(routes.contains(.dataControls))
         XCTAssertTrue(routes.contains(.capturePreferences))
         XCTAssertTrue(routes.contains(.appearanceLanguage))
     }

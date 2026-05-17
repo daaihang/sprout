@@ -98,6 +98,41 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertFalse(stored.linkAutoDetectEnabled)
     }
 
+    func testSettingsLocalDataExportIncludesMemoriesInsightsAndSettings() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        var preference = try repository.fetchUserSettingsPreference()
+        preference.appearanceMode = .dark
+        try repository.saveUserSettingsPreference(preference)
+
+        _ = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Export sample",
+                rawText: "Met Linh to discuss the public beta launch scope.",
+                mood: "focused",
+                inputContext: "settings export test",
+                captureSource: .composer,
+                artifacts: [.text(title: "Export sample", body: "Met Linh to discuss the public beta launch scope.")]
+            )
+        )
+
+        let snapshot = try SettingsLocalDataExportSnapshot.make(
+            repository: repository,
+            exportedAt: Date(timeIntervalSince1970: 1_800_000_000)
+        )
+        let encoded = try snapshot.encodedData()
+
+        XCTAssertEqual(snapshot.settings.appearanceMode, .dark)
+        XCTAssertEqual(snapshot.memories.count, 1)
+        XCTAssertEqual(snapshot.memories.first?.title, "Export sample")
+        XCTAssertEqual(snapshot.memories.first?.artifacts.first?.kind, ArtifactKind.text.rawValue)
+        XCTAssertFalse(encoded.isEmpty)
+    }
+
     func testFetchHomeBoardReturnsCompositionDrivenMemoryRenderValues() async throws {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(

@@ -1,6 +1,9 @@
 import SwiftUI
+import UIKit
 
 struct AudioCaptureInputView: View {
+    @Environment(\.openURL) private var openURL
+
     @ObservedObject var audioRecorder: AudioRecorderModel
     @Binding var transcriptionText: String
     @Binding var transcriptionDuration: TimeInterval?
@@ -55,9 +58,30 @@ struct AudioCaptureInputView: View {
                 }
             }
             if let recorderError = audioRecorder.errorMessage {
-                Text(recorderError)
-                    .font(.caption)
-                    .foregroundStyle(.red)
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(recorderError)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                        if let recoveryAction = audioRecorder.recoveryAction {
+                            Button {
+                                handleRecoveryAction(recoveryAction)
+                            } label: {
+                                Label(
+                                    recoveryAction == .openSettings
+                                        ? "quickCapture.voice.recovery.openSettings"
+                                        : "quickCapture.voice.recovery.retry",
+                                    systemImage: recoveryAction == .openSettings ? "gearshape" : "arrow.counterclockwise"
+                                )
+                            }
+                            .buttonStyle(.bordered)
+                            .font(.caption)
+                        }
+                    }
+                    Spacer()
+                }
             }
         }
         .onChange(of: audioRecorder.liveTranscription) { _, transcript in
@@ -92,5 +116,15 @@ struct AudioCaptureInputView: View {
 
         TextField("capture.audio.notePlaceholder", text: $noteText, axis: .vertical)
             .lineLimit(2...5)
+    }
+
+    private func handleRecoveryAction(_ action: AudioRecordingRecoveryAction) {
+        switch action {
+        case .openSettings:
+            guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+            openURL(url)
+        case .retry:
+            audioRecorder.clearRecording()
+        }
     }
 }
