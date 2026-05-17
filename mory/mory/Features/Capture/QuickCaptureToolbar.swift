@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct QuickVoiceCaptureResult: Identifiable, Equatable, Sendable {
     let id = UUID()
@@ -20,13 +21,8 @@ struct QuickCaptureToolbar: View {
 
     var body: some View {
         VStack(spacing: 6) {
-            if audioRecorder.isRecording || audioRecorder.isStopping || audioRecorder.isTranscribing || isPressingVoice {
+            if shouldShowVoiceStatusRow {
                 voiceStatusRow
-            } else if let error = audioRecorder.errorMessage {
-                Text(error)
-                    .font(.caption)
-                    .foregroundStyle(.orange)
-                    .lineLimit(2)
             }
 
             HStack(spacing: MorySpacing.small) {
@@ -56,6 +52,14 @@ struct QuickCaptureToolbar: View {
         .overlay(alignment: .top) {
             Divider()
         }
+    }
+
+    private var shouldShowVoiceStatusRow: Bool {
+        audioRecorder.isRecording
+            || audioRecorder.isStopping
+            || audioRecorder.isTranscribing
+            || isPressingVoice
+            || audioRecorder.errorMessage != nil
     }
 
     private var voiceButton: some View {
@@ -90,24 +94,51 @@ struct QuickCaptureToolbar: View {
 
     private var voiceStatusRow: some View {
         HStack(spacing: 8) {
-            Circle()
-                .fill(isCancellingVoice ? .orange : .red)
-                .frame(width: 8, height: 8)
+            voiceStatusIcon
             Text(voiceStatusText)
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
+                .truncationMode(.tail)
             Spacer()
-            if !audioRecorder.liveTranscription.isEmpty {
+            if let recoveryAction = audioRecorder.recoveryAction {
+                Button {
+                    handleRecoveryAction(recoveryAction)
+                } label: {
+                    Image(systemName: recoveryAction == .openSettings ? "gearshape" : "arrow.counterclockwise")
+                        .frame(width: 24, height: 20)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text(recoveryAction == .openSettings ? "quickCapture.voice.recovery.openSettings" : "quickCapture.voice.recovery.retry"))
+            } else if !audioRecorder.liveTranscription.isEmpty {
                 Text(audioRecorder.liveTranscription)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                    .truncationMode(.tail)
             }
+        }
+        .frame(height: 22)
+    }
+
+    @ViewBuilder
+    private var voiceStatusIcon: some View {
+        if audioRecorder.state == .failed {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.caption2)
+                .foregroundStyle(.orange)
+                .frame(width: 12, height: 12)
+        } else {
+            Circle()
+                .fill(isCancellingVoice ? .orange : .red)
+                .frame(width: 8, height: 8)
         }
     }
 
     private var voiceStatusText: String {
+        if let error = audioRecorder.errorMessage {
+            return error
+        }
         if isCancellingVoice {
             return String(localized: "quickCapture.voice.releaseToCancel")
         }
@@ -129,6 +160,7 @@ struct QuickCaptureToolbar: View {
         if !isPressingVoice {
             isPressingVoice = true
             isCancellingVoice = false
+            playImpact(.medium)
             voiceStartTask = Task {
                 await audioRecorder.startRecording()
             }
@@ -146,9 +178,16 @@ struct QuickCaptureToolbar: View {
             voiceStartTask = nil
             if shouldCancel {
                 await audioRecorder.cancelRecording()
+                notify(.warning)
                 return
             }
-            guard let output = await audioRecorder.stopAndTranscribe() else { return }
+            guard let output = await audioRecorder.stopAndTranscribe() else {
+                if audioRecorder.state == .failed {
+                    notify(.error)
+                }
+                return
+            }
+            notify(.success)
             onVoiceCaptureReady(
                 QuickVoiceCaptureResult(
                     filename: output.filename,
@@ -158,6 +197,29 @@ struct QuickCaptureToolbar: View {
                 )
             )
         }
+    }
+
+    private func handleRecoveryAction(_ action: AudioRecordingRecoveryAction) {
+        switch action {
+        case .openSettings:
+            guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+            UIApplication.shared.open(url)
+        case .retry:
+            audioRecorder.clearRecording()
+            playImpact(.light)
+        }
+    }
+
+    private func playImpact(_ style: UIImpactFeedbackGenerator.FeedbackStyle) {
+        let generator = UIImpactFeedbackGenerator(style: style)
+        generator.prepare()
+        generator.impactOccurred()
+    }
+
+    private func notify(_ type: UINotificationFeedbackGenerator.FeedbackType) {
+        let generator = UINotificationFeedbackGenerator()
+        generator.prepare()
+        generator.notificationOccurred(type)
     }
 }
 
@@ -170,6 +232,7 @@ struct QuickTextCaptureView: View {
     @State private var mood = ""
     @State private var isSaving = false
     @State private var errorMessage: String?
+    @FocusState private var focusedField: QuickTextCaptureField?
 
     let onSaved: () -> Void
 
@@ -180,6 +243,7 @@ struct QuickTextCaptureView: View {
                     TextField("capture.field.title", text: $title)
                     TextField("quickCapture.text.placeholder", text: $bodyText, axis: .vertical)
                         .lineLimit(4...10)
+                        .focused($focusedField, equals: .body)
                     TextField("capture.field.mood", text: $mood)
                 }
 
@@ -202,6 +266,9 @@ struct QuickTextCaptureView: View {
                     .disabled(isSaving || bodyText.trimmedOrNil == nil)
                 }
             }
+        }
+        .task {
+            focusedField = .body
         }
     }
 
@@ -228,6 +295,10 @@ struct QuickTextCaptureView: View {
             errorMessage = error.localizedDescription
         }
     }
+}
+
+private enum QuickTextCaptureField: Hashable {
+    case body
 }
 
 struct QuickVoiceReviewView: View {

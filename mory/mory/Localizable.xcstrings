@@ -9151,6 +9151,23 @@
         }
       }
     },
+    "quickCapture.voice.error.finalizingTimeout" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recording took too long to finish. Try again."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "录音结束超时，请重试。"
+          }
+        }
+      }
+    },
     "quickCapture.voice.error.microphone" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -9164,6 +9181,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "需要麦克风权限才能录音。"
+          }
+        }
+      }
+    },
+    "quickCapture.voice.error.noAudioData" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No audio was captured. Try again."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有捕获到音频，请重试。"
           }
         }
       }
@@ -9198,6 +9232,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "需要语音识别权限才能转写。"
+          }
+        }
+      }
+    },
+    "quickCapture.voice.error.startFailed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recording could not start. Try again."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "录音无法开始，请重试。"
           }
         }
       }
@@ -9334,6 +9385,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "录音中 %lld 秒"
+          }
+        }
+      }
+    },
+    "quickCapture.voice.recovery.openSettings" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Settings"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开设置"
+          }
+        }
+      }
+    },
+    "quickCapture.voice.recovery.retry" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retry"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重试"
           }
         }
       }

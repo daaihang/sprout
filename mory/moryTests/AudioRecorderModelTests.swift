@@ -87,10 +87,13 @@ final class AudioRecorderModelTests: XCTestCase {
 
         XCTAssertEqual(model.state, .failed)
         XCTAssertEqual(model.errorMessage, "Permission denied")
+        XCTAssertEqual(model.failureReason, .startFailed)
+        XCTAssertEqual(model.recoveryAction, .retry)
 
         model.clearRecording()
         XCTAssertEqual(model.state, .idle)
         XCTAssertNil(model.errorMessage)
+        XCTAssertNil(model.failureReason)
     }
 
     func testMissingFinalTranscriptFallsBackToLivePartial() async {
@@ -109,6 +112,67 @@ final class AudioRecorderModelTests: XCTestCase {
         XCTAssertEqual(model.state, .transcriptReady)
         XCTAssertEqual(model.finalTranscription, "live partial")
     }
+
+    func testMicrophonePermissionFailureProvidesSettingsRecovery() async {
+        let controller = FakeAudioRecordingController(
+            output: nil,
+            startError: AudioRecorderError.microphoneDenied
+        )
+        let model = AudioRecorderModel(
+            controller: controller,
+            transcriber: FakeAudioTranscriber(result: nil)
+        )
+
+        await model.startRecording()
+
+        XCTAssertEqual(model.state, .failed)
+        XCTAssertEqual(model.failureReason, .microphonePermissionDenied)
+        XCTAssertEqual(model.recoveryAction, .openSettings)
+        XCTAssertNotNil(model.errorMessage)
+    }
+
+    func testFinalizingTimeoutFailsAndCancelsController() async {
+        let controller = FakeAudioRecordingController(
+            output: AudioRecordingOutput(url: nil, filename: "slow.caf", audioData: Data([1])),
+            stopDelayNanoseconds: 100_000_000
+        )
+        let model = AudioRecorderModel(
+            controller: controller,
+            transcriber: FakeAudioTranscriber(result: nil),
+            finalizingTimeout: 0.01
+        )
+
+        await model.startRecording()
+        let output = await model.stopAndTranscribe()
+
+        XCTAssertNil(output)
+        XCTAssertEqual(model.state, .failed)
+        XCTAssertEqual(model.failureReason, .finalizingTimedOut)
+        XCTAssertEqual(model.recoveryAction, .retry)
+        XCTAssertEqual(controller.cancelCallCount, 1)
+
+        model.clearRecording()
+        XCTAssertEqual(model.state, .idle)
+        XCTAssertNil(model.failureReason)
+    }
+
+    func testNoAudioDataFailsWithRetryRecovery() async {
+        let controller = FakeAudioRecordingController(
+            output: AudioRecordingOutput(url: nil, filename: "empty.caf", audioData: nil)
+        )
+        let model = AudioRecorderModel(
+            controller: controller,
+            transcriber: FakeAudioTranscriber(result: nil)
+        )
+
+        await model.startRecording()
+        let output = await model.stopAndTranscribe()
+
+        XCTAssertNil(output)
+        XCTAssertEqual(model.state, .failed)
+        XCTAssertEqual(model.failureReason, .noAudioData)
+        XCTAssertEqual(model.recoveryAction, .retry)
+    }
 }
 
 private enum TestRecorderError: LocalizedError {
@@ -125,15 +189,22 @@ private final class FakeAudioRecordingController: AudioRecordingControlling {
     private let output: AudioRecordingOutput?
     private let partialTranscript: String?
     private let startError: Error?
+    private let stopDelayNanoseconds: UInt64
 
     private(set) var startCallCount = 0
     private(set) var stopCallCount = 0
     private(set) var cancelCallCount = 0
 
-    init(output: AudioRecordingOutput?, partialTranscript: String? = nil, startError: Error? = nil) {
+    init(
+        output: AudioRecordingOutput?,
+        partialTranscript: String? = nil,
+        startError: Error? = nil,
+        stopDelayNanoseconds: UInt64 = 0
+    ) {
         self.output = output
         self.partialTranscript = partialTranscript
         self.startError = startError
+        self.stopDelayNanoseconds = stopDelayNanoseconds
     }
 
     func start() async throws {
@@ -148,6 +219,9 @@ private final class FakeAudioRecordingController: AudioRecordingControlling {
 
     func stop() async -> AudioRecordingOutput? {
         stopCallCount += 1
+        if stopDelayNanoseconds > 0 {
+            try? await Task.sleep(nanoseconds: stopDelayNanoseconds)
+        }
         return output
     }
 

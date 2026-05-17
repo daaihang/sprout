@@ -14,14 +14,55 @@ enum AudioRecordingState: String, Equatable, Sendable {
     case cancelled
 }
 
+enum AudioRecordingFailureReason: Equatable, Sendable {
+    case microphonePermissionDenied
+    case speechPermissionDenied
+    case recognizerUnavailable
+    case finalizingTimedOut
+    case noAudioData
+    case startFailed
+
+    var recoveryAction: AudioRecordingRecoveryAction {
+        switch self {
+        case .microphonePermissionDenied, .speechPermissionDenied:
+            return .openSettings
+        case .recognizerUnavailable, .finalizingTimedOut, .noAudioData, .startFailed:
+            return .retry
+        }
+    }
+
+    var message: String {
+        switch self {
+        case .microphonePermissionDenied:
+            return String(localized: "quickCapture.voice.error.microphone")
+        case .speechPermissionDenied:
+            return String(localized: "quickCapture.voice.error.speech")
+        case .recognizerUnavailable:
+            return String(localized: "quickCapture.voice.error.recognizer")
+        case .finalizingTimedOut:
+            return String(localized: "quickCapture.voice.error.finalizingTimeout")
+        case .noAudioData:
+            return String(localized: "quickCapture.voice.error.noAudioData")
+        case .startFailed:
+            return String(localized: "quickCapture.voice.error.startFailed")
+        }
+    }
+}
+
+enum AudioRecordingRecoveryAction: Equatable, Sendable {
+    case openSettings
+    case retry
+}
+
 struct AudioRecordingOutput: Equatable, Sendable {
     var url: URL?
     var filename: String
     var audioData: Data?
 }
 
+@MainActor
 protocol AudioRecordingControlling: AnyObject {
-    var onPartialTranscription: (@MainActor (String) -> Void)? { get set }
+    var onPartialTranscription: (@MainActor @Sendable (String) -> Void)? { get set }
     func start() async throws
     func stop() async -> AudioRecordingOutput?
     func cancel() async
@@ -43,17 +84,21 @@ final class AudioRecorderModel: ObservableObject {
     @Published var finalTranscription = ""
     @Published var transcriptionDuration: TimeInterval?
     @Published var errorMessage: String?
+    @Published private(set) var failureReason: AudioRecordingFailureReason?
 
     private let controller: any AudioRecordingControlling
     private let transcriber: any AudioRecordingTranscribing
+    private let finalizingTimeout: TimeInterval
     private var recordingTimer: Timer?
 
     init(
         controller: (any AudioRecordingControlling)? = nil,
-        transcriber: (any AudioRecordingTranscribing)? = nil
+        transcriber: (any AudioRecordingTranscribing)? = nil,
+        finalizingTimeout: TimeInterval = 4.0
     ) {
         self.controller = controller ?? AVSpeechAudioRecordingController()
         self.transcriber = transcriber ?? AudioTranscriptionService()
+        self.finalizingTimeout = finalizingTimeout
         self.controller.onPartialTranscription = { [weak self] transcript in
             self?.liveTranscription = transcript
         }
@@ -65,19 +110,25 @@ final class AudioRecorderModel: ObservableObject {
     var isBusy: Bool { state == .preparing || state == .recording || state == .finalizing || state == .transcribing }
     var canSaveAudio: Bool { recordedAudioData != nil }
     var recordedFilename: String? { recordedAudioURL?.lastPathComponent }
+    var recoveryAction: AudioRecordingRecoveryAction? { failureReason?.recoveryAction }
 
     func startRecording() async {
         guard state == .idle || state == .cancelled || state == .failed || state == .transcriptReady else { return }
         resetOutput()
         state = .preparing
         errorMessage = nil
+        failureReason = nil
 
         do {
             try await controller.start()
             state = .recording
             startTimer()
         } catch {
-            fail(error.localizedDescription)
+            if let recorderError = error as? AudioRecorderError {
+                fail(recorderError.failureReason)
+            } else {
+                fail(.startFailed, message: error.localizedDescription)
+            }
         }
     }
 
@@ -89,12 +140,19 @@ final class AudioRecorderModel: ObservableObject {
 
         state = .finalizing
         stopTimer()
-        let output = await controller.stop()
+        let stopResult = await stopControllerWithTimeout()
+        if stopResult.didTimeOut {
+            await controller.cancel()
+            fail(.finalizingTimedOut)
+            return nil
+        }
+
+        let output = stopResult.output
         recordedAudioURL = output?.url
         recordedAudioData = output?.audioData
 
         guard let output, let audioData = output.audioData else {
-            state = .idle
+            fail(.noAudioData)
             return nil
         }
 
@@ -121,7 +179,36 @@ final class AudioRecorderModel: ObservableObject {
         stopTimer()
         resetOutput()
         errorMessage = nil
+        failureReason = nil
         state = .idle
+    }
+
+    private func stopControllerWithTimeout() async -> (output: AudioRecordingOutput?, didTimeOut: Bool) {
+        let timeoutNanos = UInt64(max(finalizingTimeout, 0.05) * 1_000_000_000)
+        return await withCheckedContinuation { continuation in
+            let lock = NSLock()
+            var hasResumed = false
+            var stopTask: Task<Void, Never>?
+
+            func resumeOnce(output: AudioRecordingOutput?, didTimeOut: Bool) {
+                lock.lock()
+                defer { lock.unlock() }
+                guard !hasResumed else { return }
+                hasResumed = true
+                stopTask?.cancel()
+                continuation.resume(returning: (output, didTimeOut))
+            }
+
+            stopTask = Task {
+                let output = await controller.stop()
+                resumeOnce(output: output, didTimeOut: false)
+            }
+
+            Task {
+                try? await Task.sleep(nanoseconds: timeoutNanos)
+                resumeOnce(output: nil, didTimeOut: true)
+            }
+        }
     }
 
     private func startTimer() {
@@ -158,9 +245,10 @@ final class AudioRecorderModel: ObservableObject {
         )
     }
 
-    private func fail(_ message: String) {
+    private func fail(_ reason: AudioRecordingFailureReason, message: String? = nil) {
         stopTimer()
-        errorMessage = message
+        failureReason = reason
+        errorMessage = message ?? reason.message
         state = .failed
     }
 }
@@ -171,17 +259,21 @@ enum AudioRecorderError: LocalizedError {
     case recognizerUnavailable
 
     var errorDescription: String? {
+        failureReason.message
+    }
+
+    var failureReason: AudioRecordingFailureReason {
         switch self {
-        case .microphoneDenied: String(localized: "quickCapture.voice.error.microphone")
-        case .speechDenied: String(localized: "quickCapture.voice.error.speech")
-        case .recognizerUnavailable: String(localized: "quickCapture.voice.error.recognizer")
+        case .microphoneDenied: .microphonePermissionDenied
+        case .speechDenied: .speechPermissionDenied
+        case .recognizerUnavailable: .recognizerUnavailable
         }
     }
 }
 
 @MainActor
 final class AVSpeechAudioRecordingController: AudioRecordingControlling {
-    var onPartialTranscription: (@MainActor (String) -> Void)?
+    var onPartialTranscription: (@MainActor @Sendable (String) -> Void)?
 
     private let audioEngine = AVAudioEngine()
     private var audioFile: AVAudioFile?
