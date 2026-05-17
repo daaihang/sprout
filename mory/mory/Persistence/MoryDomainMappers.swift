@@ -118,6 +118,58 @@ extension ArtifactStore {
 }
 
 @MainActor
+extension HomeBoardPreferenceStore {
+    convenience init(domainModel: HomeBoardItemPreference) {
+        self.init(
+            id: domainModel.id,
+            schemaVersion: domainModel.schemaVersion,
+            syncKey: domainModel.syncKey,
+            boardKey: domainModel.boardKey,
+            cardKey: domainModel.cardKey,
+            cardKindRawValue: domainModel.cardKind.rawValue,
+            targetTypeRawValue: domainModel.targetType.rawValue,
+            targetID: domainModel.targetID,
+            isPinned: domainModel.isPinned,
+            isHidden: domainModel.isHidden,
+            dismissedAt: domainModel.dismissedAt,
+            updatedAt: domainModel.updatedAt
+        )
+    }
+
+    var domainModel: HomeBoardItemPreference {
+        HomeBoardItemPreference(
+            id: id,
+            schemaVersion: schemaVersion,
+            syncKey: syncKey,
+            boardKey: boardKey,
+            cardKey: cardKey,
+            cardKind: HomeBoardCardKind(rawValue: cardKindRawValue) ?? .memory,
+            targetType: CompositionTargetType(rawValue: targetTypeRawValue) ?? .record,
+            targetID: targetID,
+            isPinned: isPinned,
+            isHidden: isHidden,
+            dismissedAt: dismissedAt,
+            updatedAt: updatedAt
+        )
+    }
+
+    func apply(domainModel: HomeBoardItemPreference) {
+        id = domainModel.id
+        schemaVersion = domainModel.schemaVersion
+        syncKey = domainModel.syncKey
+        boardKey = domainModel.boardKey
+        cardKey = domainModel.cardKey
+        cardKindRawValue = domainModel.cardKind.rawValue
+        targetTypeRawValue = domainModel.targetType.rawValue
+        targetID = domainModel.targetID
+        isPinned = domainModel.isPinned
+        isHidden = domainModel.isHidden
+        dismissedAt = domainModel.dismissedAt
+        updatedAt = domainModel.updatedAt
+    }
+}
+
+@MainActor
 extension BoardStore {
     convenience init(domainModel: Board) {
         self.init(

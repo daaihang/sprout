@@ -26,6 +26,8 @@ private final class MissingMemoryRepository: MoryMemoryRepositorying {
     func fetchRecentMemories(limit: Int?) throws -> [MemorySummary] { fail() }
     func fetchTimeline(granularity: TimelineGranularity, limit: Int?) throws -> TimelineSnapshot { fail() }
     func fetchHomeBoard(for date: Date, limit: Int) throws -> HomeBoardSnapshot { fail() }
+    func fetchHomeBoardDebugSnapshot(for date: Date, limit: Int) throws -> HomeBoardDebugSnapshot { fail() }
+    func updateHomeBoardItemPreference(_ item: HomeBoardItemSnapshot, action: HomeBoardPreferenceAction) throws { let _: Void = fail() }
     func fetchMemoryDetail(recordID: UUID) throws -> MemoryDetailSnapshot? { fail() }
     func fetchRecordAnalysis(recordID: UUID) throws -> RecordAnalysisSnapshot? { fail() }
     func fetchPipelineStatus(recordID: UUID) throws -> MemoryPipelineStatusSnapshot? { fail() }

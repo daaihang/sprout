@@ -85,7 +85,43 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         })
     }
 
-    func testFetchHomeBoardLimitsMemoryCardsToRecentThree() async throws {
+    func testFetchHomeBoardDebugSnapshotExposesInputsPreferencesAndReasons() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        _ = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Observable board",
+                rawText: "Observable board memory with Linh and planning.",
+                mood: "focused",
+                inputContext: "typed in debug",
+                captureSource: .composer,
+                artifacts: [
+                    .text(title: "Observable board", body: "Observable board memory with Linh and planning."),
+                    .music(trackName: "Dreams", artistName: "Fleetwood Mac", albumName: "Rumours", durationSeconds: 257, artworkURL: nil)
+                ]
+            )
+        )
+
+        var debug = try repository.fetchHomeBoardDebugSnapshot(for: Date(), limit: 8)
+        XCTAssertEqual(debug.input.memoryCount, 1)
+        XCTAssertEqual(debug.input.contextMemoryCount, 1)
+        XCTAssertFalse(debug.board.items.isEmpty)
+        XCTAssertTrue(debug.board.items.allSatisfy { !$0.reason.isEmpty })
+
+        let item = try XCTUnwrap(debug.board.items.first { $0.cardKind == .memory })
+        try repository.updateHomeBoardItemPreference(item, action: .pin(true))
+
+        debug = try repository.fetchHomeBoardDebugSnapshot(for: Date(), limit: 8)
+        XCTAssertEqual(debug.preferences.totalCount, 1)
+        XCTAssertEqual(debug.preferences.pinnedCount, 1)
+        XCTAssertTrue(debug.board.items.contains { $0.compositionItem.itemKey == item.compositionItem.itemKey && $0.isPinned })
+    }
+
+    func testFetchHomeBoardRanksTodayMemoriesBeforeOlderMemories() async throws {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
@@ -104,6 +140,12 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
                 )
             )
         }
+        if let oldRecord = try container.mainContext.fetch(
+            FetchDescriptor<RecordShellStore>(predicate: #Predicate { $0.rawText == "Memory 1 with Linh and planning." })
+        ).first {
+            oldRecord.updatedAt = Date().addingTimeInterval(-72 * 60 * 60)
+        }
+        try container.mainContext.save()
 
         let board = try repository.fetchHomeBoard(for: Date(), limit: 8)
         let memoryItems = board.items.compactMap { item -> MemorySummary? in
@@ -111,9 +153,9 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
             return nil
         }
 
-        XCTAssertEqual(memoryItems.count, 3)
-        XCTAssertEqual(memoryItems.map(\.title), ["Memory 4", "Memory 3", "Memory 2"])
-        XCTAssertFalse(memoryItems.contains { $0.title == "Memory 1" })
+        XCTAssertFalse(memoryItems.isEmpty)
+        XCTAssertNotEqual(memoryItems.first?.title, "Memory 1")
+        XCTAssertTrue(board.items.allSatisfy { !$0.reason.isEmpty })
     }
 
     func testFetchHomeBoardCarriesContextArtifactsOnMemoryCards() async throws {
@@ -172,7 +214,91 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let board = try repository.fetchHomeBoard(for: Date(), limit: 8)
 
         XCTAssertTrue(board.items.contains {
-            if case .system = $0.renderValue { return true }
+            if case .systemPrompt = $0.renderValue { return true }
+            return false
+        })
+    }
+
+    func testHomeBoardPreferenceCanPinAndHideCards() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        for index in 1...3 {
+            _ = try await repository.createMemory(
+                from: MemoryCaptureDraft(
+                    title: "Preference memory \(index)",
+                    rawText: "Preference memory \(index) with Linh and planning.",
+                    mood: "focused",
+                    inputContext: "typed in debug",
+                    captureSource: .composer,
+                    artifacts: [.text(title: "Preference memory \(index)", body: "Preference memory \(index) with Linh and planning.")]
+                )
+            )
+        }
+
+        var board = try repository.fetchHomeBoard(for: Date(), limit: 8)
+        let memoryItems = board.items.filter { $0.cardKind == .memory }
+        let pinnedTarget = try XCTUnwrap(memoryItems.last)
+        try repository.updateHomeBoardItemPreference(pinnedTarget, action: .pin(true))
+
+        board = try repository.fetchHomeBoard(for: Date(), limit: 8)
+        XCTAssertEqual(board.items.first?.compositionItem.itemKey, pinnedTarget.compositionItem.itemKey)
+        XCTAssertTrue(board.items.first?.isPinned == true)
+
+        let hiddenTarget = try XCTUnwrap(board.items.first { $0.cardKind == .memory && $0.compositionItem.itemKey != pinnedTarget.compositionItem.itemKey })
+        try repository.updateHomeBoardItemPreference(hiddenTarget, action: .hide)
+
+        board = try repository.fetchHomeBoard(for: Date(), limit: 8)
+        XCTAssertFalse(board.items.contains { $0.compositionItem.itemKey == hiddenTarget.compositionItem.itemKey })
+    }
+
+    func testHomeBoardDismissesSystemPromptAndLimitsSuggestedReflections() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        _ = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "First board memory",
+                rawText: "First board memory with Linh and planning.",
+                mood: "reflective",
+                inputContext: "typed in debug",
+                captureSource: .composer,
+                artifacts: [.text(title: "First board memory", body: "First board memory with Linh and planning.")]
+            )
+        )
+
+        var board = try repository.fetchHomeBoard(for: Date(), limit: 8)
+        let systemPrompt = try XCTUnwrap(board.items.first { $0.cardKind == .systemPrompt })
+        try repository.updateHomeBoardItemPreference(systemPrompt, action: .dismiss)
+        board = try repository.fetchHomeBoard(for: Date(), limit: 8)
+        XCTAssertFalse(board.items.contains { $0.compositionItem.itemKey == systemPrompt.compositionItem.itemKey })
+
+        for index in 1...4 {
+            let memory = try await repository.createMemory(
+                from: MemoryCaptureDraft(
+                    title: "Reflection limit \(index)",
+                    rawText: "Reflection limit \(index) with Linh and planning in the same rhythm.",
+                    mood: "reflective",
+                    inputContext: "typed in debug",
+                    captureSource: .composer,
+                    artifacts: [.text(title: "Reflection limit \(index)", body: "Reflection limit \(index) with Linh and planning in the same rhythm.")]
+                )
+            )
+            try await repository.refreshMemoryPipeline(recordID: memory.record.id)
+        }
+
+        board = try repository.fetchHomeBoard(for: Date(), limit: 8)
+        XCTAssertLessThanOrEqual(board.items.filter { $0.cardKind == .reflection }.count, 2)
+        XCTAssertFalse(board.items.contains { item in
+            if case let .reflection(reflection) = item.renderValue {
+                return reflection.status != .suggested
+            }
             return false
         })
     }

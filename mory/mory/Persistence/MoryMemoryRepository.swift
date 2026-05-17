@@ -6,7 +6,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     private let modelContext: ModelContext
     private let analysisService: any RecordAnalysisServing
     private let architecturePipelineExecutor = ArchitecturePipelineExecutor()
-    private let homeBoardStoreBuilder = HomeBoardStoreBuilder()
+    private let homeBoardRuleEngine = HomeBoardRuleEngine()
     private let graphQueryService = MemoryGraphQueryService()
     private let memorySearchService = MemorySearchService()
     private let captureArtifactBuilder = MemoryCaptureArtifactBuilder()
@@ -340,13 +340,107 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             modelContext: modelContext,
             memories: memories
         )
-        return try homeBoardStoreBuilder.fetchHomeBoard(
+        return homeBoardRuleEngine.buildHomeBoard(
             date: date,
             limit: limit,
-            modelContext: modelContext,
             graphContext: graphContext,
+            memories: memories,
+            analyses: try fetchRecordAnalysisIndex(),
+            pipelineStatuses: try fetchPipelineStatusSummaries(limit: nil),
+            preferences: try fetchHomeBoardPreferences()
+        )
+    }
+
+    func fetchHomeBoardDebugSnapshot(for date: Date, limit: Int = 8) throws -> HomeBoardDebugSnapshot {
+        let memories = try fetchRecentMemories(limit: nil)
+        let graphContext = try graphQueryService.load(
+            modelContext: modelContext,
             memories: memories
         )
+        let analyses = try fetchRecordAnalysisIndex()
+        let pipelineStatuses = try fetchPipelineStatusSummaries(limit: nil)
+        let preferences = try fetchHomeBoardPreferences()
+        let board = homeBoardRuleEngine.buildHomeBoard(
+            date: date,
+            limit: limit,
+            graphContext: graphContext,
+            memories: memories,
+            analyses: analyses,
+            pipelineStatuses: pipelineStatuses,
+            preferences: preferences
+        )
+        let calendar = Calendar.current
+        let recent24HourCutoff = date.addingTimeInterval(-24 * 60 * 60)
+        let recent7DayCutoff = date.addingTimeInterval(-7 * 24 * 60 * 60)
+        let recentRecordIDs = Set(memories.filter { $0.record.updatedAt >= recent24HourCutoff }.map(\.id))
+        let acceptedArcs = graphContext.arcs.filter { $0.status == .accepted }
+        let activeAcceptedArcs = acceptedArcs.filter { arc in
+            arc.updatedAt >= recent7DayCutoff || arc.sourceRecordIDs.contains { recentRecordIDs.contains($0) }
+        }
+
+        return HomeBoardDebugSnapshot(
+            generatedAt: .now,
+            date: date,
+            limit: limit,
+            input: HomeBoardDebugInputSnapshot(
+                memoryCount: memories.count,
+                todayMemoryCount: memories.filter { calendar.isDate($0.record.updatedAt, inSameDayAs: date) }.count,
+                recent24HourMemoryCount: recentRecordIDs.count,
+                contextMemoryCount: memories.filter { !$0.contextArtifacts.isEmpty }.count,
+                highSalienceMemoryCount: analyses.values.filter { ($0.salienceScore ?? 0) >= 0.65 }.count,
+                graphLinkCount: graphContext.links.count,
+                entityCount: graphContext.entities.count,
+                edgeCount: graphContext.edges.count,
+                acceptedArcCount: acceptedArcs.count,
+                activeAcceptedArcCount: activeAcceptedArcs.count,
+                suggestedReflectionCount: graphContext.reflections.filter { $0.status == .suggested }.count,
+                savedReflectionCount: graphContext.reflections.filter { $0.status == .saved }.count,
+                runningPipelineCount: pipelineStatuses.filter { $0.status.stage == .running }.count,
+                failedPipelineCount: pipelineStatuses.filter { $0.status.stage == .failed }.count
+            ),
+            preferences: HomeBoardDebugPreferenceSnapshot(
+                totalCount: preferences.count,
+                pinnedCount: preferences.filter(\.isPinned).count,
+                hiddenCount: preferences.filter(\.isHidden).count,
+                dismissedCount: preferences.filter { $0.dismissedAt != nil }.count
+            ),
+            board: board
+        )
+    }
+
+    func updateHomeBoardItemPreference(_ item: HomeBoardItemSnapshot, action: HomeBoardPreferenceAction) throws {
+        let now = Date.now
+        let syncKey = homeBoardPreferenceSyncKey(cardKey: item.compositionItem.itemKey)
+        let existing = try fetchHomeBoardPreference(syncKey: syncKey)
+        var preference = existing ?? HomeBoardItemPreference(
+            syncKey: syncKey,
+            boardKey: item.compositionItem.boardKey,
+            cardKey: item.compositionItem.itemKey,
+            cardKind: item.cardKind,
+            targetType: item.compositionItem.targetType,
+            targetID: item.compositionItem.targetID,
+            updatedAt: now
+        )
+
+        preference.cardKind = item.cardKind
+        preference.targetType = item.compositionItem.targetType
+        preference.targetID = item.compositionItem.targetID
+        preference.updatedAt = now
+        switch action {
+        case let .pin(isPinned):
+            preference.isPinned = isPinned
+            preference.isHidden = false
+            preference.dismissedAt = nil
+        case .hide:
+            preference.isHidden = true
+            preference.isPinned = false
+        case .dismiss:
+            preference.dismissedAt = now
+            preference.isPinned = false
+        }
+
+        try upsert(homeBoardPreference: preference)
+        try save()
     }
 
     func fetchArtifacts(recordID: UUID) throws -> [Artifact] {
@@ -858,6 +952,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     }
 
     func clearAllLocalData() throws {
+        try deleteAll(HomeBoardPreferenceStore.self)
         try deleteAll(CompositionItemStore.self)
         try deleteAll(CompositionStore.self)
         try deleteAll(BoardStore.self)
@@ -1194,6 +1289,30 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         )
     }
 
+    private func fetchRecordAnalysisIndex() throws -> [UUID: RecordAnalysisSnapshot] {
+        let analyses = try modelContext.fetch(FetchDescriptor<RecordAnalysisSnapshotStore>())
+            .map(\.domainModel)
+        return Dictionary(uniqueKeysWithValues: analyses.map { ($0.recordID, $0) })
+    }
+
+    private func fetchHomeBoardPreferences() throws -> [HomeBoardItemPreference] {
+        let descriptor = FetchDescriptor<HomeBoardPreferenceStore>(
+            sortBy: [SortDescriptor(\.updatedAt, order: .reverse)]
+        )
+        return try modelContext.fetch(descriptor).map(\.domainModel)
+    }
+
+    private func fetchHomeBoardPreference(syncKey: String) throws -> HomeBoardItemPreference? {
+        let descriptor = FetchDescriptor<HomeBoardPreferenceStore>(
+            predicate: #Predicate { $0.syncKey == syncKey }
+        )
+        return try modelContext.fetch(descriptor).first?.domainModel
+    }
+
+    private func homeBoardPreferenceSyncKey(cardKey: String) -> String {
+        "home-board:\(cardKey)"
+    }
+
     private func deleteAll<T: PersistentModel>(_ type: T.Type) throws {
         let stores = try modelContext.fetch(FetchDescriptor<T>())
         for store in stores {
@@ -1427,6 +1546,16 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             existing.apply(domainModel: reflection)
         } else {
             modelContext.insert(ReflectionSnapshotStore(domainModel: reflection))
+        }
+    }
+
+    func upsert(homeBoardPreference: HomeBoardItemPreference) throws {
+        let syncKey = homeBoardPreference.syncKey
+        let descriptor = FetchDescriptor<HomeBoardPreferenceStore>(predicate: #Predicate { $0.syncKey == syncKey })
+        if let existing = try modelContext.fetch(descriptor).first {
+            existing.apply(domainModel: homeBoardPreference)
+        } else {
+            modelContext.insert(HomeBoardPreferenceStore(domainModel: homeBoardPreference))
         }
     }
 

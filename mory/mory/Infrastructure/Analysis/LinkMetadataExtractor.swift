@@ -19,15 +19,29 @@ struct LinkMetadataResult: Hashable, Sendable {
 }
 
 final class LinkMetadataExtractor: Sendable {
+    static func firstURLCandidate(in text: String) -> String? {
+        let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        return detector?
+            .matches(in: text, options: [], range: range)
+            .compactMap { match -> String? in
+                guard let url = match.url else { return nil }
+                return url.absoluteString
+            }
+            .first
+    }
+
     func extract(urlString: String) async -> LinkMetadataResult? {
         guard let url = normalizedURL(from: urlString) else { return nil }
+        let resolvedURL = await resolveRedirectURL(from: url) ?? url
 
         do {
-            let metadata = try await LPMetadataProvider().startFetchingMetadata(for: url)
+            let metadata = try await LPMetadataProvider().startFetchingMetadata(for: resolvedURL)
             let imageData = await loadImageData(from: metadata)
-            let siteName = siteName(from: metadata, fallbackURL: url)
+            let metadataURL = metadata.url ?? metadata.originalURL ?? resolvedURL
+            let siteName = siteName(from: metadata, fallbackURL: metadataURL)
             return LinkMetadataResult(
-                url: url.absoluteString,
+                url: metadataURL.absoluteString,
                 title: metadata.title?.trimmedOrNil,
                 summary: siteName,
                 siteName: siteName,
@@ -36,10 +50,10 @@ final class LinkMetadataExtractor: Sendable {
             )
         } catch {
             return LinkMetadataResult(
-                url: url.absoluteString,
+                url: resolvedURL.absoluteString,
                 title: nil,
                 summary: nil,
-                siteName: url.host(percentEncoded: false),
+                siteName: resolvedURL.host(percentEncoded: false),
                 imageURL: nil,
                 imageData: nil
             )
@@ -53,6 +67,26 @@ final class LinkMetadataExtractor: Sendable {
             return url
         }
         return URL(string: "https://\(trimmed)")
+    }
+
+    private func resolveRedirectURL(from url: URL) async -> URL? {
+        var request = URLRequest(url: url)
+        request.httpMethod = "HEAD"
+        request.timeoutInterval = 4
+        request.setValue("Mory/1.0", forHTTPHeaderField: "User-Agent")
+
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+            return (response as? HTTPURLResponse)?.url
+        } catch {
+            var fallbackRequest = URLRequest(url: url)
+            fallbackRequest.httpMethod = "GET"
+            fallbackRequest.timeoutInterval = 4
+            fallbackRequest.setValue("bytes=0-0", forHTTPHeaderField: "Range")
+            fallbackRequest.setValue("Mory/1.0", forHTTPHeaderField: "User-Agent")
+            guard let (_, response) = try? await URLSession.shared.data(for: fallbackRequest) else { return nil }
+            return (response as? HTTPURLResponse)?.url
+        }
     }
 
     private func siteName(from metadata: LPLinkMetadata, fallbackURL: URL) -> String? {

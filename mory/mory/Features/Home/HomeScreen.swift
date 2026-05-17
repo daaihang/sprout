@@ -43,6 +43,7 @@ struct HomeScreen: View {
     @State private var isPresentingComposer = false
     @State private var isReloading = false
     @State private var errorMessage: String?
+    @State private var selectedRoute: HomeRoute?
 
     init(surface: Surface = .home) {
         self.surface = surface
@@ -72,7 +73,14 @@ struct HomeScreen: View {
 
                 Section("home.section.board") {
                     if let homeBoard, !homeBoard.items.isEmpty {
-                        HomeBoardSection(board: homeBoard)
+                        HomeBoardSection(
+                            board: homeBoard,
+                            onSelect: { route in
+                            selectedRoute = route
+                            },
+                            onPreference: updateBoardPreference,
+                            onSystemAction: { isPresentingComposer = true }
+                        )
                     } else {
                         Text("home.board.empty")
                             .foregroundStyle(.secondary)
@@ -123,11 +131,12 @@ struct HomeScreen: View {
                     .padding(.vertical, 8)
                 } else {
                     ForEach(memories) { memory in
-                        NavigationLink {
-                            MemoryDetailView(recordID: memory.id)
+                        Button {
+                            selectedRoute = .memory(memory.id)
                         } label: {
                             MemoryRow(summary: memory)
                         }
+                        .buttonStyle(.plain)
                         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                             Button(role: .destructive) {
                                 deleteMemory(recordID: memory.id)
@@ -140,6 +149,16 @@ struct HomeScreen: View {
             }
         }
         .navigationTitle(surface.navigationTitle)
+        .navigationDestination(item: $selectedRoute) { route in
+            switch route {
+            case let .memory(recordID):
+                MemoryDetailView(recordID: recordID)
+            case let .arc(arcID):
+                ArcDetailView(arcID: arcID)
+            case let .reflection(reflectionID):
+                ReflectionDetailView(reflectionID: reflectionID)
+            }
+        }
         .toolbar {
             if surface == .memories {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -201,6 +220,29 @@ struct HomeScreen: View {
             errorMessage = error.localizedDescription
         }
     }
+
+    private func updateBoardPreference(_ item: HomeBoardItemSnapshot, action: HomeBoardPreferenceAction) {
+        do {
+            try memoryRepository.updateHomeBoardItemPreference(item, action: action)
+            Task { await reload() }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+}
+
+private enum HomeRoute: Hashable, Identifiable {
+    case memory(UUID)
+    case arc(UUID)
+    case reflection(UUID)
+
+    var id: String {
+        switch self {
+        case let .memory(id): return "memory-\(id.uuidString)"
+        case let .arc(id): return "arc-\(id.uuidString)"
+        case let .reflection(id): return "reflection-\(id.uuidString)"
+        }
+    }
 }
 
 private struct MemoryRow: View {
@@ -237,6 +279,9 @@ private struct MemoryRow: View {
 
 private struct HomeBoardSection: View {
     let board: HomeBoardSnapshot
+    let onSelect: (HomeRoute) -> Void
+    let onPreference: (HomeBoardItemSnapshot, HomeBoardPreferenceAction) -> Void
+    let onSystemAction: () -> Void
 
     private let columns = [
         GridItem(.flexible(), spacing: 12),
@@ -251,7 +296,12 @@ private struct HomeBoardSection: View {
 
             LazyVGrid(columns: columns, spacing: 12) {
                 ForEach(board.items) { item in
-                    CompositionBoardCard(item: item)
+                    HomeBoardCard(
+                        item: item,
+                        onSelect: onSelect,
+                        onPreference: onPreference,
+                        onSystemAction: onSystemAction
+                    )
                 }
             }
         }
@@ -259,73 +309,172 @@ private struct HomeBoardSection: View {
     }
 }
 
-private struct CompositionBoardCard: View {
+private struct HomeBoardCard: View {
     let item: HomeBoardItemSnapshot
+    let onSelect: (HomeRoute) -> Void
+    let onPreference: (HomeBoardItemSnapshot, HomeBoardPreferenceAction) -> Void
+    let onSystemAction: () -> Void
 
     var body: some View {
-        Group {
-            switch item.renderValue {
-            case let .memory(memory):
-                NavigationLink {
-                    MemoryDetailView(recordID: memory.record.id)
-                } label: {
-                    cardBody
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 6) {
+                Label(cardLabel, systemImage: cardIcon)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                if item.isPinned {
+                    Image(systemName: "pin.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.plain)
-            case let .arc(arc):
-                NavigationLink {
-                    ArcDetailView(arcID: arc.id)
-                } label: {
-                    cardBody
-                }
-                .buttonStyle(.plain)
-            case let .reflection(reflection):
-                NavigationLink {
-                    ReflectionDetailView(reflectionID: reflection.id)
-                } label: {
-                    cardBody
-                }
-                .buttonStyle(.plain)
-            case .system:
-                cardBody
+                Spacer()
+                preferenceMenu
             }
-        }
-    }
 
-    @ViewBuilder
-    private var cardBody: some View {
-        VStack(alignment: .leading, spacing: 8) {
             switch item.renderValue {
             case let .memory(memory):
-                Text(memory.title).font(.headline).lineLimit(2)
-                Text(memory.summaryText).font(.subheadline).foregroundStyle(.secondary).lineLimit(3)
-                if let contextSummary = contextSummary(for: memory) {
-                    Text(contextSummary).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                Button {
+                    onSelect(.memory(memory.record.id))
+                } label: {
+                    MemoryBoardCard(memory: memory, reason: item.reason)
                 }
-                Text(memory.record.updatedAt.formatted(date: .abbreviated, time: .shortened)).font(.caption).foregroundStyle(.secondary)
+                .buttonStyle(.plain)
             case let .arc(arc):
-                Text(arc.title).font(.headline).lineLimit(2)
-                Text(arc.summary).font(.subheadline).foregroundStyle(.secondary).lineLimit(3)
-                Text("home.board.arc.ongoing \(arc.sourceRecordIDs.count)").font(.caption).foregroundStyle(.secondary)
+                Button {
+                    onSelect(.arc(arc.id))
+                } label: {
+                    ArcBoardCard(arc: arc, reason: item.reason)
+                }
+                .buttonStyle(.plain)
             case let .reflection(reflection):
-                Text(reflection.title).font(.headline).lineLimit(2)
-                Text(reflection.body).font(.subheadline).foregroundStyle(.secondary).lineLimit(3)
-                Text(reflection.statusLabel).font(.caption).foregroundStyle(.secondary)
-            case let .system(title, subtitle):
-                Text(title).font(.headline).lineLimit(2)
-                Text(subtitle).font(.subheadline).foregroundStyle(.secondary).lineLimit(3)
-                Text(item.compositionItem.itemKey).font(.caption).foregroundStyle(.secondary)
+                Button {
+                    onSelect(.reflection(reflection.id))
+                } label: {
+                    ReflectionBoardCard(reflection: reflection, reason: item.reason)
+                }
+                .buttonStyle(.plain)
+            case let .systemPrompt(title, subtitle, actionTitle):
+                SystemPromptBoardCard(
+                    title: title,
+                    subtitle: subtitle,
+                    actionTitle: actionTitle,
+                    onAction: onSystemAction
+                )
+            case let .contextCluster(title, subtitle, sourceRecordIDs):
+                ContextClusterBoardCard(title: title, subtitle: subtitle, recordCount: sourceRecordIDs.count)
+            case let .pendingAction(title, subtitle, targetRecordID):
+                Button {
+                    if let targetRecordID {
+                        onSelect(.memory(targetRecordID))
+                    }
+                } label: {
+                    PendingActionBoardCard(title: title, subtitle: subtitle)
+                }
+                .buttonStyle(.plain)
             }
         }
         .padding(14)
         .frame(maxWidth: .infinity, minHeight: heightForItem(item.compositionItem))
-        .background(backgroundForItem(item.compositionItem))
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .background(backgroundForItem(item))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(borderColor.opacity(0.28), lineWidth: 1)
+        }
         .rotationEffect(.degrees(item.compositionItem.rotationDegrees))
         .scaleEffect(item.compositionItem.scale)
     }
 
-    private func contextSummary(for memory: MemorySummary) -> String? {
+    private var preferenceMenu: some View {
+        Menu {
+            Button {
+                onPreference(item, .pin(!item.isPinned))
+            } label: {
+                Label(item.isPinned ? "home.board.action.unpin" : "home.board.action.pin", systemImage: item.isPinned ? "pin.slash" : "pin")
+            }
+
+            Button(role: .destructive) {
+                onPreference(item, item.cardKind == .systemPrompt || item.cardKind == .reflection ? .dismiss : .hide)
+            } label: {
+                Label(item.cardKind == .systemPrompt || item.cardKind == .reflection ? "home.board.action.dismiss" : "home.board.action.hide", systemImage: "eye.slash")
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .foregroundStyle(.secondary)
+        }
+        .menuStyle(.button)
+    }
+
+    private var cardLabel: String {
+        switch item.cardKind {
+        case .memory: return String(localized: "home.board.kind.memory")
+        case .arc: return String(localized: "home.board.kind.arc")
+        case .reflection: return String(localized: "home.board.kind.reflection")
+        case .systemPrompt: return String(localized: "home.board.kind.system")
+        case .contextCluster: return String(localized: "home.board.kind.cluster")
+        case .pendingAction: return String(localized: "home.board.kind.pending")
+        }
+    }
+
+    private var cardIcon: String {
+        switch item.cardKind {
+        case .memory: return "doc.text"
+        case .arc: return "point.3.connected.trianglepath.dotted"
+        case .reflection: return "sparkles"
+        case .systemPrompt: return "hand.wave"
+        case .contextCluster: return "square.stack.3d.up"
+        case .pendingAction: return "exclamationmark.circle"
+        }
+    }
+
+    private var borderColor: Color {
+        switch item.cardKind {
+        case .memory: return .blue
+        case .arc: return .purple
+        case .reflection: return .teal
+        case .systemPrompt: return .orange
+        case .contextCluster: return .green
+        case .pendingAction: return .red
+        }
+    }
+
+    private func heightForItem(_ item: CompositionItem) -> CGFloat {
+        CGFloat(max(1, item.heightUnits)) * 110
+    }
+
+    private func backgroundForItem(_ item: HomeBoardItemSnapshot) -> Color {
+        switch item.cardKind {
+        case .memory: return Color(red: 0.93, green: 0.96, blue: 1.0)
+        case .arc: return Color(red: 0.96, green: 0.93, blue: 1.0)
+        case .reflection: return Color(red: 0.91, green: 0.97, blue: 0.96)
+        case .systemPrompt: return Color(red: 1.0, green: 0.96, blue: 0.89)
+        case .contextCluster: return Color(red: 0.93, green: 0.98, blue: 0.92)
+        case .pendingAction: return Color(red: 1.0, green: 0.94, blue: 0.94)
+        }
+    }
+}
+
+private struct MemoryBoardCard: View {
+    let memory: MemorySummary
+    let reason: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(memory.title).font(.headline).lineLimit(2)
+            Text(memory.summaryText).font(.subheadline).foregroundStyle(.secondary).lineLimit(3)
+            if let contextSummary {
+                Text(contextSummary).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+            }
+            HStack {
+                Text(reason)
+                Spacer()
+                Text(memory.record.updatedAt.formatted(date: .abbreviated, time: .shortened))
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+    }
+
+    private var contextSummary: String? {
         memory.contextArtifacts
             .map(\.summary)
             .compactMap(\.trimmedOrNil)
@@ -333,18 +482,88 @@ private struct CompositionBoardCard: View {
             .joined(separator: " | ")
             .trimmedOrNil
     }
+}
 
-    private func heightForItem(_ item: CompositionItem) -> CGFloat {
-        CGFloat(max(1, item.heightUnits)) * 110
+private struct ArcBoardCard: View {
+    let arc: TemporalArc
+    let reason: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(arc.title).font(.headline).lineLimit(2)
+            Text(arc.summary).font(.subheadline).foregroundStyle(.secondary).lineLimit(3)
+            HStack {
+                Text("home.board.arc.ongoing \(arc.sourceRecordIDs.count)")
+                Spacer()
+                Text(reason)
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
     }
+}
 
-    private func backgroundForItem(_ item: CompositionItem) -> some ShapeStyle {
-        let palette: [Color] = [
-            Color(red: 0.95, green: 0.89, blue: 0.79),
-            Color(red: 0.84, green: 0.92, blue: 0.88),
-            Color(red: 0.92, green: 0.86, blue: 0.90),
-            Color(red: 0.88, green: 0.90, blue: 0.96),
-        ]
-        return palette[item.zIndex % palette.count].gradient
+private struct ReflectionBoardCard: View {
+    let reflection: ReflectionSnapshot
+    let reason: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(reflection.title).font(.headline).lineLimit(2)
+            Text(reflection.body).font(.subheadline).foregroundStyle(.secondary).lineLimit(3)
+            HStack {
+                Text(reflection.statusLabel)
+                Spacer()
+                Text(reason)
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+    }
+}
+
+private struct SystemPromptBoardCard: View {
+    let title: String
+    let subtitle: String
+    let actionTitle: String?
+    let onAction: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title).font(.headline).lineLimit(2)
+            Text(subtitle).font(.subheadline).foregroundStyle(.secondary).lineLimit(3)
+            if let actionTitle {
+                Button(actionTitle, action: onAction)
+                    .buttonStyle(.borderedProminent)
+            }
+        }
+    }
+}
+
+private struct ContextClusterBoardCard: View {
+    let title: String
+    let subtitle: String
+    let recordCount: Int
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title).font(.headline).lineLimit(2)
+            Text(subtitle).font(.subheadline).foregroundStyle(.secondary).lineLimit(3)
+            Text("home.board.cluster.count \(recordCount)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+
+private struct PendingActionBoardCard: View {
+    let title: String
+    let subtitle: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title).font(.headline).lineLimit(2)
+            Text(subtitle).font(.subheadline).foregroundStyle(.secondary).lineLimit(3)
+        }
     }
 }

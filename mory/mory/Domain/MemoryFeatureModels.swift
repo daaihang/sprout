@@ -218,12 +218,23 @@ enum CompositionRenderValue: Hashable, Sendable {
     case memory(MemorySummary)
     case arc(TemporalArc)
     case reflection(ReflectionSnapshot)
-    case system(title: String, subtitle: String)
+    case systemPrompt(title: String, subtitle: String, actionTitle: String?)
+    case contextCluster(title: String, subtitle: String, sourceRecordIDs: [UUID])
+    case pendingAction(title: String, subtitle: String, targetRecordID: UUID?)
 }
 
 struct HomeBoardItemSnapshot: Identifiable, Hashable, Sendable {
     let compositionItem: CompositionItem
     let renderValue: CompositionRenderValue
+    let cardKind: HomeBoardCardKind
+    let priority: Double
+    let reason: String
+    let sourceRecordIDs: [UUID]
+    let isPinned: Bool
+    let isHidden: Bool
+    let dismissedAt: Date?
+    let createdAt: Date
+    let updatedAt: Date
 
     var id: UUID { compositionItem.id }
 }
@@ -232,6 +243,39 @@ struct HomeBoardSnapshot: Hashable, Sendable {
     let board: Board
     let composition: Composition
     let items: [HomeBoardItemSnapshot]
+}
+
+struct HomeBoardDebugInputSnapshot: Hashable, Sendable {
+    let memoryCount: Int
+    let todayMemoryCount: Int
+    let recent24HourMemoryCount: Int
+    let contextMemoryCount: Int
+    let highSalienceMemoryCount: Int
+    let graphLinkCount: Int
+    let entityCount: Int
+    let edgeCount: Int
+    let acceptedArcCount: Int
+    let activeAcceptedArcCount: Int
+    let suggestedReflectionCount: Int
+    let savedReflectionCount: Int
+    let runningPipelineCount: Int
+    let failedPipelineCount: Int
+}
+
+struct HomeBoardDebugPreferenceSnapshot: Hashable, Sendable {
+    let totalCount: Int
+    let pinnedCount: Int
+    let hiddenCount: Int
+    let dismissedCount: Int
+}
+
+struct HomeBoardDebugSnapshot: Hashable, Sendable {
+    let generatedAt: Date
+    let date: Date
+    let limit: Int
+    let input: HomeBoardDebugInputSnapshot
+    let preferences: HomeBoardDebugPreferenceSnapshot
+    let board: HomeBoardSnapshot
 }
 
 struct PersonMemorySummary: Identifiable, Hashable, Sendable {
@@ -379,6 +423,8 @@ protocol MoryMemoryRepositorying: AnyObject {
     func fetchRecentMemories(limit: Int?) throws -> [MemorySummary]
     func fetchTimeline(granularity: TimelineGranularity, limit: Int?) throws -> TimelineSnapshot
     func fetchHomeBoard(for date: Date, limit: Int) throws -> HomeBoardSnapshot
+    func fetchHomeBoardDebugSnapshot(for date: Date, limit: Int) throws -> HomeBoardDebugSnapshot
+    func updateHomeBoardItemPreference(_ item: HomeBoardItemSnapshot, action: HomeBoardPreferenceAction) throws
     func fetchMemoryDetail(recordID: UUID) throws -> MemoryDetailSnapshot?
     func fetchRecordAnalysis(recordID: UUID) throws -> RecordAnalysisSnapshot?
     func fetchPipelineStatus(recordID: UUID) throws -> MemoryPipelineStatusSnapshot?

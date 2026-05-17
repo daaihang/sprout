@@ -20,6 +20,68 @@ enum CompositionTargetType: String, Codable, CaseIterable, Identifiable, Sendabl
     var id: String { rawValue }
 }
 
+enum HomeBoardCardKind: String, Codable, CaseIterable, Identifiable, Sendable {
+    case memory
+    case arc
+    case reflection
+    case systemPrompt
+    case contextCluster
+    case pendingAction
+
+    var id: String { rawValue }
+}
+
+struct HomeBoardItemPreference: Identifiable, Codable, Hashable, Sendable {
+    static let schemaVersion = 1
+
+    let id: UUID
+    var schemaVersion: Int
+    var syncKey: String
+    var boardKey: String
+    var cardKey: String
+    var cardKind: HomeBoardCardKind
+    var targetType: CompositionTargetType
+    var targetID: UUID
+    var isPinned: Bool
+    var isHidden: Bool
+    var dismissedAt: Date?
+    var updatedAt: Date
+
+    init(
+        id: UUID = UUID(),
+        schemaVersion: Int = HomeBoardItemPreference.schemaVersion,
+        syncKey: String,
+        boardKey: String = "home-board",
+        cardKey: String,
+        cardKind: HomeBoardCardKind,
+        targetType: CompositionTargetType,
+        targetID: UUID,
+        isPinned: Bool = false,
+        isHidden: Bool = false,
+        dismissedAt: Date? = nil,
+        updatedAt: Date = .now
+    ) {
+        self.id = id
+        self.schemaVersion = schemaVersion
+        self.syncKey = syncKey
+        self.boardKey = boardKey
+        self.cardKey = cardKey
+        self.cardKind = cardKind
+        self.targetType = targetType
+        self.targetID = targetID
+        self.isPinned = isPinned
+        self.isHidden = isHidden
+        self.dismissedAt = dismissedAt
+        self.updatedAt = updatedAt
+    }
+}
+
+enum HomeBoardPreferenceAction: Sendable {
+    case pin(Bool)
+    case hide
+    case dismiss
+}
+
 struct Board: Identifiable, Codable, Hashable, Sendable {
     let id: UUID
     var boardKey: String

@@ -35,6 +35,11 @@ struct CaptureComposerView: View {
     @State private var transcriptionDuration: TimeInterval?
     @State private var linkMetadata: LinkMetadataResult?
     @State private var isFetchingLinkPreview = false
+    @State private var autoDetectedLinkMetadata: LinkMetadataResult?
+    @State private var autoDetectedLinkURL: String?
+    @State private var isFetchingAutoLinkPreview = false
+    @State private var selectedLocationDraft: CaptureArtifactDraft?
+    @State private var isPresentingLocationPicker = false
 
     @StateObject private var permissionManager = ContextPermissionManager(locationService: LocationContextService())
 
@@ -56,225 +61,100 @@ struct CaptureComposerView: View {
                         }
                     }
                     TextField("capture.field.title", text: $title)
+                        .onChange(of: title) { _, _ in
+                            Task { await refreshAutoDetectedLinkPreview() }
+                        }
 
                     switch selectedType {
                     case .photo:
-                        PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
-                            if let selectedPhotoData {
-                                if let uiImage = UIImage(data: selectedPhotoData) {
-                                    Image(uiImage: uiImage)
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fit)
-                                        .frame(maxHeight: 200)
-                                        .cornerRadius(8)
-                                }
-                                Text("capture.photo.selected").foregroundStyle(.secondary)
-                            } else {
-                                Label("capture.photo.select", systemImage: "photo")
-                            }
+                        PhotoInputView(
+                            selectedPhotoItem: $selectedPhotoItem,
+                            selectedPhotoData: $selectedPhotoData,
+                            selectedPhotoThumbnail: $selectedPhotoThumbnail,
+                            photoFilename: $photoFilename,
+                            isProcessingPhoto: $isProcessingPhoto,
+                            photoProcessorResult: $photoProcessorResult,
+                            noteText: $bodyText
+                        )
+
+                    case .audio:
+                        AudioCaptureInputView(
+                            audioRecorder: audioRecorder,
+                            isTranscribing: $isTranscribing,
+                            transcriptionText: $transcriptionText,
+                            transcriptionDuration: $transcriptionDuration,
+                            noteText: $bodyText,
+                            onTranscribe: transcribeAudio
+                        )
+
+                    case .link:
+                        LinkInputView(
+                            urlText: $attachmentValue,
+                            noteText: $bodyText,
+                            metadata: linkMetadata,
+                            isFetching: isFetchingLinkPreview
+                        ) { value in
+                            Task { await fetchLinkPreview(urlString: value) }
                         }
-                        .onChange(of: selectedPhotoItem) { _, newItem in
-                            Task {
-                                if let data = try? await newItem?.loadTransferable(type: Data.self) {
-                                    selectedPhotoData = data
-                                    let filename = "photo_\(Date().timeIntervalSince1970).jpg"
-                                    photoFilename = filename
-                                    isProcessingPhoto = true
-                                    photoProcessorResult = nil
-                                    let processor = PhotoArtifactProcessor()
-                                    let result = await processor.process(imageData: data, filename: filename)
-                                    selectedPhotoThumbnail = result.thumbnailData
-                                    photoProcessorResult = result
-                                    isProcessingPhoto = false
-                                }
+
+                    case .location:
+                        VStack(alignment: .leading, spacing: 12) {
+                            Button {
+                                isPresentingLocationPicker = true
+                            } label: {
+                                Label(
+                                    selectedLocationDraft == nil ? String(localized: "capture.location.pick") : String(localized: "capture.location.change"),
+                                    systemImage: "map"
+                                )
                             }
-                        }
-                        if isProcessingPhoto {
-                            HStack(spacing: 8) {
-                                ProgressView()
-                                Text("capture.photo.analyzing")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        } else if let result = photoProcessorResult {
-                            VStack(alignment: .leading, spacing: 4) {
-                                if !result.summary.isEmpty {
-                                    Text(result.summary)
+                            .buttonStyle(.borderedProminent)
+
+                            if let selectedLocationDraft {
+                                HStack(alignment: .top, spacing: 8) {
+                                    Label(selectedLocationDraft.captureSummary, systemImage: selectedLocationDraft.captureIconName)
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                         .lineLimit(3)
-                                }
-                                if !result.ocrText.isEmpty {
-                                    Text("capture.photo.ocrPreview \(String(result.ocrText.prefix(100)))")
-                                        .font(.caption2)
-                                        .foregroundStyle(.tertiary)
-                                        .lineLimit(2)
-                                }
-                            }
-                        }
-                        TextField("capture.photo.notePlaceholder", text: $bodyText, axis: .vertical)
-                            .lineLimit(2...5)
-
-                    case .audio:
-                        VStack(spacing: 12) {
-                            if audioRecorder.isRecording {
-                                HStack {
-                                    Circle()
-                                        .fill(.red)
-                                        .frame(width: 12, height: 12)
-                                        .opacity(audioRecorder.recordingDuration > 0 ? 1 : 0.5)
-                                    Text("capture.audio.recording \(Int(audioRecorder.recordingDuration))")
-                                        .font(.headline)
                                     Spacer()
-                                    Button(String(localized: "capture.audio.stop")) {
-                                        audioRecorder.stopRecording()
+                                    Button(role: .destructive) {
+                                        self.selectedLocationDraft = nil
+                                    } label: {
+                                        Image(systemName: "xmark.circle")
                                     }
-                                    .buttonStyle(.borderedProminent)
-                                    .tint(.red)
-                                }
-                            } else if audioRecorder.isStopping {
-                                HStack(spacing: 8) {
-                                    ProgressView()
-                                    Text("capture.audio.finalizing")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                    .buttonStyle(.borderless)
                                 }
                             } else {
-                                Button {
-                                    transcriptionText = ""
-                                    transcriptionDuration = nil
-                                    Task {
-                                        await audioRecorder.startRecording()
-                                    }
-                                } label: {
-                                    Label(
-                                        audioRecorder.recordedAudioURL != nil ? String(localized: "capture.audio.rerecord") : String(localized: "capture.audio.startRecording"),
-                                        systemImage: "mic.fill"
-                                    )
-                                }
-                                .buttonStyle(.borderedProminent)
-                                .disabled(audioRecorder.isStopping)
-                            }
-
-                            if let url = audioRecorder.recordedAudioURL {
-                                HStack {
-                                    Image(systemName: "waveform")
-                                        .foregroundStyle(.secondary)
-                                    Text(url.lastPathComponent)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                            if let recorderError = audioRecorder.errorMessage {
-                                Text(recorderError)
-                                    .font(.caption)
-                                    .foregroundStyle(.red)
-                            }
-                        }
-                        .onChange(of: audioRecorder.liveTranscription) { _, transcript in
-                            if !transcript.isEmpty {
-                                transcriptionText = transcript
-                            }
-                        }
-                        .onChange(of: audioRecorder.recordedAudioData) { _, data in
-                            if data != nil && transcriptionText.trimmedOrNil == nil {
-                                Task { await transcribeAudio() }
-                            }
-                        }
-                        if isTranscribing {
-                            HStack(spacing: 8) {
-                                ProgressView()
-                                Text("capture.audio.transcribing")
+                                Text("capture.location.pickHint")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
-                        } else if !transcriptionText.isEmpty {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("capture.audio.transcription")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                TextField("capture.audio.editTranscription", text: $transcriptionText, axis: .vertical)
-                                    .lineLimit(3...8)
-                                    .font(.subheadline)
-                                if let duration = transcriptionDuration {
-                                    Text("capture.audio.transcriptionTime \(String(format: "%.1f", duration))")
-                                        .font(.caption2)
-                                        .foregroundStyle(.tertiary)
-                                }
-                            }
                         }
-                        TextField("capture.audio.notePlaceholder", text: $bodyText, axis: .vertical)
-                            .lineLimit(2...5)
-
-                    case .link:
-                        TextField("capture.attachment.url", text: $attachmentValue)
-                            .keyboardType(.URL)
-                            .textInputAutocapitalization(.never)
-                            .onChange(of: attachmentValue) { _, newValue in
-                                Task { await fetchLinkPreview(urlString: newValue) }
-                            }
-                        if isFetchingLinkPreview {
-                            HStack(spacing: 8) {
-                                ProgressView()
-                                Text("capture.link.fetching")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        } else if let meta = linkMetadata {
-                            VStack(alignment: .leading, spacing: 4) {
-                                if let imageData = meta.imageData,
-                                   let image = UIImage(data: imageData) {
-                                    Image(uiImage: image)
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fill)
-                                        .frame(height: 96)
-                                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                                }
-                                if let title = meta.title {
-                                    Text(title)
-                                        .font(.subheadline)
-                                        .lineLimit(2)
-                                }
-                                if let summary = meta.summary {
-                                    Text(summary)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                        .lineLimit(2)
-                                }
-                                if let site = meta.siteName {
-                                    Text(site)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                        TextField("capture.prompt.link", text: $bodyText, axis: .vertical)
+                        TextField("capture.prompt.location", text: $bodyText, axis: .vertical)
                             .lineLimit(2...5)
 
                     default:
                         TextField(selectedType.primaryPrompt, text: $bodyText, axis: .vertical)
                             .lineLimit(selectedType == .text ? 4...10 : 2...5)
+                            .onChange(of: bodyText) { _, _ in
+                                Task { await refreshAutoDetectedLinkPreview() }
+                            }
                     }
 
-                    if let attachmentPrompt = selectedType.attachmentPrompt, selectedType != .photo && selectedType != .audio && selectedType != .link {
+                    if let attachmentPrompt = selectedType.attachmentPrompt, selectedType != .photo && selectedType != .audio && selectedType != .link && selectedType != .location {
                         TextField(attachmentPrompt, text: $attachmentValue)
                     }
-                    if let secondaryPrompt = selectedType.secondaryPrompt, selectedType != .audio {
+                    if let secondaryPrompt = selectedType.secondaryPrompt, selectedType != .audio && selectedType != .location {
                         TextField(secondaryPrompt, text: $secondaryValue)
                     }
 
-                    if !currentArtifactDrafts.isEmpty {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("capture.content.current")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            ForEach(currentArtifactDrafts.indices, id: \.self) { index in
-                                Label(currentArtifactDrafts[index].captureSummary, systemImage: currentArtifactDrafts[index].debugIconName)
-                                    .font(.caption)
-                                    .lineLimit(2)
-                            }
-                        }
+                    if selectedType != .link {
+                        AutoDetectedLinkPreview(
+                            metadata: autoDetectedLinkMetadata,
+                            isFetching: isFetchingAutoLinkPreview
+                        )
                     }
+
+                    CurrentArtifactPreview(drafts: currentArtifactDrafts)
 
                     HStack {
                         Button {
@@ -293,32 +173,7 @@ struct CaptureComposerView: View {
                     }
                 }
 
-                Section {
-                    if stagedArtifactDrafts.isEmpty {
-                        Text("capture.content.empty")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(stagedArtifactDrafts.indices, id: \.self) { index in
-                            HStack(alignment: .top) {
-                                Label(stagedArtifactDrafts[index].captureSummary, systemImage: stagedArtifactDrafts[index].debugIconName)
-                                    .font(.subheadline)
-                                    .lineLimit(3)
-                                Spacer()
-                                Button(role: .destructive) {
-                                    stagedArtifactDrafts.remove(at: index)
-                                } label: {
-                                    Image(systemName: "trash")
-                                }
-                                .buttonStyle(.borderless)
-                            }
-                        }
-                    }
-                } header: {
-                    Text("capture.section.addedContent")
-                } footer: {
-                    Text("capture.content.footer")
-                }
+                ArtifactStagingListView(drafts: $stagedArtifactDrafts)
 
                 Section("capture.section.context") {
                     TextField("capture.field.mood", text: $mood)
@@ -368,43 +223,11 @@ struct CaptureComposerView: View {
                     }
                 }
 
-                Section {
-                    Button {
-                        Task { await refreshAutoContext() }
-                    } label: {
-                        Label(isCollectingContext ? String(localized: "capture.context.collecting") : String(localized: "capture.context.collectPreview"), systemImage: "arrow.clockwise")
-                    }
-                    .disabled(isCollectingContext)
-
-                    if isCollectingContext {
-                        HStack(spacing: 8) {
-                            ProgressView()
-                            Text("capture.context.collecting")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    } else if contextCandidates.isEmpty {
-                        Text("capture.context.previewEmpty")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(contextCandidates) { candidate in
-                            Toggle(isOn: contextSelectionBinding(for: candidate.id)) {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Label(candidate.draft.captureSummary, systemImage: candidate.draft.debugIconName)
-                                        .font(.caption)
-                                        .lineLimit(2)
-                                    Text(candidate.capturedAt.formatted(date: .omitted, time: .shortened))
-                                        .font(.caption2)
-                                        .foregroundStyle(.tertiary)
-                                }
-                            }
-                        }
-                    }
-                } header: {
-                    Text("capture.section.contextPreview")
-                } footer: {
-                    Text("capture.context.previewFooter")
+                ContextCandidateListView(
+                    candidates: $contextCandidates,
+                    isCollecting: isCollectingContext
+                ) {
+                    Task { await refreshAutoContext() }
                 }
 
                 if let errorMessage {
@@ -437,6 +260,11 @@ struct CaptureComposerView: View {
                         Task { await save() }
                     }
                     .disabled(isSaving || !canSave)
+                }
+            }
+            .sheet(isPresented: $isPresentingLocationPicker) {
+                LocationPickerView(initialSelection: selectedLocationDraft) { draft in
+                    selectedLocationDraft = draft
                 }
             }
         }
@@ -485,12 +313,14 @@ struct CaptureComposerView: View {
                 transcriptionText: transcriptionText
             )]
         case .location:
-            guard bodyText.trimmedOrNil != nil || title.trimmedOrNil != nil || attachmentValue.trimmedOrNil != nil || secondaryValue.trimmedOrNil != nil else {
-                return []
-            }
-            let latitude = Double(attachmentValue.trimmingCharacters(in: .whitespacesAndNewlines))
-            let longitude = Double(secondaryValue.trimmingCharacters(in: .whitespacesAndNewlines))
-            return [.location(title: normalizedTitle, summary: bodyText.trimmedOrNil ?? title.trimmedOrNil ?? "Location capture", latitude: latitude, longitude: longitude)]
+            guard let selectedLocationDraft else { return [] }
+            guard case let .location(placeTitle, placeSummary, latitude, longitude) = selectedLocationDraft else { return [] }
+            return [.location(
+                title: normalizedTitle ?? placeTitle,
+                summary: bodyText.trimmedOrNil ?? placeSummary,
+                latitude: latitude,
+                longitude: longitude
+            )]
         case .link:
             guard let url = attachmentValue.trimmedOrNil else { return [] }
             return [.link(
@@ -508,7 +338,26 @@ struct CaptureComposerView: View {
     }
 
     private var userArtifactDrafts: [CaptureArtifactDraft] {
-        stagedArtifactDrafts + currentArtifactDrafts
+        stagedArtifactDrafts + currentArtifactDrafts + autoDetectedLinkDrafts
+    }
+
+    private var autoDetectedLinkDrafts: [CaptureArtifactDraft] {
+        guard selectedType != .link, let metadata = autoDetectedLinkMetadata else { return [] }
+        let detectedURL = metadata.url.trimmedOrNil
+        let existingURLs = (stagedArtifactDrafts + currentArtifactDrafts).compactMap { draft -> String? in
+            guard case let .link(_, url, _, _, _, _) = draft else { return nil }
+            return url.trimmedOrNil
+        }
+        guard let detectedURL, !existingURLs.contains(detectedURL) else { return [] }
+
+        return [.link(
+            title: metadata.title,
+            url: detectedURL,
+            note: selectedType == .text ? bodyText.trimmedOrNil : nil,
+            summary: metadata.summary,
+            metadata: metadata.metadata,
+            thumbnailData: metadata.imageData
+        )]
     }
 
     private var selectedContextDrafts: [CaptureArtifactDraft] {
@@ -578,6 +427,9 @@ struct CaptureComposerView: View {
         photoFilename = ""
         photoProcessorResult = nil
         linkMetadata = nil
+        autoDetectedLinkMetadata = nil
+        autoDetectedLinkURL = nil
+        selectedLocationDraft = nil
         transcriptionText = ""
         transcriptionDuration = nil
         audioRecorder.clearRecording()
@@ -602,18 +454,6 @@ struct CaptureComposerView: View {
                 isSelected: true
             )
         }
-    }
-
-    private func contextSelectionBinding(for id: UUID) -> Binding<Bool> {
-        Binding(
-            get: {
-                contextCandidates.first(where: { $0.id == id })?.isSelected ?? false
-            },
-            set: { isSelected in
-                guard let index = contextCandidates.firstIndex(where: { $0.id == id }) else { return }
-                contextCandidates[index].isSelected = isSelected
-            }
-        )
     }
 
     private func transcribeAudio() async {
@@ -641,28 +481,34 @@ struct CaptureComposerView: View {
         let extractor = LinkMetadataExtractor()
         linkMetadata = await extractor.extract(urlString: urlString)
     }
-}
 
-private struct ContextCandidate: Identifiable, Hashable {
-    let id = UUID()
-    var draft: CaptureArtifactDraft
-    var capturedAt: Date
-    var isSelected: Bool
-}
+    private func refreshAutoDetectedLinkPreview() async {
+        guard selectedType != .link else { return }
+        let candidate = firstURLCandidate(in: [title, bodyText].joined(separator: "\n"))
+        guard candidate != autoDetectedLinkURL else { return }
+        autoDetectedLinkURL = candidate
 
-private extension CaptureArtifactDraft {
-    var debugIconName: String {
-        switch self {
-        case .text: return "text.alignleft"
-        case .photo: return "photo"
-        case .audio: return "waveform"
-        case .location: return "mappin.and.ellipse"
-        case .link: return "link"
-        case .todo: return "checklist"
-        case .weather: return "cloud.sun"
-        case .music: return "music.note"
+        guard let candidate else {
+            autoDetectedLinkMetadata = nil
+            isFetchingAutoLinkPreview = false
+            return
         }
+
+        isFetchingAutoLinkPreview = true
+        try? await Task.sleep(for: .milliseconds(350))
+        guard candidate == autoDetectedLinkURL else {
+            isFetchingAutoLinkPreview = false
+            return
+        }
+
+        autoDetectedLinkMetadata = await LinkMetadataExtractor().extract(urlString: candidate)
+        isFetchingAutoLinkPreview = false
     }
+
+    private func firstURLCandidate(in text: String) -> String? {
+        LinkMetadataExtractor.firstURLCandidate(in: text)
+    }
+
 }
 
 private enum CaptureInputType: String, CaseIterable, Identifiable {

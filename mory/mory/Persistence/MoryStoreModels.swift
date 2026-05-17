@@ -31,6 +31,50 @@ final class QualityTuningPreferenceStore {
 }
 
 @Model
+final class HomeBoardPreferenceStore {
+    @Attribute(.unique) var syncKey: String
+    var id: UUID
+    var schemaVersion: Int
+    var boardKey: String
+    var cardKey: String
+    var cardKindRawValue: String
+    var targetTypeRawValue: String
+    var targetID: UUID
+    var isPinned: Bool
+    var isHidden: Bool
+    var dismissedAt: Date?
+    var updatedAt: Date
+
+    init(
+        id: UUID = UUID(),
+        schemaVersion: Int = HomeBoardItemPreference.schemaVersion,
+        syncKey: String,
+        boardKey: String,
+        cardKey: String,
+        cardKindRawValue: String,
+        targetTypeRawValue: String,
+        targetID: UUID,
+        isPinned: Bool,
+        isHidden: Bool,
+        dismissedAt: Date?,
+        updatedAt: Date
+    ) {
+        self.id = id
+        self.schemaVersion = schemaVersion
+        self.syncKey = syncKey
+        self.boardKey = boardKey
+        self.cardKey = cardKey
+        self.cardKindRawValue = cardKindRawValue
+        self.targetTypeRawValue = targetTypeRawValue
+        self.targetID = targetID
+        self.isPinned = isPinned
+        self.isHidden = isHidden
+        self.dismissedAt = dismissedAt
+        self.updatedAt = updatedAt
+    }
+}
+
+@Model
 final class RecordShellStore {
     @Attribute(.unique) var id: UUID
     var createdAt: Date

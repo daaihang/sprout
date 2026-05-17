@@ -727,13 +727,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Save still runs automatic context collection in the background; this preview shows what can be collected right now."
+            "value" : "Save uses this selected context snapshot. If music, location, or weather changes, refresh before saving."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "保存后仍会在后台自动采集上下文；这里显示当前能采集到的内容。"
+            "value" : "保存会使用当前已勾选的上下文快照。如果音乐、位置或天气变化，请先刷新再保存。"
           }
         }
       }
@@ -802,6 +802,363 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在获取链接预览…"
+          }
+        }
+      }
+    },
+    "capture.link.autoDetected" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detected link"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已识别链接"
+          }
+        }
+      }
+    },
+    "capture.location.currentLoading" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Getting current location..."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在获取当前位置..."
+          }
+        }
+      }
+    },
+    "capture.location.change" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change location"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "更改地点"
+          }
+        }
+      }
+    },
+    "capture.location.currentUnavailable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Current location is unavailable. Check location permission or try search/map selection."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当前定位不可用。请检查位置权限，或使用搜索/地图选点。"
+          }
+        }
+      }
+    },
+    "capture.location.done" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完成"
+          }
+        }
+      }
+    },
+    "capture.location.findHeader" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Find a Location"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "查找地点"
+          }
+        }
+      }
+    },
+    "capture.location.mapFooter" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap the map to choose an exact point."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "点击地图选择精确位置。"
+          }
+        }
+      }
+    },
+    "capture.location.mapHeader" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Map"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "地图"
+          }
+        }
+      }
+    },
+    "capture.location.navTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose Location"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择地点"
+          }
+        }
+      }
+    },
+    "capture.location.noResults" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No matching places found."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有找到匹配地点。"
+          }
+        }
+      }
+    },
+    "capture.location.pick" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose location"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择地点"
+          }
+        }
+      }
+    },
+    "capture.location.pickHint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use current location, search for a place, or tap the map."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用当前位置、搜索地点，或在地图上点选。"
+          }
+        }
+      }
+    },
+    "capture.location.pickerFooter" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use current location, search for a place, or choose a point on the map."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "可使用当前位置、搜索地点，或在地图上点选。"
+          }
+        }
+      }
+    },
+    "capture.location.resultsHeader" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Results"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "搜索结果"
+          }
+        }
+      }
+    },
+    "capture.location.search" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search place"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "搜索地点"
+          }
+        }
+      }
+    },
+    "capture.location.searching" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Searching places..."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在搜索地点..."
+          }
+        }
+      }
+    },
+    "capture.location.searchPlaceholder" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search a place or address"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "搜索地点或地址"
+          }
+        }
+      }
+    },
+    "capture.location.searchResult" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search result"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "搜索结果"
+          }
+        }
+      }
+    },
+    "capture.location.selectedPoint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selected point"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已选位置"
+          }
+        }
+      }
+    },
+    "capture.location.selectionHeader" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selected Location"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已选地点"
+          }
+        }
+      }
+    },
+    "capture.location.useCurrent" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use current location"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用当前位置"
           }
         }
       }
@@ -3457,13 +3814,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Local metadata uses LinkPresentation. Cloud analysis persists a debug link memory."
+            "value" : "Use this to test normal URLs, short links, and social post redirects. Local metadata uses the same extractor as Capture."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "本地元数据使用 LinkPresentation。云端分析会保存一条调试链接记忆。"
+            "value" : "用于测试普通链接、短链接和社交帖子跳转。本地元数据与新建记忆使用同一套解析器。"
           }
         }
       }
@@ -3481,6 +3838,159 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "图片字节数"
+          }
+        }
+      }
+    },
+    "debug.link.autoDetect" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Body URL Auto-detect"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正文链接自动识别"
+          }
+        }
+      }
+    },
+    "debug.link.autoDetectFooter" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Matches the Composer behavior: only the first URL in the text is extracted."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "与新建记忆行为一致：只提取正文中的第一个 URL。"
+          }
+        }
+      }
+    },
+    "debug.link.autoDetectResult" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detected Link Metadata"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "识别出的链接元数据"
+          }
+        }
+      }
+    },
+    "debug.link.bodyInput" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text containing a URL"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "包含 URL 的正文"
+          }
+        }
+      }
+    },
+    "debug.link.detectBody" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detect Body URL"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "识别正文 URL"
+          }
+        }
+      }
+    },
+    "debug.link.detectedURL" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detected URL"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "识别出的 URL"
+          }
+        }
+      }
+    },
+    "debug.link.detecting" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detecting URL..."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在识别 URL..."
+          }
+        }
+      }
+    },
+    "debug.link.inputURL" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Input URL"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "输入 URL"
+          }
+        }
+      }
+    },
+    "debug.link.noDetectedURL" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No URL was detected in the text."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正文中没有识别到 URL。"
           }
         }
       }
@@ -6672,6 +7182,139 @@
             "value" : "看板还没有内容。新记录、确认的故事线和保存的感悟会出现在这里。"
           }
         }
+      }
+    },
+    "home.board.action.dismiss" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Dismiss" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "忽略" } }
+      }
+    },
+    "home.board.action.hide" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Hide" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "隐藏" } }
+      }
+    },
+    "home.board.action.pin" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pin" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "置顶" } }
+      }
+    },
+    "home.board.action.unpin" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Unpin" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "取消置顶" } }
+      }
+    },
+    "home.board.cluster.count %lld" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%lld related memories" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "%lld 条相关记忆" } }
+      }
+    },
+    "home.board.cluster.subtitle %lld" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Repeated across %lld recent memories." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "在最近 %lld 条记忆中反复出现。" } }
+      }
+    },
+    "home.board.cluster.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Repeated context" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "重复上下文" } }
+      }
+    },
+    "home.board.kind.arc" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Storyline" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "故事线" } }
+      }
+    },
+    "home.board.kind.cluster" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Cluster" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "聚合" } }
+      }
+    },
+    "home.board.kind.memory" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Memory" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "记忆" } }
+      }
+    },
+    "home.board.kind.pending" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Needs Attention" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "待处理" } }
+      }
+    },
+    "home.board.kind.reflection" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Reflection" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "感悟" } }
+      }
+    },
+    "home.board.kind.system" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Guide" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "提示" } }
+      }
+    },
+    "home.board.pending.failed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Analysis failed. Open this memory to inspect or rerun diagnostics." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "分析失败。打开这条记忆查看或重新诊断。" } }
+      }
+    },
+    "home.board.pending.running" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Analysis is still running." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "分析仍在进行中。" } }
+      }
+    },
+    "home.board.system.empty.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Start with a text note, link, place, audio, or photo. Mory will build the board from real memories." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "先添加文字、链接、地点、录音或图片。Mory 会从真实记忆生成主页面板。" } }
+      }
+    },
+    "home.board.system.empty.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Capture your first memory" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "添加第一条记忆" } }
+      }
+    },
+    "home.board.system.onboarding.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "A few more memories will let Mory surface patterns, storylines, and reflections." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "再添加几条记忆后，Mory 会开始显示模式、故事线和感悟。" } }
+      }
+    },
+    "home.board.system.onboarding.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Keep building the memory base" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "继续建立记忆基础" } }
       }
     },
     "home.capture.button" : {
