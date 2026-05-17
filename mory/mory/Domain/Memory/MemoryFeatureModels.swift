@@ -1,5 +1,81 @@
 import Foundation
 
+enum UserSettingsAppearanceMode: String, CaseIterable, Identifiable, Codable, Sendable {
+    case system
+    case light
+    case dark
+
+    var id: String { rawValue }
+}
+
+enum UserSettingsContextSelection: String, CaseIterable, Identifiable, Codable, Sendable {
+    case allAvailable
+    case locationWeatherOnly
+    case manual
+
+    var id: String { rawValue }
+}
+
+enum UserSettingsInsightFrequency: String, CaseIterable, Identifiable, Codable, Sendable {
+    case low
+    case balanced
+    case high
+
+    var id: String { rawValue }
+}
+
+enum UserSettingsPromptTone: String, CaseIterable, Identifiable, Codable, Sendable {
+    case concise
+    case balanced
+    case reflective
+
+    var id: String { rawValue }
+}
+
+struct UserSettingsPreference: Identifiable, Codable, Hashable, Sendable {
+    static let schemaVersion = 1
+    static let defaultSyncKey = "user-settings-default"
+
+    var id: UUID
+    var syncKey: String
+    var schemaVersion: Int
+    var updatedAt: Date
+    var appearanceMode: UserSettingsAppearanceMode
+    var voiceLanguageIdentifier: String?
+    var linkAutoDetectEnabled: Bool
+    var defaultContextSelection: UserSettingsContextSelection
+    var insightFrequency: UserSettingsInsightFrequency
+    var promptTone: UserSettingsPromptTone
+
+    init(
+        id: UUID = UUID(),
+        syncKey: String = UserSettingsPreference.defaultSyncKey,
+        schemaVersion: Int = UserSettingsPreference.schemaVersion,
+        updatedAt: Date = .now,
+        appearanceMode: UserSettingsAppearanceMode = .system,
+        voiceLanguageIdentifier: String? = nil,
+        linkAutoDetectEnabled: Bool = true,
+        defaultContextSelection: UserSettingsContextSelection = .allAvailable,
+        insightFrequency: UserSettingsInsightFrequency = .balanced,
+        promptTone: UserSettingsPromptTone = .balanced
+    ) {
+        self.id = id
+        self.syncKey = syncKey
+        self.schemaVersion = schemaVersion
+        self.updatedAt = updatedAt
+        self.appearanceMode = appearanceMode
+        self.voiceLanguageIdentifier = voiceLanguageIdentifier
+        self.linkAutoDetectEnabled = linkAutoDetectEnabled
+        self.defaultContextSelection = defaultContextSelection
+        self.insightFrequency = insightFrequency
+        self.promptTone = promptTone
+    }
+
+    static var defaults: UserSettingsPreference {
+        UserSettingsPreference()
+    }
+}
+
 enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
     case text(title: String?, body: String)
     case photo(title: String?, summary: String, filename: String, imageData: Data?, thumbnailData: Data?, ocrText: String = "", photoMetadata: [String: String] = [:])
@@ -453,6 +529,8 @@ protocol MoryMemoryRepositorying: AnyObject {
     func seedDebugFixtures(count: Int) async throws -> [DebugMemoryFixtureSnapshot]
     func clearDebugFixtures() throws
     func clearAllLocalData() throws
+    func fetchUserSettingsPreference() throws -> UserSettingsPreference
+    func saveUserSettingsPreference(_ preference: UserSettingsPreference) throws
     func fetchQualityTuningPreference() throws -> QualityTuningPreference
     func saveQualityTuningPreference(_ preference: QualityTuningPreference) throws
     func runQualityTuningScenario(_ request: QualityTuningRunRequest) async throws -> QualityTuningRunReport

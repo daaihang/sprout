@@ -2,6 +2,44 @@ import Foundation
 import SwiftData
 
 @Model
+final class UserSettingsPreferenceStore {
+    @Attribute(.unique) var syncKey: String
+    var id: UUID
+    var schemaVersion: Int
+    var updatedAt: Date
+    var appearanceModeRawValue: String
+    var voiceLanguageIdentifier: String?
+    var linkAutoDetectEnabled: Bool
+    var defaultContextSelectionRawValue: String
+    var insightFrequencyRawValue: String
+    var promptToneRawValue: String
+
+    init(
+        id: UUID = UUID(),
+        syncKey: String = UserSettingsPreference.defaultSyncKey,
+        schemaVersion: Int = UserSettingsPreference.schemaVersion,
+        updatedAt: Date,
+        appearanceModeRawValue: String,
+        voiceLanguageIdentifier: String?,
+        linkAutoDetectEnabled: Bool,
+        defaultContextSelectionRawValue: String,
+        insightFrequencyRawValue: String,
+        promptToneRawValue: String
+    ) {
+        self.id = id
+        self.syncKey = syncKey
+        self.schemaVersion = schemaVersion
+        self.updatedAt = updatedAt
+        self.appearanceModeRawValue = appearanceModeRawValue
+        self.voiceLanguageIdentifier = voiceLanguageIdentifier
+        self.linkAutoDetectEnabled = linkAutoDetectEnabled
+        self.defaultContextSelectionRawValue = defaultContextSelectionRawValue
+        self.insightFrequencyRawValue = insightFrequencyRawValue
+        self.promptToneRawValue = promptToneRawValue
+    }
+}
+
+@Model
 final class QualityTuningPreferenceStore {
     @Attribute(.unique) var syncKey: String
     var id: UUID

@@ -17,6 +17,52 @@ private enum PersistenceCoding {
 }
 
 @MainActor
+extension UserSettingsPreferenceStore {
+    convenience init(domainModel: UserSettingsPreference) {
+        self.init(
+            id: domainModel.id,
+            syncKey: domainModel.syncKey,
+            schemaVersion: domainModel.schemaVersion,
+            updatedAt: domainModel.updatedAt,
+            appearanceModeRawValue: domainModel.appearanceMode.rawValue,
+            voiceLanguageIdentifier: domainModel.voiceLanguageIdentifier,
+            linkAutoDetectEnabled: domainModel.linkAutoDetectEnabled,
+            defaultContextSelectionRawValue: domainModel.defaultContextSelection.rawValue,
+            insightFrequencyRawValue: domainModel.insightFrequency.rawValue,
+            promptToneRawValue: domainModel.promptTone.rawValue
+        )
+    }
+
+    var domainModel: UserSettingsPreference {
+        UserSettingsPreference(
+            id: id,
+            syncKey: syncKey,
+            schemaVersion: schemaVersion,
+            updatedAt: updatedAt,
+            appearanceMode: UserSettingsAppearanceMode(rawValue: appearanceModeRawValue) ?? .system,
+            voiceLanguageIdentifier: voiceLanguageIdentifier,
+            linkAutoDetectEnabled: linkAutoDetectEnabled,
+            defaultContextSelection: UserSettingsContextSelection(rawValue: defaultContextSelectionRawValue) ?? .allAvailable,
+            insightFrequency: UserSettingsInsightFrequency(rawValue: insightFrequencyRawValue) ?? .balanced,
+            promptTone: UserSettingsPromptTone(rawValue: promptToneRawValue) ?? .balanced
+        )
+    }
+
+    func apply(domainModel: UserSettingsPreference) {
+        id = domainModel.id
+        syncKey = domainModel.syncKey
+        schemaVersion = domainModel.schemaVersion
+        updatedAt = domainModel.updatedAt
+        appearanceModeRawValue = domainModel.appearanceMode.rawValue
+        voiceLanguageIdentifier = domainModel.voiceLanguageIdentifier
+        linkAutoDetectEnabled = domainModel.linkAutoDetectEnabled
+        defaultContextSelectionRawValue = domainModel.defaultContextSelection.rawValue
+        insightFrequencyRawValue = domainModel.insightFrequency.rawValue
+        promptToneRawValue = domainModel.promptTone.rawValue
+    }
+}
+
+@MainActor
 extension RecordShellStore {
     convenience init(domainModel: RecordShell) {
         self.init(

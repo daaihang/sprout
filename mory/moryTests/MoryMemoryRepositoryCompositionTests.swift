@@ -58,6 +58,46 @@ final class AppRuntimeEnvironmentTests: XCTestCase {
 
 @MainActor
 final class MoryMemoryRepositoryCompositionTests: XCTestCase {
+    func testUserSettingsPreferenceDefaultsPersistAndSurviveLocalDataClear() throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        let defaults = try repository.fetchUserSettingsPreference()
+        XCTAssertEqual(defaults.syncKey, UserSettingsPreference.defaultSyncKey)
+        XCTAssertEqual(defaults.schemaVersion, UserSettingsPreference.schemaVersion)
+        XCTAssertTrue(defaults.linkAutoDetectEnabled)
+
+        var edited = defaults
+        edited.appearanceMode = .dark
+        edited.voiceLanguageIdentifier = "en-US"
+        edited.linkAutoDetectEnabled = false
+        edited.defaultContextSelection = .manual
+        edited.insightFrequency = .high
+        edited.promptTone = .reflective
+        edited.updatedAt = Date(timeIntervalSince1970: 1_800_000_000)
+        try repository.saveUserSettingsPreference(edited)
+
+        var stored = try repository.fetchUserSettingsPreference()
+        XCTAssertEqual(stored.syncKey, edited.syncKey)
+        XCTAssertEqual(stored.schemaVersion, edited.schemaVersion)
+        XCTAssertEqual(stored.appearanceMode, .dark)
+        XCTAssertEqual(stored.voiceLanguageIdentifier, "en-US")
+        XCTAssertFalse(stored.linkAutoDetectEnabled)
+        XCTAssertEqual(stored.defaultContextSelection, .manual)
+        XCTAssertEqual(stored.insightFrequency, .high)
+        XCTAssertEqual(stored.promptTone, .reflective)
+
+        try repository.clearAllLocalData()
+
+        stored = try repository.fetchUserSettingsPreference()
+        XCTAssertEqual(stored.appearanceMode, .dark)
+        XCTAssertEqual(stored.voiceLanguageIdentifier, "en-US")
+        XCTAssertFalse(stored.linkAutoDetectEnabled)
+    }
+
     func testFetchHomeBoardReturnsCompositionDrivenMemoryRenderValues() async throws {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(

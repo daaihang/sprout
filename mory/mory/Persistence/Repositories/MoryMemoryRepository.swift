@@ -969,6 +969,22 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         try save()
     }
 
+    func fetchUserSettingsPreference() throws -> UserSettingsPreference {
+        let syncKey = UserSettingsPreference.defaultSyncKey
+        let descriptor = FetchDescriptor<UserSettingsPreferenceStore>(
+            predicate: #Predicate { $0.syncKey == syncKey }
+        )
+        guard let store = try modelContext.fetch(descriptor).first else {
+            return .defaults
+        }
+        return store.domainModel
+    }
+
+    func saveUserSettingsPreference(_ preference: UserSettingsPreference) throws {
+        try upsert(userSettingsPreference: preference)
+        try save()
+    }
+
     func fetchQualityTuningPreference() throws -> QualityTuningPreference {
         let syncKey = QualityTuningPreference.defaultSyncKey
         let descriptor = FetchDescriptor<QualityTuningPreferenceStore>(
@@ -1556,6 +1572,16 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             existing.apply(domainModel: homeBoardPreference)
         } else {
             modelContext.insert(HomeBoardPreferenceStore(domainModel: homeBoardPreference))
+        }
+    }
+
+    func upsert(userSettingsPreference: UserSettingsPreference) throws {
+        let syncKey = userSettingsPreference.syncKey
+        let descriptor = FetchDescriptor<UserSettingsPreferenceStore>(predicate: #Predicate { $0.syncKey == syncKey })
+        if let existing = try modelContext.fetch(descriptor).first {
+            existing.apply(domainModel: userSettingsPreference)
+        } else {
+            modelContext.insert(UserSettingsPreferenceStore(domainModel: userSettingsPreference))
         }
     }
 

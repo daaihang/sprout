@@ -6,6 +6,8 @@ struct MoryRootView: View {
 
     @State private var selectedTab: MoryAppTab = .today
     @State private var isPresentingSettings = false
+    @State private var isPresentingQuickCapture = false
+    @State private var tabRefreshID = UUID()
 
     init(
         authManager: AuthSessionManager? = nil,
@@ -20,6 +22,7 @@ struct MoryRootView: View {
             tabRoot {
                 HomeScreen(surface: .home)
             }
+            .id(tabRefreshID)
             .tabItem {
                 Label(LocalizedStringKey(MoryAppTab.today.titleKey), systemImage: MoryAppTab.today.systemImage)
             }
@@ -28,6 +31,7 @@ struct MoryRootView: View {
             tabRoot {
                 MemoriesRootScreen()
             }
+            .id(tabRefreshID)
             .tabItem {
                 Label(LocalizedStringKey(MoryAppTab.memories.titleKey), systemImage: MoryAppTab.memories.systemImage)
             }
@@ -36,6 +40,7 @@ struct MoryRootView: View {
             tabRoot {
                 InsightsRootScreen()
             }
+            .id(tabRefreshID)
             .tabItem {
                 Label(LocalizedStringKey(MoryAppTab.insights.titleKey), systemImage: MoryAppTab.insights.systemImage)
             }
@@ -47,6 +52,11 @@ struct MoryRootView: View {
                 runtimeEnvironment: runtimeEnvironment
             )
         }
+        .sheet(isPresented: $isPresentingQuickCapture) {
+            CaptureComposerView {
+                tabRefreshID = UUID()
+            }
+        }
     }
 
     private func tabRoot<Content: View>(@ViewBuilder content: () -> Content) -> some View {
@@ -54,6 +64,12 @@ struct MoryRootView: View {
             content()
                 .toolbar {
                     settingsToolbar
+                }
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    QuickCaptureToolbar(
+                        onTextCapture: { isPresentingQuickCapture = true },
+                        onMoreCapture: { isPresentingQuickCapture = true }
+                    )
                 }
         }
     }
