@@ -24,6 +24,7 @@ private final class MissingMemoryRepository: MoryMemoryRepositorying {
     func deleteMemory(recordID: UUID) throws { let _: Void = fail() }
     func refreshMemoryPipeline(recordID: UUID) async throws { let _: Void = fail() }
     func fetchRecentMemories(limit: Int?) throws -> [MemorySummary] { fail() }
+    func fetchMemoryLibrary(filter: MemoryLibraryFilter, limit: Int?) throws -> MemoryLibrarySnapshot { fail() }
     func fetchTimeline(granularity: TimelineGranularity, limit: Int?) throws -> TimelineSnapshot { fail() }
     func fetchHomeBoard(for date: Date, limit: Int) throws -> HomeBoardSnapshot { fail() }
     func fetchHomeBoardDebugSnapshot(for date: Date, limit: Int) throws -> HomeBoardDebugSnapshot { fail() }
@@ -39,6 +40,7 @@ private final class MissingMemoryRepository: MoryMemoryRepositorying {
     func fetchPersonDetail(entityID: UUID) throws -> PersonDetailSnapshot? { fail() }
     func fetchThemeSummaries(limit: Int?) throws -> [ThemeMemorySummary] { fail() }
     func fetchGraphOverview(limitPerKind: Int?, edgeLimit: Int?) throws -> GraphOverviewSnapshot { fail() }
+    func fetchInsightsPresentation(limitPerSection: Int?) throws -> InsightsPresentationSnapshot { fail() }
     func fetchTemporalArcs(limit: Int?) throws -> [TemporalArc] { fail() }
     func fetchTemporalArcSummaries(limit: Int?) throws -> [TemporalArcSummarySnapshot] { fail() }
     func fetchTemporalArcDetail(arcID: UUID) throws -> TemporalArcDetailSnapshot? { fail() }

@@ -301,6 +301,48 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         return Array(summaries.prefix(limit))
     }
 
+    func fetchMemoryLibrary(filter: MemoryLibraryFilter, limit: Int? = nil) throws -> MemoryLibrarySnapshot {
+        let memories = try fetchRecentMemories(limit: nil)
+        let graphContext = try graphQueryService.load(
+            modelContext: modelContext,
+            memories: memories
+        )
+        let rows = try memories.map { memory in
+            try makeMemoryLibraryRow(memory: memory, graphContext: graphContext)
+        }
+        let filteredRows = rows.filter { row in
+            memoryLibraryRow(row, matches: filter)
+        }
+        let limitedRows = applyLimit(limit, to: filteredRows)
+        let calendar = Calendar.current
+        let groups = Dictionary(grouping: limitedRows) { row in
+            calendar.startOfDay(for: row.memory.record.updatedAt)
+        }
+        .map { date, rows in
+            MemoryLibraryDayGroup(
+                date: date,
+                rows: rows.sorted { $0.memory.record.updatedAt > $1.memory.record.updatedAt }
+            )
+        }
+        .sorted { $0.date > $1.date }
+
+        let availableArtifactKinds = Array(Set(rows.flatMap(\.artifactKinds))).sorted { $0.rawValue < $1.rawValue }
+        let availablePipelineStages = Array(Set(rows.compactMap(\.memory.pipelineStatus?.stage))).sorted { $0.rawValue < $1.rawValue }
+
+        return MemoryLibrarySnapshot(
+            filter: filter,
+            groups: groups,
+            totalCount: rows.count,
+            filteredCount: filteredRows.count,
+            metadata: MemoryLibraryFilterMetadata(
+                availableArtifactKinds: availableArtifactKinds,
+                availablePipelineStages: availablePipelineStages,
+                contextMemoryCount: rows.filter(\.hasContext).count,
+                insightMemoryCount: rows.filter(\.hasInsights).count
+            )
+        )
+    }
+
     func fetchTimeline(granularity: TimelineGranularity, limit: Int?) throws -> TimelineSnapshot {
         let memories = try fetchRecentMemories(limit: limit)
         let calendar = Calendar.current
@@ -642,6 +684,72 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             topEdges: topEdges,
             people: people,
             themes: themes
+        )
+    }
+
+    func fetchInsightsPresentation(limitPerSection: Int? = nil) throws -> InsightsPresentationSnapshot {
+        let memories = try fetchRecentMemories(limit: nil)
+        let graphContext = try graphQueryService.load(
+            modelContext: modelContext,
+            memories: memories
+        )
+        let activeStorylines = graphContext.arcs
+            .filter { $0.status != .archived && $0.status != .merged }
+            .sorted { lhs, rhs in
+                if lhs.status != rhs.status {
+                    return lhs.status == .accepted
+                }
+                if lhs.updatedAt != rhs.updatedAt {
+                    return lhs.updatedAt > rhs.updatedAt
+                }
+                return lhs.clusterStrength > rhs.clusterStrength
+            }
+            .map { arc in
+                TemporalArcSummarySnapshot(
+                    arc: arc,
+                    relatedMemories: graphContext.relatedMemories(recordIDs: arc.sourceRecordIDs, limit: 3),
+                    linkedReflection: graphContext.reflections.first { $0.linkedTemporalArcID == arc.id }
+                )
+            }
+        let suggestedReflections = graphContext.reflections
+            .filter { $0.status == .suggested }
+            .sorted { lhs, rhs in
+                if lhs.confidence != rhs.confidence {
+                    return lhs.confidence > rhs.confidence
+                }
+                return lhs.createdAt > rhs.createdAt
+            }
+            .map { reflection in
+                makeReflectionSummary(reflection: reflection, graphContext: graphContext)
+            }
+        let savedReflections = graphContext.reflections
+            .filter { $0.status == .saved }
+            .sorted { $0.createdAt > $1.createdAt }
+            .map { reflection in
+                makeReflectionSummary(reflection: reflection, graphContext: graphContext)
+            }
+        let entityDetails = graphContext.entities
+            .sorted { $0.updatedAt > $1.updatedAt }
+            .map { graphContext.makeEntityDetailSnapshot(entity: $0) }
+
+        return InsightsPresentationSnapshot(
+            highlightedStoryline: activeStorylines.first(where: { $0.arc.status == .accepted }) ?? activeStorylines.first,
+            storylines: applyLimit(limitPerSection, to: activeStorylines),
+            suggestedReflections: applyLimit(limitPerSection, to: suggestedReflections),
+            savedReflections: applyLimit(limitPerSection, to: savedReflections),
+            people: applyLimit(limitPerSection, to: entityDetails.filter { $0.entity.kind == .person }),
+            places: applyLimit(limitPerSection, to: entityDetails.filter { $0.entity.kind == .place }),
+            themes: applyLimit(limitPerSection, to: entityDetails.filter { $0.entity.kind == .theme }),
+            decisions: applyLimit(limitPerSection, to: entityDetails.filter { $0.entity.kind == .decision }),
+            topEdges: applyLimit(limitPerSection, to: graphContext.edges.sorted {
+                if $0.weight == $1.weight {
+                    return $0.lastSeenAt > $1.lastSeenAt
+                }
+                return $0.weight > $1.weight
+            }),
+            totalStorylineCount: activeStorylines.count,
+            totalReflectionCount: graphContext.reflections.filter { $0.status != .archived && $0.status != .dismissed }.count,
+            totalEntityCount: entityDetails.count
         )
     }
 
@@ -1647,6 +1755,91 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             contextArtifacts: contextArtifacts,
             artifactCount: artifacts.count,
             pipelineStatus: pipelineStatus
+        )
+    }
+
+    private func makeMemoryLibraryRow(
+        memory: MemorySummary,
+        graphContext: MemoryGraphContext
+    ) throws -> MemoryLibraryRowSnapshot {
+        let artifacts = try fetchArtifacts(recordID: memory.id)
+        let artifactKinds = Array(Set(artifacts.map(\.kind))).sorted { $0.rawValue < $1.rawValue }
+        let relatedArcs = graphContext.arcs.filter { $0.sourceRecordIDs.contains(memory.id) }
+        let relatedArcIDs = Set(relatedArcs.map(\.id))
+        let relatedReflections = graphContext.reflections.filter { reflection in
+            reflection.sourceRecordIDs.contains(memory.id)
+                || reflection.linkedTemporalArcID.map { relatedArcIDs.contains($0) } == true
+        }
+        let entityIDs = Set(
+            graphContext.links
+                .filter { $0.sourceRecordID == memory.id || $0.sourceAnalysisRecordID == memory.id }
+                .map(\.entityID)
+        )
+
+        return MemoryLibraryRowSnapshot(
+            memory: memory,
+            artifactKinds: artifactKinds,
+            hasLocation: artifactKinds.contains(.location),
+            hasWeather: artifactKinds.contains(.weather),
+            hasMusic: artifactKinds.contains(.music),
+            relatedStorylineCount: relatedArcs.count,
+            relatedReflectionCount: relatedReflections.count,
+            entityCount: entityIDs.count
+        )
+    }
+
+    private func memoryLibraryRow(
+        _ row: MemoryLibraryRowSnapshot,
+        matches filter: MemoryLibraryFilter
+    ) -> Bool {
+        if let dateRange = filter.dateRange, !dateRange.contains(row.memory.record.updatedAt) {
+            return false
+        }
+        if !filter.artifactKinds.isEmpty, filter.artifactKinds.isDisjoint(with: Set(row.artifactKinds)) {
+            return false
+        }
+        if !filter.pipelineStages.isEmpty {
+            guard let stage = row.memory.pipelineStatus?.stage, filter.pipelineStages.contains(stage) else {
+                return false
+            }
+        }
+        switch filter.context {
+        case .any:
+            break
+        case .hasLocation:
+            guard row.hasLocation else { return false }
+        case .hasWeather:
+            guard row.hasWeather else { return false }
+        case .hasMusic:
+            guard row.hasMusic else { return false }
+        }
+        switch filter.insight {
+        case .any:
+            break
+        case .hasStoryline:
+            guard row.relatedStorylineCount > 0 else { return false }
+        case .hasReflection:
+            guard row.relatedReflectionCount > 0 else { return false }
+        case .hasEntities:
+            guard row.entityCount > 0 else { return false }
+        }
+        return true
+    }
+
+    private func makeReflectionSummary(
+        reflection: ReflectionSnapshot,
+        graphContext: MemoryGraphContext
+    ) -> ReflectionSummarySnapshot {
+        let linkedArc = reflection.linkedTemporalArcID.flatMap { arcID in
+            graphContext.arcs.first { $0.id == arcID }
+        }
+        let relatedRecordIDs = linkedArc.map {
+            graphContext.mergeUniqueIDs(reflection.sourceRecordIDs, $0.sourceRecordIDs)
+        } ?? reflection.sourceRecordIDs
+        return ReflectionSummarySnapshot(
+            reflection: reflection,
+            linkedArc: linkedArc,
+            relatedMemories: graphContext.relatedMemories(recordIDs: relatedRecordIDs, limit: 3)
         )
     }
 

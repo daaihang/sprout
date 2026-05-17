@@ -16,8 +16,8 @@ The public beta should feel unfinished only in the sense that more features are 
 - [x] Press-hold voice capture works from all tabs.
 - [x] Account / Settings is reachable from all tabs.
 - [x] Today Board uses typed cards and real data.
-- [ ] Memories supports browsing, detail, search, and filters.
-- [ ] Insights unifies storylines, reflections, people, places, themes, decisions.
+- [x] Memories supports browsing, detail, search, and filters.
+- [x] Insights unifies storylines, reflections, people, places, themes, decisions.
 - [x] Public app does not require Debug knowledge.
 
 ### 2.2 Trust Gates

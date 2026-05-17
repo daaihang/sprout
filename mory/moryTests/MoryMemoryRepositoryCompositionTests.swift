@@ -756,6 +756,229 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertTrue(result.reflections.contains(where: { !$0.summary.relatedMemories.isEmpty }))
     }
 
+    func testMemoryLibraryFiltersByArtifactStatusContextInsightAndDateGroups() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        let contextMemory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Context planning walk",
+                rawText: "Walked with Linh and reviewed planning priorities.",
+                captureSource: .composer,
+                artifacts: [
+                    .text(title: "Context planning walk", body: "Walked with Linh and reviewed planning priorities."),
+                    .location(title: "Cafe", summary: "Cafe near the station", latitude: 31.2, longitude: 121.4),
+                    .weather(condition: "Cloudy", temperatureCelsius: 22, humidity: 0.6, windSpeedKmh: 8, uvIndex: 2),
+                    .music(trackName: "Dreams", artistName: "Fleetwood Mac", albumName: "Rumours", durationSeconds: 257, artworkURL: nil)
+                ]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: contextMemory.record.id)
+
+        let photoMemory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Photo memory",
+                rawText: "Photo memory from the planning board.",
+                captureSource: .photo,
+                artifacts: [.photo(title: "Board photo", summary: "Planning board", filename: "board.jpg", imageData: nil, thumbnailData: nil, ocrText: "Planning board")]
+            )
+        )
+        try repository.upsertPipelineStatus(
+            MemoryPipelineStatusSnapshot(
+                recordID: photoMemory.record.id,
+                stage: .failed,
+                requestID: nil,
+                lastError: "network unavailable",
+                requestBody: nil,
+                responseBody: nil,
+                rawErrorBody: nil,
+                lastHTTPStatusCode: nil,
+                failedStage: "analyze",
+                lastAttemptAt: nil,
+                completedAt: nil,
+                updatedAt: Date.now
+            )
+        )
+
+        let linkMemory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Article memory",
+                rawText: "Saved a useful launch article.",
+                captureSource: .composer,
+                artifacts: [.link(title: "Launch notes", url: "https://example.com/launch", note: "Useful launch article")]
+            )
+        )
+        let linkRecordID = linkMemory.record.id
+        if let linkStore = try container.mainContext.fetch(
+            FetchDescriptor<RecordShellStore>(predicate: #Predicate { $0.id == linkRecordID })
+        ).first {
+            linkStore.updatedAt = Date.now.addingTimeInterval(-36 * 60 * 60)
+        }
+        try container.mainContext.save()
+
+        let all = try repository.fetchMemoryLibrary(filter: .empty, limit: nil)
+        XCTAssertEqual(all.totalCount, 3)
+        XCTAssertGreaterThanOrEqual(all.groups.count, 2)
+        XCTAssertTrue(all.metadata.availableArtifactKinds.contains(.photo))
+        XCTAssertTrue(all.metadata.availablePipelineStages.contains(.failed))
+
+        let photoOnly = try repository.fetchMemoryLibrary(
+            filter: MemoryLibraryFilter(artifactKinds: [.photo]),
+            limit: nil
+        )
+        XCTAssertEqual(photoOnly.filteredCount, 1)
+        XCTAssertEqual(photoOnly.groups.first?.rows.first?.memory.id, photoMemory.id)
+
+        let failedOnly = try repository.fetchMemoryLibrary(
+            filter: MemoryLibraryFilter(pipelineStages: [.failed]),
+            limit: nil
+        )
+        XCTAssertEqual(failedOnly.filteredCount, 1)
+        XCTAssertEqual(failedOnly.groups.first?.rows.first?.memory.id, photoMemory.id)
+
+        let weatherOnly = try repository.fetchMemoryLibrary(
+            filter: MemoryLibraryFilter(context: .hasWeather),
+            limit: nil
+        )
+        XCTAssertEqual(weatherOnly.filteredCount, 1)
+        XCTAssertEqual(weatherOnly.groups.first?.rows.first?.memory.id, contextMemory.id)
+
+        let entityBacked = try repository.fetchMemoryLibrary(
+            filter: MemoryLibraryFilter(insight: .hasEntities),
+            limit: nil
+        )
+        XCTAssertTrue(entityBacked.groups.flatMap(\.rows).contains { $0.memory.id == contextMemory.id })
+    }
+
+    func testDeleteMemoryRemovesLibraryRowAndPublicInsightsDoNotKeepOrphanSources() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        let first = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Planning walk one",
+                rawText: "Walked with Linh and reviewed quarter planning priorities.",
+                captureSource: .composer,
+                artifacts: [.text(title: "Planning walk one", body: "Walked with Linh and reviewed quarter planning priorities.")]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: first.record.id)
+        let second = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Planning walk two",
+                rawText: "Another walk with Linh returned to the same quarter planning priorities.",
+                captureSource: .composer,
+                artifacts: [.text(title: "Planning walk two", body: "Another walk with Linh returned to the same quarter planning priorities.")]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: second.record.id)
+
+        XCTAssertFalse(try repository.fetchInsightsPresentation(limitPerSection: 5).storylines.isEmpty)
+
+        try repository.deleteMemory(recordID: second.record.id)
+
+        let library = try repository.fetchMemoryLibrary(filter: .empty, limit: nil)
+        XCTAssertFalse(library.groups.flatMap(\.rows).contains { $0.memory.id == second.record.id })
+
+        let insights = try repository.fetchInsightsPresentation(limitPerSection: 10)
+        XCTAssertFalse(insights.storylines.contains { $0.arc.sourceRecordIDs.contains(second.record.id) })
+        XCTAssertFalse(insights.suggestedReflections.contains { $0.reflection.sourceRecordIDs.contains(second.record.id) })
+        XCTAssertFalse(insights.people.contains { $0.relatedMemories.contains(where: { $0.id == second.record.id }) })
+    }
+
+    func testInsightsPresentationHighlightsStorylinesLimitsReflectionsAndFiltersOrphans() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        let first = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Launch planning one",
+                rawText: "Dinner with Linh turned into a planning session for the next quarter.",
+                captureSource: .composer,
+                artifacts: [.text(title: "Launch planning one", body: "Dinner with Linh turned into a planning session for the next quarter.")]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: first.record.id)
+        let second = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Launch planning two",
+                rawText: "Another dinner with Linh circled back to the same planning session and quarter priorities.",
+                captureSource: .composer,
+                artifacts: [.text(title: "Launch planning two", body: "Another dinner with Linh circled back to the same planning session and quarter priorities.")]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: second.record.id)
+
+        let acceptedArc = try XCTUnwrap(repository.fetchTemporalArcSummaries(limit: 10).first)
+        try await repository.acceptTemporalArc(arcID: acceptedArc.arc.id)
+
+        let artifactID = try XCTUnwrap(try repository.fetchArtifacts(recordID: second.record.id).first?.id)
+        let decision = EntityNode(
+            kind: .decision,
+            displayName: "Reduce launch scope",
+            summary: "A concrete launch decision from the planning records.",
+            provenanceRecordIDs: [second.record.id],
+            createdAt: Date.now,
+            updatedAt: Date.now,
+            confidence: 0.91
+        )
+        try repository.upsert(entityNode: decision)
+        try repository.upsert(artifactEntityLink: ArtifactEntityLink(
+            artifactID: artifactID,
+            entityID: decision.id,
+            confidence: 0.91,
+            source: "test",
+            sourceRecordID: second.record.id,
+            sourceAnalysisRecordID: second.record.id,
+            createdAt: Date.now
+        ))
+        try repository.upsert(reflection: ReflectionSnapshot(
+            type: .pattern,
+            title: "Second suggested reflection",
+            body: "A second suggested reflection that should be available to the presentation limit.",
+            evidenceSummary: "planning",
+            confidence: 0.72,
+            status: .suggested,
+            linkedTemporalArcID: acceptedArc.arc.id,
+            sourceRecordIDs: [first.record.id, second.record.id],
+            sourceArtifactIDs: [artifactID],
+            sourceEntityIDs: [decision.id],
+            createdAt: Date.now
+        ))
+        try repository.upsert(reflection: ReflectionSnapshot(
+            type: .pattern,
+            title: "Orphan reflection",
+            body: "Should not appear publicly.",
+            evidenceSummary: "missing",
+            confidence: 0.99,
+            status: .suggested,
+            sourceRecordIDs: [UUID()],
+            sourceArtifactIDs: [],
+            createdAt: Date.now
+        ))
+        try repository.save()
+
+        let snapshot = try repository.fetchInsightsPresentation(limitPerSection: 1)
+
+        XCTAssertEqual(snapshot.highlightedStoryline?.arc.id, acceptedArc.arc.id)
+        XCTAssertEqual(snapshot.storylines.count, 1)
+        XCTAssertEqual(snapshot.suggestedReflections.count, 1)
+        XCTAssertFalse(snapshot.suggestedReflections.contains { $0.reflection.title == "Orphan reflection" })
+        XCTAssertFalse(snapshot.people.isEmpty)
+        XCTAssertFalse(snapshot.places.isEmpty)
+        XCTAssertFalse(snapshot.themes.isEmpty)
+        XCTAssertTrue(snapshot.decisions.contains { $0.entity.displayName == "Reduce launch scope" })
+    }
+
     func testCreateMemoryStillSucceedsWhenAnalysisHasNotRunYet() async throws {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(

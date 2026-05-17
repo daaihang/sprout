@@ -354,6 +354,90 @@ struct HomeBoardDebugSnapshot: Hashable, Sendable {
     let board: HomeBoardSnapshot
 }
 
+enum MemoryLibraryContextFilter: String, CaseIterable, Identifiable, Hashable, Sendable {
+    case any
+    case hasLocation
+    case hasWeather
+    case hasMusic
+
+    var id: String { rawValue }
+}
+
+enum MemoryLibraryInsightFilter: String, CaseIterable, Identifiable, Hashable, Sendable {
+    case any
+    case hasStoryline
+    case hasReflection
+    case hasEntities
+
+    var id: String { rawValue }
+}
+
+struct MemoryLibraryFilter: Hashable, Sendable {
+    var dateRange: ClosedRange<Date>?
+    var artifactKinds: Set<ArtifactKind>
+    var pipelineStages: Set<MemoryPipelineStage>
+    var context: MemoryLibraryContextFilter
+    var insight: MemoryLibraryInsightFilter
+
+    init(
+        dateRange: ClosedRange<Date>? = nil,
+        artifactKinds: Set<ArtifactKind> = [],
+        pipelineStages: Set<MemoryPipelineStage> = [],
+        context: MemoryLibraryContextFilter = .any,
+        insight: MemoryLibraryInsightFilter = .any
+    ) {
+        self.dateRange = dateRange
+        self.artifactKinds = artifactKinds
+        self.pipelineStages = pipelineStages
+        self.context = context
+        self.insight = insight
+    }
+
+    static var empty: MemoryLibraryFilter { MemoryLibraryFilter() }
+
+    var isActive: Bool {
+        dateRange != nil || !artifactKinds.isEmpty || !pipelineStages.isEmpty || context != .any || insight != .any
+    }
+}
+
+struct MemoryLibraryRowSnapshot: Identifiable, Hashable, Sendable {
+    let memory: MemorySummary
+    let artifactKinds: [ArtifactKind]
+    let hasLocation: Bool
+    let hasWeather: Bool
+    let hasMusic: Bool
+    let relatedStorylineCount: Int
+    let relatedReflectionCount: Int
+    let entityCount: Int
+
+    var id: UUID { memory.id }
+    var hasContext: Bool { hasLocation || hasWeather || hasMusic }
+    var hasInsights: Bool { relatedStorylineCount > 0 || relatedReflectionCount > 0 || entityCount > 0 }
+}
+
+struct MemoryLibraryDayGroup: Identifiable, Hashable, Sendable {
+    let date: Date
+    let rows: [MemoryLibraryRowSnapshot]
+
+    var id: Date { date }
+    var dayLabel: String { date.formatted(date: .abbreviated, time: .omitted) }
+}
+
+struct MemoryLibraryFilterMetadata: Hashable, Sendable {
+    let availableArtifactKinds: [ArtifactKind]
+    let availablePipelineStages: [MemoryPipelineStage]
+    let contextMemoryCount: Int
+    let insightMemoryCount: Int
+}
+
+struct MemoryLibrarySnapshot: Hashable, Sendable {
+    let filter: MemoryLibraryFilter
+    let groups: [MemoryLibraryDayGroup]
+    let totalCount: Int
+    let filteredCount: Int
+    let metadata: MemoryLibraryFilterMetadata
+}
+
 struct PersonMemorySummary: Identifiable, Hashable, Sendable {
     let entity: EntityNode
     let artifactCount: Int
@@ -489,6 +573,21 @@ struct PipelineStatusSummary: Identifiable, Hashable, Sendable {
     var id: UUID { recordID }
 }
 
+struct InsightsPresentationSnapshot: Hashable, Sendable {
+    let highlightedStoryline: TemporalArcSummarySnapshot?
+    let storylines: [TemporalArcSummarySnapshot]
+    let suggestedReflections: [ReflectionSummarySnapshot]
+    let savedReflections: [ReflectionSummarySnapshot]
+    let people: [EntityDetailSnapshot]
+    let places: [EntityDetailSnapshot]
+    let themes: [EntityDetailSnapshot]
+    let decisions: [EntityDetailSnapshot]
+    let topEdges: [EntityEdge]
+    let totalStorylineCount: Int
+    let totalReflectionCount: Int
+    let totalEntityCount: Int
+}
+
 @MainActor
 protocol MoryMemoryRepositorying: AnyObject {
     func createMemory(from draft: MemoryCaptureDraft) async throws -> MemorySummary
@@ -497,6 +596,7 @@ protocol MoryMemoryRepositorying: AnyObject {
     func deleteMemory(recordID: UUID) throws
     func refreshMemoryPipeline(recordID: UUID) async throws
     func fetchRecentMemories(limit: Int?) throws -> [MemorySummary]
+    func fetchMemoryLibrary(filter: MemoryLibraryFilter, limit: Int?) throws -> MemoryLibrarySnapshot
     func fetchTimeline(granularity: TimelineGranularity, limit: Int?) throws -> TimelineSnapshot
     func fetchHomeBoard(for date: Date, limit: Int) throws -> HomeBoardSnapshot
     func fetchHomeBoardDebugSnapshot(for date: Date, limit: Int) throws -> HomeBoardDebugSnapshot
@@ -512,6 +612,7 @@ protocol MoryMemoryRepositorying: AnyObject {
     func fetchPersonDetail(entityID: UUID) throws -> PersonDetailSnapshot?
     func fetchThemeSummaries(limit: Int?) throws -> [ThemeMemorySummary]
     func fetchGraphOverview(limitPerKind: Int?, edgeLimit: Int?) throws -> GraphOverviewSnapshot
+    func fetchInsightsPresentation(limitPerSection: Int?) throws -> InsightsPresentationSnapshot
     func fetchTemporalArcs(limit: Int?) throws -> [TemporalArc]
     func fetchTemporalArcSummaries(limit: Int?) throws -> [TemporalArcSummarySnapshot]
     func fetchTemporalArcDetail(arcID: UUID) throws -> TemporalArcDetailSnapshot?
