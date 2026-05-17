@@ -1,6 +1,6 @@
 # Mory v4 PRD Index
 
-> 更新时间：2026-05-16
+> 更新时间：2026-05-17
 
 ## 1. 文档目标
 
@@ -18,6 +18,7 @@ v4 的核心命题是：
 4. [04_ai_processing_rules.md](04_ai_processing_rules.md) — 每种 Artifact 的 AI 处理规则
 5. [05_context_auto_collection.md](05_context_auto_collection.md) — 自动采集的上下文策略
 6. [06_home_board_connection.md](06_home_board_connection.md) — 主页卡片与真实数据的连接
+7. [../STATUS_2026-05-17.md](../STATUS_2026-05-17.md) — 当前进度、文档修正和真机验证清单
 
 ## 3. v4 不改变的东西
 
@@ -30,7 +31,7 @@ v4 的核心命题是：
 ## 4. v4 新增的东西
 
 - 6 种 Artifact 获得完整的采集 → AI 处理 → 展示链路
-- 3 种自动上下文（天气、地点、音乐）
+- 3 种保存前上下文候选（天气、地点、音乐）
 - 认证持久化
 - AI 速度优化
 - 主页卡片接入真实数据

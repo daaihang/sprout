@@ -6,13 +6,15 @@ v4 的 capture 入口是 CaptureComposerView。用户在一次 capture 中可以
 
 - 写一段文字（必填）
 - 附加 0~N 个 Artifact（可选）
-- 系统自动附加上下文 Artifact（静默）
+- 系统在保存前采集上下文候选 Artifact，默认勾选，用户可取消或刷新
 
 保存时，系统同步完成：
 
 1. 写入 RecordShell + 所有 Artifact
-2. 自动采集上下文（天气/地点/音乐）并作为额外 Artifact 附加
+2. 将用户 Artifact 与已勾选的上下文候选一次性写入
 3. 触发异步 AI 分析流程
+
+> 2026-05-17 实现更新：v4 不再采用“点击保存时静默采集并晚到附加”的方案。当前实现是在 `CaptureComposerView` 打开后采集 location/weather/music 候选，保存时只写入用户已选择的候选。这样第一次 AI 分析一定基于稳定的 artifact 快照，避免保存后 append 导致分析输入和 UI 展示不一致。
 
 ## 2. 文字输入流程
 
@@ -140,23 +142,28 @@ v4 的 capture 入口是 CaptureComposerView。用户在一次 capture 中可以
 
 ## 7. 自动上下文附加流程
 
-在每次 capture 保存时，系统静默执行：
+在每次 Composer 打开时，系统自动采集上下文候选：
+
+```
+CaptureComposerView.onAppear {
+  contextCandidates = await ContextAutoCollector.collectAll(timeout: 3.0)
+  contextCandidates.forEach { $0.isSelected = $0.status == .ready }
+}
+```
+
+用户保存时，系统只合并当前被选中的候选：
 
 ```
 CaptureComposerView.save() {
-  // 1. 用户创建的 Artifact
   let userArtifacts = buildUserArtifacts()
+  let selectedContextArtifacts = contextCandidates
+    .filter(\.isSelected)
+    .map(\.draft)
 
-  // 2. 自动上下文
-  let weatherArtifact = await WeatherContextService.captureCurrentWeather()
-  let locationArtifact = await LocationContextService.captureCurrentLocation()
-  let musicArtifact = await MusicContextService.captureNowPlaying()
-
-  // 3. 合并
   let allArtifacts = userArtifacts
-    + [weatherArtifact, locationArtifact, musicArtifact].compactMap { $0 }
+    + stagedArtifactDrafts
+    + selectedContextArtifacts
 
-  // 4. 保存
   let memory = try await repository.createMemory(
     from: MemoryCaptureDraft(
       rawText: rawText,
@@ -166,5 +173,7 @@ CaptureComposerView.save() {
   )
 }
 ```
+
+权限缺失时，Composer 继续展示可启用入口；采集失败或超时不会阻塞保存。保存后不再追加 late context，本阶段不做 late context reconciliation。
 
 详见 [05_context_auto_collection.md](05_context_auto_collection.md)。

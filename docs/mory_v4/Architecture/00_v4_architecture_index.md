@@ -1,6 +1,6 @@
 # Mory v4 Architecture Index
 
-> 更新时间：2026-05-16
+> 更新时间：2026-05-17
 
 ## 1. 文档目标
 
@@ -9,7 +9,7 @@
 v4 不重写 v3 架构，它在现有五层模型之上增加：
 
 - Artifact 预处理层（本地 AI）
-- 上下文自动采集服务
+- 保存前上下文候选采集服务
 - 认证持久化
 - AI 速度优化
 - AnalyzeRequestBuilder 扩展
@@ -18,7 +18,7 @@ v4 不重写 v3 架构，它在现有五层模型之上增加：
 
 1. 新增的 Artifact 类型不改变 ontology。`ArtifactKind` 已预定义 9 种类型。
 2. 所有非文字 Artifact 必须在本地转化为文字后再参与 L2 分析。
-3. 自动上下文是 Artifact，不是 RecordShell 字段。
+3. 自动上下文以保存前候选形式进入 Artifact，不是 RecordShell 字段。
 4. 本地 AI（Vision/Speech）不发送用户数据到服务端。
 
 ## 3. 文档结构
@@ -30,6 +30,7 @@ v4 不重写 v3 架构，它在现有五层模型之上增加：
 5. [05_auth_persistence.md](05_auth_persistence.md) — Apple 登录持久化方案
 6. [06_ai_speed_optimization.md](06_ai_speed_optimization.md) — 服务端 AI 速度优化
 7. [07_build_roadmap.md](07_build_roadmap.md) — 实施路线图与验收标准
+8. [../STATUS_2026-05-17.md](../STATUS_2026-05-17.md) — 当前进度、文档修正和真机验证清单
 
 ## 4. 新增文件预览
 
@@ -49,7 +50,7 @@ mory/
       LinkMetadataExtractor.swift      (新建)
     Analysis/
       AnalyzeRequestBuilder.swift      (修改：扩展 artifact 输入)
-      ArchitecturePipelineExecutor.swift (修改：并行优化)
+      ArchitecturePipelineExecutor.swift (修改：Analyze 后安全并行优化，待实施)
     Auth/
       AppleAuthService.swift           (修改：持久化)
       KeychainCredentialStore.swift    (修改：token 刷新)
@@ -59,7 +60,7 @@ mory/
     MemoryFeatureModels.swift          (修改：MemorySummary 扩展)
   Features/
     Capture/
-      CaptureComposerView.swift        (修改：自动上下文 + 多模态)
+      CaptureComposerView.swift        (修改：保存前上下文候选 + 多模态)
     Home/
       HomeScreen.swift                 (修改：Board 卡片渲染)
 ```

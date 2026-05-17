@@ -4,6 +4,7 @@
 # Xcode
 xcuserdata/
 *.xcuserstate
+.idea/
 
 # Claude
 .claude/
@@ -14,6 +15,7 @@ DerivedData/
 
 # Go / backend local artifacts
 server/.idea/
+server/.env
 server/*.db
 server/*.db-shm
 server/*.db-wal

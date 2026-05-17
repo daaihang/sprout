@@ -52,7 +52,7 @@ struct ArchitecturePipelineExecutor {
         try upsertRecordAnalysis(analysis)
         try save()
 
-        // Step 4: Compute entity graph updates (runs while reflection API is in-flight)
+        // Step 4: Compute entity graph updates after analysis and before reflection.
         let graphUpdate = graphUpdater.apply(
             analysis: analysis,
             linkedArtifactIDs: record.artifactIDs,

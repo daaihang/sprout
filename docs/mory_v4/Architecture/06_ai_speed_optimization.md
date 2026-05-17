@@ -42,41 +42,37 @@ request := openAIChatRequest{
 
 > 注意：Phase B（并行化）会进一步降低到 ~15s，建议先完成 Phase A 验证延迟改善。
 
-### 2.2 Phase B: Analyze 和 Reflection 并行（0.5 天）
+### 2.2 Phase B: Analyze 后并行本地图谱与 Reflection（0.5 天，待实施）
 
-当前 Step 2（Analyze）和 Step 8（Reflection）是串行的。但 Reflection 的输入不完全依赖 Analyze 的输出。
+当前 Step 2（Analyze）和 Step 8（Reflection）是串行的。2026-05-17 代码审查后，v4 不再采用“Analyze 与 Reflection 同时开始”的方案，因为 Reflection 的 gate、salience、reflectionHint、实体和上下文都依赖 Analyze。直接并行会造成 Reflection 无法获得 Analyze 数据，降低内容质量和可解释性。
 
-改造 ArchitecturePipelineExecutor：
+推荐改造方式是在 Analyze 完成并保存后，再并行执行本地图谱/故事线和 Reflection：
 
 ```swift
-// 并行方案
+// 安全并行方案
 
 // 阶段 1: 获取数据 (本地)
 let record = fetchRecord()
 let artifacts = fetchArtifacts()
 let knownEntities = fetchEntities()
 
-// 阶段 2: 并行 AI 调用
-async let analysisResult = analysisService.analyze(record, artifacts, knownEntities)
-async let reflectionResult = analysisService.generateReflection(record, artifacts, ...)
-
-let analysis = try await analysisResult
-let reflection = try await reflectionResult
-
-// 阶段 3: 本地处理 (串行，依赖 analysis)
+// 阶段 2: Analyze 必须先完成
+let analysis = try await analysisService.analyze(record, artifacts, knownEntities)
 saveAnalysis(analysis)
-updateGraph(analysis)
-buildArcCandidates(analysis)
-promote()
-saveReflection(reflection)
+
+// 阶段 3: 使用 Analyze 结果并行执行
+async let graphResult = updateGraphAndArcs(analysis)
+async let reflectionResult = generateReflectionIfGatePasses(record, artifacts, analysis)
+
+try await graphResult
+if let reflection = try await reflectionResult {
+    saveReflection(reflection)
+}
 ```
 
-预期效果：25s → max(12s, 12s) ≈ 12s
+预期效果：保持 Reflection 质量，同时减少 Analyze 之后的尾部等待。最终是否达到 < 15s 需要用 Debug duration 和本地 Go 日志实测。
 
-**注意：** 并行化意味着 Reflection 在生成时不知道 Analyze 的完整结果（实体、主题等）。这是可接受的退化：
-
-- Reflection 的主要输入是 rawText + artifacts，不是 analysis
-- 后续 v5 可以做二次 reflection（用 analysis 结果增强）
+**明确不采用：** Analyze 和 Reflection 同时开始。该方案速度更快，但会让 Reflection 缺失 Analyze 的质量 gate 和语义提示，不符合当前 v4 “先保证核心内容正确”的取舍。
 
 ### 2.3 Phase C: 减少 Prompt 长度（0.5 天）
 
@@ -118,7 +114,7 @@ saveReflection(reflection)
 | GPT-4o-mini | 需验证 | ~5s | 中 |
 | 本地 Core ML | 需验证 | ~2s | 零 |
 
-建议 v4 先做 Phase A + B + C，达到 < 15s 目标。Phase D 和 E 作为增强。
+建议 v4 先完成 Phase A + C，并实测 Analyze 后安全并行方案。Phase D 和 E 作为增强。
 
 ## 3. 客户端感知优化
 
@@ -163,5 +159,5 @@ ArchitecturePipelineExecutor 完成后
 | Analyze 单次 | ~25s | ~12s | ~12s | ~10s | < 10s |
 | Reflection 单次 | ~25s | ~12s | ~12s | ~10s | < 10s |
 | 端到端（串行） | ~53s | ~27s | — | — | — |
-| 端到端（并行） | — | — | ~15s | ~12s | < 15s |
+| 端到端（Analyze 后安全并行） | — | — | 需实测 | 需实测 | < 15s |
 | 用户感知等待 | 53s | 27s | 15s | 12s | < 5s (streaming) |

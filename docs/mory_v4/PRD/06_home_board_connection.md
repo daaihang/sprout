@@ -24,7 +24,7 @@ Today Board 的卡片由 HomeBoardStoreBuilder 自动生成。规则：
 | 优先级 | 卡片类型 | 数据来源 | 展示条件 |
 |-------|---------|---------|---------|
 | 1 | 最新记忆 | 最近 3 条 MemorySummary | 始终展示 |
-| 2 | 进行中的故事线 | status = .active 的 TemporalArc | 有 active arc 时展示 |
+| 2 | 进行中的故事线 | status = .accepted 的 TemporalArc | 有 accepted arc 时展示 |
 | 3 | 最新感悟 | status = .suggested 的 ReflectionSnapshot | 有新感悟时展示 |
 | 4 | 今天回顾 | 去年/上月同日的记忆 | 有历史数据时展示 |
 | 5 | 关系提醒 | 最近 30 天未出现的高频人物 | 有足够人物数据时展示 |
@@ -85,10 +85,12 @@ Today Board 的卡片由 HomeBoardStoreBuilder 自动生成。规则：
 当前 `HomeBoardStoreBuilder` 存在但产出为空。v4 需要：
 
 1. 查询最近记忆（已有 `fetchRecentMemories`）
-2. 查询 active arcs（已有 `fetchTemporalArcs`）
+2. 查询 accepted arcs（已有 `fetchTemporalArcs` / graph context summaries）
 3. 查询 suggested reflections（已有 `fetchReflections`）
 4. 按优先级组装 CompositionItem
 5. 写入 Board + Composition
+
+> 2026-05-17 实现状态：当前代码中 `TemporalArcStatus` 没有 `.active`，产品 UI 使用 `.accepted` 表示可展示故事线。后续如果需要区分 “candidate / active / accepted”，需要先补状态迁移规则，再更新 Home 筛选。
 
 ### 5.2 卡片上下文展示
 

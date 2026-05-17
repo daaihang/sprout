@@ -2,7 +2,7 @@
 
 ## 1. 服务架构
 
-三个独立服务，统一由 ContextAutoCollector 协调。
+三个独立服务，统一由 ContextAutoCollector 协调。ContextAutoCollector 由 Composer 在保存前调用，用于生成可选择的上下文候选；它不在保存后追加 artifact。
 
 ```
 ContextAutoCollector
@@ -17,6 +17,15 @@ ContextAutoCollector
 2. 获取数据
 3. 转化为 CaptureArtifactDraft
 4. 超时/异常返回 nil
+
+调用时机：
+
+```
+CaptureComposerView.onAppear / refresh
+  → ContextAutoCollector.collectAll(timeout: 3s)
+  → ContextCandidate(draft, capturedAt, isSelected, status)
+  → 保存时 selected candidates 与用户 artifacts 一次性写入
+```
 
 ## 2. WeatherContextService
 
@@ -196,7 +205,7 @@ final class ContextPermissionManager: ObservableObject {
     @Published var microphoneStatus: AVAudioSession.RecordPermission = .undetermined
     @Published var speechStatus: SFSpeechRecognizerAuthorizationStatus = .notDetermined
 
-    /// 一次性请求所有上下文权限（在首次 capture 时调用）
+    /// 按需请求上下文权限（在 Composer 候选采集/刷新时调用）
     func requestContextPermissions() async {
         // 按顺序请求，避免弹窗重叠
         await requestLocationPermission()

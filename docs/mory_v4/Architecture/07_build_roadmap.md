@@ -4,6 +4,8 @@
 
 本路线图定义 v4 的实施顺序、每个阶段的交付物和验收标准。
 
+> 更新时间：2026-05-17。当前代码已进入 Beta 2 后半段：Capture / Context / Quality Gate 主链路已实现，剩余最高风险集中在 AI 速度目标、真机能力验证、Go 测试工具链和部分 P1/P2 功能。
+
 ## 2. 总体原则
 
 1. 每个 Phase 独立可交付，不存在跨 Phase 依赖。
@@ -43,15 +45,17 @@
 
 | # | 任务 | 文件 | 工作量 |
 |---|------|------|-------|
-| 1-1 | Analyze 和 Reflection 并行化 | ArchitecturePipelineExecutor | 0.5 天 |
+| 1-1 | Analyze 后安全并行 Graph/Arc 与 Reflection | ArchitecturePipelineExecutor | 0.5 天 |
 | 1-2 | Prompt 长度精简 | AnalyzeRequestBuilder, server ai/ | 0.5 天 |
 | 1-3 | 分析完成通知机制 | NotificationCenter 替代轮询 | 0.5 天 |
 
 ### 验收标准
 
 - [ ] 端到端分析 < 15s（DeepSeek Chat 模型）
-- [ ] MemoryDetailView 收到分析完成通知后自动刷新
-- [ ] Debug 页显示分析耗时
+- [x] Pipeline 完成后发送通知，相关 UI 可刷新
+- [ ] Debug 页稳定显示分阶段耗时
+
+> 当前取舍：不做 Analyze 与 Reflection 同时开始。Reflection 需要 Analyze 的 salience、reflectionHint、entities 和 gate 结果；为了内容质量，v4 先保持 Analyze 先完成，再评估安全并行。
 
 ---
 
@@ -119,7 +123,7 @@ mory/Infrastructure/AI/AudioTranscriptionService.swift
 
 ### 目标
 
-每次 capture 自动附加天气、地点、音乐。
+Composer 打开后自动采集天气、地点、音乐候选；保存时将用户已选候选与用户输入一次性写入。
 
 ### 动作
 
@@ -160,13 +164,14 @@ mory/Infrastructure/Context/ContextPermissionManager.swift
 
 ### 验收标准
 
-- [ ] 授权位置后，每次保存自动附加 location Artifact
-- [ ] 授权位置后，每次保存自动附加 weather Artifact
-- [ ] 授权 MusicKit 后，播放音乐时保存自动附加 music Artifact
-- [ ] 未授权时静默跳过，不影响保存
-- [ ] 上下文采集超时 3s 自动放弃
-- [ ] MemoryDetailView 正确展示天气/地点/音乐 Artifact
-- [ ] 天气/地点/音乐参与 AI 分析（出现在 prompt 中）
+- [x] Composer 打开后可生成 context candidates，成功候选默认选中
+- [x] 保存时 selected context artifacts 一次性写入 memory
+- [x] 未授权或采集失败时不影响保存
+- [x] 上下文采集超时 3s 自动放弃
+- [ ] 真机授权位置后，location/weather 候选稳定生成
+- [ ] 真机授权 MusicKit 且正在播放音乐时，music 候选稳定生成
+- [x] MemoryDetailView 正确展示天气/地点/音乐 Artifact
+- [x] 天气/地点/音乐参与 AI 分析（出现在 artifact context 中）
 
 ---
 
@@ -185,8 +190,9 @@ mory/Infrastructure/Context/ContextPermissionManager.swift
 
 ### 验收标准
 
-- [ ] 粘贴 URL 后 < 5s 显示标题和预览图
-- [ ] link Artifact 的 title/summary 来自页面元数据
+- [x] 粘贴 URL 后可提取标题和预览图
+- [ ] description / og:image URL 提取补齐
+- [x] link Artifact 的 title/summary 参与保存和分析
 
 ---
 
@@ -207,11 +213,12 @@ Today Board 展示真实数据。
 
 ### 验收标准
 
-- [ ] 首页展示最近 3 条记忆卡片
-- [ ] 记忆卡片展示天气/地点/音乐上下文
-- [ ] 有 active arc 时展示故事线卡片
-- [ ] 有 suggested reflection 时展示感悟卡片
-- [ ] 记忆 < 3 条时展示引导卡片
+- [x] 首页展示最近记忆卡片
+- [x] 记忆卡片可展示天气/地点/音乐上下文
+- [x] 有 accepted arc 时展示故事线卡片
+- [x] 有 suggested reflection 时展示感悟卡片
+- [x] 记忆 < 3 条时展示引导卡片
+- [ ] anniversary / relationship reminder 卡片待实现
 
 ---
 
@@ -231,9 +238,12 @@ Today Board 展示真实数据。
 
 ### 验收标准
 
-- [ ] 同一个人不会在图谱中出现多个节点
-- [ ] 低质量感悟（< 20 字、置信度 < 0.4）被过滤
-- [ ] 不相关记忆不会被聚到同一条故事线
+- [x] 同一个人不会在图谱中出现多个节点（仍需真实数据扩大验证）
+- [x] 低质量感悟被 gate 过滤
+- [x] 不相关记忆不会被聚到同一条故事线
+- [x] Quality Tuning Lab 支持 strict / balanced / experimental profile
+- [x] 本地保存 `QualityTuningPreference`，预留 `schemaVersion` / `syncKey` / `updatedAt`
+- [ ] Opt-in local batch 在真机/稳定模拟器环境中恢复定期运行
 
 ---
 

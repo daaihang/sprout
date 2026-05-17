@@ -99,14 +99,15 @@ struct MemoryCaptureArtifactBuilder {
             } else {
                 textContent = resolvedSummary
             }
+            let mimeType = filename.lowercased().hasSuffix(".caf") ? "audio/x-caf" : "audio/m4a"
             return Artifact(
                 recordID: recordID,
                 kind: .audio,
                 title: title?.trimmedOrNil ?? fallbackTitle?.trimmedOrNil ?? "Audio",
                 summary: resolvedSummary,
                 textContent: textContent,
-                payload: .media(ArtifactMediaRef(filename: filename, mimeType: "audio/m4a")),
-                mediaRef: ArtifactMediaRef(filename: filename, mimeType: "audio/m4a"),
+                payload: .media(ArtifactMediaRef(filename: filename, mimeType: mimeType)),
+                mediaRef: ArtifactMediaRef(filename: filename, mimeType: mimeType),
                 metadata: [:],
                 binaryPayload: audioData,
                 previewPayload: nil,

@@ -1,5 +1,6 @@
 import Speech
 import AVFoundation
+import Foundation
 
 final class AudioTranscriptionService: Sendable {
 
@@ -32,17 +33,31 @@ final class AudioTranscriptionService: Sendable {
 
         let start = Date()
 
+        let timeout = min(max(8.0, Double(audioData.count) / 24_000.0), 45.0)
         let transcription: String? = await withCheckedContinuation { continuation in
+            let lock = NSLock()
             var hasResumed = false
-            recognizer.recognitionTask(with: request) { result, error in
+            var task: SFSpeechRecognitionTask?
+
+            func resumeOnce(_ value: String?) {
+                lock.lock()
+                defer { lock.unlock() }
                 guard !hasResumed else { return }
+                hasResumed = true
+                task?.cancel()
+                continuation.resume(returning: value)
+            }
+
+            task = recognizer.recognitionTask(with: request) { result, error in
                 if let result, result.isFinal {
-                    hasResumed = true
-                    continuation.resume(returning: result.bestTranscription.formattedString)
+                    resumeOnce(result.bestTranscription.formattedString)
                 } else if error != nil {
-                    hasResumed = true
-                    continuation.resume(returning: nil)
+                    resumeOnce(nil)
                 }
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + timeout) {
+                resumeOnce(nil)
             }
         }
 

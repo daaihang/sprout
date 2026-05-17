@@ -4,20 +4,20 @@
 
 ### 1.1 v4 正式支持（P0）
 
-| ArtifactKind | 用户触发 | 自动采集 | AI 处理 | iOS 原生框架 | v3 现状 |
+| ArtifactKind | 用户触发 | 自动采集 | AI 处理 | iOS 原生框架 | 当前实现状态 |
 |-------------|---------|---------|--------|------------|--------|
 | `text` | 手动输入 | — | 润色/摘要/实体提取 | — | ✅ 已完成 |
-| `photo` | PhotosPicker | — | Vision 描述 → 文字 → 解析 | Vision / VisionKit | ⚠️ 可选取但无 AI |
-| `audio` | AVAudioRecorder | — | Speech 转写 → 润色 → 解析 | Speech / AVFoundation | ⚠️ 可录制但无转写 |
-| `weather` | — | ✅ 自动 | — | WeatherKit | ❌ 未实现 |
-| `location` | 手动/自动 | ✅ 自动 | 反向地理编码语义化 | CoreLocation / MapKit | ❌ 未实现 |
-| `music` | — | ✅ 自动 | — | MusicKit | ❌ 未实现 |
+| `photo` | PhotosPicker | — | Vision label + OCR → 解析 | Vision / PhotosUI | ✅ 已实现；真机相册/复杂图片待验 |
+| `audio` | AVAudioRecorder | — | Speech 转写 → 解析 | Speech / AVFoundation | ✅ 已实现；语言检测/真机准确率待验 |
+| `weather` | — | ✅ 保存前候选 | Artifact summary → 解析上下文 | WeatherKit | ✅ 已实现；真机 capability 待验 |
+| `location` | 手动/自动 | ✅ 保存前候选 | 反向地理编码语义化 | CoreLocation / MapKit | ✅ 已实现；真机权限待验 |
+| `music` | — | ✅ 保存前候选 | Artifact summary → 解析上下文 | MusicKit | ⚠️ 已接入；MusicKit 真机播放验证待完成 |
 
 ### 1.2 v4 计划支持（P1）
 
 | ArtifactKind | 用户触发 | AI 处理 | iOS 原生框架 |
 |-------------|---------|--------|------------|
-| `link` | 粘贴 URL | 元数据提取（title/description/og:image） | LinkPresentation |
+| `link` | 粘贴 URL | 元数据提取（title/preview image，description/og:image URL 待补） | LinkPresentation |
 | `personMention`* | 手动 @ | 匹配 Contacts + Mory EntityNode | Contacts |
 
 *注：`personMention` 不是 `ArtifactKind`，它是 `RecordShell.entityMentions` 字段，v3 ontology 已有此边界。
@@ -63,7 +63,7 @@ Artifact {
 Artifact {
   kind: .audio
   title: "录音 2026-05-16 10:30"       // 自动生成
-  summary: "AI 润色后的语音摘要"         // 服务端生成
+  summary: "转写摘要或用户编辑文本"
   textContent: "iOS Speech 转写的原始文字" // 本地 Speech
   mediaRef: ArtifactMediaRef {
     filename: "recording_1715843400.m4a"
@@ -77,6 +77,8 @@ Artifact {
   ]
 }
 ```
+
+> 当前实现注意：音频数据目前随 artifact 存储，后续建议迁移为 sandbox 文件引用，SwiftData 只保留 `ArtifactMediaRef` 和转写文本，避免数据库膨胀。
 
 ### 2.3 weather Artifact
 

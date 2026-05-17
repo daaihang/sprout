@@ -4,23 +4,30 @@
 
 自动上下文采集必须遵循三条原则：
 
-1. **零操作** — 用户不需要做任何事，上下文静默附加
+1. **低操作** — 系统自动采集候选并默认勾选，用户可取消或刷新
 2. **权限优雅降级** — 用户未授权某项权限时，该上下文跳过，不影响保存
-3. **不阻塞保存** — 上下文采集超时（3s）自动放弃，保存不等待
+3. **稳定输入快照** — 保存时只写入已采集且被选中的候选，AI 第一次分析使用同一份 artifact 快照
+4. **不阻塞保存** — 上下文采集超时（3s）自动放弃，保存不等待晚到结果
 
 ## 2. 采集时机
 
-每次 `CaptureComposerView.save()` 被调用时，系统并行采集所有上下文：
+每次 `CaptureComposerView` 打开时，系统并行采集上下文候选：
 
 ```
-保存按钮点击
-  ├── 写入 RecordShell + 用户 Artifact        （同步）
+Composer onAppear
   ├── WeatherContextService.capture()          （异步，timeout 3s）
   ├── LocationContextService.capture()         （异步，timeout 3s）
   └── MusicContextService.capture()            （异步，timeout 1s）
-  → 所有结果合并为 Artifact 写入
+  → 生成 ContextCandidate 列表
+  → 成功候选默认选中，用户可取消或刷新
+
+保存按钮点击
+  ├── 合并用户 Artifact + selected ContextCandidate
+  ├── 一次性写入 RecordShell + Artifact
   → 触发异步分析
 ```
+
+该设计替代早期“保存时静默采集”的方案，原因是后者会让第一次 AI 分析拿不到晚到上下文，或在保存/重跑/删除时留下不一致的派生数据。
 
 ## 3. 天气采集
 
@@ -147,8 +154,8 @@ func captureNowPlaying() async -> CaptureArtifactDraft? {
 
 | 权限 | 请求时机 |
 |------|---------|
-| 位置 | 用户第一次保存记忆时（解释用途） |
-| MusicKit | 用户第一次保存记忆时（如果正在播放音乐） |
+| 位置 | 用户打开 Composer 后启用/刷新上下文候选时 |
+| MusicKit | 用户打开 Composer 后启用/刷新音乐候选时 |
 | 麦克风 | 用户第一次选择录音类型时 |
 | 照片 | 用户第一次选择照片类型时 |
 | 语音识别 | 用户第一次录音后 |
@@ -181,4 +188,4 @@ enum ContextPermissionState: String, Codable {
 | 反向地理编码失败 | 仍保存坐标，title 用坐标代替 |
 | 采集超时（3s） | 取消该采集，保存已获取的 Artifact |
 
-所有错误静默处理，不向用户展示。保存操作永远成功。
+错误不阻断保存。权限缺失或候选失败可以在 Composer 中显示启用/刷新状态；产品 UI 不展示底层异常。

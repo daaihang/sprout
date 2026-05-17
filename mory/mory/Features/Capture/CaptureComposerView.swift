@@ -2,6 +2,7 @@ import SwiftUI
 import PhotosUI
 import AVFoundation
 import Combine
+import Speech
 
 struct CaptureComposerView: View {
     @Environment(\.memoryRepository) private var memoryRepository
@@ -126,16 +127,25 @@ struct CaptureComposerView: View {
                                         .font(.headline)
                                     Spacer()
                                     Button(String(localized: "capture.audio.stop")) {
-                                        audioRecorder.toggleRecording()
+                                        audioRecorder.stopRecording()
                                     }
                                     .buttonStyle(.borderedProminent)
                                     .tint(.red)
+                                }
+                            } else if audioRecorder.isStopping {
+                                HStack(spacing: 8) {
+                                    ProgressView()
+                                    Text("capture.audio.finalizing")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
                                 }
                             } else {
                                 Button {
                                     transcriptionText = ""
                                     transcriptionDuration = nil
-                                    audioRecorder.toggleRecording()
+                                    Task {
+                                        await audioRecorder.startRecording()
+                                    }
                                 } label: {
                                     Label(
                                         audioRecorder.recordedAudioURL != nil ? String(localized: "capture.audio.rerecord") : String(localized: "capture.audio.startRecording"),
@@ -143,6 +153,7 @@ struct CaptureComposerView: View {
                                     )
                                 }
                                 .buttonStyle(.borderedProminent)
+                                .disabled(audioRecorder.isStopping)
                             }
 
                             if let url = audioRecorder.recordedAudioURL {
@@ -154,9 +165,19 @@ struct CaptureComposerView: View {
                                         .foregroundStyle(.secondary)
                                 }
                             }
+                            if let recorderError = audioRecorder.errorMessage {
+                                Text(recorderError)
+                                    .font(.caption)
+                                    .foregroundStyle(.red)
+                            }
                         }
-                        .onChange(of: audioRecorder.isRecording) { wasRecording, isNowRecording in
-                            if wasRecording && !isNowRecording {
+                        .onChange(of: audioRecorder.liveTranscription) { _, transcript in
+                            if !transcript.isEmpty {
+                                transcriptionText = transcript
+                            }
+                        }
+                        .onChange(of: audioRecorder.recordedAudioData) { _, data in
+                            if data != nil && transcriptionText.trimmedOrNil == nil {
                                 Task { await transcribeAudio() }
                             }
                         }
@@ -430,7 +451,7 @@ struct CaptureComposerView: View {
     }
 
     private var canSave: Bool {
-        !isProcessingPhoto && !isTranscribing && !userArtifactDrafts.isEmpty
+        !isProcessingPhoto && !isTranscribing && !audioRecorder.isBusy && !userArtifactDrafts.isEmpty
     }
 
     private var currentArtifactDrafts: [CaptureArtifactDraft] {
@@ -708,57 +729,107 @@ private enum CaptureInputType: String, CaseIterable, Identifiable {
 
 @MainActor
 final class AudioRecorderModel: ObservableObject {
-    private var audioRecorder: AVAudioRecorder?
-    private var recordingTimer: Timer?
-    private let audioSession = AVAudioSession()
+    private enum RecordingState {
+        case idle
+        case recording
+        case stopping
+        case recorded
+        case failed
+    }
 
-    @Published var isRecording = false
+    private let audioEngine = AVAudioEngine()
+    private var audioFile: AVAudioFile?
+    private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
+    private var recognitionTask: SFSpeechRecognitionTask?
+    private var recordingTimer: Timer?
+    private let audioSession = AVAudioSession.sharedInstance()
+    private var currentRecordingURL: URL?
+
+    @Published private var state: RecordingState = .idle
     @Published var recordingDuration: TimeInterval = 0
     @Published var recordedAudioURL: URL?
     @Published var recordedAudioData: Data?
+    @Published var liveTranscription = ""
+    @Published var errorMessage: String?
+
+    var isRecording: Bool {
+        state == .recording
+    }
+
+    var isStopping: Bool {
+        state == .stopping
+    }
+
+    var isBusy: Bool {
+        state == .recording || state == .stopping
+    }
 
     var recordedFilename: String? {
         recordedAudioURL?.lastPathComponent
     }
 
-    init() {
-        setupAudioSession()
-    }
+    func startRecording() async {
+        guard !isBusy else { return }
+        clearRecordedOutput()
+        errorMessage = nil
 
-    private func setupAudioSession() {
+        guard await requestMicrophonePermission() else {
+            fail("Microphone permission is required to record audio.")
+            return
+        }
+        guard await requestSpeechPermission() else {
+            fail("Speech recognition permission is required to transcribe audio.")
+            return
+        }
+
+        let recognizer = SFSpeechRecognizer(locale: preferredSpeechLocale())
+        guard let recognizer, recognizer.isAvailable else {
+            fail("Speech recognizer is not available for the current language.")
+            return
+        }
+
         do {
-            try audioSession.setCategory(.playAndRecord, mode: .default)
+            try audioSession.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker, .duckOthers])
             try audioSession.setActive(true)
-        } catch {
-            print("Failed to setup audio session: \(error)")
-        }
-    }
 
-    func toggleRecording() {
-        if isRecording {
-            stopRecording()
-        } else {
-            startRecording()
-        }
-    }
+            let filename = "audio_\(Date().timeIntervalSince1970).caf"
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
+            let inputNode = audioEngine.inputNode
+            let inputFormat = inputNode.outputFormat(forBus: 0)
+            let request = SFSpeechAudioBufferRecognitionRequest()
+            request.shouldReportPartialResults = true
+            if #available(iOS 16.0, *) {
+                request.addsPunctuation = true
+            }
 
-    private func startRecording() {
-        let filename = "audio_\(Date().timeIntervalSince1970).m4a"
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
+            let file = try AVAudioFile(forWriting: url, settings: inputFormat.settings)
+            recognitionRequest = request
+            audioFile = file
+            currentRecordingURL = url
 
-        let settings: [String: Any] = [
-            AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
-            AVSampleRateKey: 44100,
-            AVNumberOfChannelsKey: 1,
-            AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
-        ]
+            recognitionTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
+                Task { @MainActor in
+                    guard let self else { return }
+                    if let result {
+                        self.liveTranscription = result.bestTranscription.formattedString
+                    }
+                    if let error, self.isRecording {
+                        self.errorMessage = error.localizedDescription
+                    }
+                }
+            }
 
-        do {
-            audioRecorder = try AVAudioRecorder(url: url, settings: settings)
-            audioRecorder?.record()
-            isRecording = true
+            inputNode.removeTap(onBus: 0)
+            inputNode.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) { buffer, _ in
+                request.append(buffer)
+                try? file.write(from: buffer)
+            }
+
+            audioEngine.prepare()
+            try audioEngine.start()
+
+            state = .recording
             recordingDuration = 0
-
             recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
                 guard let self else { return }
                 MainActor.assumeIsolated {
@@ -766,28 +837,103 @@ final class AudioRecorderModel: ObservableObject {
                 }
             }
         } catch {
-            print("Failed to start recording: \(error)")
+            fail(error.localizedDescription)
         }
     }
 
-    private func stopRecording() {
+    func stopRecording() {
+        guard state == .recording else { return }
+        state = .stopping
         recordingTimer?.invalidate()
         recordingTimer = nil
-        audioRecorder?.stop()
-        isRecording = false
 
-        if let url = audioRecorder?.url {
+        audioEngine.inputNode.removeTap(onBus: 0)
+        audioEngine.stop()
+        recognitionRequest?.endAudio()
+        recognitionTask?.finish()
+
+        let url = currentRecordingURL
+        audioFile = nil
+        recognitionRequest = nil
+        recognitionTask = nil
+        currentRecordingURL = nil
+        try? audioSession.setActive(false, options: .notifyOthersOnDeactivation)
+
+        if let url {
             recordedAudioURL = url
             recordedAudioData = try? Data(contentsOf: url)
         }
+        state = recordedAudioURL == nil ? .idle : .recorded
     }
 
     func clearRecording() {
         if isRecording {
             stopRecording()
         }
+        clearRecordedOutput()
+        errorMessage = nil
+        state = .idle
+    }
+
+    private func clearRecordedOutput() {
         recordedAudioURL = nil
         recordedAudioData = nil
+        liveTranscription = ""
         recordingDuration = 0
+    }
+
+    private func fail(_ message: String) {
+        errorMessage = message
+        state = .failed
+        recordingTimer?.invalidate()
+        recordingTimer = nil
+        if audioEngine.isRunning {
+            audioEngine.inputNode.removeTap(onBus: 0)
+            audioEngine.stop()
+        }
+        recognitionRequest?.endAudio()
+        recognitionTask?.cancel()
+        recognitionRequest = nil
+        recognitionTask = nil
+        audioFile = nil
+        currentRecordingURL = nil
+        try? audioSession.setActive(false, options: .notifyOthersOnDeactivation)
+    }
+
+    private func requestMicrophonePermission() async -> Bool {
+        if AVAudioApplication.shared.recordPermission == .granted { return true }
+        if AVAudioApplication.shared.recordPermission == .denied { return false }
+        return await withCheckedContinuation { continuation in
+            AVAudioApplication.requestRecordPermission { granted in
+                continuation.resume(returning: granted)
+            }
+        }
+    }
+
+    private func requestSpeechPermission() async -> Bool {
+        let status = SFSpeechRecognizer.authorizationStatus()
+        if status == .authorized { return true }
+        if status != .notDetermined { return false }
+        return await withCheckedContinuation { continuation in
+            SFSpeechRecognizer.requestAuthorization { status in
+                continuation.resume(returning: status == .authorized)
+            }
+        }
+    }
+
+    private func preferredSpeechLocale() -> Locale {
+        for localeId in Locale.preferredLanguages {
+            let locale = Locale(identifier: localeId)
+            if let code = locale.language.languageCode?.identifier {
+                switch code {
+                case "zh": return Locale(identifier: "zh-Hans")
+                case "en": return Locale(identifier: "en-US")
+                case "ja": return Locale(identifier: "ja-JP")
+                case "ko": return Locale(identifier: "ko-KR")
+                default: continue
+                }
+            }
+        }
+        return Locale(identifier: "zh-Hans")
     }
 }

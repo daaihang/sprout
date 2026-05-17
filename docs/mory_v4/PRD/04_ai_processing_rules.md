@@ -136,10 +136,12 @@ Step 8: Reflection     ~25s（DeepSeek API 调用）
 
 | 优化项 | 预期效果 | 工作量 |
 |-------|---------|-------|
-| 确认 AI_MODEL 是否为 deepseek-reasoner | 如果是，换成 deepseek-chat 可降到 ~20s | 1 小时 |
-| Analyze 和 Reflection 并行 | 总时间 = max(25s, 25s) ≈ 25s | 0.5 天 |
+| 禁用模型 thinking / reasoning 模式 | 单次 AI 调用降到约 8-12s，需实测 | 0.5 小时 |
+| Analyze 完成后安全并行 Graph/Arc 与 Reflection | 保留 Analyze gate，同时减少尾部等待 | 0.5 天 |
 | 减少 prompt 长度 | 每次调用降低 3-5s | 0.5 天 |
 | streaming 反馈 | 不减时间，但用户感知更好 | 1 天 |
+
+> 不采用 Analyze 与 Reflection 同时开始。Reflection 需要 Analyze 的 salience、reflectionHint、entities 和 gate，否则会牺牲感悟质量。
 
 ### 5.2 中期优化
 

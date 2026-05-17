@@ -381,6 +381,23 @@
         }
       }
     },
+    "capture.audio.finalizing" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finishing recording..."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在结束录音..."
+          }
+        }
+      }
+    },
     "capture.audio.recording %lld" : {
       "extractionState" : "manual",
       "localizations" : {

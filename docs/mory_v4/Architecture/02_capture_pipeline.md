@@ -20,7 +20,7 @@
       ├── PhotoArtifactProcessor  → Vision 描述 + OCR
       ├── AudioTranscriptionService → Speech 转写
       └── LinkMetadataExtractor → URL 元数据
-  → [NEW] ContextAutoCollector 并行采集上下文
+  → [NEW] 合并保存前已采集并选中的上下文候选
       ├── WeatherContextService → weather Artifact
       ├── LocationContextService → location Artifact
       └── MusicContextService → music Artifact
@@ -43,17 +43,14 @@
 @MainActor
 final class CaptureOrchestrator {
     private let artifactPreprocessor: ArtifactPreprocessor
-    private let contextCollector: ContextAutoCollector
     private let repository: MoryMemoryRepositorying
 
     func capture(draft: MemoryCaptureDraft) async throws -> MemorySummary {
-        // Step 1: 预处理用户 Artifact（本地 AI）
+        // Step 1: 保存 CaptureComposerView 传入的完整 draft。
+        // draft.artifacts 已包含用户 Artifact 和 selected context candidates。
         let processedArtifacts = await artifactPreprocessor.process(draft.artifacts)
 
-        // Step 2: 并行采集上下文（超时 3s）
-        let contextArtifacts = await contextCollector.collectAll(timeout: 3.0)
-
-        // Step 3: 合并
+        // Step 2: 构造稳定输入快照
         let finalDraft = MemoryCaptureDraft(
             title: draft.title,
             rawText: draft.rawText.isEmpty
@@ -62,10 +59,10 @@ final class CaptureOrchestrator {
             mood: draft.mood,
             inputContext: draft.inputContext,
             captureSource: draft.captureSource,
-            artifacts: processedArtifacts.drafts + contextArtifacts
+            artifacts: processedArtifacts.drafts
         )
 
-        // Step 4: 保存 + 触发分析
+        // Step 3: 保存 + 触发一次 pipeline refresh
         return try await repository.createMemory(from: finalDraft)
     }
 }
@@ -142,6 +139,8 @@ final class ArtifactPreprocessor {
 
 ### 3.3 ContextAutoCollector
 
+ContextAutoCollector 不在保存路径中追加 artifact。它由 Composer 在保存前调用，返回可被用户选择的候选。
+
 ```swift
 // ContextAutoCollector.swift
 
@@ -212,3 +211,5 @@ func buildArtifactContext(from artifacts: [Artifact]) -> String {
 | ArchitecturePipelineExecutor | 与 v3 相同：记录错误，可重试 |
 
 任何预处理/采集失败都不阻塞保存。
+
+保存后不支持 late context append。未来如果需要晚到上下文，必须引入 `analysisVersion` / reconcile 语义，避免旧分析和新 artifact 混用。
