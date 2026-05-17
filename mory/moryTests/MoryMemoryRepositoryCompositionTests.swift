@@ -815,6 +815,104 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertEqual(todoArtifact.metadata["todo"], "true")
     }
 
+    func testQuickTextCaptureDraftPersistsTextMemoryAndPendingPipeline() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Quick hallway thought",
+                rawText: "Met Alex after lunch and decided to revisit the launch copy.",
+                mood: "focused",
+                inputContext: "quick text capture",
+                captureSource: .composer,
+                artifacts: [.text(title: "Quick hallway thought", body: "Met Alex after lunch and decided to revisit the launch copy.")]
+            )
+        )
+
+        let detail = try XCTUnwrap(repository.fetchMemoryDetail(recordID: memory.record.id))
+        let textArtifact = try XCTUnwrap(detail.artifacts.first)
+
+        XCTAssertEqual(detail.record.rawText, "Met Alex after lunch and decided to revisit the launch copy.")
+        XCTAssertEqual(detail.record.inputContext, "quick text capture")
+        XCTAssertEqual(textArtifact.kind, .text)
+        XCTAssertEqual(textArtifact.summary, "Met Alex after lunch and decided to revisit the launch copy.")
+        XCTAssertEqual(detail.pipelineStatus?.stage, .pending)
+    }
+
+    func testQuickVoiceCaptureDraftPersistsAudioArtifactWithTranscript() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Protecting morning writing time",
+                rawText: "I keep returning to protecting mornings for writing before meetings.",
+                mood: nil,
+                inputContext: "quick voice capture",
+                captureSource: .audio,
+                artifacts: [.audio(
+                    title: "Voice note",
+                    summary: "I keep returning to protecting mornings for writing before meetings.",
+                    filename: "quick_voice.caf",
+                    audioData: Data([1, 2, 3, 4]),
+                    transcriptionText: "I keep returning to protecting mornings for writing before meetings."
+                )]
+            )
+        )
+
+        let detail = try XCTUnwrap(repository.fetchMemoryDetail(recordID: memory.record.id))
+        let audioArtifact = try XCTUnwrap(detail.artifacts.first)
+
+        XCTAssertEqual(detail.record.captureSource, .audio)
+        XCTAssertEqual(detail.record.inputContext, "quick voice capture")
+        XCTAssertEqual(audioArtifact.kind, .audio)
+        XCTAssertEqual(audioArtifact.title, "Voice note")
+        XCTAssertEqual(audioArtifact.mediaRef?.filename, "quick_voice.caf")
+        XCTAssertEqual(audioArtifact.textContent, "I keep returning to protecting mornings for writing before meetings.")
+        XCTAssertEqual(detail.pipelineStatus?.stage, .pending)
+    }
+
+    func testQuickVoiceCaptureDraftCanPersistAudioWithoutTranscript() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Voice note",
+                rawText: "Audio capture",
+                mood: nil,
+                inputContext: "quick voice capture",
+                captureSource: .audio,
+                artifacts: [.audio(
+                    title: "Voice note",
+                    summary: "Audio capture",
+                    filename: "quiet_voice.caf",
+                    audioData: Data([5, 6, 7]),
+                    transcriptionText: ""
+                )]
+            )
+        )
+
+        let detail = try XCTUnwrap(repository.fetchMemoryDetail(recordID: memory.record.id))
+        let audioArtifact = try XCTUnwrap(detail.artifacts.first)
+
+        XCTAssertEqual(detail.record.rawText, "Audio capture")
+        XCTAssertEqual(audioArtifact.kind, .audio)
+        XCTAssertEqual(audioArtifact.summary, "Audio capture")
+        XCTAssertEqual(audioArtifact.textContent, "Audio capture")
+        XCTAssertEqual(audioArtifact.mediaRef?.filename, "quiet_voice.caf")
+    }
+
     func testAppendContextArtifactsPersistsWeatherLocationMusicAndResetsPipeline() async throws {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(

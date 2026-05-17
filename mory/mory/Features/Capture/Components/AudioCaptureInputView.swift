@@ -2,11 +2,9 @@ import SwiftUI
 
 struct AudioCaptureInputView: View {
     @ObservedObject var audioRecorder: AudioRecorderModel
-    @Binding var isTranscribing: Bool
     @Binding var transcriptionText: String
     @Binding var transcriptionDuration: TimeInterval?
     @Binding var noteText: String
-    let onTranscribe: () async -> Void
 
     var body: some View {
         VStack(spacing: 12) {
@@ -20,15 +18,15 @@ struct AudioCaptureInputView: View {
                         .font(.headline)
                     Spacer()
                     Button(String(localized: "capture.audio.stop")) {
-                        audioRecorder.stopRecording()
+                        Task { await audioRecorder.stopAndTranscribe() }
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(.red)
                 }
-            } else if audioRecorder.isStopping {
+            } else if audioRecorder.isStopping || audioRecorder.isTranscribing {
                 HStack(spacing: 8) {
                     ProgressView()
-                    Text("capture.audio.finalizing")
+                    Text(audioRecorder.isTranscribing ? "capture.audio.transcribing" : "capture.audio.finalizing")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -67,20 +65,16 @@ struct AudioCaptureInputView: View {
                 transcriptionText = transcript
             }
         }
-        .onChange(of: audioRecorder.recordedAudioData) { _, data in
-            if data != nil && transcriptionText.trimmedOrNil == nil {
-                Task { await onTranscribe() }
+        .onChange(of: audioRecorder.finalTranscription) { _, transcript in
+            if !transcript.isEmpty {
+                transcriptionText = transcript
             }
         }
+        .onChange(of: audioRecorder.transcriptionDuration) { _, duration in
+            transcriptionDuration = duration
+        }
 
-        if isTranscribing {
-            HStack(spacing: 8) {
-                ProgressView()
-                Text("capture.audio.transcribing")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        } else if !transcriptionText.isEmpty {
+        if !transcriptionText.isEmpty {
             VStack(alignment: .leading, spacing: 4) {
                 Text("capture.audio.transcription")
                     .font(.caption)
