@@ -632,6 +632,22 @@ protocol MoryMemoryRepositorying: AnyObject {
     func clearAllLocalData() throws
     func fetchUserSettingsPreference() throws -> UserSettingsPreference
     func saveUserSettingsPreference(_ preference: UserSettingsPreference) throws
+    func fetchIntelligencePreferences() throws -> IntelligencePreferences
+    func saveIntelligencePreferences(_ preferences: IntelligencePreferences) throws
+    func fetchV6FeatureFlags() throws -> V6FeatureFlags
+    func saveV6FeatureFlags(_ flags: V6FeatureFlags) throws
+    func fetchEntityProfile(entityID: UUID) throws -> EntityProfile?
+    func fetchEntityProfiles(kind: EntityKind?, limit: Int?) throws -> [EntityProfile]
+    func upsertEntityProfile(_ profile: EntityProfile) throws
+    func fetchClarificationQuestions(status: ClarificationQuestionStatus?, limit: Int?) throws -> [ClarificationQuestion]
+    func upsertClarificationQuestion(_ question: ClarificationQuestion) throws
+    func answerClarificationQuestion(_ id: UUID, answer: ClarificationAnswer) throws
+    func dismissClarificationQuestion(_ id: UUID) throws
+    func fetchIntelligenceJobs(status: IntelligenceJobStatus?, limit: Int?) throws -> [IntelligenceJob]
+    func upsertIntelligenceJob(_ job: IntelligenceJob) throws
+    func fetchGraphDeltas(applied: Bool?, limit: Int?) throws -> [GraphDelta]
+    func upsertGraphDelta(_ delta: GraphDelta) throws
+    func markGraphDeltaApplied(_ id: UUID, appliedAt: Date) throws
     func fetchQualityTuningPreference() throws -> QualityTuningPreference
     func saveQualityTuningPreference(_ preference: QualityTuningPreference) throws
     func runQualityTuningScenario(_ request: QualityTuningRunRequest) async throws -> QualityTuningRunReport

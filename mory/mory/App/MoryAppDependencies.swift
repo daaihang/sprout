@@ -60,6 +60,22 @@ private final class MissingMemoryRepository: MoryMemoryRepositorying {
     func clearAllLocalData() throws { let _: Void = fail() }
     func fetchUserSettingsPreference() throws -> UserSettingsPreference { fail() }
     func saveUserSettingsPreference(_ preference: UserSettingsPreference) throws { let _: Void = fail() }
+    func fetchIntelligencePreferences() throws -> IntelligencePreferences { fail() }
+    func saveIntelligencePreferences(_ preferences: IntelligencePreferences) throws { let _: Void = fail() }
+    func fetchV6FeatureFlags() throws -> V6FeatureFlags { fail() }
+    func saveV6FeatureFlags(_ flags: V6FeatureFlags) throws { let _: Void = fail() }
+    func fetchEntityProfile(entityID: UUID) throws -> EntityProfile? { fail() }
+    func fetchEntityProfiles(kind: EntityKind?, limit: Int?) throws -> [EntityProfile] { fail() }
+    func upsertEntityProfile(_ profile: EntityProfile) throws { let _: Void = fail() }
+    func fetchClarificationQuestions(status: ClarificationQuestionStatus?, limit: Int?) throws -> [ClarificationQuestion] { fail() }
+    func upsertClarificationQuestion(_ question: ClarificationQuestion) throws { let _: Void = fail() }
+    func answerClarificationQuestion(_ id: UUID, answer: ClarificationAnswer) throws { let _: Void = fail() }
+    func dismissClarificationQuestion(_ id: UUID) throws { let _: Void = fail() }
+    func fetchIntelligenceJobs(status: IntelligenceJobStatus?, limit: Int?) throws -> [IntelligenceJob] { fail() }
+    func upsertIntelligenceJob(_ job: IntelligenceJob) throws { let _: Void = fail() }
+    func fetchGraphDeltas(applied: Bool?, limit: Int?) throws -> [GraphDelta] { fail() }
+    func upsertGraphDelta(_ delta: GraphDelta) throws { let _: Void = fail() }
+    func markGraphDeltaApplied(_ id: UUID, appliedAt: Date) throws { let _: Void = fail() }
     func fetchQualityTuningPreference() throws -> QualityTuningPreference { fail() }
     func saveQualityTuningPreference(_ preference: QualityTuningPreference) throws { let _: Void = fail() }
     func runQualityTuningScenario(_ request: QualityTuningRunRequest) async throws -> QualityTuningRunReport { fail() }

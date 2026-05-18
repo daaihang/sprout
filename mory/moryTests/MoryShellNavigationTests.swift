@@ -5,9 +5,9 @@ import XCTest
 @testable import mory
 
 final class MoryShellNavigationTests: XCTestCase {
-    func testPublicTabsAreExactlyTodayMemoriesAndInsights() {
-        XCTAssertEqual(MoryAppTab.publicTabs, [.today, .memories, .insights])
-        XCTAssertEqual(MoryAppTab.publicTabs.map(\.titleKey), ["tab.today", "tab.memories", "tab.insights"])
+    func testPublicTabsIncludeSearchAsNativeTab() {
+        XCTAssertEqual(MoryAppTab.publicTabs, [.today, .memories, .insights, .search])
+        XCTAssertEqual(MoryAppTab.publicTabs.map(\.titleKey), ["tab.today", "tab.memories", "tab.insights", "search.nav.title"])
     }
 
     func testOnboardingContentIsShortSkippableAndStartsCapture() {

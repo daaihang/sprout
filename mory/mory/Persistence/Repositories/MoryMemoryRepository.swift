@@ -1060,6 +1060,12 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     }
 
     func clearAllLocalData() throws {
+        try deleteAll(NotificationIntentStore.self)
+        try deleteAll(HomeBoardSignalStore.self)
+        try deleteAll(GraphDeltaStore.self)
+        try deleteAll(IntelligenceJobStore.self)
+        try deleteAll(ClarificationQuestionStore.self)
+        try deleteAll(EntityProfileStore.self)
         try deleteAll(HomeBoardPreferenceStore.self)
         try deleteAll(CompositionItemStore.self)
         try deleteAll(CompositionStore.self)
@@ -1090,6 +1096,176 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
 
     func saveUserSettingsPreference(_ preference: UserSettingsPreference) throws {
         try upsert(userSettingsPreference: preference)
+        try save()
+    }
+
+    func fetchIntelligencePreferences() throws -> IntelligencePreferences {
+        guard let store = try fetchIntelligencePreferenceStore() else {
+            return .defaults
+        }
+        return store.preferencesDomainModel
+    }
+
+    func saveIntelligencePreferences(_ preferences: IntelligencePreferences) throws {
+        let syncKey = IntelligencePreferences.defaultSyncKey
+        if let existing = try fetchIntelligencePreferenceStore() {
+            var normalized = preferences
+            normalized.syncKey = syncKey
+            existing.apply(preferences: normalized)
+        } else {
+            var normalized = preferences
+            normalized.syncKey = syncKey
+            modelContext.insert(IntelligencePreferenceStore(preferences: normalized, featureFlags: .defaults))
+        }
+        try save()
+    }
+
+    func fetchV6FeatureFlags() throws -> V6FeatureFlags {
+        guard let store = try fetchIntelligencePreferenceStore() else {
+            return .defaults
+        }
+        return store.featureFlagsDomainModel
+    }
+
+    func saveV6FeatureFlags(_ flags: V6FeatureFlags) throws {
+        if let existing = try fetchIntelligencePreferenceStore() {
+            existing.apply(featureFlags: flags)
+        } else {
+            modelContext.insert(IntelligencePreferenceStore(preferences: .defaults, featureFlags: flags))
+        }
+        try save()
+    }
+
+    func fetchEntityProfile(entityID: UUID) throws -> EntityProfile? {
+        let descriptor = FetchDescriptor<EntityProfileStore>(
+            predicate: #Predicate { $0.entityID == entityID }
+        )
+        return try modelContext.fetch(descriptor).first?.domainModel
+    }
+
+    func fetchEntityProfiles(kind: EntityKind?, limit: Int?) throws -> [EntityProfile] {
+        let stores = try modelContext.fetch(
+            FetchDescriptor<EntityProfileStore>(
+                sortBy: [SortDescriptor(\.updatedAt, order: .reverse)]
+            )
+        )
+        let profiles = stores
+            .map(\.domainModel)
+            .filter { profile in
+                guard let kind else { return true }
+                return profile.kind == kind
+            }
+        return applyLimit(limit, to: profiles)
+    }
+
+    func upsertEntityProfile(_ profile: EntityProfile) throws {
+        try upsert(entityProfile: profile)
+        try save()
+    }
+
+    func fetchClarificationQuestions(status: ClarificationQuestionStatus?, limit: Int?) throws -> [ClarificationQuestion] {
+        let stores = try modelContext.fetch(
+            FetchDescriptor<ClarificationQuestionStore>(
+                sortBy: [
+                    SortDescriptor(\.priority, order: .reverse),
+                    SortDescriptor(\.createdAt, order: .reverse),
+                ]
+            )
+        )
+        let questions = stores
+            .map(\.domainModel)
+            .filter { question in
+                guard let status else { return true }
+                return question.status == status
+            }
+        return applyLimit(limit, to: questions)
+    }
+
+    func upsertClarificationQuestion(_ question: ClarificationQuestion) throws {
+        try upsert(clarificationQuestion: question)
+        try save()
+    }
+
+    func answerClarificationQuestion(_ id: UUID, answer: ClarificationAnswer) throws {
+        guard let existing = try modelContext.fetch(
+            FetchDescriptor<ClarificationQuestionStore>(predicate: #Predicate { $0.id == id })
+        ).first else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+        var updated = existing.domainModel
+        updated.status = .answered
+        updated.answer = answer
+        updated.answeredAt = answer.answeredAt
+        updated.dismissedAt = nil
+        existing.apply(domainModel: updated)
+        try save()
+    }
+
+    func dismissClarificationQuestion(_ id: UUID) throws {
+        guard let existing = try modelContext.fetch(
+            FetchDescriptor<ClarificationQuestionStore>(predicate: #Predicate { $0.id == id })
+        ).first else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+        var updated = existing.domainModel
+        updated.status = .dismissed
+        updated.dismissedAt = Date.now
+        existing.apply(domainModel: updated)
+        try save()
+    }
+
+    func fetchIntelligenceJobs(status: IntelligenceJobStatus?, limit: Int?) throws -> [IntelligenceJob] {
+        let stores = try modelContext.fetch(
+            FetchDescriptor<IntelligenceJobStore>(
+                sortBy: [
+                    SortDescriptor(\.priority, order: .reverse),
+                    SortDescriptor(\.scheduledAt, order: .forward),
+                ]
+            )
+        )
+        let jobs = stores
+            .map(\.domainModel)
+            .filter { job in
+                guard let status else { return true }
+                return job.status == status
+            }
+        return applyLimit(limit, to: jobs)
+    }
+
+    func upsertIntelligenceJob(_ job: IntelligenceJob) throws {
+        try upsert(intelligenceJob: job)
+        try save()
+    }
+
+    func fetchGraphDeltas(applied: Bool?, limit: Int?) throws -> [GraphDelta] {
+        let stores = try modelContext.fetch(
+            FetchDescriptor<GraphDeltaStore>(
+                sortBy: [SortDescriptor(\.createdAt, order: .reverse)]
+            )
+        )
+        let deltas = stores
+            .map(\.domainModel)
+            .filter { delta in
+                guard let applied else { return true }
+                return (delta.appliedAt != nil) == applied
+            }
+        return applyLimit(limit, to: deltas)
+    }
+
+    func upsertGraphDelta(_ delta: GraphDelta) throws {
+        try upsert(graphDelta: delta)
+        try save()
+    }
+
+    func markGraphDeltaApplied(_ id: UUID, appliedAt: Date = .now) throws {
+        guard let existing = try modelContext.fetch(
+            FetchDescriptor<GraphDeltaStore>(predicate: #Predicate { $0.id == id })
+        ).first else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+        var updated = existing.domainModel
+        updated.appliedAt = appliedAt
+        existing.apply(domainModel: updated)
         try save()
     }
 
@@ -1514,7 +1690,210 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             }
         reflectionStores.forEach { modelContext.delete($0) }
 
+        let deletedClarificationQuestionIDs = try purgeClarificationQuestions(
+            removingRecordIDs: recordIDs,
+            artifactIDs: artifactIDs
+        )
+        let deletedGraphDeltaIDs = try purgeGraphDeltas(
+            removingRecordIDs: recordIDs,
+            artifactIDs: artifactIDs
+        )
+        try purgeIntelligenceJobs(
+            removingRecordIDs: recordIDs,
+            artifactIDs: artifactIDs,
+            clarificationQuestionIDs: deletedClarificationQuestionIDs,
+            graphDeltaIDs: deletedGraphDeltaIDs
+        )
+        try purgeHomeBoardSignals(
+            removingRecordIDs: recordIDs,
+            artifactIDs: artifactIDs
+        )
+        try purgeNotificationIntents(
+            removingRecordIDs: recordIDs,
+            artifactIDs: artifactIDs
+        )
+        try purgeEntityProfiles(removing: recordIDs)
         try purgeEntityProvenance(removing: recordIDs, remainingLinkedEntityIDs: remainingLinkedEntityIDs)
+    }
+
+    private func purgeClarificationQuestions(
+        removingRecordIDs recordIDs: Set<UUID>,
+        artifactIDs: Set<UUID>
+    ) throws -> Set<UUID> {
+        let stores = try modelContext.fetch(FetchDescriptor<ClarificationQuestionStore>())
+        var deletedIDs = Set<UUID>()
+
+        for store in stores {
+            var question = store.domainModel
+            let originalRecordIDs = question.sourceRecordIDs
+            let originalArtifactIDs = question.sourceArtifactIDs
+
+            question.sourceRecordIDs.removeAll { recordIDs.contains($0) }
+            question.sourceArtifactIDs.removeAll { artifactIDs.contains($0) }
+
+            let deletedTarget = switch question.targetType {
+            case .record:
+                recordIDs.contains(question.targetID)
+            case .artifact:
+                artifactIDs.contains(question.targetID)
+            default:
+                false
+            }
+
+            if deletedTarget || (question.sourceRecordIDs.isEmpty && question.sourceArtifactIDs.isEmpty) {
+                deletedIDs.insert(store.id)
+                modelContext.delete(store)
+                continue
+            }
+
+            if question.sourceRecordIDs != originalRecordIDs || question.sourceArtifactIDs != originalArtifactIDs {
+                store.apply(domainModel: question)
+            }
+        }
+
+        return deletedIDs
+    }
+
+    private func purgeGraphDeltas(
+        removingRecordIDs recordIDs: Set<UUID>,
+        artifactIDs: Set<UUID>
+    ) throws -> Set<UUID> {
+        let stores = try modelContext.fetch(FetchDescriptor<GraphDeltaStore>())
+        var deletedIDs = Set<UUID>()
+
+        for store in stores {
+            let shouldDelete = store.domainModel.operations.contains { operation in
+                if operation.targetType == .record, recordIDs.contains(operation.targetID) {
+                    return true
+                }
+                if operation.targetType == .artifact, artifactIDs.contains(operation.targetID) {
+                    return true
+                }
+                if let relatedID = operation.relatedID, recordIDs.contains(relatedID) || artifactIDs.contains(relatedID) {
+                    return true
+                }
+                return false
+            }
+
+            if shouldDelete {
+                deletedIDs.insert(store.id)
+                modelContext.delete(store)
+            }
+        }
+
+        return deletedIDs
+    }
+
+    private func purgeIntelligenceJobs(
+        removingRecordIDs recordIDs: Set<UUID>,
+        artifactIDs: Set<UUID>,
+        clarificationQuestionIDs: Set<UUID>,
+        graphDeltaIDs: Set<UUID>
+    ) throws {
+        let stores = try modelContext.fetch(FetchDescriptor<IntelligenceJobStore>())
+
+        for store in stores {
+            let shouldDelete = switch store.domainModel.targetType {
+            case .record:
+                recordIDs.contains(store.targetID)
+            case .artifact:
+                artifactIDs.contains(store.targetID)
+            case .question:
+                clarificationQuestionIDs.contains(store.targetID)
+            case .graphDelta:
+                graphDeltaIDs.contains(store.targetID)
+            default:
+                false
+            }
+
+            if shouldDelete {
+                modelContext.delete(store)
+            }
+        }
+    }
+
+    private func purgeHomeBoardSignals(
+        removingRecordIDs recordIDs: Set<UUID>,
+        artifactIDs: Set<UUID>
+    ) throws {
+        let stores = try modelContext.fetch(FetchDescriptor<HomeBoardSignalStore>())
+
+        for store in stores {
+            var signal = store.domainModel
+            let originalRecordIDs = signal.sourceRecordIDs
+            signal.sourceRecordIDs.removeAll { recordIDs.contains($0) }
+
+            let deletedTarget = switch signal.targetType {
+            case .record:
+                recordIDs.contains(signal.targetID)
+            case .artifact:
+                artifactIDs.contains(signal.targetID)
+            default:
+                false
+            }
+
+            if deletedTarget || signal.sourceRecordIDs.isEmpty {
+                modelContext.delete(store)
+                continue
+            }
+
+            if signal.sourceRecordIDs != originalRecordIDs {
+                store.apply(domainModel: signal)
+            }
+        }
+    }
+
+    private func purgeNotificationIntents(
+        removingRecordIDs recordIDs: Set<UUID>,
+        artifactIDs: Set<UUID>
+    ) throws {
+        let stores = try modelContext.fetch(FetchDescriptor<NotificationIntentStore>())
+
+        for store in stores {
+            let shouldDelete = switch store.domainModel.targetType {
+            case .record:
+                recordIDs.contains(store.targetID)
+            case .artifact:
+                artifactIDs.contains(store.targetID)
+            default:
+                false
+            }
+
+            if shouldDelete {
+                modelContext.delete(store)
+            }
+        }
+    }
+
+    private func purgeEntityProfiles(removing recordIDs: Set<UUID>) throws {
+        let stores = try modelContext.fetch(FetchDescriptor<EntityProfileStore>())
+
+        for store in stores {
+            var profile = store.domainModel
+            let originalRecordIDs = profile.sourceRecordIDs
+            profile.sourceRecordIDs.removeAll { recordIDs.contains($0) }
+
+            guard profile.sourceRecordIDs != originalRecordIDs else { continue }
+
+            if profile.sourceRecordIDs.isEmpty && !shouldRetainEntityProfileWithoutSource(profile) {
+                modelContext.delete(store)
+                continue
+            }
+
+            if profile.sourceRecordIDs.isEmpty {
+                profile.firstMentionedAt = nil
+                profile.lastMentionedAt = nil
+            }
+            profile.updatedAt = Date.now
+            store.apply(domainModel: profile)
+        }
+    }
+
+    private func shouldRetainEntityProfileWithoutSource(_ profile: EntityProfile) -> Bool {
+        profile.confirmationState == .userConfirmed
+            || profile.relationshipToUser != nil
+            || !(profile.userDescription?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+            || !profile.aliases.isEmpty
     }
 
     private func purgeEntityProvenance(
@@ -1690,6 +2069,58 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             existing.apply(domainModel: userSettingsPreference)
         } else {
             modelContext.insert(UserSettingsPreferenceStore(domainModel: userSettingsPreference))
+        }
+    }
+
+    private func fetchIntelligencePreferenceStore() throws -> IntelligencePreferenceStore? {
+        let syncKey = IntelligencePreferences.defaultSyncKey
+        let descriptor = FetchDescriptor<IntelligencePreferenceStore>(
+            predicate: #Predicate { $0.syncKey == syncKey }
+        )
+        return try modelContext.fetch(descriptor).first
+    }
+
+    func upsert(entityProfile: EntityProfile) throws {
+        let descriptor = FetchDescriptor<EntityProfileStore>(predicate: #Predicate { $0.id == entityProfile.id })
+        if let existing = try modelContext.fetch(descriptor).first {
+            existing.apply(domainModel: entityProfile)
+        } else if let existingByEntity = try modelContext.fetch(
+            FetchDescriptor<EntityProfileStore>(predicate: #Predicate { $0.entityID == entityProfile.entityID })
+        ).first {
+            existingByEntity.apply(domainModel: entityProfile)
+        } else {
+            modelContext.insert(EntityProfileStore(domainModel: entityProfile))
+        }
+    }
+
+    func upsert(clarificationQuestion: ClarificationQuestion) throws {
+        let descriptor = FetchDescriptor<ClarificationQuestionStore>(predicate: #Predicate { $0.id == clarificationQuestion.id })
+        if let existing = try modelContext.fetch(descriptor).first {
+            existing.apply(domainModel: clarificationQuestion)
+        } else {
+            modelContext.insert(ClarificationQuestionStore(domainModel: clarificationQuestion))
+        }
+    }
+
+    func upsert(intelligenceJob: IntelligenceJob) throws {
+        let descriptor = FetchDescriptor<IntelligenceJobStore>(predicate: #Predicate { $0.id == intelligenceJob.id })
+        if let existing = try modelContext.fetch(descriptor).first {
+            existing.apply(domainModel: intelligenceJob)
+        } else if let existingByDedupeKey = try modelContext.fetch(
+            FetchDescriptor<IntelligenceJobStore>(predicate: #Predicate { $0.dedupeKey == intelligenceJob.dedupeKey })
+        ).first {
+            existingByDedupeKey.apply(domainModel: intelligenceJob)
+        } else {
+            modelContext.insert(IntelligenceJobStore(domainModel: intelligenceJob))
+        }
+    }
+
+    func upsert(graphDelta: GraphDelta) throws {
+        let descriptor = FetchDescriptor<GraphDeltaStore>(predicate: #Predicate { $0.id == graphDelta.id })
+        if let existing = try modelContext.fetch(descriptor).first {
+            existing.apply(domainModel: graphDelta)
+        } else {
+            modelContext.insert(GraphDeltaStore(domainModel: graphDelta))
         }
     }
 

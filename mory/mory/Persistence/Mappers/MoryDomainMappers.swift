@@ -216,6 +216,367 @@ extension HomeBoardPreferenceStore {
 }
 
 @MainActor
+extension IntelligencePreferenceStore {
+    convenience init(preferences: IntelligencePreferences, featureFlags: V6FeatureFlags) {
+        self.init(
+            id: preferences.id,
+            syncKey: preferences.syncKey,
+            schemaVersion: preferences.schemaVersion,
+            preferencesData: PersistenceCoding.encode(preferences),
+            featureFlagsData: PersistenceCoding.encode(featureFlags),
+            updatedAt: max(preferences.updatedAt, featureFlags.updatedAt)
+        )
+    }
+
+    var preferencesDomainModel: IntelligencePreferences {
+        PersistenceCoding.decode(IntelligencePreferences.self, from: preferencesData) ?? .defaults
+    }
+
+    var featureFlagsDomainModel: V6FeatureFlags {
+        PersistenceCoding.decode(V6FeatureFlags.self, from: featureFlagsData) ?? .defaults
+    }
+
+    func apply(preferences: IntelligencePreferences) {
+        id = preferences.id
+        syncKey = preferences.syncKey
+        schemaVersion = preferences.schemaVersion
+        preferencesData = PersistenceCoding.encode(preferences)
+        updatedAt = preferences.updatedAt
+    }
+
+    func apply(featureFlags: V6FeatureFlags) {
+        featureFlagsData = PersistenceCoding.encode(featureFlags)
+        updatedAt = featureFlags.updatedAt
+    }
+}
+
+@MainActor
+extension EntityProfileStore {
+    convenience init(domainModel: EntityProfile) {
+        self.init(
+            id: domainModel.id,
+            entityID: domainModel.entityID,
+            kindRawValue: domainModel.kind.rawValue,
+            displayName: domainModel.displayName,
+            canonicalName: domainModel.canonicalName,
+            aliases: domainModel.aliases,
+            relationshipToUserRawValue: domainModel.relationshipToUser?.rawValue,
+            userDescription: domainModel.userDescription,
+            mentionCount: domainModel.mentionCount,
+            firstMentionedAt: domainModel.firstMentionedAt,
+            lastMentionedAt: domainModel.lastMentionedAt,
+            commonContextLabels: domainModel.commonContextLabels,
+            sourceRecordIDs: domainModel.sourceRecordIDs,
+            confirmationStateRawValue: domainModel.confirmationState.rawValue,
+            confidence: domainModel.confidence,
+            createdAt: domainModel.createdAt,
+            updatedAt: domainModel.updatedAt
+        )
+    }
+
+    var domainModel: EntityProfile {
+        EntityProfile(
+            id: id,
+            entityID: entityID,
+            kind: EntityKind(rawValue: kindRawValue) ?? .object,
+            displayName: displayName,
+            canonicalName: canonicalName,
+            aliases: aliases,
+            relationshipToUser: relationshipToUserRawValue.flatMap(EntityRelationshipToUser.init(rawValue:)),
+            userDescription: userDescription,
+            mentionCount: mentionCount,
+            firstMentionedAt: firstMentionedAt,
+            lastMentionedAt: lastMentionedAt,
+            commonContextLabels: commonContextLabels,
+            sourceRecordIDs: sourceRecordIDs,
+            confirmationState: IntelligenceConfirmationState(rawValue: confirmationStateRawValue) ?? .inferred,
+            confidence: confidence,
+            createdAt: createdAt,
+            updatedAt: updatedAt
+        )
+    }
+
+    func apply(domainModel: EntityProfile) {
+        id = domainModel.id
+        entityID = domainModel.entityID
+        kindRawValue = domainModel.kind.rawValue
+        displayName = domainModel.displayName
+        canonicalName = domainModel.canonicalName
+        aliases = domainModel.aliases
+        relationshipToUserRawValue = domainModel.relationshipToUser?.rawValue
+        userDescription = domainModel.userDescription
+        mentionCount = domainModel.mentionCount
+        firstMentionedAt = domainModel.firstMentionedAt
+        lastMentionedAt = domainModel.lastMentionedAt
+        commonContextLabels = domainModel.commonContextLabels
+        sourceRecordIDs = domainModel.sourceRecordIDs
+        confirmationStateRawValue = domainModel.confirmationState.rawValue
+        confidence = domainModel.confidence
+        createdAt = domainModel.createdAt
+        updatedAt = domainModel.updatedAt
+    }
+}
+
+@MainActor
+extension ClarificationQuestionStore {
+    convenience init(domainModel: ClarificationQuestion) {
+        self.init(
+            id: domainModel.id,
+            kindRawValue: domainModel.kind.rawValue,
+            prompt: domainModel.prompt,
+            targetTypeRawValue: domainModel.targetType.rawValue,
+            targetID: domainModel.targetID,
+            sourceRecordIDs: domainModel.sourceRecordIDs,
+            sourceArtifactIDs: domainModel.sourceArtifactIDs,
+            candidateAnswersData: PersistenceCoding.encode(domainModel.candidateAnswers),
+            priority: domainModel.priority,
+            reason: domainModel.reason,
+            sensitivityRawValue: domainModel.sensitivity.rawValue,
+            statusRawValue: domainModel.status.rawValue,
+            answerData: PersistenceCoding.encode(domainModel.answer),
+            createdAt: domainModel.createdAt,
+            expiresAt: domainModel.expiresAt,
+            answeredAt: domainModel.answeredAt,
+            dismissedAt: domainModel.dismissedAt,
+            askCount: domainModel.askCount
+        )
+    }
+
+    var domainModel: ClarificationQuestion {
+        ClarificationQuestion(
+            id: id,
+            kind: ClarificationQuestionKind(rawValue: kindRawValue) ?? .dailyReflection,
+            prompt: prompt,
+            targetType: ClarificationTargetType(rawValue: targetTypeRawValue) ?? .record,
+            targetID: targetID,
+            sourceRecordIDs: sourceRecordIDs,
+            sourceArtifactIDs: sourceArtifactIDs,
+            candidateAnswers: PersistenceCoding.decode([ClarificationAnswerOption].self, from: candidateAnswersData) ?? [],
+            priority: priority,
+            reason: reason,
+            sensitivity: QuestionSensitivity(rawValue: sensitivityRawValue) ?? .normal,
+            status: ClarificationQuestionStatus(rawValue: statusRawValue) ?? .pending,
+            answer: PersistenceCoding.decode(ClarificationAnswer.self, from: answerData),
+            createdAt: createdAt,
+            expiresAt: expiresAt,
+            answeredAt: answeredAt,
+            dismissedAt: dismissedAt,
+            askCount: askCount
+        )
+    }
+
+    func apply(domainModel: ClarificationQuestion) {
+        id = domainModel.id
+        kindRawValue = domainModel.kind.rawValue
+        prompt = domainModel.prompt
+        targetTypeRawValue = domainModel.targetType.rawValue
+        targetID = domainModel.targetID
+        sourceRecordIDs = domainModel.sourceRecordIDs
+        sourceArtifactIDs = domainModel.sourceArtifactIDs
+        candidateAnswersData = PersistenceCoding.encode(domainModel.candidateAnswers)
+        priority = domainModel.priority
+        reason = domainModel.reason
+        sensitivityRawValue = domainModel.sensitivity.rawValue
+        statusRawValue = domainModel.status.rawValue
+        answerData = PersistenceCoding.encode(domainModel.answer)
+        createdAt = domainModel.createdAt
+        expiresAt = domainModel.expiresAt
+        answeredAt = domainModel.answeredAt
+        dismissedAt = domainModel.dismissedAt
+        askCount = domainModel.askCount
+    }
+}
+
+@MainActor
+extension IntelligenceJobStore {
+    convenience init(domainModel: IntelligenceJob) {
+        self.init(
+            id: domainModel.id,
+            kindRawValue: domainModel.kind.rawValue,
+            targetTypeRawValue: domainModel.targetType.rawValue,
+            targetID: domainModel.targetID,
+            statusRawValue: domainModel.status.rawValue,
+            priority: domainModel.priority,
+            attemptCount: domainModel.attemptCount,
+            lastError: domainModel.lastError,
+            scheduledAt: domainModel.scheduledAt,
+            startedAt: domainModel.startedAt,
+            completedAt: domainModel.completedAt,
+            updatedAt: domainModel.updatedAt,
+            dedupeKey: domainModel.dedupeKey,
+            requiresCloudAI: domainModel.requiresCloudAI
+        )
+    }
+
+    var domainModel: IntelligenceJob {
+        IntelligenceJob(
+            id: id,
+            kind: IntelligenceJobKind(rawValue: kindRawValue) ?? .postAnalysis,
+            targetType: IntelligenceTargetType(rawValue: targetTypeRawValue) ?? .record,
+            targetID: targetID,
+            status: IntelligenceJobStatus(rawValue: statusRawValue) ?? .pending,
+            priority: priority,
+            attemptCount: attemptCount,
+            lastError: lastError,
+            scheduledAt: scheduledAt,
+            startedAt: startedAt,
+            completedAt: completedAt,
+            updatedAt: updatedAt,
+            dedupeKey: dedupeKey,
+            requiresCloudAI: requiresCloudAI
+        )
+    }
+
+    func apply(domainModel: IntelligenceJob) {
+        id = domainModel.id
+        kindRawValue = domainModel.kind.rawValue
+        targetTypeRawValue = domainModel.targetType.rawValue
+        targetID = domainModel.targetID
+        statusRawValue = domainModel.status.rawValue
+        priority = domainModel.priority
+        attemptCount = domainModel.attemptCount
+        lastError = domainModel.lastError
+        scheduledAt = domainModel.scheduledAt
+        startedAt = domainModel.startedAt
+        completedAt = domainModel.completedAt
+        updatedAt = domainModel.updatedAt
+        dedupeKey = domainModel.dedupeKey
+        requiresCloudAI = domainModel.requiresCloudAI
+    }
+}
+
+@MainActor
+extension GraphDeltaStore {
+    convenience init(domainModel: GraphDelta) {
+        self.init(
+            id: domainModel.id,
+            sourceRawValue: domainModel.source.rawValue,
+            operationsData: PersistenceCoding.encode(domainModel.operations),
+            confidence: domainModel.confidence,
+            requiresUserConfirmation: domainModel.requiresUserConfirmation,
+            appliedAt: domainModel.appliedAt,
+            createdAt: domainModel.createdAt
+        )
+    }
+
+    var domainModel: GraphDelta {
+        GraphDelta(
+            id: id,
+            source: GraphDeltaSource(rawValue: sourceRawValue) ?? .localRule,
+            operations: PersistenceCoding.decode([GraphDeltaOperation].self, from: operationsData) ?? [],
+            confidence: confidence,
+            requiresUserConfirmation: requiresUserConfirmation,
+            appliedAt: appliedAt,
+            createdAt: createdAt
+        )
+    }
+
+    func apply(domainModel: GraphDelta) {
+        id = domainModel.id
+        sourceRawValue = domainModel.source.rawValue
+        operationsData = PersistenceCoding.encode(domainModel.operations)
+        confidence = domainModel.confidence
+        requiresUserConfirmation = domainModel.requiresUserConfirmation
+        appliedAt = domainModel.appliedAt
+        createdAt = domainModel.createdAt
+    }
+}
+
+@MainActor
+extension HomeBoardSignalStore {
+    convenience init(domainModel: HomeBoardSignal) {
+        self.init(
+            id: domainModel.id,
+            kindRawValue: domainModel.kind.rawValue,
+            targetTypeRawValue: domainModel.targetType.rawValue,
+            targetID: domainModel.targetID,
+            sourceRecordIDs: domainModel.sourceRecordIDs,
+            title: domainModel.title,
+            subtitle: domainModel.subtitle,
+            priority: domainModel.priority,
+            reason: domainModel.reason,
+            suggestedWidthColumns: domainModel.suggestedWidthColumns,
+            suggestedHeightUnits: domainModel.suggestedHeightUnits,
+            createdAt: domainModel.createdAt,
+            expiresAt: domainModel.expiresAt
+        )
+    }
+
+    var domainModel: HomeBoardSignal {
+        HomeBoardSignal(
+            id: id,
+            kind: HomeBoardSignalKind(rawValue: kindRawValue) ?? .clarificationQuestion,
+            targetType: ClarificationTargetType(rawValue: targetTypeRawValue) ?? .record,
+            targetID: targetID,
+            sourceRecordIDs: sourceRecordIDs,
+            title: title,
+            subtitle: subtitle,
+            priority: priority,
+            reason: reason,
+            suggestedWidthColumns: suggestedWidthColumns,
+            suggestedHeightUnits: suggestedHeightUnits,
+            createdAt: createdAt,
+            expiresAt: expiresAt
+        )
+    }
+
+    func apply(domainModel: HomeBoardSignal) {
+        id = domainModel.id
+        kindRawValue = domainModel.kind.rawValue
+        targetTypeRawValue = domainModel.targetType.rawValue
+        targetID = domainModel.targetID
+        sourceRecordIDs = domainModel.sourceRecordIDs
+        title = domainModel.title
+        subtitle = domainModel.subtitle
+        priority = domainModel.priority
+        reason = domainModel.reason
+        suggestedWidthColumns = domainModel.suggestedWidthColumns
+        suggestedHeightUnits = domainModel.suggestedHeightUnits
+        createdAt = domainModel.createdAt
+        expiresAt = domainModel.expiresAt
+    }
+}
+
+@MainActor
+extension NotificationIntentStore {
+    convenience init(domainModel: NotificationIntent) {
+        self.init(
+            id: domainModel.id,
+            kindRawValue: domainModel.kind.rawValue,
+            title: domainModel.title,
+            body: domainModel.body,
+            privacyLevelRawValue: domainModel.privacyLevel.rawValue,
+            targetTypeRawValue: domainModel.targetType.rawValue,
+            targetID: domainModel.targetID,
+            scheduledAt: domainModel.scheduledAt,
+            statusRawValue: domainModel.status.rawValue,
+            deliveryChannelRawValue: domainModel.deliveryChannel.rawValue,
+            createdAt: domainModel.createdAt,
+            deliveredAt: domainModel.deliveredAt,
+            dismissedAt: domainModel.dismissedAt
+        )
+    }
+
+    var domainModel: NotificationIntent {
+        NotificationIntent(
+            id: id,
+            kind: NotificationIntentKind(rawValue: kindRawValue) ?? .dailyQuestion,
+            title: title,
+            body: body,
+            privacyLevel: NotificationPrivacyLevel(rawValue: privacyLevelRawValue) ?? .generic,
+            targetType: ClarificationTargetType(rawValue: targetTypeRawValue) ?? .record,
+            targetID: targetID,
+            scheduledAt: scheduledAt,
+            status: NotificationIntentStatus(rawValue: statusRawValue) ?? .pending,
+            deliveryChannel: NotificationDeliveryChannel(rawValue: deliveryChannelRawValue) ?? .local,
+            createdAt: createdAt,
+            deliveredAt: deliveredAt,
+            dismissedAt: dismissedAt
+        )
+    }
+}
+
+@MainActor
 extension BoardStore {
     convenience init(domainModel: Board) {
         self.init(
