@@ -164,6 +164,89 @@ final class SpotlightSearchFoundationTests: XCTestCase {
         ])
     }
 
+    func testRepositoryCreateUpdateDeleteDriveSpotlightIndexMutations() async throws {
+        let spotlight = RecordingSpotlightIndexService()
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: SearchStubRecordAnalysisService(),
+            spotlightIndexService: spotlight
+        )
+        try enableSemanticSearch(repository)
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Lifecycle memory",
+                rawText: "Created for indexing lifecycle checks.",
+                captureSource: .composer,
+                artifacts: [.text(title: "Lifecycle memory", body: "Created for indexing lifecycle checks.")]
+            )
+        )
+        XCTAssertEqual(
+            spotlight.indexedItems.map(\.uniqueIdentifier),
+            [SpotlightSearchableItemIdentifier.memory(memory.id)]
+        )
+
+        _ = try await repository.updateMemory(
+            recordID: memory.id,
+            draft: MemoryEditDraft(
+                rawText: "Updated indexing content.",
+                userMood: "clear",
+                inputContext: "manual edit"
+            )
+        )
+        XCTAssertEqual(spotlight.indexedItems.count, 2)
+        XCTAssertEqual(spotlight.indexedItems.last?.uniqueIdentifier, SpotlightSearchableItemIdentifier.memory(memory.id))
+
+        try repository.deleteMemory(recordID: memory.id)
+        await Task.yield()
+        await Task.yield()
+        XCTAssertEqual(
+            spotlight.deletedIdentifiers,
+            [SpotlightSearchableItemIdentifier.memory(memory.id)]
+        )
+    }
+
+    func testRepositorySemanticSearchDisabledSkipsSpotlightAndIndexing() async throws {
+        let spotlight = RecordingSpotlightIndexService()
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: SearchStubRecordAnalysisService(),
+            spotlightIndexService: spotlight
+        )
+
+        _ = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Disabled semantic",
+                rawText: "Should stay on fallback search only.",
+                captureSource: .composer,
+                artifacts: [.text(title: "Disabled semantic", body: "Should stay on fallback search only.")]
+            )
+        )
+        XCTAssertTrue(spotlight.indexedItems.isEmpty)
+
+        spotlight.searchMemoryIDsResult = [UUID()]
+        let result = try await repository.searchSemanticFirst(query: "fallback", limit: 10)
+        XCTAssertEqual(result.semanticSearchStatus, .disabled)
+        XCTAssertEqual(spotlight.searchQueries.count, 0)
+        XCTAssertFalse(result.retrievalSources.contains(.spotlight))
+    }
+
+    func testDeleteSpotlightIndexCallsDomainDelete() async throws {
+        let spotlight = RecordingSpotlightIndexService()
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: SearchStubRecordAnalysisService(),
+            spotlightIndexService: spotlight
+        )
+
+        let report = try await repository.deleteSpotlightIndex()
+        XCTAssertEqual(report.deletedItemCount, 0)
+        XCTAssertEqual(spotlight.deletedDomains, [SpotlightSearchableItemIdentifier.memoryDomain])
+    }
+
     private func enableSemanticSearch(_ repository: MoryMemoryRepository) throws {
         var flags = try repository.fetchV6FeatureFlags()
         flags.semanticSearch = true
@@ -210,6 +293,7 @@ private final class RecordingSpotlightIndexService: SpotlightIndexServicing {
     var deletedIdentifiers: [String] = []
     var deletedDomains: [String] = []
     var searchMemoryIDsResult: [UUID] = []
+    var searchQueries: [String] = []
 
     func indexItems(_ items: [CSSearchableItem]) async throws {
         indexedItems.append(contentsOf: items)
@@ -224,7 +308,8 @@ private final class RecordingSpotlightIndexService: SpotlightIndexServicing {
     }
 
     func searchMemoryIDs(query: String, limit: Int) async throws -> [UUID] {
-        Array(searchMemoryIDsResult.prefix(limit))
+        searchQueries.append(query)
+        return Array(searchMemoryIDsResult.prefix(limit))
     }
 }
 
