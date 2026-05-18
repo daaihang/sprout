@@ -667,6 +667,11 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         )
     }
 
+    func fetchArtifact(id: UUID) throws -> Artifact? {
+        let descriptor = FetchDescriptor<ArtifactStore>(predicate: #Predicate { $0.id == id })
+        return try modelContext.fetch(descriptor).first?.domainModel
+    }
+
     func fetchRecordAnalysis(recordID: UUID) throws -> RecordAnalysisSnapshot? {
         let descriptor = FetchDescriptor<RecordAnalysisSnapshotStore>(
             predicate: #Predicate { $0.recordID == recordID },

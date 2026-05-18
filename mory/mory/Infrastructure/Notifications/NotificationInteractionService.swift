@@ -91,7 +91,7 @@ struct NotificationInteractionService {
         let route: NotificationInteractionRoute?
         switch event.action {
         case .opened:
-            route = makeRoute(for: event.payload)
+            route = try makeRoute(for: event.payload, repository: repository)
         case .delivered, .dismissed:
             route = nil
         }
@@ -102,10 +102,13 @@ struct NotificationInteractionService {
         )
     }
 
-    func makeRoute(for payload: LocalNotificationPayload) -> NotificationInteractionRoute {
+    func makeRoute(
+        for payload: LocalNotificationPayload,
+        repository: any MoryMemoryRepositorying
+    ) throws -> NotificationInteractionRoute {
         NotificationInteractionRoute(
             destination: destination(for: payload),
-            deepLink: deepLink(for: payload),
+            deepLink: try deepLink(for: payload, repository: repository),
             kind: payload.kind,
             targetType: payload.targetType,
             targetID: payload.targetID
@@ -151,8 +154,17 @@ struct NotificationInteractionService {
 
     private func destination(for payload: LocalNotificationPayload) -> NotificationInteractionDestination {
         switch payload.kind {
-        case .dailyQuestion, .backgroundDone:
+        case .dailyQuestion:
             return .home
+        case .backgroundDone:
+            switch payload.targetType {
+            case .record, .artifact:
+                return .memories
+            case .question:
+                return .home
+            case .entity, .place, .theme, .decision, .chapter, .reflection:
+                return .insights
+            }
         case .revisit:
             switch payload.targetType {
             case .record, .artifact:
@@ -181,7 +193,10 @@ struct NotificationInteractionService {
         }
     }
 
-    private func deepLink(for payload: LocalNotificationPayload) -> MoryDeepLinkRoute? {
+    private func deepLink(
+        for payload: LocalNotificationPayload,
+        repository: any MoryMemoryRepositorying
+    ) throws -> MoryDeepLinkRoute? {
         switch payload.targetType {
         case .question:
             return .home(.question(payload.targetID))
@@ -194,7 +209,10 @@ struct NotificationInteractionService {
         case .entity, .place, .theme, .decision:
             return .insights(.entity(payload.targetID))
         case .artifact:
-            return nil
+            guard let artifact = try repository.fetchArtifact(id: payload.targetID) else {
+                return nil
+            }
+            return .memories(.memory(artifact.recordID))
         }
     }
 }

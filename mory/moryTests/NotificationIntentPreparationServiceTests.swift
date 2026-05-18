@@ -92,6 +92,125 @@ final class NotificationIntentPreparationServiceTests: XCTestCase {
         XCTAssertEqual(try repository.fetchNotificationIntents(status: nil, limit: nil).count, 1)
     }
 
+    func testPrepareNextIntentUsesBackgroundDoneArtifactTargetWhenPipelineCompletes() throws {
+        let fixture = makeRepositoryFixture()
+        let repository = fixture.repository
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        try enableNotificationLoop(on: repository, now: now)
+
+        let seededMemory = try seedMemory(
+            in: repository,
+            title: "Morning walk",
+            body: "Captured a short photo memory.",
+            createdAt: now.addingTimeInterval(-2_000),
+            artifactKind: .photo
+        )
+        try repository.upsertPipelineStatus(
+            MemoryPipelineStatusSnapshot(
+                recordID: seededMemory.record.id,
+                stage: .completed,
+                requestID: "request-1",
+                lastError: nil,
+                requestBody: nil,
+                responseBody: nil,
+                rawErrorBody: nil,
+                lastHTTPStatusCode: 200,
+                failedStage: nil,
+                lastAttemptAt: now.addingTimeInterval(-120),
+                completedAt: now.addingTimeInterval(-60),
+                updatedAt: now.addingTimeInterval(-60)
+            )
+        )
+        try repository.save()
+
+        let prepared = try XCTUnwrap(
+            NotificationIntentPreparationService(policy: NotificationPolicy(calendar: utcCalendar()))
+                .prepareNextIntentIfNeeded(repository: repository, now: now)
+        )
+
+        XCTAssertEqual(prepared.kind, .backgroundDone)
+        XCTAssertEqual(prepared.targetType, .artifact)
+        XCTAssertEqual(prepared.targetID, seededMemory.artifact.id)
+        XCTAssertEqual(prepared.privacyLevel, .generic)
+        XCTAssertEqual(prepared.body, "Your memories are ready to review.")
+    }
+
+    func testPrepareNextIntentCreatesStageFormingIntentForRecentArcCandidate() throws {
+        let fixture = makeRepositoryFixture()
+        let repository = fixture.repository
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        try enableNotificationLoop(on: repository, now: now)
+
+        let seededMemory = try seedMemory(
+            in: repository,
+            title: "Career reset",
+            body: "I keep thinking about what work should look like next.",
+            createdAt: now.addingTimeInterval(-8_000),
+            artifactKind: .text
+        )
+        let arc = TemporalArc(
+            title: "Career reset",
+            summary: "A career transition thread is forming.",
+            status: .candidate,
+            dominantTheme: "career reset",
+            dominantEntityName: nil,
+            themeLabels: ["career", "change"],
+            entityNames: [],
+            linkedReflectionID: nil,
+            mergedFromArcIDs: [],
+            mergedIntoArcID: nil,
+            lastMergedAt: nil,
+            sourceRecordIDs: [seededMemory.record.id],
+            sourceArtifactIDs: [seededMemory.artifact.id],
+            sourceEntityIDs: [],
+            startDate: seededMemory.record.createdAt,
+            endDate: seededMemory.record.updatedAt,
+            intensityScore: 0.82,
+            clusterStrength: 0.91,
+            createdAt: now.addingTimeInterval(-300),
+            updatedAt: now.addingTimeInterval(-120)
+        )
+        try repository.upsert(temporalArc: arc)
+        try repository.save()
+
+        let prepared = try XCTUnwrap(
+            NotificationIntentPreparationService(policy: NotificationPolicy(calendar: utcCalendar()))
+                .prepareNextIntentIfNeeded(repository: repository, now: now)
+        )
+
+        XCTAssertEqual(prepared.kind, .stageForming)
+        XCTAssertEqual(prepared.targetType, .chapter)
+        XCTAssertEqual(prepared.targetID, arc.id)
+        XCTAssertEqual(prepared.privacyLevel, .generic)
+        XCTAssertEqual(prepared.body, "A memory chapter may be forming.")
+    }
+
+    func testPrepareNextIntentFallsBackToRevisitForOlderArtifactMemory() throws {
+        let fixture = makeRepositoryFixture()
+        let repository = fixture.repository
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        try enableNotificationLoop(on: repository, now: now)
+
+        let seededMemory = try seedMemory(
+            in: repository,
+            title: "Old train ride",
+            body: "A quiet train ride I might want to revisit.",
+            createdAt: now.addingTimeInterval(-(10 * 24 * 60 * 60)),
+            artifactKind: .photo
+        )
+
+        let prepared = try XCTUnwrap(
+            NotificationIntentPreparationService(policy: NotificationPolicy(calendar: utcCalendar()))
+                .prepareNextIntentIfNeeded(repository: repository, now: now)
+        )
+
+        XCTAssertEqual(prepared.kind, .revisit)
+        XCTAssertEqual(prepared.targetType, .artifact)
+        XCTAssertEqual(prepared.targetID, seededMemory.artifact.id)
+        XCTAssertEqual(prepared.privacyLevel, .generic)
+        XCTAssertEqual(prepared.body, "A meaningful memory is ready to revisit.")
+    }
+
     func testNotificationPolicyBlocksWhenDisabledOrLocalFlagOff() throws {
         let policy = NotificationPolicy(calendar: utcCalendar())
         let intent = makeIntent(scheduledAt: Date(timeIntervalSince1970: 1_800_000_000))
@@ -218,6 +337,36 @@ final class NotificationIntentPreparationServiceTests: XCTestCase {
     private func enableNotificationLoop(on repository: MoryMemoryRepository, now: Date) throws {
         try repository.saveIntelligencePreferences(enabledPreferences(now: now))
         try repository.saveV6FeatureFlags(enabledFlags(now: now))
+    }
+
+    private func seedMemory(
+        in repository: MoryMemoryRepository,
+        title: String,
+        body: String,
+        createdAt: Date,
+        artifactKind: ArtifactKind
+    ) throws -> (record: RecordShell, artifact: Artifact) {
+        let artifact = Artifact(
+            recordID: UUID(),
+            kind: artifactKind,
+            title: title,
+            summary: body,
+            textContent: body,
+            createdAt: createdAt,
+            updatedAt: createdAt
+        )
+        let record = RecordShell(
+            id: artifact.recordID,
+            createdAt: createdAt,
+            updatedAt: createdAt,
+            captureSource: .composer,
+            rawText: body,
+            artifactIDs: [artifact.id]
+        )
+        try repository.upsert(recordShell: record)
+        try repository.upsert(artifact: artifact)
+        try repository.save()
+        return (record, artifact)
     }
 
     private func enabledPreferences(now: Date) -> IntelligencePreferences {

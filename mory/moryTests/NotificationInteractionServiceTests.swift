@@ -142,6 +142,40 @@ final class NotificationInteractionServiceTests: XCTestCase {
         XCTAssertEqual(result.route?.deepLink, .insights(.entity(intent.targetID)))
     }
 
+    func testOpenedArtifactInteractionDeepLinksToParentMemoryDetail() throws {
+        let fixture = makeRepositoryFixture()
+        let seededMemory = try seedMemory(
+            in: fixture.repository,
+            title: "Station photo",
+            body: "A saved platform photo.",
+            createdAt: Date(timeIntervalSince1970: 1_800_000_000)
+        )
+        let intent = NotificationIntent(
+            kind: .backgroundDone,
+            title: "Mory",
+            body: "Your memory is ready.",
+            targetType: .artifact,
+            targetID: seededMemory.artifact.id,
+            scheduledAt: Date(timeIntervalSince1970: 1_800_000_000),
+            status: .scheduled,
+            deliveryChannel: .local,
+            createdAt: Date(timeIntervalSince1970: 1_800_000_000)
+        )
+        try fixture.repository.upsertNotificationIntent(intent)
+        let service = NotificationInteractionService()
+        let event = try XCTUnwrap(NotificationInteractionEvent(
+            action: .opened,
+            userInfo: anyUserInfo(for: intent)
+        ))
+
+        let result = try service.handle(event: event, repository: fixture.repository)
+
+        XCTAssertEqual(result.route?.destination, .memories)
+        XCTAssertEqual(result.route?.targetType, .artifact)
+        XCTAssertEqual(result.route?.targetID, seededMemory.artifact.id)
+        XCTAssertEqual(result.route?.deepLink, .memories(.memory(seededMemory.record.id)))
+    }
+
     func testOpenedDecisionInteractionDeepLinksToEntityDetail() throws {
         let fixture = makeRepositoryFixture()
         let intent = makeIntent(kind: .stageForming, targetType: .decision, status: .scheduled)
@@ -191,6 +225,35 @@ final class NotificationInteractionServiceTests: XCTestCase {
             userInfo[key] = value
         }
         return userInfo
+    }
+
+    private func seedMemory(
+        in repository: MoryMemoryRepository,
+        title: String,
+        body: String,
+        createdAt: Date
+    ) throws -> (record: RecordShell, artifact: Artifact) {
+        let artifact = Artifact(
+            recordID: UUID(),
+            kind: .photo,
+            title: title,
+            summary: body,
+            textContent: body,
+            createdAt: createdAt,
+            updatedAt: createdAt
+        )
+        let record = RecordShell(
+            id: artifact.recordID,
+            createdAt: createdAt,
+            updatedAt: createdAt,
+            captureSource: .photo,
+            rawText: body,
+            artifactIDs: [artifact.id]
+        )
+        try repository.upsert(recordShell: record)
+        try repository.upsert(artifact: artifact)
+        try repository.save()
+        return (record, artifact)
     }
 }
 

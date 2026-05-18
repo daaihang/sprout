@@ -98,7 +98,7 @@ struct IntelligenceJobWorker {
             report.preparedQuestionCount += prepared.count
 
         case .notificationIntent:
-            _ = try notificationIntentPreparationService.prepareDailyQuestionIntentIfNeeded(
+            _ = try notificationIntentPreparationService.prepareNextIntentIfNeeded(
                 repository: repository,
                 now: now
             )

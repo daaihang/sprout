@@ -94,7 +94,7 @@ struct NotificationSettingsService {
         let cancellationReport: LocalNotificationCancellationReport
         let scheduleReport: LocalNotificationSchedulerReport
         if preferences.notificationPreferences.enabled {
-            _ = try intentPreparationService.prepareDailyQuestionIntentIfNeeded(
+            _ = try intentPreparationService.prepareNextIntentIfNeeded(
                 repository: repository,
                 now: now
             )

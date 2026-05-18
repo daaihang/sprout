@@ -220,7 +220,7 @@ Tasks:
 - Add notification policy.
   - Current implementation status: iOS has `NotificationPolicy` checks for master switch, local-notification flag, notification type switch, max-per-day, quiet hours, sensitive-topic suppression, and rich-preview downgrade to generic copy.
 - Add notification intent preparation.
-  - Current implementation status: iOS has `NotificationIntentPreparationService` that turns eligible pending daily questions into local pending notification intents without scheduling system notifications yet.
+  - Current implementation status: iOS has `NotificationIntentPreparationService` that can turn eligible daily questions, recent pipeline completions, stage-forming chapter/reflection candidates, repeated entity/theme/place/decision signals, and revisit memories into local pending notification intents without requiring polished UI first.
 - Add local scheduler.
   - Current implementation status: iOS has a mockable `LocalNotificationScheduler` plus `UNUserNotificationCenter` adapter. The Home foreground refresh path attempts to schedule pending intents only when notification permission is already available; it does not prompt yet.
 - Add settings UI.
@@ -230,9 +230,9 @@ Tasks:
 - Add quiet hours and max-per-day.
   - Current implementation status: max-per-day, delivery pace, minimum spacing, and minute-precise quiet hours are editable in the basic settings route and enforced by `NotificationPolicy`.
 - Add notification interaction handling.
-  - Current implementation status: local notification payload metadata is centralized; app-level `UNUserNotificationCenterDelegate` handling records foreground delivery, open, and dismiss events; open events can deep-link to a specific daily question card, memory detail, chapter candidate, or reflection detail when the payload target supports it.
+  - Current implementation status: local notification payload metadata is centralized; app-level `UNUserNotificationCenterDelegate` handling records foreground delivery, open, and dismiss events; open events can deep-link to a specific daily question card, memory detail, artifact-parent memory detail, chapter candidate, reflection detail, or supported Insights entity target when the payload target supports it.
 - Add retry/resume on app launch.
-  - Current implementation status: `AppIntelligenceRecoveryService` resets interrupted running jobs to pending, reschedules retryable failed jobs with bounded backoff, attempts daily-question preparation, and schedules pending local notification intents without passive permission prompts.
+  - Current implementation status: `AppIntelligenceRecoveryService` resets interrupted running jobs to pending, reschedules retryable failed jobs with bounded backoff, attempts unified notification-intent preparation, and schedules pending local notification intents without passive permission prompts.
 - Add push delivery writeback and APNs preference sync.
   - Current implementation status: iOS now syncs APNs token and notification preferences to Go `/api/push/register`, and writes delivered/opened/dismissed interactions to `/api/push/delivery-writeback`.
 

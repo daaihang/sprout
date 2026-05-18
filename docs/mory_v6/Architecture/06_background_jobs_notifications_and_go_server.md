@@ -33,12 +33,12 @@ Current iOS data-flow status:
 
 - Transcript refinement uses cloud deep intelligence after local/system transcription and falls back to raw transcript if unavailable.
 - Daily question preparation now has a gated foreground Home refresh hook: when daily questions and cloud question suggestions are enabled, Mory sends bounded recent-memory evidence to the Go V6 question endpoint and persists returned candidates locally as `ClarificationQuestion`.
-- Notification intent preparation now has a local policy path: eligible daily questions can become pending `NotificationIntent` rows only when user preferences, V6 flags, quiet hours, daily limits, and sensitivity rules allow it.
+- Notification intent preparation now has a local policy path: a unified iOS preparation service can promote daily questions, recent pipeline completions, stage-forming arc/reflection candidates, repeated entity/theme/place/decision signals, and revisit memories into pending `NotificationIntent` rows when user preferences, V6 flags, quiet hours, daily limits, and sensitivity rules allow it.
 - Local notification scheduling now has a mockable iOS scheduler and `UNUserNotificationCenter` adapter. Foreground Home refresh can schedule pending intents when permission already exists, without prompting.
 - Notification opt-in now has a basic settings path: user preferences can request system authorization, enable daily-question notification defaults, update per-type switches, and cancel pending/scheduled local intents when disabled.
-- Local notification interactions now support concrete deep-link routes for the first V6 surfaces: daily question opens can push a specific question card, record targets can push memory detail, and chapter/reflection targets can push the corresponding Insights detail screen.
-- App launch now runs a lightweight recovery pass: `running` intelligence jobs are reset to `pending`, retryable `failed` jobs are rescheduled with bounded backoff, daily-question preparation is attempted, and pending local notification intents are scheduled when permission already exists.
-- This is not yet the final background scheduler. Phase 5 still needs actual execution workers for every recovered job kind, remote push delivery writeback, and polished settings UX.
+- Local notification interactions now support concrete deep-link routes for the first V6 surfaces: daily question opens can push a specific question card, record targets can push memory detail, artifact targets can resolve back to the parent memory detail, and chapter/reflection/entity-family targets can push the corresponding Insights detail screen.
+- App launch now runs a lightweight recovery pass: `running` intelligence jobs are reset to `pending`, retryable `failed` jobs are rescheduled with bounded backoff, unified notification-intent preparation is attempted, and pending local notification intents are scheduled when permission already exists.
+- This is not yet the final background scheduler. Phase 5 still needs actual execution workers for every recovered job kind, remote push/APNs delivery execution, and polished settings UX.
 
 ## 4. Notification Architecture
 
@@ -52,7 +52,7 @@ Intelligence job creates NotificationIntent
 
 Current implementation boundary:
 
-- `NotificationPolicy` and daily-question intent preparation exist on iOS.
+- `NotificationPolicy` and a unified local notification-intent preparation service exist on iOS.
 - Pending intents are stored locally and can be tested deterministically.
 - `LocalNotificationScheduler` can schedule pending local intents and mark them `scheduled`.
 - `NotificationSettingsService` stores user notification preferences separately from rollout flags and system authorization.

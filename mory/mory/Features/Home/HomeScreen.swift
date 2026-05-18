@@ -252,7 +252,7 @@ struct HomeScreen: View {
             )
             .prepareIfNeeded(repository: memoryRepository)
             _ = try? NotificationIntentPreparationService()
-                .prepareDailyQuestionIntentIfNeeded(repository: memoryRepository)
+                .prepareNextIntentIfNeeded(repository: memoryRepository)
             _ = try? await LocalNotificationScheduler()
                 .schedulePendingIntents(
                     repository: memoryRepository,

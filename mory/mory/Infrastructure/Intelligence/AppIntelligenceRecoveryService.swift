@@ -72,7 +72,7 @@ struct AppIntelligenceRecoveryService {
 
         do {
             report.preparedNotificationIntentID = try notificationIntentPreparationService
-                .prepareDailyQuestionIntentIfNeeded(
+                .prepareNextIntentIfNeeded(
                     repository: repository,
                     now: now
                 )?.id
