@@ -222,6 +222,7 @@ Tasks:
 - Add notification intent preparation.
   - Current implementation status: iOS has `NotificationIntentPreparationService` that turns eligible pending daily questions into local pending notification intents without scheduling system notifications yet.
 - Add local scheduler.
+  - Current implementation status: iOS has a mockable `LocalNotificationScheduler` plus `UNUserNotificationCenter` adapter. The Home foreground refresh path attempts to schedule pending intents only when notification permission is already available; it does not prompt yet.
 - Add settings UI.
 - Add permission flow.
 - Add quiet hours and max-per-day.

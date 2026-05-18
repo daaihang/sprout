@@ -155,4 +155,5 @@ Current implementation checkpoint:
 - Daily questions can already be suggested through the cloud contract and stored locally as clarification questions.
 - Daily question notification intents can now be prepared locally behind preferences and V6 flags.
 - The policy foundation enforces notification enablement, type enablement, max-per-day, quiet hours, sensitive-topic suppression, and generic lock-screen copy.
-- System scheduling, permission prompts, notification tap routing, and user-facing notification settings are still pending.
+- Local notification scheduling can now convert pending local intents into scheduled system notifications when permission already exists.
+- Permission prompts, notification tap routing, and user-facing notification settings are still pending.

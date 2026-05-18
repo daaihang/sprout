@@ -237,12 +237,19 @@ struct HomeScreen: View {
             }
             dailyQuestionPreparationEvidenceSignature = evidenceSignature
 
-            _ = try await DailyQuestionSuggestionService(
+            _ = try? await DailyQuestionSuggestionService(
                 cloudIntelligenceService: cloudIntelligenceService
             )
             .prepareIfNeeded(repository: memoryRepository)
+            _ = try? NotificationIntentPreparationService()
+                .prepareDailyQuestionIntentIfNeeded(repository: memoryRepository)
+            _ = try? await LocalNotificationScheduler()
+                .schedulePendingIntents(
+                    repository: memoryRepository,
+                    requestAuthorizationIfNeeded: false
+                )
         } catch {
-            // Home remains usable when cloud question preparation is unavailable.
+            // Home remains usable when intelligence preparation or scheduling is unavailable.
         }
     }
 
