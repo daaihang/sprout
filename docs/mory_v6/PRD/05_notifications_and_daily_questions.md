@@ -157,4 +157,5 @@ Current implementation checkpoint:
 - The policy foundation enforces notification enablement, type enablement, max-per-day, quiet hours, sensitive-topic suppression, and generic lock-screen copy.
 - Local notification scheduling can now convert pending local intents into scheduled system notifications when permission already exists.
 - A basic user-facing Settings route can now opt into notifications, request system permission, update per-type switches, change max-per-day, and cancel pending/scheduled local notifications when disabled.
-- Notification tap routing, delivered/dismissed status writeback, exact quiet-hour editing, and polished notification settings UX are still pending.
+- Local notification delivery/open/dismiss interaction handling can now write back intent status, and notification opens route to the nearest current tab.
+- Exact card/detail deep links, remote push delivery writeback, exact quiet-hour editing, and polished notification settings UX are still pending.

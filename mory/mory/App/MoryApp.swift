@@ -3,6 +3,8 @@ import SwiftData
 
 @main
 struct MoryApp: App {
+    @UIApplicationDelegateAdaptor(MoryAppDelegate.self) private var appDelegate
+
     private let sharedModelContainer = MoryPersistenceStack.makeSharedModelContainer()
     private let memoryRepository: any MoryMemoryRepositorying
     private let cloudIntelligenceService: any CloudIntelligenceServing

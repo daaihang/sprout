@@ -169,6 +169,12 @@ Notification tap should deep link to:
 - Chapter candidate.
 - Search result.
 
+Current implementation checkpoint:
+
+- Local notification payloads carry intent, kind, target type, and target ID metadata.
+- Opening a local notification currently routes to the nearest available tab: Today, Memories, Insights, or Search.
+- Exact navigation to a specific question card, memory detail, chapter candidate, or search result is still pending because those tabs do not yet expose shared path-based navigation state.
+
 ## 10. Archive View Interactions
 
 Views:

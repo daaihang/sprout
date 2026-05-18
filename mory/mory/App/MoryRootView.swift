@@ -1,14 +1,18 @@
+import Combine
 import SwiftUI
 
 struct MoryRootView: View {
     let authManager: AuthSessionManager?
     let runtimeEnvironment: AppRuntimeEnvironment
 
+    @Environment(\.memoryRepository) private var memoryRepository
     @AppStorage(MoryOnboardingStep.completionStorageKey) private var hasCompletedOnboarding = false
+    @StateObject private var notificationInbox = NotificationInteractionInbox.shared
     @State private var selectedTab: MoryAppTab = .today
     @State private var isPresentingSettings = false
     @State private var unifiedCaptureSeed: UnifiedCaptureSeed?
     @State private var tabRefreshID = UUID()
+    private let notificationInteractionService = NotificationInteractionService()
 
     init(
         authManager: AuthSessionManager? = nil,
@@ -90,6 +94,11 @@ struct MoryRootView: View {
                 onStartFirstMemory: startFirstMemoryFromOnboarding
             )
         }
+        .onReceive(notificationInbox.$latestEvent.compactMap { $0 }) { event in
+            Task {
+                await handleNotificationInteraction(event)
+            }
+        }
     }
 
     private func tabRoot<Content: View>(@ViewBuilder content: () -> Content) -> some View {
@@ -133,6 +142,37 @@ struct MoryRootView: View {
         hasCompletedOnboarding = true
         DispatchQueue.main.async {
             unifiedCaptureSeed = .empty
+        }
+    }
+
+    private func handleNotificationInteraction(_ event: NotificationInteractionEvent) async {
+        defer {
+            notificationInbox.consume(eventID: event.id)
+        }
+
+        do {
+            let result = try notificationInteractionService.handle(
+                event: event,
+                repository: memoryRepository
+            )
+            guard let route = result.route else { return }
+            selectedTab = tab(for: route.destination)
+            tabRefreshID = UUID()
+        } catch {
+            assertionFailure("Failed to handle notification interaction: \(error)")
+        }
+    }
+
+    private func tab(for destination: NotificationInteractionDestination) -> MoryAppTab {
+        switch destination {
+        case .home:
+            return .today
+        case .memories:
+            return .memories
+        case .insights:
+            return .insights
+        case .search:
+            return .search
         }
     }
 }

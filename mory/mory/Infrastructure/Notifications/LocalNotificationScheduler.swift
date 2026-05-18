@@ -40,6 +40,17 @@ final class SystemLocalNotificationCenter: LocalNotificationSchedulingCenter {
 
     init(center: UNUserNotificationCenter = .current()) {
         self.center = center
+        Self.registerMoryNotificationCategories(on: center)
+    }
+
+    static func registerMoryNotificationCategories(on center: UNUserNotificationCenter = .current()) {
+        let category = UNNotificationCategory(
+            identifier: LocalNotificationMetadata.categoryIdentifier,
+            actions: [],
+            intentIdentifiers: [],
+            options: [.customDismissAction]
+        )
+        center.setNotificationCategories([category])
     }
 
     func authorizationState() async -> LocalNotificationAuthorizationState {
@@ -57,6 +68,7 @@ final class SystemLocalNotificationCenter: LocalNotificationSchedulingCenter {
         content.body = request.body
         content.sound = .default
         content.userInfo = request.userInfo
+        content.categoryIdentifier = LocalNotificationMetadata.categoryIdentifier
 
         let timeInterval = max(1, request.scheduledAt.timeIntervalSinceNow)
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: timeInterval, repeats: false)
@@ -228,7 +240,7 @@ struct LocalNotificationScheduler {
         }
 
         await notificationCenter.removePendingRequests(
-            withIdentifiers: cancellableIntents.map(notificationIdentifier(for:))
+            withIdentifiers: cancellableIntents.map(LocalNotificationMetadata.requestIdentifier(for:))
         )
 
         for intent in cancellableIntents {
@@ -290,21 +302,12 @@ struct LocalNotificationScheduler {
 
     private func scheduleRequest(for intent: NotificationIntent) -> LocalNotificationScheduleRequest {
         LocalNotificationScheduleRequest(
-            identifier: notificationIdentifier(for: intent),
+            identifier: LocalNotificationMetadata.requestIdentifier(for: intent),
             title: intent.title,
             body: intent.body,
             scheduledAt: intent.scheduledAt,
-            userInfo: [
-                "mory_notification_intent_id": intent.id.uuidString,
-                "mory_notification_kind": intent.kind.rawValue,
-                "mory_notification_target_type": intent.targetType.rawValue,
-                "mory_notification_target_id": intent.targetID.uuidString,
-            ]
+            userInfo: LocalNotificationMetadata.userInfo(for: intent)
         )
-    }
-
-    private func notificationIdentifier(for intent: NotificationIntent) -> String {
-        "mory.notification.\(intent.id.uuidString)"
     }
 }
 
