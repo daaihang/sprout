@@ -81,6 +81,10 @@ final class HomeBoardPreferenceStore {
     var isPinned: Bool
     var isHidden: Bool
     var dismissedAt: Date?
+    var widthColumns: Int?
+    var heightUnits: Int?
+    var userSortIndex: Double?
+    var acceptedAt: Date?
     var updatedAt: Date
 
     init(
@@ -95,6 +99,10 @@ final class HomeBoardPreferenceStore {
         isPinned: Bool,
         isHidden: Bool,
         dismissedAt: Date?,
+        widthColumns: Int? = nil,
+        heightUnits: Int? = nil,
+        userSortIndex: Double? = nil,
+        acceptedAt: Date? = nil,
         updatedAt: Date
     ) {
         self.id = id
@@ -108,6 +116,10 @@ final class HomeBoardPreferenceStore {
         self.isPinned = isPinned
         self.isHidden = isHidden
         self.dismissedAt = dismissedAt
+        self.widthColumns = widthColumns
+        self.heightUnits = heightUnits
+        self.userSortIndex = userSortIndex
+        self.acceptedAt = acceptedAt
         self.updatedAt = updatedAt
     }
 }

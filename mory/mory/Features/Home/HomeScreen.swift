@@ -41,6 +41,7 @@ struct HomeScreen: View {
     @State private var homeBoard: HomeBoardSnapshot?
     @State private var isPresentingComposer = false
     @State private var isReloading = false
+    @State private var isEditingHomeBoard = false
     @State private var errorMessage: String?
     @State private var selectedRoute: HomeRoute?
 
@@ -49,76 +50,12 @@ struct HomeScreen: View {
     }
 
     var body: some View {
-        List {
-            if surface == .home {
-                if let errorMessage {
-                    Section {
-                        Text(errorMessage)
-                            .foregroundStyle(.red)
-                    }
-                }
-
-                Section {
-                    if let homeBoard, !homeBoard.items.isEmpty {
-                HomeBoardSection(
-                    board: homeBoard,
-                    onSelect: { route in
-                        selectedRoute = route
-                    },
-                    onPreference: updateBoardPreference,
-                    onAnswerQuestion: answerQuestion,
-                    onDismissQuestion: dismissQuestion,
-                    onSystemAction: { isPresentingComposer = true }
-                )
-                    } else {
-                        MoryPublicEmptyStateView(
-                            state: .today,
-                            onAction: { isPresentingComposer = true }
-                        )
-                    }
-                } header: {
-                    VStack(alignment: .leading, spacing: MorySpacing.xSmall) {
-                        Text("home.section.board")
-                        if let subtitle = homeBoard?.board.subtitle.trimmedOrNil {
-                            Text(subtitle)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-            } else {
-                if let errorMessage {
-                    Section {
-                        Text(errorMessage)
-                            .foregroundStyle(.red)
-                    }
-                }
-
-                Section(String(localized: "memories.section.all")) {
-                    if memories.isEmpty {
-                        MoryPublicEmptyStateView(
-                            state: .memories,
-                            onAction: { isPresentingComposer = true }
-                        )
-                    } else {
-                        ForEach(memories) { memory in
-                            Button {
-                                selectedRoute = .memory(memory.id)
-                            } label: {
-                                MemoryRow(summary: memory)
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityElement(children: .combine)
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                Button(role: .destructive) {
-                                    deleteMemory(recordID: memory.id)
-                                } label: {
-                                    Label("common.delete", systemImage: "trash")
-                                }
-                            }
-                        }
-                    }
-                }
+        Group {
+            switch surface {
+            case .home:
+                homeSurface
+            case .memories:
+                memoriesSurface
             }
         }
         .navigationTitle(surface.navigationTitle)
@@ -133,7 +70,15 @@ struct HomeScreen: View {
             }
         }
         .toolbar {
-            if surface == .memories {
+            if surface == .home {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        isEditingHomeBoard.toggle()
+                    } label: {
+                        Text(verbatim: isEditingHomeBoard ? "Done" : "Edit")
+                    }
+                }
+            } else {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         isPresentingComposer = true
@@ -154,6 +99,87 @@ struct HomeScreen: View {
         .sheet(isPresented: $isPresentingComposer) {
             UnifiedCaptureComposerView(seed: .empty) {
                 Task { await reload() }
+            }
+        }
+    }
+
+    private var homeSurface: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: MorySpacing.large) {
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.subheadline)
+                        .foregroundStyle(.red)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                if let homeBoard, !homeBoard.items.isEmpty {
+                    VStack(alignment: .leading, spacing: MorySpacing.xSmall) {
+                        Text("home.section.board")
+                            .font(.headline)
+                        if let subtitle = homeBoard.board.subtitle.trimmedOrNil {
+                            Text(subtitle)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    HomeBoardSection(
+                        board: homeBoard,
+                        isEditing: isEditingHomeBoard,
+                        onSelect: { route in
+                            selectedRoute = route
+                        },
+                        onPreference: updateBoardPreference,
+                        onAnswerQuestion: answerQuestion,
+                        onDismissQuestion: dismissQuestion,
+                        onSystemAction: { isPresentingComposer = true }
+                    )
+                } else {
+                    MoryPublicEmptyStateView(
+                        state: .today,
+                        onAction: { isPresentingComposer = true }
+                    )
+                }
+            }
+            .padding(.horizontal, MorySpacing.medium)
+            .padding(.vertical, MorySpacing.medium)
+        }
+    }
+
+    private var memoriesSurface: some View {
+        List {
+            if let errorMessage {
+                Section {
+                    Text(errorMessage)
+                        .foregroundStyle(.red)
+                }
+            }
+
+            Section(String(localized: "memories.section.all")) {
+                if memories.isEmpty {
+                    MoryPublicEmptyStateView(
+                        state: .memories,
+                        onAction: { isPresentingComposer = true }
+                    )
+                } else {
+                    ForEach(memories) { memory in
+                        Button {
+                            selectedRoute = .memory(memory.id)
+                        } label: {
+                            MemoryRow(summary: memory)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityElement(children: .combine)
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button(role: .destructive) {
+                                deleteMemory(recordID: memory.id)
+                            } label: {
+                                Label("common.delete", systemImage: "trash")
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -295,6 +321,7 @@ private extension CaptureSource {
 
 private struct HomeBoardSection: View {
     let board: HomeBoardSnapshot
+    let isEditing: Bool
     let onSelect: (HomeRoute) -> Void
     let onPreference: (HomeBoardItemSnapshot, HomeBoardPreferenceAction) -> Void
     let onAnswerQuestion: (ClarificationQuestion, ClarificationAnswer) -> Void
@@ -302,21 +329,116 @@ private struct HomeBoardSection: View {
     let onSystemAction: () -> Void
 
     var body: some View {
-        ForEach(board.items) { item in
-            HomeBoardCard(
-                item: item,
-                onSelect: onSelect,
-                onPreference: onPreference,
-                onAnswerQuestion: onAnswerQuestion,
-                onDismissQuestion: onDismissQuestion,
-                onSystemAction: onSystemAction
-            )
+        VStack(alignment: .leading, spacing: MorySpacing.large) {
+            if !board.userBoardItems.isEmpty {
+                HomeBoardGrid(
+                    items: board.userBoardItems,
+                    isEditing: isEditing,
+                    onSelect: onSelect,
+                    onPreference: onPreference,
+                    onAnswerQuestion: onAnswerQuestion,
+                    onDismissQuestion: onDismissQuestion,
+                    onSystemAction: onSystemAction
+                )
+            }
+
+            if !board.suggestionItems.isEmpty {
+                VStack(alignment: .leading, spacing: MorySpacing.small) {
+                    Text(verbatim: "Suggestions")
+                        .font(.headline)
+                    HomeBoardGrid(
+                        items: board.suggestionItems,
+                        isEditing: isEditing,
+                        onSelect: onSelect,
+                        onPreference: onPreference,
+                        onAnswerQuestion: onAnswerQuestion,
+                        onDismissQuestion: onDismissQuestion,
+                        onSystemAction: onSystemAction
+                    )
+                }
+                .accessibilityElement(children: .contain)
+            }
         }
+    }
+}
+
+private struct HomeBoardGrid: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+    let items: [HomeBoardItemSnapshot]
+    let isEditing: Bool
+    let onSelect: (HomeRoute) -> Void
+    let onPreference: (HomeBoardItemSnapshot, HomeBoardPreferenceAction) -> Void
+    let onAnswerQuestion: (ClarificationQuestion, ClarificationAnswer) -> Void
+    let onDismissQuestion: (ClarificationQuestion) -> Void
+    let onSystemAction: () -> Void
+
+    var body: some View {
+        HomeBoardGridLayout(metrics: metrics) {
+            ForEach(items) { item in
+                HomeBoardCard(
+                    item: item,
+                    isEditing: isEditing,
+                    onSelect: onSelect,
+                    onPreference: onPreference,
+                    onAnswerQuestion: onAnswerQuestion,
+                    onDismissQuestion: onDismissQuestion,
+                    onSystemAction: onSystemAction
+                )
+                .layoutValue(key: HomeBoardSpanKey.self, value: item.layout.span)
+                .zIndex(Double(item.compositionItem.zIndex))
+            }
+        }
+        .animation(.spring(response: 0.34, dampingFraction: 0.86), value: items.map(\.compositionItem.itemKey))
+    }
+
+    private var metrics: HomeBoardGridMetrics {
+        HomeBoardGridMetrics(columns: horizontalSizeClass == .regular ? 8 : 4)
+    }
+}
+
+private struct HomeBoardResizeMenu: View {
+    let item: HomeBoardItemSnapshot
+    let onResize: (HomeBoardSpan) -> Void
+
+    var body: some View {
+        Menu {
+            ForEach(HomeBoardSpan.allowedSizes, id: \.self) { span in
+                Button {
+                    onResize(span)
+                } label: {
+                    Text(verbatim: "\(span.widthColumns)x\(span.heightUnits)")
+                }
+            }
+        } label: {
+            Label {
+                Text(verbatim: "\(item.layout.span.widthColumns)x\(item.layout.span.heightUnits)")
+            } icon: {
+                Image(systemName: "rectangle.resize")
+            }
+        }
+    }
+}
+
+private struct HomeBoardCardChrome<Content: View>: View {
+    @ViewBuilder var content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    var body: some View {
+        content
+            .padding(12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
 private struct HomeBoardCard: View {
     let item: HomeBoardItemSnapshot
+    let isEditing: Bool
     let onSelect: (HomeRoute) -> Void
     let onPreference: (HomeBoardItemSnapshot, HomeBoardPreferenceAction) -> Void
     let onAnswerQuestion: (ClarificationQuestion, ClarificationAnswer) -> Void
@@ -324,7 +446,8 @@ private struct HomeBoardCard: View {
     let onSystemAction: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        HomeBoardCardChrome {
+            VStack(alignment: .leading, spacing: 10) {
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 6) {
                     Label(cardLabel, systemImage: cardIcon)
@@ -382,6 +505,8 @@ private struct HomeBoardCard: View {
                         onDismissQuestion(question)
                     }
                 )
+            case let .yesterdayPanel(title, subtitle, sourceRecordIDs):
+                YesterdayPanelBoardCard(title: title, subtitle: subtitle, recordCount: sourceRecordIDs.count)
             case let .systemPrompt(title, subtitle, actionTitle):
                 SystemPromptBoardCard(
                     title: title,
@@ -402,13 +527,24 @@ private struct HomeBoardCard: View {
                 .buttonStyle(.plain)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, MorySpacing.xSmall)
+        }
         .accessibilityElement(children: .combine)
     }
 
     private var preferenceMenu: some View {
         Menu {
+            if item.layout.layer == .suggestion {
+                Button {
+                    onPreference(item, .addToBoard)
+                } label: {
+                    Label {
+                        Text(verbatim: "Add to board")
+                    } icon: {
+                        Image(systemName: "plus.square.on.square")
+                    }
+                }
+            }
+
             if item.cardKind != .clarificationQuestion {
                 Button {
                     onPreference(item, .pin(!item.isPinned))
@@ -417,14 +553,20 @@ private struct HomeBoardCard: View {
                 }
             }
 
+            if isEditing {
+                HomeBoardResizeMenu(item: item) { span in
+                    onPreference(item, .resize(span))
+                }
+            }
+
             Button(role: .destructive) {
                 if case let .clarificationQuestion(question, _) = item.renderValue {
                     onDismissQuestion(question)
                 } else {
-                    onPreference(item, item.cardKind == .systemPrompt || item.cardKind == .reflection ? .dismiss : .hide)
+                    onPreference(item, item.layout.layer == .suggestion ? .dismiss : .hide)
                 }
             } label: {
-                Label(item.cardKind == .systemPrompt || item.cardKind == .reflection || item.cardKind == .clarificationQuestion ? "home.board.action.dismiss" : "home.board.action.hide", systemImage: "eye.slash")
+                Label(item.layout.layer == .suggestion || item.cardKind == .clarificationQuestion ? "home.board.action.dismiss" : "home.board.action.hide", systemImage: "eye.slash")
             }
         } label: {
             Image(systemName: "ellipsis.circle")
@@ -439,6 +581,7 @@ private struct HomeBoardCard: View {
         case .arc: return String(localized: "home.board.kind.arc")
         case .reflection: return String(localized: "home.board.kind.reflection")
         case .clarificationQuestion: return "Question"
+        case .yesterdayPanel: return "Yesterday"
         case .systemPrompt: return String(localized: "home.board.kind.system")
         case .contextCluster: return String(localized: "home.board.kind.cluster")
         case .pendingAction: return String(localized: "home.board.kind.pending")
@@ -451,6 +594,7 @@ private struct HomeBoardCard: View {
         case .arc: return "point.3.connected.trianglepath.dotted"
         case .reflection: return "sparkles"
         case .clarificationQuestion: return "questionmark.bubble"
+        case .yesterdayPanel: return "calendar"
         case .systemPrompt: return "hand.wave"
         case .contextCluster: return "square.stack.3d.up"
         case .pendingAction: return "exclamationmark.circle"
@@ -524,6 +668,27 @@ private struct ReflectionBoardCard: View {
             }
             .font(.caption)
             .foregroundStyle(.secondary)
+        }
+    }
+}
+
+private struct YesterdayPanelBoardCard: View {
+    let title: String
+    let subtitle: String
+    let recordCount: Int
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(verbatim: title)
+                .font(.headline)
+                .lineLimit(2)
+            Text(verbatim: subtitle)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .lineLimit(3)
+            Text(verbatim: "\(recordCount) items")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 }

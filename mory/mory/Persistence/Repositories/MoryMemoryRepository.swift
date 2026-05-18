@@ -490,8 +490,31 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         preference.targetID = item.compositionItem.targetID
         preference.updatedAt = now
         switch action {
+        case .addToBoard:
+            preference.acceptedAt = preference.acceptedAt ?? now
+            preference.userSortIndex = preference.userSortIndex ?? now.timeIntervalSinceReferenceDate
+            preference.widthColumns = preference.widthColumns ?? item.layout.span.widthColumns
+            preference.heightUnits = preference.heightUnits ?? item.layout.span.heightUnits
+            preference.isHidden = false
+            preference.dismissedAt = nil
         case let .pin(isPinned):
             preference.isPinned = isPinned
+            preference.isHidden = false
+            preference.dismissedAt = nil
+            if isPinned {
+                preference.acceptedAt = preference.acceptedAt ?? now
+                preference.userSortIndex = preference.userSortIndex ?? now.timeIntervalSinceReferenceDate
+            }
+        case let .resize(span):
+            let clamped = span.clamped(to: 8)
+            preference.widthColumns = clamped.widthColumns
+            preference.heightUnits = clamped.heightUnits
+            preference.acceptedAt = preference.acceptedAt ?? now
+            preference.isHidden = false
+            preference.dismissedAt = nil
+        case let .setUserOrder(sortIndex):
+            preference.userSortIndex = sortIndex
+            preference.acceptedAt = preference.acceptedAt ?? now
             preference.isHidden = false
             preference.dismissedAt = nil
         case .hide:

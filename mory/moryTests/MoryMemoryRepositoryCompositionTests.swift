@@ -330,6 +330,102 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertFalse(board.items.contains { $0.compositionItem.itemKey == hiddenTarget.compositionItem.itemKey })
     }
 
+    func testHomeBoardUserOrderAndResizePersistAcrossRefreshes() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        for index in 1...3 {
+            _ = try await repository.createMemory(
+                from: MemoryCaptureDraft(
+                    title: "Desktop memory \(index)",
+                    rawText: "Desktop memory \(index) with Linh and planning.",
+                    mood: "focused",
+                    inputContext: "typed in debug",
+                    captureSource: .composer,
+                    artifacts: [.text(title: "Desktop memory \(index)", body: "Desktop memory \(index) with Linh and planning.")]
+                )
+            )
+        }
+
+        var board = try repository.fetchHomeBoard(for: Date(), limit: 8)
+        let memoryItems = board.items.filter { $0.cardKind == .memory }
+        XCTAssertEqual(memoryItems.count, 3)
+
+        try repository.updateHomeBoardItemPreference(memoryItems[0], action: .setUserOrder(30))
+        try repository.updateHomeBoardItemPreference(memoryItems[1], action: .setUserOrder(10))
+        try repository.updateHomeBoardItemPreference(memoryItems[2], action: .setUserOrder(20))
+        try repository.updateHomeBoardItemPreference(memoryItems[1], action: .resize(HomeBoardSpan(widthColumns: 3, heightUnits: 2)))
+
+        board = try repository.fetchHomeBoard(for: Date(), limit: 8)
+        let orderedKeys = board.userBoardItems.filter { $0.cardKind == .memory }.map(\.compositionItem.itemKey)
+        XCTAssertEqual(orderedKeys, [
+            memoryItems[1].compositionItem.itemKey,
+            memoryItems[2].compositionItem.itemKey,
+            memoryItems[0].compositionItem.itemKey,
+        ])
+        let resized = try XCTUnwrap(board.items.first { $0.compositionItem.itemKey == memoryItems[1].compositionItem.itemKey })
+        XCTAssertEqual(resized.layout.span, HomeBoardSpan(widthColumns: 3, heightUnits: 2))
+        XCTAssertEqual(resized.layout.layer, .userBoard)
+    }
+
+    func testHomeBoardSuggestionsDoNotReplaceUserBoardWhenLimitIsFull() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        _ = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Pinned desktop memory",
+                rawText: "Pinned desktop memory with Linh.",
+                mood: "focused",
+                inputContext: "typed in debug",
+                captureSource: .composer,
+                artifacts: [.text(title: "Pinned desktop memory", body: "Pinned desktop memory with Linh.")]
+            )
+        )
+
+        var board = try repository.fetchHomeBoard(for: Date(), limit: 8)
+        let memory = try XCTUnwrap(board.items.first { $0.cardKind == .memory })
+        try repository.updateHomeBoardItemPreference(memory, action: .pin(true))
+
+        board = try repository.fetchHomeBoard(for: Date(), limit: 1)
+        XCTAssertEqual(board.items.count, 1)
+        XCTAssertEqual(board.items.first?.compositionItem.itemKey, memory.compositionItem.itemKey)
+        XCTAssertTrue(board.items.first?.isPinned == true)
+        XCTAssertTrue(board.suggestionItems.isEmpty)
+    }
+
+    func testHomeBoardDismissedSuggestionStaysDismissed() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        _ = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Suggestion desktop memory",
+                rawText: "Suggestion desktop memory with Linh.",
+                mood: "focused",
+                inputContext: "typed in debug",
+                captureSource: .composer,
+                artifacts: [.text(title: "Suggestion desktop memory", body: "Suggestion desktop memory with Linh.")]
+            )
+        )
+
+        var board = try repository.fetchHomeBoard(for: Date(), limit: 8)
+        let suggestion = try XCTUnwrap(board.suggestionItems.first { $0.cardKind == .systemPrompt })
+        try repository.updateHomeBoardItemPreference(suggestion, action: .dismiss)
+
+        board = try repository.fetchHomeBoard(for: Date(), limit: 8)
+        XCTAssertFalse(board.items.contains { $0.compositionItem.itemKey == suggestion.compositionItem.itemKey })
+    }
+
     func testHomeBoardDismissesSystemPromptAndLimitsSuggestedReflections() async throws {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(

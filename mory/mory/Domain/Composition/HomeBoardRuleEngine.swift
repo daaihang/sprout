@@ -53,19 +53,26 @@ struct HomeBoardRuleEngine: Sendable {
             guard !preference.isHidden, preference.dismissedAt == nil else { return nil }
             var updated = candidate
             updated.isPinned = preference.isPinned
+            updated.widthColumns = preference.widthColumns ?? updated.widthColumns
+            updated.heightUnits = preference.heightUnits ?? updated.heightUnits
+            updated.userSortIndex = preference.userSortIndex
+            updated.acceptedAt = preference.acceptedAt
             updated.dismissedAt = preference.dismissedAt
             updated.preferenceUpdatedAt = preference.updatedAt
             return updated
         }
-        .sorted { lhs, rhs in
-            if lhs.isPinned != rhs.isPinned { return lhs.isPinned }
-            if lhs.priority != rhs.priority { return lhs.priority > rhs.priority }
-            return lhs.updatedAt > rhs.updatedAt
-        }
-        .prefix(itemLimit)
+        let userCandidates = visibleCandidates
+            .filter { $0.layoutLayer == .userBoard }
+            .sorted(by: sortUserBoardCandidates)
+        let suggestionCandidates = visibleCandidates
+            .filter { $0.layoutLayer == .suggestion }
+            .sorted(by: sortSuggestionCandidates)
+            .prefix(max(0, itemLimit - userCandidates.count))
+        let selectedCandidates = userCandidates + Array(suggestionCandidates)
 
-        let items = visibleCandidates.enumerated().map { index, candidate in
-            HomeBoardItemSnapshot(
+        let items = selectedCandidates.enumerated().map { index, candidate in
+            let span = HomeBoardSpan(widthColumns: candidate.widthColumns, heightUnits: candidate.heightUnits)
+            return HomeBoardItemSnapshot(
                 compositionItem: CompositionItem(
                     id: UUID(),
                     boardID: boardID,
@@ -75,8 +82,8 @@ struct HomeBoardRuleEngine: Sendable {
                     itemKey: candidate.cardKey,
                     targetType: candidate.targetType,
                     targetID: candidate.targetID,
-                    widthColumns: candidate.widthColumns,
-                    heightUnits: candidate.heightUnits,
+                    widthColumns: span.widthColumns,
+                    heightUnits: span.heightUnits,
                     zIndex: index,
                     rotationDegrees: rotationForPosition(index),
                     scale: candidate.isPinned ? 1.02 : 1,
@@ -88,6 +95,12 @@ struct HomeBoardRuleEngine: Sendable {
                 priority: candidate.priority,
                 reason: candidate.reason,
                 sourceRecordIDs: candidate.sourceRecordIDs,
+                layout: HomeBoardItemLayout(
+                    span: span,
+                    layer: candidate.layoutLayer,
+                    userSortIndex: candidate.userSortIndex,
+                    acceptedAt: candidate.acceptedAt
+                ),
                 isPinned: candidate.isPinned,
                 isHidden: false,
                 dismissedAt: candidate.dismissedAt,
@@ -147,9 +160,14 @@ struct HomeBoardRuleEngine: Sendable {
                     createdAt: memory.record.createdAt,
                     updatedAt: updatedAt,
                     widthColumns: 2,
-                    heightUnits: memory.contextArtifacts.isEmpty ? 1 : 2
+                    heightUnits: memory.contextArtifacts.isEmpty ? 1 : 2,
+                    defaultLayer: .userBoard
                 )
             )
+        }
+
+        if let yesterdayPanel = makeYesterdayPanelCandidate(memories: memories, boardID: boardID, date: date) {
+            candidates.append(yesterdayPanel)
         }
 
         let activeArcs = graphContext.arcs
@@ -177,7 +195,8 @@ struct HomeBoardRuleEngine: Sendable {
                     createdAt: arc.createdAt,
                     updatedAt: arc.updatedAt,
                     widthColumns: 2,
-                    heightUnits: 2
+                    heightUnits: 2,
+                    defaultLayer: .suggestion
                 )
             )
         }
@@ -203,7 +222,8 @@ struct HomeBoardRuleEngine: Sendable {
                     createdAt: reflection.createdAt,
                     updatedAt: reflection.createdAt,
                     widthColumns: 2,
-                    heightUnits: 2
+                    heightUnits: 2,
+                    defaultLayer: .suggestion
                 )
             )
         }
@@ -277,9 +297,41 @@ struct HomeBoardRuleEngine: Sendable {
                 createdAt: sourceMemories.last?.record.createdAt ?? .now,
                 updatedAt: sourceMemories.first?.record.updatedAt ?? .now,
                 widthColumns: 2,
-                heightUnits: 1
+                heightUnits: 1,
+                defaultLayer: .suggestion
             )
         ]
+    }
+
+    private func makeYesterdayPanelCandidate(memories: [MemorySummary], boardID: UUID, date: Date) -> HomeBoardCandidate? {
+        let calendar = Calendar.current
+        guard let yesterday = calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: date)) else {
+            return nil
+        }
+        let sourceMemories = memories
+            .filter { calendar.isDate($0.record.updatedAt, inSameDayAs: yesterday) }
+            .sorted { $0.record.updatedAt > $1.record.updatedAt }
+        guard !sourceMemories.isEmpty else { return nil }
+
+        return HomeBoardCandidate(
+            cardKey: "yesterday-\(calendar.startOfDay(for: yesterday).timeIntervalSince1970)",
+            cardKind: .yesterdayPanel,
+            targetType: .system,
+            targetID: boardID,
+            sourceRecordIDs: sourceMemories.map(\.id),
+            renderValue: .yesterdayPanel(
+                title: "Yesterday organized",
+                subtitle: "\(sourceMemories.count) memories are ready to revisit.",
+                sourceRecordIDs: sourceMemories.map(\.id)
+            ),
+            priority: 64 + min(Double(sourceMemories.count), 8),
+            reason: "yesterday ready",
+            createdAt: sourceMemories.last?.record.createdAt ?? yesterday,
+            updatedAt: sourceMemories.first?.record.updatedAt ?? yesterday,
+            widthColumns: 4,
+            heightUnits: 2,
+            defaultLayer: .suggestion
+        )
     }
 
     private func makePendingActionCandidates(pipelineStatuses: [PipelineStatusSummary]) -> [HomeBoardCandidate] {
@@ -304,7 +356,8 @@ struct HomeBoardRuleEngine: Sendable {
                     createdAt: status.status.lastAttemptAt ?? status.status.updatedAt,
                     updatedAt: status.status.updatedAt,
                     widthColumns: 2,
-                    heightUnits: 1
+                    heightUnits: 1,
+                    defaultLayer: .suggestion
                 )
             }
     }
@@ -336,7 +389,8 @@ struct HomeBoardRuleEngine: Sendable {
                     createdAt: question.createdAt,
                     updatedAt: profile?.updatedAt ?? question.createdAt,
                     widthColumns: 2,
-                    heightUnits: question.kind == .entityAlias ? 2 : 1
+                    heightUnits: question.kind == .entityAlias ? 2 : 1,
+                    defaultLayer: .suggestion
                 )
             }
     }
@@ -362,7 +416,8 @@ struct HomeBoardRuleEngine: Sendable {
             createdAt: .now,
             updatedAt: .now,
             widthColumns: 2,
-            heightUnits: 1
+            heightUnits: 1,
+            defaultLayer: .suggestion
         )
     }
 
@@ -374,6 +429,26 @@ struct HomeBoardRuleEngine: Sendable {
     private func rotationForPosition(_ index: Int) -> Double {
         let rotations: [Double] = [0, -0.8, 0.6, 0, 0.5, -0.4, 0, 0.3]
         return rotations[index % rotations.count]
+    }
+
+    private func sortUserBoardCandidates(_ lhs: HomeBoardCandidate, _ rhs: HomeBoardCandidate) -> Bool {
+        if lhs.isPinned != rhs.isPinned { return lhs.isPinned }
+        switch (lhs.userSortIndex, rhs.userSortIndex) {
+        case let (lhsOrder?, rhsOrder?) where lhsOrder != rhsOrder:
+            return lhsOrder < rhsOrder
+        case (_?, nil):
+            return true
+        case (nil, _?):
+            return false
+        default:
+            if lhs.priority != rhs.priority { return lhs.priority > rhs.priority }
+            return lhs.updatedAt > rhs.updatedAt
+        }
+    }
+
+    private func sortSuggestionCandidates(_ lhs: HomeBoardCandidate, _ rhs: HomeBoardCandidate) -> Bool {
+        if lhs.priority != rhs.priority { return lhs.priority > rhs.priority }
+        return lhs.updatedAt > rhs.updatedAt
     }
 }
 
@@ -390,7 +465,14 @@ private struct HomeBoardCandidate {
     var updatedAt: Date
     var widthColumns: Int
     var heightUnits: Int
+    var defaultLayer: HomeBoardItemLayer
     var isPinned = false
+    var acceptedAt: Date?
+    var userSortIndex: Double?
     var dismissedAt: Date?
     var preferenceUpdatedAt: Date?
+
+    var layoutLayer: HomeBoardItemLayer {
+        isPinned || acceptedAt != nil || userSortIndex != nil ? .userBoard : defaultLayer
+    }
 }

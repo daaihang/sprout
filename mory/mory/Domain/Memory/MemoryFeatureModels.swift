@@ -295,6 +295,7 @@ enum CompositionRenderValue: Hashable, Sendable {
     case arc(TemporalArc)
     case reflection(ReflectionSnapshot)
     case clarificationQuestion(question: ClarificationQuestion, profile: EntityProfile?)
+    case yesterdayPanel(title: String, subtitle: String, sourceRecordIDs: [UUID])
     case systemPrompt(title: String, subtitle: String, actionTitle: String?)
     case contextCluster(title: String, subtitle: String, sourceRecordIDs: [UUID])
     case pendingAction(title: String, subtitle: String, targetRecordID: UUID?)
@@ -307,6 +308,7 @@ struct HomeBoardItemSnapshot: Identifiable, Hashable, Sendable {
     let priority: Double
     let reason: String
     let sourceRecordIDs: [UUID]
+    let layout: HomeBoardItemLayout
     let isPinned: Bool
     let isHidden: Bool
     let dismissedAt: Date?
@@ -320,6 +322,14 @@ struct HomeBoardSnapshot: Hashable, Sendable {
     let board: Board
     let composition: Composition
     let items: [HomeBoardItemSnapshot]
+
+    var userBoardItems: [HomeBoardItemSnapshot] {
+        items.filter { $0.layout.layer == .userBoard }
+    }
+
+    var suggestionItems: [HomeBoardItemSnapshot] {
+        items.filter { $0.layout.layer == .suggestion }
+    }
 }
 
 struct HomeBoardDebugInputSnapshot: Hashable, Sendable {

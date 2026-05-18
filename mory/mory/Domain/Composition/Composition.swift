@@ -26,6 +26,7 @@ enum HomeBoardCardKind: String, Codable, CaseIterable, Identifiable, Sendable {
     case arc
     case reflection
     case clarificationQuestion
+    case yesterdayPanel
     case systemPrompt
     case contextCluster
     case pendingAction
@@ -47,6 +48,10 @@ struct HomeBoardItemPreference: Identifiable, Codable, Hashable, Sendable {
     var isPinned: Bool
     var isHidden: Bool
     var dismissedAt: Date?
+    var widthColumns: Int?
+    var heightUnits: Int?
+    var userSortIndex: Double?
+    var acceptedAt: Date?
     var updatedAt: Date
 
     init(
@@ -61,6 +66,10 @@ struct HomeBoardItemPreference: Identifiable, Codable, Hashable, Sendable {
         isPinned: Bool = false,
         isHidden: Bool = false,
         dismissedAt: Date? = nil,
+        widthColumns: Int? = nil,
+        heightUnits: Int? = nil,
+        userSortIndex: Double? = nil,
+        acceptedAt: Date? = nil,
         updatedAt: Date = .now
     ) {
         self.id = id
@@ -74,12 +83,19 @@ struct HomeBoardItemPreference: Identifiable, Codable, Hashable, Sendable {
         self.isPinned = isPinned
         self.isHidden = isHidden
         self.dismissedAt = dismissedAt
+        self.widthColumns = widthColumns
+        self.heightUnits = heightUnits
+        self.userSortIndex = userSortIndex
+        self.acceptedAt = acceptedAt
         self.updatedAt = updatedAt
     }
 }
 
 enum HomeBoardPreferenceAction: Sendable {
+    case addToBoard
     case pin(Bool)
+    case resize(HomeBoardSpan)
+    case setUserOrder(Double)
     case hide
     case dismiss
 }
