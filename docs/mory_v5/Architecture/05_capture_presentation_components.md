@@ -9,8 +9,10 @@ Capture UI must become robust, componentized, and fast to iterate.
 Recommended components:
 
 - QuickCaptureToolbar.
-- QuickTextComposer.
+- QuickCameraCaptureView.
+- UnifiedCaptureComposerView.
 - VoiceHoldButton.
+- ContextCheckInButton.
 - AudioCaptureInputView.
 - PhotoInputView.
 - LinkInputView.
@@ -19,6 +21,14 @@ Recommended components:
 - ArtifactStagingListView.
 - CaptureSaveBar.
 - CaptureErrorRecoveryView.
+
+The v5 quick toolbar is a three-part control:
+
+1. Left circular camera control opens the system camera and saves a photo memory.
+2. Center capsule is the primary capture control: tap opens the unified composer, hold records voice, left slide cancels, right slide locks continuous recording.
+3. Right circular context check-in saves timestamp plus available location, weather, and music without text or audio.
+
+The unified composer is the default editable save surface for toolbar text and voice flows. Voice capture returns a seed containing transcript/audio; the composer owns final title/body/mood/context edits and save.
 
 ## 3. Audio State Machine
 
@@ -111,4 +121,3 @@ Required:
 - Location picker draft saves as location artifact.
 - Audio stop can be called repeatedly.
 - Failed transcription does not freeze UI.
-

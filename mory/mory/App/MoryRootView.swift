@@ -7,10 +7,7 @@ struct MoryRootView: View {
     @AppStorage(MoryOnboardingStep.completionStorageKey) private var hasCompletedOnboarding = false
     @State private var selectedTab: MoryAppTab = .today
     @State private var isPresentingSettings = false
-    @State private var isPresentingQuickTextCapture = false
-    @State private var isPresentingPhotoCapture = false
-    @State private var isPresentingFullCapture = false
-    @State private var quickVoiceResult: QuickVoiceCaptureResult?
+    @State private var unifiedCaptureSeed: UnifiedCaptureSeed?
     @State private var tabRefreshID = UUID()
 
     init(
@@ -56,23 +53,8 @@ struct MoryRootView: View {
                 runtimeEnvironment: runtimeEnvironment
             )
         }
-        .sheet(isPresented: $isPresentingFullCapture) {
-            CaptureComposerView {
-                tabRefreshID = UUID()
-            }
-        }
-        .sheet(isPresented: $isPresentingPhotoCapture) {
-            CaptureComposerView(startsWithPhoto: true) {
-                tabRefreshID = UUID()
-            }
-        }
-        .sheet(isPresented: $isPresentingQuickTextCapture) {
-            QuickTextCaptureView {
-                tabRefreshID = UUID()
-            }
-        }
-        .sheet(item: $quickVoiceResult) { result in
-            QuickVoiceReviewView(result: result) {
+        .sheet(item: $unifiedCaptureSeed) { seed in
+            UnifiedCaptureComposerView(seed: seed) {
                 tabRefreshID = UUID()
             }
         }
@@ -92,10 +74,10 @@ struct MoryRootView: View {
                 }
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     QuickCaptureToolbar(
-                        onTextCapture: { isPresentingQuickTextCapture = true },
-                        onPhotoCapture: { isPresentingPhotoCapture = true },
-                        onMoreCapture: { isPresentingFullCapture = true },
-                        onVoiceCaptureReady: { result in quickVoiceResult = result }
+                        onTextCapture: { unifiedCaptureSeed = .empty },
+                        onPhotoCapture: { unifiedCaptureSeed = .photoCapture },
+                        onMoreCapture: { unifiedCaptureSeed = .empty },
+                        onVoiceCaptureReady: { result in unifiedCaptureSeed = .voice(result) },
                     )
                 }
         }
@@ -132,7 +114,7 @@ struct MoryRootView: View {
     private func startFirstMemoryFromOnboarding() {
         hasCompletedOnboarding = true
         DispatchQueue.main.async {
-            isPresentingQuickTextCapture = true
+            unifiedCaptureSeed = .empty
         }
     }
 }

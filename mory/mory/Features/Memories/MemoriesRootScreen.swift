@@ -112,7 +112,7 @@ struct MemoriesRootScreen: View {
         .onChange(of: selectedContext) { _, _ in Task { await load() } }
         .onChange(of: selectedInsight) { _, _ in Task { await load() } }
         .sheet(isPresented: $isPresentingComposer) {
-            CaptureComposerView {
+            UnifiedCaptureComposerView(seed: .empty) {
                 Task { await load() }
             }
         }

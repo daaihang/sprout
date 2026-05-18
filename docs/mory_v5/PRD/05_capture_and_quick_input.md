@@ -10,25 +10,28 @@ The user should be able to add a memory before the thought disappears. v5 must m
 
 | Entry | Trigger | Result |
 |-------|---------|--------|
-| Quick text | Tap toolbar text button | Opens compact text composer |
-| Quick voice | Press and hold toolbar voice button | Records while held; release finalizes |
-| Full composer | Toolbar menu or expanded composer | Supports text, photo, audio, link, location, context |
+| Unified capture | Tap toolbar center capsule | Opens the unified memory composer |
+| Quick voice | Press and hold toolbar center capsule | Records while held; release transcribes and opens unified composer with transcript/audio |
+| Legacy full composer | Internal/advanced fallback only during transition | Code remains available but ordinary new-memory entry points use unified capture |
 | Share/import future entry | External source | Out of v5 default scope unless separately approved |
 
 ## 3. Bottom Quick Toolbar
 
 Required controls:
 
-1. Text button.
-2. Voice button.
-3. More/input mode button.
+1. Left circular camera button.
+2. Center adaptive capsule primary capture button.
+3. Right circular context check-in button.
 
 Behavior:
 
-- Tap text: open composer focused on text field.
-- Long press voice: start recording.
-- Release voice: stop recording and begin transcription.
-- Drag/cancel gesture: cancel recording before release if needed.
+- Tap camera: open the system camera and save a photo memory after capture.
+- Tap center capsule: open the unified memory composer focused on text input.
+- Long press center capsule: start voice recording.
+- Release center capsule: stop recording, transcribe, and open the unified composer with transcript/audio ready to edit and save.
+- Slide left while recording: cancel before release.
+- Slide right while recording: lock hands-free recording; slide right or use the submit control to stop, transcribe, and open the unified composer.
+- Tap context check-in: save the current timestamp plus available location, weather, and music without requiring typed or spoken content.
 - If recording fails: show recovery state and keep app usable.
 
 Toolbar rules:
@@ -38,6 +41,7 @@ Toolbar rules:
 - Uses icons with accessibility labels.
 - Respects keyboard/safe area.
 - Haptic feedback on record start/stop if available.
+- Context check-in must save a valid timestamp-only memory even when optional permissions are unavailable.
 
 ## 4. Voice Capture
 
@@ -81,14 +85,15 @@ Acceptance:
 - User can discard transcript.
 - App does not freeze if speech recognition returns no result.
 
-## 5. Text Capture
+## 5. Unified Capture Composer
 
-Text composer should support:
+The unified composer should support the core old-project capture experience:
 
 - Multiline entry.
+- Voice transcript/audio backfill.
+- Photo attachment from camera or photo library.
 - Optional mood.
 - Optional title only when needed.
-- Auto-detected link preview.
 - Selected context candidates.
 - Save button fixed and reachable.
 
@@ -177,7 +182,7 @@ Behavior:
 - Save writes selected candidates in the initial memory snapshot.
 - No hidden late append after save.
 
-## 11. Full Composer Layout
+## 11. Composer Layout
 
 Sections:
 
@@ -203,4 +208,3 @@ Rules:
 - Music candidate is snapshot-stable.
 - Context candidates save in initial memory.
 - Low-signal and noisy content does not break save or overproduce insights.
-

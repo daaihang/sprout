@@ -185,7 +185,7 @@ struct InsightsRootScreen: View {
             await load()
         }
         .sheet(isPresented: $isPresentingComposer) {
-            CaptureComposerView {
+            UnifiedCaptureComposerView(seed: .empty) {
                 Task { await load() }
             }
         }

@@ -19,6 +19,8 @@
 	<string>Mory uses speech recognition to transcribe audio recordings into text.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Mory needs photo library access to attach photos to memories.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Mory uses the camera to quickly capture photo memories.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Mory uses your location to enrich memories with place context and current weather.</string>
 	<key>NSAppleMusicUsageDescription</key>

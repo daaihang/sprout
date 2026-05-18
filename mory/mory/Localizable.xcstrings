@@ -1,6 +1,9 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "" : {
+
+    },
     "%lld" : {
 
     },
@@ -156,6 +159,74 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "故事线"
+          }
+        }
+      }
+    },
+    "arc.status.accepted" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accepted"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已确认"
+          }
+        }
+      }
+    },
+    "arc.status.archived" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Archived"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已归档"
+          }
+        }
+      }
+    },
+    "arc.status.candidate" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Candidate"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "候选"
+          }
+        }
+      }
+    },
+    "arc.status.merged" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Merged"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已合并"
           }
         }
       }
@@ -1523,43 +1594,103 @@
     "capture.source.audio" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Audio" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "录音" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audio"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "录音"
+          }
+        }
       }
     },
     "capture.source.composer" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Text" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "文字" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文字"
+          }
+        }
       }
     },
     "capture.source.importFile" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Import" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "导入" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "导入"
+          }
+        }
       }
     },
     "capture.source.manual" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Manual" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "手动" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manual"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "手动"
+          }
+        }
       }
     },
     "capture.source.photo" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Photo" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "照片" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Photo"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "照片"
+          }
+        }
       }
     },
     "capture.source.voice" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Voice" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "语音" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voice"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "语音"
+          }
+        }
       }
     },
     "capture.type.audio" : {
@@ -1905,23 +2036,6 @@
         }
       }
     },
-    "common.noSummary" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No summary"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "暂无摘要"
-          }
-        }
-      }
-    },
     "common.none" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1935,6 +2049,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "无"
+          }
+        }
+      }
+    },
+    "common.noSummary" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No summary"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无摘要"
           }
         }
       }
@@ -2107,188 +2238,6 @@
             "value" : "是"
           }
         }
-      }
-    },
-    "empty.action.addFirstMemory" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Add first memory" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "添加第一条记忆" } }
-      }
-    },
-    "empty.action.addMemory" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Add memory" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "添加记忆" } }
-      }
-    },
-    "empty.action.clearFilters" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear filters" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "清除筛选" } }
-      }
-    },
-    "empty.action.clearSearch" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear search" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "清空搜索" } }
-      }
-    },
-    "empty.action.openSettings" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open Settings" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "打开设置" } }
-      }
-    },
-    "empty.action.retry" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Retry" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "重试" } }
-      }
-    },
-    "empty.memories.filtered.message" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "No memories match these filters. Clear filters or try a broader view." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "没有记忆符合当前筛选。清除筛选，或换一个更宽的视图。" } }
-      }
-    },
-    "empty.memories.filtered.title" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "No matching memories" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "没有匹配的记忆" } }
-      }
-    },
-    "empty.memories.message" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Saved memories will appear here. Capture from the toolbar when you are ready." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "保存的记忆会出现在这里。准备好时可以从工具栏记录。" } }
-      }
-    },
-    "empty.memories.title" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Your memory library is empty" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "记忆库是空的" } }
-      }
-    },
-    "empty.permission.message" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "This context is unavailable because permission is off. You can enable it or continue without it." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "这个上下文因权限关闭而不可用。你可以开启它，也可以继续记录。" } }
-      }
-    },
-    "empty.permission.title" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Permission is off" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "权限已关闭" } }
-      }
-    },
-    "empty.processingFailed.message" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "The source is saved locally. You can retry analysis when you are ready." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "原始内容已本地保存。准备好后可以重试分析。" } }
-      }
-    },
-    "empty.processingFailed.title" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Analysis can be retried" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "分析可以重试" } }
-      }
-    },
-    "empty.search.message" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "No results match this query. Clear search or try a shorter phrase." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "没有结果匹配这次搜索。清空搜索，或试试更短的词。" } }
-      }
-    },
-    "empty.search.title" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "No results" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "没有结果" } }
-      }
-    },
-    "empty.today.message" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Mory is ready for a first memory. Start with text or voice; optional context can come later." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "Mory 已准备好记录第一条记忆。可以先用文字或语音开始，上下文稍后再加。" } }
-      }
-    },
-    "empty.today.title" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Ready for your first memory" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "可以记录第一条记忆了" } }
-      }
-    },
-    "empty.insights.title" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Insights need a little history" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "洞察需要一点积累" } }
-      }
-    },
-    "empty.insights.message" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Insights appear after enough memories form patterns. Keep capturing real moments." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "当足够多的记忆形成模式后，洞察会出现在这里。继续记录真实片段即可。" } }
-      }
-    },
-    "empty.insights.storylines" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Storylines appear when multiple memories point to the same pattern." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "当多条记忆指向同一模式后，故事线会出现在这里。" } }
-      }
-    },
-    "empty.insights.reflections" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Suggested reflections appear after analysis finds useful evidence." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "当分析找到有用证据后，建议感悟会出现在这里。" } }
-      }
-    },
-    "empty.insights.people" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "People appear after analysis links them to memories." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "当分析把人物和记忆关联起来后，人物会出现在这里。" } }
-      }
-    },
-    "empty.insights.places" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Places appear once memories carry reusable location context." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "当记忆带有可复用地点上下文后，地点会出现在这里。" } }
-      }
-    },
-    "empty.insights.themes" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Themes appear after repeated signals accumulate." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "当重复信号积累后，主题会出现在这里。" } }
-      }
-    },
-    "empty.insights.decisions" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Decisions appear after analysis finds durable choices." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "当分析识别出稳定选择后，决策会出现在这里。" } }
       }
     },
     "Copy All %@ Payloads" : {
@@ -7393,11 +7342,555 @@
     "Each run creates real local memories and calls the configured Go API through the normal pipeline." : {
 
     },
+    "empty.action.addFirstMemory" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add first memory"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "添加第一条记忆"
+          }
+        }
+      }
+    },
+    "empty.action.addMemory" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add memory"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "添加记忆"
+          }
+        }
+      }
+    },
+    "empty.action.clearFilters" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear filters"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清除筛选"
+          }
+        }
+      }
+    },
+    "empty.action.clearSearch" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear search"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清空搜索"
+          }
+        }
+      }
+    },
+    "empty.action.openSettings" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Settings"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开设置"
+          }
+        }
+      }
+    },
+    "empty.action.retry" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retry"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重试"
+          }
+        }
+      }
+    },
+    "empty.insights.decisions" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Decisions appear after analysis finds durable choices."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当分析识别出稳定选择后，决策会出现在这里。"
+          }
+        }
+      }
+    },
+    "empty.insights.message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Insights appear after enough memories form patterns. Keep capturing real moments."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当足够多的记忆形成模式后，洞察会出现在这里。继续记录真实片段即可。"
+          }
+        }
+      }
+    },
+    "empty.insights.people" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "People appear after analysis links them to memories."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当分析把人物和记忆关联起来后，人物会出现在这里。"
+          }
+        }
+      }
+    },
+    "empty.insights.places" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Places appear once memories carry reusable location context."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当记忆带有可复用地点上下文后，地点会出现在这里。"
+          }
+        }
+      }
+    },
+    "empty.insights.reflections" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suggested reflections appear after analysis finds useful evidence."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当分析找到有用证据后，建议感悟会出现在这里。"
+          }
+        }
+      }
+    },
+    "empty.insights.storylines" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Storylines appear when multiple memories point to the same pattern."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当多条记忆指向同一模式后，故事线会出现在这里。"
+          }
+        }
+      }
+    },
+    "empty.insights.themes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Themes appear after repeated signals accumulate."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当重复信号积累后，主题会出现在这里。"
+          }
+        }
+      }
+    },
+    "empty.insights.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Insights need a little history"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "洞察需要一点积累"
+          }
+        }
+      }
+    },
+    "empty.memories.filtered.message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No memories match these filters. Clear filters or try a broader view."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有记忆符合当前筛选。清除筛选，或换一个更宽的视图。"
+          }
+        }
+      }
+    },
+    "empty.memories.filtered.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No matching memories"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有匹配的记忆"
+          }
+        }
+      }
+    },
+    "empty.memories.message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saved memories will appear here. Capture from the toolbar when you are ready."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保存的记忆会出现在这里。准备好时可以从工具栏记录。"
+          }
+        }
+      }
+    },
+    "empty.memories.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your memory library is empty"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "记忆库是空的"
+          }
+        }
+      }
+    },
+    "empty.permission.message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This context is unavailable because permission is off. You can enable it or continue without it."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这个上下文因权限关闭而不可用。你可以开启它，也可以继续记录。"
+          }
+        }
+      }
+    },
+    "empty.permission.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permission is off"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "权限已关闭"
+          }
+        }
+      }
+    },
+    "empty.processingFailed.message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The source is saved locally. You can retry analysis when you are ready."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "原始内容已本地保存。准备好后可以重试分析。"
+          }
+        }
+      }
+    },
+    "empty.processingFailed.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Analysis can be retried"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "分析可以重试"
+          }
+        }
+      }
+    },
+    "empty.search.message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No results match this query. Clear search or try a shorter phrase."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有结果匹配这次搜索。清空搜索，或试试更短的词。"
+          }
+        }
+      }
+    },
+    "empty.search.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No results"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有结果"
+          }
+        }
+      }
+    },
+    "empty.today.message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mory is ready for a first memory. Start with text or voice; optional context can come later."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mory 已准备好记录第一条记忆。可以先用文字或语音开始，上下文稍后再加。"
+          }
+        }
+      }
+    },
+    "empty.today.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ready for your first memory"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "可以记录第一条记忆了"
+          }
+        }
+      }
+    },
     "Enabled" : {
 
     },
     "English" : {
 
+    },
+    "entity.kind.activity" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Activity"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "活动"
+          }
+        }
+      }
+    },
+    "entity.kind.decision" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Decision"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "决策"
+          }
+        }
+      }
+    },
+    "entity.kind.object" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Object"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "物品"
+          }
+        }
+      }
+    },
+    "entity.kind.person" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Person"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "人物"
+          }
+        }
+      }
+    },
+    "entity.kind.place" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Place"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "地点"
+          }
+        }
+      }
+    },
+    "entity.kind.theme" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Theme"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "主题"
+          }
+        }
+      }
     },
     "entity.nav.title" : {
       "extractionState" : "manual",
@@ -7995,6 +8488,23 @@
         }
       }
     },
+    "insights.entity.stats %lld %lld %lld" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld memories · %2$lld storylines · %3$lld reflections"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld 条记忆 · %2$lld 条故事线 · %3$lld 条感悟"
+          }
+        }
+      }
+    },
     "insights.hub.footer" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8010,20 +8520,6 @@
             "value" : "洞察由已保存记忆、图谱关系、故事线和感悟共同驱动。"
           }
         }
-      }
-    },
-    "insights.hub.search.subtitle" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Search memories, people, places, themes, decisions, storylines, and reflections." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "搜索记忆、人物、地点、主题、决策、故事线和感悟。" } }
-      }
-    },
-    "insights.hub.search.title" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Search" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "搜索" } }
       }
     },
     "insights.hub.people.subtitle" : {
@@ -8094,6 +8590,40 @@
         }
       }
     },
+    "insights.hub.search.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search memories, people, places, themes, decisions, storylines, and reflections."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "搜索记忆、人物、地点、主题、决策、故事线和感悟。"
+          }
+        }
+      }
+    },
+    "insights.hub.search.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "搜索"
+          }
+        }
+      }
+    },
     "insights.hub.storylines.subtitle" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8109,76 +8639,6 @@
             "value" : "查看由原始记忆支撑的已确认或候选模式。"
           }
         }
-      }
-    },
-    "arc.status.accepted" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Accepted" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已确认" } }
-      }
-    },
-    "arc.status.archived" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Archived" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已归档" } }
-      }
-    },
-    "arc.status.candidate" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Candidate" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "候选" } }
-      }
-    },
-    "arc.status.merged" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Merged" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已合并" } }
-      }
-    },
-    "entity.kind.activity" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Activity" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "活动" } }
-      }
-    },
-    "entity.kind.decision" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Decision" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "决策" } }
-      }
-    },
-    "entity.kind.object" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Object" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "物品" } }
-      }
-    },
-    "entity.kind.person" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Person" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "人物" } }
-      }
-    },
-    "entity.kind.place" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Place" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "地点" } }
-      }
-    },
-    "entity.kind.theme" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Theme" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "主题" } }
       }
     },
     "insights.hub.storylines.title" : {
@@ -8198,109 +8658,242 @@
         }
       }
     },
-    "insights.entity.stats %lld %lld %lld" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "%1$lld memories · %2$lld storylines · %3$lld reflections" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "%1$lld 条记忆 · %2$lld 条故事线 · %3$lld 条感悟" } }
-      }
-    },
     "insights.metric.entities" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Entities" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "关联项" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entities"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关联项"
+          }
+        }
       }
     },
     "insights.metric.reflections" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Reflections" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "感悟" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reflections"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "感悟"
+          }
+        }
       }
     },
     "insights.metric.storylines" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Storylines" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "故事线" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Storylines"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "故事线"
+          }
+        }
       }
     },
     "insights.reflection.sourceCount %lld" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "%lld visible sources" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "%lld 个可见来源" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld visible sources"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 个可见来源"
+          }
+        }
       }
     },
     "insights.section.decisions" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Decisions" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "决策" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Decisions"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "决策"
+          }
+        }
       }
     },
     "insights.section.highlightedStoryline" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Highlighted Storyline" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "重点故事线" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Highlighted Storyline"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重点故事线"
+          }
+        }
       }
     },
     "insights.section.overview" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Overview" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "概览" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Overview"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "概览"
+          }
+        }
       }
     },
     "insights.section.people" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "People" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "人物" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "People"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "人物"
+          }
+        }
       }
     },
     "insights.section.places" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Places" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "地点" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Places"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "地点"
+          }
+        }
       }
     },
     "insights.section.savedReflections" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Saved Reflections" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已保存感悟" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saved Reflections"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已保存感悟"
+          }
+        }
       }
     },
     "insights.section.storylines" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Storylines" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "故事线" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Storylines"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "故事线"
+          }
+        }
       }
     },
     "insights.section.suggestedReflections" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Suggested Reflections" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "建议感悟" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suggested Reflections"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "建议感悟"
+          }
+        }
       }
     },
     "insights.section.themes" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Themes" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "主题" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Themes"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "主题"
+          }
+        }
       }
     },
     "insights.storyline.sourceCount %lld" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "%lld source memories" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "%lld 条来源记忆" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld source memories"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 条来源记忆"
+          }
+        }
       }
     },
     "Internal diagnostics are enabled for Debug, development installs, and InternalBeta TestFlight builds only." : {
@@ -8380,6 +8973,227 @@
         }
       }
     },
+    "memories.filters.anyArtifact" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Any artifact"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "任意附件"
+          }
+        }
+      }
+    },
+    "memories.filters.anyContext" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Any context"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "任意上下文"
+          }
+        }
+      }
+    },
+    "memories.filters.anyInsight" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Any insight"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "任意洞察"
+          }
+        }
+      }
+    },
+    "memories.filters.anyStatus" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Any status"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "任意状态"
+          }
+        }
+      }
+    },
+    "memories.filters.available %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Available: %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "可用：%@"
+          }
+        }
+      }
+    },
+    "memories.filters.clear" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清除"
+          }
+        }
+      }
+    },
+    "memories.filters.hasEntities" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Has entities"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "有关联项"
+          }
+        }
+      }
+    },
+    "memories.filters.hasLocation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Has location"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "有地点"
+          }
+        }
+      }
+    },
+    "memories.filters.hasMusic" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Has music"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "有音乐"
+          }
+        }
+      }
+    },
+    "memories.filters.hasReflection" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Has reflection"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "有感悟"
+          }
+        }
+      }
+    },
+    "memories.filters.hasStoryline" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Has storyline"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "有故事线"
+          }
+        }
+      }
+    },
+    "memories.filters.hasWeather" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Has weather"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "有天气"
+          }
+        }
+      }
+    },
+    "memories.filters.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filters"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "筛选"
+          }
+        }
+      }
+    },
     "memories.hub.all.subtitle" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8429,111 +9243,6 @@
             "value" : "Memories 是完整资料库。v5 后续会在这里加入筛选和更完整的浏览体验。"
           }
         }
-      }
-    },
-    "memories.filters.anyArtifact" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Any artifact" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "任意附件" } }
-      }
-    },
-    "memories.filters.anyContext" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Any context" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "任意上下文" } }
-      }
-    },
-    "memories.filters.anyInsight" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Any insight" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "任意洞察" } }
-      }
-    },
-    "memories.filters.anyStatus" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Any status" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "任意状态" } }
-      }
-    },
-    "memories.filters.available %@" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Available: %@" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "可用：%@" } }
-      }
-    },
-    "memories.filters.clear" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "清除" } }
-      }
-    },
-    "memories.filters.hasEntities" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Has entities" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "有关联项" } }
-      }
-    },
-    "memories.filters.hasLocation" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Has location" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "有地点" } }
-      }
-    },
-    "memories.filters.hasMusic" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Has music" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "有音乐" } }
-      }
-    },
-    "memories.filters.hasReflection" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Has reflection" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "有感悟" } }
-      }
-    },
-    "memories.filters.hasStoryline" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Has storyline" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "有故事线" } }
-      }
-    },
-    "memories.filters.hasWeather" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Has weather" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "有天气" } }
-      }
-    },
-    "memories.filters.title" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Filters" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "筛选" } }
-      }
-    },
-    "memories.library.count %lld %lld" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Showing %1$lld of %2$lld memories" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "显示 %1$lld / %2$lld 条记忆" } }
-      }
-    },
-    "memories.library.footer" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Memories shows the live library first; timeline and search stay one tap away." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "记忆页优先显示实时资料库，时间线和搜索仍可一键进入。" } }
       }
     },
     "memories.hub.search.subtitle" : {
@@ -8600,6 +9309,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "时间线"
+          }
+        }
+      }
+    },
+    "memories.library.count %lld %lld" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Showing %1$lld of %2$lld memories"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示 %1$lld / %2$lld 条记忆"
+          }
+        }
+      }
+    },
+    "memories.library.footer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Memories shows the live library first; timeline and search stay one tap away."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "记忆页优先显示实时资料库，时间线和搜索仍可一键进入。"
           }
         }
       }
@@ -9117,6 +9860,210 @@
         }
       }
     },
+    "onboarding.localFirst.message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your captures are saved locally first. Analysis can add structure, but the source stays yours."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你的记录会先保存在本地。分析可以补充结构，但原始内容始终属于你。"
+          }
+        }
+      }
+    },
+    "onboarding.localFirst.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Local-first by default"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "默认本地优先"
+          }
+        }
+      }
+    },
+    "onboarding.nav.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Welcome to Mory"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "欢迎使用 Mory"
+          }
+        }
+      }
+    },
+    "onboarding.next" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下一步"
+          }
+        }
+      }
+    },
+    "onboarding.optionalPermissions.message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Photos, location, speech, and music are optional. Mory asks only when a feature needs them."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "照片、定位、语音和音乐都是可选的。Mory 只会在功能需要时请求。"
+          }
+        }
+      }
+    },
+    "onboarding.optionalPermissions.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permissions are optional"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "权限都是可选的"
+          }
+        }
+      }
+    },
+    "onboarding.quickCapture.message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use the bottom toolbar to add text, hold for voice, or open the full composer."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用底部工具栏添加文字，长按语音，或打开完整记录器。"
+          }
+        }
+      }
+    },
+    "onboarding.quickCapture.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capture quickly"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "快速记录"
+          }
+        }
+      }
+    },
+    "onboarding.skip" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skip"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "跳过"
+          }
+        }
+      }
+    },
+    "onboarding.startFirstMemory" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start first memory"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开始第一条记忆"
+          }
+        }
+      }
+    },
+    "onboarding.welcome.message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mory helps you save real moments and revisit them through memories, storylines, and reflections."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mory 帮你保存真实片段，并通过记忆、故事线和感悟重新回看它们。"
+          }
+        }
+      }
+    },
+    "onboarding.welcome.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start with one memory"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从一条记忆开始"
+          }
+        }
+      }
+    },
     "Overlap %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -9136,90 +10083,6 @@
     },
     "PASS" : {
 
-    },
-    "onboarding.localFirst.message" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Your captures are saved locally first. Analysis can add structure, but the source stays yours." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "你的记录会先保存在本地。分析可以补充结构，但原始内容始终属于你。" } }
-      }
-    },
-    "onboarding.localFirst.title" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Local-first by default" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "默认本地优先" } }
-      }
-    },
-    "onboarding.nav.title" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Welcome to Mory" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "欢迎使用 Mory" } }
-      }
-    },
-    "onboarding.next" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Next" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "下一步" } }
-      }
-    },
-    "onboarding.optionalPermissions.message" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Photos, location, speech, and music are optional. Mory asks only when a feature needs them." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "照片、定位、语音和音乐都是可选的。Mory 只会在功能需要时请求。" } }
-      }
-    },
-    "onboarding.optionalPermissions.title" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Permissions are optional" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "权限都是可选的" } }
-      }
-    },
-    "onboarding.quickCapture.message" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Use the bottom toolbar to add text, hold for voice, or open the full composer." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "用底部工具栏添加文字，长按语音，或打开完整记录器。" } }
-      }
-    },
-    "onboarding.quickCapture.title" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Capture quickly" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "快速记录" } }
-      }
-    },
-    "onboarding.skip" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Skip" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "跳过" } }
-      }
-    },
-    "onboarding.startFirstMemory" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Start first memory" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "开始第一条记忆" } }
-      }
-    },
-    "onboarding.welcome.message" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Mory helps you save real moments and revisit them through memories, storylines, and reflections." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "Mory 帮你保存真实片段，并通过记忆、故事线和感悟重新回看它们。" } }
-      }
-    },
-    "onboarding.welcome.title" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Start with one memory" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "从一条记忆开始" } }
-      }
     },
     "people.empty.decisions" : {
       "extractionState" : "manual",
@@ -9617,6 +10480,159 @@
     "Quality Tuning Lab" : {
 
     },
+    "quickCapture.contextCheckIn" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check in"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打卡"
+          }
+        }
+      }
+    },
+    "quickCapture.contextCheckIn.collecting" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capturing context..."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在记录当前上下文..."
+          }
+        }
+      }
+    },
+    "quickCapture.contextCheckIn.defaultSummary" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Context check-in"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当前时刻打卡"
+          }
+        }
+      }
+    },
+    "quickCapture.contextCheckIn.defaultTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Context check-in"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一键打卡"
+          }
+        }
+      }
+    },
+    "quickCapture.contextCheckIn.hint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save the current location, weather, music, and timestamp without typing."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无需输入，保存当前地点、天气、音乐和时间。"
+          }
+        }
+      }
+    },
+    "quickCapture.contextCheckIn.inputContext" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "quick context check-in"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一键上下文打卡"
+          }
+        }
+      }
+    },
+    "quickCapture.contextCheckIn.noContext" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "quick context check-in; automatic context unavailable"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一键上下文打卡；当前没有可用的自动上下文"
+          }
+        }
+      }
+    },
+    "quickCapture.contextCheckIn.saved" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Context saved"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "上下文已保存"
+          }
+        }
+      }
+    },
+    "quickCapture.contextCheckIn.savedTimeOnly" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check-in saved"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打卡已保存"
+          }
+        }
+      }
+    },
     "quickCapture.discard" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -9654,22 +10670,137 @@
     "quickCapture.more.hint" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open the full memory composer." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "打开完整记忆记录器。" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open the full memory composer."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开完整记忆记录器。"
+          }
+        }
       }
     },
     "quickCapture.photo" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Photo" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "照片" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Photo"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "照片"
+          }
+        }
+      }
+    },
+    "quickCapture.photo.defaultSummary" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Photo memory"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "照片记忆"
+          }
+        }
+      }
+    },
+    "quickCapture.photo.defaultTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Photo"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "照片"
+          }
+        }
+      }
+    },
+    "quickCapture.photo.failed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Photo could not be saved"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "照片保存失败"
+          }
+        }
       }
     },
     "quickCapture.photo.hint" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open photo capture." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "打开照片记录。" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open the system camera and save a photo memory."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开系统相机并保存照片记忆。"
+          }
+        }
+      }
+    },
+    "quickCapture.photo.saved" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Photo saved"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "照片已保存"
+          }
+        }
+      }
+    },
+    "quickCapture.photo.saving" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saving photo..."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在保存照片..."
+          }
+        }
       }
     },
     "quickCapture.text" : {
@@ -9692,8 +10823,18 @@
     "quickCapture.text.hint" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Create a quick text memory." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "创建一条快捷文字记忆。" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create a quick text memory."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "创建一条快捷文字记忆。"
+          }
+        }
       }
     },
     "quickCapture.text.placeholder" : {
@@ -9750,36 +10891,86 @@
     "quickCapture.unified.cancelHint" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Release to discard this recording." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "松开后丢弃这段录音。" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Release to discard this recording."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "松开后丢弃这段录音。"
+          }
+        }
       }
     },
     "quickCapture.unified.hint" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Tap to type. Hold to record voice. Slide away to cancel recording." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "点击输入文字，长按录音，滑开取消录音。" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap to create a memory. Hold to record. Slide left to cancel or right to lock recording."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "点击新建记忆，长按录音，左滑取消，右滑持续录音。"
+          }
+        }
       }
     },
     "quickCapture.unified.placeholder" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Remember this moment..." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "记下这一刻..." } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remember this moment..."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "记下这一刻..."
+          }
+        }
       }
     },
     "quickCapture.unified.releaseHint" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Release to transcribe. Slide away to cancel." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "松开转文字，滑开取消。" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Release to transcribe. Left cancels, right keeps recording."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "松开转文字，左滑取消，右滑持续录音。"
+          }
+        }
       }
     },
     "quickCapture.unified.tapHoldHint" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Tap to type. Hold to speak." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "点击输入，长按说话。" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap to create. Hold to speak."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "点击新建，长按说话。"
+          }
+        }
       }
     },
     "quickCapture.voice" : {
@@ -9831,6 +11022,48 @@
             "value" : "语音记忆"
           }
         }
+      }
+    },
+    "quickCapture.voice.cancel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Cancel" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "取消" } }
+      }
+    },
+    "quickCapture.voice.complete" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Done" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "完成" } }
+      }
+    },
+    "quickCapture.voice.continue" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Keep" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "持续" } }
+      }
+    },
+    "quickCapture.voice.discard" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Discard" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "丢弃" } }
+      }
+    },
+    "quickCapture.voice.stopSubmit" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Stop & Save" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "停止提交" } }
+      }
+    },
+    "quickCapture.voice.submit" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Save" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "提交" } }
       }
     },
     "quickCapture.voice.duration" : {
@@ -10020,6 +11253,57 @@
         }
       }
     },
+    "quickCapture.voice.lockedHint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap the capsule to stop and transcribe."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "点击胶囊结束并转文字。"
+          }
+        }
+      }
+    },
+    "quickCapture.voice.lockedRecording %lld" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recording locked %llds"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "持续录音中 %lld 秒"
+          }
+        }
+      }
+    },
+    "quickCapture.voice.lockHint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Release to keep recording hands-free."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "松开后持续录音。"
+          }
+        }
+      }
+    },
     "quickCapture.voice.notePlaceholder" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -10135,6 +11419,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "松开取消"
+          }
+        }
+      }
+    },
+    "quickCapture.voice.releaseToLock" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Release to keep recording"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "松开持续录音"
           }
         }
       }
@@ -11454,57 +12755,6 @@
         }
       }
     },
-    "settings.diagnostics.subtitle" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Internal debug tools for builds that allow diagnostics."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "仅对允许诊断的内部版本显示的调试工具。"
-          }
-        }
-      }
-    },
-    "settings.diagnostics.title" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diagnostics"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "诊断"
-          }
-        }
-      }
-    },
-    "settings.diagnostics.unavailable" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diagnostics are not available in this build."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "当前版本不可使用诊断工具。"
-          }
-        }
-      }
-    },
     "settings.data.delete.action" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -11760,6 +13010,57 @@
         }
       }
     },
+    "settings.diagnostics.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Internal debug tools for builds that allow diagnostics."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仅对允许诊断的内部版本显示的调试工具。"
+          }
+        }
+      }
+    },
+    "settings.diagnostics.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diagnostics"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "诊断"
+          }
+        }
+      }
+    },
+    "settings.diagnostics.unavailable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diagnostics are not available in this build."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当前版本不可使用诊断工具。"
+          }
+        }
+      }
+    },
     "settings.language.current" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -11811,6 +13112,23 @@
         }
       }
     },
+    "settings.nav.hint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open account, privacy, permission, and data controls."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开账号、隐私、权限和数据控制。"
+          }
+        }
+      }
+    },
     "settings.nav.title" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -11826,13 +13144,6 @@
             "value" : "设置"
           }
         }
-      }
-    },
-    "settings.nav.hint" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open account, privacy, permission, and data controls." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "打开账号、隐私、权限和数据控制。" } }
       }
     },
     "settings.permission.location" : {

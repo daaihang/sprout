@@ -180,7 +180,7 @@ struct HomeScreen: View {
             await reload()
         }
         .sheet(isPresented: $isPresentingComposer) {
-            CaptureComposerView {
+            UnifiedCaptureComposerView(seed: .empty) {
                 Task { await reload() }
             }
         }
