@@ -592,6 +592,22 @@ extension NotificationIntentStore {
             dismissedAt: dismissedAt
         )
     }
+
+    func apply(domainModel: NotificationIntent) {
+        id = domainModel.id
+        kindRawValue = domainModel.kind.rawValue
+        title = domainModel.title
+        body = domainModel.body
+        privacyLevelRawValue = domainModel.privacyLevel.rawValue
+        targetTypeRawValue = domainModel.targetType.rawValue
+        targetID = domainModel.targetID
+        scheduledAt = domainModel.scheduledAt
+        statusRawValue = domainModel.status.rawValue
+        deliveryChannelRawValue = domainModel.deliveryChannel.rawValue
+        createdAt = domainModel.createdAt
+        deliveredAt = domainModel.deliveredAt
+        dismissedAt = domainModel.dismissedAt
+    }
 }
 
 @MainActor

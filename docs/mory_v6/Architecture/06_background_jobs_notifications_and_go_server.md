@@ -33,7 +33,8 @@ Current iOS data-flow status:
 
 - Transcript refinement uses cloud deep intelligence after local/system transcription and falls back to raw transcript if unavailable.
 - Daily question preparation now has a gated foreground Home refresh hook: when daily questions and cloud question suggestions are enabled, Mory sends bounded recent-memory evidence to the Go V6 question endpoint and persists returned candidates locally as `ClarificationQuestion`.
-- This is not yet the final background scheduler. Phase 5 still needs retry policy, notification policy, local notification scheduling, and settings controls.
+- Notification intent preparation now has a local policy path: eligible daily questions can become pending `NotificationIntent` rows only when user preferences, V6 flags, quiet hours, daily limits, and sensitivity rules allow it.
+- This is not yet the final background scheduler. Phase 5 still needs retry policy, `UNUserNotificationCenter` scheduling, permission flow, tap routing, and settings controls.
 
 ## 4. Notification Architecture
 
@@ -44,6 +45,12 @@ Intelligence job creates NotificationIntent
   -> NotificationPolicy checks settings/frequency/sensitivity
   -> LocalNotificationScheduler schedules notification
 ```
+
+Current implementation boundary:
+
+- `NotificationPolicy` and daily-question intent preparation exist on iOS.
+- Pending intents are stored locally and can be tested deterministically.
+- No system notification is scheduled until `LocalNotificationScheduler` and permission UX are added.
 
 Remote notification path:
 

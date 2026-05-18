@@ -103,6 +103,7 @@ enum ClarificationQuestionKind: String, Codable, CaseIterable, Identifiable, Sen
 enum ClarificationTargetType: String, Codable, CaseIterable, Identifiable, Sendable {
     case record
     case artifact
+    case question
     case entity
     case place
     case theme
@@ -381,4 +382,3 @@ struct GraphDelta: Identifiable, Codable, Hashable, Sendable {
         self.createdAt = createdAt
     }
 }
-

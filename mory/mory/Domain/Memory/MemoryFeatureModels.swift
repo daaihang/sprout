@@ -711,6 +711,8 @@ protocol MoryMemoryRepositorying: AnyObject {
     func upsertClarificationQuestion(_ question: ClarificationQuestion) throws
     func answerClarificationQuestion(_ id: UUID, answer: ClarificationAnswer) throws
     func dismissClarificationQuestion(_ id: UUID) throws
+    func fetchNotificationIntents(status: NotificationIntentStatus?, limit: Int?) throws -> [NotificationIntent]
+    func upsertNotificationIntent(_ intent: NotificationIntent) throws
     func fetchIntelligenceJobs(status: IntelligenceJobStatus?, limit: Int?) throws -> [IntelligenceJob]
     func upsertIntelligenceJob(_ job: IntelligenceJob) throws
     func fetchGraphDeltas(applied: Bool?, limit: Int?) throws -> [GraphDelta]

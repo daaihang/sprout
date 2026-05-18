@@ -1427,6 +1427,29 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         try save()
     }
 
+    func fetchNotificationIntents(status: NotificationIntentStatus?, limit: Int?) throws -> [NotificationIntent] {
+        let stores = try modelContext.fetch(
+            FetchDescriptor<NotificationIntentStore>(
+                sortBy: [
+                    SortDescriptor(\.scheduledAt, order: .forward),
+                    SortDescriptor(\.createdAt, order: .reverse),
+                ]
+            )
+        )
+        let intents = stores
+            .map(\.domainModel)
+            .filter { intent in
+                guard let status else { return true }
+                return intent.status == status
+            }
+        return applyLimit(limit, to: intents)
+    }
+
+    func upsertNotificationIntent(_ intent: NotificationIntent) throws {
+        try upsert(notificationIntent: intent)
+        try save()
+    }
+
     func fetchIntelligenceJobs(status: IntelligenceJobStatus?, limit: Int?) throws -> [IntelligenceJob] {
         let stores = try modelContext.fetch(
             FetchDescriptor<IntelligenceJobStore>(
@@ -2431,9 +2454,9 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     private func fetchIntelligencePreferenceStore() throws -> IntelligencePreferenceStore? {
         let syncKey = IntelligencePreferences.defaultSyncKey
         let descriptor = FetchDescriptor<IntelligencePreferenceStore>(
-            predicate: #Predicate { $0.syncKey == syncKey }
+            sortBy: [SortDescriptor(\.updatedAt, order: .reverse)]
         )
-        return try modelContext.fetch(descriptor).first
+        return try modelContext.fetch(descriptor).first { $0.syncKey == syncKey }
     }
 
     func upsert(entityProfile: EntityProfile) throws {
@@ -2477,6 +2500,15 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             existing.apply(domainModel: graphDelta)
         } else {
             modelContext.insert(GraphDeltaStore(domainModel: graphDelta))
+        }
+    }
+
+    func upsert(notificationIntent: NotificationIntent) throws {
+        let descriptor = FetchDescriptor<NotificationIntentStore>(predicate: #Predicate { $0.id == notificationIntent.id })
+        if let existing = try modelContext.fetch(descriptor).first {
+            existing.apply(domainModel: notificationIntent)
+        } else {
+            modelContext.insert(NotificationIntentStore(domainModel: notificationIntent))
         }
     }
 

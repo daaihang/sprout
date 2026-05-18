@@ -84,6 +84,8 @@ private final class MissingMemoryRepository: MoryMemoryRepositorying {
     func upsertClarificationQuestion(_ question: ClarificationQuestion) throws { let _: Void = fail() }
     func answerClarificationQuestion(_ id: UUID, answer: ClarificationAnswer) throws { let _: Void = fail() }
     func dismissClarificationQuestion(_ id: UUID) throws { let _: Void = fail() }
+    func fetchNotificationIntents(status: NotificationIntentStatus?, limit: Int?) throws -> [NotificationIntent] { fail() }
+    func upsertNotificationIntent(_ intent: NotificationIntent) throws { let _: Void = fail() }
     func fetchIntelligenceJobs(status: IntelligenceJobStatus?, limit: Int?) throws -> [IntelligenceJob] { fail() }
     func upsertIntelligenceJob(_ job: IntelligenceJob) throws { let _: Void = fail() }
     func fetchGraphDeltas(applied: Bool?, limit: Int?) throws -> [GraphDelta] { fail() }

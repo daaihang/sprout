@@ -216,7 +216,11 @@ Tasks:
 - Add daily question engine.
   - Current implementation status: iOS now has a cloud-backed `DailyQuestionSuggestionService` that can turn recent-memory evidence into persisted `ClarificationQuestion` rows when user preferences and V6 flags allow it. It is wired into Home refresh as a data-flow hook, with visual polish deferred.
 - Add notification intent store.
+  - Current implementation status: iOS has `NotificationIntent` persistence, repository fetch/upsert APIs, and mapper round-trip support.
 - Add notification policy.
+  - Current implementation status: iOS has `NotificationPolicy` checks for master switch, local-notification flag, notification type switch, max-per-day, quiet hours, sensitive-topic suppression, and rich-preview downgrade to generic copy.
+- Add notification intent preparation.
+  - Current implementation status: iOS has `NotificationIntentPreparationService` that turns eligible pending daily questions into local pending notification intents without scheduling system notifications yet.
 - Add local scheduler.
 - Add settings UI.
 - Add permission flow.
