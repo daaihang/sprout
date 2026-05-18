@@ -22,41 +22,6 @@ struct MemoriesRootScreen: View {
 
     var body: some View {
         List {
-            Section {
-                NavigationLink {
-                    TimelineScreen()
-                } label: {
-                    MoryHubRow(
-                        title: "memories.hub.timeline.title",
-                        subtitle: "memories.hub.timeline.subtitle",
-                        systemImage: "clock"
-                    )
-                }
-
-                NavigationLink {
-                    SearchScreen()
-                } label: {
-                    MoryHubRow(
-                        title: "memories.hub.search.title",
-                        subtitle: "memories.hub.search.subtitle",
-                        systemImage: "magnifyingglass"
-                    )
-                }
-            } footer: {
-                Text("memories.library.footer")
-            }
-
-            Section {
-                MemoryLibraryFilterBar(
-                    selectedArtifactKind: $selectedArtifactKind,
-                    selectedPipelineStage: $selectedPipelineStage,
-                    selectedContext: $selectedContext,
-                    selectedInsight: $selectedInsight,
-                    snapshot: snapshot,
-                    onClear: clearFilters
-                )
-            }
-
             if let errorMessage {
                 Section {
                     Text(errorMessage)
@@ -65,12 +30,18 @@ struct MemoriesRootScreen: View {
             }
 
             if let snapshot {
-            Section {
-                Text("memories.library.count \(snapshot.filteredCount) \(snapshot.totalCount)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+                Section {
+                    MemoryLibraryFilterBar(
+                        selectedArtifactKind: $selectedArtifactKind,
+                        selectedPipelineStage: $selectedPipelineStage,
+                        selectedContext: $selectedContext,
+                        selectedInsight: $selectedInsight,
+                        snapshot: snapshot,
+                        onClear: clearFilters
+                    )
+                } footer: {
+                    Text("memories.library.footer")
+                }
 
                 if snapshot.groups.isEmpty {
                     Section {
@@ -101,6 +72,15 @@ struct MemoriesRootScreen: View {
             }
         }
         .navigationTitle("tab.memories")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink {
+                    TimelineScreen()
+                } label: {
+                    Label("timeline.nav.title", systemImage: "clock.fill")
+                }
+            }
+        }
         .task {
             await load()
         }
@@ -161,6 +141,13 @@ private struct MemoryLibraryFilterBar: View {
                 }
             }
 
+            if let snapshot {
+                Text("memories.library.count \(snapshot.filteredCount) \(snapshot.totalCount)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
             ViewThatFits(in: .horizontal) {
                 HStack {
                     artifactMenu
@@ -191,13 +178,12 @@ private struct MemoryLibraryFilterBar: View {
             }
         }
         .buttonStyle(.bordered)
-        .moryCard(tone: isActive ? .memory : .neutral)
         .accessibilityElement(children: .contain)
     }
 
     private var filterHeader: some View {
         HStack {
-            Label("memories.filters.title", systemImage: "line.3.horizontal.decrease.circle")
+            Label("memories.filters.title", systemImage: "line.3.horizontal.decrease.circle.fill")
                 .font(.headline)
             Spacer()
             Button("memories.filters.clear", action: onClear)
@@ -342,7 +328,6 @@ private struct MemoryLibraryRowView: View {
             }
             .foregroundStyle(.secondary)
         }
-        .moryCard(tone: row.hasInsights ? .reflection : .memory)
         .accessibilityElement(children: .combine)
     }
 
@@ -357,14 +342,14 @@ private struct MemoryLibraryRowView: View {
 
     private var artifactRow: some View {
         HStack(spacing: 6) {
-                ForEach(row.artifactKinds, id: \.self) { kind in
-                    Label(kind.presentationLabel, systemImage: icon(for: kind))
-                        .font(.caption2)
-                }
-                if row.hasInsights {
-                    Label("\(row.relatedStorylineCount + row.relatedReflectionCount + row.entityCount)", systemImage: "sparkles")
-                        .font(.caption2)
-                }
+            ForEach(row.artifactKinds, id: \.self) { kind in
+                Label(kind.presentationLabel, systemImage: icon(for: kind))
+                    .font(.caption2)
+            }
+            if row.hasInsights {
+                Label("\(row.relatedStorylineCount + row.relatedReflectionCount + row.entityCount)", systemImage: "sparkles")
+                    .font(.caption2)
+            }
         }
     }
 
@@ -421,6 +406,5 @@ struct MoryHubRow: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .moryCard(tone: .neutral)
     }
 }

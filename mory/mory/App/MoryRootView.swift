@@ -20,32 +20,58 @@ struct MoryRootView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            tabRoot {
-                HomeScreen(surface: .home)
+            Tab(
+                LocalizedStringKey(MoryAppTab.today.titleKey),
+                systemImage: MoryAppTab.today.systemImage,
+                value: MoryAppTab.today
+            ) {
+                tabRoot {
+                    HomeScreen(surface: .home)
+                }
+                .id(tabRefreshID)
             }
-            .id(tabRefreshID)
-            .tabItem {
-                Label(LocalizedStringKey(MoryAppTab.today.titleKey), systemImage: MoryAppTab.today.systemImage)
-            }
-            .tag(MoryAppTab.today)
 
-            tabRoot {
-                MemoriesRootScreen()
+            Tab(
+                LocalizedStringKey(MoryAppTab.memories.titleKey),
+                systemImage: MoryAppTab.memories.systemImage,
+                value: MoryAppTab.memories
+            ) {
+                tabRoot {
+                    MemoriesRootScreen()
+                }
+                .id(tabRefreshID)
             }
-            .id(tabRefreshID)
-            .tabItem {
-                Label(LocalizedStringKey(MoryAppTab.memories.titleKey), systemImage: MoryAppTab.memories.systemImage)
-            }
-            .tag(MoryAppTab.memories)
 
-            tabRoot {
-                InsightsRootScreen()
+            Tab(
+                LocalizedStringKey(MoryAppTab.insights.titleKey),
+                systemImage: MoryAppTab.insights.systemImage,
+                value: MoryAppTab.insights
+            ) {
+                tabRoot {
+                    InsightsRootScreen()
+                }
+                .id(tabRefreshID)
             }
-            .id(tabRefreshID)
-            .tabItem {
-                Label(LocalizedStringKey(MoryAppTab.insights.titleKey), systemImage: MoryAppTab.insights.systemImage)
+
+            Tab(
+                LocalizedStringKey(MoryAppTab.search.titleKey),
+                systemImage: MoryAppTab.search.systemImage,
+                value: MoryAppTab.search,
+                role: .search
+            ) {
+                tabRoot {
+                    SearchScreen()
+                }
+                .id(tabRefreshID)
             }
-            .tag(MoryAppTab.insights)
+        }
+        .tabBarMinimizeBehavior(.onScrollDown)
+        .tabViewBottomAccessory {
+            QuickCaptureToolbar(
+                onTextCapture: { unifiedCaptureSeed = .empty },
+                onPhotoCapture: { unifiedCaptureSeed = .photoCapture },
+                onVoiceCaptureReady: { result in unifiedCaptureSeed = .voice(result) }
+            )
         }
         .sheet(isPresented: $isPresentingSettings) {
             SettingsScreen(
@@ -71,14 +97,6 @@ struct MoryRootView: View {
             content()
                 .toolbar {
                     settingsToolbar
-                }
-                .safeAreaInset(edge: .bottom, spacing: 0) {
-                    QuickCaptureToolbar(
-                        onTextCapture: { unifiedCaptureSeed = .empty },
-                        onPhotoCapture: { unifiedCaptureSeed = .photoCapture },
-                        onMoreCapture: { unifiedCaptureSeed = .empty },
-                        onVoiceCaptureReady: { result in unifiedCaptureSeed = .voice(result) },
-                    )
                 }
         }
     }

@@ -39,7 +39,6 @@ struct HomeScreen: View {
 
     @State private var memories: [MemorySummary] = []
     @State private var homeBoard: HomeBoardSnapshot?
-    @State private var pipelineStatuses: [PipelineStatusSummary] = []
     @State private var isPresentingComposer = false
     @State private var isReloading = false
     @State private var errorMessage: String?
@@ -52,97 +51,68 @@ struct HomeScreen: View {
     var body: some View {
         List {
             if surface == .home {
-                Section {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("home.capture.title")
-                            .font(.title2.weight(.semibold))
-                            .fixedSize(horizontal: false, vertical: true)
-                        Text("home.capture.description")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Button {
-                            isPresentingComposer = true
-                        } label: {
-                            Label("home.capture.button", systemImage: "plus.circle.fill")
-                                .font(.headline)
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.borderedProminent)
+                if let errorMessage {
+                    Section {
+                        Text(errorMessage)
+                            .foregroundStyle(.red)
                     }
-                    .moryCard(tone: .memory)
                 }
 
-                Section("home.section.board") {
+                Section {
                     if let homeBoard, !homeBoard.items.isEmpty {
                         HomeBoardSection(
                             board: homeBoard,
                             onSelect: { route in
-                            selectedRoute = route
+                                selectedRoute = route
                             },
                             onPreference: updateBoardPreference,
                             onSystemAction: { isPresentingComposer = true }
                         )
                     } else {
-                        Text("home.board.empty")
-                            .foregroundStyle(.secondary)
+                        MoryPublicEmptyStateView(
+                            state: .today,
+                            onAction: { isPresentingComposer = true }
+                        )
+                    }
+                } header: {
+                    VStack(alignment: .leading, spacing: MorySpacing.xSmall) {
+                        Text("home.section.board")
+                        if let subtitle = homeBoard?.board.subtitle.trimmedOrNil {
+                            Text(subtitle)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            } else {
+                if let errorMessage {
+                    Section {
+                        Text(errorMessage)
+                            .foregroundStyle(.red)
                     }
                 }
 
-                Section("home.section.pipeline") {
-                    if pipelineStatuses.isEmpty {
-                        Text("home.pipeline.empty")
-                            .foregroundStyle(.secondary)
+                Section(String(localized: "memories.section.all")) {
+                    if memories.isEmpty {
+                        MoryPublicEmptyStateView(
+                            state: .memories,
+                            onAction: { isPresentingComposer = true }
+                        )
                     } else {
-                        ForEach(pipelineStatuses) { item in
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(item.title)
-                                    .font(.headline)
-                                    .fixedSize(horizontal: false, vertical: true)
-                                Text(item.status.userLabel)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                if item.status.stage == .failed {
-                                    Text("empty.processingFailed.message")
-                                        .font(.caption)
-                                        .foregroundStyle(.orange)
-                                        .fixedSize(horizontal: false, vertical: true)
-                                }
-                            }
-                            .moryCard(tone: item.status.stage == .failed ? .warning : .neutral)
-                            .accessibilityElement(children: .combine)
-                        }
-                    }
-                }
-            }
-
-            if let errorMessage {
-                Section {
-                    Text(errorMessage)
-                        .foregroundStyle(.red)
-                }
-            }
-
-            Section(surface == .home ? String(localized: "home.section.recent") : String(localized: "memories.section.all")) {
-                if memories.isEmpty {
-                    MoryPublicEmptyStateView(
-                        state: surface == .home ? .today : .memories,
-                        onAction: { isPresentingComposer = true }
-                    )
-                } else {
-                    ForEach(memories) { memory in
-                        Button {
-                            selectedRoute = .memory(memory.id)
-                        } label: {
-                            MemoryRow(summary: memory)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityElement(children: .combine)
-                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                            Button(role: .destructive) {
-                                deleteMemory(recordID: memory.id)
+                        ForEach(memories) { memory in
+                            Button {
+                                selectedRoute = .memory(memory.id)
                             } label: {
-                                Label("common.delete", systemImage: "trash")
+                                MemoryRow(summary: memory)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityElement(children: .combine)
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button(role: .destructive) {
+                                    deleteMemory(recordID: memory.id)
+                                } label: {
+                                    Label("common.delete", systemImage: "trash")
+                                }
                             }
                         }
                     }
@@ -204,10 +174,10 @@ struct HomeScreen: View {
         defer { isReloading = false }
 
         do {
-            memories = try memoryRepository.fetchRecentMemories(limit: nil)
             if surface == .home {
                 homeBoard = try memoryRepository.fetchHomeBoard(for: .now, limit: 8)
-                pipelineStatuses = try memoryRepository.fetchPipelineStatusSummaries(limit: 8)
+            } else {
+                memories = try memoryRepository.fetchRecentMemories(limit: nil)
             }
             errorMessage = nil
         } catch {
@@ -273,7 +243,6 @@ private struct MemoryRow: View {
             .font(.caption)
             .foregroundStyle(.secondary)
         }
-        .moryCard(tone: .memory)
     }
 
     private var metadataRow: some View {
@@ -310,29 +279,15 @@ private struct HomeBoardSection: View {
     let onPreference: (HomeBoardItemSnapshot, HomeBoardPreferenceAction) -> Void
     let onSystemAction: () -> Void
 
-    private let columns = [
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12),
-    ]
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(board.board.subtitle)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            LazyVGrid(columns: columns, spacing: 12) {
-                ForEach(board.items) { item in
-                    HomeBoardCard(
-                        item: item,
-                        onSelect: onSelect,
-                        onPreference: onPreference,
-                        onSystemAction: onSystemAction
-                    )
-                }
-            }
+        ForEach(board.items) { item in
+            HomeBoardCard(
+                item: item,
+                onSelect: onSelect,
+                onPreference: onPreference,
+                onSystemAction: onSystemAction
+            )
         }
-        .padding(.vertical, 4)
     }
 }
 
@@ -347,7 +302,6 @@ private struct HomeBoardCard: View {
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 6) {
                     Label(cardLabel, systemImage: cardIcon)
-                        .moryPill(tone: cardTone)
                     if item.isPinned {
                         Image(systemName: "pin.fill")
                             .font(.caption2)
@@ -358,7 +312,6 @@ private struct HomeBoardCard: View {
                 }
                 VStack(alignment: .leading, spacing: 6) {
                     Label(cardLabel, systemImage: cardIcon)
-                        .moryPill(tone: cardTone)
                     HStack {
                         if item.isPinned {
                             Image(systemName: "pin.fill")
@@ -412,10 +365,8 @@ private struct HomeBoardCard: View {
                 .buttonStyle(.plain)
             }
         }
-        .frame(maxWidth: .infinity, minHeight: heightForItem(item.compositionItem))
-        .moryCard(tone: cardTone)
-        .rotationEffect(.degrees(item.compositionItem.rotationDegrees))
-        .scaleEffect(item.compositionItem.scale)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, MorySpacing.xSmall)
         .accessibilityElement(children: .combine)
     }
 
@@ -461,20 +412,6 @@ private struct HomeBoardCard: View {
         }
     }
 
-    private var cardTone: MoryCardTone {
-        switch item.cardKind {
-        case .memory: return .memory
-        case .arc: return .storyline
-        case .reflection: return .reflection
-        case .systemPrompt: return .warning
-        case .contextCluster: return .entity
-        case .pendingAction: return .warning
-        }
-    }
-
-    private func heightForItem(_ item: CompositionItem) -> CGFloat {
-        CGFloat(max(1, item.heightUnits)) * 110
-    }
 }
 
 private struct MemoryBoardCard: View {

@@ -30,6 +30,9 @@ final class AudioTranscriptionService: Sendable {
 
         let request = SFSpeechURLRecognitionRequest(url: tempURL)
         request.shouldReportPartialResults = false
+        if #available(iOS 16.0, *) {
+            request.addsPunctuation = true
+        }
 
         let start = Date()
 

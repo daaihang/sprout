@@ -30,15 +30,6 @@ struct InsightsRootScreen: View {
                     )
                 }
 
-                NavigationLink {
-                    SearchScreen()
-                } label: {
-                    MoryHubRow(
-                        title: "insights.hub.search.title",
-                        subtitle: "insights.hub.search.subtitle",
-                        systemImage: "magnifyingglass"
-                    )
-                }
             } footer: {
                 Text("insights.hub.footer")
             }
@@ -235,7 +226,6 @@ private struct InsightMetricView: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .moryCard(tone: .neutral)
         .accessibilityElement(children: .combine)
     }
 }
@@ -251,13 +241,11 @@ private struct StorylineRow: View {
                         .font(.headline)
                     Spacer()
                     Text(summary.arc.status.presentationLabel)
-                        .moryPill(tone: .storyline)
                 }
                 VStack(alignment: .leading, spacing: MorySpacing.xSmall) {
                     Text(summary.arc.title)
                         .font(.headline)
                     Text(summary.arc.status.presentationLabel)
-                        .moryPill(tone: .storyline)
                 }
             }
             Text(summary.arc.summary)
@@ -276,7 +264,6 @@ private struct StorylineRow: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .moryCard(tone: .storyline)
         .accessibilityElement(children: .combine)
     }
 }
@@ -292,13 +279,11 @@ private struct ReflectionInsightRow: View {
                         .font(.headline)
                     Spacer()
                     Text(summary.reflection.status.label)
-                        .moryPill(tone: .reflection)
                 }
                 VStack(alignment: .leading, spacing: MorySpacing.xSmall) {
                     Text(summary.reflection.title)
                         .font(.headline)
                     Text(summary.reflection.status.label)
-                        .moryPill(tone: .reflection)
                 }
             }
             Text(summary.reflection.body)
@@ -310,7 +295,6 @@ private struct ReflectionInsightRow: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
-        .moryCard(tone: .reflection)
         .accessibilityElement(children: .combine)
     }
 }
@@ -326,13 +310,11 @@ private struct EntityInsightRow: View {
                         .font(.headline)
                     Spacer()
                     Text(snapshot.entity.kind.presentationLabel)
-                        .moryPill(tone: .entity)
                 }
                 VStack(alignment: .leading, spacing: MorySpacing.xSmall) {
                     Text(snapshot.entity.displayName)
                         .font(.headline)
                     Text(snapshot.entity.kind.presentationLabel)
-                        .moryPill(tone: .entity)
                 }
             }
             if let summary = snapshot.entity.summary.trimmedOrNil {
@@ -347,7 +329,6 @@ private struct EntityInsightRow: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .moryCard(tone: .entity)
         .accessibilityElement(children: .combine)
     }
 }

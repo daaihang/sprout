@@ -4,8 +4,9 @@ enum MoryAppTab: String, CaseIterable, Hashable, Identifiable, Sendable {
     case today
     case memories
     case insights
+    case search
 
-    static let publicTabs: [MoryAppTab] = [.today, .memories, .insights]
+    static let publicTabs: [MoryAppTab] = [.today, .memories, .insights, .search]
 
     var id: String { rawValue }
 
@@ -14,14 +15,16 @@ enum MoryAppTab: String, CaseIterable, Hashable, Identifiable, Sendable {
         case .today: "tab.today"
         case .memories: "tab.memories"
         case .insights: "tab.insights"
+        case .search: "search.nav.title"
         }
     }
 
     var systemImage: String {
         switch self {
-        case .today: "calendar"
-        case .memories: "square.stack"
-        case .insights: "sparkles.rectangle.stack"
+        case .today: "house.fill"
+        case .memories: "archivebox.fill"
+        case .insights: "chart.line.uptrend.xyaxis"
+        case .search: "magnifyingglass"
         }
     }
 }

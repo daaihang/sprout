@@ -10928,13 +10928,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Remember this moment..."
+            "value" : "Remember this moment"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "记下这一刻..."
+            "value" : "记下这一刻"
           }
         }
       }
@@ -11052,11 +11052,39 @@
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "丢弃" } }
       }
     },
+    "quickCapture.voice.start" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Record voice" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "录音" } }
+      }
+    },
+    "quickCapture.voice.start.hint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Starts a voice recording." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "开始录音。" } }
+      }
+    },
+    "quickCapture.voice.stop" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Stop" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "停止" } }
+      }
+    },
     "quickCapture.voice.stopSubmit" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Stop & Save" } },
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "停止提交" } }
+      }
+    },
+    "quickCapture.voice.stopSubmit.hint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Stops recording, transcribes it, and opens the capture sheet." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "停止录音、转写，并打开记录页。" } }
       }
     },
     "quickCapture.voice.submit" : {

@@ -6,6 +6,8 @@ struct SearchScreen: View {
     @State private var query = ""
     @State private var result = SearchSnapshot(query: "", memories: [], entities: [], arcs: [], reflections: [])
     @State private var errorMessage: String?
+    @State private var isSearchPresented = false
+    @FocusState private var isSearchFocused: Bool
 
     var body: some View {
         List {
@@ -98,7 +100,14 @@ struct SearchScreen: View {
             }
         }
         .navigationTitle("search.nav.title")
-        .searchable(text: $query, prompt: "search.prompt")
+        .searchable(text: $query, isPresented: $isSearchPresented, prompt: "search.prompt")
+        .searchFocused($isSearchFocused)
+        .onAppear {
+            DispatchQueue.main.async {
+                isSearchPresented = true
+                isSearchFocused = true
+            }
+        }
         .task(id: query) {
             await load()
         }
@@ -128,7 +137,6 @@ private struct SearchMemoryRow: View {
                 .lineLimit(3)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .moryCard(tone: .memory)
     }
 }
 
@@ -157,10 +165,9 @@ private struct SearchEntityRow: View {
                 Text(result.relatedPeople.joined(separator: " · "))
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .moryCard(tone: .entity)
     }
 }
 
@@ -182,10 +189,9 @@ private struct SearchArcRow: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
+                .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .moryCard(tone: .storyline)
     }
 }
 
@@ -207,10 +213,9 @@ private struct SearchReflectionRow: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
+                .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .moryCard(tone: .reflection)
     }
 }
 
