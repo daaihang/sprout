@@ -35,7 +35,7 @@ enum HomeBoardCardKind: String, Codable, CaseIterable, Identifiable, Sendable {
 }
 
 struct HomeBoardItemPreference: Identifiable, Codable, Hashable, Sendable {
-    static let schemaVersion = 1
+    static let schemaVersion = 2
 
     let id: UUID
     var schemaVersion: Int
@@ -52,6 +52,8 @@ struct HomeBoardItemPreference: Identifiable, Codable, Hashable, Sendable {
     var heightUnits: Int?
     var userSortIndex: Double?
     var acceptedAt: Date?
+    var feedbackAdjustment: Double
+    var feedbackUpdatedAt: Date?
     var updatedAt: Date
 
     init(
@@ -70,6 +72,8 @@ struct HomeBoardItemPreference: Identifiable, Codable, Hashable, Sendable {
         heightUnits: Int? = nil,
         userSortIndex: Double? = nil,
         acceptedAt: Date? = nil,
+        feedbackAdjustment: Double = 0,
+        feedbackUpdatedAt: Date? = nil,
         updatedAt: Date = .now
     ) {
         self.id = id
@@ -87,6 +91,8 @@ struct HomeBoardItemPreference: Identifiable, Codable, Hashable, Sendable {
         self.heightUnits = heightUnits
         self.userSortIndex = userSortIndex
         self.acceptedAt = acceptedAt
+        self.feedbackAdjustment = feedbackAdjustment
+        self.feedbackUpdatedAt = feedbackUpdatedAt
         self.updatedAt = updatedAt
     }
 }
@@ -96,6 +102,9 @@ enum HomeBoardPreferenceAction: Sendable {
     case pin(Bool)
     case resize(HomeBoardSpan)
     case setUserOrder(Double)
+    case preferMore
+    case preferLess
+    case resetFeedback
     case hide
     case dismiss
 }

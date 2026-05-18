@@ -460,6 +460,59 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertEqual(accepted.layout.span, suggestion.layout.span)
     }
 
+    func testHomeBoardSuggestionFeedbackAdjustsSuggestionPriorityWithoutTakingOwnership() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        for index in 1...2 {
+            _ = try await repository.createMemory(
+                from: MemoryCaptureDraft(
+                    title: "Cafe context \(index)",
+                    rawText: "Cafe context \(index) with Linh.",
+                    mood: "focused",
+                    inputContext: "typed in debug",
+                    captureSource: .composer,
+                    artifacts: [
+                        .text(title: "Cafe context \(index)", body: "Cafe context \(index) with Linh."),
+                        .location(title: "Cafe", summary: "Cafe near the station", latitude: 31.2, longitude: 121.4)
+                    ]
+                )
+            )
+        }
+
+        var board = try repository.fetchHomeBoard(for: Date(), limit: 8)
+        let cluster = try XCTUnwrap(board.suggestionItems.first { $0.cardKind == .contextCluster })
+        let systemPrompt = try XCTUnwrap(board.suggestionItems.first { $0.cardKind == .systemPrompt })
+        XCTAssertEqual(cluster.layout.layer, .suggestion)
+        XCTAssertEqual(cluster.layout.feedbackAdjustment, 0)
+
+        try repository.updateHomeBoardItemPreference(cluster, action: .preferLess)
+
+        board = try repository.fetchHomeBoard(for: Date(), limit: 8)
+        var adjustedCluster = try XCTUnwrap(board.suggestionItems.first { $0.compositionItem.itemKey == cluster.compositionItem.itemKey })
+        let systemPromptIndex = try XCTUnwrap(board.suggestionItems.firstIndex { $0.compositionItem.itemKey == systemPrompt.compositionItem.itemKey })
+        let clusterIndex = try XCTUnwrap(board.suggestionItems.firstIndex { $0.compositionItem.itemKey == cluster.compositionItem.itemKey })
+        XCTAssertEqual(adjustedCluster.layout.layer, .suggestion)
+        XCTAssertEqual(adjustedCluster.layout.feedbackAdjustment, -18)
+        XCTAssertLessThan(adjustedCluster.priority, cluster.priority)
+        XCTAssertLessThan(systemPromptIndex, clusterIndex)
+        XCTAssertFalse(board.userBoardItems.contains { $0.compositionItem.itemKey == cluster.compositionItem.itemKey })
+
+        try repository.updateHomeBoardItemPreference(adjustedCluster, action: .preferMore)
+        board = try repository.fetchHomeBoard(for: Date(), limit: 8)
+        adjustedCluster = try XCTUnwrap(board.suggestionItems.first { $0.compositionItem.itemKey == cluster.compositionItem.itemKey })
+        XCTAssertEqual(adjustedCluster.layout.feedbackAdjustment, -6)
+
+        try repository.updateHomeBoardItemPreference(adjustedCluster, action: .resetFeedback)
+        board = try repository.fetchHomeBoard(for: Date(), limit: 8)
+        adjustedCluster = try XCTUnwrap(board.suggestionItems.first { $0.compositionItem.itemKey == cluster.compositionItem.itemKey })
+        XCTAssertEqual(adjustedCluster.layout.feedbackAdjustment, 0)
+        XCTAssertEqual(adjustedCluster.layout.layer, .suggestion)
+    }
+
     func testHomeBoardDismissesSystemPromptAndLimitsSuggestedReflections() async throws {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(

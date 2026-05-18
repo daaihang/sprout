@@ -182,6 +182,8 @@ extension HomeBoardPreferenceStore {
             heightUnits: domainModel.heightUnits,
             userSortIndex: domainModel.userSortIndex,
             acceptedAt: domainModel.acceptedAt,
+            feedbackAdjustment: domainModel.feedbackAdjustment,
+            feedbackUpdatedAt: domainModel.feedbackUpdatedAt,
             updatedAt: domainModel.updatedAt
         )
     }
@@ -203,6 +205,8 @@ extension HomeBoardPreferenceStore {
             heightUnits: heightUnits,
             userSortIndex: userSortIndex,
             acceptedAt: acceptedAt,
+            feedbackAdjustment: feedbackAdjustment ?? 0,
+            feedbackUpdatedAt: feedbackUpdatedAt,
             updatedAt: updatedAt
         )
     }
@@ -223,6 +227,8 @@ extension HomeBoardPreferenceStore {
         heightUnits = domainModel.heightUnits
         userSortIndex = domainModel.userSortIndex
         acceptedAt = domainModel.acceptedAt
+        feedbackAdjustment = domainModel.feedbackAdjustment
+        feedbackUpdatedAt = domainModel.feedbackUpdatedAt
         updatedAt = domainModel.updatedAt
     }
 }

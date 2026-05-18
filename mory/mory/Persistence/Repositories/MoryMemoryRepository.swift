@@ -517,6 +517,21 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             preference.acceptedAt = preference.acceptedAt ?? now
             preference.isHidden = false
             preference.dismissedAt = nil
+        case .preferMore:
+            preference.feedbackAdjustment = min(preference.feedbackAdjustment + 12, 36)
+            preference.feedbackUpdatedAt = now
+            preference.isHidden = false
+            preference.dismissedAt = nil
+        case .preferLess:
+            preference.feedbackAdjustment = max(preference.feedbackAdjustment - 18, -48)
+            preference.feedbackUpdatedAt = now
+            preference.isHidden = false
+            preference.dismissedAt = nil
+        case .resetFeedback:
+            preference.feedbackAdjustment = 0
+            preference.feedbackUpdatedAt = now
+            preference.isHidden = false
+            preference.dismissedAt = nil
         case .hide:
             preference.isHidden = true
             preference.isPinned = false

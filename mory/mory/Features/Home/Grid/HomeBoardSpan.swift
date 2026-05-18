@@ -41,17 +41,23 @@ nonisolated struct HomeBoardItemLayout: Codable, Hashable, Sendable {
     var layer: HomeBoardItemLayer
     var userSortIndex: Double?
     var acceptedAt: Date?
+    var feedbackAdjustment: Double
+    var feedbackUpdatedAt: Date?
 
     init(
         span: HomeBoardSpan,
         layer: HomeBoardItemLayer,
         userSortIndex: Double? = nil,
-        acceptedAt: Date? = nil
+        acceptedAt: Date? = nil,
+        feedbackAdjustment: Double = 0,
+        feedbackUpdatedAt: Date? = nil
     ) {
         self.span = span
         self.layer = layer
         self.userSortIndex = userSortIndex
         self.acceptedAt = acceptedAt
+        self.feedbackAdjustment = feedbackAdjustment
+        self.feedbackUpdatedAt = feedbackUpdatedAt
     }
 
     var isUserControlled: Bool {

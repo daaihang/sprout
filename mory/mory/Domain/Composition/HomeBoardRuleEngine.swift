@@ -57,6 +57,9 @@ struct HomeBoardRuleEngine: Sendable {
             updated.heightUnits = preference.heightUnits ?? updated.heightUnits
             updated.userSortIndex = preference.userSortIndex
             updated.acceptedAt = preference.acceptedAt
+            updated.feedbackAdjustment = preference.feedbackAdjustment
+            updated.feedbackUpdatedAt = preference.feedbackUpdatedAt
+            updated.priority += preference.feedbackAdjustment
             updated.dismissedAt = preference.dismissedAt
             updated.preferenceUpdatedAt = preference.updatedAt
             return updated
@@ -99,7 +102,9 @@ struct HomeBoardRuleEngine: Sendable {
                     span: span,
                     layer: candidate.layoutLayer,
                     userSortIndex: candidate.userSortIndex,
-                    acceptedAt: candidate.acceptedAt
+                    acceptedAt: candidate.acceptedAt,
+                    feedbackAdjustment: candidate.feedbackAdjustment,
+                    feedbackUpdatedAt: candidate.feedbackUpdatedAt
                 ),
                 isPinned: candidate.isPinned,
                 isHidden: false,
@@ -469,6 +474,8 @@ private struct HomeBoardCandidate {
     var isPinned = false
     var acceptedAt: Date?
     var userSortIndex: Double?
+    var feedbackAdjustment = 0.0
+    var feedbackUpdatedAt: Date?
     var dismissedAt: Date?
     var preferenceUpdatedAt: Date?
 

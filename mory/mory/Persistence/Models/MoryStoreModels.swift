@@ -85,6 +85,8 @@ final class HomeBoardPreferenceStore {
     var heightUnits: Int?
     var userSortIndex: Double?
     var acceptedAt: Date?
+    var feedbackAdjustment: Double?
+    var feedbackUpdatedAt: Date?
     var updatedAt: Date
 
     init(
@@ -103,6 +105,8 @@ final class HomeBoardPreferenceStore {
         heightUnits: Int? = nil,
         userSortIndex: Double? = nil,
         acceptedAt: Date? = nil,
+        feedbackAdjustment: Double? = nil,
+        feedbackUpdatedAt: Date? = nil,
         updatedAt: Date
     ) {
         self.id = id
@@ -120,6 +124,8 @@ final class HomeBoardPreferenceStore {
         self.heightUnits = heightUnits
         self.userSortIndex = userSortIndex
         self.acceptedAt = acceptedAt
+        self.feedbackAdjustment = feedbackAdjustment
+        self.feedbackUpdatedAt = feedbackUpdatedAt
         self.updatedAt = updatedAt
     }
 }

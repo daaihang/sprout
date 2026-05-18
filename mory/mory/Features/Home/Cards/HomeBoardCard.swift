@@ -40,6 +40,8 @@ private struct HomeBoardCardChrome<Content: View>: View {
 }
 
 struct HomeBoardCard: View {
+    @State private var isShowingReason = false
+
     let item: HomeBoardItemSnapshot
     let isEditing: Bool
     let onSelect: (HomeRoute) -> Void
@@ -132,10 +134,28 @@ struct HomeBoardCard: View {
             }
         }
         .accessibilityElement(children: .combine)
+        .alert(Text(verbatim: "Why this appears"), isPresented: $isShowingReason) {
+            Button {
+            } label: {
+                Text(verbatim: "OK")
+            }
+        } message: {
+            Text(verbatim: reasonDetail)
+        }
     }
 
     private var preferenceMenu: some View {
         Menu {
+            Button {
+                isShowingReason = true
+            } label: {
+                Label {
+                    Text(verbatim: "Explain why")
+                } icon: {
+                    Image(systemName: "info.circle")
+                }
+            }
+
             if item.layout.layer == .suggestion {
                 Button {
                     onPreference(item, .addToBoard)
@@ -144,6 +164,38 @@ struct HomeBoardCard: View {
                         Text(verbatim: "Add to board")
                     } icon: {
                         Image(systemName: "plus.square.on.square")
+                    }
+                }
+            }
+
+            Button {
+                onPreference(item, .preferMore)
+            } label: {
+                Label {
+                    Text(verbatim: "More like this")
+                } icon: {
+                    Image(systemName: "hand.thumbsup")
+                }
+            }
+
+            Button {
+                onPreference(item, .preferLess)
+            } label: {
+                Label {
+                    Text(verbatim: "Less like this")
+                } icon: {
+                    Image(systemName: "hand.thumbsdown")
+                }
+            }
+
+            if item.layout.feedbackAdjustment != 0 {
+                Button {
+                    onPreference(item, .resetFeedback)
+                } label: {
+                    Label {
+                        Text(verbatim: "Reset feedback")
+                    } icon: {
+                        Image(systemName: "arrow.counterclockwise")
                     }
                 }
             }
@@ -176,6 +228,19 @@ struct HomeBoardCard: View {
                 .foregroundStyle(.secondary)
         }
         .menuStyle(.button)
+    }
+
+    private var reasonDetail: String {
+        var lines = [item.reason.ifEmpty("recent activity")]
+        if !item.sourceRecordIDs.isEmpty {
+            lines.append("\(item.sourceRecordIDs.count) source memories")
+        }
+        if item.layout.feedbackAdjustment > 0 {
+            lines.append("You asked for more like this.")
+        } else if item.layout.feedbackAdjustment < 0 {
+            lines.append("You asked for less like this.")
+        }
+        return lines.joined(separator: "\n")
     }
 
     private var cardLabel: String {
