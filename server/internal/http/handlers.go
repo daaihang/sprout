@@ -117,10 +117,11 @@ type analyzeResponseEnvelope struct {
 }
 
 type analyzeMeta struct {
-	Provider  string   `json:"provider"`
-	Model     string   `json:"model"`
-	Usage     ai.Usage `json:"usage"`
-	RequestID string   `json:"request_id,omitempty"`
+	Provider      string   `json:"provider"`
+	Model         string   `json:"model"`
+	Usage         ai.Usage `json:"usage"`
+	RequestID     string   `json:"request_id,omitempty"`
+	PromptVersion string   `json:"prompt_version,omitempty"`
 }
 
 type transcriptRefinementResponseEnvelope struct {
@@ -146,6 +147,22 @@ type photoSemanticAnalysisResponseEnvelope struct {
 type notificationIntentSuggestionResponseEnvelope struct {
 	ai.NotificationIntentSuggestionResponse
 	Meta analyzeMeta `json:"meta"`
+}
+
+type cloudIntelligenceEvalCase struct {
+	Operation  string `json:"operation"`
+	Success    bool   `json:"success"`
+	Provider   string `json:"provider,omitempty"`
+	Model      string `json:"model,omitempty"`
+	Error      string `json:"error,omitempty"`
+	ErrorClass string `json:"error_class,omitempty"`
+	Retryable  bool   `json:"retryable,omitempty"`
+}
+
+type cloudIntelligenceEvalResponse struct {
+	PromptVersion string                      `json:"prompt_version"`
+	RequestID     string                      `json:"request_id,omitempty"`
+	Cases         []cloudIntelligenceEvalCase `json:"cases"`
 }
 
 type reflectionRequest struct {
@@ -177,7 +194,7 @@ func (s *Server) handleMetrics(w http.ResponseWriter, _ *http.Request) {
 	if s.pushDeliveryWorker != nil {
 		workerMetrics = s.pushDeliveryWorker.MetricsSnapshot()
 	}
-	writeText(w, http.StatusOK, metricsText(s.metrics.Snapshot(), workerMetrics))
+	writeText(w, http.StatusOK, metricsText(s.cfg, s.metrics.Snapshot(), workerMetrics))
 }
 
 func (s *Server) handleAuthApple(w http.ResponseWriter, r *http.Request) {
@@ -504,16 +521,15 @@ func (s *Server) handleTranscriptRefinement(w http.ResponseWriter, r *http.Reque
 		writeError(w, http.StatusBadRequest, "invalid transcript refinement request")
 		return
 	}
+	if !s.allowAIRequest(w, r, user.UserID, "refine_transcript") {
+		return
+	}
 
 	start := time.Now()
 	result, err := s.aiProvider.RefineTranscript(r.Context(), req, user)
 	s.recordAI("refine_transcript", result.Provider, result.Usage, time.Since(start), err)
 	if err != nil {
-		if errors.Is(err, ai.ErrInvalidAnalyzeRequest) {
-			writeError(w, http.StatusBadRequest, "invalid transcript refinement request")
-			return
-		}
-		writeError(w, http.StatusBadGateway, fmt.Sprintf("transcript refinement failed: %v", err))
+		writeAIProviderError(w, r, "transcript refinement failed", err)
 		return
 	}
 
@@ -538,16 +554,15 @@ func (s *Server) handleQuestionSuggestions(w http.ResponseWriter, r *http.Reques
 		writeError(w, http.StatusBadRequest, "invalid question suggestion request")
 		return
 	}
+	if !s.allowAIRequest(w, r, user.UserID, "suggest_questions") {
+		return
+	}
 
 	start := time.Now()
 	result, err := s.aiProvider.SuggestQuestions(r.Context(), req, user)
 	s.recordAI("suggest_questions", result.Provider, result.Usage, time.Since(start), err)
 	if err != nil {
-		if errors.Is(err, ai.ErrInvalidAnalyzeRequest) {
-			writeError(w, http.StatusBadRequest, "invalid question suggestion request")
-			return
-		}
-		writeError(w, http.StatusBadGateway, fmt.Sprintf("question suggestion failed: %v", err))
+		writeAIProviderError(w, r, "question suggestion failed", err)
 		return
 	}
 
@@ -572,16 +587,15 @@ func (s *Server) handleChapterSuggestions(w http.ResponseWriter, r *http.Request
 		writeError(w, http.StatusBadRequest, "invalid chapter suggestion request")
 		return
 	}
+	if !s.allowAIRequest(w, r, user.UserID, "suggest_chapters") {
+		return
+	}
 
 	start := time.Now()
 	result, err := s.aiProvider.SuggestChapters(r.Context(), req, user)
 	s.recordAI("suggest_chapters", result.Provider, result.Usage, time.Since(start), err)
 	if err != nil {
-		if errors.Is(err, ai.ErrInvalidAnalyzeRequest) {
-			writeError(w, http.StatusBadRequest, "invalid chapter suggestion request")
-			return
-		}
-		writeError(w, http.StatusBadGateway, fmt.Sprintf("chapter suggestion failed: %v", err))
+		writeAIProviderError(w, r, "chapter suggestion failed", err)
 		return
 	}
 
@@ -606,16 +620,15 @@ func (s *Server) handlePhotoSemanticAnalysis(w http.ResponseWriter, r *http.Requ
 		writeError(w, http.StatusBadRequest, "invalid photo semantic analysis request")
 		return
 	}
+	if !s.allowAIRequest(w, r, user.UserID, "analyze_photo_semantics") {
+		return
+	}
 
 	start := time.Now()
 	result, err := s.aiProvider.AnalyzePhotoSemantics(r.Context(), req, user)
 	s.recordAI("analyze_photo_semantics", result.Provider, result.Usage, time.Since(start), err)
 	if err != nil {
-		if errors.Is(err, ai.ErrInvalidAnalyzeRequest) {
-			writeError(w, http.StatusBadRequest, "invalid photo semantic analysis request")
-			return
-		}
-		writeError(w, http.StatusBadGateway, fmt.Sprintf("photo semantic analysis failed: %v", err))
+		writeAIProviderError(w, r, "photo semantic analysis failed", err)
 		return
 	}
 
@@ -640,16 +653,15 @@ func (s *Server) handleNotificationIntentSuggestion(w http.ResponseWriter, r *ht
 		writeError(w, http.StatusBadRequest, "invalid notification intent suggestion request")
 		return
 	}
+	if !s.allowAIRequest(w, r, user.UserID, "suggest_notification_intent") {
+		return
+	}
 
 	start := time.Now()
 	result, err := s.aiProvider.SuggestNotificationIntent(r.Context(), req, user)
 	s.recordAI("suggest_notification_intent", result.Provider, result.Usage, time.Since(start), err)
 	if err != nil {
-		if errors.Is(err, ai.ErrInvalidAnalyzeRequest) {
-			writeError(w, http.StatusBadRequest, "invalid notification intent suggestion request")
-			return
-		}
-		writeError(w, http.StatusBadGateway, fmt.Sprintf("notification intent suggestion failed: %v", err))
+		writeAIProviderError(w, r, "notification intent suggestion failed", err)
 		return
 	}
 
@@ -657,6 +669,92 @@ func (s *Server) handleNotificationIntentSuggestion(w http.ResponseWriter, r *ht
 		NotificationIntentSuggestionResponse: result.Response,
 		Meta:                                 s.metaForResult(r, result.Provider, result.Model, result.Usage),
 	})
+}
+
+func (s *Server) handleCloudIntelligenceEval(w http.ResponseWriter, r *http.Request) {
+	user, ok := userContextFromRequest(w, r)
+	if !ok {
+		return
+	}
+	if !s.allowAIRequest(w, r, user.UserID, "provider_eval") {
+		return
+	}
+
+	cases := []cloudIntelligenceEvalCase{
+		s.evalTranscriptRefinement(r, user),
+		s.evalQuestionSuggestion(r, user),
+	}
+	writeJSON(w, http.StatusOK, cloudIntelligenceEvalResponse{
+		PromptVersion: ai.V6PromptVersion,
+		RequestID:     requestIDFromContext(r.Context()),
+		Cases:         cases,
+	})
+}
+
+func (s *Server) evalTranscriptRefinement(r *http.Request, user ai.UserContext) cloudIntelligenceEvalCase {
+	operation := "refine_transcript"
+	req := ai.TranscriptRefinementRequest{
+		SchemaVersion: 1,
+		Locale:        "en-US",
+		RawTranscript: "um today I kept thinking about the project and and I need to write down the smaller next step",
+		Style:         "clean_spoken_memory",
+		AllowTitle:    true,
+	}
+	start := time.Now()
+	result, err := s.aiProvider.RefineTranscript(r.Context(), req, user)
+	s.recordAI(operation, result.Provider, result.Usage, time.Since(start), err)
+	if err != nil {
+		return evalErrorCase(operation, err)
+	}
+	return cloudIntelligenceEvalCase{
+		Operation: operation,
+		Success:   strings.TrimSpace(result.Response.RefinedTranscript) != "",
+		Provider:  result.Provider,
+		Model:     result.Model,
+	}
+}
+
+func (s *Server) evalQuestionSuggestion(r *http.Request, user ai.UserContext) cloudIntelligenceEvalCase {
+	operation := "suggest_questions"
+	req := ai.QuestionSuggestionRequest{
+		SchemaVersion: 1,
+		Locale:        "en-US",
+		Target: ai.IntelligenceTarget{
+			Type: "record",
+			ID:   "eval-record",
+			Kind: "dailyReflection",
+		},
+		Evidence: []ai.EvidenceSnippet{
+			{RecordID: "eval-record", Snippet: "I mentioned work pressure twice this week and wanted to remember the concrete blocker."},
+		},
+		UserPreferences: ai.QuestionSuggestionPreferences{
+			AllowSensitiveQuestions: false,
+			QuestionTone:            "evidence_based",
+		},
+	}
+	start := time.Now()
+	result, err := s.aiProvider.SuggestQuestions(r.Context(), req, user)
+	s.recordAI(operation, result.Provider, result.Usage, time.Since(start), err)
+	if err != nil {
+		return evalErrorCase(operation, err)
+	}
+	return cloudIntelligenceEvalCase{
+		Operation: operation,
+		Success:   len(result.Response.Questions) > 0,
+		Provider:  result.Provider,
+		Model:     result.Model,
+	}
+}
+
+func evalErrorCase(operation string, err error) cloudIntelligenceEvalCase {
+	class, retryable := classifyAIError(err)
+	return cloudIntelligenceEvalCase{
+		Operation:  operation,
+		Success:    false,
+		Error:      err.Error(),
+		ErrorClass: string(class),
+		Retryable:  retryable,
+	}
 }
 
 func (s *Server) handleSubscriptionVerify(w http.ResponseWriter, r *http.Request) {
@@ -688,10 +786,11 @@ func userContextFromRequest(w http.ResponseWriter, r *http.Request) (ai.UserCont
 
 func (s *Server) metaForResult(r *http.Request, provider string, model string, usage ai.Usage) analyzeMeta {
 	return analyzeMeta{
-		Provider:  provider,
-		Model:     model,
-		Usage:     usage,
-		RequestID: requestIDFromContext(r.Context()),
+		Provider:      provider,
+		Model:         model,
+		Usage:         usage,
+		RequestID:     requestIDFromContext(r.Context()),
+		PromptVersion: ai.V6PromptVersion,
 	}
 }
 

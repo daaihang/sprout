@@ -333,6 +333,9 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 					if resp.RefinedTranscript == "" || resp.Meta.Provider != "mock" {
 						t.Fatalf("unexpected transcript response: %+v", resp)
 					}
+					if resp.Meta.PromptVersion != ai.V6PromptVersion {
+						t.Fatalf("expected prompt version %q, got %q", ai.V6PromptVersion, resp.Meta.PromptVersion)
+					}
 				},
 			},
 			{
@@ -407,7 +410,81 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 				tc.assert(t, rec.Body.Bytes())
 			})
 		}
+
+		t.Run("provider eval returns prompt version and cases", func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/api/intelligence/eval", nil)
+			req.Header.Set("Authorization", "Bearer "+token)
+			rec := httptest.NewRecorder()
+
+			server.Handler().ServeHTTP(rec, req)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("provider eval status = %d, body = %s", rec.Code, rec.Body.String())
+			}
+			var resp cloudIntelligenceEvalResponse
+			if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+				t.Fatalf("decode provider eval response: %v", err)
+			}
+			if resp.PromptVersion != ai.V6PromptVersion || len(resp.Cases) < 2 {
+				t.Fatalf("unexpected provider eval response: %+v", resp)
+			}
+		})
 	})
+}
+
+func TestCloudIntelligenceRateLimitReturnsClassifiedError(t *testing.T) {
+	store, err := db.NewSQLiteStore(":memory:")
+	if err != nil {
+		t.Fatalf("new sqlite store: %v", err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+
+	cfg := config.Config{
+		AppEnv:               "test",
+		Port:                 "8080",
+		JWTSecret:            "test-secret",
+		JWTIssuer:            "sprout-test",
+		DevAuthEnabled:       true,
+		DevAuthUserID:        "dev-user",
+		DefaultTier:          "seed",
+		SubscriptionMode:     "mock",
+		AIMode:               config.AIModeMock,
+		AIProvider:           config.AIProviderMock,
+		AIRateLimitPerMinute: 1,
+	}
+	server := NewServer(Dependencies{
+		Config:        cfg,
+		Logger:        slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Authenticator: auth.NewAuthenticator(cfg.JWTSecret, cfg.JWTIssuer, 24*time.Hour),
+		AIProvider:    ai.NewMockProvider(),
+		Subscription:  subscription.NewService("mock", "seed"),
+		PushTokens:    store,
+		UserProfiles:  store,
+	})
+	token := issueDevToken(t, server, `{"identity_token":"tester-rate"}`)
+	body := `{"schema_version":1,"locale":"zh-Hans","record_id":"record-1","audio_artifact_id":"audio-1","raw_transcript":"hello world","style":"clean_spoken_memory","allow_title":true}`
+
+	for i := 0; i < 2; i++ {
+		req := httptest.NewRequest(http.MethodPost, "/api/intelligence/refine-transcript", bytes.NewBufferString(body))
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		server.Handler().ServeHTTP(rec, req)
+		if i == 0 && rec.Code != http.StatusOK {
+			t.Fatalf("first request status = %d, body = %s", rec.Code, rec.Body.String())
+		}
+		if i == 1 {
+			if rec.Code != http.StatusTooManyRequests {
+				t.Fatalf("second request status = %d, body = %s", rec.Code, rec.Body.String())
+			}
+			var resp errorResponse
+			if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+				t.Fatalf("decode rate limit error: %v", err)
+			}
+			if resp.Class != string(aiErrorClassRateLimit) || !resp.Retryable {
+				t.Fatalf("unexpected rate limit error: %+v", resp)
+			}
+		}
+	}
 }
 
 func TestRefreshRequiresRefreshToken(t *testing.T) {
@@ -566,6 +643,9 @@ func TestMetricsAndRequestID(t *testing.T) {
 	}
 	if !strings.Contains(metricsRec.Body.String(), "push_delivery_sent_total") {
 		t.Fatalf("expected push delivery metrics output, got %q", metricsRec.Body.String())
+	}
+	if !strings.Contains(metricsRec.Body.String(), "cloud_intelligence_prompt_version_info") {
+		t.Fatalf("expected cloud intelligence prompt version metric, got %q", metricsRec.Body.String())
 	}
 }
 

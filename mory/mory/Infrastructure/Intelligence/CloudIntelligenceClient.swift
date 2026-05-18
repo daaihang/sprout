@@ -6,6 +6,7 @@ protocol CloudIntelligenceServing: Sendable {
     func suggestChapters(_ payload: MoryAPIClient.ChapterSuggestionPayload) async throws -> MoryAPIClient.ChapterSuggestionResponse
     func analyzePhotoSemantics(_ payload: MoryAPIClient.PhotoSemanticAnalysisPayload) async throws -> MoryAPIClient.PhotoSemanticAnalysisResponse
     func suggestNotificationIntent(_ payload: MoryAPIClient.NotificationIntentSuggestionPayload) async throws -> MoryAPIClient.NotificationIntentSuggestionResponse
+    func runProviderEval() async throws -> MoryAPIClient.CloudIntelligenceEvalResponse
 }
 
 protocol CloudIntelligenceDebugging: Sendable {
@@ -49,6 +50,12 @@ struct RemoteCloudIntelligenceClient: CloudIntelligenceServing {
     func suggestNotificationIntent(_ payload: MoryAPIClient.NotificationIntentSuggestionPayload) async throws -> MoryAPIClient.NotificationIntentSuggestionResponse {
         try await send { token in
             try await apiClient.suggestNotificationIntent(payload: payload, bearerToken: token)
+        }
+    }
+
+    func runProviderEval() async throws -> MoryAPIClient.CloudIntelligenceEvalResponse {
+        try await send { token in
+            try await apiClient.runCloudIntelligenceEval(bearerToken: token)
         }
     }
 

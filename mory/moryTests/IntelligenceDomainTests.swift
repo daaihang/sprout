@@ -17,19 +17,19 @@ final class IntelligenceDomainTests: XCTestCase {
         XCTAssertEqual(preferences.sensitiveTopicPolicy, .askBeforeShowing)
     }
 
-    func testV6FeatureFlagsDefaultToOffForSafeRollout() {
+    func testV6FeatureFlagsDefaultToCloudCooperativeV6On() {
         let flags = V6FeatureFlags.defaults
 
-        XCTAssertFalse(flags.intelligenceJobs)
-        XCTAssertFalse(flags.entityProfiles)
-        XCTAssertFalse(flags.clarificationQuestions)
-        XCTAssertFalse(flags.homeGrid)
-        XCTAssertFalse(flags.semanticSearch)
-        XCTAssertFalse(flags.dailyQuestions)
-        XCTAssertFalse(flags.localNotifications)
-        XCTAssertFalse(flags.cloudQuestionSuggestions)
-        XCTAssertFalse(flags.cloudChapterSuggestions)
-        XCTAssertFalse(flags.multimediaViews)
+        XCTAssertTrue(flags.intelligenceJobs)
+        XCTAssertTrue(flags.entityProfiles)
+        XCTAssertTrue(flags.clarificationQuestions)
+        XCTAssertTrue(flags.homeGrid)
+        XCTAssertTrue(flags.semanticSearch)
+        XCTAssertTrue(flags.dailyQuestions)
+        XCTAssertTrue(flags.localNotifications)
+        XCTAssertTrue(flags.cloudQuestionSuggestions)
+        XCTAssertTrue(flags.cloudChapterSuggestions)
+        XCTAssertTrue(flags.multimediaViews)
     }
 
     func testClarificationQuestionCarriesEvidenceAndCandidateAnswers() {

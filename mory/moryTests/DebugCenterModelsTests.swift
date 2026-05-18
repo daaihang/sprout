@@ -92,6 +92,7 @@ final class DebugCenterModelsTests: XCTestCase {
             requestID: "request-1",
             provider: "mock",
             model: "debug-model",
+            promptVersion: "prompt-v1",
             inputTokens: 10,
             outputTokens: 20,
             result: "ok",
@@ -100,6 +101,7 @@ final class DebugCenterModelsTests: XCTestCase {
         XCTAssertTrue(success.succeeded)
         XCTAssertEqual(success.headline, "transcript_refine completed")
         XCTAssertTrue(success.metaLines.contains("request_id: request-1"))
+        XCTAssertTrue(success.metaLines.contains("prompt_version: prompt-v1"))
         XCTAssertTrue(success.metaLines.contains("input_tokens: 10"))
 
         let failure = DebugCloudRunSummary(
@@ -107,6 +109,7 @@ final class DebugCenterModelsTests: XCTestCase {
             requestID: nil,
             provider: nil,
             model: nil,
+            promptVersion: nil,
             inputTokens: nil,
             outputTokens: nil,
             result: "",

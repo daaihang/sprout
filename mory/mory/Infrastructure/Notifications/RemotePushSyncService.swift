@@ -106,6 +106,7 @@ protocol RemotePushSyncing: AnyObject {
     func enqueueRemoteNotificationIntent(_ intent: NotificationIntent) async throws -> MoryAPIClient.PushEnqueueResponse
     func writeBackInteraction(_ event: NotificationInteractionEvent) async
     func fetchDebugSnapshot(repository: any MoryMemoryRepositorying) async -> RemotePushDebugSnapshot
+    func fetchServerMetricsText() async throws -> String
 }
 
 @MainActor
@@ -211,6 +212,10 @@ final class RemotePushSyncService: RemotePushSyncing {
             scheduledIntentCount: intents.filter { $0.status == .scheduled }.count,
             remoteIntentCount: intents.filter { $0.deliveryChannel == .remote }.count
         )
+    }
+
+    func fetchServerMetricsText() async throws -> String {
+        try await apiClient.fetchServerMetricsText()
     }
 
     private func sendWithRefresh<Response: Sendable>(

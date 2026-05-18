@@ -7,6 +7,7 @@ struct DebugRemotePushDiagnosticsView: View {
     @State private var snapshot: RemotePushDebugSnapshot?
     @State private var isWorking = false
     @State private var resultMessage: String?
+    @State private var serverMetricsText: String?
 
     var body: some View {
         List {
@@ -51,6 +52,11 @@ struct DebugRemotePushDiagnosticsView: View {
                 }
                 .disabled(isWorking)
 
+                Button("Load server worker metrics") {
+                    Task { await loadServerMetrics() }
+                }
+                .disabled(isWorking)
+
                 if let resultMessage {
                     Text(resultMessage)
                         .font(.caption)
@@ -58,6 +64,21 @@ struct DebugRemotePushDiagnosticsView: View {
                 }
             } header: {
                 Text("Actions")
+            }
+
+            if let serverMetricsText {
+                Section {
+                    DebugRemotePushMetricRows(metricsText: serverMetricsText)
+                    DisclosureGroup("Raw metrics") {
+                        Text(serverMetricsText)
+                            .font(.system(.caption, design: .monospaced))
+                            .textSelection(.enabled)
+                    }
+                } header: {
+                    Text("Server worker metrics")
+                } footer: {
+                    Text("Use APNs environment/topic, sent/failed/retried/permanent counters, and last_error to verify real-device push delivery.")
+                }
             }
         }
         .navigationTitle("Remote Push")
@@ -135,5 +156,52 @@ struct DebugRemotePushDiagnosticsView: View {
         } catch {
             resultMessage = error.localizedDescription
         }
+    }
+
+    private func loadServerMetrics() async {
+        isWorking = true
+        resultMessage = nil
+        defer { isWorking = false }
+
+        do {
+            serverMetricsText = try await remotePushSyncService.fetchServerMetricsText()
+            resultMessage = "Server metrics loaded."
+        } catch {
+            resultMessage = error.localizedDescription
+        }
+    }
+}
+
+private struct DebugRemotePushMetricRows: View {
+    let metricsText: String
+
+    var body: some View {
+        let metrics = parsedMetrics
+        Group {
+            LabeledContent("APNs", value: metrics["apns_environment_info"] ?? "missing")
+            LabeledContent("Worker", value: metrics["push_delivery_worker_enabled_info"] ?? "missing")
+            LabeledContent("Sent", value: metrics["push_delivery_sent_total"] ?? "0")
+            LabeledContent("Failed", value: metrics["push_delivery_failed_total"] ?? "0")
+            LabeledContent("Retried", value: metrics["push_delivery_retried_total"] ?? "0")
+            LabeledContent("Permanent failed", value: metrics["push_delivery_permanent_failed_total"] ?? "0")
+            if let lastError = metrics["push_delivery_last_error_info"] {
+                LabeledContent("Last error", value: lastError)
+            }
+        }
+    }
+
+    private var parsedMetrics: [String: String] {
+        var output: [String: String] = [:]
+        for rawLine in metricsText.split(separator: "\n") {
+            let line = String(rawLine)
+            guard let firstSpace = line.firstIndex(of: " ") else { continue }
+            let key = String(line[..<firstSpace])
+            let value = String(line[line.index(after: firstSpace)...])
+            let normalizedKey = key.split(separator: "{").first.map(String.init) ?? key
+            if output[normalizedKey] == nil {
+                output[normalizedKey] = key.contains("{") ? "\(key) \(value)" : value
+            }
+        }
+        return output
     }
 }

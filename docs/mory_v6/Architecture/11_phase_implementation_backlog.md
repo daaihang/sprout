@@ -301,6 +301,12 @@ Current implementation status:
 - iOS Debug Center now includes Cloud Intelligence Debug for all V6 cloud operations, with decoded outputs, provider/model metadata, token usage when returned, request IDs, and transport error traces.
 - iOS Debug Center now includes Semantic Search Debug and Home Board Debug so search indexing/retrieval and memory desktop card generation can be inspected without direct database access.
 - Cloud V6 intelligence is now provider-backed in live mode with explicit per-operation JSON shape prompts and operation-level `/metrics` counters for requests, errors, latency, and token usage.
+- Cloud V6 responses now include `meta.prompt_version`, and the Go service exports `cloud_intelligence_prompt_version_info` in `/metrics` for rollout traceability.
+- Go now exposes `POST /api/intelligence/eval` for provider smoke-eval of transcript refinement and daily-question suggestion contracts.
+- Go AI handlers now apply per-user/per-operation minute rate limiting (`AI_RATE_LIMIT_PER_MINUTE`) and return classified error payloads with retryability hints.
+- `/metrics` now emits per-operation AI error classes (`ai_operation_errors_by_class_total`) for provider hardening and alerting.
+- iOS Remote Push Debug now loads and renders server worker metrics (`apns_environment_info`, worker enabled state, sent/failed/retried/permanent-failed counters, last error).
+- Semantic-first search now carries explainable hit reasons per memory (record/artifact/entity/context/spotlight), and Search UI/Debug surfaces these reasons directly.
 - Transcript refinement is wired into the unified capture composer.
 - Daily question suggestion is wired into the iOS Home data flow as a gated business path that persists local questions.
 - The iOS launch/recovery worker now executes expanded due job kinds: entity enrichment, clarification question generation, graph delta application, chapter candidate generation, notification intent preparation, semantic indexing, daily question preparation, and local notification scheduling.

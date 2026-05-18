@@ -119,6 +119,7 @@ private struct MissingCloudIntelligenceService: CloudIntelligenceServing {
     func suggestChapters(_ payload: MoryAPIClient.ChapterSuggestionPayload) async throws -> MoryAPIClient.ChapterSuggestionResponse { fail() }
     func analyzePhotoSemantics(_ payload: MoryAPIClient.PhotoSemanticAnalysisPayload) async throws -> MoryAPIClient.PhotoSemanticAnalysisResponse { fail() }
     func suggestNotificationIntent(_ payload: MoryAPIClient.NotificationIntentSuggestionPayload) async throws -> MoryAPIClient.NotificationIntentSuggestionResponse { fail() }
+    func runProviderEval() async throws -> MoryAPIClient.CloudIntelligenceEvalResponse { fail() }
 }
 
 @MainActor
@@ -141,5 +142,8 @@ private final class MissingRemotePushSyncService: RemotePushSyncing {
             scheduledIntentCount: 0,
             remoteIntentCount: 0
         )
+    }
+    func fetchServerMetricsText() async throws -> String {
+        fatalError("Remote push sync dependency was not injected.")
     }
 }

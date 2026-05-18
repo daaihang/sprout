@@ -105,6 +105,8 @@ final class SpotlightSearchFoundationTests: XCTestCase {
         XCTAssertEqual(merged.semanticMemoryIDs, [first.id, second.id])
         XCTAssertEqual(merged.semanticSearchStatus, .succeeded(resultCount: 2))
         XCTAssertEqual(merged.retrievalSources, [.exactFallback, .graph, .spotlight])
+        XCTAssertTrue(merged.memories[0].explanations.contains { $0.source == .spotlight })
+        XCTAssertTrue(merged.memories[1].explanations.contains { $0.source == .spotlight })
     }
 
     func testRepositorySemanticSearchUsesSpotlightIDsAndExactFallback() async throws {
@@ -215,6 +217,7 @@ final class SpotlightSearchFoundationTests: XCTestCase {
             analysisService: SearchStubRecordAnalysisService(),
             spotlightIndexService: spotlight
         )
+        try disableSemanticSearch(repository)
 
         _ = try await repository.createMemory(
             from: MemoryCaptureDraft(
@@ -254,6 +257,16 @@ final class SpotlightSearchFoundationTests: XCTestCase {
 
         var preferences = try repository.fetchIntelligencePreferences()
         preferences.semanticSearchEnabled = true
+        try repository.saveIntelligencePreferences(preferences)
+    }
+
+    private func disableSemanticSearch(_ repository: MoryMemoryRepository) throws {
+        var flags = try repository.fetchV6FeatureFlags()
+        flags.semanticSearch = false
+        try repository.saveV6FeatureFlags(flags)
+
+        var preferences = try repository.fetchIntelligencePreferences()
+        preferences.semanticSearchEnabled = false
         try repository.saveIntelligencePreferences(preferences)
     }
 

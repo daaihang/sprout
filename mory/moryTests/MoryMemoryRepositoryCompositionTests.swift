@@ -1025,6 +1025,9 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let result = try repository.search(query: "planning", limit: 10)
 
         XCTAssertFalse(result.memories.isEmpty)
+        XCTAssertTrue(result.memories.contains { memory in
+            memory.explanations.contains { $0.source == .record || $0.source == .artifact || $0.source == .entity }
+        })
         XCTAssertFalse(result.entities.isEmpty)
         XCTAssertFalse(result.arcs.isEmpty)
         XCTAssertFalse(result.reflections.isEmpty)

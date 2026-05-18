@@ -180,6 +180,13 @@ private struct SearchMemoryRow: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(3)
                 .fixedSize(horizontal: false, vertical: true)
+            if !result.explanations.isEmpty {
+                Text(result.explanations.prefix(3).map { "\($0.source.rawValue): \($0.label)" }.joined(separator: " | "))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 }

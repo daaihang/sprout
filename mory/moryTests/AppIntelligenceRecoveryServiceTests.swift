@@ -196,6 +196,10 @@ private struct RecoveryMockCloudIntelligenceService: CloudIntelligenceServing {
     func suggestNotificationIntent(_ payload: MoryAPIClient.NotificationIntentSuggestionPayload) async throws -> MoryAPIClient.NotificationIntentSuggestionResponse {
         throw RecoveryTestError.unsupported
     }
+
+    func runProviderEval() async throws -> MoryAPIClient.CloudIntelligenceEvalResponse {
+        throw RecoveryTestError.unsupported
+    }
 }
 
 private struct RecoveryRecordAnalysisService: RecordAnalysisServing {

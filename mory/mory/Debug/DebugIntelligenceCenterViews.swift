@@ -57,6 +57,11 @@ struct DebugCloudIntelligenceView: View {
                 }
                 .disabled(isRunning)
 
+                Button("Run provider eval") {
+                    Task { await runProviderEval() }
+                }
+                .disabled(isRunning)
+
                 if isRunning {
                     DebugCenterProgressRow(text: "Running cloud intelligence request")
                 }
@@ -69,6 +74,7 @@ struct DebugCloudIntelligenceView: View {
                     DebugCenterValueRow(title: "Request ID", value: latestSummary.requestID ?? "none")
                     DebugCenterValueRow(title: "Provider", value: latestSummary.provider ?? "none")
                     DebugCenterValueRow(title: "Model", value: latestSummary.model ?? "none")
+                    DebugCenterValueRow(title: "Prompt version", value: latestSummary.promptVersion ?? "none")
                     DebugCenterValueRow(title: "Usage", value: "input=\(latestSummary.inputTokens.map(String.init) ?? "n/a"), output=\(latestSummary.outputTokens.map(String.init) ?? "n/a")")
                     DebugCenterPayloadBlock(title: "Result", content: latestSummary.result)
                     if let error = latestSummary.error {
@@ -253,6 +259,37 @@ struct DebugCloudIntelligenceView: View {
     }
 
     @MainActor
+    private func runProviderEval() async {
+        await run("provider_eval") {
+            let response = try await cloudIntelligenceService.runProviderEval()
+            let fallbackRequestID = await fetchDebugRequestID()
+            return DebugCloudRunSummary(
+                operation: "provider_eval",
+                requestID: response.requestID ?? fallbackRequestID,
+                provider: response.cases.compactMap(\.provider).first,
+                model: response.cases.compactMap(\.model).first,
+                promptVersion: response.promptVersion,
+                inputTokens: nil,
+                outputTokens: nil,
+                result: response.cases.map { item in
+                    [
+                        "\(item.operation): \(item.success ? "success" : "failed")",
+                        item.provider.map { "provider=\($0)" },
+                        item.model.map { "model=\($0)" },
+                        item.errorClass.map { "error_class=\($0)" },
+                        item.retryable.map { "retryable=\($0)" },
+                        item.error.map { "error=\($0)" },
+                    ]
+                    .compactMap { $0 }
+                    .joined(separator: " | ")
+                }
+                .joined(separator: "\n"),
+                error: response.cases.contains(where: { !$0.success }) ? "One or more provider eval cases failed." : nil
+            )
+        }
+    }
+
+    @MainActor
     private func run(_ operation: String, task: () async throws -> DebugCloudRunSummary) async {
         guard !isRunning else { return }
         isRunning = true
@@ -273,6 +310,7 @@ struct DebugCloudIntelligenceView: View {
                 requestID: traceRequestID ?? fallbackRequestID,
                 provider: nil,
                 model: nil,
+                promptVersion: nil,
                 inputTokens: nil,
                 outputTokens: nil,
                 result: "No decoded result.",
@@ -293,6 +331,7 @@ struct DebugCloudIntelligenceView: View {
             requestID: metaRequestID ?? fallbackRequestID,
             provider: meta?.provider,
             model: meta?.model,
+            promptVersion: meta?.promptVersion,
             inputTokens: meta?.usage?.inputTokens,
             outputTokens: meta?.usage?.outputTokens,
             result: lines.isEmpty ? "empty response" : lines.joined(separator: "\n"),
@@ -665,7 +704,13 @@ struct DebugSemanticSearchView: View {
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(result.memories) { item in
-                            DebugCenterValueRow(title: item.memory.title, value: item.memory.id.uuidString)
+                            DebugCenterPayloadBlock(
+                                title: item.memory.title,
+                                content: ([
+                                    "id: \(item.memory.id.uuidString)",
+                                    "why: \(item.explanations.isEmpty ? "no explanation" : item.explanations.map { "\($0.source.rawValue) / \($0.label): \($0.snippet)" }.joined(separator: "\n"))",
+                                ]).joined(separator: "\n")
+                            )
                         }
                     }
                 }

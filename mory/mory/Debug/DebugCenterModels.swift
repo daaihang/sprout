@@ -55,6 +55,7 @@ struct DebugCloudRunSummary: Hashable, Sendable {
     let requestID: String?
     let provider: String?
     let model: String?
+    let promptVersion: String?
     let inputTokens: Int?
     let outputTokens: Int?
     let result: String
@@ -74,6 +75,7 @@ struct DebugCloudRunSummary: Hashable, Sendable {
             ("request_id", requestID),
             ("provider", provider),
             ("model", model),
+            ("prompt_version", promptVersion),
             ("input_tokens", inputTokens.map(String.init)),
             ("output_tokens", outputTokens.map(String.init)),
         ]

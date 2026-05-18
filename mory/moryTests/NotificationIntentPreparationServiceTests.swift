@@ -214,8 +214,11 @@ final class NotificationIntentPreparationServiceTests: XCTestCase {
     func testNotificationPolicyBlocksWhenDisabledOrLocalFlagOff() throws {
         let policy = NotificationPolicy(calendar: utcCalendar())
         let intent = makeIntent(scheduledAt: Date(timeIntervalSince1970: 1_800_000_000))
-        let preferences = IntelligencePreferences.defaults
-        let flags = V6FeatureFlags.defaults
+        var preferences = IntelligencePreferences.defaults
+        preferences.notificationPreferences.enabled = false
+        preferences.notificationPreferences.dailyQuestionEnabled = false
+        var flags = V6FeatureFlags.defaults
+        flags.localNotifications = false
 
         let decision = policy.evaluate(
             intent: intent,

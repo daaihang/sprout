@@ -14,7 +14,8 @@ final class VoiceTranscriptRefinementServiceTests: XCTestCase {
                     provider: "mock",
                     model: "mock-v6-transcript-v1",
                     usage: nil,
-                    requestID: "req-voice"
+                    requestID: "req-voice",
+                    promptVersion: "prompt-v1"
                 )
             )
         )
@@ -119,6 +120,10 @@ private actor MockVoiceRefinementCloudService: CloudIntelligenceServing {
     }
 
     func suggestNotificationIntent(_ payload: MoryAPIClient.NotificationIntentSuggestionPayload) async throws -> MoryAPIClient.NotificationIntentSuggestionResponse {
+        throw VoiceRefinementTestError.offline
+    }
+
+    func runProviderEval() async throws -> MoryAPIClient.CloudIntelligenceEvalResponse {
         throw VoiceRefinementTestError.offline
     }
 }

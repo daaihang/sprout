@@ -10,11 +10,12 @@ struct MemorySearchService {
     ) -> SearchSnapshot {
         let lowercasedQuery = query.lowercased()
 
-        var scoredMemories: [(MemorySummary, Int)] = []
+        var scoredMemories: [(MemorySummary, Int, [SearchMatchExplanation])] = []
         for memory in memories {
-            let score = memoryScore(memory: memory, query: lowercasedQuery)
+            let match = memoryMatch(memory: memory, graphContext: graphContext, query: lowercasedQuery)
+            let score = match.score
             if score > 0 {
-                scoredMemories.append((memory, score))
+                scoredMemories.append((memory, score, match.explanations))
             }
         }
 
@@ -45,7 +46,7 @@ struct MemorySearchService {
         let sortedMemories = scoredMemories
             .sorted { $0.1 > $1.1 }
             .prefix(limit ?? scoredMemories.count)
-            .map { SearchMemoryResultSnapshot(memory: $0.0) }
+            .map { SearchMemoryResultSnapshot(memory: $0.0, explanations: $0.2) }
 
         let sortedEntities = scoredEntities
             .sorted { $0.1 > $1.1 }
@@ -144,20 +145,67 @@ struct MemorySearchService {
         )
     }
 
-    private func memoryScore(memory: MemorySummary, query: String) -> Int {
+    private func memoryMatch(
+        memory: MemorySummary,
+        graphContext: MemoryGraphContext,
+        query: String
+    ) -> (score: Int, explanations: [SearchMatchExplanation]) {
         var score = 0
+        var explanations: [SearchMatchExplanation] = []
 
         if memory.title.lowercased().contains(query) {
             score += 3
+            explanations.append(.init(source: .record, label: "title", snippet: memory.title))
         }
         if memory.summaryText.lowercased().contains(query) {
             score += 2
+            explanations.append(.init(source: .record, label: "summary", snippet: memory.summaryText))
         }
         if memory.record.rawText.lowercased().contains(query) {
             score += 1
+            explanations.append(.init(source: .record, label: "raw text", snippet: memory.record.rawText))
+        }
+        if memory.record.inputContext?.lowercased().contains(query) == true {
+            score += 1
+            explanations.append(.init(source: .context, label: "input context", snippet: memory.record.inputContext ?? ""))
         }
 
-        return score
+        for artifact in ([memory.primaryArtifact].compactMap { $0 } + memory.contextArtifacts) {
+            let searchable = [
+                artifact.title,
+                artifact.summary,
+                artifact.textContent,
+                artifact.metadata.values.joined(separator: " "),
+            ]
+                .joined(separator: " ")
+            guard searchable.lowercased().contains(query) else { continue }
+            score += artifact.kind == .text ? 2 : 1
+            explanations.append(.init(
+                source: artifact.kind == .location || artifact.kind == .weather || artifact.kind == .music ? .context : .artifact,
+                label: "\(artifact.kind.rawValue) artifact",
+                snippet: artifact.summary.trimmedOrNil ?? artifact.title,
+                artifactID: artifact.id
+            ))
+        }
+
+        let entityLinks = graphContext.links.filter { link in
+            link.sourceRecordID == memory.id || link.sourceAnalysisRecordID == memory.id
+        }
+        let linkedEntityIDs = Set(entityLinks.map(\.entityID))
+        for entity in graphContext.entities where linkedEntityIDs.contains(entity.id) {
+            let searchable = ([entity.displayName, entity.canonicalName, entity.summary] + entity.aliases)
+                .joined(separator: " ")
+            guard searchable.lowercased().contains(query) else { continue }
+            score += 2
+            explanations.append(.init(
+                source: .entity,
+                label: "\(entity.kind.rawValue): \(entity.displayName)",
+                snippet: entity.summary.trimmedOrNil ?? entity.displayName,
+                entityID: entity.id
+            ))
+        }
+
+        return (score, unique(explanations))
     }
 
     private func entityScore(entity: EntityNode, query: String) -> Int {
@@ -212,5 +260,10 @@ struct MemorySearchService {
         }
 
         return score
+    }
+
+    private func unique(_ explanations: [SearchMatchExplanation]) -> [SearchMatchExplanation] {
+        var seen = Set<String>()
+        return explanations.filter { seen.insert($0.id).inserted }
     }
 }

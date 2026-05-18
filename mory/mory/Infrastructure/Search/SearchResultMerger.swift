@@ -14,12 +14,22 @@ struct SearchResultMerger {
         }
 
         let memoryIndex = Dictionary(uniqueKeysWithValues: memories.map { ($0.id, $0) })
+        let fallbackIndex = Dictionary(uniqueKeysWithValues: fallback.memories.map { ($0.id, $0) })
         var seen = Set<UUID>()
         var mergedMemories: [SearchMemoryResultSnapshot] = []
 
         for id in semanticMemoryIDs {
             guard let memory = memoryIndex[id], seen.insert(id).inserted else { continue }
-            mergedMemories.append(SearchMemoryResultSnapshot(memory: memory))
+            let fallbackExplanations = fallbackIndex[id]?.explanations ?? []
+            let spotlightExplanation = SearchMatchExplanation(
+                source: .spotlight,
+                label: "Core Spotlight semantic match",
+                snippet: "Matched by the system semantic index for this query."
+            )
+            mergedMemories.append(SearchMemoryResultSnapshot(
+                memory: memory,
+                explanations: unique(fallbackExplanations + [spotlightExplanation])
+            ))
         }
 
         for result in fallback.memories {
@@ -42,5 +52,10 @@ struct SearchResultMerger {
     private func unique(_ sources: [SearchRetrievalSource]) -> [SearchRetrievalSource] {
         var seen = Set<SearchRetrievalSource>()
         return sources.filter { seen.insert($0).inserted }
+    }
+
+    private func unique(_ explanations: [SearchMatchExplanation]) -> [SearchMatchExplanation] {
+        var seen = Set<String>()
+        return explanations.filter { seen.insert($0.id).inserted }
     }
 }

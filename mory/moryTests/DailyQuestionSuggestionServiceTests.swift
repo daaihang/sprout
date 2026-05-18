@@ -42,7 +42,8 @@ final class DailyQuestionSuggestionServiceTests: XCTestCase {
                     provider: "mock",
                     model: "mock-v6-question-v1",
                     usage: nil,
-                    requestID: "req-daily-question"
+                    requestID: "req-daily-question",
+                    promptVersion: "prompt-v1"
                 )
             )
         )
@@ -222,6 +223,10 @@ private actor MockDailyQuestionCloudService: CloudIntelligenceServing {
     }
 
     func suggestNotificationIntent(_ payload: MoryAPIClient.NotificationIntentSuggestionPayload) async throws -> MoryAPIClient.NotificationIntentSuggestionResponse {
+        throw DailyQuestionTestError.unsupported
+    }
+
+    func runProviderEval() async throws -> MoryAPIClient.CloudIntelligenceEvalResponse {
         throw DailyQuestionTestError.unsupported
     }
 }

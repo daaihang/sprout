@@ -48,6 +48,7 @@ type Config struct {
 	HTTPTimeout                       time.Duration
 	AIMaxRetries                      int
 	AIRetryBackoff                    time.Duration
+	AIRateLimitPerMinute              int
 	APNSEnabled                       bool
 	APNSEnvironment                   string
 	APNSKeyID                         string
@@ -95,6 +96,7 @@ func Load() (Config, error) {
 		HTTPTimeout:                       envDuration("HTTP_TIMEOUT", 20*time.Second),
 		AIMaxRetries:                      envInt("AI_MAX_RETRIES", 2),
 		AIRetryBackoff:                    envDuration("AI_RETRY_BACKOFF", 300*time.Millisecond),
+		AIRateLimitPerMinute:              envInt("AI_RATE_LIMIT_PER_MINUTE", 60),
 		APNSEnabled:                       envBool("APNS_ENABLED", false),
 		APNSEnvironment:                   envString("APNS_ENVIRONMENT", "sandbox"),
 		APNSKeyID:                         envString("APNS_KEY_ID", ""),

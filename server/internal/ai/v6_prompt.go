@@ -5,8 +5,11 @@ import (
 	"fmt"
 )
 
+const V6PromptVersion = "mory-v6-cloud-intelligence-2026-05-19"
+
 func buildV6SystemPrompt(operation string) string {
 	return `You are the cloud intelligence service for Mory, a private memory app.
+Prompt version: ` + V6PromptVersion + `.
 Return exactly one JSON object and no markdown.
 Preserve user-authored meaning. Do not invent facts.
 Treat all outputs as candidates that the iOS client will review, store, or discard locally.

@@ -44,6 +44,7 @@ type Server struct {
 	userProfiles       db.UserProfileStore
 	pushDeliveryWorker *notification.PushDeliveryWorker
 	metrics            *metrics
+	aiRateLimiter      *aiRateLimiter
 	mux                *http.ServeMux
 }
 
@@ -69,6 +70,7 @@ func NewServer(deps Dependencies) *Server {
 		userProfiles:       deps.UserProfiles,
 		pushDeliveryWorker: pushDeliveryWorker,
 		metrics:            newMetrics(),
+		aiRateLimiter:      newAIRateLimiter(deps.Config.AIRateLimitPerMinute),
 		mux:                http.NewServeMux(),
 	}
 
@@ -111,6 +113,7 @@ func (s *Server) registerRoutes() {
 	s.mux.Handle("POST /api/intelligence/suggest-chapters", s.withAuth(http.HandlerFunc(s.handleChapterSuggestions)))
 	s.mux.Handle("POST /api/intelligence/analyze-photo", s.withAuth(http.HandlerFunc(s.handlePhotoSemanticAnalysis)))
 	s.mux.Handle("POST /api/intelligence/suggest-notification-intent", s.withAuth(http.HandlerFunc(s.handleNotificationIntentSuggestion)))
+	s.mux.Handle("POST /api/intelligence/eval", s.withAuth(http.HandlerFunc(s.handleCloudIntelligenceEval)))
 	s.mux.Handle("POST /api/me/onboarding/complete", s.withAuth(http.HandlerFunc(s.handleOnboardingComplete)))
 	s.mux.Handle("GET /api/subscription/verify", s.withAuth(http.HandlerFunc(s.handleSubscriptionVerify)))
 	s.mux.Handle("POST /api/push/register", s.withAuth(http.HandlerFunc(s.handlePushRegister)))
@@ -210,7 +213,11 @@ func (r *statusRecorder) WriteHeader(status int) {
 }
 
 type errorResponse struct {
-	Error string `json:"error"`
+	Error     string `json:"error"`
+	Code      string `json:"code,omitempty"`
+	Class     string `json:"class,omitempty"`
+	Retryable bool   `json:"retryable,omitempty"`
+	RequestID string `json:"request_id,omitempty"`
 }
 
 type metrics struct {
@@ -228,6 +235,7 @@ type aiOperationMetrics struct {
 	latencyTotalMS int64
 	inputTokens    uint64
 	outputTokens   uint64
+	errorClasses   map[string]uint64
 }
 
 type aiOperationSnapshot struct {
@@ -238,6 +246,7 @@ type aiOperationSnapshot struct {
 	AverageLatencyMS int64
 	InputTokens      uint64
 	OutputTokens     uint64
+	ErrorClasses     map[string]uint64
 }
 
 func newMetrics() *metrics {
@@ -281,6 +290,14 @@ func (m *metrics) RecordAI(operation string, provider string, usage ai.Usage, du
 	bucket.outputTokens += uint64(maxInt(usage.OutputTokens, 0))
 	if err != nil {
 		bucket.errorsTotal++
+		if bucket.errorClasses == nil {
+			bucket.errorClasses = map[string]uint64{}
+		}
+		class, _ := classifyAIError(err)
+		if class == "" {
+			class = aiErrorClassUnknown
+		}
+		bucket.errorClasses[string(class)]++
 	}
 }
 
@@ -322,9 +339,21 @@ func (m *metrics) aiSnapshot() []aiOperationSnapshot {
 			AverageLatencyMS: averageLatency,
 			InputTokens:      bucket.inputTokens,
 			OutputTokens:     bucket.outputTokens,
+			ErrorClasses:     copyStringUint64Map(bucket.errorClasses),
 		})
 	}
 	return snapshots
+}
+
+func copyStringUint64Map(source map[string]uint64) map[string]uint64 {
+	if len(source) == 0 {
+		return nil
+	}
+	copied := make(map[string]uint64, len(source))
+	for key, value := range source {
+		copied[key] = value
+	}
+	return copied
 }
 
 type requestIDContextKey string
@@ -356,13 +385,23 @@ func writeError(w http.ResponseWriter, status int, message string) {
 	writeJSON(w, status, errorResponse{Error: message})
 }
 
+func writeClassifiedError(w http.ResponseWriter, status int, message string, class aiErrorClass, retryable bool, requestID string) {
+	writeJSON(w, status, errorResponse{
+		Error:     message,
+		Code:      string(class),
+		Class:     string(class),
+		Retryable: retryable,
+		RequestID: requestID,
+	})
+}
+
 func writeText(w http.ResponseWriter, status int, body string) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(status)
 	_, _ = w.Write([]byte(body))
 }
 
-func metricsText(snapshot map[string]any, worker notification.DeliveryWorkerMetricsSnapshot) string {
+func metricsText(cfg config.Config, snapshot map[string]any, worker notification.DeliveryWorkerMetricsSnapshot) string {
 	var builder strings.Builder
 	builder.WriteString(fmt.Sprintf(
 		"requests_total %v\nrequests_4xx_total %v\nrequests_5xx_total %v\naverage_latency_ms %v\n",
@@ -379,8 +418,21 @@ func metricsText(snapshot map[string]any, worker notification.DeliveryWorkerMetr
 			builder.WriteString(fmt.Sprintf("ai_operation_average_latency_ms{%s} %d\n", labels, item.AverageLatencyMS))
 			builder.WriteString(fmt.Sprintf("ai_operation_input_tokens_total{%s} %d\n", labels, item.InputTokens))
 			builder.WriteString(fmt.Sprintf("ai_operation_output_tokens_total{%s} %d\n", labels, item.OutputTokens))
+			for class, count := range item.ErrorClasses {
+				errorLabels := fmt.Sprintf(`operation="%s",provider="%s",class="%s"`, metricLabel(item.Operation), metricLabel(item.Provider), metricLabel(class))
+				builder.WriteString(fmt.Sprintf("ai_operation_errors_by_class_total{%s} %d\n", errorLabels, count))
+			}
 		}
 	}
+	builder.WriteString(fmt.Sprintf("cloud_intelligence_prompt_version_info{version=\"%s\"} 1\n", metricLabel(ai.V6PromptVersion)))
+	builder.WriteString(fmt.Sprintf("cloud_intelligence_rate_limit_per_minute %d\n", cfg.AIRateLimitPerMinute))
+	builder.WriteString(fmt.Sprintf(
+		"apns_environment_info{environment=\"%s\",topic=\"%s\",enabled=\"%t\"} 1\n",
+		metricLabel(cfg.APNSEnvironment),
+		metricLabel(cfg.APNSTopic),
+		cfg.APNSEnabled,
+	))
+	builder.WriteString(fmt.Sprintf("push_delivery_worker_enabled_info{enabled=\"%t\"} 1\n", cfg.PushDeliveryWorkerEnabled))
 	builder.WriteString(fmt.Sprintf("push_delivery_enqueued_total %d\n", worker.Enqueued))
 	builder.WriteString(fmt.Sprintf("push_delivery_skipped_total %d\n", worker.Skipped))
 	builder.WriteString(fmt.Sprintf("push_delivery_batches_total %d\n", worker.Batches))
