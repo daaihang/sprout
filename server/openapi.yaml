@@ -123,6 +123,96 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ReflectionResponse"
+  /api/intelligence/refine-transcript:
+    post:
+      summary: Refine a speech transcript as candidate user-editable text
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TranscriptRefinementRequest"
+      responses:
+        "200":
+          description: Transcript refinement candidate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TranscriptRefinementResponse"
+  /api/intelligence/suggest-questions:
+    post:
+      summary: Suggest clarification or daily question candidates
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuestionSuggestionRequest"
+      responses:
+        "200":
+          description: Question candidates
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuestionSuggestionResponse"
+  /api/intelligence/suggest-chapters:
+    post:
+      summary: Suggest chapter or stage candidates
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChapterSuggestionRequest"
+      responses:
+        "200":
+          description: Chapter candidates
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChapterSuggestionResponse"
+  /api/intelligence/analyze-photo:
+    post:
+      summary: Analyze photo semantics from local labels and OCR
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PhotoSemanticAnalysisRequest"
+      responses:
+        "200":
+          description: Photo semantic candidate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PhotoSemanticAnalysisResponse"
+  /api/intelligence/suggest-notification-intent:
+    post:
+      summary: Suggest a notification intent candidate without sending a push
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationIntentSuggestionRequest"
+      responses:
+        "200":
+          description: Notification intent candidate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationIntentSuggestionResponse"
   /api/subscription/verify:
     get:
       summary: Verify subscription tier for current user
@@ -411,6 +501,303 @@ components:
           properties:
             mode:
               type: string
+    CloudMeta:
+      type: object
+      properties:
+        provider:
+          type: string
+        model:
+          type: string
+        request_id:
+          type: string
+        usage:
+          type: object
+          properties:
+            input_tokens:
+              type: integer
+            output_tokens:
+              type: integer
+    EvidenceSnippet:
+      type: object
+      required: [snippet]
+      properties:
+        record_id:
+          type: string
+        artifact_id:
+          type: string
+        snippet:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    TranscriptRefinementRequest:
+      type: object
+      required: [schema_version, raw_transcript]
+      properties:
+        schema_version:
+          type: integer
+        locale:
+          type: string
+        record_id:
+          type: string
+        audio_artifact_id:
+          type: string
+        raw_transcript:
+          type: string
+        style:
+          type: string
+        allow_title:
+          type: boolean
+    TranscriptRefinementResponse:
+      type: object
+      properties:
+        schema_version:
+          type: integer
+        refined_transcript:
+          type: string
+        suggested_title:
+          type: string
+        edits:
+          type: array
+          items:
+            type: object
+            properties:
+              kind:
+                type: string
+              summary:
+                type: string
+        meta:
+          $ref: "#/components/schemas/CloudMeta"
+    QuestionCandidate:
+      type: object
+      required: [kind, prompt, reason]
+      properties:
+        kind:
+          type: string
+        prompt:
+          type: string
+        reason:
+          type: string
+        candidate_answers:
+          type: array
+          items:
+            type: string
+        confidence:
+          type: number
+        sensitivity:
+          type: string
+    QuestionSuggestionRequest:
+      type: object
+      required: [schema_version, target, evidence]
+      properties:
+        schema_version:
+          type: integer
+        locale:
+          type: string
+        target:
+          type: object
+          required: [type, id]
+          properties:
+            type:
+              type: string
+            id:
+              type: string
+            kind:
+              type: string
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/EvidenceSnippet"
+        known_profile:
+          type: object
+          properties:
+            display_name:
+              type: string
+            aliases:
+              type: array
+              items:
+                type: string
+            relationship_to_user:
+              type: string
+        user_preferences:
+          type: object
+          properties:
+            allow_sensitive_questions:
+              type: boolean
+            question_tone:
+              type: string
+    QuestionSuggestionResponse:
+      type: object
+      properties:
+        schema_version:
+          type: integer
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuestionCandidate"
+        meta:
+          $ref: "#/components/schemas/CloudMeta"
+    ChapterSuggestionRequest:
+      type: object
+      required: [schema_version]
+      properties:
+        schema_version:
+          type: integer
+        locale:
+          type: string
+        time_window:
+          type: object
+          properties:
+            start:
+              type: string
+              format: date-time
+            end:
+              type: string
+              format: date-time
+        signals:
+          type: array
+          items:
+            type: object
+            properties:
+              kind:
+                type: string
+              label:
+                type: string
+              record_count:
+                type: integer
+              salience:
+                type: number
+        evidence_snippets:
+          type: array
+          items:
+            $ref: "#/components/schemas/EvidenceSnippet"
+    ChapterSuggestionResponse:
+      type: object
+      properties:
+        schema_version:
+          type: integer
+        chapter_candidates:
+          type: array
+          items:
+            type: object
+            properties:
+              title:
+                type: string
+              summary:
+                type: string
+              evidence_record_ids:
+                type: array
+                items:
+                  type: string
+              confidence:
+                type: number
+              requires_confirmation:
+                type: boolean
+        meta:
+          $ref: "#/components/schemas/CloudMeta"
+    PhotoSemanticAnalysisRequest:
+      type: object
+      required: [schema_version]
+      properties:
+        schema_version:
+          type: integer
+        locale:
+          type: string
+        record_id:
+          type: string
+        photo_artifact_id:
+          type: string
+        local_labels:
+          type: array
+          items:
+            type: string
+        ocr_text:
+          type: string
+        caption_hint:
+          type: string
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+    PhotoSemanticAnalysisResponse:
+      type: object
+      properties:
+        schema_version:
+          type: integer
+        semantic_summary:
+          type: string
+        suggested_title:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        objects:
+          type: array
+          items:
+            type: string
+        text_highlights:
+          type: array
+          items:
+            type: string
+        safety:
+          type: string
+        confidence:
+          type: number
+        meta:
+          $ref: "#/components/schemas/CloudMeta"
+    NotificationIntentSuggestionRequest:
+      type: object
+      required: [schema_version, trigger]
+      properties:
+        schema_version:
+          type: integer
+        locale:
+          type: string
+        time_zone:
+          type: string
+        trigger:
+          type: string
+        recent_evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/EvidenceSnippet"
+        question:
+          $ref: "#/components/schemas/QuestionCandidate"
+        preferences:
+          type: object
+          properties:
+            max_per_day:
+              type: integer
+            quiet_hours_start:
+              type: string
+            quiet_hours_end:
+              type: string
+            rich_previews_enabled:
+              type: boolean
+    NotificationIntentSuggestionResponse:
+      type: object
+      properties:
+        schema_version:
+          type: integer
+        intent:
+          type: object
+          properties:
+            kind:
+              type: string
+            privacy_level:
+              type: string
+            title:
+              type: string
+            body:
+              type: string
+            deep_link:
+              type: string
+            scheduled_at:
+              type: string
+              format: date-time
+        meta:
+          $ref: "#/components/schemas/CloudMeta"
     SubscriptionStatus:
       type: object
       properties:

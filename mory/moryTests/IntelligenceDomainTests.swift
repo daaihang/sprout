@@ -2,11 +2,11 @@ import XCTest
 @testable import mory
 
 final class IntelligenceDomainTests: XCTestCase {
-    func testIntelligencePreferencesDefaultToLocalFirstAndQuietNotifications() {
+    func testIntelligencePreferencesDefaultToCloudDeepIntelligenceAndQuietNotifications() {
         let preferences = IntelligencePreferences.defaults
 
         XCTAssertTrue(preferences.localIntelligenceEnabled)
-        XCTAssertFalse(preferences.cloudIntelligenceEnabled)
+        XCTAssertTrue(preferences.cloudIntelligenceEnabled)
         XCTAssertTrue(preferences.semanticSearchEnabled)
         XCTAssertTrue(preferences.homeSuggestionsEnabled)
         XCTAssertFalse(preferences.dailyQuestionsEnabled)
@@ -55,4 +55,3 @@ final class IntelligenceDomainTests: XCTestCase {
         XCTAssertFalse(question.reason.isEmpty)
     }
 }
-

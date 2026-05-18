@@ -14,6 +14,11 @@ type Provider interface {
 	Analyze(ctx context.Context, req AnalyzeRequest, user UserContext) (AnalyzeResult, error)
 	GenerateReflection(ctx context.Context, req ReflectionRequest, user UserContext) (ReflectionResult, error)
 	ReplayReflection(ctx context.Context, req ReflectionRequest, user UserContext) (ReflectionResult, error)
+	RefineTranscript(ctx context.Context, req TranscriptRefinementRequest, user UserContext) (TranscriptRefinementResult, error)
+	SuggestQuestions(ctx context.Context, req QuestionSuggestionRequest, user UserContext) (QuestionSuggestionResult, error)
+	SuggestChapters(ctx context.Context, req ChapterSuggestionRequest, user UserContext) (ChapterSuggestionResult, error)
+	AnalyzePhotoSemantics(ctx context.Context, req PhotoSemanticAnalysisRequest, user UserContext) (PhotoSemanticAnalysisResult, error)
+	SuggestNotificationIntent(ctx context.Context, req NotificationIntentSuggestionRequest, user UserContext) (NotificationIntentSuggestionResult, error)
 }
 
 type UserContext struct {

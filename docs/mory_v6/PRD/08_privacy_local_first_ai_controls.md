@@ -1,8 +1,10 @@
-# 08. Privacy, Local-First AI, And Controls
+# 08. Privacy, Local Storage, Cloud Deep AI, And Controls
 
 ## 1. Privacy Position
 
-Mory is local-first. User memories should live on device by default.
+Mory is local-first for memory storage and user-owned state. User memories should live on device by default.
+
+Mory v6 is cloud-first for deep AI while the product is still proving the continuous intelligence loop. The local side should use Apple system capabilities and lightweight rules where they are reliable: Speech transcription, Vision OCR/classification, Core Spotlight semantic indexing, recurrence heuristics, and future optional Core ML hints.
 
 V6 adds more intelligence, so privacy must become more explicit, not less.
 
@@ -13,17 +15,17 @@ Settings should explain:
 | Category | Location | Examples |
 | --- | --- | --- |
 | Local storage | Device | Records, artifacts, graph, questions, board layout |
-| Local intelligence | Device | Core ML signals, recurrence, search indexing |
+| Local/system intelligence | Device | Speech, Vision OCR/classification, Core Spotlight, Core ML hints, recurrence rules |
 | OS semantic index | Device | Core Spotlight searchable items |
-| Cloud AI | Mory Go server to provider | Deep reflection, transcript refinement, chapter naming |
+| Cloud AI | Mory Go server to provider | Deep record analysis, reflection, transcript refinement, question candidates, chapter naming, future photo multimodal semantics |
 | Remote push | Mory Go server and APNs | Generic notification delivery |
 
 ## 3. User Controls
 
 Required controls:
 
-- Local intelligence on/off.
-- Cloud AI analysis on/off or ask each time.
+- Local/system intelligence on/off where the OS allows it.
+- Cloud AI analysis on/off or ask each time when the privacy UI ships.
 - Transcript refinement on/off.
 - Rich notification previews on/off.
 - Semantic search on/off.
@@ -41,7 +43,7 @@ When sending to server AI:
 - Use known entities only when needed.
 - Prefer local recurrence summaries over raw history.
 - Use source IDs for provenance.
-- Avoid sending binary media unless separately approved.
+- Avoid sending binary media unless separately approved; the first photo semantic endpoint should use local labels/OCR/metadata as a placeholder before cloud multimodal upload is explicitly approved.
 
 ## 5. Server Boundary
 
@@ -79,7 +81,8 @@ Settings should include plain explanations:
 ```text
 Mory stores your memories on this device.
 Some AI features can send selected text and artifact summaries to Mory's backend and model providers.
-Local intelligence, recurrence detection, and search indexing can happen on device.
+Apple system features, recurrence detection, and search indexing can happen on device.
+Deep intelligence currently uses Mory's backend so the app does not maintain two competing full AI systems.
 You can turn cloud AI and notifications off.
 ```
 
@@ -91,4 +94,3 @@ You can turn cloud AI and notifications off.
 - User can delete local intelligence data.
 - Remote notification content avoids sensitive details by default.
 - Debug logs do not expose raw memory content in production.
-

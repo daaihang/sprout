@@ -208,6 +208,101 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 			t.Fatalf("unexpected stored token after update: %+v", updated)
 		}
 	})
+
+	t.Run("v6 cloud intelligence contracts use mock provider", func(t *testing.T) {
+		cases := []struct {
+			name string
+			path string
+			body string
+			assert func(t *testing.T, body []byte)
+		}{
+			{
+				name: "refine transcript",
+				path: "/api/intelligence/refine-transcript",
+				body: `{"schema_version":1,"locale":"zh-Hans","record_id":"record-1","audio_artifact_id":"audio-1","raw_transcript":"今天 和 妈妈 看 电影 很 开心","style":"clean_spoken_memory","allow_title":true}`,
+				assert: func(t *testing.T, body []byte) {
+					var resp transcriptRefinementResponseEnvelope
+					if err := json.Unmarshal(body, &resp); err != nil {
+						t.Fatalf("decode transcript response: %v", err)
+					}
+					if resp.RefinedTranscript == "" || resp.Meta.Provider != "mock" {
+						t.Fatalf("unexpected transcript response: %+v", resp)
+					}
+				},
+			},
+			{
+				name: "suggest questions",
+				path: "/api/intelligence/suggest-questions",
+				body: `{"schema_version":1,"locale":"zh-Hans","target":{"type":"entity","id":"person-1","kind":"person"},"evidence":[{"record_id":"record-1","snippet":"Alex joined dinner again."}],"known_profile":{"display_name":"Alex","aliases":[]},"user_preferences":{"allow_sensitive_questions":false,"question_tone":"evidence_based"}}`,
+				assert: func(t *testing.T, body []byte) {
+					var resp questionSuggestionResponseEnvelope
+					if err := json.Unmarshal(body, &resp); err != nil {
+						t.Fatalf("decode question response: %v", err)
+					}
+					if len(resp.Questions) == 0 || resp.Questions[0].Kind != "entityRelationship" {
+						t.Fatalf("unexpected question response: %+v", resp)
+					}
+				},
+			},
+			{
+				name: "suggest chapters",
+				path: "/api/intelligence/suggest-chapters",
+				body: `{"schema_version":1,"locale":"zh-Hans","time_window":{"start":"2026-05-01T00:00:00Z","end":"2026-05-18T23:59:59Z"},"signals":[{"kind":"theme","label":"career transition","record_count":7,"salience":0.74}],"evidence_snippets":[{"record_id":"record-1","snippet":"I updated my resume again."}]}`,
+				assert: func(t *testing.T, body []byte) {
+					var resp chapterSuggestionResponseEnvelope
+					if err := json.Unmarshal(body, &resp); err != nil {
+						t.Fatalf("decode chapter response: %v", err)
+					}
+					if len(resp.ChapterCandidates) == 0 || !resp.ChapterCandidates[0].RequiresConfirmation {
+						t.Fatalf("unexpected chapter response: %+v", resp)
+					}
+				},
+			},
+			{
+				name: "analyze photo",
+				path: "/api/intelligence/analyze-photo",
+				body: `{"schema_version":1,"locale":"zh-Hans","record_id":"record-1","photo_artifact_id":"photo-1","local_labels":["receipt","restaurant"],"ocr_text":"Table 4 total 128","metadata":{"source":"vision"}}`,
+				assert: func(t *testing.T, body []byte) {
+					var resp photoSemanticAnalysisResponseEnvelope
+					if err := json.Unmarshal(body, &resp); err != nil {
+						t.Fatalf("decode photo response: %v", err)
+					}
+					if resp.SemanticSummary == "" || len(resp.Tags) == 0 {
+						t.Fatalf("unexpected photo response: %+v", resp)
+					}
+				},
+			},
+			{
+				name: "suggest notification intent",
+				path: "/api/intelligence/suggest-notification-intent",
+				body: `{"schema_version":1,"locale":"zh-Hans","time_zone":"Asia/Shanghai","trigger":"dailyQuestion","question":{"kind":"dailyReflection","prompt":"What should Mory remember about today?","reason":"Daily cadence.","candidate_answers":[],"confidence":0.7,"sensitivity":"normal"},"preferences":{"max_per_day":2,"rich_previews_enabled":false}}`,
+				assert: func(t *testing.T, body []byte) {
+					var resp notificationIntentSuggestionResponseEnvelope
+					if err := json.Unmarshal(body, &resp); err != nil {
+						t.Fatalf("decode notification response: %v", err)
+					}
+					if resp.Intent.Title != "Mory" || resp.Intent.Body == "" {
+						t.Fatalf("unexpected notification response: %+v", resp)
+					}
+				},
+			},
+		}
+
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				req := httptest.NewRequest(http.MethodPost, tc.path, bytes.NewBufferString(tc.body))
+				req.Header.Set("Authorization", "Bearer "+token)
+				req.Header.Set("Content-Type", "application/json")
+				rec := httptest.NewRecorder()
+
+				server.Handler().ServeHTTP(rec, req)
+				if rec.Code != http.StatusOK {
+					t.Fatalf("%s status = %d, body = %s", tc.path, rec.Code, rec.Body.String())
+				}
+				tc.assert(t, rec.Body.Bytes())
+			})
+		}
+	})
 }
 
 func TestRefreshRequiresRefreshToken(t *testing.T) {

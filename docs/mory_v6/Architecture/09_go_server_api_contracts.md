@@ -2,12 +2,13 @@
 
 ## 1. Goal
 
-Define V6 server API additions while preserving the local-first boundary.
+Define V6 server API additions while preserving the local-storage and data-minimization boundary.
 
 The Go server should remain:
 
 - Auth gateway.
 - AI provider gateway.
+- Cloud deep-intelligence gateway.
 - Notification sender.
 - Quota/rate-limit authority.
 - Light-state preference store.
@@ -24,7 +25,7 @@ It should not become:
 - Send minimum necessary context.
 - Prefer record IDs and short evidence snippets over full libraries.
 - Do not log raw content.
-- Make every cloud AI call explicit in client settings.
+- Make every cloud AI call explicit in code paths and later visible in client settings.
 - Keep schemas versioned.
 - Include model/provider metadata in responses for audit.
 
@@ -38,13 +39,13 @@ Request:
 
 ```json
 {
-  "schemaVersion": 1,
+  "schema_version": 1,
   "locale": "zh-Hans",
-  "recordID": "uuid",
-  "audioArtifactID": "uuid",
-  "rawTranscript": "string",
+  "record_id": "uuid",
+  "audio_artifact_id": "uuid",
+  "raw_transcript": "string",
   "style": "clean_spoken_memory",
-  "allowTitle": true
+  "allow_title": true
 }
 ```
 
@@ -52,18 +53,20 @@ Response:
 
 ```json
 {
-  "schemaVersion": 1,
-  "refinedTranscript": "string",
-  "suggestedTitle": "string",
+  "schema_version": 1,
+  "refined_transcript": "string",
+  "suggested_title": "string",
   "edits": [
     {
       "kind": "punctuation",
       "summary": "Added punctuation and sentence breaks"
     }
   ],
-  "provider": "openai",
-  "model": "string",
-  "requestID": "string"
+  "meta": {
+    "provider": "openai",
+    "model": "string",
+    "request_id": "string"
+  }
 }
 ```
 
@@ -84,7 +87,7 @@ Request:
 
 ```json
 {
-  "schemaVersion": 1,
+  "schema_version": 1,
   "locale": "zh-Hans",
   "target": {
     "type": "entity",
@@ -93,20 +96,20 @@ Request:
   },
   "evidence": [
     {
-      "recordID": "uuid",
-      "artifactID": "uuid",
+      "record_id": "uuid",
+      "artifact_id": "uuid",
       "snippet": "Alex mentioned the meeting again",
-      "createdAt": "2026-05-18T10:00:00Z"
+      "created_at": "2026-05-18T10:00:00Z"
     }
   ],
-  "knownProfile": {
-    "displayName": "Alex",
+  "known_profile": {
+    "display_name": "Alex",
     "aliases": [],
-    "relationshipToUser": null
+    "relationship_to_user": null
   },
-  "userPreferences": {
-    "allowSensitiveQuestions": false,
-    "questionTone": "evidence_based"
+  "user_preferences": {
+    "allow_sensitive_questions": false,
+    "question_tone": "evidence_based"
   }
 }
 ```
@@ -115,20 +118,22 @@ Response:
 
 ```json
 {
-  "schemaVersion": 1,
+  "schema_version": 1,
   "questions": [
     {
       "kind": "entityRelationship",
       "prompt": "Who is Alex to you?",
       "reason": "Alex appeared in several recent memories.",
-      "candidateAnswers": ["friend", "coworker", "family", "other"],
+      "candidate_answers": ["friend", "coworker", "family", "other"],
       "confidence": 0.82,
       "sensitivity": "normal"
     }
   ],
-  "provider": "openai",
-  "model": "string",
-  "requestID": "string"
+  "meta": {
+    "provider": "openai",
+    "model": "string",
+    "request_id": "string"
+  }
 }
 ```
 
@@ -149,9 +154,9 @@ Request:
 
 ```json
 {
-  "schemaVersion": 1,
+  "schema_version": 1,
   "locale": "zh-Hans",
-  "timeWindow": {
+  "time_window": {
     "start": "2026-05-01T00:00:00Z",
     "end": "2026-05-18T23:59:59Z"
   },
@@ -159,13 +164,13 @@ Request:
     {
       "kind": "theme",
       "label": "career transition",
-      "recordCount": 7,
+      "record_count": 7,
       "salience": 0.74
     }
   ],
-  "evidenceSnippets": [
+  "evidence_snippets": [
     {
-      "recordID": "uuid",
+      "record_id": "uuid",
       "snippet": "I updated my resume again today."
     }
   ]
@@ -176,23 +181,76 @@ Response:
 
 ```json
 {
-  "schemaVersion": 1,
-  "chapterCandidates": [
+  "schema_version": 1,
+  "chapter_candidates": [
     {
       "title": "Looking For The Next Role",
       "summary": "A possible work transition chapter is forming.",
-      "evidenceRecordIDs": ["uuid"],
+      "evidence_record_ids": ["uuid"],
       "confidence": 0.77,
-      "requiresConfirmation": true
+      "requires_confirmation": true
     }
   ],
-  "provider": "openai",
-  "model": "string",
-  "requestID": "string"
+  "meta": {
+    "provider": "openai",
+    "model": "string",
+    "request_id": "string"
+  }
 }
 ```
 
-## 6. Endpoint: Notification Preferences
+## 6. Endpoint: Analyze Photo Semantics
+
+```text
+POST /api/intelligence/analyze-photo
+```
+
+This is the V6 placeholder for future cloud multimodal analysis. The first implementation does not upload image bytes by default. It sends local Vision labels, OCR text, caption hints, and metadata so the cloud model can produce a candidate semantic summary.
+
+Request:
+
+```json
+{
+  "schema_version": 1,
+  "locale": "zh-Hans",
+  "record_id": "uuid",
+  "photo_artifact_id": "uuid",
+  "local_labels": ["restaurant", "receipt"],
+  "ocr_text": "Table 4 total 128",
+  "caption_hint": "Dinner receipt",
+  "metadata": {
+    "source": "vision"
+  }
+}
+```
+
+Response:
+
+```json
+{
+  "schema_version": 1,
+  "semantic_summary": "A dinner receipt with restaurant context.",
+  "suggested_title": "Dinner receipt",
+  "tags": ["photo", "restaurant"],
+  "objects": ["receipt"],
+  "text_highlights": ["Table 4"],
+  "safety": "normal",
+  "confidence": 0.62,
+  "meta": {
+    "provider": "openai",
+    "model": "string",
+    "request_id": "string"
+  }
+}
+```
+
+Rules:
+
+- Server returns candidate semantics only.
+- Client decides whether and how to attach the candidate to the photo artifact.
+- Binary image upload requires a later explicit product/privacy decision.
+
+## 7. Endpoint: Notification Preferences
 
 ```text
 POST /api/notifications/register-preferences
@@ -230,7 +288,72 @@ Response:
 }
 ```
 
-## 7. Endpoint: Notification Intent
+## 8. Endpoint: Notification Intent Suggestion
+
+```text
+POST /api/intelligence/suggest-notification-intent
+```
+
+This endpoint returns a candidate local or remote notification payload. It does not send a push by itself.
+
+Request:
+
+```json
+{
+  "schema_version": 1,
+  "locale": "zh-Hans",
+  "time_zone": "Asia/Shanghai",
+  "trigger": "dailyQuestion",
+  "recent_evidence": [
+    {
+      "record_id": "uuid",
+      "snippet": "Work pressure appeared several evenings this week."
+    }
+  ],
+  "question": {
+    "kind": "dailyReflection",
+    "prompt": "最近你几次在晚上提到工作压力，要不要补一句今天最卡的点？",
+    "reason": "Repeated evening work-pressure evidence.",
+    "candidate_answers": [],
+    "confidence": 0.78,
+    "sensitivity": "normal"
+  },
+  "preferences": {
+    "max_per_day": 2,
+    "quiet_hours_start": "22:00",
+    "quiet_hours_end": "08:00",
+    "rich_previews_enabled": false
+  }
+}
+```
+
+Response:
+
+```json
+{
+  "schema_version": 1,
+  "intent": {
+    "kind": "dailyQuestion",
+    "privacy_level": "generic",
+    "title": "Mory",
+    "body": "A question is ready for today.",
+    "deep_link": "mory://questions"
+  },
+  "meta": {
+    "provider": "openai",
+    "model": "string",
+    "request_id": "string"
+  }
+}
+```
+
+Rules:
+
+- Client enforces quiet hours, max-per-day, sensitivity, and permission state.
+- Rich private copy is only allowed when `rich_previews_enabled` is true.
+- Generic copy is the default.
+
+## 9. Endpoint: Remote Notification Intent
 
 ```text
 POST /api/notifications/intents
@@ -257,7 +380,7 @@ Request:
 
 Server should reject rich private content unless user enabled rich previews.
 
-## 8. Error Schema
+## 10. Error Schema
 
 ```json
 {
@@ -282,7 +405,7 @@ model_failed
 privacy_blocked
 ```
 
-## 9. Rate Limit Requirements
+## 11. Rate Limit Requirements
 
 - Anonymous preview endpoint should have strict IP limit.
 - Authenticated transcript refinement should have tier-based quota.
@@ -290,7 +413,7 @@ privacy_blocked
 - Notification endpoints should be authenticated.
 - Failed provider calls should not consume full user quota if no useful response is returned.
 
-## 10. OpenAPI Requirements
+## 12. OpenAPI Requirements
 
 Update:
 
@@ -306,7 +429,7 @@ Add:
 - Privacy notes.
 - Rate-limit headers.
 
-## 11. Server Tests
+## 13. Server Tests
 
 Required tests:
 
@@ -317,7 +440,7 @@ Required tests:
 - OpenAPI examples validate.
 - Notification preference write/read round trip.
 
-## 12. Client Integration Rule
+## 14. Client Integration Rule
 
 iOS must treat server output as candidate material.
 

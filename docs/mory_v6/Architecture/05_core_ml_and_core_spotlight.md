@@ -2,13 +2,13 @@
 
 ## 1. Goal
 
-Use native Apple intelligence surfaces where they fit Mory's local-first design.
+Use native Apple intelligence surfaces where they fit Mory's local storage, privacy, and system-integration design.
 
-Core ML and local rules should provide cheap, private, repeated intelligence. Core Spotlight should provide system-native semantic retrieval.
+Core ML and local rules should provide cheap, private, repeated hints. Core Spotlight should provide system-native semantic retrieval. Cloud AI remains the primary deep-intelligence path for transcript refinement, question candidates, chapter naming, reflection, and future multimodal photo understanding.
 
 ## 2. Core ML Role
 
-Core ML should not replace the full AI pipeline. It should provide lightweight local signals.
+Core ML should not replace the cloud deep-intelligence pipeline in V6. It should provide lightweight local signals and future opt-in local-first modes.
 
 Candidate local outputs:
 
@@ -141,4 +141,3 @@ Required:
 - Search result ID mapping tests.
 - Fallback tests.
 - Search UI remains usable with empty Spotlight results.
-

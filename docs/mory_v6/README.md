@@ -2,7 +2,7 @@
 
 > Status: draft baseline  
 > Updated: 2026-05-18  
-> Scope: Continuous Memory Intelligence, AI-native product experience, local-first intelligence, semantic search, notifications, spatial home board, and V6 implementation architecture
+> Scope: Continuous Memory Intelligence, AI-native product experience, local storage plus native system intelligence, cloud deep intelligence, semantic search, notifications, spatial home board, and V6 implementation architecture
 
 ## 1. Version Positioning
 
@@ -80,7 +80,8 @@ Mory is not a chat AI product. Its AI-native behavior should appear as organizat
 | Home board | Today becomes a spatial memory desktop with fixed-size grid cards and suggestion layer. |
 | Continuous intelligence | Entity enrichment, clarification questions, daily questions, revisit candidates, and background jobs exist as first-class objects. |
 | Search | Core Spotlight semantic search is integrated while preserving current in-app search behavior as fallback. |
-| Local-first intelligence | Core ML/local rules handle lightweight classification, salience, recurrence, and candidate generation where possible. |
+| Native system intelligence | Apple frameworks and local rules handle speech, OCR, lightweight classification, salience hints, recurrence, search indexing, and fallback behavior where possible. |
+| Cloud deep intelligence | The Go server is the primary path for transcript refinement, deep record analysis, question candidates, chapter/stage suggestions, notification intent candidates, and future multimodal photo semantics. |
 | Server boundary | Go remains a light-state AI/auth/notification gateway and does not store the full private memory library. |
 | Privacy | Settings clearly explain local processing, cloud AI processing, notification behavior, and user controls. |
 | Notifications | Multiple notification types exist, but frequency, quiet hours, and topic sensitivity are user-controlled. |
@@ -95,7 +96,7 @@ Allowed:
 
 - New local SwiftData stores for intelligence jobs, question queue, entity profiles, graph deltas, notification preferences, and layout preferences.
 - New Core Spotlight indexing service.
-- New local Core ML or rules-based signal extraction layer.
+- New Apple framework, Core ML, or rules-based signal extraction layer for lightweight local/system tasks.
 - New Go endpoints for transcript refinement, intelligence candidates, chapter suggestions, and notification intent support.
 - New SwiftUI home grid layout and memory view modes.
 
@@ -104,6 +105,7 @@ Avoid:
 - Turning Mory into a multi-turn chatbot.
 - Letting AI directly mutate user-authored memory content.
 - Sending the full local memory library to the server by default.
+- Maintaining two full competing deep-analysis systems for local and cloud AI before user-facing controls justify that complexity.
 - Making LLMs directly choose precise visual layout.
 - Forcing users into AI suggestions that overwrite their own organization.
 - Rewriting the whole v5 stack before the continuous intelligence loop is proven.
@@ -182,3 +184,4 @@ This loop proves the V6 thesis:
 - Do not let AI resize or reorder pinned home cards.
 - Do not introduce custom UI chrome where native SwiftUI components already express the control clearly.
 - Do not treat Core ML as mandatory for every device on day one; rules and cached signals must have a fallback.
+- Treat cloud AI as the current deep-intelligence engine. Local AI is for storage privacy, Apple system capabilities, cheap repeated signals, semantic indexing, and future opt-in local-first modes.

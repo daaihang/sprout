@@ -5,6 +5,7 @@ import SwiftData
 struct MoryApp: App {
     private let sharedModelContainer = MoryPersistenceStack.makeSharedModelContainer()
     private let memoryRepository: any MoryMemoryRepositorying
+    private let cloudIntelligenceService: any CloudIntelligenceServing
     private let credentialStore = KeychainCredentialStore()
     private let runtimeEnvironment = AppRuntimeEnvironment.current
     @State private var authManager: AuthSessionManager
@@ -20,6 +21,10 @@ struct MoryApp: App {
         memoryRepository = MoryMemoryRepository(
             modelContext: sharedModelContainer.mainContext,
             analysisService: analysisService
+        )
+        cloudIntelligenceService = RemoteCloudIntelligenceClient(
+            apiClient: client,
+            tokenProvider: tokenProvider
         )
         _authManager = State(initialValue: AuthSessionManager(
             credentialStore: credentialStore,
@@ -39,6 +44,7 @@ struct MoryApp: App {
                         runtimeEnvironment: runtimeEnvironment
                     )
                         .environment(\.memoryRepository, memoryRepository)
+                        .environment(\.cloudIntelligenceService, cloudIntelligenceService)
                 case .unauthenticated:
                     SignInView(
                         credentialStore: credentialStore,

@@ -122,7 +122,7 @@ Tests:
 
 Exit criteria:
 
-- User-visible AI-native loop works without cloud AI.
+- User-visible AI-native loop works with local deterministic fallback, while cloud deep-intelligence contracts can later improve candidate quality.
 
 ## 5. Phase 3: Home Memory Desktop
 
@@ -247,7 +247,7 @@ Exit criteria:
 Outcome:
 
 ```text
-Server supports optional cloud intelligence without storing the memory library.
+Server supports cloud deep-intelligence contracts without storing the memory library.
 ```
 
 Tasks:
@@ -255,6 +255,8 @@ Tasks:
 - Add transcript refinement endpoint.
 - Add question candidate endpoint.
 - Add chapter candidate endpoint.
+- Add photo semantic analysis placeholder endpoint.
+- Add notification intent suggestion endpoint.
 - Add notification preference endpoint.
 - Add rate limit middleware.
 - Update OpenAPI.
@@ -272,6 +274,8 @@ server/internal/intelligence/
 server/internal/notification/
 server/internal/ratelimit/
 server/openapi.yaml
+mory/mory/Infrastructure/Networking/
+mory/mory/Infrastructure/Intelligence/
 ```
 
 Tests:
@@ -280,10 +284,11 @@ Tests:
 - Endpoint schema validation.
 - Provider failure mapping.
 - Rate limit behavior.
+- Mock provider returns stable transcript/question/chapter/photo/notification candidates.
 
 Exit criteria:
 
-- Cloud calls are optional, bounded, and auditable.
+- Cloud calls are bounded, auditable, and do not turn the server into a private memory store.
 
 ## 9. Phase 7: Multimedia Views
 

@@ -79,7 +79,7 @@ struct IntelligencePreferences: Identifiable, Codable, Hashable, Sendable {
         syncKey: String = IntelligencePreferences.defaultSyncKey,
         schemaVersion: Int = IntelligencePreferences.schemaVersion,
         localIntelligenceEnabled: Bool = true,
-        cloudIntelligenceEnabled: Bool = false,
+        cloudIntelligenceEnabled: Bool = true,
         voiceRefinementEnabled: Bool = false,
         semanticSearchEnabled: Bool = true,
         homeSuggestionsEnabled: Bool = true,
@@ -164,4 +164,3 @@ struct V6FeatureFlags: Identifiable, Codable, Hashable, Sendable {
         V6FeatureFlags()
     }
 }
-

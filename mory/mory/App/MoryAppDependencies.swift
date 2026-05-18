@@ -5,10 +5,19 @@ private struct MemoryRepositoryKey: EnvironmentKey {
     static let defaultValue: any MoryMemoryRepositorying = MissingMemoryRepository()
 }
 
+private struct CloudIntelligenceServiceKey: EnvironmentKey {
+    static let defaultValue: any CloudIntelligenceServing = MissingCloudIntelligenceService()
+}
+
 extension EnvironmentValues {
     var memoryRepository: any MoryMemoryRepositorying {
         get { self[MemoryRepositoryKey.self] }
         set { self[MemoryRepositoryKey.self] = newValue }
+    }
+
+    var cloudIntelligenceService: any CloudIntelligenceServing {
+        get { self[CloudIntelligenceServiceKey.self] }
+        set { self[CloudIntelligenceServiceKey.self] = newValue }
     }
 }
 
@@ -85,4 +94,16 @@ private final class MissingMemoryRepository: MoryMemoryRepositorying {
     func runQualityTuningScenario(_ request: QualityTuningRunRequest) async throws -> QualityTuningRunReport { fail() }
     func seedDebugFixture() async throws -> DebugMemoryFixtureSnapshot { fail() }
     func fetchDebugFixtureSnapshot(recordID: UUID) throws -> DebugMemoryFixtureSnapshot? { fail() }
+}
+
+private struct MissingCloudIntelligenceService: CloudIntelligenceServing {
+    private func fail<T>() -> T {
+        fatalError("Cloud intelligence dependency was not injected.")
+    }
+
+    func refineTranscript(_ payload: MoryAPIClient.TranscriptRefinementPayload) async throws -> MoryAPIClient.TranscriptRefinementResponse { fail() }
+    func suggestQuestions(_ payload: MoryAPIClient.QuestionSuggestionPayload) async throws -> MoryAPIClient.QuestionSuggestionResponse { fail() }
+    func suggestChapters(_ payload: MoryAPIClient.ChapterSuggestionPayload) async throws -> MoryAPIClient.ChapterSuggestionResponse { fail() }
+    func analyzePhotoSemantics(_ payload: MoryAPIClient.PhotoSemanticAnalysisPayload) async throws -> MoryAPIClient.PhotoSemanticAnalysisResponse { fail() }
+    func suggestNotificationIntent(_ payload: MoryAPIClient.NotificationIntentSuggestionPayload) async throws -> MoryAPIClient.NotificationIntentSuggestionResponse { fail() }
 }

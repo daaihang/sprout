@@ -60,27 +60,53 @@ type analyzeResponseEnvelope struct {
 }
 
 type analyzeMeta struct {
-	Provider string   `json:"provider"`
-	Model    string   `json:"model"`
-	Usage    ai.Usage `json:"usage"`
+	Provider  string   `json:"provider"`
+	Model     string   `json:"model"`
+	Usage     ai.Usage `json:"usage"`
+	RequestID string   `json:"request_id,omitempty"`
+}
+
+type transcriptRefinementResponseEnvelope struct {
+	ai.TranscriptRefinementResponse
+	Meta analyzeMeta `json:"meta"`
+}
+
+type questionSuggestionResponseEnvelope struct {
+	ai.QuestionSuggestionResponse
+	Meta analyzeMeta `json:"meta"`
+}
+
+type chapterSuggestionResponseEnvelope struct {
+	ai.ChapterSuggestionResponse
+	Meta analyzeMeta `json:"meta"`
+}
+
+type photoSemanticAnalysisResponseEnvelope struct {
+	ai.PhotoSemanticAnalysisResponse
+	Meta analyzeMeta `json:"meta"`
+}
+
+type notificationIntentSuggestionResponseEnvelope struct {
+	ai.NotificationIntentSuggestionResponse
+	Meta analyzeMeta `json:"meta"`
 }
 
 type reflectionRequest struct {
-    RecordShell   ai.AnalyzeRecordShell     `json:"record_shell"`
-    Artifacts     []ai.AnalyzeArtifact      `json:"artifacts"`
-    LinkedArcID   string                    `json:"linked_arc_id,omitempty"`
-    KnownEntities []ai.KnownEntityReference `json:"known_entities,omitempty"`
-    Prompt        string                    `json:"prompt,omitempty"`
-    DebugOptions  *ai.DebugOptions          `json:"debug_options,omitempty"`
+	RecordShell   ai.AnalyzeRecordShell     `json:"record_shell"`
+	Artifacts     []ai.AnalyzeArtifact      `json:"artifacts"`
+	LinkedArcID   string                    `json:"linked_arc_id,omitempty"`
+	KnownEntities []ai.KnownEntityReference `json:"known_entities,omitempty"`
+	Prompt        string                    `json:"prompt,omitempty"`
+	DebugOptions  *ai.DebugOptions          `json:"debug_options,omitempty"`
 }
 
 type reflectionResponse struct {
-    Title           string      `json:"title"`
-    Body            string      `json:"body"`
-    EvidenceSummary string      `json:"evidence_summary"`
-    Confidence      float64     `json:"confidence"`
-    SourceRecordIDs []string    `json:"source_record_ids"`
-    Meta            analyzeMeta `json:"meta"`
+	Title           string      `json:"title"`
+	Body            string      `json:"body"`
+	EvidenceSummary string      `json:"evidence_summary"`
+	Confidence      float64     `json:"confidence"`
+	SourceRecordIDs []string    `json:"source_record_ids"`
+	Meta            analyzeMeta `json:"meta"`
 }
 
 func (s *Server) handleHealthz(w http.ResponseWriter, _ *http.Request) {
@@ -303,95 +329,255 @@ func (s *Server) handleAnalyze(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleReflectionGenerate(w http.ResponseWriter, r *http.Request) {
-    claims, ok := auth.ClaimsFromContext(r.Context())
-    if !ok {
-        writeError(w, http.StatusUnauthorized, "missing auth claims")
-        return
-    }
+	claims, ok := auth.ClaimsFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "missing auth claims")
+		return
+	}
 
-    var req reflectionRequest
-    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-        writeError(w, http.StatusBadRequest, "invalid JSON body")
-        return
-    }
+	var req reflectionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
 
-    providerReq := ai.ReflectionRequest(req)
-    if err := providerReq.ValidateGenerate(); err != nil {
-        writeError(w, http.StatusBadRequest, "invalid reflection generate request")
-        return
-    }
+	providerReq := ai.ReflectionRequest(req)
+	if err := providerReq.ValidateGenerate(); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid reflection generate request")
+		return
+	}
 
-    result, err := s.aiProvider.GenerateReflection(r.Context(), providerReq, ai.UserContext{
-        UserID: claims.UserID,
-        Tier:   claims.Tier,
-    })
-    if err != nil {
-        if errors.Is(err, ai.ErrInvalidAnalyzeRequest) {
-            writeError(w, http.StatusBadRequest, "invalid reflection generate request")
-            return
-        }
-        writeError(w, http.StatusBadGateway, fmt.Sprintf("reflection generate failed: %v", err))
-        return
-    }
+	result, err := s.aiProvider.GenerateReflection(r.Context(), providerReq, ai.UserContext{
+		UserID: claims.UserID,
+		Tier:   claims.Tier,
+	})
+	if err != nil {
+		if errors.Is(err, ai.ErrInvalidAnalyzeRequest) {
+			writeError(w, http.StatusBadRequest, "invalid reflection generate request")
+			return
+		}
+		writeError(w, http.StatusBadGateway, fmt.Sprintf("reflection generate failed: %v", err))
+		return
+	}
 
-    writeJSON(w, http.StatusOK, reflectionResponse{
-        Title:           result.Response.Title,
-        Body:            result.Response.Body,
-        EvidenceSummary: result.Response.EvidenceSummary,
-        Confidence:      result.Response.Confidence,
-        SourceRecordIDs: result.Response.SourceRecordIDs,
-        Meta: analyzeMeta{
-            Provider: result.Provider,
-            Model:    result.Model,
-            Usage:    result.Usage,
-        },
-    })
+	writeJSON(w, http.StatusOK, reflectionResponse{
+		Title:           result.Response.Title,
+		Body:            result.Response.Body,
+		EvidenceSummary: result.Response.EvidenceSummary,
+		Confidence:      result.Response.Confidence,
+		SourceRecordIDs: result.Response.SourceRecordIDs,
+		Meta: analyzeMeta{
+			Provider: result.Provider,
+			Model:    result.Model,
+			Usage:    result.Usage,
+		},
+	})
 }
 
 func (s *Server) handleReflectionReplay(w http.ResponseWriter, r *http.Request) {
-    claims, ok := auth.ClaimsFromContext(r.Context())
-    if !ok {
-        writeError(w, http.StatusUnauthorized, "missing auth claims")
-        return
-    }
+	claims, ok := auth.ClaimsFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "missing auth claims")
+		return
+	}
 
-    var req reflectionRequest
-    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-        writeError(w, http.StatusBadRequest, "invalid JSON body")
-        return
-    }
+	var req reflectionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
 
-    providerReq := ai.ReflectionRequest(req)
-    if err := providerReq.ValidateReplay(); err != nil {
-        writeError(w, http.StatusBadRequest, "invalid reflection replay request")
-        return
-    }
+	providerReq := ai.ReflectionRequest(req)
+	if err := providerReq.ValidateReplay(); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid reflection replay request")
+		return
+	}
 
-    result, err := s.aiProvider.ReplayReflection(r.Context(), providerReq, ai.UserContext{
-        UserID: claims.UserID,
-        Tier:   claims.Tier,
-    })
-    if err != nil {
-        if errors.Is(err, ai.ErrInvalidAnalyzeRequest) {
-            writeError(w, http.StatusBadRequest, "invalid reflection replay request")
-            return
-        }
-        writeError(w, http.StatusBadGateway, fmt.Sprintf("reflection replay failed: %v", err))
-        return
-    }
+	result, err := s.aiProvider.ReplayReflection(r.Context(), providerReq, ai.UserContext{
+		UserID: claims.UserID,
+		Tier:   claims.Tier,
+	})
+	if err != nil {
+		if errors.Is(err, ai.ErrInvalidAnalyzeRequest) {
+			writeError(w, http.StatusBadRequest, "invalid reflection replay request")
+			return
+		}
+		writeError(w, http.StatusBadGateway, fmt.Sprintf("reflection replay failed: %v", err))
+		return
+	}
 
-    writeJSON(w, http.StatusOK, reflectionResponse{
-        Title:           result.Response.Title,
-        Body:            result.Response.Body,
-        EvidenceSummary: result.Response.EvidenceSummary,
-        Confidence:      result.Response.Confidence,
-        SourceRecordIDs: result.Response.SourceRecordIDs,
-        Meta: analyzeMeta{
-            Provider: result.Provider,
-            Model:    result.Model,
-            Usage:    result.Usage,
-        },
-    })
+	writeJSON(w, http.StatusOK, reflectionResponse{
+		Title:           result.Response.Title,
+		Body:            result.Response.Body,
+		EvidenceSummary: result.Response.EvidenceSummary,
+		Confidence:      result.Response.Confidence,
+		SourceRecordIDs: result.Response.SourceRecordIDs,
+		Meta: analyzeMeta{
+			Provider: result.Provider,
+			Model:    result.Model,
+			Usage:    result.Usage,
+		},
+	})
+}
+
+func (s *Server) handleTranscriptRefinement(w http.ResponseWriter, r *http.Request) {
+	user, ok := userContextFromRequest(w, r)
+	if !ok {
+		return
+	}
+
+	var req ai.TranscriptRefinementRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	if err := req.Validate(); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid transcript refinement request")
+		return
+	}
+
+	result, err := s.aiProvider.RefineTranscript(r.Context(), req, user)
+	if err != nil {
+		if errors.Is(err, ai.ErrInvalidAnalyzeRequest) {
+			writeError(w, http.StatusBadRequest, "invalid transcript refinement request")
+			return
+		}
+		writeError(w, http.StatusBadGateway, fmt.Sprintf("transcript refinement failed: %v", err))
+		return
+	}
+
+	writeJSON(w, http.StatusOK, transcriptRefinementResponseEnvelope{
+		TranscriptRefinementResponse: result.Response,
+		Meta: s.metaForResult(r, result.Provider, result.Model, result.Usage),
+	})
+}
+
+func (s *Server) handleQuestionSuggestions(w http.ResponseWriter, r *http.Request) {
+	user, ok := userContextFromRequest(w, r)
+	if !ok {
+		return
+	}
+
+	var req ai.QuestionSuggestionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	if err := req.Validate(); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid question suggestion request")
+		return
+	}
+
+	result, err := s.aiProvider.SuggestQuestions(r.Context(), req, user)
+	if err != nil {
+		if errors.Is(err, ai.ErrInvalidAnalyzeRequest) {
+			writeError(w, http.StatusBadRequest, "invalid question suggestion request")
+			return
+		}
+		writeError(w, http.StatusBadGateway, fmt.Sprintf("question suggestion failed: %v", err))
+		return
+	}
+
+	writeJSON(w, http.StatusOK, questionSuggestionResponseEnvelope{
+		QuestionSuggestionResponse: result.Response,
+		Meta: s.metaForResult(r, result.Provider, result.Model, result.Usage),
+	})
+}
+
+func (s *Server) handleChapterSuggestions(w http.ResponseWriter, r *http.Request) {
+	user, ok := userContextFromRequest(w, r)
+	if !ok {
+		return
+	}
+
+	var req ai.ChapterSuggestionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	if err := req.Validate(); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid chapter suggestion request")
+		return
+	}
+
+	result, err := s.aiProvider.SuggestChapters(r.Context(), req, user)
+	if err != nil {
+		if errors.Is(err, ai.ErrInvalidAnalyzeRequest) {
+			writeError(w, http.StatusBadRequest, "invalid chapter suggestion request")
+			return
+		}
+		writeError(w, http.StatusBadGateway, fmt.Sprintf("chapter suggestion failed: %v", err))
+		return
+	}
+
+	writeJSON(w, http.StatusOK, chapterSuggestionResponseEnvelope{
+		ChapterSuggestionResponse: result.Response,
+		Meta: s.metaForResult(r, result.Provider, result.Model, result.Usage),
+	})
+}
+
+func (s *Server) handlePhotoSemanticAnalysis(w http.ResponseWriter, r *http.Request) {
+	user, ok := userContextFromRequest(w, r)
+	if !ok {
+		return
+	}
+
+	var req ai.PhotoSemanticAnalysisRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	if err := req.Validate(); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid photo semantic analysis request")
+		return
+	}
+
+	result, err := s.aiProvider.AnalyzePhotoSemantics(r.Context(), req, user)
+	if err != nil {
+		if errors.Is(err, ai.ErrInvalidAnalyzeRequest) {
+			writeError(w, http.StatusBadRequest, "invalid photo semantic analysis request")
+			return
+		}
+		writeError(w, http.StatusBadGateway, fmt.Sprintf("photo semantic analysis failed: %v", err))
+		return
+	}
+
+	writeJSON(w, http.StatusOK, photoSemanticAnalysisResponseEnvelope{
+		PhotoSemanticAnalysisResponse: result.Response,
+		Meta: s.metaForResult(r, result.Provider, result.Model, result.Usage),
+	})
+}
+
+func (s *Server) handleNotificationIntentSuggestion(w http.ResponseWriter, r *http.Request) {
+	user, ok := userContextFromRequest(w, r)
+	if !ok {
+		return
+	}
+
+	var req ai.NotificationIntentSuggestionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	if err := req.Validate(); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid notification intent suggestion request")
+		return
+	}
+
+	result, err := s.aiProvider.SuggestNotificationIntent(r.Context(), req, user)
+	if err != nil {
+		if errors.Is(err, ai.ErrInvalidAnalyzeRequest) {
+			writeError(w, http.StatusBadRequest, "invalid notification intent suggestion request")
+			return
+		}
+		writeError(w, http.StatusBadGateway, fmt.Sprintf("notification intent suggestion failed: %v", err))
+		return
+	}
+
+	writeJSON(w, http.StatusOK, notificationIntentSuggestionResponseEnvelope{
+		NotificationIntentSuggestionResponse: result.Response,
+		Meta: s.metaForResult(r, result.Provider, result.Model, result.Usage),
+	})
 }
 
 func (s *Server) handleSubscriptionVerify(w http.ResponseWriter, r *http.Request) {
@@ -407,6 +593,27 @@ func (s *Server) handleSubscriptionVerify(w http.ResponseWriter, r *http.Request
 		return
 	}
 	writeJSON(w, http.StatusOK, status)
+}
+
+func userContextFromRequest(w http.ResponseWriter, r *http.Request) (ai.UserContext, bool) {
+	claims, ok := auth.ClaimsFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "missing auth claims")
+		return ai.UserContext{}, false
+	}
+	return ai.UserContext{
+		UserID: claims.UserID,
+		Tier:   claims.Tier,
+	}, true
+}
+
+func (s *Server) metaForResult(r *http.Request, provider string, model string, usage ai.Usage) analyzeMeta {
+	return analyzeMeta{
+		Provider:  provider,
+		Model:     model,
+		Usage:     usage,
+		RequestID: requestIDFromContext(r.Context()),
+	}
 }
 
 func (s *Server) handleOnboardingComplete(w http.ResponseWriter, r *http.Request) {
