@@ -29,6 +29,12 @@ pending job stored
 
 Jobs that depend on network or cloud AI should fail gracefully and retry later.
 
+Current iOS data-flow status:
+
+- Transcript refinement uses cloud deep intelligence after local/system transcription and falls back to raw transcript if unavailable.
+- Daily question preparation now has a gated foreground Home refresh hook: when daily questions and cloud question suggestions are enabled, Mory sends bounded recent-memory evidence to the Go V6 question endpoint and persists returned candidates locally as `ClarificationQuestion`.
+- This is not yet the final background scheduler. Phase 5 still needs retry policy, notification policy, local notification scheduling, and settings controls.
+
 ## 4. Notification Architecture
 
 Local notification path:
@@ -159,4 +165,3 @@ go test ./...
 ```
 
 must be restored and run.
-

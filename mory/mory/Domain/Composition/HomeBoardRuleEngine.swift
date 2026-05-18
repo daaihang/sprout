@@ -374,27 +374,33 @@ struct HomeBoardRuleEngine: Sendable {
         let profileIndex = Dictionary(uniqueKeysWithValues: entityProfiles.map { ($0.entityID, $0) })
 
         return questions
-            .filter { $0.status == .pending && $0.targetType == .entity }
+            .filter { question in
+                guard question.status == .pending else { return false }
+                return question.targetType == .entity || question.kind == .dailyReflection || question.kind == .revisit
+            }
             .sorted {
                 if $0.priority != $1.priority { return $0.priority > $1.priority }
                 return $0.createdAt > $1.createdAt
             }
             .prefix(2)
             .map { question in
-                let profile = profileIndex[question.targetID]
+                let profile = question.targetType == .entity ? profileIndex[question.targetID] : nil
+                let targetType: CompositionTargetType = question.targetType == .entity ? .entity : .system
+                let cardTitle = profile?.displayName
+                    ?? (question.kind == .dailyReflection ? "Daily question" : "Memory question")
                 return HomeBoardCandidate(
                     cardKey: "question-\(question.id.uuidString)",
                     cardKind: .clarificationQuestion,
-                    targetType: .entity,
+                    targetType: targetType,
                     targetID: question.targetID,
                     sourceRecordIDs: question.sourceRecordIDs,
                     renderValue: .clarificationQuestion(question: question, profile: profile),
                     priority: 74 + question.priority * 18,
-                    reason: question.reason.ifEmpty("clarification needed"),
+                    reason: question.reason.ifEmpty(cardTitle),
                     createdAt: question.createdAt,
                     updatedAt: profile?.updatedAt ?? question.createdAt,
                     widthColumns: 2,
-                    heightUnits: question.kind == .entityAlias ? 2 : 1,
+                    heightUnits: question.kind == .entityAlias || question.kind == .dailyReflection ? 2 : 1,
                     defaultLayer: .suggestion
                 )
             }

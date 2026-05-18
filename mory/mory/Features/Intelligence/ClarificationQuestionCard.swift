@@ -71,6 +71,12 @@ struct ClarificationQuestionCard: View {
         if let profileName = profile?.displayName.trimmedOrNil {
             return profileName
         }
+        if question.kind == .dailyReflection {
+            return String(localized: "Daily question")
+        }
+        if question.kind == .revisit {
+            return String(localized: "Memory revisit")
+        }
         return nil
     }
 }

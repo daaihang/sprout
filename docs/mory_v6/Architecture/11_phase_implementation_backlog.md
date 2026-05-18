@@ -214,6 +214,7 @@ Mory can ask timely questions with frequency and privacy controls.
 Tasks:
 
 - Add daily question engine.
+  - Current implementation status: iOS now has a cloud-backed `DailyQuestionSuggestionService` that can turn recent-memory evidence into persisted `ClarificationQuestion` rows when user preferences and V6 flags allow it. It is wired into Home refresh as a data-flow hook, with visual polish deferred.
 - Add notification intent store.
 - Add notification policy.
 - Add local scheduler.
@@ -262,6 +263,14 @@ Tasks:
 - Update OpenAPI.
 - Add privacy-safe logging.
 - Add tests.
+
+Current implementation status:
+
+- Go V6 endpoints and OpenAPI contracts exist for transcript refinement, question suggestions, chapter suggestions, photo semantic placeholders, and notification intent suggestions.
+- iOS clients/protocols exist for those endpoints.
+- Transcript refinement is wired into the unified capture composer.
+- Daily question suggestion is wired into the iOS Home data flow as a gated business path that persists local questions.
+- Local validation covers iOS clients/services; Go validation still requires a local Go toolchain.
 
 Files:
 
