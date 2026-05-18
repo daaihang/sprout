@@ -855,6 +855,17 @@ func (s *Server) handlePushRegister(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to register push token")
 		return
 	}
+	if s.logger != nil {
+		s.logger.Info("push token registered",
+			"user_id", claims.UserID,
+			"device_id", strings.TrimSpace(req.DeviceID),
+			"timezone", strings.TrimSpace(req.Timezone),
+			"notifications_enabled", req.NotificationsEnabled,
+			"daily_question_enabled", req.DailyQuestionEnabled,
+			"has_question_ready", req.HasQuestionReady,
+			"apns_token_len", len(strings.TrimSpace(req.APNSToken)),
+		)
+	}
 
 	writeJSON(w, http.StatusOK, pushRegisterResponse{
 		Registered: true,
@@ -937,6 +948,22 @@ func (s *Server) handlePushEnqueue(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to deliver queued push notifications")
 		return
+	}
+	if s.logger != nil {
+		s.logger.Info("push enqueue complete",
+			"user_id", claims.UserID,
+			"intent_id", intentID,
+			"kind", kind,
+			"target_type", targetType,
+			"target_id", targetID,
+			"queued", enqueueReport.QueuedCount,
+			"skipped", enqueueReport.SkippedCount,
+			"due", deliveryReport.DueCount,
+			"sent", deliveryReport.SentCount,
+			"failed", deliveryReport.FailedCount,
+			"retried", deliveryReport.RetriedCount,
+			"permanent_failed", deliveryReport.PermanentFailedCount,
+		)
 	}
 
 	writeJSON(w, http.StatusOK, pushEnqueueResponse{

@@ -132,10 +132,27 @@ func (w *PushDeliveryWorker) EnqueueIntent(
 	}
 
 	report := EnqueueReport{}
+	if len(tokens) == 0 && w.logger != nil {
+		w.logger.Info("push enqueue has no registered tokens",
+			"user_id", userID,
+			"intent_id", intent.IntentID,
+			"kind", intent.Kind,
+		)
+	}
 	for _, token := range tokens {
-		if !deliveryAllowedForToken(token, intent.Kind, intent.ScheduledAt, existingDeliveries) {
+		allowed, blockReason := deliveryAllowedForToken(token, intent.Kind, intent.ScheduledAt, existingDeliveries)
+		if !allowed {
 			report.SkippedCount++
 			w.metrics.RecordSkipped()
+			if w.logger != nil {
+				w.logger.Info("push delivery skipped",
+					"user_id", userID,
+					"device_id", token.DeviceID,
+					"intent_id", intent.IntentID,
+					"kind", intent.Kind,
+					"reason", blockReason,
+				)
+			}
 			continue
 		}
 		if err := w.store.UpsertPushDelivery(ctx, db.PushDelivery{
@@ -235,6 +252,15 @@ func (w *PushDeliveryWorker) DeliverDue(ctx context.Context, now time.Time, limi
 		if err := w.store.UpdatePushDeliveryStatus(ctx, delivery.UserID, delivery.DeviceID, delivery.IntentID, "sent", now, ""); err != nil {
 			w.metrics.RecordLoopError(err)
 			return report, err
+		}
+		if w.logger != nil {
+			w.logger.Info("push delivery sent",
+				"user_id", delivery.UserID,
+				"device_id", delivery.DeviceID,
+				"intent_id", delivery.IntentID,
+				"kind", delivery.Kind,
+				"target_type", delivery.TargetType,
+			)
 		}
 	}
 
@@ -439,29 +465,29 @@ func deliveryAllowedForToken(
 	kind string,
 	scheduledAt time.Time,
 	existingDeliveries []db.PushDelivery,
-) bool {
+) (bool, string) {
 	if !token.NotificationsEnabled {
-		return false
+		return false, "notifications_disabled"
 	}
 	if isDebugDeliveryKind(kind) {
-		return true
+		return true, ""
 	}
 	if token.MaxPerDay <= 0 {
-		return false
+		return false, "max_per_day_disabled"
 	}
 	if !kindEnabled(token, kind) {
-		return false
+		return false, "notification_kind_disabled"
 	}
 	if isInsideQuietHours(token, scheduledAt) {
-		return false
+		return false, "quiet_hours"
 	}
 	if exceedsDailyCap(token, scheduledAt, existingDeliveries) {
-		return false
+		return false, "daily_cap"
 	}
 	if violatesMinimumInterval(token, scheduledAt, existingDeliveries) {
-		return false
+		return false, "minimum_interval"
 	}
-	return true
+	return true, ""
 }
 
 func isDebugDeliveryKind(kind string) bool {

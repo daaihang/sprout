@@ -126,17 +126,29 @@ func TestPushDeliveryWorkerDebugTestBypassesPacing(t *testing.T) {
 		SentAt:      &now,
 	}}
 
-	if deliveryAllowedForToken(token, "dailyQuestion", now.Add(time.Minute), deliveries) {
+	allowed, reason := deliveryAllowedForToken(token, "dailyQuestion", now.Add(time.Minute), deliveries)
+	if allowed {
 		t.Fatalf("expected normal daily question to be blocked by pacing")
 	}
-	if !deliveryAllowedForToken(token, "debugTest", now.Add(time.Minute), deliveries) {
+	if reason != "daily_cap" && reason != "minimum_interval" {
+		t.Fatalf("expected pacing block reason, got %q", reason)
+	}
+	allowed, reason = deliveryAllowedForToken(token, "debugTest", now.Add(time.Minute), deliveries)
+	if !allowed {
 		t.Fatalf("expected debug test push to bypass pacing")
+	}
+	if reason != "" {
+		t.Fatalf("expected no block reason, got %q", reason)
 	}
 }
 
 func TestPushDeliveryWorkerDebugTestStillRequiresNotificationsEnabled(t *testing.T) {
-	if deliveryAllowedForToken(db.PushToken{NotificationsEnabled: false}, "debugTest", time.Now(), nil) {
+	allowed, reason := deliveryAllowedForToken(db.PushToken{NotificationsEnabled: false}, "debugTest", time.Now(), nil)
+	if allowed {
 		t.Fatalf("expected debug test push to require notifications enabled")
+	}
+	if reason != "notifications_disabled" {
+		t.Fatalf("expected notifications_disabled reason, got %q", reason)
 	}
 }
 
