@@ -268,6 +268,36 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertTrue(memory.contextArtifacts.contains { $0.summary.contains("Dreams") })
     }
 
+    func testHomeBoardCardMetadataReflectsTypedMemoryCard() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        _ = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Metadata memory",
+                rawText: "Metadata memory with a useful detail.",
+                mood: "focused",
+                inputContext: "typed in debug",
+                captureSource: .composer,
+                artifacts: [.text(title: "Metadata memory", body: "Metadata memory with a useful detail.")]
+            )
+        )
+
+        let board = try repository.fetchHomeBoard(for: Date(), limit: 8)
+        let item = try XCTUnwrap(board.items.first { $0.cardKind == .memory })
+        let metadata = HomeBoardCardMetadata(item: item)
+
+        XCTAssertEqual(metadata.iconName, "doc.text")
+        XCTAssertEqual(metadata.title, "Metadata memory")
+        XCTAssertEqual(metadata.summary, "Metadata memory with a useful detail.")
+        XCTAssertEqual(metadata.sourceCount, 1)
+        XCTAssertTrue(metadata.accessibilityLabel.contains("Metadata memory"))
+        XCTAssertTrue(metadata.accessibilityHint.contains(metadata.reason))
+    }
+
     func testFetchHomeBoardAddsGuidanceWhenFewerThanThreeMemories() async throws {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
