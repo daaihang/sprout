@@ -538,12 +538,39 @@ struct SearchReflectionResultSnapshot: Identifiable, Hashable, Sendable {
     var id: UUID { summary.id }
 }
 
+enum SearchRetrievalSource: String, Hashable, Sendable {
+    case exactFallback
+    case graph
+    case spotlight
+}
+
+enum SemanticSearchStatus: Hashable, Sendable {
+    case notRequested
+    case disabled
+    case unavailable
+    case succeeded(resultCount: Int)
+    case failed(String)
+}
+
 struct SearchSnapshot: Hashable, Sendable {
     var query: String
     var memories: [SearchMemoryResultSnapshot]
     var entities: [SearchEntityResultSnapshot]
     var arcs: [SearchArcResultSnapshot]
     var reflections: [SearchReflectionResultSnapshot]
+    var semanticMemoryIDs: [UUID] = []
+    var retrievalSources: [SearchRetrievalSource] = []
+    var semanticSearchStatus: SemanticSearchStatus = .notRequested
+}
+
+struct SpotlightIndexReport: Hashable, Sendable {
+    var indexedItemCount: Int
+    var deletedItemCount: Int
+    var skippedReason: String?
+
+    static func skipped(_ reason: String) -> SpotlightIndexReport {
+        SpotlightIndexReport(indexedItemCount: 0, deletedItemCount: 0, skippedReason: reason)
+    }
 }
 
 struct GraphEntitySectionSnapshot: Identifiable, Hashable, Sendable {
@@ -644,6 +671,9 @@ protocol MoryMemoryRepositorying: AnyObject {
     func fetchPipelineStatus(recordID: UUID) throws -> MemoryPipelineStatusSnapshot?
     func fetchPipelineStatusSummaries(limit: Int?) throws -> [PipelineStatusSummary]
     func search(query: String, limit: Int?) throws -> SearchSnapshot
+    func searchSemanticFirst(query: String, limit: Int?) async throws -> SearchSnapshot
+    func rebuildSpotlightIndex() async throws -> SpotlightIndexReport
+    func deleteSpotlightIndex() async throws -> SpotlightIndexReport
     func fetchEntityDetails(kind: EntityKind, limit: Int?) throws -> [EntityDetailSnapshot]
     func fetchEntityDetail(entityID: UUID) throws -> EntityDetailSnapshot?
     func fetchPeopleSummaries(limit: Int?) throws -> [PersonMemorySummary]

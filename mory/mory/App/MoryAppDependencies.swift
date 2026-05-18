@@ -35,6 +35,9 @@ private final class MissingMemoryRepository: MoryMemoryRepositorying {
     func fetchPipelineStatus(recordID: UUID) throws -> MemoryPipelineStatusSnapshot? { fail() }
     func fetchPipelineStatusSummaries(limit: Int?) throws -> [PipelineStatusSummary] { fail() }
     func search(query: String, limit: Int?) throws -> SearchSnapshot { fail() }
+    func searchSemanticFirst(query: String, limit: Int?) async throws -> SearchSnapshot { fail() }
+    func rebuildSpotlightIndex() async throws -> SpotlightIndexReport { fail() }
+    func deleteSpotlightIndex() async throws -> SpotlightIndexReport { fail() }
     func fetchEntityDetails(kind: EntityKind, limit: Int?) throws -> [EntityDetailSnapshot] { fail() }
     func fetchEntityDetail(entityID: UUID) throws -> EntityDetailSnapshot? { fail() }
     func fetchPeopleSummaries(limit: Int?) throws -> [PersonMemorySummary] { fail() }

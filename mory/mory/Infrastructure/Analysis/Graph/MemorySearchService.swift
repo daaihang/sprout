@@ -139,7 +139,8 @@ struct MemorySearchService {
             memories: Array(sortedMemories),
             entities: Array(sortedEntities),
             arcs: Array(sortedArcs),
-            reflections: Array(sortedReflections)
+            reflections: Array(sortedReflections),
+            retrievalSources: [.exactFallback, .graph]
         )
     }
 

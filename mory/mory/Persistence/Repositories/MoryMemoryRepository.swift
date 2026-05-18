@@ -9,6 +9,9 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     private let homeBoardRuleEngine = HomeBoardRuleEngine()
     private let graphQueryService = MemoryGraphQueryService()
     private let memorySearchService = MemorySearchService()
+    private let searchResultMerger = SearchResultMerger()
+    private let spotlightIndexService: any SpotlightIndexServicing
+    private let spotlightItemBuilder = SpotlightSearchableItemBuilder()
     private let captureArtifactBuilder = MemoryCaptureArtifactBuilder()
     private let temporalArcService = TemporalArcService()
     private let debugDiagnosticsService = DebugDiagnosticsService()
@@ -20,10 +23,12 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
 
     init(
         modelContext: ModelContext,
-        analysisService: any RecordAnalysisServing
+        analysisService: any RecordAnalysisServing,
+        spotlightIndexService: (any SpotlightIndexServicing)? = nil
     ) {
         self.modelContext = modelContext
         self.analysisService = analysisService
+        self.spotlightIndexService = spotlightIndexService ?? DefaultSpotlightIndexService()
     }
 
     func createMemory(from draft: MemoryCaptureDraft) async throws -> MemorySummary {
@@ -65,11 +70,13 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         )
         try save()
 
-        return makeMemorySummary(
+        let summary = makeMemorySummary(
             record: recordShell,
             artifacts: captureArtifacts,
             pipelineStatus: try fetchPipelineStatus(recordID: recordID)
         )
+        await indexMemoryIfPossible(summary)
+        return summary
     }
 
     func appendArtifacts(recordID: UUID, drafts: [CaptureArtifactDraft]) async throws -> MemorySummary? {
@@ -127,11 +134,13 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         )
         try save()
 
-        return try makeMemorySummary(
+        let summary = try makeMemorySummary(
             record: updatedRecord,
             artifacts: fetchArtifacts(recordID: recordID),
             pipelineStatus: fetchPipelineStatus(recordID: recordID)
         )
+        await indexMemoryIfPossible(summary)
+        return summary
     }
 
     func deleteMemory(recordID: UUID) throws {
@@ -142,6 +151,11 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         let artifacts = try modelContext.fetch(FetchDescriptor<ArtifactStore>(predicate: #Predicate { $0.recordID == recordID }))
         artifacts.forEach { modelContext.delete($0) }
         try save()
+        Task { @MainActor [spotlightIndexService] in
+            try? await spotlightIndexService.deleteItems(
+                identifiers: [SpotlightSearchableItemIdentifier.memory(recordID)]
+            )
+        }
     }
 
     func updateMemory(recordID: UUID, draft: MemoryEditDraft) async throws -> MemoryDetailSnapshot? {
@@ -197,7 +211,17 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         )
         try save()
 
-        return try fetchMemoryDetail(recordID: recordID)
+        let detail = try fetchMemoryDetail(recordID: recordID)
+        if let detail {
+            await indexMemoryIfPossible(
+                makeMemorySummary(
+                    record: detail.record,
+                    artifacts: detail.artifacts,
+                    pipelineStatus: detail.pipelineStatus
+                )
+            )
+        }
+        return detail
     }
 
     func refreshMemoryPipeline(recordID: UUID) async throws {
@@ -254,6 +278,13 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
                 )
             )
             try save()
+            if let summary = try? makeMemorySummary(
+                record: record,
+                artifacts: artifacts,
+                pipelineStatus: fetchPipelineStatus(recordID: recordID)
+            ) {
+                await indexMemoryIfPossible(summary)
+            }
             NotificationCenter.default.post(
                 name: .pipelineDidComplete,
                 object: nil,
@@ -656,6 +687,62 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             memories: memories,
             limit: limit
         )
+    }
+
+    func searchSemanticFirst(query: String, limit: Int? = nil) async throws -> SearchSnapshot {
+        var fallback = try search(query: query, limit: limit)
+        guard query.trimmedOrNil != nil else { return fallback }
+        guard try isSemanticSearchActive() else {
+            fallback.semanticSearchStatus = .disabled
+            return fallback
+        }
+        guard spotlightIndexService.isIndexingAvailable else {
+            fallback.semanticSearchStatus = .unavailable
+            return fallback
+        }
+
+        do {
+            let semanticMemoryIDs = try await spotlightIndexService.searchMemoryIDs(query: query, limit: limit ?? 12)
+            let memories = try fetchRecentMemories(limit: nil)
+            return searchResultMerger.merge(
+                fallback: fallback,
+                semanticMemoryIDs: semanticMemoryIDs,
+                memories: memories,
+                limit: limit
+            )
+        } catch {
+            fallback.semanticSearchStatus = .failed(error.localizedDescription)
+            return fallback
+        }
+    }
+
+    func rebuildSpotlightIndex() async throws -> SpotlightIndexReport {
+        guard try isSemanticSearchActive() else {
+            return .skipped("Semantic search is disabled.")
+        }
+        guard spotlightIndexService.isIndexingAvailable else {
+            return .skipped("Core Spotlight indexing is unavailable.")
+        }
+
+        let memories = try fetchRecentMemories(limit: nil)
+        let analyses = try fetchRecordAnalysisIndex()
+        let items = try memories.map { memory in
+            spotlightItemBuilder.makeMemoryItem(
+                memory: memory,
+                artifacts: try fetchArtifacts(recordID: memory.id),
+                analysis: analyses[memory.id]
+            )
+        }
+        try await spotlightIndexService.indexItems(items)
+        return SpotlightIndexReport(indexedItemCount: items.count, deletedItemCount: 0, skippedReason: nil)
+    }
+
+    func deleteSpotlightIndex() async throws -> SpotlightIndexReport {
+        guard spotlightIndexService.isIndexingAvailable else {
+            return .skipped("Core Spotlight indexing is unavailable.")
+        }
+        try await spotlightIndexService.deleteDomain(SpotlightSearchableItemIdentifier.memoryDomain)
+        return SpotlightIndexReport(indexedItemCount: 0, deletedItemCount: 0, skippedReason: nil)
     }
 
     func fetchEntityDetails(kind: EntityKind, limit: Int? = nil) throws -> [EntityDetailSnapshot] {
@@ -1178,6 +1265,9 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         try deleteAll(RecordShellStore.self)
         latestReflectionTrace = nil
         try save()
+        Task { @MainActor [spotlightIndexService] in
+            try? await spotlightIndexService.deleteDomain(SpotlightSearchableItemIdentifier.memoryDomain)
+        }
     }
 
     func fetchUserSettingsPreference() throws -> UserSettingsPreference {
@@ -2453,6 +2543,26 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             artifactCount: artifacts.count,
             pipelineStatus: pipelineStatus
         )
+    }
+
+    private func isSemanticSearchActive() throws -> Bool {
+        try fetchIntelligencePreferences().semanticSearchEnabled && fetchV6FeatureFlags().semanticSearch
+    }
+
+    private func indexMemoryIfPossible(_ memory: MemorySummary) async {
+        guard (try? isSemanticSearchActive()) == true else { return }
+        guard spotlightIndexService.isIndexingAvailable else { return }
+
+        do {
+            let item = spotlightItemBuilder.makeMemoryItem(
+                memory: memory,
+                artifacts: try fetchArtifacts(recordID: memory.id),
+                analysis: try fetchRecordAnalysis(recordID: memory.id)
+            )
+            try await spotlightIndexService.indexItems([item])
+        } catch {
+            // Indexing should never block capture or analysis completion.
+        }
     }
 
     private func makeMemoryLibraryRow(
