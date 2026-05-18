@@ -265,11 +265,21 @@ Request:
   "timezone": "Asia/Shanghai",
   "has_question_ready": true,
   "notifications_enabled": true,
+  "background_done_enabled": true,
   "daily_question_enabled": true,
+  "repeated_theme_enabled": true,
+  "stage_forming_enabled": true,
+  "revisit_enabled": true,
   "delivery_pace": "balanced",
   "max_per_day": 2,
+  "minimum_minutes_between_notifications": 90,
   "quiet_start": "22:30",
-  "quiet_end": "08:00"
+  "quiet_end": "08:00",
+  "rich_previews_enabled": false,
+  "local_intelligence_enabled": true,
+  "cloud_intelligence_enabled": true,
+  "semantic_search_enabled": true,
+  "home_suggestions_enabled": true
 }
 ```
 
@@ -282,7 +292,54 @@ Response:
 }
 ```
 
-## 8. Endpoint: Notification Intent Suggestion
+Rules:
+
+- Server stores light delivery preferences per device.
+- Server must still enforce pacing and quiet hours before remote push delivery.
+- User memory content is not stored with token preferences.
+
+## 8. Endpoint: Push Enqueue
+
+```text
+POST /api/push/enqueue
+```
+
+This endpoint queues a remote notification delivery for the authenticated user and attempts due delivery through the configured APNs client. It is intentionally a light delivery contract: the caller supplies generic notification copy and target metadata, not raw memory content.
+
+Request:
+
+```json
+{
+  "intent_id": "uuid-string",
+  "kind": "dailyQuestion",
+  "title": "Mory",
+  "body": "A question is ready.",
+  "target_type": "question",
+  "target_id": "uuid-string",
+  "scheduled_at": "2026-05-18T18:30:00Z"
+}
+```
+
+Response:
+
+```json
+{
+  "accepted": true,
+  "user_id": "string",
+  "queued_count": 1,
+  "skipped_count": 0,
+  "sent_count": 1,
+  "failed_count": 0
+}
+```
+
+Rules:
+
+- Server checks per-device notification switches, quiet hours, max-per-day, and minimum spacing.
+- APNs implementation can be disabled in local/dev environments; queued delivery still has deterministic storage and failure status.
+- Push payloads carry `intent_id`, `kind`, `target_type`, and `target_id` so iOS can route to the concrete surface.
+
+## 9. Endpoint: Notification Intent Suggestion
 
 ```text
 POST /api/intelligence/suggest-notification-intent
@@ -347,7 +404,7 @@ Rules:
 - Rich private copy is only allowed when `rich_previews_enabled` is true.
 - Generic copy is the default.
 
-## 9. Endpoint: Push Delivery Interaction Writeback
+## 10. Endpoint: Push Delivery Interaction Writeback
 
 ```text
 POST /api/push/delivery-writeback
@@ -381,7 +438,7 @@ Rules:
 - Client should write back delivered/opened/dismissed interactions.
 - Server stores lightweight delivery telemetry only; no full memory content.
 
-## 10. Error Schema
+## 11. Error Schema
 
 ```json
 {
@@ -406,7 +463,7 @@ model_failed
 privacy_blocked
 ```
 
-## 11. Rate Limit Requirements
+## 12. Rate Limit Requirements
 
 - Anonymous preview endpoint should have strict IP limit.
 - Authenticated transcript refinement should have tier-based quota.
@@ -414,7 +471,7 @@ privacy_blocked
 - Notification endpoints should be authenticated.
 - Failed provider calls should not consume full user quota if no useful response is returned.
 
-## 12. OpenAPI Requirements
+## 13. OpenAPI Requirements
 
 Update:
 
@@ -430,7 +487,7 @@ Add:
 - Privacy notes.
 - Rate-limit headers.
 
-## 13. Server Tests
+## 14. Server Tests
 
 Required tests:
 
@@ -441,7 +498,7 @@ Required tests:
 - OpenAPI examples validate.
 - Notification preference write/read round trip.
 
-## 14. Client Integration Rule
+## 15. Client Integration Rule
 
 iOS must treat server output as candidate material.
 

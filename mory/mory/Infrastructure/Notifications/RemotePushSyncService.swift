@@ -8,6 +8,8 @@ extension Notification.Name {
 
 enum PushDeviceRegistrationStore {
     private static let apnsTokenKey = "mory.apnsTokenHex"
+    private static let registrationDigestKey = "mory.remotePush.lastRegistrationDigest"
+    private static let pendingWritebacksKey = "mory.remotePush.pendingWritebacks"
 
     static func saveAPNSToken(_ tokenData: Data) {
         let hex = tokenData.map { String(format: "%02x", $0) }.joined()
@@ -31,6 +33,55 @@ enum PushDeviceRegistrationStore {
     static func currentTimezoneID() -> String {
         TimeZone.autoupdatingCurrent.identifier
     }
+
+    static func lastRegistrationDigest() -> String? {
+        UserDefaults.standard.string(forKey: registrationDigestKey)?.trimmedOrNil
+    }
+
+    static func saveLastRegistrationDigest(_ digest: String?) {
+        UserDefaults.standard.set(digest, forKey: registrationDigestKey)
+    }
+
+    fileprivate static func loadPendingWritebacks() -> [StoredPushDeliveryWriteback] {
+        guard
+            let data = UserDefaults.standard.data(forKey: pendingWritebacksKey),
+            let decoded = try? JSONDecoder().decode([StoredPushDeliveryWriteback].self, from: data)
+        else {
+            return []
+        }
+        return decoded
+    }
+
+    static func enqueuePendingWriteback(_ payload: MoryAPIClient.PushDeliveryWritebackPayload) {
+        var writebacks = loadPendingWritebacks()
+        if !writebacks.contains(where: { $0.payload == payload }) {
+            writebacks.append(StoredPushDeliveryWriteback(payload: payload))
+        }
+        savePendingWritebacks(writebacks)
+    }
+
+    static func removePendingWritebacks(withIDs ids: Set<UUID>) {
+        guard !ids.isEmpty else { return }
+        let remaining = loadPendingWritebacks().filter { !ids.contains($0.id) }
+        savePendingWritebacks(remaining)
+    }
+
+    private static func savePendingWritebacks(_ writebacks: [StoredPushDeliveryWriteback]) {
+        guard let data = try? JSONEncoder().encode(writebacks) else { return }
+        UserDefaults.standard.set(data, forKey: pendingWritebacksKey)
+    }
+
+    #if DEBUG
+    static func resetForTests() {
+        UserDefaults.standard.removeObject(forKey: apnsTokenKey)
+        UserDefaults.standard.removeObject(forKey: registrationDigestKey)
+        UserDefaults.standard.removeObject(forKey: pendingWritebacksKey)
+    }
+
+    static func pendingWritebackCountForTests() -> Int {
+        loadPendingWritebacks().count
+    }
+    #endif
 }
 
 @MainActor
@@ -55,6 +106,7 @@ final class RemotePushSyncService: RemotePushSyncing {
         self.apiClient = apiClient
         self.tokenProvider = tokenProvider
         self.isoFormatter = isoFormatter
+        self.lastRegistrationDigest = PushDeviceRegistrationStore.lastRegistrationDigest()
     }
 
     func registerSystemRemoteNotificationsIfNeeded(repository: any MoryMemoryRepositorying) {
@@ -78,6 +130,7 @@ final class RemotePushSyncService: RemotePushSyncing {
             return
         }
         if !force, snapshot.digest == lastRegistrationDigest {
+            await flushPendingWritebacksIfPossible()
             return
         }
 
@@ -86,6 +139,8 @@ final class RemotePushSyncService: RemotePushSyncing {
                 try await apiClient.registerPushToken(payload: snapshot.payload, bearerToken: bearerToken)
             }
             lastRegistrationDigest = snapshot.digest
+            PushDeviceRegistrationStore.saveLastRegistrationDigest(snapshot.digest)
+            await flushPendingWritebacksIfPossible()
         } catch {
             // Keep local workflows uninterrupted when remote registration fails.
         }
@@ -103,11 +158,9 @@ final class RemotePushSyncService: RemotePushSyncing {
         )
 
         do {
-            _ = try await sendWithRefresh { bearerToken in
-                try await apiClient.writeBackPushDelivery(payload: payload, bearerToken: bearerToken)
-            }
+            try await sendWriteback(payload)
         } catch {
-            // Local notification handling should not fail because writeback is unavailable.
+            PushDeviceRegistrationStore.enqueuePendingWriteback(payload)
         }
     }
 
@@ -130,6 +183,7 @@ final class RemotePushSyncService: RemotePushSyncing {
     ) -> RemotePushRegistrationSnapshot? {
         guard
             let preferences = try? repository.fetchIntelligencePreferences(),
+            let flags = try? repository.fetchV6FeatureFlags(),
             let pendingQuestions = try? repository.fetchClarificationQuestions(status: .pending, limit: 64)
         else {
             return nil
@@ -146,9 +200,14 @@ final class RemotePushSyncService: RemotePushSyncing {
             timezone: PushDeviceRegistrationStore.currentTimezoneID(),
             hasQuestionReady: hasQuestionReady,
             notificationsEnabled: notificationPreferences.enabled,
+            backgroundDoneEnabled: notificationPreferences.backgroundDoneEnabled,
             dailyQuestionEnabled: notificationPreferences.dailyQuestionEnabled,
+            repeatedThemeEnabled: notificationPreferences.repeatedThemeEnabled,
+            stageFormingEnabled: notificationPreferences.stageFormingEnabled,
+            revisitEnabled: notificationPreferences.revisitEnabled,
             deliveryPace: notificationPreferences.resolvedFrequencyStrategy.rawValue,
             maxPerDay: notificationPreferences.maxPerDay,
+            minimumMinutesBetweenNotifications: notificationPreferences.resolvedMinimumMinutesBetweenNotifications,
             quietStart: formatQuietTime(
                 hour: notificationPreferences.quietHoursStartHour,
                 minute: notificationPreferences.quietHoursStartMinute
@@ -156,7 +215,12 @@ final class RemotePushSyncService: RemotePushSyncing {
             quietEnd: formatQuietTime(
                 hour: notificationPreferences.quietHoursEndHour,
                 minute: notificationPreferences.quietHoursEndMinute
-            )
+            ),
+            richPreviewsEnabled: notificationPreferences.richPreviewsEnabled,
+            localIntelligenceEnabled: preferences.localIntelligenceEnabled,
+            cloudIntelligenceEnabled: preferences.cloudIntelligenceEnabled,
+            semanticSearchEnabled: flags.semanticSearch,
+            homeSuggestionsEnabled: preferences.homeSuggestionsEnabled
         )
 
         return RemotePushRegistrationSnapshot(payload: payload)
@@ -166,6 +230,31 @@ final class RemotePushSyncService: RemotePushSyncing {
         guard let hour else { return nil }
         let resolvedMinute = minute ?? 0
         return String(format: "%02d:%02d", hour, resolvedMinute)
+    }
+
+    private func sendWriteback(
+        _ payload: MoryAPIClient.PushDeliveryWritebackPayload
+    ) async throws {
+        _ = try await sendWithRefresh { bearerToken in
+            try await apiClient.writeBackPushDelivery(payload: payload, bearerToken: bearerToken)
+        }
+    }
+
+    private func flushPendingWritebacksIfPossible() async {
+        let pending = PushDeviceRegistrationStore.loadPendingWritebacks()
+        guard !pending.isEmpty else { return }
+
+        var acknowledgedIDs = Set<UUID>()
+        for item in pending {
+            do {
+                try await sendWriteback(item.payload)
+                acknowledgedIDs.insert(item.id)
+            } catch {
+                continue
+            }
+        }
+
+        PushDeviceRegistrationStore.removePendingWritebacks(withIDs: acknowledgedIDs)
     }
 }
 
@@ -179,11 +268,31 @@ private struct RemotePushRegistrationSnapshot {
             payload.timezone,
             String(payload.hasQuestionReady),
             String(payload.notificationsEnabled),
+            String(payload.backgroundDoneEnabled),
             String(payload.dailyQuestionEnabled),
+            String(payload.repeatedThemeEnabled),
+            String(payload.stageFormingEnabled),
+            String(payload.revisitEnabled),
             payload.deliveryPace,
             String(payload.maxPerDay),
+            String(payload.minimumMinutesBetweenNotifications),
             payload.quietStart ?? "",
             payload.quietEnd ?? "",
+            String(payload.richPreviewsEnabled),
+            String(payload.localIntelligenceEnabled),
+            String(payload.cloudIntelligenceEnabled),
+            String(payload.semanticSearchEnabled),
+            String(payload.homeSuggestionsEnabled),
         ].joined(separator: "|")
+    }
+}
+
+fileprivate struct StoredPushDeliveryWriteback: Identifiable, Codable, Equatable {
+    let id: UUID
+    let payload: MoryAPIClient.PushDeliveryWritebackPayload
+
+    init(id: UUID = UUID(), payload: MoryAPIClient.PushDeliveryWritebackPayload) {
+        self.id = id
+        self.payload = payload
     }
 }

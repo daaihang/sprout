@@ -248,19 +248,88 @@ paths:
                   type: boolean
                 notifications_enabled:
                   type: boolean
+                background_done_enabled:
+                  type: boolean
                 daily_question_enabled:
+                  type: boolean
+                repeated_theme_enabled:
+                  type: boolean
+                stage_forming_enabled:
+                  type: boolean
+                revisit_enabled:
                   type: boolean
                 delivery_pace:
                   type: string
                 max_per_day:
                   type: integer
+                minimum_minutes_between_notifications:
+                  type: integer
                 quiet_start:
                   type: string
                 quiet_end:
                   type: string
+                rich_previews_enabled:
+                  type: boolean
+                local_intelligence_enabled:
+                  type: boolean
+                cloud_intelligence_enabled:
+                  type: boolean
+                semantic_search_enabled:
+                  type: boolean
+                home_suggestions_enabled:
+                  type: boolean
       responses:
         "200":
           description: Registration succeeded
+  /api/push/enqueue:
+    post:
+      summary: Queue a remote push intent and attempt due delivery
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [intent_id, kind, title, body, target_type, target_id]
+              properties:
+                intent_id:
+                  type: string
+                kind:
+                  type: string
+                title:
+                  type: string
+                body:
+                  type: string
+                target_type:
+                  type: string
+                target_id:
+                  type: string
+                scheduled_at:
+                  type: string
+                  format: date-time
+      responses:
+        "200":
+          description: Enqueue and delivery attempt report
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [accepted, user_id, queued_count, skipped_count, sent_count, failed_count]
+                properties:
+                  accepted:
+                    type: boolean
+                  user_id:
+                    type: string
+                  queued_count:
+                    type: integer
+                  skipped_count:
+                    type: integer
+                  sent_count:
+                    type: integer
+                  failed_count:
+                    type: integer
   /api/push/delivery-writeback:
     post:
       summary: Write back notification delivery or interaction events

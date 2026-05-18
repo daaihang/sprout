@@ -11,6 +11,7 @@ import (
 	"sprout/server/internal/ai"
 	"sprout/server/internal/auth"
 	"sprout/server/internal/db"
+	"sprout/server/internal/notification"
 )
 
 type authAppleRequest struct {
@@ -48,11 +49,21 @@ type pushRegisterRequest struct {
 	Timezone             string `json:"timezone"`
 	HasQuestionReady     bool   `json:"has_question_ready"`
 	NotificationsEnabled bool   `json:"notifications_enabled"`
+	BackgroundDoneEnabled bool  `json:"background_done_enabled"`
 	DailyQuestionEnabled bool   `json:"daily_question_enabled"`
+	RepeatedThemeEnabled bool   `json:"repeated_theme_enabled"`
+	StageFormingEnabled  bool   `json:"stage_forming_enabled"`
+	RevisitEnabled       bool   `json:"revisit_enabled"`
 	DeliveryPace         string `json:"delivery_pace"`
 	MaxPerDay            int    `json:"max_per_day"`
+	MinimumMinutesBetweenNotifications int `json:"minimum_minutes_between_notifications"`
 	QuietStart           string `json:"quiet_start"`
 	QuietEnd             string `json:"quiet_end"`
+	RichPreviewsEnabled  bool   `json:"rich_previews_enabled"`
+	LocalIntelligenceEnabled bool `json:"local_intelligence_enabled"`
+	CloudIntelligenceEnabled bool `json:"cloud_intelligence_enabled"`
+	SemanticSearchEnabled bool  `json:"semantic_search_enabled"`
+	HomeSuggestionsEnabled bool `json:"home_suggestions_enabled"`
 }
 
 type pushRegisterResponse struct {
@@ -73,6 +84,25 @@ type pushDeliveryWritebackRequest struct {
 type pushDeliveryWritebackResponse struct {
 	Accepted bool   `json:"accepted"`
 	UserID   string `json:"user_id"`
+}
+
+type pushEnqueueRequest struct {
+	IntentID    string `json:"intent_id"`
+	Kind        string `json:"kind"`
+	Title       string `json:"title"`
+	Body        string `json:"body"`
+	TargetType  string `json:"target_type"`
+	TargetID    string `json:"target_id"`
+	ScheduledAt string `json:"scheduled_at"`
+}
+
+type pushEnqueueResponse struct {
+	Accepted     bool   `json:"accepted"`
+	UserID       string `json:"user_id"`
+	QueuedCount  int    `json:"queued_count"`
+	SkippedCount int    `json:"skipped_count"`
+	SentCount    int    `json:"sent_count"`
+	FailedCount  int    `json:"failed_count"`
 }
 
 type analyzeResponseEnvelope struct {
@@ -679,11 +709,21 @@ func (s *Server) handlePushRegister(w http.ResponseWriter, r *http.Request) {
 		Timezone:             strings.TrimSpace(req.Timezone),
 		HasQuestionReady:     req.HasQuestionReady,
 		NotificationsEnabled: req.NotificationsEnabled,
+		BackgroundDoneEnabled: req.BackgroundDoneEnabled,
 		DailyQuestionEnabled: req.DailyQuestionEnabled,
+		RepeatedThemeEnabled: req.RepeatedThemeEnabled,
+		StageFormingEnabled:  req.StageFormingEnabled,
+		RevisitEnabled:       req.RevisitEnabled,
 		DeliveryPace:         strings.TrimSpace(req.DeliveryPace),
 		MaxPerDay:            req.MaxPerDay,
+		MinimumMinutesBetweenNotifications: req.MinimumMinutesBetweenNotifications,
 		QuietStart:           strings.TrimSpace(req.QuietStart),
 		QuietEnd:             strings.TrimSpace(req.QuietEnd),
+		RichPreviewsEnabled:  req.RichPreviewsEnabled,
+		LocalIntelligenceEnabled: req.LocalIntelligenceEnabled,
+		CloudIntelligenceEnabled: req.CloudIntelligenceEnabled,
+		SemanticSearchEnabled: req.SemanticSearchEnabled,
+		HomeSuggestionsEnabled: req.HomeSuggestionsEnabled,
 	}); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to register push token")
 		return
@@ -692,6 +732,79 @@ func (s *Server) handlePushRegister(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, pushRegisterResponse{
 		Registered: true,
 		UserID:     claims.UserID,
+	})
+}
+
+func (s *Server) handlePushEnqueue(w http.ResponseWriter, r *http.Request) {
+	claims, ok := auth.ClaimsFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "missing auth claims")
+		return
+	}
+	if s.pushDeliveryWorker == nil {
+		writeError(w, http.StatusInternalServerError, "push delivery worker is not configured")
+		return
+	}
+
+	var req pushEnqueueRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+
+	intentID := strings.TrimSpace(req.IntentID)
+	kind := strings.TrimSpace(req.Kind)
+	title := strings.TrimSpace(req.Title)
+	body := strings.TrimSpace(req.Body)
+	targetType := strings.TrimSpace(req.TargetType)
+	targetID := strings.TrimSpace(req.TargetID)
+	if intentID == "" || kind == "" || title == "" || body == "" || targetType == "" || targetID == "" {
+		writeError(w, http.StatusBadRequest, "intent_id, kind, title, body, target_type, and target_id are required")
+		return
+	}
+
+	scheduledAt := time.Now().UTC()
+	if rawScheduledAt := strings.TrimSpace(req.ScheduledAt); rawScheduledAt != "" {
+		parsed, err := time.Parse(time.RFC3339, rawScheduledAt)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "scheduled_at must be RFC3339")
+			return
+		}
+		scheduledAt = parsed.UTC()
+	}
+
+	enqueueReport, err := s.pushDeliveryWorker.EnqueueIntent(
+		r.Context(),
+		claims.UserID,
+		notification.DeliveryIntent{
+			IntentID:    intentID,
+			Kind:        kind,
+			Title:       title,
+			Body:        body,
+			TargetType:  targetType,
+			TargetID:    targetID,
+			ScheduledAt: scheduledAt,
+		},
+		time.Now().UTC(),
+	)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to enqueue push delivery")
+		return
+	}
+
+	deliveryReport, err := s.pushDeliveryWorker.DeliverDue(r.Context(), time.Now().UTC(), 32)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to deliver queued push notifications")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, pushEnqueueResponse{
+		Accepted:     true,
+		UserID:       claims.UserID,
+		QueuedCount:  enqueueReport.QueuedCount,
+		SkippedCount: enqueueReport.SkippedCount,
+		SentCount:    deliveryReport.SentCount,
+		FailedCount:  deliveryReport.FailedCount,
 	})
 }
 

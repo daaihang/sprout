@@ -38,7 +38,8 @@ Current iOS data-flow status:
 - Notification opt-in now has a basic settings path: user preferences can request system authorization, enable daily-question notification defaults, update per-type switches, and cancel pending/scheduled local intents when disabled.
 - Local notification interactions now support concrete deep-link routes for the first V6 surfaces: daily question opens can push a specific question card, record targets can push memory detail, artifact targets can resolve back to the parent memory detail, and chapter/reflection/entity-family targets can push the corresponding Insights detail screen.
 - App launch now runs a lightweight recovery pass: `running` intelligence jobs are reset to `pending`, retryable `failed` jobs are rescheduled with bounded backoff, unified notification-intent preparation is attempted, and pending local notification intents are scheduled when permission already exists.
-- This is not yet the final background scheduler. Phase 5 still needs actual execution workers for every recovered job kind, remote push/APNs delivery execution, and polished settings UX.
+- The iOS intelligence worker now executes the first expanded recovered job kinds: entity enrichment, clarification question generation, graph delta application, chapter candidate generation, notification intent preparation, semantic indexing, daily question preparation, and local notification scheduling.
+- This is not yet the final background scheduler. Phase 5/6 still need production APNs credentials/client wiring, server-side scheduled worker cadence, and polished settings UX.
 
 ## 4. Notification Architecture
 
@@ -65,9 +66,19 @@ Remote notification path:
 ```text
 iOS registers APNs token
   -> Go stores token and preferences
-  -> iOS or server creates notification intent
-  -> Go sends APNs when remote delivery is appropriate
+  -> iOS or server creates notification intent candidate
+  -> Go queues a lightweight delivery row
+  -> Go APNs worker sends when remote delivery is appropriate
+  -> iOS writes delivery/open/dismiss events back
 ```
+
+Current remote status:
+
+- iOS syncs APNs token, notification preferences, AI toggles, quiet hours, delivery pace, max-per-day, and minimum spacing to `/api/push/register`.
+- iOS persists failed delivery writebacks locally and flushes them after the next successful registration sync.
+- Go stores push tokens, expanded device preferences, delivery rows, and delivery events.
+- Go has an initial `PushDeliveryWorker` that can queue an intent, enforce per-device notification policy, attempt due delivery through an APNs client, and update delivery status.
+- Local/dev server wiring currently uses a disabled APNs client placeholder; production APNs credentials and sender implementation are still pending.
 
 ## 5. Go Server Current State
 
@@ -78,6 +89,7 @@ Current server is a light-state service:
 - AI gateway.
 - User onboarding state.
 - Push token registration.
+- Push delivery queue and interaction writeback.
 - Subscription mock.
 
 It should remain light-state.
@@ -104,8 +116,11 @@ New endpoints:
 POST /api/intelligence/refine-transcript
 POST /api/intelligence/suggest-questions
 POST /api/intelligence/suggest-chapters
-POST /api/notifications/register-preferences
-POST /api/notifications/intents
+POST /api/intelligence/analyze-photo
+POST /api/intelligence/suggest-notification-intent
+POST /api/push/register
+POST /api/push/enqueue
+POST /api/push/delivery-writeback
 ```
 
 ## 7. Server Storage Boundary

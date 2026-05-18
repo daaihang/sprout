@@ -234,7 +234,8 @@ Tasks:
 - Add retry/resume on app launch.
   - Current implementation status: `AppIntelligenceRecoveryService` resets interrupted running jobs to pending, reschedules retryable failed jobs with bounded backoff, attempts unified notification-intent preparation, and schedules pending local notification intents without passive permission prompts.
 - Add push delivery writeback and APNs preference sync.
-  - Current implementation status: iOS now syncs APNs token and notification preferences to Go `/api/push/register`, and writes delivered/opened/dismissed interactions to `/api/push/delivery-writeback`.
+  - Current implementation status: iOS now syncs APNs token, notification preferences, AI/search/home toggles, quiet hours, delivery pace, max-per-day, and minimum spacing to Go `/api/push/register`.
+  - Current implementation status: iOS writes delivered/opened/dismissed interactions to `/api/push/delivery-writeback`, stores failed writebacks locally, and flushes them after the next successful push registration sync.
 
 Files:
 
@@ -257,6 +258,7 @@ Tests:
 - Notification open resolves a route and delivery/dismissal updates persist.
 - App relaunch recovers interrupted jobs and notification preparation.
 - Minute-precise quiet hours and minimum notification spacing are enforced.
+- Remote writeback retry survives transient server failure.
 
 Exit criteria:
 
@@ -286,10 +288,12 @@ Tasks:
 Current implementation status:
 
 - Go V6 endpoints and OpenAPI contracts exist for transcript refinement, question suggestions, chapter suggestions, photo semantic placeholders, and notification intent suggestions.
-- Go push endpoints now include `/api/push/register` preference payload expansion and `/api/push/delivery-writeback` interaction writeback.
+- Go push endpoints now include `/api/push/register` preference payload expansion, `/api/push/enqueue` lightweight delivery queuing/due-delivery attempt, and `/api/push/delivery-writeback` interaction writeback.
+- Go has an initial `internal/notification/PushDeliveryWorker` that enforces stored device preferences, quiet hours, daily caps, and minimum spacing before sending through an APNs client.
 - iOS clients/protocols exist for those endpoints.
 - Transcript refinement is wired into the unified capture composer.
 - Daily question suggestion is wired into the iOS Home data flow as a gated business path that persists local questions.
+- The iOS launch/recovery worker now executes expanded due job kinds: entity enrichment, clarification question generation, graph delta application, chapter candidate generation, notification intent preparation, semantic indexing, daily question preparation, and local notification scheduling.
 - Local validation covers iOS clients/services; Go validation still requires a local Go toolchain.
 
 Files:

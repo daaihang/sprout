@@ -160,4 +160,4 @@ Current implementation checkpoint:
 - A basic user-facing Settings route can now opt into notifications, request system permission, update per-type switches, choose delivery pace, edit max-per-day, edit minimum spacing, edit minute-precise quiet hours, and cancel pending/scheduled local notifications when disabled.
 - Local notification delivery/open/dismiss interaction handling can now write back intent status, and notification opens deep-link to specific question cards, memory details, chapter candidates, or reflection details when the payload target supports it.
 - App relaunch now performs a lightweight retry/resume pass for interrupted intelligence jobs and pending notification preparation.
-- Remote push delivery writeback and polished notification settings UX are still pending.
+- Remote push token/preference sync and delivery interaction writeback now exist, including local retry for failed writebacks. Go has an initial remote delivery queue/worker foundation, but production APNs sender credentials and polished notification settings UX are still pending.

@@ -16,49 +16,79 @@ import (
 	"sprout/server/internal/auth"
 	"sprout/server/internal/config"
 	"sprout/server/internal/db"
+	"sprout/server/internal/notification"
 	"sprout/server/internal/subscription"
 )
 
 type Dependencies struct {
-	Config        config.Config
-	Logger        *slog.Logger
-	Authenticator *auth.Authenticator
-	AppleVerifier auth.AppleIdentityVerifier
-	AIProvider    ai.Provider
-	Subscription  *subscription.Service
-	PushTokens    db.PushTokenStore
-	UserProfiles  db.UserProfileStore
+	Config             config.Config
+	Logger             *slog.Logger
+	Authenticator      *auth.Authenticator
+	AppleVerifier      auth.AppleIdentityVerifier
+	AIProvider         ai.Provider
+	Subscription       *subscription.Service
+	PushTokens         db.PushTokenStore
+	UserProfiles       db.UserProfileStore
+	PushDeliveryWorker *notification.PushDeliveryWorker
 }
 
 type Server struct {
-	cfg           config.Config
-	logger        *slog.Logger
-	authenticator *auth.Authenticator
-	appleVerifier auth.AppleIdentityVerifier
-	aiProvider    ai.Provider
-	subscription  *subscription.Service
-	pushTokens    db.PushTokenStore
-	userProfiles  db.UserProfileStore
-	metrics       *metrics
-	mux           *http.ServeMux
+	cfg                config.Config
+	logger             *slog.Logger
+	authenticator      *auth.Authenticator
+	appleVerifier      auth.AppleIdentityVerifier
+	aiProvider         ai.Provider
+	subscription       *subscription.Service
+	pushTokens         db.PushTokenStore
+	userProfiles       db.UserProfileStore
+	pushDeliveryWorker *notification.PushDeliveryWorker
+	metrics            *metrics
+	mux                *http.ServeMux
 }
 
 func NewServer(deps Dependencies) *Server {
+	pushDeliveryWorker := deps.PushDeliveryWorker
+	if pushDeliveryWorker == nil && deps.PushTokens != nil {
+		pushDeliveryWorker = notification.NewPushDeliveryWorker(
+			deps.PushTokens,
+			notification.DisabledAPNSClient{},
+			deps.Logger,
+			firstNonEmpty(firstString(deps.Config.AppleAudiences), "com.speculolabs.mory"),
+		)
+	}
+
 	s := &Server{
-		cfg:           deps.Config,
-		logger:        deps.Logger,
-		authenticator: deps.Authenticator,
-		appleVerifier: deps.AppleVerifier,
-		aiProvider:    deps.AIProvider,
-		subscription:  deps.Subscription,
-		pushTokens:    deps.PushTokens,
-		userProfiles:  deps.UserProfiles,
-		metrics:       newMetrics(),
-		mux:           http.NewServeMux(),
+		cfg:                deps.Config,
+		logger:             deps.Logger,
+		authenticator:      deps.Authenticator,
+		appleVerifier:      deps.AppleVerifier,
+		aiProvider:         deps.AIProvider,
+		subscription:       deps.Subscription,
+		pushTokens:         deps.PushTokens,
+		userProfiles:       deps.UserProfiles,
+		pushDeliveryWorker: pushDeliveryWorker,
+		metrics:            newMetrics(),
+		mux:                http.NewServeMux(),
 	}
 
 	s.registerRoutes()
 	return s
+}
+
+func firstString(values []string) string {
+	if len(values) == 0 {
+		return ""
+	}
+	return strings.TrimSpace(values[0])
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if trimmed := strings.TrimSpace(value); trimmed != "" {
+			return trimmed
+		}
+	}
+	return ""
 }
 
 func (s *Server) Handler() http.Handler {
@@ -83,6 +113,7 @@ func (s *Server) registerRoutes() {
 	s.mux.Handle("POST /api/me/onboarding/complete", s.withAuth(http.HandlerFunc(s.handleOnboardingComplete)))
 	s.mux.Handle("GET /api/subscription/verify", s.withAuth(http.HandlerFunc(s.handleSubscriptionVerify)))
 	s.mux.Handle("POST /api/push/register", s.withAuth(http.HandlerFunc(s.handlePushRegister)))
+	s.mux.Handle("POST /api/push/enqueue", s.withAuth(http.HandlerFunc(s.handlePushEnqueue)))
 	s.mux.Handle("POST /api/push/delivery-writeback", s.withAuth(http.HandlerFunc(s.handlePushDeliveryWriteback)))
 }
 

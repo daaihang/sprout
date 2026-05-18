@@ -14,6 +14,7 @@ import (
 	"sprout/server/internal/config"
 	"sprout/server/internal/db"
 	httpapi "sprout/server/internal/http"
+	"sprout/server/internal/notification"
 	"sprout/server/internal/subscription"
 )
 
@@ -44,16 +45,23 @@ func main() {
 		logger.Error("init ai provider", "error", err)
 		os.Exit(1)
 	}
+	pushDeliveryWorker := notification.NewPushDeliveryWorker(
+		store,
+		notification.DisabledAPNSClient{},
+		logger,
+		firstAudienceOrFallback(cfg.AppleAudiences, "com.speculolabs.mory"),
+	)
 
 	app := httpapi.NewServer(httpapi.Dependencies{
-		Config:        cfg,
-		Logger:        logger,
-		Authenticator: authenticator,
-		AppleVerifier: appleVerifier,
-		AIProvider:    aiProvider,
-		Subscription:  subscriptionService,
-		PushTokens:    store,
-		UserProfiles:  store,
+		Config:             cfg,
+		Logger:             logger,
+		Authenticator:      authenticator,
+		AppleVerifier:      appleVerifier,
+		AIProvider:         aiProvider,
+		Subscription:       subscriptionService,
+		PushTokens:         store,
+		UserProfiles:       store,
+		PushDeliveryWorker: pushDeliveryWorker,
 	})
 
 	srv := &http.Server{
@@ -101,4 +109,13 @@ func maskAPIKey(key string) string {
 		return "***"
 	}
 	return key[:4] + "..." + key[len(key)-4:]
+}
+
+func firstAudienceOrFallback(values []string, fallback string) string {
+	for _, value := range values {
+		if value != "" {
+			return value
+		}
+	}
+	return fallback
 }

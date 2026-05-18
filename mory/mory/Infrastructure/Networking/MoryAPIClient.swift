@@ -388,11 +388,21 @@ struct MoryAPIClient: Sendable {
         var timezone: String
         var hasQuestionReady: Bool
         var notificationsEnabled: Bool
+        var backgroundDoneEnabled: Bool
         var dailyQuestionEnabled: Bool
+        var repeatedThemeEnabled: Bool
+        var stageFormingEnabled: Bool
+        var revisitEnabled: Bool
         var deliveryPace: String
         var maxPerDay: Int
+        var minimumMinutesBetweenNotifications: Int
         var quietStart: String?
         var quietEnd: String?
+        var richPreviewsEnabled: Bool
+        var localIntelligenceEnabled: Bool
+        var cloudIntelligenceEnabled: Bool
+        var semanticSearchEnabled: Bool
+        var homeSuggestionsEnabled: Bool
 
         enum CodingKeys: String, CodingKey {
             case deviceID = "device_id"
@@ -400,11 +410,21 @@ struct MoryAPIClient: Sendable {
             case timezone
             case hasQuestionReady = "has_question_ready"
             case notificationsEnabled = "notifications_enabled"
+            case backgroundDoneEnabled = "background_done_enabled"
             case dailyQuestionEnabled = "daily_question_enabled"
+            case repeatedThemeEnabled = "repeated_theme_enabled"
+            case stageFormingEnabled = "stage_forming_enabled"
+            case revisitEnabled = "revisit_enabled"
             case deliveryPace = "delivery_pace"
             case maxPerDay = "max_per_day"
+            case minimumMinutesBetweenNotifications = "minimum_minutes_between_notifications"
             case quietStart = "quiet_start"
             case quietEnd = "quiet_end"
+            case richPreviewsEnabled = "rich_previews_enabled"
+            case localIntelligenceEnabled = "local_intelligence_enabled"
+            case cloudIntelligenceEnabled = "cloud_intelligence_enabled"
+            case semanticSearchEnabled = "semantic_search_enabled"
+            case homeSuggestionsEnabled = "home_suggestions_enabled"
         }
     }
 
@@ -418,7 +438,7 @@ struct MoryAPIClient: Sendable {
         }
     }
 
-    struct PushDeliveryWritebackPayload: Encodable, Sendable, Equatable {
+    struct PushDeliveryWritebackPayload: Codable, Sendable, Equatable {
         var deviceID: String
         var intentID: String
         var action: String

@@ -17,6 +17,7 @@ import (
 	"sprout/server/internal/auth"
 	"sprout/server/internal/config"
 	"sprout/server/internal/db"
+	"sprout/server/internal/notification"
 	"sprout/server/internal/subscription"
 )
 
@@ -39,8 +40,10 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 		SubscriptionMode: "mock",
 		AIMode:           config.AIModeMock,
 		AIProvider:       config.AIProviderMock,
+		AppleAudiences:   []string{"com.speculolabs.mory"},
 	}
 	authenticator := auth.NewAuthenticator(cfg.JWTSecret, cfg.JWTIssuer, 24*time.Hour)
+	pushClient := &testAPNSClient{}
 	server := NewServer(Dependencies{
 		Config:        cfg,
 		Logger:        slog.New(slog.NewTextHandler(io.Discard, nil)),
@@ -50,6 +53,12 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 		Subscription:  subscription.NewService("mock", "seed"),
 		PushTokens:    store,
 		UserProfiles:  store,
+		PushDeliveryWorker: notification.NewPushDeliveryWorker(
+			store,
+			pushClient,
+			slog.New(slog.NewTextHandler(io.Discard, nil)),
+			"com.speculolabs.mory",
+		),
 	})
 
 	token := issueDevToken(t, server, `{"identity_token":"tester-1"}`)
@@ -170,7 +179,7 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 	})
 
 	t.Run("push register upsert", func(t *testing.T) {
-		body := `{"device_id":"iphone-1","apns_token":"token-a","timezone":"Asia/Shanghai","has_question_ready":true,"notifications_enabled":true,"daily_question_enabled":true,"delivery_pace":"balanced","max_per_day":3,"quiet_start":"22:00","quiet_end":"07:00"}`
+		body := `{"device_id":"iphone-1","apns_token":"token-a","timezone":"Asia/Shanghai","has_question_ready":true,"notifications_enabled":true,"background_done_enabled":true,"daily_question_enabled":true,"repeated_theme_enabled":true,"stage_forming_enabled":true,"revisit_enabled":true,"delivery_pace":"balanced","max_per_day":3,"minimum_minutes_between_notifications":90,"quiet_start":"22:00","quiet_end":"07:00","rich_previews_enabled":true,"local_intelligence_enabled":true,"cloud_intelligence_enabled":true,"semantic_search_enabled":true,"home_suggestions_enabled":true}`
 		req := httptest.NewRequest(http.MethodPost, "/api/push/register", bytes.NewBufferString(body))
 		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Set("Content-Type", "application/json")
@@ -188,11 +197,17 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 		if stored.APNSToken != "token-a" || !stored.HasQuestionReady || !stored.NotificationsEnabled || !stored.DailyQuestionEnabled {
 			t.Fatalf("unexpected stored token after insert: %+v", stored)
 		}
-		if stored.DeliveryPace != "balanced" || stored.MaxPerDay != 3 || stored.QuietStart != "22:00" || stored.QuietEnd != "07:00" {
+		if !stored.BackgroundDoneEnabled || !stored.RepeatedThemeEnabled || !stored.StageFormingEnabled || !stored.RevisitEnabled {
+			t.Fatalf("expected expanded notification toggles to persist: %+v", stored)
+		}
+		if stored.DeliveryPace != "balanced" || stored.MaxPerDay != 3 || stored.MinimumMinutesBetweenNotifications != 90 || stored.QuietStart != "22:00" || stored.QuietEnd != "07:00" {
 			t.Fatalf("unexpected push preference fields after insert: %+v", stored)
 		}
+		if !stored.RichPreviewsEnabled || !stored.LocalIntelligenceEnabled || !stored.CloudIntelligenceEnabled || !stored.SemanticSearchEnabled || !stored.HomeSuggestionsEnabled {
+			t.Fatalf("expected expanded intelligence preference fields after insert: %+v", stored)
+		}
 
-		updateBody := `{"device_id":"iphone-1","apns_token":"token-b","timezone":"America/Los_Angeles","has_question_ready":false,"notifications_enabled":false,"daily_question_enabled":false,"delivery_pace":"light","max_per_day":1,"quiet_start":"23:00","quiet_end":"08:00"}`
+		updateBody := `{"device_id":"iphone-1","apns_token":"token-b","timezone":"America/Los_Angeles","has_question_ready":false,"notifications_enabled":false,"background_done_enabled":false,"daily_question_enabled":false,"repeated_theme_enabled":false,"stage_forming_enabled":false,"revisit_enabled":false,"delivery_pace":"light","max_per_day":1,"minimum_minutes_between_notifications":15,"quiet_start":"23:00","quiet_end":"08:00","rich_previews_enabled":false,"local_intelligence_enabled":false,"cloud_intelligence_enabled":false,"semantic_search_enabled":false,"home_suggestions_enabled":false}`
 		updateReq := httptest.NewRequest(http.MethodPost, "/api/push/register", bytes.NewBufferString(updateBody))
 		updateReq.Header.Set("Authorization", "Bearer "+token)
 		updateReq.Header.Set("Content-Type", "application/json")
@@ -210,13 +225,58 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 		if updated.APNSToken != "token-b" || updated.Timezone != "America/Los_Angeles" || updated.HasQuestionReady || updated.NotificationsEnabled || updated.DailyQuestionEnabled {
 			t.Fatalf("unexpected stored token after update: %+v", updated)
 		}
-		if updated.DeliveryPace != "light" || updated.MaxPerDay != 1 || updated.QuietStart != "23:00" || updated.QuietEnd != "08:00" {
+		if updated.BackgroundDoneEnabled || updated.RepeatedThemeEnabled || updated.StageFormingEnabled || updated.RevisitEnabled {
+			t.Fatalf("expected expanded notification toggles to update: %+v", updated)
+		}
+		if updated.DeliveryPace != "light" || updated.MaxPerDay != 1 || updated.MinimumMinutesBetweenNotifications != 15 || updated.QuietStart != "23:00" || updated.QuietEnd != "08:00" {
 			t.Fatalf("unexpected push preference fields after update: %+v", updated)
+		}
+		if updated.RichPreviewsEnabled || updated.LocalIntelligenceEnabled || updated.CloudIntelligenceEnabled || updated.SemanticSearchEnabled || updated.HomeSuggestionsEnabled {
+			t.Fatalf("expected expanded intelligence preference fields to update: %+v", updated)
+		}
+	})
+
+	t.Run("push enqueue delivers to eligible registered device", func(t *testing.T) {
+		registerBody := `{"device_id":"iphone-1","apns_token":"token-a","timezone":"Asia/Shanghai","has_question_ready":true,"notifications_enabled":true,"background_done_enabled":true,"daily_question_enabled":true,"repeated_theme_enabled":true,"stage_forming_enabled":true,"revisit_enabled":true,"delivery_pace":"balanced","max_per_day":3,"minimum_minutes_between_notifications":90,"quiet_start":"22:00","quiet_end":"07:00","rich_previews_enabled":true,"local_intelligence_enabled":true,"cloud_intelligence_enabled":true,"semantic_search_enabled":true,"home_suggestions_enabled":true}`
+		registerReq := httptest.NewRequest(http.MethodPost, "/api/push/register", bytes.NewBufferString(registerBody))
+		registerReq.Header.Set("Authorization", "Bearer "+token)
+		registerReq.Header.Set("Content-Type", "application/json")
+		registerRec := httptest.NewRecorder()
+		server.Handler().ServeHTTP(registerRec, registerReq)
+		if registerRec.Code != http.StatusOK {
+			t.Fatalf("push register before enqueue status = %d, body = %s", registerRec.Code, registerRec.Body.String())
+		}
+
+		pushClient.messages = nil
+		body := `{"intent_id":"intent-queued-1","kind":"dailyQuestion","title":"Mory","body":"A question is ready.","target_type":"question","target_id":"question-1","scheduled_at":"2026-05-19T12:00:00Z"}`
+		req := httptest.NewRequest(http.MethodPost, "/api/push/enqueue", bytes.NewBufferString(body))
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+
+		server.Handler().ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("push enqueue status = %d, body = %s", rec.Code, rec.Body.String())
+		}
+
+		if len(pushClient.messages) != 1 {
+			t.Fatalf("expected one APNS send, got %d", len(pushClient.messages))
+		}
+		if pushClient.messages[0].IntentID != "intent-queued-1" || pushClient.messages[0].Kind != "dailyQuestion" {
+			t.Fatalf("unexpected APNS message: %+v", pushClient.messages[0])
+		}
+
+		delivery, err := store.GetPushDelivery(context.Background(), "tester-1", "iphone-1", "intent-queued-1")
+		if err != nil {
+			t.Fatalf("get push delivery after enqueue: %v", err)
+		}
+		if delivery.Status != "sent" || delivery.SentAt == nil {
+			t.Fatalf("expected sent push delivery, got %+v", delivery)
 		}
 	})
 
 	t.Run("push delivery writeback inserts event", func(t *testing.T) {
-		body := `{"device_id":"iphone-1","intent_id":"intent-1","action":"opened","kind":"dailyQuestion","target_type":"question","target_id":"question-1","occurred_at":"2026-05-19T12:34:56Z"}`
+		body := `{"device_id":"iphone-1","intent_id":"intent-queued-1","action":"opened","kind":"dailyQuestion","target_type":"question","target_id":"question-1","occurred_at":"2026-05-19T12:34:56Z"}`
 		req := httptest.NewRequest(http.MethodPost, "/api/push/delivery-writeback", bytes.NewBufferString(body))
 		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Set("Content-Type", "application/json")
@@ -235,8 +295,16 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 			t.Fatalf("expected one delivery event, got %d", len(events))
 		}
 		event := events[0]
-		if event.Action != "opened" || event.TargetType != "question" || event.TargetID != "question-1" || event.IntentID != "intent-1" {
+		if event.Action != "opened" || event.TargetType != "question" || event.TargetID != "question-1" || event.IntentID != "intent-queued-1" {
 			t.Fatalf("unexpected delivery event: %+v", event)
+		}
+
+		queuedDelivery, err := store.GetPushDelivery(context.Background(), "tester-1", "iphone-1", "intent-queued-1")
+		if err != nil {
+			t.Fatalf("get queued push delivery after writeback: %v", err)
+		}
+		if queuedDelivery.Status != "opened" || queuedDelivery.OpenedAt == nil || queuedDelivery.DeliveredAt == nil {
+			t.Fatalf("expected queued delivery to be updated by writeback, got %+v", queuedDelivery)
 		}
 	})
 
@@ -717,6 +785,15 @@ type failingAppleVerifier struct {
 
 func (v failingAppleVerifier) VerifyIdentityToken(_ context.Context, _, _ string) (auth.AppleIdentity, error) {
 	return auth.AppleIdentity{}, v.err
+}
+
+type testAPNSClient struct {
+	messages []notification.APNSMessage
+}
+
+func (c *testAPNSClient) Send(_ context.Context, message notification.APNSMessage) error {
+	c.messages = append(c.messages, message)
+	return nil
 }
 
 func fakeAppleJWT(t *testing.T, sub string) string {
