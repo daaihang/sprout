@@ -8,7 +8,9 @@ struct HomeBoardRuleEngine: Sendable {
         memories: [MemorySummary],
         analyses: [UUID: RecordAnalysisSnapshot],
         pipelineStatuses: [PipelineStatusSummary],
-        preferences: [HomeBoardItemPreference]
+        preferences: [HomeBoardItemPreference],
+        clarificationQuestions: [ClarificationQuestion],
+        entityProfiles: [EntityProfile]
     ) -> HomeBoardSnapshot {
         let now = Date.now
         let boardID = UUID()
@@ -41,7 +43,9 @@ struct HomeBoardRuleEngine: Sendable {
             memories: memories,
             analyses: analyses,
             pipelineStatuses: pipelineStatuses,
-            boardID: boardID
+            boardID: boardID,
+            clarificationQuestions: clarificationQuestions,
+            entityProfiles: entityProfiles
         )
 
         let visibleCandidates = candidates.compactMap { candidate -> HomeBoardCandidate? in
@@ -101,7 +105,9 @@ struct HomeBoardRuleEngine: Sendable {
         memories: [MemorySummary],
         analyses: [UUID: RecordAnalysisSnapshot],
         pipelineStatuses: [PipelineStatusSummary],
-        boardID: UUID
+        boardID: UUID,
+        clarificationQuestions: [ClarificationQuestion],
+        entityProfiles: [EntityProfile]
     ) -> [HomeBoardCandidate] {
         var candidates: [HomeBoardCandidate] = []
         let calendar = Calendar.current
@@ -204,6 +210,10 @@ struct HomeBoardRuleEngine: Sendable {
 
         candidates.append(contentsOf: makeContextClusterCandidates(memories: memories, boardID: boardID, date: date))
         candidates.append(contentsOf: makePendingActionCandidates(pipelineStatuses: pipelineStatuses))
+        candidates.append(contentsOf: makeClarificationQuestionCandidates(
+            questions: clarificationQuestions,
+            entityProfiles: entityProfiles
+        ))
 
         if memories.isEmpty {
             candidates.append(systemPromptCandidate(
@@ -295,6 +305,38 @@ struct HomeBoardRuleEngine: Sendable {
                     updatedAt: status.status.updatedAt,
                     widthColumns: 2,
                     heightUnits: 1
+                )
+            }
+    }
+
+    private func makeClarificationQuestionCandidates(
+        questions: [ClarificationQuestion],
+        entityProfiles: [EntityProfile]
+    ) -> [HomeBoardCandidate] {
+        let profileIndex = Dictionary(uniqueKeysWithValues: entityProfiles.map { ($0.entityID, $0) })
+
+        return questions
+            .filter { $0.status == .pending && $0.targetType == .entity }
+            .sorted {
+                if $0.priority != $1.priority { return $0.priority > $1.priority }
+                return $0.createdAt > $1.createdAt
+            }
+            .prefix(2)
+            .map { question in
+                let profile = profileIndex[question.targetID]
+                return HomeBoardCandidate(
+                    cardKey: "question-\(question.id.uuidString)",
+                    cardKind: .clarificationQuestion,
+                    targetType: .entity,
+                    targetID: question.targetID,
+                    sourceRecordIDs: question.sourceRecordIDs,
+                    renderValue: .clarificationQuestion(question: question, profile: profile),
+                    priority: 74 + question.priority * 18,
+                    reason: question.reason.ifEmpty("clarification needed"),
+                    createdAt: question.createdAt,
+                    updatedAt: profile?.updatedAt ?? question.createdAt,
+                    widthColumns: 2,
+                    heightUnits: question.kind == .entityAlias ? 2 : 1
                 )
             }
     }

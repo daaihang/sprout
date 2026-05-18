@@ -294,6 +294,7 @@ enum CompositionRenderValue: Hashable, Sendable {
     case memory(MemorySummary)
     case arc(TemporalArc)
     case reflection(ReflectionSnapshot)
+    case clarificationQuestion(question: ClarificationQuestion, profile: EntityProfile?)
     case systemPrompt(title: String, subtitle: String, actionTitle: String?)
     case contextCluster(title: String, subtitle: String, sourceRecordIDs: [UUID])
     case pendingAction(title: String, subtitle: String, targetRecordID: UUID?)
@@ -467,6 +468,32 @@ struct EntityDetailSnapshot: Identifiable, Hashable, Sendable {
     let relatedReflections: [ReflectionSummarySnapshot]
     let relatedArcs: [TemporalArcSummarySnapshot]
     let edges: [EntityEdge]
+    let intelligenceProfile: EntityProfile?
+    let pendingQuestions: [ClarificationQuestion]
+
+    init(
+        entity: EntityNode,
+        artifactCount: Int,
+        relatedMemories: [MemorySummary],
+        relatedThemes: [String],
+        relatedPeople: [String],
+        relatedReflections: [ReflectionSummarySnapshot],
+        relatedArcs: [TemporalArcSummarySnapshot],
+        edges: [EntityEdge],
+        intelligenceProfile: EntityProfile? = nil,
+        pendingQuestions: [ClarificationQuestion] = []
+    ) {
+        self.entity = entity
+        self.artifactCount = artifactCount
+        self.relatedMemories = relatedMemories
+        self.relatedThemes = relatedThemes
+        self.relatedPeople = relatedPeople
+        self.relatedReflections = relatedReflections
+        self.relatedArcs = relatedArcs
+        self.edges = edges
+        self.intelligenceProfile = intelligenceProfile
+        self.pendingQuestions = pendingQuestions
+    }
 
     var id: UUID { entity.id }
 }

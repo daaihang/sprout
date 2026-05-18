@@ -581,6 +581,11 @@ private func renderTitle(for item: HomeBoardItemSnapshot) -> String {
         return title
     case let .pendingAction(title, _, _):
         return title
+    case let .clarificationQuestion(question, profile):
+        if let profile {
+            return "\(profile.displayName): \(question.prompt)"
+        }
+        return question.prompt
     }
 }
 

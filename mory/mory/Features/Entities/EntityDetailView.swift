@@ -28,6 +28,34 @@ struct EntityDetailView: View {
                         Text(summary)
                             .foregroundStyle(.secondary)
                     }
+                    if let profile = snapshot.intelligenceProfile {
+                        if let relationship = profile.relationshipToUser?.rawValue.replacingOccurrences(of: "_", with: " ").trimmedOrNil {
+                            LabeledContent("Relationship", value: relationship.capitalized)
+                        }
+                        if !profile.aliases.isEmpty {
+                            LabeledContent("Aliases", value: profile.aliases.joined(separator: ", "))
+                        }
+                        if !profile.commonContextLabels.isEmpty {
+                            LabeledContent("Context", value: profile.commonContextLabels.joined(separator: " · "))
+                        }
+                    }
+                }
+
+                if !snapshot.pendingQuestions.isEmpty {
+                    Section("Questions") {
+                        ForEach(snapshot.pendingQuestions) { question in
+                            ClarificationQuestionCard(
+                                question: question,
+                                profile: snapshot.intelligenceProfile,
+                                onAnswer: { answer in
+                                    answerQuestion(question, answer: answer)
+                                },
+                                onDismiss: {
+                                    dismissQuestion(question)
+                                }
+                            )
+                        }
+                    }
                 }
 
                 Section("common.section.relatedMemories") {
@@ -127,6 +155,24 @@ struct EntityDetailView: View {
         do {
             snapshot = try memoryRepository.fetchEntityDetail(entityID: entityID)
             errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func answerQuestion(_ question: ClarificationQuestion, answer: ClarificationAnswer) {
+        do {
+            try memoryRepository.answerClarificationQuestion(question.id, answer: answer)
+            Task { await load() }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func dismissQuestion(_ question: ClarificationQuestion) {
+        do {
+            try memoryRepository.dismissClarificationQuestion(question.id)
+            Task { await load() }
         } catch {
             errorMessage = error.localizedDescription
         }

@@ -297,6 +297,122 @@ final class MoryMemoryRepositoryIntelligenceTests: XCTestCase {
         XCTAssertEqual(remainingProfiles.first?.relationshipToUserRawValue, EntityRelationshipToUser.friend.rawValue)
     }
 
+    func testRefreshMemoryPipelineCreatesPersonProfileQuestionAndHomeCard() async throws {
+        let fixture = makeRepositoryFixture()
+        let repository = fixture.repository
+        try enablePhase2Loop(on: repository)
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Alex planning sync",
+                rawText: "Met Alex to plan the public beta rollout.",
+                captureSource: .composer,
+                artifacts: [.text(title: "Alex planning sync", body: "Met Alex to plan the public beta rollout.")]
+            )
+        )
+
+        try await repository.refreshMemoryPipeline(recordID: memory.record.id)
+
+        let profile = try XCTUnwrap(try repository.fetchEntityProfiles(kind: .person, limit: nil).first)
+        XCTAssertEqual(profile.displayName, "Alex")
+        XCTAssertEqual(profile.sourceRecordIDs, [memory.record.id])
+        XCTAssertEqual(profile.commonContextLabels, ["planning"])
+
+        let question = try XCTUnwrap(try repository.fetchClarificationQuestions(status: .pending, limit: nil).first)
+        XCTAssertEqual(question.kind, .entityRelationship)
+        XCTAssertEqual(question.targetID, profile.entityID)
+        XCTAssertEqual(question.sourceRecordIDs, [memory.record.id])
+
+        let home = try repository.fetchHomeBoard(for: .now, limit: 8)
+        XCTAssertTrue(home.items.contains { item in
+            if case let .clarificationQuestion(homeQuestion, homeProfile) = item.renderValue {
+                return homeQuestion.id == question.id && homeProfile?.entityID == profile.entityID
+            }
+            return false
+        })
+
+        let detail = try XCTUnwrap(repository.fetchEntityDetail(entityID: profile.entityID))
+        XCTAssertEqual(detail.intelligenceProfile?.entityID, profile.entityID)
+        XCTAssertEqual(detail.pendingQuestions.first?.id, question.id)
+    }
+
+    func testKnownPersonDoesNotSpamDuplicatePendingQuestion() async throws {
+        let fixture = makeRepositoryFixture()
+        let repository = fixture.repository
+        try enablePhase2Loop(on: repository)
+
+        let first = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Alex one",
+                rawText: "Met Alex after lunch.",
+                captureSource: .composer,
+                artifacts: [.text(title: "Alex one", body: "Met Alex after lunch.")]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: first.record.id)
+
+        let second = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Alex two",
+                rawText: "Alex came up again while we planned the launch.",
+                captureSource: .composer,
+                artifacts: [.text(title: "Alex two", body: "Alex came up again while we planned the launch.")]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: second.record.id)
+
+        let profiles = try repository.fetchEntityProfiles(kind: .person, limit: nil)
+        XCTAssertEqual(profiles.count, 1)
+        XCTAssertEqual(profiles.first?.sourceRecordIDs.count, 2)
+
+        let pendingQuestions = try repository.fetchClarificationQuestions(status: .pending, limit: nil)
+        XCTAssertEqual(pendingQuestions.count, 1)
+        XCTAssertEqual(pendingQuestions.first?.kind, .entityRelationship)
+    }
+
+    func testAnswerClarificationQuestionAppliesGraphDeltaAndRemovesHomeCard() async throws {
+        let fixture = makeRepositoryFixture()
+        let repository = fixture.repository
+        try enablePhase2Loop(on: repository)
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Alex follow-up",
+                rawText: "Alex helped untangle the beta launch checklist.",
+                captureSource: .composer,
+                artifacts: [.text(title: "Alex follow-up", body: "Alex helped untangle the beta launch checklist.")]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: memory.record.id)
+
+        let question = try XCTUnwrap(try repository.fetchClarificationQuestions(status: .pending, limit: nil).first)
+        try repository.answerClarificationQuestion(
+            question.id,
+            answer: ClarificationAnswer(value: EntityRelationshipToUser.friend.rawValue)
+        )
+
+        XCTAssertTrue(try repository.fetchClarificationQuestions(status: .pending, limit: nil).isEmpty)
+        let updatedProfile = try XCTUnwrap(try repository.fetchEntityProfile(entityID: question.targetID))
+        XCTAssertEqual(updatedProfile.relationshipToUser, .friend)
+        XCTAssertEqual(updatedProfile.confirmationState, .userConfirmed)
+
+        let appliedDelta = try XCTUnwrap(try repository.fetchGraphDeltas(applied: true, limit: nil).first)
+        XCTAssertEqual(appliedDelta.operations.first?.kind, .setRelationship)
+        XCTAssertEqual(appliedDelta.operations.first?.targetID, question.targetID)
+
+        let home = try repository.fetchHomeBoard(for: .now, limit: 8)
+        XCTAssertFalse(home.items.contains { item in
+            if case let .clarificationQuestion(homeQuestion, _) = item.renderValue {
+                return homeQuestion.targetID == question.targetID
+            }
+            return false
+        })
+
+        let detail = try XCTUnwrap(repository.fetchEntityDetail(entityID: question.targetID))
+        XCTAssertEqual(detail.intelligenceProfile?.relationshipToUser, .friend)
+        XCTAssertTrue(detail.pendingQuestions.isEmpty)
+    }
+
     private func makeRepositoryFixture() -> RepositoryFixture {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
@@ -304,6 +420,21 @@ final class MoryMemoryRepositoryIntelligenceTests: XCTestCase {
             analysisService: IntelligenceTestRecordAnalysisService()
         )
         return RepositoryFixture(container: container, repository: repository)
+    }
+
+    private func enablePhase2Loop(on repository: MoryMemoryRepository) throws {
+        var preferences = try repository.fetchIntelligencePreferences()
+        preferences.localIntelligenceEnabled = true
+        preferences.homeSuggestionsEnabled = true
+        preferences.updatedAt = .now
+        try repository.saveIntelligencePreferences(preferences)
+
+        var flags = try repository.fetchV6FeatureFlags()
+        flags.intelligenceJobs = true
+        flags.entityProfiles = true
+        flags.clarificationQuestions = true
+        flags.updatedAt = .now
+        try repository.saveV6FeatureFlags(flags)
     }
 }
 

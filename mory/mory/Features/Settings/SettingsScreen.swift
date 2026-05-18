@@ -34,6 +34,10 @@ struct SettingsScreen: View {
                     LabeledContent("settings.runtime.environment", value: runtimeEnvironment.label)
                     LabeledContent("settings.runtime.version", value: "\(runtimeEnvironment.version) (\(runtimeEnvironment.buildNumber))")
                 }
+
+                if runtimeEnvironment.allowsDebugTools {
+                    SettingsIntelligenceDebugSection(memoryRepository: memoryRepository)
+                }
             }
             .navigationTitle("settings.nav.title")
             .toolbar {
@@ -74,6 +78,101 @@ struct SettingsScreen: View {
                     systemImage: "stethoscope"
                 )
             }
+        }
+    }
+}
+
+private struct SettingsIntelligenceDebugSection: View {
+    let memoryRepository: any MoryMemoryRepositorying
+
+    @State private var preferences = IntelligencePreferences.defaults
+    @State private var flags = V6FeatureFlags.defaults
+    @State private var errorMessage: String?
+
+    var body: some View {
+        Section {
+            Toggle("Local intelligence", isOn: Binding(
+                get: { preferences.localIntelligenceEnabled },
+                set: { newValue in
+                    preferences.localIntelligenceEnabled = newValue
+                    savePreferences()
+                }
+            ))
+
+            Toggle("Home suggestions", isOn: Binding(
+                get: { preferences.homeSuggestionsEnabled },
+                set: { newValue in
+                    preferences.homeSuggestionsEnabled = newValue
+                    savePreferences()
+                }
+            ))
+
+            Toggle("Intelligence jobs", isOn: Binding(
+                get: { flags.intelligenceJobs },
+                set: { newValue in
+                    flags.intelligenceJobs = newValue
+                    saveFlags()
+                }
+            ))
+
+            Toggle("Entity profiles", isOn: Binding(
+                get: { flags.entityProfiles },
+                set: { newValue in
+                    flags.entityProfiles = newValue
+                    saveFlags()
+                }
+            ))
+
+            Toggle("Clarification questions", isOn: Binding(
+                get: { flags.clarificationQuestions },
+                set: { newValue in
+                    flags.clarificationQuestions = newValue
+                    saveFlags()
+                }
+            ))
+
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+        } header: {
+            Text("V6 Intelligence")
+        } footer: {
+            Text("Internal-only rollout controls for the V6 intelligence loop.")
+        }
+        .task {
+            load()
+        }
+    }
+
+    private func load() {
+        do {
+            preferences = try memoryRepository.fetchIntelligencePreferences()
+            flags = try memoryRepository.fetchV6FeatureFlags()
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func savePreferences() {
+        do {
+            preferences.updatedAt = .now
+            try memoryRepository.saveIntelligencePreferences(preferences)
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func saveFlags() {
+        do {
+            flags.updatedAt = .now
+            try memoryRepository.saveV6FeatureFlags(flags)
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 }

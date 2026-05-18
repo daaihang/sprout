@@ -13,6 +13,7 @@ enum BoardKind: String, Codable, CaseIterable, Identifiable, Sendable {
 enum CompositionTargetType: String, Codable, CaseIterable, Identifiable, Sendable {
     case artifact
     case record
+    case entity
     case arc
     case reflection
     case system
@@ -24,6 +25,7 @@ enum HomeBoardCardKind: String, Codable, CaseIterable, Identifiable, Sendable {
     case memory
     case arc
     case reflection
+    case clarificationQuestion
     case systemPrompt
     case contextCluster
     case pendingAction

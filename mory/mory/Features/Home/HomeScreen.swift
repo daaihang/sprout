@@ -60,14 +60,16 @@ struct HomeScreen: View {
 
                 Section {
                     if let homeBoard, !homeBoard.items.isEmpty {
-                        HomeBoardSection(
-                            board: homeBoard,
-                            onSelect: { route in
-                                selectedRoute = route
-                            },
-                            onPreference: updateBoardPreference,
-                            onSystemAction: { isPresentingComposer = true }
-                        )
+                HomeBoardSection(
+                    board: homeBoard,
+                    onSelect: { route in
+                        selectedRoute = route
+                    },
+                    onPreference: updateBoardPreference,
+                    onAnswerQuestion: answerQuestion,
+                    onDismissQuestion: dismissQuestion,
+                    onSystemAction: { isPresentingComposer = true }
+                )
                     } else {
                         MoryPublicEmptyStateView(
                             state: .today,
@@ -202,6 +204,24 @@ struct HomeScreen: View {
             errorMessage = error.localizedDescription
         }
     }
+
+    private func answerQuestion(_ question: ClarificationQuestion, answer: ClarificationAnswer) {
+        do {
+            try memoryRepository.answerClarificationQuestion(question.id, answer: answer)
+            Task { await reload() }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func dismissQuestion(_ question: ClarificationQuestion) {
+        do {
+            try memoryRepository.dismissClarificationQuestion(question.id)
+            Task { await reload() }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
 }
 
 private enum HomeRoute: Hashable, Identifiable {
@@ -277,6 +297,8 @@ private struct HomeBoardSection: View {
     let board: HomeBoardSnapshot
     let onSelect: (HomeRoute) -> Void
     let onPreference: (HomeBoardItemSnapshot, HomeBoardPreferenceAction) -> Void
+    let onAnswerQuestion: (ClarificationQuestion, ClarificationAnswer) -> Void
+    let onDismissQuestion: (ClarificationQuestion) -> Void
     let onSystemAction: () -> Void
 
     var body: some View {
@@ -285,6 +307,8 @@ private struct HomeBoardSection: View {
                 item: item,
                 onSelect: onSelect,
                 onPreference: onPreference,
+                onAnswerQuestion: onAnswerQuestion,
+                onDismissQuestion: onDismissQuestion,
                 onSystemAction: onSystemAction
             )
         }
@@ -295,6 +319,8 @@ private struct HomeBoardCard: View {
     let item: HomeBoardItemSnapshot
     let onSelect: (HomeRoute) -> Void
     let onPreference: (HomeBoardItemSnapshot, HomeBoardPreferenceAction) -> Void
+    let onAnswerQuestion: (ClarificationQuestion, ClarificationAnswer) -> Void
+    let onDismissQuestion: (ClarificationQuestion) -> Void
     let onSystemAction: () -> Void
 
     var body: some View {
@@ -345,6 +371,17 @@ private struct HomeBoardCard: View {
                     ReflectionBoardCard(reflection: reflection, reason: item.reason)
                 }
                 .buttonStyle(.plain)
+            case let .clarificationQuestion(question, profile):
+                ClarificationQuestionCard(
+                    question: question,
+                    profile: profile,
+                    onAnswer: { answer in
+                        onAnswerQuestion(question, answer)
+                    },
+                    onDismiss: {
+                        onDismissQuestion(question)
+                    }
+                )
             case let .systemPrompt(title, subtitle, actionTitle):
                 SystemPromptBoardCard(
                     title: title,
@@ -372,16 +409,22 @@ private struct HomeBoardCard: View {
 
     private var preferenceMenu: some View {
         Menu {
-            Button {
-                onPreference(item, .pin(!item.isPinned))
-            } label: {
-                Label(item.isPinned ? "home.board.action.unpin" : "home.board.action.pin", systemImage: item.isPinned ? "pin.slash" : "pin")
+            if item.cardKind != .clarificationQuestion {
+                Button {
+                    onPreference(item, .pin(!item.isPinned))
+                } label: {
+                    Label(item.isPinned ? "home.board.action.unpin" : "home.board.action.pin", systemImage: item.isPinned ? "pin.slash" : "pin")
+                }
             }
 
             Button(role: .destructive) {
-                onPreference(item, item.cardKind == .systemPrompt || item.cardKind == .reflection ? .dismiss : .hide)
+                if case let .clarificationQuestion(question, _) = item.renderValue {
+                    onDismissQuestion(question)
+                } else {
+                    onPreference(item, item.cardKind == .systemPrompt || item.cardKind == .reflection ? .dismiss : .hide)
+                }
             } label: {
-                Label(item.cardKind == .systemPrompt || item.cardKind == .reflection ? "home.board.action.dismiss" : "home.board.action.hide", systemImage: "eye.slash")
+                Label(item.cardKind == .systemPrompt || item.cardKind == .reflection || item.cardKind == .clarificationQuestion ? "home.board.action.dismiss" : "home.board.action.hide", systemImage: "eye.slash")
             }
         } label: {
             Image(systemName: "ellipsis.circle")
@@ -395,6 +438,7 @@ private struct HomeBoardCard: View {
         case .memory: return String(localized: "home.board.kind.memory")
         case .arc: return String(localized: "home.board.kind.arc")
         case .reflection: return String(localized: "home.board.kind.reflection")
+        case .clarificationQuestion: return "Question"
         case .systemPrompt: return String(localized: "home.board.kind.system")
         case .contextCluster: return String(localized: "home.board.kind.cluster")
         case .pendingAction: return String(localized: "home.board.kind.pending")
@@ -406,6 +450,7 @@ private struct HomeBoardCard: View {
         case .memory: return "doc.text"
         case .arc: return "point.3.connected.trianglepath.dotted"
         case .reflection: return "sparkles"
+        case .clarificationQuestion: return "questionmark.bubble"
         case .systemPrompt: return "hand.wave"
         case .contextCluster: return "square.stack.3d.up"
         case .pendingAction: return "exclamationmark.circle"

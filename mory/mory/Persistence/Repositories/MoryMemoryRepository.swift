@@ -12,6 +12,10 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     private let captureArtifactBuilder = MemoryCaptureArtifactBuilder()
     private let temporalArcService = TemporalArcService()
     private let debugDiagnosticsService = DebugDiagnosticsService()
+    private let intelligenceScheduler = IntelligenceScheduler()
+    private let entityEnrichmentService = EntityEnrichmentService()
+    private let clarificationQuestionBuilder = ClarificationQuestionBuilder()
+    private let graphDeltaApplier = GraphDeltaApplier()
     private var latestReflectionTrace: DebugPipelineTraceSnapshot?
 
     init(
@@ -226,6 +230,11 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
 
         do {
             try await runArchitecturePipeline(record: record, artifacts: artifacts)
+            do {
+                try runLocalIntelligenceLoop(record: record, artifacts: artifacts)
+            } catch {
+                try markLatestPostAnalysisJobFailed(recordID: recordID, error: error)
+            }
             let trace = await analysisService.latestDebugTrace()
             let completedAt = Date.now
             try upsertPipelineStatus(
@@ -382,6 +391,8 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             modelContext: modelContext,
             memories: memories
         )
+        let flags = try fetchV6FeatureFlags()
+        let intelligencePreferences = try fetchIntelligencePreferences()
         return homeBoardRuleEngine.buildHomeBoard(
             date: date,
             limit: limit,
@@ -389,7 +400,11 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             memories: memories,
             analyses: try fetchRecordAnalysisIndex(),
             pipelineStatuses: try fetchPipelineStatusSummaries(limit: nil),
-            preferences: try fetchHomeBoardPreferences()
+            preferences: try fetchHomeBoardPreferences(),
+            clarificationQuestions: shouldShowClarificationQuestions(flags: flags, preferences: intelligencePreferences)
+                ? try fetchClarificationQuestions(status: .pending, limit: 4)
+                : [],
+            entityProfiles: flags.entityProfiles ? try fetchEntityProfiles(kind: .person, limit: nil) : []
         )
     }
 
@@ -402,6 +417,8 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         let analyses = try fetchRecordAnalysisIndex()
         let pipelineStatuses = try fetchPipelineStatusSummaries(limit: nil)
         let preferences = try fetchHomeBoardPreferences()
+        let flags = try fetchV6FeatureFlags()
+        let intelligencePreferences = try fetchIntelligencePreferences()
         let board = homeBoardRuleEngine.buildHomeBoard(
             date: date,
             limit: limit,
@@ -409,7 +426,11 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             memories: memories,
             analyses: analyses,
             pipelineStatuses: pipelineStatuses,
-            preferences: preferences
+            preferences: preferences,
+            clarificationQuestions: shouldShowClarificationQuestions(flags: flags, preferences: intelligencePreferences)
+                ? try fetchClarificationQuestions(status: .pending, limit: 4)
+                : [],
+            entityProfiles: flags.entityProfiles ? try fetchEntityProfiles(kind: .person, limit: nil) : []
         )
         let calendar = Calendar.current
         let recent24HourCutoff = date.addingTimeInterval(-24 * 60 * 60)
@@ -605,7 +626,29 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         guard let entity = graphContext.entities.first(where: { $0.id == entityID }) else {
             return nil
         }
-        return graphContext.makeEntityDetailSnapshot(entity: entity)
+        let detail = graphContext.makeEntityDetailSnapshot(entity: entity)
+        let flags = try fetchV6FeatureFlags()
+        let profile = flags.entityProfiles ? try fetchEntityProfile(entityID: entityID) : nil
+        let pendingQuestions = flags.clarificationQuestions
+            ? try fetchClarificationQuestions(status: .pending, limit: nil)
+                .filter { $0.targetType == .entity && $0.targetID == entityID }
+                .sorted {
+                    if $0.priority != $1.priority { return $0.priority > $1.priority }
+                    return $0.createdAt > $1.createdAt
+                }
+            : []
+        return EntityDetailSnapshot(
+            entity: detail.entity,
+            artifactCount: detail.artifactCount,
+            relatedMemories: detail.relatedMemories,
+            relatedThemes: detail.relatedThemes,
+            relatedPeople: detail.relatedPeople,
+            relatedReflections: detail.relatedReflections,
+            relatedArcs: detail.relatedArcs,
+            edges: detail.edges,
+            intelligenceProfile: profile,
+            pendingQuestions: pendingQuestions
+        )
     }
 
     func fetchPeopleSummaries(limit: Int? = nil) throws -> [PersonMemorySummary] {
@@ -1198,6 +1241,32 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         updated.answeredAt = answer.answeredAt
         updated.dismissedAt = nil
         existing.apply(domainModel: updated)
+
+        if let delta = graphDeltaApplier.buildDelta(for: updated, answer: answer) {
+            try upsert(graphDelta: delta)
+            let profile = try fetchEntityProfile(entityID: updated.targetID)
+            let entityNode = try fetchEntityNode(id: updated.targetID)
+            let application = graphDeltaApplier.apply(
+                delta: delta,
+                profile: profile,
+                entityNode: entityNode,
+                appliedAt: answer.answeredAt
+            )
+            if let updatedProfile = application.profile {
+                try upsert(entityProfile: updatedProfile)
+            }
+            if let updatedEntityNode = application.entityNode {
+                try upsert(entityNode: updatedEntityNode)
+            }
+            if let existingDelta = try modelContext.fetch(
+                FetchDescriptor<GraphDeltaStore>(predicate: #Predicate { $0.id == delta.id })
+            ).first {
+                var appliedDelta = existingDelta.domainModel
+                appliedDelta.appliedAt = answer.answeredAt
+                existingDelta.apply(domainModel: appliedDelta)
+            }
+        }
+
         try save()
     }
 
@@ -1613,6 +1682,13 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         "home-board:\(cardKey)"
     }
 
+    private func shouldShowClarificationQuestions(
+        flags: V6FeatureFlags,
+        preferences: IntelligencePreferences
+    ) -> Bool {
+        flags.clarificationQuestions && preferences.localIntelligenceEnabled && preferences.homeSuggestionsEnabled
+    }
+
     private func deleteAll<T: PersistentModel>(_ type: T.Type) throws {
         let stores = try modelContext.fetch(FetchDescriptor<T>())
         for store in stores {
@@ -1622,6 +1698,112 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
 
     private func purgeDerivedDataForRefresh(recordID: UUID) throws {
         try purgeDerivedData(forRecordIDs: [recordID], includePipelineStatus: false)
+    }
+
+    private func runLocalIntelligenceLoop(record: RecordShell, artifacts: [Artifact]) throws {
+        let flags = try fetchV6FeatureFlags()
+        let preferences = try fetchIntelligencePreferences()
+        guard preferences.localIntelligenceEnabled else { return }
+        guard flags.intelligenceJobs || flags.entityProfiles || flags.clarificationQuestions else { return }
+        guard let analysis = try fetchRecordAnalysis(recordID: record.id) else { return }
+
+        let personNodes = try fetchPersonEntityNodes(recordID: record.id, artifactIDs: artifacts.map(\.id))
+        guard !personNodes.isEmpty else { return }
+
+        let now = Date.now
+        let scheduled = intelligenceScheduler.schedulePostAnalysis(
+            recordID: record.id,
+            personEntityIDs: personNodes.map(\.id),
+            now: now
+        )
+
+        if flags.intelligenceJobs {
+            try upsert(intelligenceJob: updateJob(scheduled.postAnalysisJob, status: .running, at: now))
+            try scheduled.entityEnrichmentJobs.forEach { try upsert(intelligenceJob: $0) }
+            try scheduled.questionGenerationJobs.forEach { try upsert(intelligenceJob: $0) }
+        }
+
+        let existingProfiles = Dictionary(uniqueKeysWithValues: try fetchEntityProfiles(kind: .person, limit: nil).map { ($0.entityID, $0) })
+        let enrichedProfiles = entityEnrichmentService.enrichPeople(
+            record: record,
+            analysis: analysis,
+            people: personNodes,
+            existingProfiles: existingProfiles
+        )
+
+        if flags.entityProfiles {
+            for profile in enrichedProfiles {
+                try upsert(entityProfile: profile)
+            }
+        }
+
+        if flags.intelligenceJobs {
+            for job in scheduled.entityEnrichmentJobs {
+                try upsert(intelligenceJob: updateJob(job, status: .completed, at: now))
+            }
+        }
+
+        if flags.clarificationQuestions {
+            let existingQuestions = try fetchClarificationQuestions(status: nil, limit: nil)
+            for profile in enrichedProfiles {
+                if let question = clarificationQuestionBuilder.buildQuestion(
+                    for: profile,
+                    record: record,
+                    artifactIDs: artifacts.map(\.id),
+                    existingQuestions: existingQuestions,
+                    latestSummary: analysis.summary
+                ) {
+                    try upsert(clarificationQuestion: question)
+                }
+            }
+        }
+
+        if flags.intelligenceJobs {
+            let questionJobStatus: IntelligenceJobStatus = flags.clarificationQuestions ? .completed : .cancelled
+            for job in scheduled.questionGenerationJobs {
+                try upsert(intelligenceJob: updateJob(job, status: questionJobStatus, at: now))
+            }
+            try upsert(intelligenceJob: updateJob(scheduled.postAnalysisJob, status: .completed, at: now))
+        }
+
+        try save()
+    }
+
+    private func markLatestPostAnalysisJobFailed(recordID: UUID, error: Error) throws {
+        guard let job = try fetchIntelligenceJobs(status: nil, limit: nil)
+            .first(where: { $0.kind == .postAnalysis && $0.targetType == .record && $0.targetID == recordID }) else {
+            return
+        }
+
+        try upsert(intelligenceJob: updateJob(job, status: .failed, at: .now, error: error.localizedDescription))
+        try save()
+    }
+
+    private func updateJob(
+        _ job: IntelligenceJob,
+        status: IntelligenceJobStatus,
+        at date: Date,
+        error: String? = nil
+    ) -> IntelligenceJob {
+        var updated = job
+        updated.status = status
+        updated.updatedAt = date
+        switch status {
+        case .running:
+            updated.startedAt = date
+            updated.completedAt = nil
+            updated.lastError = nil
+        case .completed:
+            updated.completedAt = date
+            updated.lastError = nil
+        case .failed:
+            updated.completedAt = nil
+            updated.lastError = error
+            updated.attemptCount += 1
+        case .cancelled, .pending:
+            updated.lastError = error
+        }
+        return updated
     }
 
     private func purgeDerivedData(forRecordIDs recordIDs: Set<UUID>, includePipelineStatus: Bool) throws {
@@ -1894,6 +2076,36 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             || profile.relationshipToUser != nil
             || !(profile.userDescription?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
             || !profile.aliases.isEmpty
+    }
+
+    private func fetchPersonEntityNodes(recordID: UUID, artifactIDs: [UUID]) throws -> [EntityNode] {
+        let artifactIDSet = Set(artifactIDs)
+        let linkedEntityIDs = Set(
+            try modelContext.fetch(FetchDescriptor<ArtifactEntityLinkStore>())
+                .filter { link in
+                    link.sourceRecordID == recordID
+                        || link.sourceAnalysisRecordID == recordID
+                        || artifactIDSet.contains(link.artifactID)
+                }
+                .map(\.entityID)
+        )
+
+        return try modelContext.fetch(FetchDescriptor<EntityNodeStore>())
+            .map(\.domainModel)
+            .filter { entity in
+                entity.kind == .person
+                    && (linkedEntityIDs.contains(entity.id) || entity.provenanceRecordIDs.contains(recordID))
+            }
+            .sorted { lhs, rhs in
+                if lhs.updatedAt != rhs.updatedAt { return lhs.updatedAt > rhs.updatedAt }
+                return lhs.displayName < rhs.displayName
+            }
+    }
+
+    private func fetchEntityNode(id: UUID) throws -> EntityNode? {
+        try modelContext.fetch(
+            FetchDescriptor<EntityNodeStore>(predicate: #Predicate { $0.id == id })
+        ).first?.domainModel
     }
 
     private func purgeEntityProvenance(
