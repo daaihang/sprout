@@ -443,6 +443,9 @@ func deliveryAllowedForToken(
 	if !token.NotificationsEnabled {
 		return false
 	}
+	if isDebugDeliveryKind(kind) {
+		return true
+	}
 	if token.MaxPerDay <= 0 {
 		return false
 	}
@@ -459,6 +462,10 @@ func deliveryAllowedForToken(
 		return false
 	}
 	return true
+}
+
+func isDebugDeliveryKind(kind string) bool {
+	return strings.TrimSpace(kind) == "debugTest"
 }
 
 func kindEnabled(token db.PushToken, kind string) bool {

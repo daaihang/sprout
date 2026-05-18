@@ -116,10 +116,11 @@ struct DebugRemotePushDiagnosticsView: View {
         defer { isWorking = false }
 
         do {
+            let timestamp = Date.now.formatted(date: .omitted, time: .standard)
             let intent = NotificationIntent(
-                kind: .dailyQuestion,
+                kind: .debugTest,
                 title: "Mory Debug",
-                body: "Remote push test from Debug.",
+                body: "Remote push test from Debug at \(timestamp).",
                 privacyLevel: .generic,
                 targetType: .question,
                 targetID: UUID(),

@@ -63,6 +63,7 @@ enum NotificationIntentKind: String, Codable, CaseIterable, Identifiable, Sendab
     case repeatedTheme
     case stageForming
     case revisit
+    case debugTest
 
     var id: String { rawValue }
 }
@@ -137,4 +138,3 @@ struct NotificationIntent: Identifiable, Codable, Hashable, Sendable {
         self.dismissedAt = dismissedAt
     }
 }
-

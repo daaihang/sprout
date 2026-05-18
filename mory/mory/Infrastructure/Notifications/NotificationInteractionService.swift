@@ -154,6 +154,8 @@ struct NotificationInteractionService {
 
     private func destination(for payload: LocalNotificationPayload) -> NotificationInteractionDestination {
         switch payload.kind {
+        case .debugTest:
+            return .home
         case .dailyQuestion:
             return .home
         case .backgroundDone:

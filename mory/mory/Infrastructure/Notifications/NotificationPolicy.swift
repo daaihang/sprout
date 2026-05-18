@@ -95,6 +95,8 @@ struct NotificationPolicy: Sendable {
             return preferences.stageFormingEnabled
         case .revisit:
             return preferences.revisitEnabled
+        case .debugTest:
+            return preferences.enabled
         }
     }
 
@@ -199,6 +201,8 @@ struct NotificationPolicy: Sendable {
             return "A memory chapter may be forming."
         case .revisit:
             return "A meaningful memory is ready to revisit."
+        case .debugTest:
+            return "A debug notification is ready."
         }
     }
 }

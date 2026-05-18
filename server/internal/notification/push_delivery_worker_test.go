@@ -109,6 +109,37 @@ func TestPushDeliveryWorkerPermanentlyFailsAfterMaxAttempts(t *testing.T) {
 	}
 }
 
+func TestPushDeliveryWorkerDebugTestBypassesPacing(t *testing.T) {
+	now := time.Date(2026, 5, 19, 10, 0, 0, 0, time.UTC)
+	token := db.PushToken{
+		DeviceID:                           "device-1",
+		NotificationsEnabled:               true,
+		DailyQuestionEnabled:               true,
+		MaxPerDay:                          1,
+		MinimumMinutesBetweenNotifications: 120,
+	}
+	deliveries := []db.PushDelivery{{
+		DeviceID:    "device-1",
+		Kind:        "dailyQuestion",
+		Status:      "sent",
+		ScheduledAt: now.Add(-time.Minute),
+		SentAt:      &now,
+	}}
+
+	if deliveryAllowedForToken(token, "dailyQuestion", now.Add(time.Minute), deliveries) {
+		t.Fatalf("expected normal daily question to be blocked by pacing")
+	}
+	if !deliveryAllowedForToken(token, "debugTest", now.Add(time.Minute), deliveries) {
+		t.Fatalf("expected debug test push to bypass pacing")
+	}
+}
+
+func TestPushDeliveryWorkerDebugTestStillRequiresNotificationsEnabled(t *testing.T) {
+	if deliveryAllowedForToken(db.PushToken{NotificationsEnabled: false}, "debugTest", time.Now(), nil) {
+		t.Fatalf("expected debug test push to require notifications enabled")
+	}
+}
+
 func newWorkerTestStore(t *testing.T) *db.SQLiteStore {
 	t.Helper()
 	store, err := db.NewSQLiteStore(filepath.Join(t.TempDir(), "worker.db"))
