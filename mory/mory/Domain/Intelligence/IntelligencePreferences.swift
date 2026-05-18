@@ -80,7 +80,7 @@ struct IntelligencePreferences: Identifiable, Codable, Hashable, Sendable {
         schemaVersion: Int = IntelligencePreferences.schemaVersion,
         localIntelligenceEnabled: Bool = true,
         cloudIntelligenceEnabled: Bool = true,
-        voiceRefinementEnabled: Bool = false,
+        voiceRefinementEnabled: Bool = true,
         semanticSearchEnabled: Bool = true,
         homeSuggestionsEnabled: Bool = true,
         dailyQuestionsEnabled: Bool = false,

@@ -7,6 +7,7 @@ final class IntelligenceDomainTests: XCTestCase {
 
         XCTAssertTrue(preferences.localIntelligenceEnabled)
         XCTAssertTrue(preferences.cloudIntelligenceEnabled)
+        XCTAssertTrue(preferences.voiceRefinementEnabled)
         XCTAssertTrue(preferences.semanticSearchEnabled)
         XCTAssertTrue(preferences.homeSuggestionsEnabled)
         XCTAssertFalse(preferences.dailyQuestionsEnabled)

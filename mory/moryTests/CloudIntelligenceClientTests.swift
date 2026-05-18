@@ -2,6 +2,7 @@ import Foundation
 import XCTest
 @testable import mory
 
+@MainActor
 final class CloudIntelligenceClientTests: XCTestCase {
     func testAPIClientSendsV6CloudIntelligenceRequests() async throws {
         CloudIntelligenceURLProtocol.responseHandler = { request in

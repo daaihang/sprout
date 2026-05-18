@@ -59,8 +59,8 @@ Recommended alpha defaults:
 | Setting | Default | Reason |
 | --- | --- | --- |
 | Local intelligence | on | Core V6 behavior |
-| Cloud intelligence | off or ask | Privacy-sensitive |
-| Voice refinement | ask first run | It changes visible text |
+| Cloud intelligence | on for current V6 alpha, with settings/off switch before beta | Current architecture uses cloud deep intelligence first to avoid maintaining two competing full AI systems |
+| Voice refinement | on for current V6 alpha, with visible editing and settings/off switch before beta | It is the first concrete cloud-deep-intelligence data flow and still leaves the user editable text |
 | Semantic indexing | on if system available | Local capability |
 | Home suggestions | on | Main V6 surface |
 | Daily questions | off until enabled or soft prompt | Notification sensitivity |

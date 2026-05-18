@@ -23,6 +23,7 @@ struct UnifiedCaptureSeed: Identifiable, Equatable {
 struct UnifiedCaptureComposerView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.memoryRepository) private var memoryRepository
+    @Environment(\.cloudIntelligenceService) private var cloudIntelligenceService
 
     let seed: UnifiedCaptureSeed
     let onSaved: () -> Void
@@ -38,6 +39,8 @@ struct UnifiedCaptureComposerView: View {
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var isPresentingCamera = false
     @State private var isProcessingPhoto = false
+    @State private var isRefiningVoiceTranscript = false
+    @State private var didAttemptVoiceRefinement = false
     @State private var isSaving = false
     @State private var errorMessage: String?
     @FocusState private var isBodyFocused: Bool
@@ -97,6 +100,7 @@ struct UnifiedCaptureComposerView: View {
             }
             .task {
                 applySeedIfNeeded()
+                await refineVoiceSeedIfNeeded()
                 await loadInitialAutoContextIfNeeded()
                 if seed.opensCameraOnAppear {
                     isBodyFocused = false
@@ -149,6 +153,15 @@ struct UnifiedCaptureComposerView: View {
                 HStack(spacing: 8) {
                     ProgressView()
                     Text("capture.photo.analyzing")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if isRefiningVoiceTranscript {
+                HStack(spacing: 8) {
+                    ProgressView()
+                    Text(verbatim: "Refining voice transcript...")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -275,6 +288,64 @@ struct UnifiedCaptureComposerView: View {
             audioData: voice.audioData,
             transcriptionText: transcript ?? ""
         ))
+    }
+
+    @MainActor
+    private func refineVoiceSeedIfNeeded() async {
+        guard !didAttemptVoiceRefinement else { return }
+        guard let voice = seed.voiceResult, let rawTranscript = voice.transcription.trimmedOrNil else { return }
+        didAttemptVoiceRefinement = true
+
+        let preferences: IntelligencePreferences
+        do {
+            preferences = try memoryRepository.fetchIntelligencePreferences()
+        } catch {
+            preferences = .defaults
+        }
+
+        isRefiningVoiceTranscript = true
+        defer { isRefiningVoiceTranscript = false }
+
+        do {
+            let service = VoiceTranscriptRefinementService(cloudIntelligenceService: cloudIntelligenceService)
+            guard let refinement = try await service.refine(
+                rawTranscript: rawTranscript,
+                localeIdentifier: Locale.current.identifier,
+                preferences: preferences
+            ) else {
+                return
+            }
+            applyVoiceRefinement(refinement, voice: voice)
+        } catch {
+            return
+        }
+    }
+
+    @MainActor
+    private func applyVoiceRefinement(_ refinement: VoiceTranscriptRefinement, voice: QuickVoiceCaptureResult) {
+        bodyText = refinement.transcript
+        if let suggestedTitle = refinement.suggestedTitle {
+            title = suggestedTitle
+        } else if title.trimmedOrNil == nil {
+            title = refinement.transcript.firstMeaningfulLine ?? String(localized: "quickCapture.voice.defaultTitle")
+        }
+
+        guard let index = stagedArtifactDrafts.firstIndex(where: { draft in
+            if case let .audio(_, _, filename, _, _) = draft {
+                return filename == voice.filename
+            }
+            return false
+        }) else { return }
+
+        if case let .audio(existingTitle, _, filename, audioData, _) = stagedArtifactDrafts[index] {
+            stagedArtifactDrafts[index] = .audio(
+                title: refinement.suggestedTitle ?? existingTitle,
+                summary: refinement.transcript,
+                filename: filename,
+                audioData: audioData,
+                transcriptionText: refinement.transcript
+            )
+        }
     }
 
     private func loadInitialAutoContextIfNeeded() async {
