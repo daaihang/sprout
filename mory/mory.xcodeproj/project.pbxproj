@@ -52,6 +52,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0C0115EFC7324FFFB25F359B /* Sentry in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -59,6 +60,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0C0115EFC7324FFFB25F359B /* Sentry in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -93,6 +95,7 @@
 				0299B3012FB67EFD00A1072C /* Sources */,
 				0299B3022FB67EFD00A1072C /* Frameworks */,
 				0299B3032FB67EFD00A1072C /* Resources */,
+				8F4D4500E822498FAC2A2C0B /* Upload Debug Symbols to Sentry */,
 			);
 			buildRules = (
 			);
@@ -103,6 +106,7 @@
 			);
 			name = mory;
 			packageProductDependencies = (
+				70DEA5DE83974CCDAF9FD748 /* Sentry */,
 			);
 			productName = mory;
 			productReference = 0299B3052FB67EFD00A1072C /* mory.app */;
@@ -163,6 +167,9 @@
 			targets = (
 				0299B3042FB67EFD00A1072C /* mory */,
 				FD523E239F3A435BB0DACC9C /* moryTests */,
+			);
+			packageReferences = (
+				3D9B5882B9A14E52BA79C6FC /* XCRemoteSwiftPackageReference "sentry-cocoa" */,
 			);
 		};
 /* End PBXProject section */
@@ -259,6 +266,8 @@
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
 				XROS_DEPLOYMENT_TARGET = 26.0;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_USER_SCRIPT_SANDBOXING = "NO";
 			};
 			name = Debug;
 		};
@@ -311,6 +320,8 @@
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
 				XROS_DEPLOYMENT_TARGET = 26.0;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_USER_SCRIPT_SANDBOXING = "NO";
 			};
 			name = Release;
 		};
@@ -503,6 +514,58 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		8F4D4500E822498FAC2A2C0B /* Upload Debug Symbols to Sentry */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${TARGET_NAME}",
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# This script is responsible for uploading debug symbols and source context for Sentry.
+if which sentry-cli >/dev/null; then
+  export SENTRY_ORG=speculo-labs-llc
+  export SENTRY_PROJECT=mory
+  ERROR=$(sentry-cli debug-files upload --include-sources \"$DWARF_DSYM_FOLDER_PATH\" 2>&1 >/dev/null)
+  if [ ! $? -eq 0 ]; then
+    echo \"warning: sentry-cli - $ERROR\"
+  fi
+else
+  echo \"warning: sentry-cli not installed, download from https://github.com/getsentry/sentry-cli/releases\"
+fi
+";
+			name = "Upload Debug Symbols to Sentry";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXBuildFile section */
+		0C0115EFC7324FFFB25F359B /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 70DEA5DE83974CCDAF9FD748 /* Sentry */; };
+/* End PBXBuildFile section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		3D9B5882B9A14E52BA79C6FC /* XCRemoteSwiftPackageReference "sentry-cocoa" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/getsentry/sentry-cocoa/";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		70DEA5DE83974CCDAF9FD748 /* Sentry */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 3D9B5882B9A14E52BA79C6FC /* XCRemoteSwiftPackageReference "sentry-cocoa" */;
+			productName = Sentry;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 0299B2FD2FB67EFD00A1072C /* Project object */;
 }

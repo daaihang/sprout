@@ -1,4 +1,6 @@
 import SwiftUI
+import Sentry
+
 import SwiftData
 
 @main
@@ -14,6 +16,9 @@ struct MoryApp: App {
     @State private var authManager: AuthSessionManager
 
     init() {
+        let runtimeEnvironment = AppRuntimeEnvironment.current
+        Self.configureSentry(runtimeEnvironment: runtimeEnvironment)
+
         let apiConfiguration = MoryAPIConfiguration.fromBundle()
         let client = MoryAPIClient(configuration: apiConfiguration)
         let tokenProvider = MoryAuthTokenProvider(apiClient: client, credentialStore: credentialStore)
@@ -37,6 +42,38 @@ struct MoryApp: App {
             credentialStore: credentialStore,
             apiClient: client
         ))
+    }
+
+    private static func configureSentry(runtimeEnvironment: AppRuntimeEnvironment) {
+        SentrySDK.start { options in
+            options.dsn = "https://d624d4d4895392324795af6ca75d417f@o4511207272480768.ingest.us.sentry.io/4511413248524288"
+            options.environment = runtimeEnvironment.buildChannel.rawValue
+
+            options.sendDefaultPii = false
+
+            switch runtimeEnvironment.distribution {
+            case .debug, .development:
+                options.tracesSampleRate = 1.0
+                options.configureProfiling = {
+                    $0.sessionSampleRate = 1.0
+                    $0.lifecycle = .trace
+                }
+            case .testFlight:
+                options.tracesSampleRate = 0.2
+                options.configureProfiling = {
+                    $0.sessionSampleRate = 0.05
+                    $0.lifecycle = .trace
+                }
+            case .appStore:
+                options.tracesSampleRate = 0.05
+                options.configureProfiling = {
+                    $0.sessionSampleRate = 0.01
+                    $0.lifecycle = .trace
+                }
+            }
+
+            options.experimental.enableLogs = true
+        }
     }
 
     var body: some Scene {
