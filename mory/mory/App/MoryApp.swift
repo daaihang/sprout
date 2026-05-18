@@ -7,15 +7,17 @@ import SwiftData
 struct MoryApp: App {
     @UIApplicationDelegateAdaptor(MoryAppDelegate.self) private var appDelegate
 
-    private let sharedModelContainer = MoryPersistenceStack.makeSharedModelContainer()
+    private let sharedModelContainer: ModelContainer
     private let memoryRepository: any MoryMemoryRepositorying
     private let cloudIntelligenceService: any CloudIntelligenceServing
     private let remotePushSyncService: any RemotePushSyncing
-    private let credentialStore = KeychainCredentialStore()
-    private let runtimeEnvironment = AppRuntimeEnvironment.current
+    private let credentialStore: KeychainCredentialStore
+    private let runtimeEnvironment: AppRuntimeEnvironment
     @State private var authManager: AuthSessionManager
 
     init() {
+        let sharedModelContainer = MoryPersistenceStack.makeSharedModelContainer()
+        let credentialStore = KeychainCredentialStore()
         let runtimeEnvironment = AppRuntimeEnvironment.current
         Self.configureSentry(runtimeEnvironment: runtimeEnvironment)
 
@@ -26,6 +28,9 @@ struct MoryApp: App {
             apiClient: client,
             tokenProvider: tokenProvider
         )
+        self.sharedModelContainer = sharedModelContainer
+        self.credentialStore = credentialStore
+        self.runtimeEnvironment = runtimeEnvironment
         memoryRepository = MoryMemoryRepository(
             modelContext: sharedModelContainer.mainContext,
             analysisService: analysisService

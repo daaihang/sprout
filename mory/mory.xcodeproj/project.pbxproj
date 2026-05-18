@@ -525,6 +525,7 @@
 				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${TARGET_NAME}",
 			);
 			outputPaths = (
+				"${DERIVED_FILE_DIR}/sentry-debug-symbols-uploaded-${TARGET_NAME}-${CONFIGURATION}",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -539,6 +540,7 @@ if which sentry-cli >/dev/null; then
 else
   echo \"warning: sentry-cli not installed, download from https://github.com/getsentry/sentry-cli/releases\"
 fi
+touch \"${SCRIPT_OUTPUT_FILE_0}\"
 ";
 			name = "Upload Debug Symbols to Sentry";
 		};
