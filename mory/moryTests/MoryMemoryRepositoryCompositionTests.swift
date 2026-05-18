@@ -371,6 +371,70 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertEqual(resized.layout.layer, .userBoard)
     }
 
+    func testHomeBoardMoveEarlierLaterNormalizesUserBoardOrder() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        for index in 1...3 {
+            _ = try await repository.createMemory(
+                from: MemoryCaptureDraft(
+                    title: "Move memory \(index)",
+                    rawText: "Move memory \(index) with Linh and planning.",
+                    mood: "focused",
+                    inputContext: "typed in debug",
+                    captureSource: .composer,
+                    artifacts: [.text(title: "Move memory \(index)", body: "Move memory \(index) with Linh and planning.")]
+                )
+            )
+        }
+
+        var board = try repository.fetchHomeBoard(for: Date(), limit: 8)
+        let initialItems = board.userBoardItems.filter { $0.cardKind == .memory }
+        XCTAssertEqual(initialItems.count, 3)
+
+        let moveEarlierUpdates = HomeBoardOrdering.updatesForMove(
+            items: initialItems,
+            moving: initialItems[2],
+            direction: .earlier
+        )
+        XCTAssertEqual(moveEarlierUpdates.map { $0.item.compositionItem.itemKey }, [
+            initialItems[0].compositionItem.itemKey,
+            initialItems[2].compositionItem.itemKey,
+            initialItems[1].compositionItem.itemKey,
+        ])
+
+        try repository.updateHomeBoardItemPreferences(
+            moveEarlierUpdates.map { update in
+                (item: update.item, action: .setUserOrder(update.sortIndex))
+            }
+        )
+
+        board = try repository.fetchHomeBoard(for: Date(), limit: 8)
+        var orderedItems = board.userBoardItems.filter { $0.cardKind == .memory }
+        XCTAssertEqual(orderedItems.map(\.compositionItem.itemKey), moveEarlierUpdates.map { $0.item.compositionItem.itemKey })
+        XCTAssertEqual(orderedItems.compactMap(\.layout.userSortIndex), [10, 20, 30])
+
+        let moveLaterUpdates = HomeBoardOrdering.updatesForMove(
+            items: orderedItems,
+            moving: orderedItems[0],
+            direction: .later
+        )
+        try repository.updateHomeBoardItemPreferences(
+            moveLaterUpdates.map { update in
+                (item: update.item, action: .setUserOrder(update.sortIndex))
+            }
+        )
+
+        board = try repository.fetchHomeBoard(for: Date(), limit: 8)
+        orderedItems = board.userBoardItems.filter { $0.cardKind == .memory }
+        XCTAssertEqual(orderedItems.map(\.compositionItem.itemKey), moveLaterUpdates.map { $0.item.compositionItem.itemKey })
+        XCTAssertTrue(HomeBoardOrdering.updatesForMove(items: orderedItems, moving: orderedItems[0], direction: .earlier).isEmpty)
+        XCTAssertTrue(HomeBoardOrdering.updatesForMove(items: orderedItems, moving: orderedItems[2], direction: .later).isEmpty)
+    }
+
     func testHomeBoardSuggestionsDoNotReplaceUserBoardWhenLimitIsFull() async throws {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(

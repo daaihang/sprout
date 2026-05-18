@@ -1,5 +1,12 @@
 import SwiftUI
 
+struct HomeBoardOrderControls {
+    let canMoveEarlier: Bool
+    let canMoveLater: Bool
+    let moveEarlier: () -> Void
+    let moveLater: () -> Void
+}
+
 private struct HomeBoardResizeMenu: View {
     let item: HomeBoardItemSnapshot
     let onResize: (HomeBoardSpan) -> Void
@@ -44,6 +51,7 @@ struct HomeBoardCard: View {
 
     let item: HomeBoardItemSnapshot
     let isEditing: Bool
+    let orderControls: HomeBoardOrderControls?
     let onSelect: (HomeRoute) -> Void
     let onPreference: (HomeBoardItemSnapshot, HomeBoardPreferenceAction) -> Void
     let onAnswerQuestion: (ClarificationQuestion, ClarificationAnswer) -> Void
@@ -209,6 +217,30 @@ struct HomeBoardCard: View {
             }
 
             if isEditing {
+                if let orderControls {
+                    Button {
+                        orderControls.moveEarlier()
+                    } label: {
+                        Label {
+                            Text(verbatim: "Move earlier")
+                        } icon: {
+                            Image(systemName: "arrow.up")
+                        }
+                    }
+                    .disabled(!orderControls.canMoveEarlier)
+
+                    Button {
+                        orderControls.moveLater()
+                    } label: {
+                        Label {
+                            Text(verbatim: "Move later")
+                        } icon: {
+                            Image(systemName: "arrow.down")
+                        }
+                    }
+                    .disabled(!orderControls.canMoveLater)
+                }
+
                 HomeBoardResizeMenu(item: item) { span in
                     onPreference(item, .resize(span))
                 }

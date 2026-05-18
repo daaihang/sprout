@@ -131,6 +131,7 @@ struct HomeScreen: View {
                             selectedRoute = route
                         },
                         onPreference: updateBoardPreference,
+                        onReorder: updateBoardOrder,
                         onAnswerQuestion: answerQuestion,
                         onDismissQuestion: dismissQuestion,
                         onSystemAction: { isPresentingComposer = true }
@@ -231,6 +232,19 @@ struct HomeScreen: View {
         }
     }
 
+    private func updateBoardOrder(_ updates: [HomeBoardOrderUpdate]) {
+        do {
+            try memoryRepository.updateHomeBoardItemPreferences(
+                updates.map { update in
+                    (item: update.item, action: .setUserOrder(update.sortIndex))
+                }
+            )
+            Task { await reload() }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     private func answerQuestion(_ question: ClarificationQuestion, answer: ClarificationAnswer) {
         do {
             try memoryRepository.answerClarificationQuestion(question.id, answer: answer)
@@ -324,6 +338,7 @@ private struct HomeBoardSection: View {
     let isEditing: Bool
     let onSelect: (HomeRoute) -> Void
     let onPreference: (HomeBoardItemSnapshot, HomeBoardPreferenceAction) -> Void
+    let onReorder: ([HomeBoardOrderUpdate]) -> Void
     let onAnswerQuestion: (ClarificationQuestion, ClarificationAnswer) -> Void
     let onDismissQuestion: (ClarificationQuestion) -> Void
     let onSystemAction: () -> Void
@@ -336,6 +351,7 @@ private struct HomeBoardSection: View {
                     isEditing: isEditing,
                     onSelect: onSelect,
                     onPreference: onPreference,
+                    onReorder: onReorder,
                     onAnswerQuestion: onAnswerQuestion,
                     onDismissQuestion: onDismissQuestion,
                     onSystemAction: onSystemAction
@@ -351,6 +367,7 @@ private struct HomeBoardSection: View {
                         isEditing: isEditing,
                         onSelect: onSelect,
                         onPreference: onPreference,
+                        onReorder: onReorder,
                         onAnswerQuestion: onAnswerQuestion,
                         onDismissQuestion: onDismissQuestion,
                         onSystemAction: onSystemAction
@@ -369,6 +386,7 @@ private struct HomeBoardGrid: View {
     let isEditing: Bool
     let onSelect: (HomeRoute) -> Void
     let onPreference: (HomeBoardItemSnapshot, HomeBoardPreferenceAction) -> Void
+    let onReorder: ([HomeBoardOrderUpdate]) -> Void
     let onAnswerQuestion: (ClarificationQuestion, ClarificationAnswer) -> Void
     let onDismissQuestion: (ClarificationQuestion) -> Void
     let onSystemAction: () -> Void
@@ -379,6 +397,7 @@ private struct HomeBoardGrid: View {
                 HomeBoardCard(
                     item: item,
                     isEditing: isEditing,
+                    orderControls: orderControls(for: item),
                     onSelect: onSelect,
                     onPreference: onPreference,
                     onAnswerQuestion: onAnswerQuestion,
@@ -394,5 +413,19 @@ private struct HomeBoardGrid: View {
 
     private var metrics: HomeBoardGridMetrics {
         HomeBoardGridMetrics(columns: horizontalSizeClass == .regular ? 8 : 4)
+    }
+
+    private func orderControls(for item: HomeBoardItemSnapshot) -> HomeBoardOrderControls? {
+        guard isEditing, item.layout.layer == .userBoard else { return nil }
+        return HomeBoardOrderControls(
+            canMoveEarlier: HomeBoardOrdering.canMove(item: item, in: items, direction: .earlier),
+            canMoveLater: HomeBoardOrdering.canMove(item: item, in: items, direction: .later),
+            moveEarlier: {
+                onReorder(HomeBoardOrdering.updatesForMove(items: items, moving: item, direction: .earlier))
+            },
+            moveLater: {
+                onReorder(HomeBoardOrdering.updatesForMove(items: items, moving: item, direction: .later))
+            }
+        )
     }
 }

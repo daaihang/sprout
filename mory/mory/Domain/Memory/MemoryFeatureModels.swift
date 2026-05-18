@@ -638,6 +638,7 @@ protocol MoryMemoryRepositorying: AnyObject {
     func fetchHomeBoard(for date: Date, limit: Int) throws -> HomeBoardSnapshot
     func fetchHomeBoardDebugSnapshot(for date: Date, limit: Int) throws -> HomeBoardDebugSnapshot
     func updateHomeBoardItemPreference(_ item: HomeBoardItemSnapshot, action: HomeBoardPreferenceAction) throws
+    func updateHomeBoardItemPreferences(_ updates: [(item: HomeBoardItemSnapshot, action: HomeBoardPreferenceAction)]) throws
     func fetchMemoryDetail(recordID: UUID) throws -> MemoryDetailSnapshot?
     func fetchRecordAnalysis(recordID: UUID) throws -> RecordAnalysisSnapshot?
     func fetchPipelineStatus(recordID: UUID) throws -> MemoryPipelineStatusSnapshot?

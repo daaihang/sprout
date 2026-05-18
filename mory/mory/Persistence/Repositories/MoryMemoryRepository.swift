@@ -473,6 +473,23 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
 
     func updateHomeBoardItemPreference(_ item: HomeBoardItemSnapshot, action: HomeBoardPreferenceAction) throws {
         let now = Date.now
+        try applyHomeBoardItemPreference(item, action: action, updatedAt: now)
+        try save()
+    }
+
+    func updateHomeBoardItemPreferences(_ updates: [(item: HomeBoardItemSnapshot, action: HomeBoardPreferenceAction)]) throws {
+        let now = Date.now
+        for update in updates {
+            try applyHomeBoardItemPreference(update.item, action: update.action, updatedAt: now)
+        }
+        try save()
+    }
+
+    private func applyHomeBoardItemPreference(
+        _ item: HomeBoardItemSnapshot,
+        action: HomeBoardPreferenceAction,
+        updatedAt now: Date
+    ) throws {
         let syncKey = homeBoardPreferenceSyncKey(cardKey: item.compositionItem.itemKey)
         let existing = try fetchHomeBoardPreference(syncKey: syncKey)
         var preference = existing ?? HomeBoardItemPreference(
@@ -541,7 +558,6 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         }
 
         try upsert(homeBoardPreference: preference)
-        try save()
     }
 
     func fetchArtifacts(recordID: UUID) throws -> [Artifact] {
