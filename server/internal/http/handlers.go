@@ -20,13 +20,13 @@ type authAppleRequest struct {
 }
 
 type authResponse struct {
-	AccessToken             string   `json:"access_token"`
-	RefreshToken            string   `json:"refresh_token,omitempty"`
-	ExpiresAt               string   `json:"expires_at"`
-	User                    authUser `json:"user"`
-	Mode                    string   `json:"mode"`
-	IsNewUser               bool     `json:"is_new_user"`
-	HasCompletedOnboarding  bool     `json:"has_completed_onboarding"`
+	AccessToken            string   `json:"access_token"`
+	RefreshToken           string   `json:"refresh_token,omitempty"`
+	ExpiresAt              string   `json:"expires_at"`
+	User                   authUser `json:"user"`
+	Mode                   string   `json:"mode"`
+	IsNewUser              bool     `json:"is_new_user"`
+	HasCompletedOnboarding bool     `json:"has_completed_onboarding"`
 }
 
 type authUser struct {
@@ -44,26 +44,26 @@ type analyzePreviewResponseEnvelope struct {
 }
 
 type pushRegisterRequest struct {
-	DeviceID             string `json:"device_id"`
-	APNSToken            string `json:"apns_token"`
-	Timezone             string `json:"timezone"`
-	HasQuestionReady     bool   `json:"has_question_ready"`
-	NotificationsEnabled bool   `json:"notifications_enabled"`
-	BackgroundDoneEnabled bool  `json:"background_done_enabled"`
-	DailyQuestionEnabled bool   `json:"daily_question_enabled"`
-	RepeatedThemeEnabled bool   `json:"repeated_theme_enabled"`
-	StageFormingEnabled  bool   `json:"stage_forming_enabled"`
-	RevisitEnabled       bool   `json:"revisit_enabled"`
-	DeliveryPace         string `json:"delivery_pace"`
-	MaxPerDay            int    `json:"max_per_day"`
-	MinimumMinutesBetweenNotifications int `json:"minimum_minutes_between_notifications"`
-	QuietStart           string `json:"quiet_start"`
-	QuietEnd             string `json:"quiet_end"`
-	RichPreviewsEnabled  bool   `json:"rich_previews_enabled"`
-	LocalIntelligenceEnabled bool `json:"local_intelligence_enabled"`
-	CloudIntelligenceEnabled bool `json:"cloud_intelligence_enabled"`
-	SemanticSearchEnabled bool  `json:"semantic_search_enabled"`
-	HomeSuggestionsEnabled bool `json:"home_suggestions_enabled"`
+	DeviceID                           string `json:"device_id"`
+	APNSToken                          string `json:"apns_token"`
+	Timezone                           string `json:"timezone"`
+	HasQuestionReady                   bool   `json:"has_question_ready"`
+	NotificationsEnabled               bool   `json:"notifications_enabled"`
+	BackgroundDoneEnabled              bool   `json:"background_done_enabled"`
+	DailyQuestionEnabled               bool   `json:"daily_question_enabled"`
+	RepeatedThemeEnabled               bool   `json:"repeated_theme_enabled"`
+	StageFormingEnabled                bool   `json:"stage_forming_enabled"`
+	RevisitEnabled                     bool   `json:"revisit_enabled"`
+	DeliveryPace                       string `json:"delivery_pace"`
+	MaxPerDay                          int    `json:"max_per_day"`
+	MinimumMinutesBetweenNotifications int    `json:"minimum_minutes_between_notifications"`
+	QuietStart                         string `json:"quiet_start"`
+	QuietEnd                           string `json:"quiet_end"`
+	RichPreviewsEnabled                bool   `json:"rich_previews_enabled"`
+	LocalIntelligenceEnabled           bool   `json:"local_intelligence_enabled"`
+	CloudIntelligenceEnabled           bool   `json:"cloud_intelligence_enabled"`
+	SemanticSearchEnabled              bool   `json:"semantic_search_enabled"`
+	HomeSuggestionsEnabled             bool   `json:"home_suggestions_enabled"`
 }
 
 type pushRegisterResponse struct {
@@ -87,13 +87,17 @@ type pushDeliveryWritebackResponse struct {
 }
 
 type pushEnqueueRequest struct {
-	IntentID    string `json:"intent_id"`
-	Kind        string `json:"kind"`
-	Title       string `json:"title"`
-	Body        string `json:"body"`
-	TargetType  string `json:"target_type"`
-	TargetID    string `json:"target_id"`
-	ScheduledAt string `json:"scheduled_at"`
+	IntentID     string                       `json:"intent_id"`
+	Kind         string                       `json:"kind"`
+	Title        string                       `json:"title"`
+	Body         string                       `json:"body"`
+	TargetType   string                       `json:"target_type"`
+	TargetID     string                       `json:"target_id"`
+	PrivacyLevel string                       `json:"privacy_level"`
+	DeepLink     string                       `json:"deep_link"`
+	Target       notification.DeliveryTarget  `json:"target"`
+	Payload      notification.DeliveryPayload `json:"payload"`
+	ScheduledAt  string                       `json:"scheduled_at"`
 }
 
 type pushEnqueueResponse struct {
@@ -499,7 +503,7 @@ func (s *Server) handleTranscriptRefinement(w http.ResponseWriter, r *http.Reque
 
 	writeJSON(w, http.StatusOK, transcriptRefinementResponseEnvelope{
 		TranscriptRefinementResponse: result.Response,
-		Meta: s.metaForResult(r, result.Provider, result.Model, result.Usage),
+		Meta:                         s.metaForResult(r, result.Provider, result.Model, result.Usage),
 	})
 }
 
@@ -531,7 +535,7 @@ func (s *Server) handleQuestionSuggestions(w http.ResponseWriter, r *http.Reques
 
 	writeJSON(w, http.StatusOK, questionSuggestionResponseEnvelope{
 		QuestionSuggestionResponse: result.Response,
-		Meta: s.metaForResult(r, result.Provider, result.Model, result.Usage),
+		Meta:                       s.metaForResult(r, result.Provider, result.Model, result.Usage),
 	})
 }
 
@@ -563,7 +567,7 @@ func (s *Server) handleChapterSuggestions(w http.ResponseWriter, r *http.Request
 
 	writeJSON(w, http.StatusOK, chapterSuggestionResponseEnvelope{
 		ChapterSuggestionResponse: result.Response,
-		Meta: s.metaForResult(r, result.Provider, result.Model, result.Usage),
+		Meta:                      s.metaForResult(r, result.Provider, result.Model, result.Usage),
 	})
 }
 
@@ -595,7 +599,7 @@ func (s *Server) handlePhotoSemanticAnalysis(w http.ResponseWriter, r *http.Requ
 
 	writeJSON(w, http.StatusOK, photoSemanticAnalysisResponseEnvelope{
 		PhotoSemanticAnalysisResponse: result.Response,
-		Meta: s.metaForResult(r, result.Provider, result.Model, result.Usage),
+		Meta:                          s.metaForResult(r, result.Provider, result.Model, result.Usage),
 	})
 }
 
@@ -627,7 +631,7 @@ func (s *Server) handleNotificationIntentSuggestion(w http.ResponseWriter, r *ht
 
 	writeJSON(w, http.StatusOK, notificationIntentSuggestionResponseEnvelope{
 		NotificationIntentSuggestionResponse: result.Response,
-		Meta: s.metaForResult(r, result.Provider, result.Model, result.Usage),
+		Meta:                                 s.metaForResult(r, result.Provider, result.Model, result.Usage),
 	})
 }
 
@@ -703,27 +707,27 @@ func (s *Server) handlePushRegister(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.pushTokens.UpsertPushToken(r.Context(), db.PushToken{
-		UserID:               claims.UserID,
-		DeviceID:             strings.TrimSpace(req.DeviceID),
-		APNSToken:            strings.TrimSpace(req.APNSToken),
-		Timezone:             strings.TrimSpace(req.Timezone),
-		HasQuestionReady:     req.HasQuestionReady,
-		NotificationsEnabled: req.NotificationsEnabled,
-		BackgroundDoneEnabled: req.BackgroundDoneEnabled,
-		DailyQuestionEnabled: req.DailyQuestionEnabled,
-		RepeatedThemeEnabled: req.RepeatedThemeEnabled,
-		StageFormingEnabled:  req.StageFormingEnabled,
-		RevisitEnabled:       req.RevisitEnabled,
-		DeliveryPace:         strings.TrimSpace(req.DeliveryPace),
-		MaxPerDay:            req.MaxPerDay,
+		UserID:                             claims.UserID,
+		DeviceID:                           strings.TrimSpace(req.DeviceID),
+		APNSToken:                          strings.TrimSpace(req.APNSToken),
+		Timezone:                           strings.TrimSpace(req.Timezone),
+		HasQuestionReady:                   req.HasQuestionReady,
+		NotificationsEnabled:               req.NotificationsEnabled,
+		BackgroundDoneEnabled:              req.BackgroundDoneEnabled,
+		DailyQuestionEnabled:               req.DailyQuestionEnabled,
+		RepeatedThemeEnabled:               req.RepeatedThemeEnabled,
+		StageFormingEnabled:                req.StageFormingEnabled,
+		RevisitEnabled:                     req.RevisitEnabled,
+		DeliveryPace:                       strings.TrimSpace(req.DeliveryPace),
+		MaxPerDay:                          req.MaxPerDay,
 		MinimumMinutesBetweenNotifications: req.MinimumMinutesBetweenNotifications,
-		QuietStart:           strings.TrimSpace(req.QuietStart),
-		QuietEnd:             strings.TrimSpace(req.QuietEnd),
-		RichPreviewsEnabled:  req.RichPreviewsEnabled,
-		LocalIntelligenceEnabled: req.LocalIntelligenceEnabled,
-		CloudIntelligenceEnabled: req.CloudIntelligenceEnabled,
-		SemanticSearchEnabled: req.SemanticSearchEnabled,
-		HomeSuggestionsEnabled: req.HomeSuggestionsEnabled,
+		QuietStart:                         strings.TrimSpace(req.QuietStart),
+		QuietEnd:                           strings.TrimSpace(req.QuietEnd),
+		RichPreviewsEnabled:                req.RichPreviewsEnabled,
+		LocalIntelligenceEnabled:           req.LocalIntelligenceEnabled,
+		CloudIntelligenceEnabled:           req.CloudIntelligenceEnabled,
+		SemanticSearchEnabled:              req.SemanticSearchEnabled,
+		HomeSuggestionsEnabled:             req.HomeSuggestionsEnabled,
 	}); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to register push token")
 		return
@@ -758,8 +762,18 @@ func (s *Server) handlePushEnqueue(w http.ResponseWriter, r *http.Request) {
 	body := strings.TrimSpace(req.Body)
 	targetType := strings.TrimSpace(req.TargetType)
 	targetID := strings.TrimSpace(req.TargetID)
+	if strings.TrimSpace(req.Target.Type) != "" {
+		targetType = strings.TrimSpace(req.Target.Type)
+	}
+	if strings.TrimSpace(req.Target.ID) != "" {
+		targetID = strings.TrimSpace(req.Target.ID)
+	}
 	if intentID == "" || kind == "" || title == "" || body == "" || targetType == "" || targetID == "" {
 		writeError(w, http.StatusBadRequest, "intent_id, kind, title, body, target_type, and target_id are required")
+		return
+	}
+	if !notification.SupportedTargetType(targetType) {
+		writeError(w, http.StatusBadRequest, "target_type must be one of record, artifact, question, entity, place, theme, decision, chapter, or reflection")
 		return
 	}
 
@@ -777,13 +791,17 @@ func (s *Server) handlePushEnqueue(w http.ResponseWriter, r *http.Request) {
 		r.Context(),
 		claims.UserID,
 		notification.DeliveryIntent{
-			IntentID:    intentID,
-			Kind:        kind,
-			Title:       title,
-			Body:        body,
-			TargetType:  targetType,
-			TargetID:    targetID,
-			ScheduledAt: scheduledAt,
+			IntentID:     intentID,
+			Kind:         kind,
+			Title:        title,
+			Body:         body,
+			TargetType:   targetType,
+			TargetID:     targetID,
+			PrivacyLevel: strings.TrimSpace(req.PrivacyLevel),
+			DeepLink:     strings.TrimSpace(req.DeepLink),
+			Target:       req.Target,
+			Payload:      req.Payload,
+			ScheduledAt:  scheduledAt,
 		},
 		time.Now().UTC(),
 	)

@@ -292,7 +292,7 @@ paths:
           application/json:
             schema:
               type: object
-              required: [intent_id, kind, title, body, target_type, target_id]
+              required: [intent_id, kind, title, body, target]
               properties:
                 intent_id:
                   type: string
@@ -304,8 +304,18 @@ paths:
                   type: string
                 target_type:
                   type: string
+                  enum: [record, artifact, question, entity, place, theme, decision, chapter, reflection]
                 target_id:
                   type: string
+                privacy_level:
+                  type: string
+                  enum: [generic, contextual, rich]
+                deep_link:
+                  type: string
+                target:
+                  $ref: "#/components/schemas/PushDeliveryTarget"
+                payload:
+                  $ref: "#/components/schemas/PushDeliveryPayload"
                 scheduled_at:
                   type: string
                   format: date-time
@@ -910,6 +920,59 @@ components:
               format: date-time
         meta:
           $ref: "#/components/schemas/CloudMeta"
+    PushDeliveryTarget:
+      type: object
+      required: [type, id]
+      properties:
+        type:
+          type: string
+          enum: [record, artifact, question, entity, place, theme, decision, chapter, reflection]
+        id:
+          type: string
+        parent_record_id:
+          type: string
+          description: Parent record ID when the target is an artifact or derived memory object.
+        artifact_kind:
+          type: string
+          description: Artifact subtype when target type is artifact.
+        entity_kind:
+          type: string
+          description: Entity family for entity/place/theme/decision targets.
+        label:
+          type: string
+          description: Display-safe target label.
+        source_record_ids:
+          type: array
+          items:
+            type: string
+    PushDeliveryPayload:
+      type: object
+      required: [schema_version, intent_id, kind, target, delivery_channel]
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        intent_id:
+          type: string
+        kind:
+          type: string
+        title:
+          type: string
+        body:
+          type: string
+        privacy_level:
+          type: string
+          enum: [generic, contextual, rich]
+        deep_link:
+          type: string
+        delivery_channel:
+          type: string
+          enum: [remote]
+        target:
+          $ref: "#/components/schemas/PushDeliveryTarget"
+        scheduled_at:
+          type: string
+          format: date-time
     SubscriptionStatus:
       type: object
       properties:

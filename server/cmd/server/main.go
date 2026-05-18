@@ -45,11 +45,27 @@ func main() {
 		logger.Error("init ai provider", "error", err)
 		os.Exit(1)
 	}
+	apnsClient, err := notification.NewAPNSClient(notification.APNSClientConfig{
+		Enabled:     cfg.APNSEnabled,
+		Environment: cfg.APNSEnvironment,
+		KeyID:       cfg.APNSKeyID,
+		TeamID:      cfg.APNSTeamID,
+		Topic:       cfg.APNSTopic,
+		AuthKeyPath: cfg.APNSAuthKeyPath,
+		AuthKeyPEM:  cfg.APNSAuthKey,
+		BaseURL:     cfg.APNSBaseURL,
+		Logger:      logger,
+	})
+	if err != nil {
+		logger.Error("init apns client", "error", err)
+		os.Exit(1)
+	}
+
 	pushDeliveryWorker := notification.NewPushDeliveryWorker(
 		store,
-		notification.DisabledAPNSClient{},
+		apnsClient,
 		logger,
-		firstAudienceOrFallback(cfg.AppleAudiences, "com.speculolabs.mory"),
+		firstNonEmpty(cfg.APNSTopic, firstAudienceOrFallback(cfg.AppleAudiences, "com.speculolabs.mory")),
 	)
 
 	app := httpapi.NewServer(httpapi.Dependencies{
@@ -73,6 +89,14 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	if cfg.PushDeliveryWorkerEnabled {
+		go pushDeliveryWorker.RunScheduledDeliveryLoop(
+			ctx,
+			cfg.PushDeliveryInterval,
+			cfg.PushDeliveryBatchSize,
+		)
+	}
+
 	go func() {
 		logger.Info("🚀 server starting",
 			"addr", cfg.ListenAddr(),
@@ -88,6 +112,12 @@ func main() {
 			"ai_retry_backoff", cfg.AIRetryBackoff.String(),
 			"dev_auth_enabled", cfg.DevAuthEnabled,
 			"sqlite_path", cfg.SQLitePath,
+			"apns_enabled", cfg.APNSEnabled,
+			"apns_environment", cfg.APNSEnvironment,
+			"apns_topic", cfg.APNSTopic,
+			"push_delivery_worker_enabled", cfg.PushDeliveryWorkerEnabled,
+			"push_delivery_interval", cfg.PushDeliveryInterval.String(),
+			"push_delivery_batch_size", cfg.PushDeliveryBatchSize,
 		)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Error("server failed", "error", err)
@@ -118,4 +148,13 @@ func firstAudienceOrFallback(values []string, fallback string) string {
 		}
 	}
 	return fallback
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if value != "" {
+			return value
+		}
+	}
+	return ""
 }

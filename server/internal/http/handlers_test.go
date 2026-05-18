@@ -248,7 +248,7 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 		}
 
 		pushClient.messages = nil
-		body := `{"intent_id":"intent-queued-1","kind":"dailyQuestion","title":"Mory","body":"A question is ready.","target_type":"question","target_id":"question-1","scheduled_at":"2026-05-19T12:00:00Z"}`
+		body := `{"intent_id":"intent-queued-1","kind":"dailyQuestion","title":"Mory","body":"A question is ready.","target":{"type":"question","id":"question-1","label":"Evening reflection"},"privacy_level":"contextual","deep_link":"mory://home/question/question-1","scheduled_at":"2025-05-19T12:00:00Z"}`
 		req := httptest.NewRequest(http.MethodPost, "/api/push/enqueue", bytes.NewBufferString(body))
 		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Set("Content-Type", "application/json")
@@ -265,6 +265,9 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 		if pushClient.messages[0].IntentID != "intent-queued-1" || pushClient.messages[0].Kind != "dailyQuestion" {
 			t.Fatalf("unexpected APNS message: %+v", pushClient.messages[0])
 		}
+		if pushClient.messages[0].TargetType != "question" || pushClient.messages[0].TargetID != "question-1" || pushClient.messages[0].DeepLink == "" {
+			t.Fatalf("expected full push target payload, got %+v", pushClient.messages[0])
+		}
 
 		delivery, err := store.GetPushDelivery(context.Background(), "tester-1", "iphone-1", "intent-queued-1")
 		if err != nil {
@@ -272,6 +275,9 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 		}
 		if delivery.Status != "sent" || delivery.SentAt == nil {
 			t.Fatalf("expected sent push delivery, got %+v", delivery)
+		}
+		if !strings.Contains(delivery.PayloadJSON, `"target"`) || !strings.Contains(delivery.PayloadJSON, `"question"`) {
+			t.Fatalf("expected stored production payload JSON, got %q", delivery.PayloadJSON)
 		}
 	})
 
@@ -310,9 +316,9 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 
 	t.Run("v6 cloud intelligence contracts use mock provider", func(t *testing.T) {
 		cases := []struct {
-			name string
-			path string
-			body string
+			name   string
+			path   string
+			body   string
 			assert func(t *testing.T, body []byte)
 		}{
 			{

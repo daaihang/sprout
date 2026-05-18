@@ -84,11 +84,25 @@ enum PushDeviceRegistrationStore {
     #endif
 }
 
+struct RemotePushDebugSnapshot: Hashable, Sendable {
+    var deviceID: String
+    var timezone: String
+    var hasAPNSToken: Bool
+    var apnsTokenPreview: String?
+    var hasRegistrationDigest: Bool
+    var pendingWritebackCount: Int
+    var pendingIntentCount: Int
+    var scheduledIntentCount: Int
+    var remoteIntentCount: Int
+}
+
 @MainActor
 protocol RemotePushSyncing: AnyObject {
     func registerSystemRemoteNotificationsIfNeeded(repository: any MoryMemoryRepositorying)
     func syncRegistrationIfPossible(repository: any MoryMemoryRepositorying, force: Bool) async
+    func enqueueRemoteNotificationIntent(_ intent: NotificationIntent) async throws -> MoryAPIClient.PushEnqueueResponse
     func writeBackInteraction(_ event: NotificationInteractionEvent) async
+    func fetchDebugSnapshot(repository: any MoryMemoryRepositorying) async -> RemotePushDebugSnapshot
 }
 
 @MainActor
@@ -162,6 +176,31 @@ final class RemotePushSyncService: RemotePushSyncing {
         } catch {
             PushDeviceRegistrationStore.enqueuePendingWriteback(payload)
         }
+    }
+
+    func enqueueRemoteNotificationIntent(_ intent: NotificationIntent) async throws -> MoryAPIClient.PushEnqueueResponse {
+        try await sendWithRefresh { bearerToken in
+            try await apiClient.enqueuePush(
+                payload: makePushEnqueuePayload(for: intent),
+                bearerToken: bearerToken
+            )
+        }
+    }
+
+    func fetchDebugSnapshot(repository: any MoryMemoryRepositorying) async -> RemotePushDebugSnapshot {
+        let intents = (try? repository.fetchNotificationIntents(status: nil, limit: nil)) ?? []
+        let apnsToken = PushDeviceRegistrationStore.currentAPNSToken()
+        return RemotePushDebugSnapshot(
+            deviceID: PushDeviceRegistrationStore.currentDeviceID(),
+            timezone: PushDeviceRegistrationStore.currentTimezoneID(),
+            hasAPNSToken: apnsToken != nil,
+            apnsTokenPreview: apnsToken.map(previewToken),
+            hasRegistrationDigest: PushDeviceRegistrationStore.lastRegistrationDigest() != nil,
+            pendingWritebackCount: PushDeviceRegistrationStore.loadPendingWritebacks().count,
+            pendingIntentCount: intents.filter { $0.status == .pending }.count,
+            scheduledIntentCount: intents.filter { $0.status == .scheduled }.count,
+            remoteIntentCount: intents.filter { $0.deliveryChannel == .remote }.count
+        )
     }
 
     private func sendWithRefresh<Response: Sendable>(
@@ -240,6 +279,81 @@ final class RemotePushSyncService: RemotePushSyncing {
         }
     }
 
+    private func makePushEnqueuePayload(for intent: NotificationIntent) -> MoryAPIClient.PushEnqueuePayload {
+        let target = MoryAPIClient.PushDeliveryTargetPayload(
+            type: intent.targetType.rawValue,
+            id: intent.targetID.uuidString,
+            parentRecordID: nil,
+            artifactKind: intent.targetType == .artifact ? "unknown" : nil,
+            entityKind: entityKindHint(for: intent.targetType),
+            label: nil,
+            sourceRecordIDs: []
+        )
+        let scheduledAt = isoFormatter.string(from: intent.scheduledAt)
+        let deepLink = deepLink(for: intent)
+        let payload = MoryAPIClient.PushDeliveryPayloadEnvelope(
+            intentID: intent.id.uuidString,
+            kind: intent.kind.rawValue,
+            title: intent.title,
+            body: intent.body,
+            privacyLevel: intent.privacyLevel.rawValue,
+            deepLink: deepLink,
+            target: target,
+            scheduledAt: scheduledAt
+        )
+        return MoryAPIClient.PushEnqueuePayload(
+            intentID: intent.id.uuidString,
+            kind: intent.kind.rawValue,
+            title: intent.title,
+            body: intent.body,
+            targetType: intent.targetType.rawValue,
+            targetID: intent.targetID.uuidString,
+            privacyLevel: intent.privacyLevel.rawValue,
+            deepLink: deepLink,
+            target: target,
+            payload: payload,
+            scheduledAt: scheduledAt
+        )
+    }
+
+    private func deepLink(for intent: NotificationIntent) -> String {
+        switch intent.targetType {
+        case .question:
+            return "mory://home/question/\(intent.targetID.uuidString)"
+        case .record:
+            return "mory://memories/record/\(intent.targetID.uuidString)"
+        case .artifact:
+            return "mory://memories/artifact/\(intent.targetID.uuidString)"
+        case .chapter:
+            return "mory://insights/chapter/\(intent.targetID.uuidString)"
+        case .reflection:
+            return "mory://insights/reflection/\(intent.targetID.uuidString)"
+        case .entity:
+            return "mory://insights/entity/\(intent.targetID.uuidString)"
+        case .place:
+            return "mory://insights/place/\(intent.targetID.uuidString)"
+        case .theme:
+            return "mory://insights/theme/\(intent.targetID.uuidString)"
+        case .decision:
+            return "mory://insights/decision/\(intent.targetID.uuidString)"
+        }
+    }
+
+    private func entityKindHint(for targetType: ClarificationTargetType) -> String? {
+        switch targetType {
+        case .place:
+            return "place"
+        case .theme:
+            return "theme"
+        case .decision:
+            return "decision"
+        case .entity:
+            return "entity"
+        case .record, .artifact, .question, .chapter, .reflection:
+            return nil
+        }
+    }
+
     private func flushPendingWritebacksIfPossible() async {
         let pending = PushDeviceRegistrationStore.loadPendingWritebacks()
         guard !pending.isEmpty else { return }
@@ -256,6 +370,11 @@ final class RemotePushSyncService: RemotePushSyncing {
 
         PushDeviceRegistrationStore.removePendingWritebacks(withIDs: acknowledgedIDs)
     }
+}
+
+private func previewToken(_ token: String) -> String {
+    guard token.count > 12 else { return token }
+    return "\(token.prefix(6))...\(token.suffix(6))"
 }
 
 private struct RemotePushRegistrationSnapshot {

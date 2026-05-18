@@ -438,6 +438,98 @@ struct MoryAPIClient: Sendable {
         }
     }
 
+    struct PushDeliveryTargetPayload: Codable, Sendable, Equatable {
+        var type: String
+        var id: String
+        var parentRecordID: String?
+        var artifactKind: String?
+        var entityKind: String?
+        var label: String?
+        var sourceRecordIDs: [String]
+
+        enum CodingKeys: String, CodingKey {
+            case type
+            case id
+            case parentRecordID = "parent_record_id"
+            case artifactKind = "artifact_kind"
+            case entityKind = "entity_kind"
+            case label
+            case sourceRecordIDs = "source_record_ids"
+        }
+    }
+
+    struct PushDeliveryPayloadEnvelope: Codable, Sendable, Equatable {
+        var schemaVersion: Int = 1
+        var intentID: String
+        var kind: String
+        var title: String
+        var body: String
+        var privacyLevel: String
+        var deepLink: String?
+        var deliveryChannel: String = "remote"
+        var target: PushDeliveryTargetPayload
+        var scheduledAt: String
+
+        enum CodingKeys: String, CodingKey {
+            case schemaVersion = "schema_version"
+            case intentID = "intent_id"
+            case kind
+            case title
+            case body
+            case privacyLevel = "privacy_level"
+            case deepLink = "deep_link"
+            case deliveryChannel = "delivery_channel"
+            case target
+            case scheduledAt = "scheduled_at"
+        }
+    }
+
+    struct PushEnqueuePayload: Encodable, Sendable, Equatable {
+        var intentID: String
+        var kind: String
+        var title: String
+        var body: String
+        var targetType: String
+        var targetID: String
+        var privacyLevel: String
+        var deepLink: String?
+        var target: PushDeliveryTargetPayload
+        var payload: PushDeliveryPayloadEnvelope
+        var scheduledAt: String
+
+        enum CodingKeys: String, CodingKey {
+            case intentID = "intent_id"
+            case kind
+            case title
+            case body
+            case targetType = "target_type"
+            case targetID = "target_id"
+            case privacyLevel = "privacy_level"
+            case deepLink = "deep_link"
+            case target
+            case payload
+            case scheduledAt = "scheduled_at"
+        }
+    }
+
+    struct PushEnqueueResponse: Decodable, Sendable, Equatable {
+        let accepted: Bool
+        let userID: String
+        let queuedCount: Int
+        let skippedCount: Int
+        let sentCount: Int
+        let failedCount: Int
+
+        enum CodingKeys: String, CodingKey {
+            case accepted
+            case userID = "user_id"
+            case queuedCount = "queued_count"
+            case skippedCount = "skipped_count"
+            case sentCount = "sent_count"
+            case failedCount = "failed_count"
+        }
+    }
+
     struct PushDeliveryWritebackPayload: Codable, Sendable, Equatable {
         var deviceID: String
         var intentID: String
@@ -720,6 +812,20 @@ struct MoryAPIClient: Sendable {
             requestIDPrefix: "push-register",
             failedStage: "push_register",
             responseType: PushRegisterResponse.self
+        )
+    }
+
+    func enqueuePush(
+        payload: PushEnqueuePayload,
+        bearerToken: String
+    ) async throws -> PushEnqueueResponse {
+        try await postAuthenticated(
+            path: "/api/push/enqueue",
+            payload: payload,
+            bearerToken: bearerToken,
+            requestIDPrefix: "push-enqueue",
+            failedStage: "push_enqueue",
+            responseType: PushEnqueueResponse.self
         )
     }
 

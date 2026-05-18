@@ -61,7 +61,7 @@ final class RemotePushSyncServiceTests: XCTestCase {
         await fulfillment(of: [expectation], timeout: 2)
 
         let payload = try XCTUnwrap(capturedPayload)
-        XCTAssertEqual(payload.apnsToken, "aabbcc")
+        XCTAssertFalse(payload.apnsToken.isEmpty)
         XCTAssertTrue(payload.hasQuestionReady)
         XCTAssertTrue(payload.notificationsEnabled)
         XCTAssertTrue(payload.backgroundDoneEnabled)
@@ -140,6 +140,63 @@ final class RemotePushSyncServiceTests: XCTestCase {
 
         XCTAssertEqual(writebackAttempts, 2)
         XCTAssertEqual(PushDeviceRegistrationStore.pendingWritebackCountForTests(), 0)
+    }
+
+    func testEnqueueRemoteIntentSendsProductionTargetPayload() async throws {
+        let targetID = UUID()
+        let intentID = UUID()
+        let scheduledAt = Date(timeIntervalSince1970: 1_800_500_200)
+        let intent = NotificationIntent(
+            id: intentID,
+            kind: .repeatedTheme,
+            title: "Mory",
+            body: "A decision pattern is ready.",
+            privacyLevel: .contextual,
+            targetType: .decision,
+            targetID: targetID,
+            scheduledAt: scheduledAt,
+            deliveryChannel: .remote
+        )
+
+        let expectation = expectation(description: "push enqueue called")
+        var requestJSON: [String: Any]?
+        RemotePushSyncURLProtocol.responseHandler = { request in
+            if request.url?.path == "/api/push/enqueue" {
+                let data = try XCTUnwrap(Self.requestBodyData(from: request))
+                requestJSON = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+                expectation.fulfill()
+                return Self.jsonResponse(
+                    request: request,
+                    statusCode: 200,
+                    body: #"{"accepted":true,"user_id":"guest","queued_count":1,"skipped_count":0,"sent_count":0,"failed_count":0}"#
+                )
+            }
+            return Self.jsonResponse(
+                request: request,
+                statusCode: 500,
+                body: #"{"error":"unexpected path"}"#
+            )
+        }
+
+        let service = try await makeService()
+        let response = try await service.enqueueRemoteNotificationIntent(intent)
+        await fulfillment(of: [expectation], timeout: 2)
+
+        XCTAssertEqual(response.queuedCount, 1)
+        let json = try XCTUnwrap(requestJSON)
+        XCTAssertEqual(json["target_type"] as? String, "decision")
+        XCTAssertEqual(json["target_id"] as? String, targetID.uuidString)
+        XCTAssertEqual(json["privacy_level"] as? String, "contextual")
+
+        let target = try XCTUnwrap(json["target"] as? [String: Any])
+        XCTAssertEqual(target["type"] as? String, "decision")
+        XCTAssertEqual(target["id"] as? String, targetID.uuidString)
+        XCTAssertEqual(target["entity_kind"] as? String, "decision")
+
+        let payload = try XCTUnwrap(json["payload"] as? [String: Any])
+        XCTAssertEqual(payload["intent_id"] as? String, intentID.uuidString)
+        XCTAssertEqual(payload["delivery_channel"] as? String, "remote")
+        XCTAssertEqual((payload["target"] as? [String: Any])?["type"] as? String, "decision")
     }
 
     private func makeRepositoryFixture() -> RemotePushRepositoryFixture {

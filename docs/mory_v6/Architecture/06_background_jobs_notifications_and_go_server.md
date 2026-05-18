@@ -39,7 +39,7 @@ Current iOS data-flow status:
 - Local notification interactions now support concrete deep-link routes for the first V6 surfaces: daily question opens can push a specific question card, record targets can push memory detail, artifact targets can resolve back to the parent memory detail, and chapter/reflection/entity-family targets can push the corresponding Insights detail screen.
 - App launch now runs a lightweight recovery pass: `running` intelligence jobs are reset to `pending`, retryable `failed` jobs are rescheduled with bounded backoff, unified notification-intent preparation is attempted, and pending local notification intents are scheduled when permission already exists.
 - The iOS intelligence worker now executes the first expanded recovered job kinds: entity enrichment, clarification question generation, graph delta application, chapter candidate generation, notification intent preparation, semantic indexing, daily question preparation, and local notification scheduling.
-- This is not yet the final background scheduler. Phase 5/6 still need production APNs credentials/client wiring, server-side scheduled worker cadence, and polished settings UX.
+- Go now has production APNs token-auth client wiring and a server-side scheduled delivery loop. Remaining Phase 5/6 work is real credential deployment, production observability, and polished settings UX.
 
 ## 4. Notification Architecture
 
@@ -78,7 +78,9 @@ Current remote status:
 - iOS persists failed delivery writebacks locally and flushes them after the next successful registration sync.
 - Go stores push tokens, expanded device preferences, delivery rows, and delivery events.
 - Go has an initial `PushDeliveryWorker` that can queue an intent, enforce per-device notification policy, attempt due delivery through an APNs client, and update delivery status.
-- Local/dev server wiring currently uses a disabled APNs client placeholder; production APNs credentials and sender implementation are still pending.
+- Go can now use a real APNs token-auth sender when credentials are configured. Local/dev defaults keep `APNS_ENABLED=false`, which intentionally uses a disabled sender.
+- Go runs a configurable scheduled delivery loop via `PUSH_DELIVERY_WORKER_ENABLED`, `PUSH_DELIVERY_INTERVAL`, and `PUSH_DELIVERY_BATCH_SIZE`.
+- Remote push payloads now carry both iOS-compatible flat userInfo keys and a nested production envelope for `record`, `artifact`, `question`, `entity`, `place`, `theme`, `decision`, `chapter`, and `reflection` targets.
 
 ## 5. Go Server Current State
 
@@ -122,6 +124,62 @@ POST /api/push/register
 POST /api/push/enqueue
 POST /api/push/delivery-writeback
 ```
+
+APNs credential configuration:
+
+```text
+APNS_ENABLED=true
+APNS_ENVIRONMENT=sandbox|production
+APNS_TOPIC=com.speculolabs.mory
+APNS_KEY_ID=<Apple key id>
+APNS_TEAM_ID=<Apple team id>
+APNS_AUTH_KEY_PATH=/path/to/AuthKey_XXXX.p8
+# or APNS_AUTH_KEY=<PEM content>
+```
+
+Remote push production payload shape:
+
+```json
+{
+  "intent_id": "uuid",
+  "kind": "dailyQuestion",
+  "title": "Mory",
+  "body": "A question is ready.",
+  "privacy_level": "contextual",
+  "deep_link": "mory://home/question/uuid",
+  "target": {
+    "type": "question",
+    "id": "uuid",
+    "parent_record_id": "optional-record-id",
+    "artifact_kind": "photo",
+    "entity_kind": "decision",
+    "label": "display-safe label",
+    "source_record_ids": ["uuid"]
+  },
+  "payload": {
+    "schema_version": 1,
+    "intent_id": "uuid",
+    "kind": "dailyQuestion",
+    "delivery_channel": "remote",
+    "target": {
+      "type": "question",
+      "id": "uuid"
+    }
+  },
+  "scheduled_at": "2026-05-19T12:00:00Z"
+}
+```
+
+The APNs body includes flat keys for the existing iOS notification parser:
+
+```text
+mory_notification_intent_id
+mory_notification_kind
+mory_notification_target_type
+mory_notification_target_id
+```
+
+and a nested `mory` object with the full envelope above.
 
 ## 7. Server Storage Boundary
 
@@ -187,11 +245,17 @@ V6 should:
 
 ## 11. Toolchain Note
 
-Current environment did not have `go` in PATH during exploration. Before server implementation:
+Current environment does not have `go` in PATH, but GoLand installed Go at:
+
+```text
+/Users/z14/sdk/go1.26.3/bin/go
+```
+
+Before server implementation:
 
 ```bash
 cd server
-go test ./...
+/Users/z14/sdk/go1.26.3/bin/go test ./...
 ```
 
-must be restored and run.
+must be run.

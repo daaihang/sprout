@@ -13,14 +13,18 @@ import (
 var ErrAPNSNotConfigured = errors.New("apns client is not configured")
 
 type APNSMessage struct {
-	DeviceToken string
-	Topic       string
-	Title       string
-	Body        string
-	IntentID    string
-	Kind        string
-	TargetType  string
-	TargetID    string
+	DeviceToken  string
+	Topic        string
+	Title        string
+	Body         string
+	IntentID     string
+	Kind         string
+	TargetType   string
+	TargetID     string
+	PrivacyLevel string
+	DeepLink     string
+	Target       DeliveryTarget
+	Payload      DeliveryPayload
 }
 
 type APNSClient interface {
@@ -34,13 +38,17 @@ func (DisabledAPNSClient) Send(_ context.Context, _ APNSMessage) error {
 }
 
 type DeliveryIntent struct {
-	IntentID    string
-	Kind        string
-	Title       string
-	Body        string
-	TargetType  string
-	TargetID    string
-	ScheduledAt time.Time
+	IntentID     string
+	Kind         string
+	Title        string
+	Body         string
+	TargetType   string
+	TargetID     string
+	PrivacyLevel string
+	DeepLink     string
+	Target       DeliveryTarget
+	Payload      DeliveryPayload
+	ScheduledAt  time.Time
 }
 
 type EnqueueReport struct {
@@ -97,18 +105,21 @@ func (w *PushDeliveryWorker) EnqueueIntent(
 			continue
 		}
 		if err := w.store.UpsertPushDelivery(ctx, db.PushDelivery{
-			UserID:      userID,
-			DeviceID:    token.DeviceID,
-			IntentID:    intent.IntentID,
-			Kind:        intent.Kind,
-			Title:       intent.Title,
-			Body:        intent.Body,
-			TargetType:  intent.TargetType,
-			TargetID:    intent.TargetID,
-			ScheduledAt: intent.ScheduledAt,
-			Status:      "pending",
-			CreatedAt:   now.UTC(),
-			UpdatedAt:   now.UTC(),
+			UserID:       userID,
+			DeviceID:     token.DeviceID,
+			IntentID:     intent.IntentID,
+			Kind:         intent.Kind,
+			Title:        intent.Title,
+			Body:         intent.Body,
+			TargetType:   intent.TargetType,
+			TargetID:     intent.TargetID,
+			PrivacyLevel: intent.PrivacyLevel,
+			DeepLink:     intent.DeepLink,
+			PayloadJSON:  payloadJSONString(NormalizeDeliveryPayload(intent)),
+			ScheduledAt:  intent.ScheduledAt,
+			Status:       "pending",
+			CreatedAt:    now.UTC(),
+			UpdatedAt:    now.UTC(),
 		}); err != nil {
 			return report, err
 		}
@@ -133,14 +144,17 @@ func (w *PushDeliveryWorker) DeliverDue(ctx context.Context, now time.Time, limi
 		}
 
 		err = w.client.Send(ctx, APNSMessage{
-			DeviceToken: token.APNSToken,
-			Topic:       w.topic,
-			Title:       delivery.Title,
-			Body:        delivery.Body,
-			IntentID:    delivery.IntentID,
-			Kind:        delivery.Kind,
-			TargetType:  delivery.TargetType,
-			TargetID:    delivery.TargetID,
+			DeviceToken:  token.APNSToken,
+			Topic:        w.topic,
+			Title:        delivery.Title,
+			Body:         delivery.Body,
+			IntentID:     delivery.IntentID,
+			Kind:         delivery.Kind,
+			TargetType:   delivery.TargetType,
+			TargetID:     delivery.TargetID,
+			PrivacyLevel: delivery.PrivacyLevel,
+			DeepLink:     delivery.DeepLink,
+			Payload:      payloadFromJSONString(delivery.PayloadJSON),
 		})
 		if err != nil {
 			report.FailedCount++
@@ -158,6 +172,36 @@ func (w *PushDeliveryWorker) DeliverDue(ctx context.Context, now time.Time, limi
 	}
 
 	return report, nil
+}
+
+func (w *PushDeliveryWorker) RunScheduledDeliveryLoop(ctx context.Context, interval time.Duration, limit int) {
+	if interval <= 0 {
+		interval = 30 * time.Second
+	}
+	if limit <= 0 {
+		limit = 32
+	}
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case now := <-ticker.C:
+			report, err := w.DeliverDue(ctx, now.UTC(), limit)
+			if err != nil {
+				if w.logger != nil {
+					w.logger.Warn("scheduled push delivery failed", "error", err.Error())
+				}
+				continue
+			}
+			if w.logger != nil && (report.SentCount > 0 || report.FailedCount > 0) {
+				w.logger.Info("scheduled push delivery complete", "sent", report.SentCount, "failed", report.FailedCount)
+			}
+		}
+	}
 }
 
 func deliveryAllowedForToken(

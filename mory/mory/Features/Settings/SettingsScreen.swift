@@ -7,6 +7,7 @@ import UIKit
 
 struct SettingsScreen: View {
     @Environment(\.memoryRepository) private var memoryRepository
+    @Environment(\.remotePushSyncService) private var remotePushSyncService
 
     let authManager: AuthSessionManager?
     let runtimeEnvironment: AppRuntimeEnvironment
@@ -37,6 +38,10 @@ struct SettingsScreen: View {
 
                 if runtimeEnvironment.allowsDebugTools {
                     SettingsIntelligenceDebugSection(memoryRepository: memoryRepository)
+                    SettingsRemotePushDebugSection(
+                        memoryRepository: memoryRepository,
+                        remotePushSyncService: remotePushSyncService
+                    )
                 }
             }
             .navigationTitle("settings.nav.title")
@@ -80,6 +85,95 @@ struct SettingsScreen: View {
                     systemImage: "stethoscope"
                 )
             }
+        }
+    }
+}
+
+private struct SettingsRemotePushDebugSection: View {
+    let memoryRepository: any MoryMemoryRepositorying
+    let remotePushSyncService: any RemotePushSyncing
+
+    @State private var snapshot: RemotePushDebugSnapshot?
+    @State private var isWorking = false
+    @State private var resultMessage: String?
+
+    var body: some View {
+        Section {
+            if let snapshot {
+                LabeledContent("Device ID", value: snapshot.deviceID)
+                LabeledContent("Timezone", value: snapshot.timezone)
+                LabeledContent("APNs token", value: snapshot.apnsTokenPreview ?? (snapshot.hasAPNSToken ? "present" : "missing"))
+                LabeledContent("Registration digest", value: snapshot.hasRegistrationDigest ? "present" : "missing")
+                LabeledContent("Pending writebacks", value: "\(snapshot.pendingWritebackCount)")
+                LabeledContent("Pending intents", value: "\(snapshot.pendingIntentCount)")
+                LabeledContent("Scheduled intents", value: "\(snapshot.scheduledIntentCount)")
+                LabeledContent("Remote intents", value: "\(snapshot.remoteIntentCount)")
+            } else {
+                Text("Remote push diagnostics have not been loaded.")
+                    .foregroundStyle(.secondary)
+            }
+
+            Button("Refresh remote push state") {
+                Task { await refresh() }
+            }
+            .disabled(isWorking)
+
+            Button("Force APNs registration sync") {
+                Task { await forceSync() }
+            }
+            .disabled(isWorking)
+
+            Button("Enqueue first pending intent") {
+                Task { await enqueueFirstPendingIntent() }
+            }
+            .disabled(isWorking)
+
+            if let resultMessage {
+                Text(resultMessage)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        } header: {
+            Text("Remote Push Debug")
+        } footer: {
+            Text("Internal-only diagnostics for APNs token sync, delivery writeback retry, and server-side queued push delivery.")
+        }
+        .task {
+            await refresh()
+        }
+    }
+
+    private func refresh() async {
+        isWorking = true
+        defer { isWorking = false }
+        snapshot = await remotePushSyncService.fetchDebugSnapshot(repository: memoryRepository)
+    }
+
+    private func forceSync() async {
+        isWorking = true
+        resultMessage = nil
+        await remotePushSyncService.syncRegistrationIfPossible(repository: memoryRepository, force: true)
+        snapshot = await remotePushSyncService.fetchDebugSnapshot(repository: memoryRepository)
+        resultMessage = "Registration sync attempted."
+        isWorking = false
+    }
+
+    private func enqueueFirstPendingIntent() async {
+        isWorking = true
+        resultMessage = nil
+        defer { isWorking = false }
+
+        do {
+            guard let intent = try memoryRepository.fetchNotificationIntents(status: .pending, limit: 1).first else {
+                resultMessage = "No pending notification intent."
+                snapshot = await remotePushSyncService.fetchDebugSnapshot(repository: memoryRepository)
+                return
+            }
+            let response = try await remotePushSyncService.enqueueRemoteNotificationIntent(intent)
+            resultMessage = "Queued \(response.queuedCount), sent \(response.sentCount), failed \(response.failedCount)."
+            snapshot = await remotePushSyncService.fetchDebugSnapshot(repository: memoryRepository)
+        } catch {
+            resultMessage = error.localizedDescription
         }
     }
 }

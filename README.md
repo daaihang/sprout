@@ -195,12 +195,23 @@ Backend lives in `server/` and deploys independently from the iOS app.
 - Deployment notes: `server/DEPLOY_FLY.md`
 - OpenAPI: `server/openapi.yaml`
 
+Local Go toolchain note:
+
+- Go installed through GoLand is available at `/Users/z14/sdk/go1.26.3/bin/go`.
+- This path is not currently on the shell `PATH`, so local verification commands should use the absolute binary path or export it before running backend work.
+
+```sh
+cd server
+/Users/z14/sdk/go1.26.3/bin/go test ./...
+```
+
 Default conservative deployment:
 
 ```text
 AI_MODE=mock
 AI_PROVIDER=mock
 DEV_AUTH_ENABLED=false
+APNS_ENABLED=false
 ```
 
 To enable live AI, set `AI_MODE=live` and configure `AI_PROVIDER`, `AI_MODEL`, `AI_API_KEY`, and `AI_BASE_URL` for the selected provider.
@@ -222,6 +233,13 @@ set -a && source server/.env && set +a && go run ./server/cmd/server
 ```
 
 The backend normalizes `AI_BASE_URL` to the correct OpenAI-compatible chat completions endpoint automatically.
+
+Remote push delivery:
+
+- `/api/push/register` stores APNs tokens plus notification and intelligence preferences.
+- `/api/push/enqueue` queues remote notification intents with a production payload envelope for `record`, `artifact`, `question`, `entity`, `place`, `theme`, `decision`, `chapter`, and `reflection` targets.
+- The Go server includes a scheduled delivery loop controlled by `PUSH_DELIVERY_WORKER_ENABLED`, `PUSH_DELIVERY_INTERVAL`, and `PUSH_DELIVERY_BATCH_SIZE`.
+- Real APNs sending uses token auth. Set `APNS_ENABLED=true`, `APNS_ENVIRONMENT`, `APNS_TOPIC`, `APNS_KEY_ID`, `APNS_TEAM_ID`, and either `APNS_AUTH_KEY_PATH` or `APNS_AUTH_KEY`.
 
 ## Immediate Next Work
 

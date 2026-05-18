@@ -125,5 +125,21 @@ private struct MissingCloudIntelligenceService: CloudIntelligenceServing {
 private final class MissingRemotePushSyncService: RemotePushSyncing {
     func registerSystemRemoteNotificationsIfNeeded(repository: any MoryMemoryRepositorying) {}
     func syncRegistrationIfPossible(repository: any MoryMemoryRepositorying, force: Bool) async {}
+    func enqueueRemoteNotificationIntent(_ intent: NotificationIntent) async throws -> MoryAPIClient.PushEnqueueResponse {
+        fatalError("Remote push sync dependency was not injected.")
+    }
     func writeBackInteraction(_ event: NotificationInteractionEvent) async {}
+    func fetchDebugSnapshot(repository: any MoryMemoryRepositorying) async -> RemotePushDebugSnapshot {
+        RemotePushDebugSnapshot(
+            deviceID: "",
+            timezone: "",
+            hasAPNSToken: false,
+            apnsTokenPreview: nil,
+            hasRegistrationDigest: false,
+            pendingWritebackCount: 0,
+            pendingIntentCount: 0,
+            scheduledIntentCount: 0,
+            remoteIntentCount: 0
+        )
+    }
 }

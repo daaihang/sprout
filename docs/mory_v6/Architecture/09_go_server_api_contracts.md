@@ -316,6 +316,32 @@ Request:
   "body": "A question is ready.",
   "target_type": "question",
   "target_id": "uuid-string",
+  "privacy_level": "contextual",
+  "deep_link": "mory://home/question/uuid-string",
+  "target": {
+    "type": "question",
+    "id": "uuid-string",
+    "parent_record_id": "optional-record-id",
+    "artifact_kind": "optional-artifact-kind",
+    "entity_kind": "optional-entity-kind",
+    "label": "display-safe label",
+    "source_record_ids": ["uuid-string"]
+  },
+  "payload": {
+    "schema_version": 1,
+    "intent_id": "uuid-string",
+    "kind": "dailyQuestion",
+    "title": "Mory",
+    "body": "A question is ready.",
+    "privacy_level": "contextual",
+    "deep_link": "mory://home/question/uuid-string",
+    "delivery_channel": "remote",
+    "target": {
+      "type": "question",
+      "id": "uuid-string"
+    },
+    "scheduled_at": "2026-05-18T18:30:00Z"
+  },
   "scheduled_at": "2026-05-18T18:30:00Z"
 }
 ```
@@ -336,8 +362,9 @@ Response:
 Rules:
 
 - Server checks per-device notification switches, quiet hours, max-per-day, and minimum spacing.
-- APNs implementation can be disabled in local/dev environments; queued delivery still has deterministic storage and failure status.
-- Push payloads carry `intent_id`, `kind`, `target_type`, and `target_id` so iOS can route to the concrete surface.
+- APNs implementation is a real token-auth sender when `APNS_ENABLED=true`; local/dev can keep it disabled.
+- A scheduled server worker delivers due rows even when enqueue and delivery happen in different processes or at different times.
+- Push payloads carry flat iOS routing keys plus a nested production envelope for `record`, `artifact`, `question`, `entity`, `place`, `theme`, `decision`, `chapter`, and `reflection` targets.
 
 ## 9. Endpoint: Notification Intent Suggestion
 
