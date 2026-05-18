@@ -32,6 +32,7 @@ enum MoryAppTab: String, CaseIterable, Hashable, Identifiable, Sendable {
 enum SettingsRoute: String, CaseIterable, Hashable, Identifiable, Sendable {
     case account
     case permissions
+    case notifications
     case privacy
     case dataControls
     case capturePreferences
@@ -50,6 +51,7 @@ enum SettingsRoute: String, CaseIterable, Hashable, Identifiable, Sendable {
         switch self {
         case .account: "settings.account.title"
         case .permissions: "settings.permissions.title"
+        case .notifications: "settings.notifications.title"
         case .privacy: "settings.privacy.title"
         case .dataControls: "settings.data.title"
         case .capturePreferences: "settings.capture.title"
@@ -62,6 +64,7 @@ enum SettingsRoute: String, CaseIterable, Hashable, Identifiable, Sendable {
         switch self {
         case .account: "settings.account.subtitle"
         case .permissions: "settings.permissions.subtitle"
+        case .notifications: "settings.notifications.subtitle"
         case .privacy: "settings.privacy.subtitle"
         case .dataControls: "settings.data.subtitle"
         case .capturePreferences: "settings.capture.subtitle"
@@ -74,6 +77,7 @@ enum SettingsRoute: String, CaseIterable, Hashable, Identifiable, Sendable {
         switch self {
         case .account: "person.crop.circle"
         case .permissions: "hand.raised"
+        case .notifications: "bell.badge"
         case .privacy: "lock.shield"
         case .dataControls: "externaldrive"
         case .capturePreferences: "slider.horizontal.3"

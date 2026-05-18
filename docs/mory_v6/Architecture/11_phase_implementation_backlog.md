@@ -224,8 +224,11 @@ Tasks:
 - Add local scheduler.
   - Current implementation status: iOS has a mockable `LocalNotificationScheduler` plus `UNUserNotificationCenter` adapter. The Home foreground refresh path attempts to schedule pending intents only when notification permission is already available; it does not prompt yet.
 - Add settings UI.
+  - Current implementation status: iOS has a basic native Settings route for notification preferences, including master enablement, per-type switches, max-per-day, rich-preview preference, system authorization state, and rollout flag visibility.
 - Add permission flow.
+  - Current implementation status: notification permission is requested only through the explicit settings opt-in path. Passive Home refresh still avoids permission prompts.
 - Add quiet hours and max-per-day.
+  - Current implementation status: max-per-day is editable in the basic settings route; quiet-hour values are stored and enforced by policy, with exact editing deferred to the polished settings UI.
 
 Files:
 
@@ -242,6 +245,8 @@ Tests:
 - Quiet hours block scheduling.
 - Max-per-day enforced.
 - Sensitive topic blocked by policy.
+- Notification opt-in persists preferences and requests system authorization.
+- Disabling notifications cancels pending/scheduled local intents.
 - Notification tap resolves deep link.
 
 Exit criteria:

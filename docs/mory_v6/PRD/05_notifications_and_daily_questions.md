@@ -156,4 +156,5 @@ Current implementation checkpoint:
 - Daily question notification intents can now be prepared locally behind preferences and V6 flags.
 - The policy foundation enforces notification enablement, type enablement, max-per-day, quiet hours, sensitive-topic suppression, and generic lock-screen copy.
 - Local notification scheduling can now convert pending local intents into scheduled system notifications when permission already exists.
-- Permission prompts, notification tap routing, and user-facing notification settings are still pending.
+- A basic user-facing Settings route can now opt into notifications, request system permission, update per-type switches, change max-per-day, and cancel pending/scheduled local notifications when disabled.
+- Notification tap routing, delivered/dismissed status writeback, exact quiet-hour editing, and polished notification settings UX are still pending.

@@ -117,6 +117,14 @@ struct LocalNotificationSchedulerReport: Hashable, Sendable {
     }
 }
 
+struct LocalNotificationCancellationReport: Hashable, Sendable {
+    var cancelledCount: Int
+
+    static var empty: LocalNotificationCancellationReport {
+        LocalNotificationCancellationReport(cancelledCount: 0)
+    }
+}
+
 @MainActor
 struct LocalNotificationScheduler {
     private let notificationCenter: any LocalNotificationSchedulingCenter
@@ -204,6 +212,33 @@ struct LocalNotificationScheduler {
         }
 
         return LocalNotificationSchedulerReport(results: results)
+    }
+
+    func cancelPendingAndScheduledLocalIntents(
+        repository: any MoryMemoryRepositorying,
+        now: Date = .now
+    ) async throws -> LocalNotificationCancellationReport {
+        let cancellableIntents = try repository.fetchNotificationIntents(status: nil, limit: nil)
+            .filter { intent in
+                intent.deliveryChannel == .local
+                    && (intent.status == .pending || intent.status == .scheduled)
+            }
+        guard !cancellableIntents.isEmpty else {
+            return .empty
+        }
+
+        await notificationCenter.removePendingRequests(
+            withIdentifiers: cancellableIntents.map(notificationIdentifier(for:))
+        )
+
+        for intent in cancellableIntents {
+            var dismissedIntent = intent
+            dismissedIntent.status = .dismissed
+            dismissedIntent.dismissedAt = now
+            try repository.upsertNotificationIntent(dismissedIntent)
+        }
+
+        return LocalNotificationCancellationReport(cancelledCount: cancellableIntents.count)
     }
 
     private func resolvedAuthorization(

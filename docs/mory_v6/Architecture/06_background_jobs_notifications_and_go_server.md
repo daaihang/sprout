@@ -35,7 +35,8 @@ Current iOS data-flow status:
 - Daily question preparation now has a gated foreground Home refresh hook: when daily questions and cloud question suggestions are enabled, Mory sends bounded recent-memory evidence to the Go V6 question endpoint and persists returned candidates locally as `ClarificationQuestion`.
 - Notification intent preparation now has a local policy path: eligible daily questions can become pending `NotificationIntent` rows only when user preferences, V6 flags, quiet hours, daily limits, and sensitivity rules allow it.
 - Local notification scheduling now has a mockable iOS scheduler and `UNUserNotificationCenter` adapter. Foreground Home refresh can schedule pending intents when permission already exists, without prompting.
-- This is not yet the final background scheduler. Phase 5 still needs retry policy, permission opt-in UX, tap routing, and settings controls.
+- Notification opt-in now has a basic settings path: user preferences can request system authorization, enable daily-question notification defaults, update per-type switches, and cancel pending/scheduled local intents when disabled.
+- This is not yet the final background scheduler. Phase 5 still needs retry policy, notification tap routing, delivered/dismissed status writeback, and polished settings UX.
 
 ## 4. Notification Architecture
 
@@ -52,7 +53,8 @@ Current implementation boundary:
 - `NotificationPolicy` and daily-question intent preparation exist on iOS.
 - Pending intents are stored locally and can be tested deterministically.
 - `LocalNotificationScheduler` can schedule pending local intents and mark them `scheduled`.
-- Permission prompts are not shown until the settings/opt-in flow is added.
+- `NotificationSettingsService` stores user notification preferences separately from rollout flags and system authorization.
+- Permission prompts are only available from the settings opt-in path, not from passive Home refresh.
 
 Remote notification path:
 
