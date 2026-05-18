@@ -13,6 +13,9 @@ enum PushDeviceRegistrationStore {
 
     static func saveAPNSToken(_ tokenData: Data) {
         let hex = tokenData.map { String(format: "%02x", $0) }.joined()
+        if currentAPNSToken() == hex {
+            return
+        }
         UserDefaults.standard.set(hex, forKey: apnsTokenKey)
         NotificationCenter.default.post(name: .moryAPNSTokenDidUpdate, object: nil)
     }
@@ -110,6 +113,7 @@ final class RemotePushSyncService: RemotePushSyncing {
     private let apiClient: MoryAPIClient
     private let tokenProvider: MoryAuthTokenProvider
     private var lastRegistrationDigest: String?
+    private var isRegistrationSyncInFlight = false
     private let isoFormatter: ISO8601DateFormatter
 
     init(
@@ -137,6 +141,12 @@ final class RemotePushSyncService: RemotePushSyncing {
         repository: any MoryMemoryRepositorying,
         force: Bool = false
     ) async {
+        guard !isRegistrationSyncInFlight else {
+            return
+        }
+        isRegistrationSyncInFlight = true
+        defer { isRegistrationSyncInFlight = false }
+
         guard let apnsToken = PushDeviceRegistrationStore.currentAPNSToken() else {
             return
         }

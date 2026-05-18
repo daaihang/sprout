@@ -108,7 +108,10 @@ struct MoryRootView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .moryAPNSTokenDidUpdate)) { _ in
             Task {
-                await syncRemotePushRegistration(force: true)
+                await remotePushSyncService.syncRegistrationIfPossible(
+                    repository: memoryRepository,
+                    force: true
+                )
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .moryNotificationPreferencesDidChange)) { _ in
