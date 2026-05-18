@@ -46,6 +46,11 @@ struct DebugRemotePushDiagnosticsView: View {
                 }
                 .disabled(isWorking)
 
+                Button("Enqueue test push") {
+                    Task { await enqueueTestPush() }
+                }
+                .disabled(isWorking)
+
                 if let resultMessage {
                     Text(resultMessage)
                         .font(.caption)
@@ -99,6 +104,32 @@ struct DebugRemotePushDiagnosticsView: View {
             }
             let response = try await remotePushSyncService.enqueueRemoteNotificationIntent(intent)
             resultMessage = "Queued \(response.queuedCount), sent \(response.sentCount), failed \(response.failedCount), retried \(response.retriedCount ?? 0), permanent \(response.permanentFailedCount ?? 0)."
+            snapshot = await remotePushSyncService.fetchDebugSnapshot(repository: memoryRepository)
+        } catch {
+            resultMessage = error.localizedDescription
+        }
+    }
+
+    private func enqueueTestPush() async {
+        isWorking = true
+        resultMessage = nil
+        defer { isWorking = false }
+
+        do {
+            let intent = NotificationIntent(
+                kind: .dailyQuestion,
+                title: "Mory Debug",
+                body: "Remote push test from Debug.",
+                privacyLevel: .generic,
+                targetType: .question,
+                targetID: UUID(),
+                scheduledAt: .now,
+                status: .pending,
+                deliveryChannel: .remote
+            )
+            try memoryRepository.upsertNotificationIntent(intent)
+            let response = try await remotePushSyncService.enqueueRemoteNotificationIntent(intent)
+            resultMessage = "Test queued \(response.queuedCount), sent \(response.sentCount), failed \(response.failedCount), retried \(response.retriedCount ?? 0), permanent \(response.permanentFailedCount ?? 0)."
             snapshot = await remotePushSyncService.fetchDebugSnapshot(repository: memoryRepository)
         } catch {
             resultMessage = error.localizedDescription
