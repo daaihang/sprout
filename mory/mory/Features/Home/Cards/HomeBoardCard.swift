@@ -24,7 +24,7 @@ private struct HomeBoardResizeMenu: View {
             Label {
                 Text(verbatim: "\(item.layout.span.widthColumns)x\(item.layout.span.heightUnits)")
             } icon: {
-                Image(systemName: "rectangle.resize")
+                Image(systemName: "arrow.up.left.and.arrow.down.right")
             }
         }
     }
