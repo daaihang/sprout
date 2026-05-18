@@ -61,10 +61,17 @@ struct InsightsRootScreen: View {
                 }
 
                 Section("insights.section.overview") {
-                    HStack {
-                        InsightMetricView(title: "insights.metric.storylines", value: snapshot.totalStorylineCount)
-                        InsightMetricView(title: "insights.metric.reflections", value: snapshot.totalReflectionCount)
-                        InsightMetricView(title: "insights.metric.entities", value: snapshot.totalEntityCount)
+                    ViewThatFits(in: .horizontal) {
+                        HStack {
+                            InsightMetricView(title: "insights.metric.storylines", value: snapshot.totalStorylineCount)
+                            InsightMetricView(title: "insights.metric.reflections", value: snapshot.totalReflectionCount)
+                            InsightMetricView(title: "insights.metric.entities", value: snapshot.totalEntityCount)
+                        }
+                        VStack(spacing: MorySpacing.small) {
+                            InsightMetricView(title: "insights.metric.storylines", value: snapshot.totalStorylineCount)
+                            InsightMetricView(title: "insights.metric.reflections", value: snapshot.totalReflectionCount)
+                            InsightMetricView(title: "insights.metric.entities", value: snapshot.totalEntityCount)
+                        }
                     }
                 }
 
@@ -225,8 +232,10 @@ private struct InsightMetricView: View {
             Text(title)
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .moryCard(tone: .neutral)
         .accessibilityElement(children: .combine)
     }
 }
@@ -236,18 +245,26 @@ private struct StorylineRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(summary.arc.title)
-                    .font(.headline)
-                Spacer()
-                Text(summary.arc.status.presentationLabel)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            ViewThatFits(in: .horizontal) {
+                HStack {
+                    Text(summary.arc.title)
+                        .font(.headline)
+                    Spacer()
+                    Text(summary.arc.status.presentationLabel)
+                        .moryPill(tone: .storyline)
+                }
+                VStack(alignment: .leading, spacing: MorySpacing.xSmall) {
+                    Text(summary.arc.title)
+                        .font(.headline)
+                    Text(summary.arc.status.presentationLabel)
+                        .moryPill(tone: .storyline)
+                }
             }
             Text(summary.arc.summary)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
             Text("insights.storyline.sourceCount \(summary.arc.sourceRecordIDs.count)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -256,9 +273,10 @@ private struct StorylineRow: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(.vertical, 4)
+        .moryCard(tone: .storyline)
         .accessibilityElement(children: .combine)
     }
 }
@@ -268,23 +286,31 @@ private struct ReflectionInsightRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(summary.reflection.title)
-                    .font(.headline)
-                Spacer()
-                Text(summary.reflection.status.label)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            ViewThatFits(in: .horizontal) {
+                HStack {
+                    Text(summary.reflection.title)
+                        .font(.headline)
+                    Spacer()
+                    Text(summary.reflection.status.label)
+                        .moryPill(tone: .reflection)
+                }
+                VStack(alignment: .leading, spacing: MorySpacing.xSmall) {
+                    Text(summary.reflection.title)
+                        .font(.headline)
+                    Text(summary.reflection.status.label)
+                        .moryPill(tone: .reflection)
+                }
             }
             Text(summary.reflection.body)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
             Text("insights.reflection.sourceCount \(summary.relatedMemories.count)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
-        .padding(.vertical, 4)
+        .moryCard(tone: .reflection)
         .accessibilityElement(children: .combine)
     }
 }
@@ -294,25 +320,34 @@ private struct EntityInsightRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(snapshot.entity.displayName)
-                    .font(.headline)
-                Spacer()
-                Text(snapshot.entity.kind.presentationLabel)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            ViewThatFits(in: .horizontal) {
+                HStack {
+                    Text(snapshot.entity.displayName)
+                        .font(.headline)
+                    Spacer()
+                    Text(snapshot.entity.kind.presentationLabel)
+                        .moryPill(tone: .entity)
+                }
+                VStack(alignment: .leading, spacing: MorySpacing.xSmall) {
+                    Text(snapshot.entity.displayName)
+                        .font(.headline)
+                    Text(snapshot.entity.kind.presentationLabel)
+                        .moryPill(tone: .entity)
+                }
             }
             if let summary = snapshot.entity.summary.trimmedOrNil {
                 Text(summary)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             Text("insights.entity.stats \(snapshot.relatedMemories.count) \(snapshot.relatedArcs.count) \(snapshot.relatedReflections.count)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(.vertical, 4)
+        .moryCard(tone: .entity)
         .accessibilityElement(children: .combine)
     }
 }

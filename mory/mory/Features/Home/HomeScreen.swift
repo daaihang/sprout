@@ -56,9 +56,11 @@ struct HomeScreen: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("home.capture.title")
                             .font(.title2.weight(.semibold))
+                            .fixedSize(horizontal: false, vertical: true)
                         Text("home.capture.description")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                         Button {
                             isPresentingComposer = true
                         } label: {
@@ -68,7 +70,7 @@ struct HomeScreen: View {
                         }
                         .buttonStyle(.borderedProminent)
                     }
-                    .padding(.vertical, 8)
+                    .moryCard(tone: .memory)
                 }
 
                 Section("home.section.board") {
@@ -96,6 +98,7 @@ struct HomeScreen: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(item.title)
                                     .font(.headline)
+                                    .fixedSize(horizontal: false, vertical: true)
                                 Text(item.status.userLabel)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
@@ -106,7 +109,7 @@ struct HomeScreen: View {
                                         .fixedSize(horizontal: false, vertical: true)
                                 }
                             }
-                            .padding(.vertical, 2)
+                            .moryCard(tone: item.status.stage == .failed ? .warning : .neutral)
                             .accessibilityElement(children: .combine)
                         }
                     }
@@ -253,27 +256,38 @@ private struct MemoryRow: View {
             Text(summary.title)
                 .font(.headline)
                 .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
 
             Text(summary.summaryText)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
 
-            HStack(spacing: 10) {
-                Text(summary.record.captureSource.presentationLabel)
-                if let mood = summary.record.userMood?.trimmedOrNil {
-                    Text(mood)
+            ViewThatFits(in: .horizontal) {
+                metadataRow
+                VStack(alignment: .leading, spacing: MorySpacing.xSmall) {
+                    metadataRow
                 }
-                Text("memory.row.attachments \(summary.artifactCount)")
-                if let pipelineStatus = summary.pipelineStatus {
-                    Text(pipelineStatus.userLabel)
-                }
-                Text(summary.record.updatedAt.formatted(date: .abbreviated, time: .shortened))
             }
             .font(.caption)
             .foregroundStyle(.secondary)
         }
-        .padding(.vertical, 4)
+        .moryCard(tone: .memory)
+    }
+
+    private var metadataRow: some View {
+        HStack(spacing: 10) {
+            Text(summary.record.captureSource.presentationLabel)
+            if let mood = summary.record.userMood?.trimmedOrNil {
+                Text(mood)
+            }
+            Text("memory.row.attachments \(summary.artifactCount)")
+            if let pipelineStatus = summary.pipelineStatus {
+                Text(pipelineStatus.userLabel)
+            }
+            Text(summary.record.updatedAt.formatted(date: .abbreviated, time: .shortened))
+        }
     }
 }
 
@@ -330,17 +344,30 @@ private struct HomeBoardCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 6) {
-                Label(cardLabel, systemImage: cardIcon)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                if item.isPinned {
-                    Image(systemName: "pin.fill")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 6) {
+                    Label(cardLabel, systemImage: cardIcon)
+                        .moryPill(tone: cardTone)
+                    if item.isPinned {
+                        Image(systemName: "pin.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    preferenceMenu
                 }
-                Spacer()
-                preferenceMenu
+                VStack(alignment: .leading, spacing: 6) {
+                    Label(cardLabel, systemImage: cardIcon)
+                        .moryPill(tone: cardTone)
+                    HStack {
+                        if item.isPinned {
+                            Image(systemName: "pin.fill")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        preferenceMenu
+                    }
+                }
             }
 
             switch item.renderValue {
@@ -385,14 +412,8 @@ private struct HomeBoardCard: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(14)
         .frame(maxWidth: .infinity, minHeight: heightForItem(item.compositionItem))
-        .background(backgroundForItem(item))
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(borderColor.opacity(0.28), lineWidth: 1)
-        }
+        .moryCard(tone: cardTone)
         .rotationEffect(.degrees(item.compositionItem.rotationDegrees))
         .scaleEffect(item.compositionItem.scale)
         .accessibilityElement(children: .combine)
@@ -440,30 +461,19 @@ private struct HomeBoardCard: View {
         }
     }
 
-    private var borderColor: Color {
+    private var cardTone: MoryCardTone {
         switch item.cardKind {
-        case .memory: return .blue
-        case .arc: return .purple
-        case .reflection: return .teal
-        case .systemPrompt: return .orange
-        case .contextCluster: return .green
-        case .pendingAction: return .red
+        case .memory: return .memory
+        case .arc: return .storyline
+        case .reflection: return .reflection
+        case .systemPrompt: return .warning
+        case .contextCluster: return .entity
+        case .pendingAction: return .warning
         }
     }
 
     private func heightForItem(_ item: CompositionItem) -> CGFloat {
         CGFloat(max(1, item.heightUnits)) * 110
-    }
-
-    private func backgroundForItem(_ item: HomeBoardItemSnapshot) -> Color {
-        switch item.cardKind {
-        case .memory: return Color(red: 0.93, green: 0.96, blue: 1.0)
-        case .arc: return Color(red: 0.96, green: 0.93, blue: 1.0)
-        case .reflection: return Color(red: 0.91, green: 0.97, blue: 0.96)
-        case .systemPrompt: return Color(red: 1.0, green: 0.96, blue: 0.89)
-        case .contextCluster: return Color(red: 0.93, green: 0.98, blue: 0.92)
-        case .pendingAction: return Color(red: 1.0, green: 0.94, blue: 0.94)
-        }
     }
 }
 

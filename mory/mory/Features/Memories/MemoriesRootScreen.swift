@@ -65,11 +65,12 @@ struct MemoriesRootScreen: View {
             }
 
             if let snapshot {
-                Section {
-                    Text("memories.library.count \(snapshot.filteredCount) \(snapshot.totalCount)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+            Section {
+                Text("memories.library.count \(snapshot.filteredCount) \(snapshot.totalCount)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
                 if snapshot.groups.isEmpty {
                     Section {
@@ -153,49 +154,32 @@ private struct MemoryLibraryFilterBar: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("memories.filters.title")
-                    .font(.headline)
-                Spacer()
-                Button("memories.filters.clear", action: onClear)
-                    .disabled(!isActive)
-            }
-
-            HStack {
-                Menu(artifactTitle) {
-                    Button("memories.filters.anyArtifact") { selectedArtifactKind = nil }
-                    ForEach(ArtifactKind.allCases) { kind in
-                        Button(artifactLabel(kind)) {
-                            selectedArtifactKind = kind
-                        }
-                    }
-                }
-
-                Menu(stageTitle) {
-                    Button("memories.filters.anyStatus") { selectedPipelineStage = nil }
-                    ForEach(MemoryPipelineStage.allCases) { stage in
-                        Button(stageLabel(stage)) {
-                            selectedPipelineStage = stage
-                        }
-                    }
+            ViewThatFits(in: .horizontal) {
+                filterHeader
+                VStack(alignment: .leading, spacing: MorySpacing.xSmall) {
+                    filterHeader
                 }
             }
 
-            HStack {
-                Menu(contextTitle) {
-                    ForEach(MemoryLibraryContextFilter.allCases) { filter in
-                        Button(contextLabel(filter)) {
-                            selectedContext = filter
-                        }
-                    }
+            ViewThatFits(in: .horizontal) {
+                HStack {
+                    artifactMenu
+                    stageMenu
                 }
+                VStack(alignment: .leading, spacing: MorySpacing.small) {
+                    artifactMenu
+                    stageMenu
+                }
+            }
 
-                Menu(insightTitle) {
-                    ForEach(MemoryLibraryInsightFilter.allCases) { filter in
-                        Button(insightLabel(filter)) {
-                            selectedInsight = filter
-                        }
-                    }
+            ViewThatFits(in: .horizontal) {
+                HStack {
+                    contextMenu
+                    insightMenu
+                }
+                VStack(alignment: .leading, spacing: MorySpacing.small) {
+                    contextMenu
+                    insightMenu
                 }
             }
 
@@ -207,7 +191,60 @@ private struct MemoryLibraryFilterBar: View {
             }
         }
         .buttonStyle(.bordered)
+        .moryCard(tone: isActive ? .memory : .neutral)
         .accessibilityElement(children: .contain)
+    }
+
+    private var filterHeader: some View {
+        HStack {
+            Label("memories.filters.title", systemImage: "line.3.horizontal.decrease.circle")
+                .font(.headline)
+            Spacer()
+            Button("memories.filters.clear", action: onClear)
+                .disabled(!isActive)
+        }
+    }
+
+    private var artifactMenu: some View {
+        Menu(artifactTitle) {
+            Button("memories.filters.anyArtifact") { selectedArtifactKind = nil }
+            ForEach(ArtifactKind.allCases) { kind in
+                Button(artifactLabel(kind)) {
+                    selectedArtifactKind = kind
+                }
+            }
+        }
+    }
+
+    private var stageMenu: some View {
+        Menu(stageTitle) {
+            Button("memories.filters.anyStatus") { selectedPipelineStage = nil }
+            ForEach(MemoryPipelineStage.allCases) { stage in
+                Button(stageLabel(stage)) {
+                    selectedPipelineStage = stage
+                }
+            }
+        }
+    }
+
+    private var contextMenu: some View {
+        Menu(contextTitle) {
+            ForEach(MemoryLibraryContextFilter.allCases) { filter in
+                Button(contextLabel(filter)) {
+                    selectedContext = filter
+                }
+            }
+        }
+    }
+
+    private var insightMenu: some View {
+        Menu(insightTitle) {
+            ForEach(MemoryLibraryInsightFilter.allCases) { filter in
+                Button(insightLabel(filter)) {
+                    selectedInsight = filter
+                }
+            }
+        }
     }
 
     private var isActive: Bool {
@@ -280,22 +317,46 @@ private struct MemoryLibraryRowView: View {
             Text(row.memory.title)
                 .font(.headline)
                 .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
 
             Text(row.memory.summaryText)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
 
-            HStack(spacing: 8) {
-                Text(row.memory.record.updatedAt.formatted(date: .abbreviated, time: .shortened))
-                if let status = row.memory.pipelineStatus {
-                    Text(status.userLabel)
+            ViewThatFits(in: .horizontal) {
+                metadataRow
+                VStack(alignment: .leading, spacing: MorySpacing.xSmall) {
+                    metadataRow
                 }
             }
             .font(.caption)
             .foregroundStyle(.secondary)
 
-            HStack(spacing: 6) {
+            ViewThatFits(in: .horizontal) {
+                artifactRow
+                VStack(alignment: .leading, spacing: MorySpacing.xSmall) {
+                    artifactRow
+                }
+            }
+            .foregroundStyle(.secondary)
+        }
+        .moryCard(tone: row.hasInsights ? .reflection : .memory)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var metadataRow: some View {
+        HStack(spacing: 8) {
+            Text(row.memory.record.updatedAt.formatted(date: .abbreviated, time: .shortened))
+            if let status = row.memory.pipelineStatus {
+                Text(status.userLabel)
+            }
+        }
+    }
+
+    private var artifactRow: some View {
+        HStack(spacing: 6) {
                 ForEach(row.artifactKinds, id: \.self) { kind in
                     Label(kind.presentationLabel, systemImage: icon(for: kind))
                         .font(.caption2)
@@ -304,11 +365,7 @@ private struct MemoryLibraryRowView: View {
                     Label("\(row.relatedStorylineCount + row.relatedReflectionCount + row.entityCount)", systemImage: "sparkles")
                         .font(.caption2)
                 }
-            }
-            .foregroundStyle(.secondary)
         }
-        .padding(.vertical, 4)
-        .accessibilityElement(children: .combine)
     }
 
     private func icon(for kind: ArtifactKind) -> String {
@@ -357,11 +414,13 @@ struct MoryHubRow: View {
             VStack(alignment: .leading, spacing: MorySpacing.xSmall) {
                 Text(title)
                     .font(.headline)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(subtitle)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(.vertical, MorySpacing.small)
+        .moryCard(tone: .neutral)
     }
 }
