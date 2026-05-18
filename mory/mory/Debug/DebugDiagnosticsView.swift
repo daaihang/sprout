@@ -43,6 +43,16 @@ struct DebugDiagnosticsView: View {
                 }
 
                 NavigationLink {
+                    DebugRemotePushDiagnosticsView()
+                } label: {
+                    DebugMenuRow(
+                        icon: "bell.badge",
+                        title: "Remote Push",
+                        subtitle: "Inspect APNs registration, queued intents, and server enqueue results"
+                    )
+                }
+
+                NavigationLink {
                     DebugFullDiagnosticsView(authManager: authManager)
                 } label: {
                     DebugMenuRow(
