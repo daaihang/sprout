@@ -67,6 +67,15 @@ Internal diagnostics should show:
 
 Do not require Debug for normal use, but Debug should help explain behavior.
 
+Current implementation status:
+
+- The in-app Diagnostics route now includes a V6 Debug Center spine:
+  - Cloud Intelligence Debug can manually run transcript refinement, question suggestion, chapter/stage suggestion, photo semantic placeholder analysis, and notification intent suggestion. It shows decoded results, provider/model metadata, token usage where returned, request IDs, and the latest transport error trace where available.
+  - Job Queue Debug shows intelligence jobs, notification intents, graph deltas, status/kind counts, due pending jobs, cloud-required jobs, and manual worker/recovery actions.
+  - Semantic Search Debug runs exact local search, semantic-first Core Spotlight search, Spotlight rebuild, and Spotlight delete while showing retrieval sources and semantic status.
+  - Home Board Debug exposes memory desktop rule inputs, card layers, spans, reasons, source records, and preference actions before the formal UI polish pass.
+- The Debug Center intentionally uses plain native List/Form-style controls. It is a business/data observability tool, not the final V6 visual system.
+
 ## 4. Product Debug Copy
 
 For internal builds, each AI-derived card should show:
@@ -170,4 +179,4 @@ V6 beta should not ship unless:
 - Search fallback works.
 - Local data clearing clears intelligence stores.
 - New migrations do not destroy v5 data.
-
+- Internal Debug Center can explain cloud intelligence, job queue, semantic search, home board, and notification behavior without requiring direct database inspection.

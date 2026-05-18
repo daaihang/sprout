@@ -8,6 +8,11 @@ protocol CloudIntelligenceServing: Sendable {
     func suggestNotificationIntent(_ payload: MoryAPIClient.NotificationIntentSuggestionPayload) async throws -> MoryAPIClient.NotificationIntentSuggestionResponse
 }
 
+protocol CloudIntelligenceDebugging: Sendable {
+    func latestCloudDebugError() async -> MoryAPIClient.DebugErrorSnapshot?
+    func latestCloudDebugRequestID() async -> String?
+}
+
 struct RemoteCloudIntelligenceClient: CloudIntelligenceServing {
     private let apiClient: MoryAPIClient
     private let tokenProvider: MoryAuthTokenProvider
@@ -58,5 +63,15 @@ struct RemoteCloudIntelligenceClient: CloudIntelligenceServing {
             let token = try await tokenProvider.accessToken()
             return try await request(token)
         }
+    }
+}
+
+extension RemoteCloudIntelligenceClient: CloudIntelligenceDebugging {
+    func latestCloudDebugError() async -> MoryAPIClient.DebugErrorSnapshot? {
+        await apiClient.latestDebugError()
+    }
+
+    func latestCloudDebugRequestID() async -> String? {
+        await apiClient.latestDebugRequestID()
     }
 }

@@ -236,6 +236,8 @@ Tasks:
 - Add push delivery writeback and APNs preference sync.
   - Current implementation status: iOS now syncs APNs token, notification preferences, AI/search/home toggles, quiet hours, delivery pace, max-per-day, and minimum spacing to Go `/api/push/register`.
   - Current implementation status: iOS writes delivered/opened/dismissed interactions to `/api/push/delivery-writeback`, stores failed writebacks locally, and flushes them after the next successful push registration sync.
+- Add notification/debug observability.
+  - Current implementation status: the internal Debug Center exposes Remote Push diagnostics and Job Queue diagnostics, including local intent counts, due jobs, worker execution, launch recovery, graph delta state, and copyable reports for debugging notification preparation and delivery.
 
 Files:
 
@@ -296,6 +298,8 @@ Current implementation status:
 - Remote push enqueue payloads now include a production target envelope for `record`, `artifact`, `question`, `entity`, `place`, `theme`, `decision`, `chapter`, and `reflection`, while preserving flat iOS userInfo keys in the APNs payload.
 - iOS clients/protocols exist for those endpoints.
 - iOS debug settings now expose APNs token presence, device/timezone state, registration digest state, pending writeback count, notification-intent counts, force sync, and a basic enqueue-first-pending-intent action.
+- iOS Debug Center now includes Cloud Intelligence Debug for all V6 cloud operations, with decoded outputs, provider/model metadata, token usage when returned, request IDs, and transport error traces.
+- iOS Debug Center now includes Semantic Search Debug and Home Board Debug so search indexing/retrieval and memory desktop card generation can be inspected without direct database access.
 - Cloud V6 intelligence is now provider-backed in live mode with explicit per-operation JSON shape prompts and operation-level `/metrics` counters for requests, errors, latency, and token usage.
 - Transcript refinement is wired into the unified capture composer.
 - Daily question suggestion is wired into the iOS Home data flow as a gated business path that persists local questions.

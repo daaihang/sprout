@@ -43,6 +43,46 @@ struct DebugDiagnosticsView: View {
                 }
 
                 NavigationLink {
+                    DebugCloudIntelligenceView()
+                } label: {
+                    DebugMenuRow(
+                        icon: "icloud",
+                        title: "Cloud Intelligence",
+                        subtitle: "Trigger V6 cloud requests and inspect request IDs, model metadata, results, and errors"
+                    )
+                }
+
+                NavigationLink {
+                    DebugJobQueueView()
+                } label: {
+                    DebugMenuRow(
+                        icon: "list.bullet",
+                        title: "Job Queue",
+                        subtitle: "Inspect V6 jobs, notification intents, graph deltas, recovery, and due worker execution"
+                    )
+                }
+
+                NavigationLink {
+                    DebugSemanticSearchView()
+                } label: {
+                    DebugMenuRow(
+                        icon: "magnifyingglass",
+                        title: "Semantic Search",
+                        subtitle: "Run exact and semantic search, rebuild Core Spotlight, and inspect retrieval source state"
+                    )
+                }
+
+                NavigationLink {
+                    DebugHomeBoardDiagnosticsView()
+                } label: {
+                    DebugMenuRow(
+                        icon: "rectangle.grid.2x2",
+                        title: "Home Board Debug",
+                        subtitle: "Inspect memory desktop inputs, card layers, layout spans, reasons, and preference actions"
+                    )
+                }
+
+                NavigationLink {
                     DebugRemotePushDiagnosticsView()
                 } label: {
                     DebugMenuRow(
@@ -69,16 +109,6 @@ struct DebugDiagnosticsView: View {
                         icon: "slider.horizontal.3",
                         title: "Quality Tuning Lab",
                         subtitle: "Run real end-to-end tuning scenarios"
-                    )
-                }
-
-                NavigationLink {
-                    DebugHomeBoardRulesView()
-                } label: {
-                    DebugMenuRow(
-                        icon: "rectangle.grid.2x2",
-                        title: "Home Board Rules",
-                        subtitle: "Inspect board rule inputs, preferences, card reasons, and output order"
                     )
                 }
 
