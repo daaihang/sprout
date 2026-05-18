@@ -8,6 +8,7 @@ struct MoryRootView: View {
     @State private var selectedTab: MoryAppTab = .today
     @State private var isPresentingSettings = false
     @State private var isPresentingQuickTextCapture = false
+    @State private var isPresentingPhotoCapture = false
     @State private var isPresentingFullCapture = false
     @State private var quickVoiceResult: QuickVoiceCaptureResult?
     @State private var tabRefreshID = UUID()
@@ -60,6 +61,11 @@ struct MoryRootView: View {
                 tabRefreshID = UUID()
             }
         }
+        .sheet(isPresented: $isPresentingPhotoCapture) {
+            CaptureComposerView(startsWithPhoto: true) {
+                tabRefreshID = UUID()
+            }
+        }
         .sheet(isPresented: $isPresentingQuickTextCapture) {
             QuickTextCaptureView {
                 tabRefreshID = UUID()
@@ -87,6 +93,7 @@ struct MoryRootView: View {
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     QuickCaptureToolbar(
                         onTextCapture: { isPresentingQuickTextCapture = true },
+                        onPhotoCapture: { isPresentingPhotoCapture = true },
                         onMoreCapture: { isPresentingFullCapture = true },
                         onVoiceCaptureReady: { result in quickVoiceResult = result }
                     )

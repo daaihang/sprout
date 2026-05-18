@@ -6,7 +6,7 @@ struct CaptureComposerView: View {
     @Environment(\.memoryRepository) private var memoryRepository
     @Environment(\.dismiss) private var dismiss
 
-    @State private var selectedType: CaptureInputType = .text
+    @State private var selectedType: CaptureInputType
     @State private var title = ""
     @State private var bodyText = ""
     @State private var mood = ""
@@ -41,6 +41,11 @@ struct CaptureComposerView: View {
     @StateObject private var permissionManager = ContextPermissionManager(locationService: LocationContextService())
 
     var onSaved: (() -> Void)?
+
+    init(startsWithPhoto: Bool = false, onSaved: (() -> Void)? = nil) {
+        _selectedType = State(initialValue: startsWithPhoto ? .photo : .text)
+        self.onSaved = onSaved
+    }
 
     var body: some View {
         NavigationStack {

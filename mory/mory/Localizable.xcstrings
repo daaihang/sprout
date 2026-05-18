@@ -9658,6 +9658,20 @@
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "打开完整记忆记录器。" } }
       }
     },
+    "quickCapture.photo" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Photo" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "照片" } }
+      }
+    },
+    "quickCapture.photo.hint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open photo capture." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "打开照片记录。" } }
+      }
+    },
     "quickCapture.text" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -9731,6 +9745,41 @@
             "value" : "新快捷文字"
           }
         }
+      }
+    },
+    "quickCapture.unified.cancelHint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Release to discard this recording." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "松开后丢弃这段录音。" } }
+      }
+    },
+    "quickCapture.unified.hint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Tap to type. Hold to record voice. Slide away to cancel recording." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "点击输入文字，长按录音，滑开取消录音。" } }
+      }
+    },
+    "quickCapture.unified.placeholder" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Remember this moment..." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "记下这一刻..." } }
+      }
+    },
+    "quickCapture.unified.releaseHint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Release to transcribe. Slide away to cancel." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "松开转文字，滑开取消。" } }
+      }
+    },
+    "quickCapture.unified.tapHoldHint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Tap to type. Hold to speak." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "点击输入，长按说话。" } }
       }
     },
     "quickCapture.voice" : {

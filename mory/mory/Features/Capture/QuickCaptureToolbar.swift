@@ -11,45 +11,36 @@ struct QuickVoiceCaptureResult: Identifiable, Equatable, Sendable {
 
 struct QuickCaptureToolbar: View {
     let onTextCapture: () -> Void
+    let onPhotoCapture: () -> Void
     let onMoreCapture: () -> Void
     let onVoiceCaptureReady: (QuickVoiceCaptureResult) -> Void
 
     @StateObject private var audioRecorder = AudioRecorderModel()
     @State private var isPressingVoice = false
     @State private var isCancellingVoice = false
+    @State private var hasStartedVoiceCapture = false
     @State private var voiceStartTask: Task<Void, Never>?
+    @State private var voiceLongPressTask: Task<Void, Never>?
 
     var body: some View {
-        VStack(spacing: 6) {
-            if shouldShowVoiceStatusRow {
-                voiceStatusRow
-            }
+        HStack(spacing: MorySpacing.small) {
+            quickActionButton(
+                systemImage: "camera.fill",
+                accessibilityLabel: "quickCapture.photo",
+                accessibilityHint: "quickCapture.photo.hint",
+                action: onPhotoCapture
+            )
 
-            HStack(spacing: MorySpacing.small) {
-                Button {
-                    onTextCapture()
-                } label: {
-                    Label("quickCapture.text", systemImage: "square.and.pencil")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .accessibilityLabel(Text("quickCapture.text"))
-                .accessibilityHint(Text("quickCapture.text.hint"))
+            captureCapsule
 
-                voiceButton
-
-                Button {
-                    onMoreCapture()
-                } label: {
-                    Label("quickCapture.more", systemImage: "plus")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                .accessibilityLabel(Text("quickCapture.more"))
-                .accessibilityHint(Text("quickCapture.more.hint"))
-            }
-            .labelStyle(.iconOnly)
+            quickActionButton(
+                systemImage: "plus",
+                accessibilityLabel: "quickCapture.more",
+                accessibilityHint: "quickCapture.more.hint",
+                action: onMoreCapture
+            )
         }
+        .frame(height: 52)
         .padding(.horizontal, MorySpacing.medium)
         .padding(.vertical, MorySpacing.small)
         .background(.regularMaterial)
@@ -58,89 +49,121 @@ struct QuickCaptureToolbar: View {
         }
     }
 
-    private var shouldShowVoiceStatusRow: Bool {
-        audioRecorder.isRecording
-            || audioRecorder.isStopping
-            || audioRecorder.isTranscribing
-            || isPressingVoice
-            || audioRecorder.errorMessage != nil
-    }
+    private var captureCapsule: some View {
+        HStack(spacing: MorySpacing.small) {
+            capsuleLeadingIcon
 
-    private var voiceButton: some View {
-        Label("quickCapture.voice", systemImage: audioRecorder.isRecording ? "mic.circle.fill" : "mic.fill")
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 7)
-            .background(voiceButtonBackground)
-            .clipShape(RoundedRectangle(cornerRadius: MoryCornerRadius.small, style: .continuous))
-            .foregroundStyle(audioRecorder.isRecording ? .white : .primary)
-            .accessibilityAddTraits(.isButton)
-            .accessibilityLabel(Text("quickCapture.voice"))
-            .accessibilityHint(Text("quickCapture.voice.hint"))
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { value in
-                        handleVoiceDragChanged(value)
-                    }
-                    .onEnded { value in
-                        handleVoiceDragEnded(value)
-                    }
-            )
-    }
-
-    private var voiceButtonBackground: some ShapeStyle {
-        if isCancellingVoice {
-            return AnyShapeStyle(Color.red.opacity(0.85))
-        }
-        if audioRecorder.isRecording {
-            return AnyShapeStyle(Color.red.opacity(0.9))
-        }
-        return AnyShapeStyle(Color.secondary.opacity(0.12))
-    }
-
-    private var voiceStatusRow: some View {
-        HStack(spacing: 8) {
-            voiceStatusIcon
-            Text(voiceStatusText)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .truncationMode(.tail)
-            Spacer()
-            if let recoveryAction = audioRecorder.recoveryAction {
-                Button {
-                    handleRecoveryAction(recoveryAction)
-                } label: {
-                    Image(systemName: recoveryAction == .openSettings ? "gearshape" : "arrow.counterclockwise")
-                        .frame(width: 24, height: 20)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(Text(recoveryAction == .openSettings ? "quickCapture.voice.recovery.openSettings" : "quickCapture.voice.recovery.retry"))
-            } else if !audioRecorder.liveTranscription.isEmpty {
-                Text(audioRecorder.liveTranscription)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(capsulePrimaryText)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(capsulePrimaryColor)
                     .lineLimit(1)
                     .truncationMode(.tail)
+
+                if let secondaryText = capsuleSecondaryText {
+                    Text(secondaryText)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+            }
+
+            Spacer(minLength: MorySpacing.small)
+
+            if let recoveryAction = audioRecorder.recoveryAction {
+                Image(systemName: recoveryAction == .openSettings ? "gearshape.fill" : "arrow.counterclockwise")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.orange)
+                    .frame(width: 26, height: 26)
+            } else {
+                Image(systemName: audioRecorder.isRecording ? "mic.circle.fill" : "mic.fill")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(audioRecorder.isRecording ? .red : .secondary)
+                    .frame(width: 26, height: 26)
             }
         }
-        .frame(height: 22)
+        .padding(.horizontal, MorySpacing.medium)
+        .frame(maxWidth: .infinity, minHeight: 44, maxHeight: 44)
+        .background(capsuleBackground)
+        .clipShape(Capsule())
+        .overlay {
+            Capsule()
+                .stroke(capsuleStrokeColor, lineWidth: 1)
+        }
+        .contentShape(Capsule())
+        .accessibilityAddTraits(.isButton)
+        .accessibilityLabel(Text(capsuleAccessibilityLabel))
+        .accessibilityHint(Text("quickCapture.unified.hint"))
+        .gesture(capsuleGesture)
     }
 
-    @ViewBuilder
-    private var voiceStatusIcon: some View {
+    private var capsuleGesture: some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onChanged { value in
+                handleCapsuleDragChanged(value)
+            }
+            .onEnded { value in
+                handleCapsuleDragEnded(value)
+            }
+    }
+
+    private var capsuleLeadingIcon: some View {
+        Group {
+            if audioRecorder.state == .failed {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+            } else if audioRecorder.isRecording || isPressingVoice {
+                Circle()
+                    .fill(isCancellingVoice ? .orange : .red)
+                    .frame(width: 9, height: 9)
+            } else if audioRecorder.isStopping || audioRecorder.isTranscribing {
+                ProgressView()
+                    .controlSize(.mini)
+            } else {
+                Image(systemName: "square.and.pencil")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: 18, height: 18)
+    }
+
+    private var capsuleBackground: some ShapeStyle {
+        if isCancellingVoice {
+            return AnyShapeStyle(Color.orange.opacity(0.16))
+        }
+        if audioRecorder.isRecording {
+            return AnyShapeStyle(Color.red.opacity(0.14))
+        }
         if audioRecorder.state == .failed {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.caption2)
-                .foregroundStyle(.orange)
-                .frame(width: 12, height: 12)
-        } else {
-            Circle()
-                .fill(isCancellingVoice ? .orange : .red)
-                .frame(width: 8, height: 8)
+            return AnyShapeStyle(Color.orange.opacity(0.12))
+        }
+        return AnyShapeStyle(Color(.secondarySystemGroupedBackground))
+    }
+
+    private var capsuleStrokeColor: Color {
+        if isCancellingVoice {
+            return .orange.opacity(0.45)
+        }
+        if audioRecorder.isRecording {
+            return .red.opacity(0.35)
+        }
+        if audioRecorder.state == .failed {
+            return .orange.opacity(0.35)
+        }
+        return Color.secondary.opacity(0.16)
+    }
+
+    private var capsulePrimaryColor: Color {
+        switch audioRecorder.state {
+        case .failed:
+            return .orange
+        default:
+            return .primary
         }
     }
 
-    private var voiceStatusText: String {
+    private var capsulePrimaryText: String {
         if let error = audioRecorder.errorMessage {
             return error
         }
@@ -157,26 +180,97 @@ struct QuickCaptureToolbar: View {
         case .transcribing:
             return String(localized: "quickCapture.voice.transcribing")
         default:
-            return String(localized: "quickCapture.voice.hold")
+            return String(localized: "quickCapture.unified.placeholder")
         }
     }
 
-    private func handleVoiceDragChanged(_ value: DragGesture.Value) {
+    private var capsuleSecondaryText: String? {
+        if audioRecorder.state == .failed {
+            return String(localized: audioRecorder.recoveryAction == .openSettings ? "quickCapture.voice.recovery.openSettings" : "quickCapture.voice.recovery.retry")
+        }
+        if isCancellingVoice {
+            return String(localized: "quickCapture.unified.cancelHint")
+        }
+        if !audioRecorder.liveTranscription.isEmpty && (audioRecorder.isRecording || audioRecorder.isTranscribing) {
+            return audioRecorder.liveTranscription
+        }
+        if audioRecorder.isRecording || isPressingVoice {
+            return String(localized: "quickCapture.unified.releaseHint")
+        }
+        return String(localized: "quickCapture.unified.tapHoldHint")
+    }
+
+    private var capsuleAccessibilityLabel: String {
+        if audioRecorder.isRecording || audioRecorder.isStopping || audioRecorder.isTranscribing {
+            return capsulePrimaryText
+        }
+        return String(localized: "quickCapture.unified.placeholder")
+    }
+
+    private func quickActionButton(
+        systemImage: String,
+        accessibilityLabel: LocalizedStringKey,
+        accessibilityHint: LocalizedStringKey,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.headline.weight(.semibold))
+                .frame(width: 44, height: 44)
+                .background(Color(.secondarySystemGroupedBackground), in: Circle())
+                .overlay {
+                    Circle()
+                        .stroke(Color.secondary.opacity(0.16), lineWidth: 1)
+                }
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.primary)
+        .accessibilityLabel(Text(accessibilityLabel))
+        .accessibilityHint(Text(accessibilityHint))
+    }
+
+    private func handleCapsuleDragChanged(_ value: DragGesture.Value) {
         if !isPressingVoice {
             isPressingVoice = true
             isCancellingVoice = false
-            playImpact(.medium)
-            voiceStartTask = Task {
-                await audioRecorder.startRecording()
+            hasStartedVoiceCapture = false
+            voiceLongPressTask = Task {
+                try? await Task.sleep(nanoseconds: 280_000_000)
+                guard !Task.isCancelled else { return }
+                await MainActor.run {
+                    guard isPressingVoice, !hasStartedVoiceCapture else { return }
+                    hasStartedVoiceCapture = true
+                    playImpact(.medium)
+                    voiceStartTask = Task {
+                        await audioRecorder.startRecording()
+                    }
+                }
             }
         }
-        isCancellingVoice = value.translation.width < -70 || value.translation.height < -55
+        if hasStartedVoiceCapture {
+            isCancellingVoice = value.translation.width < -70 || value.translation.height < -55
+        }
     }
 
-    private func handleVoiceDragEnded(_ value: DragGesture.Value) {
+    private func handleCapsuleDragEnded(_ value: DragGesture.Value) {
         let shouldCancel = isCancellingVoice || value.translation.width < -70 || value.translation.height < -55
+        voiceLongPressTask?.cancel()
+        voiceLongPressTask = nil
+
+        if !hasStartedVoiceCapture {
+            isPressingVoice = false
+            isCancellingVoice = false
+            if let recoveryAction = audioRecorder.recoveryAction {
+                handleRecoveryAction(recoveryAction)
+            } else {
+                onTextCapture()
+            }
+            return
+        }
+
         isPressingVoice = false
         isCancellingVoice = false
+        hasStartedVoiceCapture = false
 
         Task {
             await voiceStartTask?.value
