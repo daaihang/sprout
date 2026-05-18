@@ -3,8 +3,11 @@ package notification
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"sprout/server/internal/db"
@@ -57,29 +60,59 @@ type EnqueueReport struct {
 }
 
 type DeliveryReport struct {
-	SentCount   int
-	FailedCount int
+	DueCount             int
+	SentCount            int
+	FailedCount          int
+	RetriedCount         int
+	PermanentFailedCount int
 }
 
 type PushDeliveryWorker struct {
-	store  db.PushTokenStore
-	client APNSClient
-	logger *slog.Logger
-	topic  string
+	store                 db.PushTokenStore
+	client                APNSClient
+	logger                *slog.Logger
+	topic                 string
+	maxAttempts           int
+	retryBackoff          time.Duration
+	alertFailureThreshold int
+	metrics               *DeliveryWorkerMetrics
+}
+
+type PushDeliveryWorkerOptions struct {
+	MaxAttempts           int
+	RetryBackoff          time.Duration
+	AlertFailureThreshold int
 }
 
 func NewPushDeliveryWorker(store db.PushTokenStore, client APNSClient, logger *slog.Logger, topic string) *PushDeliveryWorker {
+	return NewPushDeliveryWorkerWithOptions(store, client, logger, topic, PushDeliveryWorkerOptions{})
+}
+
+func NewPushDeliveryWorkerWithOptions(store db.PushTokenStore, client APNSClient, logger *slog.Logger, topic string, options PushDeliveryWorkerOptions) *PushDeliveryWorker {
 	if client == nil {
 		client = DisabledAPNSClient{}
 	}
 	if strings.TrimSpace(topic) == "" {
 		topic = "com.speculolabs.mory"
 	}
+	if options.MaxAttempts <= 0 {
+		options.MaxAttempts = 5
+	}
+	if options.RetryBackoff <= 0 {
+		options.RetryBackoff = 2 * time.Minute
+	}
+	if options.AlertFailureThreshold <= 0 {
+		options.AlertFailureThreshold = 3
+	}
 	return &PushDeliveryWorker{
-		store:  store,
-		client: client,
-		logger: logger,
-		topic:  topic,
+		store:                 store,
+		client:                client,
+		logger:                logger,
+		topic:                 topic,
+		maxAttempts:           options.MaxAttempts,
+		retryBackoff:          options.RetryBackoff,
+		alertFailureThreshold: options.AlertFailureThreshold,
+		metrics:               NewDeliveryWorkerMetrics(),
 	}
 }
 
@@ -102,6 +135,7 @@ func (w *PushDeliveryWorker) EnqueueIntent(
 	for _, token := range tokens {
 		if !deliveryAllowedForToken(token, intent.Kind, intent.ScheduledAt, existingDeliveries) {
 			report.SkippedCount++
+			w.metrics.RecordSkipped()
 			continue
 		}
 		if err := w.store.UpsertPushDelivery(ctx, db.PushDelivery{
@@ -124,6 +158,7 @@ func (w *PushDeliveryWorker) EnqueueIntent(
 			return report, err
 		}
 		report.QueuedCount++
+		w.metrics.RecordEnqueued()
 	}
 	return report, nil
 }
@@ -131,15 +166,22 @@ func (w *PushDeliveryWorker) EnqueueIntent(
 func (w *PushDeliveryWorker) DeliverDue(ctx context.Context, now time.Time, limit int) (DeliveryReport, error) {
 	deliveries, err := w.store.ListDuePushDeliveries(ctx, now, limit)
 	if err != nil {
+		w.metrics.RecordLoopError(err)
 		return DeliveryReport{}, err
 	}
 
-	report := DeliveryReport{}
+	report := DeliveryReport{DueCount: len(deliveries)}
+	w.metrics.RecordBatch(len(deliveries), now)
 	for _, delivery := range deliveries {
 		token, err := w.store.GetPushToken(ctx, delivery.UserID, delivery.DeviceID)
 		if err != nil {
+			report.PermanentFailedCount++
 			report.FailedCount++
-			_ = w.store.UpdatePushDeliveryStatus(ctx, delivery.UserID, delivery.DeviceID, delivery.IntentID, "failed", now, err.Error())
+			w.metrics.RecordPermanentFailure(err)
+			if updateErr := w.store.UpdatePushDeliveryAttempt(ctx, delivery.UserID, delivery.DeviceID, delivery.IntentID, "failed", now, err.Error(), nil, true); updateErr != nil {
+				w.metrics.RecordLoopError(updateErr)
+				return report, updateErr
+			}
 			continue
 		}
 
@@ -158,20 +200,79 @@ func (w *PushDeliveryWorker) DeliverDue(ctx context.Context, now time.Time, limi
 		})
 		if err != nil {
 			report.FailedCount++
-			_ = w.store.UpdatePushDeliveryStatus(ctx, delivery.UserID, delivery.DeviceID, delivery.IntentID, "failed", now, err.Error())
+			nextAttemptAt, retryable := w.nextAttempt(delivery, now, err)
+			if retryable {
+				report.RetriedCount++
+				w.metrics.RecordRetry(err)
+				if updateErr := w.store.UpdatePushDeliveryAttempt(ctx, delivery.UserID, delivery.DeviceID, delivery.IntentID, "retrying", now, err.Error(), &nextAttemptAt, true); updateErr != nil {
+					w.metrics.RecordLoopError(updateErr)
+					return report, updateErr
+				}
+			} else {
+				report.PermanentFailedCount++
+				w.metrics.RecordPermanentFailure(err)
+				if updateErr := w.store.UpdatePushDeliveryAttempt(ctx, delivery.UserID, delivery.DeviceID, delivery.IntentID, "failed", now, err.Error(), nil, true); updateErr != nil {
+					w.metrics.RecordLoopError(updateErr)
+					return report, updateErr
+				}
+			}
 			if w.logger != nil {
-				w.logger.Warn("push delivery failed", "user_id", delivery.UserID, "device_id", delivery.DeviceID, "intent_id", delivery.IntentID, "error", err.Error())
+				w.logger.Warn("push delivery failed",
+					"user_id", delivery.UserID,
+					"device_id", delivery.DeviceID,
+					"intent_id", delivery.IntentID,
+					"attempt_count", delivery.AttemptCount+1,
+					"retryable", retryable,
+					"next_attempt_at", nextAttemptAt.Format(time.RFC3339),
+					"error", err.Error(),
+				)
 			}
 			continue
 		}
 
 		report.SentCount++
+		w.metrics.RecordSent()
 		if err := w.store.UpdatePushDeliveryStatus(ctx, delivery.UserID, delivery.DeviceID, delivery.IntentID, "sent", now, ""); err != nil {
+			w.metrics.RecordLoopError(err)
 			return report, err
 		}
 	}
 
+	w.metrics.RecordLoopSuccess()
 	return report, nil
+}
+
+func (w *PushDeliveryWorker) MetricsSnapshot() DeliveryWorkerMetricsSnapshot {
+	if w == nil || w.metrics == nil {
+		return DeliveryWorkerMetricsSnapshot{}
+	}
+	return w.metrics.Snapshot()
+}
+
+func (w *PushDeliveryWorker) nextAttempt(delivery db.PushDelivery, now time.Time, err error) (time.Time, bool) {
+	attempt := delivery.AttemptCount + 1
+	if attempt >= w.maxAttempts || !retryablePushError(err) {
+		return time.Time{}, false
+	}
+	delay := w.retryBackoff * time.Duration(1<<(attempt-1))
+	if delay > 30*time.Minute {
+		delay = 30 * time.Minute
+	}
+	return now.UTC().Add(delay), true
+}
+
+func retryablePushError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+	var apnsErr APNSError
+	if errors.As(err, &apnsErr) {
+		return apnsErr.Retryable()
+	}
+	return !errors.Is(err, ErrAPNSNotConfigured)
 }
 
 func (w *PushDeliveryWorker) RunScheduledDeliveryLoop(ctx context.Context, interval time.Duration, limit int) {
@@ -197,11 +298,140 @@ func (w *PushDeliveryWorker) RunScheduledDeliveryLoop(ctx context.Context, inter
 				}
 				continue
 			}
+			if report.FailedCount >= w.alertFailureThreshold && w.logger != nil {
+				w.logger.Error("push delivery alert threshold reached",
+					"failed", report.FailedCount,
+					"retried", report.RetriedCount,
+					"permanent_failed", report.PermanentFailedCount,
+					"threshold", w.alertFailureThreshold,
+				)
+			}
 			if w.logger != nil && (report.SentCount > 0 || report.FailedCount > 0) {
-				w.logger.Info("scheduled push delivery complete", "sent", report.SentCount, "failed", report.FailedCount)
+				w.logger.Info("scheduled push delivery complete",
+					"due", report.DueCount,
+					"sent", report.SentCount,
+					"failed", report.FailedCount,
+					"retried", report.RetriedCount,
+					"permanent_failed", report.PermanentFailedCount,
+				)
 			}
 		}
 	}
+}
+
+type DeliveryWorkerMetrics struct {
+	enqueued              atomic.Uint64
+	skipped               atomic.Uint64
+	batches               atomic.Uint64
+	dueFetched            atomic.Uint64
+	sent                  atomic.Uint64
+	failed                atomic.Uint64
+	retried               atomic.Uint64
+	permanentFailed       atomic.Uint64
+	loopErrors            atomic.Uint64
+	consecutiveLoopErrors atomic.Uint64
+	lastRunUnix           atomic.Int64
+	lastSuccessUnix       atomic.Int64
+	mu                    sync.Mutex
+	lastError             string
+}
+
+type DeliveryWorkerMetricsSnapshot struct {
+	Enqueued              uint64
+	Skipped               uint64
+	Batches               uint64
+	DueFetched            uint64
+	Sent                  uint64
+	Failed                uint64
+	Retried               uint64
+	PermanentFailed       uint64
+	LoopErrors            uint64
+	ConsecutiveLoopErrors uint64
+	LastRunUnix           int64
+	LastSuccessUnix       int64
+	LastError             string
+}
+
+func NewDeliveryWorkerMetrics() *DeliveryWorkerMetrics {
+	return &DeliveryWorkerMetrics{}
+}
+
+func (m *DeliveryWorkerMetrics) RecordEnqueued() {
+	m.enqueued.Add(1)
+}
+
+func (m *DeliveryWorkerMetrics) RecordSkipped() {
+	m.skipped.Add(1)
+}
+
+func (m *DeliveryWorkerMetrics) RecordBatch(due int, now time.Time) {
+	m.batches.Add(1)
+	m.dueFetched.Add(uint64(maxInt(due, 0)))
+	m.lastRunUnix.Store(now.UTC().Unix())
+}
+
+func (m *DeliveryWorkerMetrics) RecordSent() {
+	m.sent.Add(1)
+}
+
+func (m *DeliveryWorkerMetrics) RecordRetry(err error) {
+	m.failed.Add(1)
+	m.retried.Add(1)
+	m.setLastError(err)
+}
+
+func (m *DeliveryWorkerMetrics) RecordPermanentFailure(err error) {
+	m.failed.Add(1)
+	m.permanentFailed.Add(1)
+	m.setLastError(err)
+}
+
+func (m *DeliveryWorkerMetrics) RecordLoopError(err error) {
+	m.loopErrors.Add(1)
+	m.consecutiveLoopErrors.Add(1)
+	m.setLastError(err)
+}
+
+func (m *DeliveryWorkerMetrics) RecordLoopSuccess() {
+	m.consecutiveLoopErrors.Store(0)
+	m.lastSuccessUnix.Store(time.Now().UTC().Unix())
+}
+
+func (m *DeliveryWorkerMetrics) Snapshot() DeliveryWorkerMetricsSnapshot {
+	m.mu.Lock()
+	lastError := m.lastError
+	m.mu.Unlock()
+	return DeliveryWorkerMetricsSnapshot{
+		Enqueued:              m.enqueued.Load(),
+		Skipped:               m.skipped.Load(),
+		Batches:               m.batches.Load(),
+		DueFetched:            m.dueFetched.Load(),
+		Sent:                  m.sent.Load(),
+		Failed:                m.failed.Load(),
+		Retried:               m.retried.Load(),
+		PermanentFailed:       m.permanentFailed.Load(),
+		LoopErrors:            m.loopErrors.Load(),
+		ConsecutiveLoopErrors: m.consecutiveLoopErrors.Load(),
+		LastRunUnix:           m.lastRunUnix.Load(),
+		LastSuccessUnix:       m.lastSuccessUnix.Load(),
+		LastError:             lastError,
+	}
+}
+
+func (m *DeliveryWorkerMetrics) setLastError(err error) {
+	if err == nil {
+		return
+	}
+	m.mu.Lock()
+	m.lastError = fmt.Sprintf("%T: %v", err, err)
+	m.mu.Unlock()
+}
+
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 func deliveryAllowedForToken(

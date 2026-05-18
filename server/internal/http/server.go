@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -117,6 +118,13 @@ func (s *Server) registerRoutes() {
 	s.mux.Handle("POST /api/push/delivery-writeback", s.withAuth(http.HandlerFunc(s.handlePushDeliveryWriteback)))
 }
 
+func (s *Server) recordAI(operation string, provider string, usage ai.Usage, duration time.Duration, err error) {
+	if s == nil || s.metrics == nil {
+		return
+	}
+	s.metrics.RecordAI(operation, provider, usage, duration, err)
+}
+
 func (s *Server) withAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authorization := strings.TrimSpace(r.Header.Get("Authorization"))
@@ -210,10 +218,32 @@ type metrics struct {
 	requests4xx    atomic.Uint64
 	requests5xx    atomic.Uint64
 	latencyTotalMS atomic.Int64
+	mu             sync.Mutex
+	aiOperations   map[string]*aiOperationMetrics
+}
+
+type aiOperationMetrics struct {
+	requestsTotal  uint64
+	errorsTotal    uint64
+	latencyTotalMS int64
+	inputTokens    uint64
+	outputTokens   uint64
+}
+
+type aiOperationSnapshot struct {
+	Operation        string
+	Provider         string
+	RequestsTotal    uint64
+	ErrorsTotal      uint64
+	AverageLatencyMS int64
+	InputTokens      uint64
+	OutputTokens     uint64
 }
 
 func newMetrics() *metrics {
-	return &metrics{}
+	return &metrics{
+		aiOperations: map[string]*aiOperationMetrics{},
+	}
 }
 
 func (m *metrics) Record(status int, duration time.Duration) {
@@ -224,6 +254,33 @@ func (m *metrics) Record(status int, duration time.Duration) {
 	}
 	if status >= 500 {
 		m.requests5xx.Add(1)
+	}
+}
+
+func (m *metrics) RecordAI(operation string, provider string, usage ai.Usage, duration time.Duration, err error) {
+	operation = strings.TrimSpace(operation)
+	if operation == "" {
+		operation = "unknown"
+	}
+	provider = strings.TrimSpace(provider)
+	if provider == "" {
+		provider = "unknown"
+	}
+	key := operation + "\x00" + provider
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	bucket := m.aiOperations[key]
+	if bucket == nil {
+		bucket = &aiOperationMetrics{}
+		m.aiOperations[key] = bucket
+	}
+	bucket.requestsTotal++
+	bucket.latencyTotalMS += duration.Milliseconds()
+	bucket.inputTokens += uint64(maxInt(usage.InputTokens, 0))
+	bucket.outputTokens += uint64(maxInt(usage.OutputTokens, 0))
+	if err != nil {
+		bucket.errorsTotal++
 	}
 }
 
@@ -238,7 +295,36 @@ func (m *metrics) Snapshot() map[string]any {
 		"requests_4xx_total": m.requests4xx.Load(),
 		"requests_5xx_total": m.requests5xx.Load(),
 		"average_latency_ms": avgLatency,
+		"ai_operations":      m.aiSnapshot(),
 	}
+}
+
+func (m *metrics) aiSnapshot() []aiOperationSnapshot {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	snapshots := make([]aiOperationSnapshot, 0, len(m.aiOperations))
+	for key, bucket := range m.aiOperations {
+		parts := strings.SplitN(key, "\x00", 2)
+		operation := parts[0]
+		provider := "unknown"
+		if len(parts) > 1 {
+			provider = parts[1]
+		}
+		averageLatency := int64(0)
+		if bucket.requestsTotal > 0 {
+			averageLatency = bucket.latencyTotalMS / int64(bucket.requestsTotal)
+		}
+		snapshots = append(snapshots, aiOperationSnapshot{
+			Operation:        operation,
+			Provider:         provider,
+			RequestsTotal:    bucket.requestsTotal,
+			ErrorsTotal:      bucket.errorsTotal,
+			AverageLatencyMS: averageLatency,
+			InputTokens:      bucket.inputTokens,
+			OutputTokens:     bucket.outputTokens,
+		})
+	}
+	return snapshots
 }
 
 type requestIDContextKey string
@@ -276,12 +362,50 @@ func writeText(w http.ResponseWriter, status int, body string) {
 	_, _ = w.Write([]byte(body))
 }
 
-func metricsText(snapshot map[string]any) string {
-	return fmt.Sprintf(
+func metricsText(snapshot map[string]any, worker notification.DeliveryWorkerMetricsSnapshot) string {
+	var builder strings.Builder
+	builder.WriteString(fmt.Sprintf(
 		"requests_total %v\nrequests_4xx_total %v\nrequests_5xx_total %v\naverage_latency_ms %v\n",
 		snapshot["requests_total"],
 		snapshot["requests_4xx_total"],
 		snapshot["requests_5xx_total"],
 		snapshot["average_latency_ms"],
-	)
+	))
+	if aiSnapshots, ok := snapshot["ai_operations"].([]aiOperationSnapshot); ok {
+		for _, item := range aiSnapshots {
+			labels := fmt.Sprintf(`operation="%s",provider="%s"`, metricLabel(item.Operation), metricLabel(item.Provider))
+			builder.WriteString(fmt.Sprintf("ai_operation_requests_total{%s} %d\n", labels, item.RequestsTotal))
+			builder.WriteString(fmt.Sprintf("ai_operation_errors_total{%s} %d\n", labels, item.ErrorsTotal))
+			builder.WriteString(fmt.Sprintf("ai_operation_average_latency_ms{%s} %d\n", labels, item.AverageLatencyMS))
+			builder.WriteString(fmt.Sprintf("ai_operation_input_tokens_total{%s} %d\n", labels, item.InputTokens))
+			builder.WriteString(fmt.Sprintf("ai_operation_output_tokens_total{%s} %d\n", labels, item.OutputTokens))
+		}
+	}
+	builder.WriteString(fmt.Sprintf("push_delivery_enqueued_total %d\n", worker.Enqueued))
+	builder.WriteString(fmt.Sprintf("push_delivery_skipped_total %d\n", worker.Skipped))
+	builder.WriteString(fmt.Sprintf("push_delivery_batches_total %d\n", worker.Batches))
+	builder.WriteString(fmt.Sprintf("push_delivery_due_fetched_total %d\n", worker.DueFetched))
+	builder.WriteString(fmt.Sprintf("push_delivery_sent_total %d\n", worker.Sent))
+	builder.WriteString(fmt.Sprintf("push_delivery_failed_total %d\n", worker.Failed))
+	builder.WriteString(fmt.Sprintf("push_delivery_retried_total %d\n", worker.Retried))
+	builder.WriteString(fmt.Sprintf("push_delivery_permanent_failed_total %d\n", worker.PermanentFailed))
+	builder.WriteString(fmt.Sprintf("push_delivery_loop_errors_total %d\n", worker.LoopErrors))
+	builder.WriteString(fmt.Sprintf("push_delivery_consecutive_loop_errors %d\n", worker.ConsecutiveLoopErrors))
+	builder.WriteString(fmt.Sprintf("push_delivery_last_run_unix %d\n", worker.LastRunUnix))
+	builder.WriteString(fmt.Sprintf("push_delivery_last_success_unix %d\n", worker.LastSuccessUnix))
+	if strings.TrimSpace(worker.LastError) != "" {
+		builder.WriteString(fmt.Sprintf("push_delivery_last_error_info{message=\"%s\"} 1\n", metricLabel(worker.LastError)))
+	}
+	return builder.String()
+}
+
+func metricLabel(value string) string {
+	return strings.NewReplacer("\\", "\\\\", "\"", "\\\"").Replace(value)
+}
+
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }

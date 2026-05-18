@@ -292,9 +292,11 @@ Current implementation status:
 - Go has an initial `internal/notification/PushDeliveryWorker` that enforces stored device preferences, quiet hours, daily caps, and minimum spacing before sending through an APNs client.
 - Go now has a real token-auth APNs client behind `APNS_ENABLED=true`, plus credential config for key ID, team ID, topic, environment, and `.p8` auth key path/content.
 - Go now has a long-running scheduled delivery loop controlled by `PUSH_DELIVERY_WORKER_ENABLED`, `PUSH_DELIVERY_INTERVAL`, and `PUSH_DELIVERY_BATCH_SIZE`.
+- Go push delivery now persists `attempt_count` and `next_attempt_at`, retries transient APNs failures with exponential backoff, permanently fails non-retryable APNs errors, and exposes delivery counters/timestamps through `/metrics`.
 - Remote push enqueue payloads now include a production target envelope for `record`, `artifact`, `question`, `entity`, `place`, `theme`, `decision`, `chapter`, and `reflection`, while preserving flat iOS userInfo keys in the APNs payload.
 - iOS clients/protocols exist for those endpoints.
 - iOS debug settings now expose APNs token presence, device/timezone state, registration digest state, pending writeback count, notification-intent counts, force sync, and a basic enqueue-first-pending-intent action.
+- Cloud V6 intelligence is now provider-backed in live mode with explicit per-operation JSON shape prompts and operation-level `/metrics` counters for requests, errors, latency, and token usage.
 - Transcript refinement is wired into the unified capture composer.
 - Daily question suggestion is wired into the iOS Home data flow as a gated business path that persists local questions.
 - The iOS launch/recovery worker now executes expanded due job kinds: entity enrichment, clarification question generation, graph delta application, chapter candidate generation, notification intent preparation, semantic indexing, daily question preparation, and local notification scheduling.

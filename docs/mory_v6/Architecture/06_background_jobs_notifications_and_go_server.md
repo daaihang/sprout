@@ -80,6 +80,7 @@ Current remote status:
 - Go has an initial `PushDeliveryWorker` that can queue an intent, enforce per-device notification policy, attempt due delivery through an APNs client, and update delivery status.
 - Go can now use a real APNs token-auth sender when credentials are configured. Local/dev defaults keep `APNS_ENABLED=false`, which intentionally uses a disabled sender.
 - Go runs a configurable scheduled delivery loop via `PUSH_DELIVERY_WORKER_ENABLED`, `PUSH_DELIVERY_INTERVAL`, and `PUSH_DELIVERY_BATCH_SIZE`.
+- Go now tracks delivery attempts, transient APNs retries, permanent failures, loop errors, last run/success timestamps, and delivery alert thresholds through `/metrics` and JSON logs.
 - Remote push payloads now carry both iOS-compatible flat userInfo keys and a nested production envelope for `record`, `artifact`, `question`, `entity`, `place`, `theme`, `decision`, `chapter`, and `reflection` targets.
 
 ## 5. Go Server Current State
@@ -135,7 +136,18 @@ APNS_KEY_ID=<Apple key id>
 APNS_TEAM_ID=<Apple team id>
 APNS_AUTH_KEY_PATH=/path/to/AuthKey_XXXX.p8
 # or APNS_AUTH_KEY=<PEM content>
+PUSH_DELIVERY_MAX_ATTEMPTS=5
+PUSH_DELIVERY_RETRY_BACKOFF=2m
+PUSH_DELIVERY_ALERT_FAILURE_THRESHOLD=3
 ```
+
+Retry and alert policy:
+
+- APNs `429` and `5xx` responses are treated as transient and retried with exponential backoff.
+- Missing credentials, disabled APNs, invalid tokens, topic mismatches, and most `4xx` APNs responses are treated as permanent failures.
+- The worker stores `attempt_count` and `next_attempt_at` on each delivery row so restarts do not lose retry state.
+- `/metrics` exposes `push_delivery_sent_total`, `push_delivery_failed_total`, `push_delivery_retried_total`, `push_delivery_permanent_failed_total`, `push_delivery_loop_errors_total`, `push_delivery_consecutive_loop_errors`, `push_delivery_last_run_unix`, and `push_delivery_last_success_unix`.
+- Production deploys should alert on repeated loop errors, spikes in permanent failures, or retries that do not recover into sends.
 
 Remote push production payload shape:
 
@@ -180,6 +192,22 @@ mory_notification_target_id
 ```
 
 and a nested `mory` object with the full envelope above.
+
+## 6.1 Cloud Deep Intelligence Provider Loop
+
+Current server AI status:
+
+- `AI_MODE=mock` remains the deterministic default for local/dev.
+- `AI_MODE=live` supports `AI_PROVIDER=openai_compatible` and `AI_PROVIDER=anthropic`.
+- V6 endpoints now use provider-backed operations for transcript refinement, question suggestions, chapter/stage suggestions, photo semantic analysis, and notification intent suggestion.
+- Each V6 operation now has an explicit JSON shape embedded in the system prompt, and all responses are parsed, normalized, metered, and returned with provider/model/token metadata.
+- `/metrics` exposes `ai_operation_requests_total`, `ai_operation_errors_total`, `ai_operation_average_latency_ms`, `ai_operation_input_tokens_total`, and `ai_operation_output_tokens_total` by operation/provider.
+
+Deployment guidance:
+
+- Use `openai_compatible` for OpenAI-compatible APIs such as DeepSeek or OpenAI Chat Completions.
+- Keep `AI_MAX_RETRIES` and `AI_RETRY_BACKOFF` conservative until live latency is measured.
+- Treat model outputs as candidates; iOS remains the source of truth and should confirm or store only accepted durable changes.
 
 ## 7. Server Storage Boundary
 

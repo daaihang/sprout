@@ -519,6 +519,8 @@ struct MoryAPIClient: Sendable {
         let skippedCount: Int
         let sentCount: Int
         let failedCount: Int
+        let retriedCount: Int?
+        let permanentFailedCount: Int?
 
         enum CodingKeys: String, CodingKey {
             case accepted
@@ -527,6 +529,8 @@ struct MoryAPIClient: Sendable {
             case skippedCount = "skipped_count"
             case sentCount = "sent_count"
             case failedCount = "failed_count"
+            case retriedCount = "retried_count"
+            case permanentFailedCount = "permanent_failed_count"
         }
     }
 

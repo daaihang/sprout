@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -80,9 +81,9 @@ func TestAnthropicProviderAnalyze(t *testing.T) {
 	)
 
 	result, err := provider.Analyze(context.Background(), AnalyzeRequest{
-		SchemaVersion: "record_aggregate.v1",
+		SchemaVersion:  "record_aggregate.v1",
 		AnalysisReason: "preview",
-		RecordShell: AnalyzeRecordShell{RawText: "今天很开心"},
+		RecordShell:    AnalyzeRecordShell{RawText: "今天很开心"},
 	}, UserContext{UserID: "user-1", Tier: "grow"})
 	if err != nil {
 		t.Fatalf("anthropic analyze: %v", err)
@@ -143,9 +144,9 @@ func TestOpenAICompatibleProviderAnalyze(t *testing.T) {
 	)
 
 	result, err := provider.Analyze(context.Background(), AnalyzeRequest{
-		SchemaVersion: "record_aggregate.v1",
+		SchemaVersion:  "record_aggregate.v1",
 		AnalysisReason: "preview",
-		RecordShell: AnalyzeRecordShell{RawText: "今天很开心"},
+		RecordShell:    AnalyzeRecordShell{RawText: "今天很开心"},
 	}, UserContext{UserID: "user-1", Tier: "grow"})
 	if err != nil {
 		t.Fatalf("openai analyze: %v", err)
@@ -268,6 +269,113 @@ func TestOpenAICompatibleProviderReplayReflection(t *testing.T) {
 	}
 	if result.Provider != "openai_compatible" {
 		t.Fatalf("unexpected provider %q", result.Provider)
+	}
+}
+
+func TestOpenAICompatibleProviderV6RefineTranscript(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req openAIChatRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Fatalf("decode openai request: %v", err)
+		}
+		if req.ResponseFormat["type"] != "json_object" {
+			t.Fatalf("expected json object response format")
+		}
+		if !strings.Contains(req.Messages[0].Content, `"refined_transcript"`) {
+			t.Fatalf("expected v6 transcript schema in system prompt")
+		}
+
+		writeTestJSON(w, map[string]any{
+			"model": "gpt-test",
+			"choices": []map[string]any{
+				{
+					"message": map[string]any{
+						"content": `{"schema_version":1,"refined_transcript":"今天和阿远聊了搬家的事。","suggested_title":"搬家讨论","edits":[{"kind":"punctuation","summary":"补全标点"}]}`,
+					},
+				},
+			},
+			"usage": map[string]any{
+				"prompt_tokens":     9,
+				"completion_tokens": 13,
+			},
+		})
+	}))
+	defer server.Close()
+
+	provider := NewOpenAICompatibleProvider(
+		&http.Client{Timeout: 2 * time.Second},
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+		config.Config{
+			AIAPIKey:  "openai-key",
+			AIBaseURL: server.URL,
+			AIModel:   "gpt-test",
+		},
+	)
+
+	result, err := provider.RefineTranscript(context.Background(), TranscriptRefinementRequest{
+		RawTranscript: "今天 和 阿远 聊了 搬家 的事",
+		AllowTitle:    true,
+	}, UserContext{UserID: "user-1", Tier: "grow"})
+	if err != nil {
+		t.Fatalf("refine transcript: %v", err)
+	}
+	if result.Response.RefinedTranscript == "" || result.Response.SuggestedTitle != "搬家讨论" {
+		t.Fatalf("unexpected transcript result: %+v", result)
+	}
+	if result.Usage.InputTokens != 9 || result.Usage.OutputTokens != 13 {
+		t.Fatalf("unexpected usage: %+v", result.Usage)
+	}
+}
+
+func TestAnthropicProviderV6SuggestNotificationIntent(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req anthropicRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Fatalf("decode anthropic request: %v", err)
+		}
+		if !strings.Contains(req.System, `"privacy_level"`) {
+			t.Fatalf("expected notification schema in system prompt")
+		}
+
+		writeTestJSON(w, map[string]any{
+			"model": "claude-test",
+			"content": []map[string]any{
+				{
+					"type": "text",
+					"text": `{"schema_version":1,"intent":{"kind":"repeatedTheme","privacy_level":"contextual","title":"Mory","body":"你最近多次提到搬家，要不要补一句今天最在意的点？","deep_link":"mory://insights/theme/move","scheduled_at":"2026-05-19T10:00:00Z"}}`,
+				},
+			},
+			"usage": map[string]any{
+				"input_tokens":  15,
+				"output_tokens": 21,
+			},
+		})
+	}))
+	defer server.Close()
+
+	provider := NewAnthropicProvider(
+		&http.Client{Timeout: 2 * time.Second},
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+		config.Config{
+			AIAPIKey:         "anthropic-key",
+			AIBaseURL:        server.URL,
+			AIModel:          "claude-test",
+			AnthropicVersion: "2023-06-01",
+		},
+	)
+
+	result, err := provider.SuggestNotificationIntent(context.Background(), NotificationIntentSuggestionRequest{
+		Trigger: "repeated_theme",
+		RecentEvidence: []EvidenceSnippet{{
+			RecordID: "r1",
+			Snippet:  "最近第三次提到搬家。",
+		}},
+	}, UserContext{UserID: "user-1", Tier: "grow"})
+	if err != nil {
+		t.Fatalf("suggest notification intent: %v", err)
+	}
+	if result.Response.Intent.Kind != "repeatedTheme" || result.Response.Intent.PrivacyLevel != "contextual" {
+		t.Fatalf("unexpected notification result: %+v", result)
 	}
 }
 

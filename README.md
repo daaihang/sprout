@@ -238,8 +238,14 @@ Remote push delivery:
 
 - `/api/push/register` stores APNs tokens plus notification and intelligence preferences.
 - `/api/push/enqueue` queues remote notification intents with a production payload envelope for `record`, `artifact`, `question`, `entity`, `place`, `theme`, `decision`, `chapter`, and `reflection` targets.
-- The Go server includes a scheduled delivery loop controlled by `PUSH_DELIVERY_WORKER_ENABLED`, `PUSH_DELIVERY_INTERVAL`, and `PUSH_DELIVERY_BATCH_SIZE`.
+- The Go server includes a scheduled delivery loop controlled by `PUSH_DELIVERY_WORKER_ENABLED`, `PUSH_DELIVERY_INTERVAL`, `PUSH_DELIVERY_BATCH_SIZE`, `PUSH_DELIVERY_MAX_ATTEMPTS`, `PUSH_DELIVERY_RETRY_BACKOFF`, and `PUSH_DELIVERY_ALERT_FAILURE_THRESHOLD`.
+- Transient APNs failures are retried with exponential backoff; permanent APNs failures are marked failed and surfaced through `/metrics`.
 - Real APNs sending uses token auth. Set `APNS_ENABLED=true`, `APNS_ENVIRONMENT`, `APNS_TOPIC`, `APNS_KEY_ID`, `APNS_TEAM_ID`, and either `APNS_AUTH_KEY_PATH` or `APNS_AUTH_KEY`.
+
+Operational metrics:
+
+- `GET /metrics` emits request counters, AI operation counters/tokens/errors, and push delivery worker counters such as `push_delivery_sent_total`, `push_delivery_retried_total`, `push_delivery_permanent_failed_total`, and `push_delivery_consecutive_loop_errors`.
+- Production monitoring should alert if `push_delivery_consecutive_loop_errors > 0` for multiple intervals, if `push_delivery_permanent_failed_total` spikes, or if AI operation error counters rise after a deploy.
 
 ## Immediate Next Work
 

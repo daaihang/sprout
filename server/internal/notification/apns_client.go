@@ -52,6 +52,24 @@ type TokenAPNSClient struct {
 	tokenCache apnsTokenCache
 }
 
+type APNSError struct {
+	StatusCode int
+	Reason     string
+	Body       string
+}
+
+func (e APNSError) Error() string {
+	reason := strings.TrimSpace(e.Reason)
+	if reason == "" {
+		reason = "unknown"
+	}
+	return fmt.Sprintf("apns send failed: status=%d reason=%s", e.StatusCode, reason)
+}
+
+func (e APNSError) Retryable() bool {
+	return e.StatusCode == http.StatusTooManyRequests || e.StatusCode >= 500
+}
+
 type apnsTokenCache struct {
 	mu       sync.Mutex
 	token    string
@@ -148,7 +166,20 @@ func (c *TokenAPNSClient) Send(ctx context.Context, message APNSMessage) error {
 	}
 
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-	return fmt.Errorf("apns send failed: status=%d body=%s", resp.StatusCode, strings.TrimSpace(string(body)))
+	return parseAPNSError(resp.StatusCode, body)
+}
+
+func parseAPNSError(statusCode int, body []byte) APNSError {
+	raw := strings.TrimSpace(string(body))
+	var decoded struct {
+		Reason string `json:"reason"`
+	}
+	_ = json.Unmarshal(body, &decoded)
+	return APNSError{
+		StatusCode: statusCode,
+		Reason:     strings.TrimSpace(decoded.Reason),
+		Body:       raw,
+	}
 }
 
 func (c *TokenAPNSClient) bearerToken(now func() time.Time) (string, error) {

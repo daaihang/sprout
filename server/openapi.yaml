@@ -340,6 +340,10 @@ paths:
                     type: integer
                   failed_count:
                     type: integer
+                  retried_count:
+                    type: integer
+                  permanent_failed_count:
+                    type: integer
   /api/push/delivery-writeback:
     post:
       summary: Write back notification delivery or interaction events

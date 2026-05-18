@@ -39,26 +39,28 @@ type PushToken struct {
 }
 
 type PushDelivery struct {
-	UserID       string     `json:"user_id"`
-	DeviceID     string     `json:"device_id"`
-	IntentID     string     `json:"intent_id"`
-	Kind         string     `json:"kind"`
-	Title        string     `json:"title"`
-	Body         string     `json:"body"`
-	TargetType   string     `json:"target_type"`
-	TargetID     string     `json:"target_id"`
-	PrivacyLevel string     `json:"privacy_level,omitempty"`
-	DeepLink     string     `json:"deep_link,omitempty"`
-	PayloadJSON  string     `json:"payload_json,omitempty"`
-	ScheduledAt  time.Time  `json:"scheduled_at"`
-	Status       string     `json:"status"`
-	LastError    string     `json:"last_error,omitempty"`
-	SentAt       *time.Time `json:"sent_at,omitempty"`
-	DeliveredAt  *time.Time `json:"delivered_at,omitempty"`
-	OpenedAt     *time.Time `json:"opened_at,omitempty"`
-	DismissedAt  *time.Time `json:"dismissed_at,omitempty"`
-	CreatedAt    time.Time  `json:"created_at,omitempty"`
-	UpdatedAt    time.Time  `json:"updated_at,omitempty"`
+	UserID        string     `json:"user_id"`
+	DeviceID      string     `json:"device_id"`
+	IntentID      string     `json:"intent_id"`
+	Kind          string     `json:"kind"`
+	Title         string     `json:"title"`
+	Body          string     `json:"body"`
+	TargetType    string     `json:"target_type"`
+	TargetID      string     `json:"target_id"`
+	PrivacyLevel  string     `json:"privacy_level,omitempty"`
+	DeepLink      string     `json:"deep_link,omitempty"`
+	PayloadJSON   string     `json:"payload_json,omitempty"`
+	ScheduledAt   time.Time  `json:"scheduled_at"`
+	AttemptCount  int        `json:"attempt_count"`
+	NextAttemptAt *time.Time `json:"next_attempt_at,omitempty"`
+	Status        string     `json:"status"`
+	LastError     string     `json:"last_error,omitempty"`
+	SentAt        *time.Time `json:"sent_at,omitempty"`
+	DeliveredAt   *time.Time `json:"delivered_at,omitempty"`
+	OpenedAt      *time.Time `json:"opened_at,omitempty"`
+	DismissedAt   *time.Time `json:"dismissed_at,omitempty"`
+	CreatedAt     time.Time  `json:"created_at,omitempty"`
+	UpdatedAt     time.Time  `json:"updated_at,omitempty"`
 }
 
 type PushDeliveryEvent struct {
@@ -90,6 +92,7 @@ type PushTokenStore interface {
 	ListPushDeliveries(ctx context.Context, userID string) ([]PushDelivery, error)
 	ListDuePushDeliveries(ctx context.Context, now time.Time, limit int) ([]PushDelivery, error)
 	UpdatePushDeliveryStatus(ctx context.Context, userID, deviceID, intentID, status string, eventAt time.Time, lastError string) error
+	UpdatePushDeliveryAttempt(ctx context.Context, userID, deviceID, intentID, status string, eventAt time.Time, lastError string, nextAttemptAt *time.Time, incrementAttempt bool) error
 	InsertPushDeliveryEvent(ctx context.Context, event PushDeliveryEvent) error
 	ListPushDeliveryEvents(ctx context.Context, userID string) ([]PushDeliveryEvent, error)
 	Close() error
@@ -195,6 +198,8 @@ CREATE TABLE IF NOT EXISTS push_deliveries (
     deep_link TEXT NOT NULL DEFAULT '',
     payload_json TEXT NOT NULL DEFAULT '',
     scheduled_at TEXT NOT NULL,
+    attempt_count INTEGER NOT NULL DEFAULT 0,
+    next_attempt_at TEXT NOT NULL DEFAULT '',
     status TEXT NOT NULL,
     last_error TEXT NOT NULL DEFAULT '',
     sent_at TEXT NOT NULL DEFAULT '',
@@ -426,6 +431,8 @@ func (s *SQLiteStore) UpsertPushDelivery(ctx context.Context, delivery PushDeliv
 		deep_link,
 		payload_json,
 		scheduled_at,
+		attempt_count,
+		next_attempt_at,
 		status,
 		last_error,
 		sent_at,
@@ -435,7 +442,7 @@ func (s *SQLiteStore) UpsertPushDelivery(ctx context.Context, delivery PushDeliv
 		created_at,
 		updated_at
 	)
-	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	ON CONFLICT(user_id, device_id, intent_id) DO UPDATE SET
 		kind = excluded.kind,
 		title = excluded.title,
@@ -446,6 +453,8 @@ func (s *SQLiteStore) UpsertPushDelivery(ctx context.Context, delivery PushDeliv
 		deep_link = excluded.deep_link,
 		payload_json = excluded.payload_json,
 		scheduled_at = excluded.scheduled_at,
+		attempt_count = excluded.attempt_count,
+		next_attempt_at = excluded.next_attempt_at,
 		status = excluded.status,
 		last_error = excluded.last_error,
 		sent_at = excluded.sent_at,
@@ -468,6 +477,8 @@ func (s *SQLiteStore) UpsertPushDelivery(ctx context.Context, delivery PushDeliv
 		strings.TrimSpace(delivery.DeepLink),
 		strings.TrimSpace(delivery.PayloadJSON),
 		scheduledAt.Format(time.RFC3339),
+		delivery.AttemptCount,
+		nullableRFC3339(delivery.NextAttemptAt),
 		status,
 		strings.TrimSpace(delivery.LastError),
 		nullableRFC3339(delivery.SentAt),
@@ -498,6 +509,8 @@ func (s *SQLiteStore) GetPushDelivery(ctx context.Context, userID, deviceID, int
 		deep_link,
 		payload_json,
 		scheduled_at,
+		attempt_count,
+		next_attempt_at,
 		status,
 		last_error,
 		sent_at,
@@ -526,6 +539,8 @@ func (s *SQLiteStore) ListPushDeliveries(ctx context.Context, userID string) ([]
 		deep_link,
 		payload_json,
 		scheduled_at,
+		attempt_count,
+		next_attempt_at,
 		status,
 		last_error,
 		sent_at,
@@ -575,6 +590,8 @@ func (s *SQLiteStore) ListDuePushDeliveries(ctx context.Context, now time.Time, 
 		deep_link,
 		payload_json,
 		scheduled_at,
+		attempt_count,
+		next_attempt_at,
 		status,
 		last_error,
 		sent_at,
@@ -584,10 +601,13 @@ func (s *SQLiteStore) ListDuePushDeliveries(ctx context.Context, now time.Time, 
 		created_at,
 		updated_at
 	FROM push_deliveries
-	WHERE status = 'pending' AND scheduled_at <= ?
+	WHERE status IN ('pending', 'retrying')
+	  AND scheduled_at <= ?
+	  AND (next_attempt_at = '' OR next_attempt_at <= ?)
 	ORDER BY scheduled_at ASC, created_at ASC
 	LIMIT ?;`
-	rows, err := s.db.QueryContext(ctx, stmt, now.UTC().Format(time.RFC3339), limit)
+	nowText := now.UTC().Format(time.RFC3339)
+	rows, err := s.db.QueryContext(ctx, stmt, nowText, nowText, limit)
 	if err != nil {
 		return nil, fmt.Errorf("query due push deliveries: %w", err)
 	}
@@ -670,6 +690,55 @@ func (s *SQLiteStore) UpdatePushDeliveryStatus(
 	)
 	if err != nil {
 		return fmt.Errorf("update push delivery status: %w", err)
+	}
+	return nil
+}
+
+func (s *SQLiteStore) UpdatePushDeliveryAttempt(
+	ctx context.Context,
+	userID, deviceID, intentID, status string,
+	eventAt time.Time,
+	lastError string,
+	nextAttemptAt *time.Time,
+	incrementAttempt bool,
+) error {
+	status = strings.TrimSpace(status)
+	if status == "" {
+		return nil
+	}
+	updateTime := eventAt.UTC()
+	if updateTime.IsZero() {
+		updateTime = time.Now().UTC()
+	}
+	nextAttempt := nullableRFC3339(nextAttemptAt)
+	attemptIncrement := 0
+	if incrementAttempt {
+		attemptIncrement = 1
+	}
+
+	const stmt = `
+	UPDATE push_deliveries
+	SET
+		status = ?,
+		last_error = ?,
+		attempt_count = attempt_count + ?,
+		next_attempt_at = ?,
+		updated_at = ?
+	WHERE user_id = ? AND device_id = ? AND intent_id = ?;`
+	_, err := s.db.ExecContext(
+		ctx,
+		stmt,
+		status,
+		strings.TrimSpace(lastError),
+		attemptIncrement,
+		nextAttempt,
+		updateTime.Format(time.RFC3339),
+		userID,
+		deviceID,
+		intentID,
+	)
+	if err != nil {
+		return fmt.Errorf("update push delivery attempt: %w", err)
 	}
 	return nil
 }
@@ -874,6 +943,8 @@ func (s *SQLiteStore) migratePushDeliveryColumns() error {
 		"privacy_level TEXT NOT NULL DEFAULT ''",
 		"deep_link TEXT NOT NULL DEFAULT ''",
 		"payload_json TEXT NOT NULL DEFAULT ''",
+		"attempt_count INTEGER NOT NULL DEFAULT 0",
+		"next_attempt_at TEXT NOT NULL DEFAULT ''",
 	}
 	for _, definition := range columnDefinitions {
 		if err := s.addColumnIfMissing("push_deliveries", definition); err != nil {
@@ -953,6 +1024,7 @@ func scanPushDelivery(scanner interface {
 }) (PushDelivery, error) {
 	var delivery PushDelivery
 	var scheduledAt string
+	var nextAttemptAt string
 	var sentAt string
 	var deliveredAt string
 	var openedAt string
@@ -973,6 +1045,8 @@ func scanPushDelivery(scanner interface {
 		&delivery.DeepLink,
 		&delivery.PayloadJSON,
 		&scheduledAt,
+		&delivery.AttemptCount,
+		&nextAttemptAt,
 		&delivery.Status,
 		&delivery.LastError,
 		&sentAt,
@@ -987,6 +1061,7 @@ func scanPushDelivery(scanner interface {
 	}
 
 	delivery.ScheduledAt, _ = time.Parse(time.RFC3339, scheduledAt)
+	delivery.NextAttemptAt = parseOptionalTime(nextAttemptAt)
 	delivery.SentAt = parseOptionalTime(sentAt)
 	delivery.DeliveredAt = parseOptionalTime(deliveredAt)
 	delivery.OpenedAt = parseOptionalTime(openedAt)

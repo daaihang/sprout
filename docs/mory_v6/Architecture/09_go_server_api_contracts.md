@@ -365,6 +365,8 @@ Rules:
 - APNs implementation is a real token-auth sender when `APNS_ENABLED=true`; local/dev can keep it disabled.
 - A scheduled server worker delivers due rows even when enqueue and delivery happen in different processes or at different times.
 - Push payloads carry flat iOS routing keys plus a nested production envelope for `record`, `artifact`, `question`, `entity`, `place`, `theme`, `decision`, `chapter`, and `reflection` targets.
+- Delivery rows persist attempt count and next retry time; transient APNs failures retry with exponential backoff, while non-retryable APNs failures become terminal failed rows.
+- `/metrics` exposes delivery and AI operation counters so production can alert on worker loop errors, APNs permanent failures, retry storms, and cloud AI provider regressions.
 
 ## 9. Endpoint: Notification Intent Suggestion
 

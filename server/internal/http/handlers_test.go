@@ -564,6 +564,9 @@ func TestMetricsAndRequestID(t *testing.T) {
 	if !strings.Contains(metricsRec.Body.String(), "requests_total") {
 		t.Fatalf("expected metrics output, got %q", metricsRec.Body.String())
 	}
+	if !strings.Contains(metricsRec.Body.String(), "push_delivery_sent_total") {
+		t.Fatalf("expected push delivery metrics output, got %q", metricsRec.Body.String())
+	}
 }
 
 func TestAuthAppleRequiresIdentityTokenWhenDevDisabled(t *testing.T) {

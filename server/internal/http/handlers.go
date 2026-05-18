@@ -101,12 +101,14 @@ type pushEnqueueRequest struct {
 }
 
 type pushEnqueueResponse struct {
-	Accepted     bool   `json:"accepted"`
-	UserID       string `json:"user_id"`
-	QueuedCount  int    `json:"queued_count"`
-	SkippedCount int    `json:"skipped_count"`
-	SentCount    int    `json:"sent_count"`
-	FailedCount  int    `json:"failed_count"`
+	Accepted             bool   `json:"accepted"`
+	UserID               string `json:"user_id"`
+	QueuedCount          int    `json:"queued_count"`
+	SkippedCount         int    `json:"skipped_count"`
+	SentCount            int    `json:"sent_count"`
+	FailedCount          int    `json:"failed_count"`
+	RetriedCount         int    `json:"retried_count"`
+	PermanentFailedCount int    `json:"permanent_failed_count"`
 }
 
 type analyzeResponseEnvelope struct {
@@ -171,7 +173,11 @@ func (s *Server) handleHealthz(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (s *Server) handleMetrics(w http.ResponseWriter, _ *http.Request) {
-	writeText(w, http.StatusOK, metricsText(s.metrics.Snapshot()))
+	workerMetrics := notification.DeliveryWorkerMetricsSnapshot{}
+	if s.pushDeliveryWorker != nil {
+		workerMetrics = s.pushDeliveryWorker.MetricsSnapshot()
+	}
+	writeText(w, http.StatusOK, metricsText(s.metrics.Snapshot(), workerMetrics))
 }
 
 func (s *Server) handleAuthApple(w http.ResponseWriter, r *http.Request) {
@@ -324,10 +330,12 @@ func (s *Server) handleAnalyzePreview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	start := time.Now()
 	result, err := s.aiProvider.Analyze(r.Context(), req, ai.UserContext{
 		UserID: "preview",
 		Tier:   "preview",
 	})
+	s.recordAI("analyze_preview", result.Provider, result.Usage, time.Since(start), err)
 	if err != nil {
 		if errors.Is(err, ai.ErrInvalidAnalyzeRequest) {
 			writeError(w, http.StatusBadRequest, "invalid analyze request")
@@ -360,10 +368,12 @@ func (s *Server) handleAnalyze(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	start := time.Now()
 	result, err := s.aiProvider.Analyze(r.Context(), req, ai.UserContext{
 		UserID: claims.UserID,
 		Tier:   claims.Tier,
 	})
+	s.recordAI("analyze_record", result.Provider, result.Usage, time.Since(start), err)
 	if err != nil {
 		if errors.Is(err, ai.ErrInvalidAnalyzeRequest) {
 			writeError(w, http.StatusBadRequest, "invalid analyze request")
@@ -402,10 +412,12 @@ func (s *Server) handleReflectionGenerate(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	start := time.Now()
 	result, err := s.aiProvider.GenerateReflection(r.Context(), providerReq, ai.UserContext{
 		UserID: claims.UserID,
 		Tier:   claims.Tier,
 	})
+	s.recordAI("reflection_generate", result.Provider, result.Usage, time.Since(start), err)
 	if err != nil {
 		if errors.Is(err, ai.ErrInvalidAnalyzeRequest) {
 			writeError(w, http.StatusBadRequest, "invalid reflection generate request")
@@ -448,10 +460,12 @@ func (s *Server) handleReflectionReplay(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	start := time.Now()
 	result, err := s.aiProvider.ReplayReflection(r.Context(), providerReq, ai.UserContext{
 		UserID: claims.UserID,
 		Tier:   claims.Tier,
 	})
+	s.recordAI("reflection_replay", result.Provider, result.Usage, time.Since(start), err)
 	if err != nil {
 		if errors.Is(err, ai.ErrInvalidAnalyzeRequest) {
 			writeError(w, http.StatusBadRequest, "invalid reflection replay request")
@@ -491,7 +505,9 @@ func (s *Server) handleTranscriptRefinement(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	start := time.Now()
 	result, err := s.aiProvider.RefineTranscript(r.Context(), req, user)
+	s.recordAI("refine_transcript", result.Provider, result.Usage, time.Since(start), err)
 	if err != nil {
 		if errors.Is(err, ai.ErrInvalidAnalyzeRequest) {
 			writeError(w, http.StatusBadRequest, "invalid transcript refinement request")
@@ -523,7 +539,9 @@ func (s *Server) handleQuestionSuggestions(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	start := time.Now()
 	result, err := s.aiProvider.SuggestQuestions(r.Context(), req, user)
+	s.recordAI("suggest_questions", result.Provider, result.Usage, time.Since(start), err)
 	if err != nil {
 		if errors.Is(err, ai.ErrInvalidAnalyzeRequest) {
 			writeError(w, http.StatusBadRequest, "invalid question suggestion request")
@@ -555,7 +573,9 @@ func (s *Server) handleChapterSuggestions(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	start := time.Now()
 	result, err := s.aiProvider.SuggestChapters(r.Context(), req, user)
+	s.recordAI("suggest_chapters", result.Provider, result.Usage, time.Since(start), err)
 	if err != nil {
 		if errors.Is(err, ai.ErrInvalidAnalyzeRequest) {
 			writeError(w, http.StatusBadRequest, "invalid chapter suggestion request")
@@ -587,7 +607,9 @@ func (s *Server) handlePhotoSemanticAnalysis(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	start := time.Now()
 	result, err := s.aiProvider.AnalyzePhotoSemantics(r.Context(), req, user)
+	s.recordAI("analyze_photo_semantics", result.Provider, result.Usage, time.Since(start), err)
 	if err != nil {
 		if errors.Is(err, ai.ErrInvalidAnalyzeRequest) {
 			writeError(w, http.StatusBadRequest, "invalid photo semantic analysis request")
@@ -619,7 +641,9 @@ func (s *Server) handleNotificationIntentSuggestion(w http.ResponseWriter, r *ht
 		return
 	}
 
+	start := time.Now()
 	result, err := s.aiProvider.SuggestNotificationIntent(r.Context(), req, user)
+	s.recordAI("suggest_notification_intent", result.Provider, result.Usage, time.Since(start), err)
 	if err != nil {
 		if errors.Is(err, ai.ErrInvalidAnalyzeRequest) {
 			writeError(w, http.StatusBadRequest, "invalid notification intent suggestion request")
@@ -817,12 +841,14 @@ func (s *Server) handlePushEnqueue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, pushEnqueueResponse{
-		Accepted:     true,
-		UserID:       claims.UserID,
-		QueuedCount:  enqueueReport.QueuedCount,
-		SkippedCount: enqueueReport.SkippedCount,
-		SentCount:    deliveryReport.SentCount,
-		FailedCount:  deliveryReport.FailedCount,
+		Accepted:             true,
+		UserID:               claims.UserID,
+		QueuedCount:          enqueueReport.QueuedCount,
+		SkippedCount:         enqueueReport.SkippedCount,
+		SentCount:            deliveryReport.SentCount,
+		FailedCount:          deliveryReport.FailedCount,
+		RetriedCount:         deliveryReport.RetriedCount,
+		PermanentFailedCount: deliveryReport.PermanentFailedCount,
 	})
 }
 

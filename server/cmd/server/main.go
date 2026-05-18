@@ -61,11 +61,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	pushDeliveryWorker := notification.NewPushDeliveryWorker(
+	pushDeliveryWorker := notification.NewPushDeliveryWorkerWithOptions(
 		store,
 		apnsClient,
 		logger,
 		firstNonEmpty(cfg.APNSTopic, firstAudienceOrFallback(cfg.AppleAudiences, "com.speculolabs.mory")),
+		notification.PushDeliveryWorkerOptions{
+			MaxAttempts:           cfg.PushDeliveryMaxAttempts,
+			RetryBackoff:          cfg.PushDeliveryRetryBackoff,
+			AlertFailureThreshold: cfg.PushDeliveryAlertFailureThreshold,
+		},
 	)
 
 	app := httpapi.NewServer(httpapi.Dependencies{
@@ -118,6 +123,9 @@ func main() {
 			"push_delivery_worker_enabled", cfg.PushDeliveryWorkerEnabled,
 			"push_delivery_interval", cfg.PushDeliveryInterval.String(),
 			"push_delivery_batch_size", cfg.PushDeliveryBatchSize,
+			"push_delivery_max_attempts", cfg.PushDeliveryMaxAttempts,
+			"push_delivery_retry_backoff", cfg.PushDeliveryRetryBackoff.String(),
+			"push_delivery_alert_failure_threshold", cfg.PushDeliveryAlertFailureThreshold,
 		)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Error("server failed", "error", err)
