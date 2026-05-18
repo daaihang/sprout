@@ -426,6 +426,40 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertFalse(board.items.contains { $0.compositionItem.itemKey == suggestion.compositionItem.itemKey })
     }
 
+    func testHomeBoardAcceptedSuggestionMovesIntoUserLayer() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        _ = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Accepted suggestion memory",
+                rawText: "Accepted suggestion memory with Linh.",
+                mood: "focused",
+                inputContext: "typed in debug",
+                captureSource: .composer,
+                artifacts: [.text(title: "Accepted suggestion memory", body: "Accepted suggestion memory with Linh.")]
+            )
+        )
+
+        var board = try repository.fetchHomeBoard(for: Date(), limit: 8)
+        let suggestion = try XCTUnwrap(board.suggestionItems.first { $0.cardKind == .systemPrompt })
+        XCTAssertEqual(suggestion.layout.layer, .suggestion)
+        XCTAssertNil(suggestion.layout.acceptedAt)
+
+        try repository.updateHomeBoardItemPreference(suggestion, action: .addToBoard)
+
+        board = try repository.fetchHomeBoard(for: Date(), limit: 8)
+        let accepted = try XCTUnwrap(board.items.first { $0.compositionItem.itemKey == suggestion.compositionItem.itemKey })
+        XCTAssertEqual(accepted.layout.layer, .userBoard)
+        XCTAssertNotNil(accepted.layout.acceptedAt)
+        XCTAssertFalse(board.suggestionItems.contains { $0.compositionItem.itemKey == suggestion.compositionItem.itemKey })
+        XCTAssertTrue(board.userBoardItems.contains { $0.compositionItem.itemKey == suggestion.compositionItem.itemKey })
+        XCTAssertEqual(accepted.layout.span, suggestion.layout.span)
+    }
+
     func testHomeBoardDismissesSystemPromptAndLimitsSuggestedReflections() async throws {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
