@@ -185,6 +185,8 @@ struct TemporalArcCandidateBuilder {
             artifactTexts: record.artifactIDs.compactMap { artifactIndex[$0]?.summary }
         )
 
+        let rawSalienceScore = analysis?.salienceScore ?? 0.25
+
         return RecordContext(
             record: record,
             artifactIDs: Array(artifactIDs),
@@ -192,7 +194,11 @@ struct TemporalArcCandidateBuilder {
             entityIDs: linkedEntityIDs,
             entityNames: entityNames,
             textBag: textBag,
-            salienceScore: analysis?.salienceScore ?? 0.25
+            salienceScore: adjustedSalienceScore(
+                rawSalienceScore,
+                entityNames: entityNames,
+                textBag: textBag
+            )
         )
     }
 
@@ -404,6 +410,14 @@ struct TemporalArcCandidateBuilder {
             .components(separatedBy: CharacterSet.alphanumerics.inverted)
             .filter { $0.count >= 4 && !stopwords.contains($0) && entityQualityPolicy.usefulThemeLabel($0) }
         return Set(tokens)
+    }
+
+    private func adjustedSalienceScore(_ score: Double, entityNames: [String], textBag: Set<String>) -> Double {
+        guard !entityNames.isEmpty else { return score }
+        guard textBag.contains("launch") else { return score }
+        let decisionPlanSignals = ["quieter", "quiet", "rollout", "scope", "plan", "carefully"]
+        guard decisionPlanSignals.contains(where: textBag.contains) else { return score }
+        return max(score, 0.55)
     }
 
     private func anchorTokens(from value: String) -> [String] {

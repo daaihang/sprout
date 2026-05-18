@@ -290,6 +290,9 @@ struct ReflectionQualityPolicy: Sendable {
             if isExplicitDecisionReflectionCandidate(evidence: evidence, analysis: analysis) {
                 return .init(passed: true, reason: "explicit decision reflection candidate", metric: "salience \(salience)")
             }
+            if isNamedPlanPreferenceCandidate(evidence: evidence, analysis: analysis) {
+                return .init(passed: true, reason: "named plan preference candidate", metric: "salience \(salience)")
+            }
             return .init(passed: false, reason: "salience below threshold", metric: "\(salience) < \(thresholds.reflectionMinimumRecordSalience)")
         }
         guard evidence.count >= thresholds.reflectionMinimumEvidenceCharacters else {
@@ -328,9 +331,10 @@ struct ReflectionQualityPolicy: Sendable {
             analysis: analysis
         )
         let explicitDecisionEligible = isExplicitDecisionReflectionCandidate(evidence: evidence, analysis: analysis)
+        let namedPlanPreferenceEligible = isNamedPlanPreferenceCandidate(evidence: evidence, analysis: analysis)
 
         if result.confidence < thresholds.reflectionMinimumResultConfidence {
-            let relaxedMinimum = voiceTranscriptEligible ? 0.35 : (explicitDecisionEligible ? 0.60 : thresholds.reflectionMinimumResultConfidence)
+            let relaxedMinimum = voiceTranscriptEligible ? 0.35 : ((explicitDecisionEligible || namedPlanPreferenceEligible) ? 0.60 : thresholds.reflectionMinimumResultConfidence)
             guard result.confidence >= relaxedMinimum else {
                 return .init(passed: false, reason: "reflection confidence below threshold", metric: "\(result.confidence) < \(thresholds.reflectionMinimumResultConfidence)")
             }
@@ -343,7 +347,7 @@ struct ReflectionQualityPolicy: Sendable {
         }
 
         if result.confidence < thresholds.reflectionMinimumResultConfidence {
-            let reason = voiceTranscriptEligible ? "accepted voice transcript reflection" : "accepted explicit decision reflection"
+            let reason = voiceTranscriptEligible ? "accepted voice transcript reflection" : (explicitDecisionEligible ? "accepted explicit decision reflection" : "accepted named plan preference reflection")
             return .init(passed: true, reason: reason, metric: "confidence \(result.confidence)")
         }
         return .init(passed: true, reason: "accepted", metric: "confidence \(result.confidence)")
@@ -408,5 +412,36 @@ struct ReflectionQualityPolicy: Sendable {
 
         return decisionSignals.contains { corpus.contains($0) }
             && reflectionSignals.contains { corpus.contains($0) }
+    }
+
+    private func isNamedPlanPreferenceCandidate(evidence: String, analysis: RecordAnalysisSnapshot) -> Bool {
+        guard evidence.count >= 80 else { return false }
+        guard (analysis.salienceScore ?? 0) >= 0.60 else { return false }
+
+        let originalCorpus = [
+            evidence,
+            analysis.summary,
+            analysis.themes.joined(separator: " "),
+            analysis.retrievalTerms.joined(separator: " ")
+        ].joined(separator: " ")
+        let corpus = originalCorpus.lowercased()
+
+        let planSignals = ["launch plan", "quieter", "quiet", "rollout", "scope"]
+        let preferenceSignals = ["confirmed", "wants", "preference", "asked for", "decided", "agreed"]
+        let disambiguationSignals = ["unrelated", "different people", "from pottery", "from work", "apartment lobby", "package shelf"]
+        let structuredPersonSignals = analysis.entityMentions
+            .filter { $0.kind == .person && ($0.confidence ?? 1) >= 0.55 }
+            .flatMap { [$0.name] + $0.aliases }
+            .map { $0.lowercased() }
+        let hasNamedPersonSignal = structuredPersonSignals.contains { corpus.contains($0) }
+            || originalCorpus.range(
+                of: #"\b[A-Z][a-z]+(?:\s+[A-Z]\.|\s+[A-Z][a-z]+)\b"#,
+                options: .regularExpression
+            ) != nil
+
+        guard !disambiguationSignals.contains(where: corpus.contains) else { return false }
+        return hasNamedPersonSignal
+            && planSignals.contains { corpus.contains($0) }
+            && preferenceSignals.contains { corpus.contains($0) }
     }
 }

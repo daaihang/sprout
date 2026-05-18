@@ -495,6 +495,127 @@ final class AnalyzeResponseMapperTests: XCTestCase {
         XCTAssertEqual(result.reason, "explicit decision reflection candidate")
     }
 
+    func testNamedPlanPreferenceReflectionCanPassStrictSalienceFloorWithoutDisambiguationNoise() throws {
+        let record = RecordShell(
+            createdAt: .now,
+            updatedAt: .now,
+            captureSource: .composer,
+            rawText: "Third check-in with A. Chen confirmed that Alexander wants the quieter launch plan."
+        )
+        let artifact = Artifact(
+            recordID: record.id,
+            kind: .text,
+            title: "Alias same person history",
+            summary: record.rawText,
+            textContent: record.rawText,
+            createdAt: record.createdAt,
+            updatedAt: record.updatedAt
+        )
+        let analysis = RecordAnalysisSnapshot(
+            recordID: record.id,
+            summary: "Third check-in with Alexander Chen confirmed preference for quieter launch plan.",
+            themes: ["check-in", "launch plan"],
+            emotionInterpretation: "focused",
+            salienceScore: 0.6,
+            retrievalTerms: ["Alexander Chen", "quieter launch plan"],
+            createdAt: record.updatedAt
+        )
+
+        let result = ReflectionQualityPolicy().shouldRequestRecordReflection(record: record, artifacts: [artifact], analysis: analysis)
+
+        XCTAssertTrue(result.passed)
+        XCTAssertEqual(result.reason, "named plan preference candidate")
+    }
+
+    func testNamedPlanPreferenceReflectionRejectsSameNameDisambiguationNoise() throws {
+        let record = RecordShell(
+            createdAt: .now,
+            updatedAt: .now,
+            captureSource: .composer,
+            rawText: "Alex from pottery asked about the cracked bowl glaze, unrelated to Alex from work."
+        )
+        let artifact = Artifact(
+            recordID: record.id,
+            kind: .text,
+            title: "Same-name different people",
+            summary: record.rawText,
+            textContent: record.rawText,
+            createdAt: record.createdAt,
+            updatedAt: record.updatedAt
+        )
+        let analysis = RecordAnalysisSnapshot(
+            recordID: record.id,
+            summary: "The note distinguishes Alex from pottery from Alex from work.",
+            themes: ["pottery", "same-name different people"],
+            emotionInterpretation: "warm",
+            salienceScore: 0.7,
+            retrievalTerms: ["Alex", "pottery", "work"],
+            createdAt: record.updatedAt
+        )
+
+        let result = ReflectionQualityPolicy().shouldRequestRecordReflection(record: record, artifacts: [artifact], analysis: analysis)
+
+        XCTAssertFalse(result.passed)
+    }
+
+    func testAliasSamePersonHistoryBuildsArcCandidateWithModerateStrictSalience() throws {
+        let baseDate = Date(timeIntervalSince1970: 1_715_000_000)
+        let records = [
+            RecordShell(createdAt: baseDate, updatedAt: baseDate, captureSource: .composer, rawText: "Alexander Chen said the current launch plan feels too loud and asked for a quieter rollout."),
+            RecordShell(createdAt: baseDate.addingTimeInterval(60), updatedAt: baseDate.addingTimeInterval(60), captureSource: .composer, rawText: "Alex Chen repeated that the quieter launch plan would help the team finish carefully."),
+            RecordShell(createdAt: baseDate.addingTimeInterval(120), updatedAt: baseDate.addingTimeInterval(120), captureSource: .composer, rawText: "Third check-in with A. Chen confirmed that Alexander wants the quieter launch plan.")
+        ]
+        let artifacts = records.map {
+            Artifact(recordID: $0.id, kind: .text, title: "Alias", summary: $0.rawText, textContent: $0.rawText, createdAt: $0.createdAt, updatedAt: $0.updatedAt)
+        }
+        let entity = EntityNode(
+            kind: .person,
+            displayName: "Alexander Chen",
+            aliases: ["Alex Chen", "A. Chen"],
+            provenanceRecordIDs: records.map(\.id),
+            createdAt: baseDate,
+            updatedAt: baseDate,
+            confidence: 0.9
+        )
+        let links = zip(artifacts, records).map { artifact, record in
+            ArtifactEntityLink(
+                artifactID: artifact.id,
+                entityID: entity.id,
+                confidence: 0.9,
+                source: "analysis",
+                sourceRecordID: record.id,
+                sourceAnalysisRecordID: record.id,
+                evidenceSummary: record.rawText,
+                createdAt: record.createdAt
+            )
+        }
+        let analyses = records.map {
+            RecordAnalysisSnapshot(
+                recordID: $0.id,
+                summary: $0.rawText,
+                themes: ["launch plan"],
+                emotionInterpretation: "focused",
+                salienceScore: 0.45,
+                retrievalTerms: ["Alexander Chen", "quieter launch plan"],
+                createdAt: $0.updatedAt
+            )
+        }
+
+        let candidates = TemporalArcCandidateBuilder().buildCandidates(
+            records: records,
+            analyses: analyses,
+            artifacts: artifacts,
+            artifactEntityLinks: links,
+            entityNodes: [entity],
+            focusRecordID: records.last?.id,
+            maxCandidates: 3
+        )
+
+        let candidate = try XCTUnwrap(candidates.first)
+        XCTAssertEqual(Set(candidate.recordIDs), Set(records.map(\.id)))
+        XCTAssertTrue(ArcQualityPolicy().evaluate(candidate).passed)
+    }
+
     func testQualityTuningPresetMatrixCoversInputAndHistoryVariation() throws {
         let scenarios = QualityTuningScenarioID.allCases.map(QualityTuningScenario.preset)
         let titles = Set(scenarios.map(\.title))
