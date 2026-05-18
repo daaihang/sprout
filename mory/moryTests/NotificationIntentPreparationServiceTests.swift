@@ -135,6 +135,51 @@ final class NotificationIntentPreparationServiceTests: XCTestCase {
         XCTAssertTrue(decision.blockReasons.contains(.quietHours))
     }
 
+    func testNotificationPolicyBlocksMinimumInterval() throws {
+        let calendar = utcCalendar()
+        let now = date(year: 2026, month: 5, day: 19, hour: 12, minute: 0, calendar: calendar)
+        let policy = NotificationPolicy(calendar: calendar)
+        var preferences = enabledPreferences(now: now)
+        preferences.notificationPreferences.minimumMinutesBetweenNotifications = 120
+        let flags = enabledFlags(now: now)
+        let existing = makeIntent(scheduledAt: date(year: 2026, month: 5, day: 19, hour: 10, minute: 45, calendar: calendar))
+        let candidate = makeIntent(scheduledAt: now)
+
+        let decision = policy.evaluate(
+            intent: candidate,
+            existingIntents: [existing],
+            preferences: preferences,
+            flags: flags
+        )
+
+        XCTAssertFalse(decision.isAllowed)
+        XCTAssertTrue(decision.blockReasons.contains(.minimumInterval))
+    }
+
+    func testNotificationPolicyUsesMinutePreciseQuietHours() throws {
+        let calendar = utcCalendar()
+        let policy = NotificationPolicy(calendar: calendar)
+        let now = date(year: 2026, month: 5, day: 19, hour: 22, minute: 45, calendar: calendar)
+        var preferences = enabledPreferences(now: now)
+        preferences.notificationPreferences.quietHoursStartHour = 22
+        preferences.notificationPreferences.quietHoursStartMinute = 30
+        preferences.notificationPreferences.quietHoursEndHour = 7
+        preferences.notificationPreferences.quietHoursEndMinute = 15
+        let flags = enabledFlags(now: now)
+        let candidate = makeIntent(scheduledAt: now)
+
+        let decision = policy.evaluate(
+            intent: candidate,
+            existingIntents: [],
+            preferences: preferences,
+            flags: flags
+        )
+
+        XCTAssertFalse(decision.isAllowed)
+        XCTAssertTrue(decision.blockReasons.contains(.quietHours))
+    }
+
+
     func testSensitiveDailyQuestionIsSuppressedBeforeNotificationIntentIsStored() throws {
         let fixture = makeRepositoryFixture()
         let repository = fixture.repository
@@ -222,6 +267,7 @@ final class NotificationIntentPreparationServiceTests: XCTestCase {
         month: Int,
         day: Int,
         hour: Int,
+        minute: Int = 0,
         calendar: Calendar
     ) -> Date {
         var components = DateComponents()
@@ -231,6 +277,7 @@ final class NotificationIntentPreparationServiceTests: XCTestCase {
         components.month = month
         components.day = day
         components.hour = hour
+        components.minute = minute
         return components.date!
     }
 }

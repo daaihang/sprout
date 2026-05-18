@@ -209,6 +209,14 @@ Settings must expose:
 
 Settings should use native grouped forms and plain copy.
 
+Notification settings checkpoint:
+
+- Master notification opt-in remains explicit.
+- Delivery pace supports quiet, balanced, active, and custom modes.
+- Custom mode exposes max-per-day and minimum spacing controls.
+- Quiet hours can be edited with hour-and-minute precision.
+- Notification opens should not stop at tab selection when a concrete target exists; supported targets open the daily question card, memory detail, chapter candidate, or reflection detail.
+
 ## 12. Accessibility Acceptance
 
 V6 UI must support:

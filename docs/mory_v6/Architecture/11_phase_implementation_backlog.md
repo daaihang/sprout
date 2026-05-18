@@ -228,14 +228,17 @@ Tasks:
 - Add permission flow.
   - Current implementation status: notification permission is requested only through the explicit settings opt-in path. Passive Home refresh still avoids permission prompts.
 - Add quiet hours and max-per-day.
-  - Current implementation status: max-per-day is editable in the basic settings route; quiet-hour values are stored and enforced by policy, with exact editing deferred to the polished settings UI.
+  - Current implementation status: max-per-day, delivery pace, minimum spacing, and minute-precise quiet hours are editable in the basic settings route and enforced by `NotificationPolicy`.
 - Add notification interaction handling.
-  - Current implementation status: local notification payload metadata is centralized; app-level `UNUserNotificationCenterDelegate` handling records foreground delivery, open, and dismiss events; open events route to the nearest current app tab. Exact card/detail deep links are deferred.
+  - Current implementation status: local notification payload metadata is centralized; app-level `UNUserNotificationCenterDelegate` handling records foreground delivery, open, and dismiss events; open events can deep-link to a specific daily question card, memory detail, chapter candidate, or reflection detail when the payload target supports it.
+- Add retry/resume on app launch.
+  - Current implementation status: `AppIntelligenceRecoveryService` resets interrupted running jobs to pending, reschedules retryable failed jobs with bounded backoff, attempts daily-question preparation, and schedules pending local notification intents without passive permission prompts.
 
 Files:
 
 ```text
 Infrastructure/Intelligence/DailyQuestionEngine.swift
+Infrastructure/Intelligence/AppIntelligenceRecoveryService.swift
 Infrastructure/Notifications/LocalNotificationScheduler.swift
 Infrastructure/Notifications/NotificationPolicy.swift
 Features/Settings/
@@ -250,6 +253,8 @@ Tests:
 - Notification opt-in persists preferences and requests system authorization.
 - Disabling notifications cancels pending/scheduled local intents.
 - Notification open resolves a route and delivery/dismissal updates persist.
+- App relaunch recovers interrupted jobs and notification preparation.
+- Minute-precise quiet hours and minimum notification spacing are enforced.
 
 Exit criteria:
 

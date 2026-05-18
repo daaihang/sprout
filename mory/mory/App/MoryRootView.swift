@@ -6,13 +6,19 @@ struct MoryRootView: View {
     let runtimeEnvironment: AppRuntimeEnvironment
 
     @Environment(\.memoryRepository) private var memoryRepository
+    @Environment(\.cloudIntelligenceService) private var cloudIntelligenceService
     @AppStorage(MoryOnboardingStep.completionStorageKey) private var hasCompletedOnboarding = false
     @StateObject private var notificationInbox = NotificationInteractionInbox.shared
     @State private var selectedTab: MoryAppTab = .today
     @State private var isPresentingSettings = false
     @State private var unifiedCaptureSeed: UnifiedCaptureSeed?
     @State private var tabRefreshID = UUID()
+    @State private var pendingHomeRoute: HomeRoute?
+    @State private var pendingMemoriesRoute: MemoriesRoute?
+    @State private var pendingInsightsRoute: InsightsRoute?
+    @State private var didRunStartupRecovery = false
     private let notificationInteractionService = NotificationInteractionService()
+    private let startupRecoveryService = AppIntelligenceRecoveryService()
 
     init(
         authManager: AuthSessionManager? = nil,
@@ -30,7 +36,7 @@ struct MoryRootView: View {
                 value: MoryAppTab.today
             ) {
                 tabRoot {
-                    HomeScreen(surface: .home)
+                    HomeScreen(surface: .home, requestedRoute: $pendingHomeRoute)
                 }
                 .id(tabRefreshID)
             }
@@ -41,7 +47,7 @@ struct MoryRootView: View {
                 value: MoryAppTab.memories
             ) {
                 tabRoot {
-                    MemoriesRootScreen()
+                    MemoriesRootScreen(requestedRoute: $pendingMemoriesRoute)
                 }
                 .id(tabRefreshID)
             }
@@ -52,7 +58,7 @@ struct MoryRootView: View {
                 value: MoryAppTab.insights
             ) {
                 tabRoot {
-                    InsightsRootScreen()
+                    InsightsRootScreen(requestedRoute: $pendingInsightsRoute)
                 }
                 .id(tabRefreshID)
             }
@@ -98,6 +104,9 @@ struct MoryRootView: View {
             Task {
                 await handleNotificationInteraction(event)
             }
+        }
+        .task {
+            await recoverStartupIntelligenceIfNeeded()
         }
     }
 
@@ -156,23 +165,53 @@ struct MoryRootView: View {
                 repository: memoryRepository
             )
             guard let route = result.route else { return }
-            selectedTab = tab(for: route.destination)
-            tabRefreshID = UUID()
+            apply(route)
         } catch {
             assertionFailure("Failed to handle notification interaction: \(error)")
         }
     }
 
-    private func tab(for destination: NotificationInteractionDestination) -> MoryAppTab {
-        switch destination {
-        case .home:
-            return .today
-        case .memories:
-            return .memories
-        case .insights:
-            return .insights
-        case .search:
-            return .search
+    private func apply(_ route: NotificationInteractionRoute) {
+        if let deepLink = route.deepLink {
+            apply(deepLink)
+            return
         }
+
+        switch route.destination {
+        case .home:
+            selectedTab = .today
+        case .memories:
+            selectedTab = .memories
+        case .insights:
+            selectedTab = .insights
+        case .search:
+            selectedTab = .search
+        }
+    }
+
+    private func apply(_ deepLink: MoryDeepLinkRoute) {
+        switch deepLink {
+        case let .home(route):
+            selectedTab = .today
+            pendingHomeRoute = route
+        case let .memories(route):
+            selectedTab = .memories
+            pendingMemoriesRoute = route
+        case let .insights(route):
+            selectedTab = .insights
+            pendingInsightsRoute = route
+        case .search:
+            selectedTab = .search
+        }
+    }
+
+    private func recoverStartupIntelligenceIfNeeded() async {
+        guard !didRunStartupRecovery else { return }
+        didRunStartupRecovery = true
+
+        _ = await startupRecoveryService.recoverAfterLaunch(
+            repository: memoryRepository,
+            cloudIntelligenceService: cloudIntelligenceService
+        )
     }
 }

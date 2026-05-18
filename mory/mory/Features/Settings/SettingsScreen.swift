@@ -291,20 +291,48 @@ private struct SettingsNotificationPreferencesSection: View {
             }
 
             Section {
-                Picker("settings.notifications.maxPerDay", selection: Binding(
-                    get: { notificationPreferences.maxPerDay },
+                Picker("Delivery pace", selection: Binding(
+                    get: { notificationPreferences.resolvedFrequencyStrategy },
                     set: { newValue in
                         Task {
                             await updatePreferences { preferences in
-                                preferences.notificationPreferences.maxPerDay = newValue
+                                preferences.notificationPreferences.frequencyStrategy = newValue
+                                if newValue != .custom {
+                                    preferences.notificationPreferences.maxPerDay = newValue.defaultMaxPerDay
+                                    preferences.notificationPreferences.minimumMinutesBetweenNotifications = newValue.defaultMinimumMinutesBetweenNotifications
+                                }
                             }
                         }
                     }
                 )) {
-                    ForEach(0...5, id: \.self) { count in
-                        Text(maxPerDayTitle(count)).tag(count)
+                    ForEach(NotificationFrequencyStrategy.allCases) { strategy in
+                        Text(frequencyStrategyTitle(strategy)).tag(strategy)
                     }
                 }
+
+                Stepper(maxPerDayTitle(notificationPreferences.maxPerDay), value: Binding(
+                    get: { notificationPreferences.maxPerDay },
+                    set: { newValue in
+                        Task {
+                            await updatePreferences { preferences in
+                                preferences.notificationPreferences.frequencyStrategy = .custom
+                                preferences.notificationPreferences.maxPerDay = newValue
+                            }
+                        }
+                    }
+                ), in: 0...8)
+
+                Stepper(minimumIntervalTitle(notificationPreferences.resolvedMinimumMinutesBetweenNotifications), value: Binding(
+                    get: { notificationPreferences.resolvedMinimumMinutesBetweenNotifications },
+                    set: { newValue in
+                        Task {
+                            await updatePreferences { preferences in
+                                preferences.notificationPreferences.frequencyStrategy = .custom
+                                preferences.notificationPreferences.minimumMinutesBetweenNotifications = newValue
+                            }
+                        }
+                    }
+                ), in: 0...720, step: 30)
 
                 Toggle("settings.notifications.richPreviews", isOn: Binding(
                     get: { notificationPreferences.richPreviewsEnabled },
@@ -316,6 +344,41 @@ private struct SettingsNotificationPreferencesSection: View {
                         }
                     }
                 ))
+
+                Toggle("Quiet hours", isOn: Binding(
+                    get: { notificationPreferences.quietHoursStartHour != nil && notificationPreferences.quietHoursEndHour != nil },
+                    set: { newValue in
+                        Task {
+                            await updatePreferences { preferences in
+                                if newValue {
+                                    preferences.notificationPreferences.quietHoursStartHour = 22
+                                    preferences.notificationPreferences.quietHoursStartMinute = 0
+                                    preferences.notificationPreferences.quietHoursEndHour = 8
+                                    preferences.notificationPreferences.quietHoursEndMinute = 0
+                                } else {
+                                    preferences.notificationPreferences.quietHoursStartHour = nil
+                                    preferences.notificationPreferences.quietHoursStartMinute = nil
+                                    preferences.notificationPreferences.quietHoursEndHour = nil
+                                    preferences.notificationPreferences.quietHoursEndMinute = nil
+                                }
+                            }
+                        }
+                    }
+                ))
+
+                if notificationPreferences.quietHoursStartHour != nil && notificationPreferences.quietHoursEndHour != nil {
+                    DatePicker(
+                        "Quiet start",
+                        selection: quietHoursDateBinding(isStart: true),
+                        displayedComponents: .hourAndMinute
+                    )
+
+                    DatePicker(
+                        "Quiet end",
+                        selection: quietHoursDateBinding(isStart: false),
+                        displayedComponents: .hourAndMinute
+                    )
+                }
 
                 LabeledContent("settings.notifications.quietHours", value: quietHoursTitle(notificationPreferences))
             } header: {
@@ -464,12 +527,77 @@ private struct SettingsNotificationPreferencesSection: View {
         )
     }
 
+    private func minimumIntervalTitle(_ minutes: Int) -> String {
+        if minutes == 0 {
+            return "No spacing limit"
+        }
+        if minutes < 60 {
+            return "\(minutes) min between notifications"
+        }
+        let hours = Double(minutes) / 60.0
+        return "\(hours.formatted(.number.precision(.fractionLength(hours.truncatingRemainder(dividingBy: 1) == 0 ? 0 : 1))))h between notifications"
+    }
+
+    private func frequencyStrategyTitle(_ strategy: NotificationFrequencyStrategy) -> String {
+        switch strategy {
+        case .quiet:
+            return "Quiet"
+        case .balanced:
+            return "Balanced"
+        case .active:
+            return "Active"
+        case .custom:
+            return "Custom"
+        }
+    }
+
     private func quietHoursTitle(_ preferences: NotificationPreferences) -> String {
         guard let start = preferences.quietHoursStartHour,
               let end = preferences.quietHoursEndHour else {
             return String(localized: "settings.notifications.quietHours.none")
         }
-        return "\(start):00 - \(end):00"
+        let startMinute = preferences.quietHoursStartMinute ?? 0
+        let endMinute = preferences.quietHoursEndMinute ?? 0
+        return "\(twoDigit(start)):\(twoDigit(startMinute)) - \(twoDigit(end)):\(twoDigit(endMinute))"
+    }
+
+    private func quietHoursDateBinding(isStart: Bool) -> Binding<Date> {
+        Binding(
+            get: {
+                let hour = isStart
+                    ? notificationPreferences.quietHoursStartHour ?? 22
+                    : notificationPreferences.quietHoursEndHour ?? 8
+                let minute = isStart
+                    ? notificationPreferences.quietHoursStartMinute ?? 0
+                    : notificationPreferences.quietHoursEndMinute ?? 0
+                return makeTimeDate(hour: hour, minute: minute)
+            },
+            set: { date in
+                let components = Calendar.autoupdatingCurrent.dateComponents([.hour, .minute], from: date)
+                Task {
+                    await updatePreferences { preferences in
+                        if isStart {
+                            preferences.notificationPreferences.quietHoursStartHour = components.hour ?? 22
+                            preferences.notificationPreferences.quietHoursStartMinute = components.minute ?? 0
+                        } else {
+                            preferences.notificationPreferences.quietHoursEndHour = components.hour ?? 8
+                            preferences.notificationPreferences.quietHoursEndMinute = components.minute ?? 0
+                        }
+                    }
+                }
+            }
+        )
+    }
+
+    private func makeTimeDate(hour: Int, minute: Int) -> Date {
+        var components = Calendar.autoupdatingCurrent.dateComponents([.year, .month, .day], from: .now)
+        components.hour = hour
+        components.minute = minute
+        return Calendar.autoupdatingCurrent.date(from: components) ?? .now
+    }
+
+    private func twoDigit(_ value: Int) -> String {
+        String(format: "%02d", value)
     }
 
     private func openSystemSettings() {

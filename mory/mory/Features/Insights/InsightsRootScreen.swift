@@ -3,9 +3,15 @@ import SwiftUI
 struct InsightsRootScreen: View {
     @Environment(\.memoryRepository) private var memoryRepository
 
+    @Binding private var requestedRoute: InsightsRoute?
     @State private var snapshot: InsightsPresentationSnapshot?
     @State private var isPresentingComposer = false
     @State private var errorMessage: String?
+    @State private var selectedRoute: InsightsRoute?
+
+    init(requestedRoute: Binding<InsightsRoute?> = .constant(nil)) {
+        _requestedRoute = requestedRoute
+    }
 
     var body: some View {
         List {
@@ -169,11 +175,25 @@ struct InsightsRootScreen: View {
             }
         }
         .navigationTitle("tab.insights")
+        .navigationDestination(item: $selectedRoute) { route in
+            switch route {
+            case let .arc(arcID):
+                ArcDetailView(arcID: arcID)
+            case let .reflection(reflectionID):
+                ReflectionDetailView(reflectionID: reflectionID)
+            }
+        }
         .task {
             await load()
         }
         .refreshable {
             await load()
+        }
+        .onAppear {
+            consumeRequestedRouteIfNeeded()
+        }
+        .onChange(of: requestedRoute) { _, _ in
+            consumeRequestedRouteIfNeeded()
         }
         .sheet(isPresented: $isPresentingComposer) {
             UnifiedCaptureComposerView(seed: .empty) {
@@ -189,6 +209,12 @@ struct InsightsRootScreen: View {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func consumeRequestedRouteIfNeeded() {
+        guard let requestedRoute else { return }
+        selectedRoute = requestedRoute
+        self.requestedRoute = nil
     }
 
     @ViewBuilder

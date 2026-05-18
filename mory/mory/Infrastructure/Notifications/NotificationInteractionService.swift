@@ -16,6 +16,7 @@ enum NotificationInteractionDestination: String, Codable, Hashable, Sendable {
 
 struct NotificationInteractionRoute: Hashable, Sendable {
     var destination: NotificationInteractionDestination
+    var deepLink: MoryDeepLinkRoute?
     var kind: NotificationIntentKind
     var targetType: ClarificationTargetType
     var targetID: UUID
@@ -104,6 +105,7 @@ struct NotificationInteractionService {
     func makeRoute(for payload: LocalNotificationPayload) -> NotificationInteractionRoute {
         NotificationInteractionRoute(
             destination: destination(for: payload),
+            deepLink: deepLink(for: payload),
             kind: payload.kind,
             targetType: payload.targetType,
             targetID: payload.targetID
@@ -176,6 +178,21 @@ struct NotificationInteractionService {
             case .question, .entity, .place, .decision:
                 return .home
             }
+        }
+    }
+
+    private func deepLink(for payload: LocalNotificationPayload) -> MoryDeepLinkRoute? {
+        switch payload.targetType {
+        case .question:
+            return .home(.question(payload.targetID))
+        case .record:
+            return .memories(.memory(payload.targetID))
+        case .chapter:
+            return .insights(.arc(payload.targetID))
+        case .reflection:
+            return .insights(.reflection(payload.targetID))
+        case .artifact, .entity, .place, .theme, .decision:
+            return nil
         }
     }
 }

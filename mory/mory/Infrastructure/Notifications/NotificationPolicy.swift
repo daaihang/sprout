@@ -5,6 +5,7 @@ enum NotificationPolicyBlockReason: String, Codable, Hashable, Sendable {
     case localNotificationFlagDisabled
     case notificationTypeDisabled
     case maxPerDayReached
+    case minimumInterval
     case quietHours
     case sensitiveTopicSuppressed
 }
@@ -54,6 +55,13 @@ struct NotificationPolicy: Sendable {
             maxPerDay: preferences.notificationPreferences.maxPerDay
         ) {
             reasons.append(.maxPerDayReached)
+        }
+        if violatesMinimumInterval(
+            candidate: intent,
+            existingIntents: existingIntents,
+            minimumMinutes: preferences.notificationPreferences.resolvedMinimumMinutesBetweenNotifications
+        ) {
+            reasons.append(.minimumInterval)
         }
         if isInsideQuietHours(intent.scheduledAt, preferences: preferences.notificationPreferences) {
             reasons.append(.quietHours)
@@ -105,6 +113,21 @@ struct NotificationPolicy: Sendable {
         return count >= maxPerDay
     }
 
+    private func violatesMinimumInterval(
+        candidate: NotificationIntent,
+        existingIntents: [NotificationIntent],
+        minimumMinutes: Int
+    ) -> Bool {
+        guard minimumMinutes > 0 else { return false }
+        let minimumInterval = TimeInterval(minimumMinutes * 60)
+        return existingIntents.contains { intent in
+            guard intent.status == .pending || intent.status == .scheduled || intent.status == .delivered else {
+                return false
+            }
+            return abs(intent.scheduledAt.timeIntervalSince(candidate.scheduledAt)) < minimumInterval
+        }
+    }
+
     private func isInsideQuietHours(_ date: Date, preferences: NotificationPreferences) -> Bool {
         guard let startHour = preferences.quietHoursStartHour,
               let endHour = preferences.quietHoursEndHour,
@@ -113,12 +136,20 @@ struct NotificationPolicy: Sendable {
         }
         let normalizedStart = max(0, min(23, startHour))
         let normalizedEnd = max(0, min(23, endHour))
-        let hour = calendar.component(.hour, from: date)
-
-        if normalizedStart < normalizedEnd {
-            return hour >= normalizedStart && hour < normalizedEnd
+        let startMinute = max(0, min(59, preferences.quietHoursStartMinute ?? 0))
+        let endMinute = max(0, min(59, preferences.quietHoursEndMinute ?? 0))
+        let startTotalMinutes = normalizedStart * 60 + startMinute
+        let endTotalMinutes = normalizedEnd * 60 + endMinute
+        guard startTotalMinutes != endTotalMinutes else {
+            return false
         }
-        return hour >= normalizedStart || hour < normalizedEnd
+        let components = calendar.dateComponents([.hour, .minute], from: date)
+        let candidateTotalMinutes = (components.hour ?? 0) * 60 + (components.minute ?? 0)
+
+        if startTotalMinutes < endTotalMinutes {
+            return candidateTotalMinutes >= startTotalMinutes && candidateTotalMinutes < endTotalMinutes
+        }
+        return candidateTotalMinutes >= startTotalMinutes || candidateTotalMinutes < endTotalMinutes
     }
 
     private func isSensitiveBlocked(

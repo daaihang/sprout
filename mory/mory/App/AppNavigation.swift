@@ -29,6 +29,38 @@ enum MoryAppTab: String, CaseIterable, Hashable, Identifiable, Sendable {
     }
 }
 
+enum MoryDeepLinkRoute: Hashable, Sendable {
+    case home(HomeRoute)
+    case memories(MemoriesRoute)
+    case insights(InsightsRoute)
+    case search
+}
+
+enum MemoriesRoute: Hashable, Identifiable, Sendable {
+    case memory(UUID)
+
+    var id: String {
+        switch self {
+        case let .memory(id):
+            return "memory-\(id.uuidString)"
+        }
+    }
+}
+
+enum InsightsRoute: Hashable, Identifiable, Sendable {
+    case arc(UUID)
+    case reflection(UUID)
+
+    var id: String {
+        switch self {
+        case let .arc(id):
+            return "arc-\(id.uuidString)"
+        case let .reflection(id):
+            return "reflection-\(id.uuidString)"
+        }
+    }
+}
+
 enum SettingsRoute: String, CaseIterable, Hashable, Identifiable, Sendable {
     case account
     case permissions

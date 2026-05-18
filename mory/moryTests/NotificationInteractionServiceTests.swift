@@ -51,6 +51,7 @@ final class NotificationInteractionServiceTests: XCTestCase {
 
         XCTAssertEqual(result.route?.destination, .memories)
         XCTAssertEqual(result.route?.targetID, intent.targetID)
+        XCTAssertEqual(result.route?.deepLink, .memories(.memory(intent.targetID)))
         let stored = try XCTUnwrap(fixture.repository.fetchNotificationIntents(status: nil, limit: nil).first)
         XCTAssertEqual(stored.status, .delivered)
         XCTAssertEqual(stored.deliveredAt, now)
@@ -91,6 +92,38 @@ final class NotificationInteractionServiceTests: XCTestCase {
         XCTAssertEqual(result.route?.destination, .insights)
         XCTAssertNil(result.updatedIntent)
         XCTAssertTrue(try fixture.repository.fetchNotificationIntents(status: nil, limit: nil).isEmpty)
+    }
+
+    func testOpenedDailyQuestionDeepLinksToQuestionCard() throws {
+        let fixture = makeRepositoryFixture()
+        let intent = makeIntent(kind: .dailyQuestion, targetType: .question, status: .scheduled)
+        try fixture.repository.upsertNotificationIntent(intent)
+        let service = NotificationInteractionService()
+        let event = try XCTUnwrap(NotificationInteractionEvent(
+            action: .opened,
+            userInfo: anyUserInfo(for: intent)
+        ))
+
+        let result = try service.handle(event: event, repository: fixture.repository)
+
+        XCTAssertEqual(result.route?.destination, .home)
+        XCTAssertEqual(result.route?.deepLink, .home(.question(intent.targetID)))
+    }
+
+    func testOpenedStageFormingChapterDeepLinksToArcCandidate() throws {
+        let fixture = makeRepositoryFixture()
+        let intent = makeIntent(kind: .stageForming, targetType: .chapter, status: .scheduled)
+        try fixture.repository.upsertNotificationIntent(intent)
+        let service = NotificationInteractionService()
+        let event = try XCTUnwrap(NotificationInteractionEvent(
+            action: .opened,
+            userInfo: anyUserInfo(for: intent)
+        ))
+
+        let result = try service.handle(event: event, repository: fixture.repository)
+
+        XCTAssertEqual(result.route?.destination, .insights)
+        XCTAssertEqual(result.route?.deepLink, .insights(.arc(intent.targetID)))
     }
 
     private func makeRepositoryFixture() -> NotificationInteractionRepositoryFixture {

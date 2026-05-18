@@ -46,9 +46,11 @@ struct HomeScreen: View {
     @State private var dailyQuestionPreparationEvidenceSignature: String?
     @State private var errorMessage: String?
     @State private var selectedRoute: HomeRoute?
+    @Binding private var requestedRoute: HomeRoute?
 
-    init(surface: Surface = .home) {
+    init(surface: Surface = .home, requestedRoute: Binding<HomeRoute?> = .constant(nil)) {
         self.surface = surface
+        _requestedRoute = requestedRoute
     }
 
     var body: some View {
@@ -69,6 +71,8 @@ struct HomeScreen: View {
                 ArcDetailView(arcID: arcID)
             case let .reflection(reflectionID):
                 ReflectionDetailView(reflectionID: reflectionID)
+            case let .question(questionID):
+                ClarificationQuestionDetailView(questionID: questionID)
             }
         }
         .toolbar {
@@ -102,6 +106,12 @@ struct HomeScreen: View {
             UnifiedCaptureComposerView(seed: .empty) {
                 Task { await reload() }
             }
+        }
+        .onAppear {
+            consumeRequestedRouteIfNeeded()
+        }
+        .onChange(of: requestedRoute) { _, _ in
+            consumeRequestedRouteIfNeeded()
         }
     }
 
@@ -301,18 +311,117 @@ struct HomeScreen: View {
             errorMessage = error.localizedDescription
         }
     }
+
+    private func consumeRequestedRouteIfNeeded() {
+        guard let requestedRoute else { return }
+        selectedRoute = requestedRoute
+        self.requestedRoute = nil
+    }
 }
 
-enum HomeRoute: Hashable, Identifiable {
+enum HomeRoute: Hashable, Identifiable, Sendable {
     case memory(UUID)
     case arc(UUID)
     case reflection(UUID)
+    case question(UUID)
 
     var id: String {
         switch self {
         case let .memory(id): return "memory-\(id.uuidString)"
         case let .arc(id): return "arc-\(id.uuidString)"
         case let .reflection(id): return "reflection-\(id.uuidString)"
+        case let .question(id): return "question-\(id.uuidString)"
+        }
+    }
+}
+
+struct ClarificationQuestionDetailView: View {
+    @Environment(\.memoryRepository) private var memoryRepository
+
+    let questionID: UUID
+
+    @State private var question: ClarificationQuestion?
+    @State private var profile: EntityProfile?
+    @State private var errorMessage: String?
+
+    var body: some View {
+        List {
+            if let errorMessage {
+                Section {
+                    Text(errorMessage)
+                        .foregroundStyle(.red)
+                }
+            }
+
+            if let question {
+                Section {
+                    if question.status == .pending {
+                        ClarificationQuestionCard(
+                            question: question,
+                            profile: profile,
+                            onAnswer: answerQuestion,
+                            onDismiss: dismissQuestion
+                        )
+                    } else {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(question.prompt)
+                                .font(.headline)
+                            Text(question.status.rawValue.capitalized)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            if let answer = question.answer {
+                                Text(answer.freeformText ?? answer.value)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+            } else if errorMessage == nil {
+                Section {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                }
+            }
+        }
+        .navigationTitle("Daily question")
+        .task {
+            load()
+        }
+        .refreshable {
+            load()
+        }
+    }
+
+    private func load() {
+        do {
+            let questions = try memoryRepository.fetchClarificationQuestions(status: nil, limit: nil)
+            question = questions.first { $0.id == questionID }
+            if let question, question.targetType == .entity {
+                profile = try memoryRepository.fetchEntityProfile(entityID: question.targetID)
+            } else {
+                profile = nil
+            }
+            errorMessage = question == nil ? "Question is no longer available." : nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func answerQuestion(_ answer: ClarificationAnswer) {
+        do {
+            try memoryRepository.answerClarificationQuestion(questionID, answer: answer)
+            load()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func dismissQuestion() {
+        do {
+            try memoryRepository.dismissClarificationQuestion(questionID)
+            load()
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 }

@@ -36,8 +36,9 @@ Current iOS data-flow status:
 - Notification intent preparation now has a local policy path: eligible daily questions can become pending `NotificationIntent` rows only when user preferences, V6 flags, quiet hours, daily limits, and sensitivity rules allow it.
 - Local notification scheduling now has a mockable iOS scheduler and `UNUserNotificationCenter` adapter. Foreground Home refresh can schedule pending intents when permission already exists, without prompting.
 - Notification opt-in now has a basic settings path: user preferences can request system authorization, enable daily-question notification defaults, update per-type switches, and cancel pending/scheduled local intents when disabled.
-- Local notification interactions now have a first foundation: Mory registers a notification category, records foreground delivery/open/dismiss events back to `NotificationIntent`, and routes notification opens to the best current tab.
-- This is not yet the final background scheduler. Phase 5 still needs retry policy, exact deep links to question/detail surfaces, remote push delivery writeback, and polished settings UX.
+- Local notification interactions now support concrete deep-link routes for the first V6 surfaces: daily question opens can push a specific question card, record targets can push memory detail, and chapter/reflection targets can push the corresponding Insights detail screen.
+- App launch now runs a lightweight recovery pass: `running` intelligence jobs are reset to `pending`, retryable `failed` jobs are rescheduled with bounded backoff, daily-question preparation is attempted, and pending local notification intents are scheduled when permission already exists.
+- This is not yet the final background scheduler. Phase 5 still needs actual execution workers for every recovered job kind, remote push delivery writeback, and polished settings UX.
 
 ## 4. Notification Architecture
 
@@ -55,7 +56,8 @@ Current implementation boundary:
 - Pending intents are stored locally and can be tested deterministically.
 - `LocalNotificationScheduler` can schedule pending local intents and mark them `scheduled`.
 - `NotificationSettingsService` stores user notification preferences separately from rollout flags and system authorization.
-- `NotificationInteractionService` resolves local notification metadata, updates delivered/dismissed state, and maps open events to a coarse app destination.
+- `NotificationInteractionService` resolves local notification metadata, updates delivered/dismissed state, and maps open events to a tab plus optional concrete route.
+- `AppIntelligenceRecoveryService` owns launch-time retry/resume bookkeeping and notification preparation recovery.
 - Permission prompts are only available from the settings opt-in path, not from passive Home refresh.
 
 Remote notification path:

@@ -19,6 +19,41 @@ enum SensitiveTopicPolicy: String, Codable, CaseIterable, Identifiable, Sendable
     var id: String { rawValue }
 }
 
+enum NotificationFrequencyStrategy: String, Codable, CaseIterable, Identifiable, Sendable {
+    case quiet
+    case balanced
+    case active
+    case custom
+
+    var id: String { rawValue }
+
+    var defaultMaxPerDay: Int {
+        switch self {
+        case .quiet:
+            return 1
+        case .balanced:
+            return 2
+        case .active:
+            return 4
+        case .custom:
+            return 2
+        }
+    }
+
+    var defaultMinimumMinutesBetweenNotifications: Int {
+        switch self {
+        case .quiet:
+            return 8 * 60
+        case .balanced:
+            return 4 * 60
+        case .active:
+            return 90
+        case .custom:
+            return 4 * 60
+        }
+    }
+}
+
 struct NotificationPreferences: Codable, Hashable, Sendable {
     var enabled: Bool
     var backgroundDoneEnabled: Bool
@@ -26,9 +61,13 @@ struct NotificationPreferences: Codable, Hashable, Sendable {
     var repeatedThemeEnabled: Bool
     var stageFormingEnabled: Bool
     var revisitEnabled: Bool
+    var frequencyStrategy: NotificationFrequencyStrategy?
     var maxPerDay: Int
+    var minimumMinutesBetweenNotifications: Int?
     var quietHoursStartHour: Int?
+    var quietHoursStartMinute: Int?
     var quietHoursEndHour: Int?
+    var quietHoursEndMinute: Int?
     var richPreviewsEnabled: Bool
 
     init(
@@ -38,9 +77,13 @@ struct NotificationPreferences: Codable, Hashable, Sendable {
         repeatedThemeEnabled: Bool = true,
         stageFormingEnabled: Bool = true,
         revisitEnabled: Bool = true,
+        frequencyStrategy: NotificationFrequencyStrategy? = .balanced,
         maxPerDay: Int = 2,
+        minimumMinutesBetweenNotifications: Int? = nil,
         quietHoursStartHour: Int? = 22,
+        quietHoursStartMinute: Int? = 0,
         quietHoursEndHour: Int? = 8,
+        quietHoursEndMinute: Int? = 0,
         richPreviewsEnabled: Bool = false
     ) {
         self.enabled = enabled
@@ -49,10 +92,26 @@ struct NotificationPreferences: Codable, Hashable, Sendable {
         self.repeatedThemeEnabled = repeatedThemeEnabled
         self.stageFormingEnabled = stageFormingEnabled
         self.revisitEnabled = revisitEnabled
+        self.frequencyStrategy = frequencyStrategy
         self.maxPerDay = max(0, maxPerDay)
+        self.minimumMinutesBetweenNotifications = minimumMinutesBetweenNotifications.map { max(0, $0) }
         self.quietHoursStartHour = quietHoursStartHour
+        self.quietHoursStartMinute = quietHoursStartMinute.map { max(0, min(59, $0)) }
         self.quietHoursEndHour = quietHoursEndHour
+        self.quietHoursEndMinute = quietHoursEndMinute.map { max(0, min(59, $0)) }
         self.richPreviewsEnabled = richPreviewsEnabled
+    }
+
+    var resolvedFrequencyStrategy: NotificationFrequencyStrategy {
+        frequencyStrategy ?? .balanced
+    }
+
+    var resolvedMinimumMinutesBetweenNotifications: Int {
+        max(
+            0,
+            minimumMinutesBetweenNotifications
+                ?? resolvedFrequencyStrategy.defaultMinimumMinutesBetweenNotifications
+        )
     }
 }
 

@@ -3,6 +3,7 @@ import SwiftUI
 struct MemoriesRootScreen: View {
     @Environment(\.memoryRepository) private var memoryRepository
 
+    @Binding private var requestedRoute: MemoriesRoute?
     @State private var selectedArtifactKind: ArtifactKind?
     @State private var selectedPipelineStage: MemoryPipelineStage?
     @State private var selectedContext: MemoryLibraryContextFilter = .any
@@ -10,6 +11,11 @@ struct MemoriesRootScreen: View {
     @State private var snapshot: MemoryLibrarySnapshot?
     @State private var isPresentingComposer = false
     @State private var errorMessage: String?
+    @State private var selectedRoute: MemoriesRoute?
+
+    init(requestedRoute: Binding<MemoriesRoute?> = .constant(nil)) {
+        _requestedRoute = requestedRoute
+    }
 
     private var filter: MemoryLibraryFilter {
         MemoryLibraryFilter(
@@ -72,6 +78,12 @@ struct MemoriesRootScreen: View {
             }
         }
         .navigationTitle("tab.memories")
+        .navigationDestination(item: $selectedRoute) { route in
+            switch route {
+            case let .memory(recordID):
+                MemoryDetailView(recordID: recordID)
+            }
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 NavigationLink {
@@ -91,6 +103,12 @@ struct MemoriesRootScreen: View {
         .onChange(of: selectedPipelineStage) { _, _ in Task { await load() } }
         .onChange(of: selectedContext) { _, _ in Task { await load() } }
         .onChange(of: selectedInsight) { _, _ in Task { await load() } }
+        .onAppear {
+            consumeRequestedRouteIfNeeded()
+        }
+        .onChange(of: requestedRoute) { _, _ in
+            consumeRequestedRouteIfNeeded()
+        }
         .sheet(isPresented: $isPresentingComposer) {
             UnifiedCaptureComposerView(seed: .empty) {
                 Task { await load() }
@@ -120,6 +138,12 @@ struct MemoriesRootScreen: View {
         } else {
             isPresentingComposer = true
         }
+    }
+
+    private func consumeRequestedRouteIfNeeded() {
+        guard let requestedRoute else { return }
+        selectedRoute = requestedRoute
+        self.requestedRoute = nil
     }
 }
 
