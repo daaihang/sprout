@@ -16,6 +16,8 @@ DerivedData/
 # Go / backend local artifacts
 server/.idea/
 server/.env
+server/.secrets/
+server/*.p8
 server/*.db
 server/*.db-shm
 server/*.db-wal
