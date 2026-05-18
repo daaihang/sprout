@@ -83,6 +83,7 @@ func (s *Server) registerRoutes() {
 	s.mux.Handle("POST /api/me/onboarding/complete", s.withAuth(http.HandlerFunc(s.handleOnboardingComplete)))
 	s.mux.Handle("GET /api/subscription/verify", s.withAuth(http.HandlerFunc(s.handleSubscriptionVerify)))
 	s.mux.Handle("POST /api/push/register", s.withAuth(http.HandlerFunc(s.handlePushRegister)))
+	s.mux.Handle("POST /api/push/delivery-writeback", s.withAuth(http.HandlerFunc(s.handlePushDeliveryWriteback)))
 }
 
 func (s *Server) withAuth(next http.Handler) http.Handler {

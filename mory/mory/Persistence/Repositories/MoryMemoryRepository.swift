@@ -2454,9 +2454,10 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     private func fetchIntelligencePreferenceStore() throws -> IntelligencePreferenceStore? {
         let syncKey = IntelligencePreferences.defaultSyncKey
         let descriptor = FetchDescriptor<IntelligencePreferenceStore>(
+            predicate: #Predicate { $0.syncKey == syncKey },
             sortBy: [SortDescriptor(\.updatedAt, order: .reverse)]
         )
-        return try modelContext.fetch(descriptor).first { $0.syncKey == syncKey }
+        return try modelContext.fetch(descriptor).first
     }
 
     func upsert(entityProfile: EntityProfile) throws {

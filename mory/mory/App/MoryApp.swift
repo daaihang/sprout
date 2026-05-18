@@ -8,6 +8,7 @@ struct MoryApp: App {
     private let sharedModelContainer = MoryPersistenceStack.makeSharedModelContainer()
     private let memoryRepository: any MoryMemoryRepositorying
     private let cloudIntelligenceService: any CloudIntelligenceServing
+    private let remotePushSyncService: any RemotePushSyncing
     private let credentialStore = KeychainCredentialStore()
     private let runtimeEnvironment = AppRuntimeEnvironment.current
     @State private var authManager: AuthSessionManager
@@ -25,6 +26,10 @@ struct MoryApp: App {
             analysisService: analysisService
         )
         cloudIntelligenceService = RemoteCloudIntelligenceClient(
+            apiClient: client,
+            tokenProvider: tokenProvider
+        )
+        remotePushSyncService = RemotePushSyncService(
             apiClient: client,
             tokenProvider: tokenProvider
         )
@@ -47,6 +52,7 @@ struct MoryApp: App {
                     )
                         .environment(\.memoryRepository, memoryRepository)
                         .environment(\.cloudIntelligenceService, cloudIntelligenceService)
+                        .environment(\.remotePushSyncService, remotePushSyncService)
                 case .unauthenticated:
                     SignInView(
                         credentialStore: credentialStore,

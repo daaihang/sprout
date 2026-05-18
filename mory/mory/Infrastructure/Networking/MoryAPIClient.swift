@@ -382,6 +382,72 @@ struct MoryAPIClient: Sendable {
         }
     }
 
+    struct PushRegisterPayload: Encodable, Sendable, Equatable {
+        var deviceID: String
+        var apnsToken: String
+        var timezone: String
+        var hasQuestionReady: Bool
+        var notificationsEnabled: Bool
+        var dailyQuestionEnabled: Bool
+        var deliveryPace: String
+        var maxPerDay: Int
+        var quietStart: String?
+        var quietEnd: String?
+
+        enum CodingKeys: String, CodingKey {
+            case deviceID = "device_id"
+            case apnsToken = "apns_token"
+            case timezone
+            case hasQuestionReady = "has_question_ready"
+            case notificationsEnabled = "notifications_enabled"
+            case dailyQuestionEnabled = "daily_question_enabled"
+            case deliveryPace = "delivery_pace"
+            case maxPerDay = "max_per_day"
+            case quietStart = "quiet_start"
+            case quietEnd = "quiet_end"
+        }
+    }
+
+    struct PushRegisterResponse: Decodable, Sendable, Equatable {
+        let registered: Bool
+        let userID: String
+
+        enum CodingKeys: String, CodingKey {
+            case registered
+            case userID = "user_id"
+        }
+    }
+
+    struct PushDeliveryWritebackPayload: Encodable, Sendable, Equatable {
+        var deviceID: String
+        var intentID: String
+        var action: String
+        var kind: String
+        var targetType: String
+        var targetID: String
+        var occurredAt: String
+
+        enum CodingKeys: String, CodingKey {
+            case deviceID = "device_id"
+            case intentID = "intent_id"
+            case action
+            case kind
+            case targetType = "target_type"
+            case targetID = "target_id"
+            case occurredAt = "occurred_at"
+        }
+    }
+
+    struct PushDeliveryWritebackResponse: Decodable, Sendable, Equatable {
+        let accepted: Bool
+        let userID: String
+
+        enum CodingKeys: String, CodingKey {
+            case accepted
+            case userID = "user_id"
+        }
+    }
+
     enum APIError: LocalizedError {
         case invalidResponse
         case unauthorized
@@ -620,6 +686,34 @@ struct MoryAPIClient: Sendable {
             requestIDPrefix: "v6-suggest-notification",
             failedStage: "v6_suggest_notification",
             responseType: NotificationIntentSuggestionResponse.self
+        )
+    }
+
+    func registerPushToken(
+        payload: PushRegisterPayload,
+        bearerToken: String
+    ) async throws -> PushRegisterResponse {
+        try await postAuthenticated(
+            path: "/api/push/register",
+            payload: payload,
+            bearerToken: bearerToken,
+            requestIDPrefix: "push-register",
+            failedStage: "push_register",
+            responseType: PushRegisterResponse.self
+        )
+    }
+
+    func writeBackPushDelivery(
+        payload: PushDeliveryWritebackPayload,
+        bearerToken: String
+    ) async throws -> PushDeliveryWritebackResponse {
+        try await postAuthenticated(
+            path: "/api/push/delivery-writeback",
+            payload: payload,
+            bearerToken: bearerToken,
+            requestIDPrefix: "push-delivery-writeback",
+            failedStage: "push_delivery_writeback",
+            responseType: PushDeliveryWritebackResponse.self
         )
     }
 

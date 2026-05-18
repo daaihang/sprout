@@ -246,9 +246,52 @@ paths:
                   type: string
                 has_question_ready:
                   type: boolean
+                notifications_enabled:
+                  type: boolean
+                daily_question_enabled:
+                  type: boolean
+                delivery_pace:
+                  type: string
+                max_per_day:
+                  type: integer
+                quiet_start:
+                  type: string
+                quiet_end:
+                  type: string
       responses:
         "200":
           description: Registration succeeded
+  /api/push/delivery-writeback:
+    post:
+      summary: Write back notification delivery or interaction events
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [device_id, intent_id, action, target_type, target_id]
+              properties:
+                device_id:
+                  type: string
+                intent_id:
+                  type: string
+                action:
+                  type: string
+                kind:
+                  type: string
+                target_type:
+                  type: string
+                target_id:
+                  type: string
+                occurred_at:
+                  type: string
+                  format: date-time
+      responses:
+        "200":
+          description: Writeback accepted
 components:
   securitySchemes:
     bearerAuth:

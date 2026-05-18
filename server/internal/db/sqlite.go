@@ -6,19 +6,39 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"time"
 
 	_ "modernc.org/sqlite"
 )
 
 type PushToken struct {
-	UserID           string    `json:"user_id"`
-	DeviceID         string    `json:"device_id"`
-	APNSToken        string    `json:"apns_token"`
-	Timezone         string    `json:"timezone"`
-	HasQuestionReady bool      `json:"has_question_ready"`
-	CreatedAt        time.Time `json:"created_at,omitempty"`
-	UpdatedAt        time.Time `json:"updated_at,omitempty"`
+	UserID               string    `json:"user_id"`
+	DeviceID             string    `json:"device_id"`
+	APNSToken            string    `json:"apns_token"`
+	Timezone             string    `json:"timezone"`
+	HasQuestionReady     bool      `json:"has_question_ready"`
+	NotificationsEnabled bool      `json:"notifications_enabled"`
+	DailyQuestionEnabled bool      `json:"daily_question_enabled"`
+	DeliveryPace         string    `json:"delivery_pace,omitempty"`
+	MaxPerDay            int       `json:"max_per_day,omitempty"`
+	QuietStart           string    `json:"quiet_start,omitempty"`
+	QuietEnd             string    `json:"quiet_end,omitempty"`
+	CreatedAt            time.Time `json:"created_at,omitempty"`
+	UpdatedAt            time.Time `json:"updated_at,omitempty"`
+}
+
+type PushDeliveryEvent struct {
+	ID         int64     `json:"id"`
+	UserID     string    `json:"user_id"`
+	DeviceID   string    `json:"device_id"`
+	IntentID   string    `json:"intent_id"`
+	Action     string    `json:"action"`
+	Kind       string    `json:"kind"`
+	TargetType string    `json:"target_type"`
+	TargetID   string    `json:"target_id"`
+	OccurredAt time.Time `json:"occurred_at"`
+	CreatedAt  time.Time `json:"created_at,omitempty"`
 }
 
 type UserProfile struct {
@@ -31,6 +51,8 @@ type UserProfile struct {
 type PushTokenStore interface {
 	UpsertPushToken(ctx context.Context, token PushToken) error
 	GetPushToken(ctx context.Context, userID, deviceID string) (PushToken, error)
+	InsertPushDeliveryEvent(ctx context.Context, event PushDeliveryEvent) error
+	ListPushDeliveryEvents(ctx context.Context, userID string) ([]PushDeliveryEvent, error)
 	Close() error
 }
 
@@ -100,9 +122,27 @@ CREATE TABLE IF NOT EXISTS push_tokens (
     apns_token TEXT NOT NULL,
     timezone TEXT NOT NULL,
     has_question_ready INTEGER NOT NULL DEFAULT 0,
+    notifications_enabled INTEGER NOT NULL DEFAULT 0,
+    daily_question_enabled INTEGER NOT NULL DEFAULT 0,
+    delivery_pace TEXT NOT NULL DEFAULT '',
+    max_per_day INTEGER NOT NULL DEFAULT 0,
+    quiet_start TEXT NOT NULL DEFAULT '',
+    quiet_end TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     UNIQUE(user_id, device_id)
+);
+CREATE TABLE IF NOT EXISTS push_delivery_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    device_id TEXT NOT NULL,
+    intent_id TEXT NOT NULL,
+    action TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    target_type TEXT NOT NULL,
+    target_id TEXT NOT NULL,
+    occurred_at TEXT NOT NULL,
+    created_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS user_profiles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -115,18 +155,41 @@ CREATE TABLE IF NOT EXISTS user_profiles (
 	if err != nil {
 		return fmt.Errorf("migrate sqlite schema: %w", err)
 	}
+	if err := s.migratePushTokenColumns(); err != nil {
+		return err
+	}
 	return nil
 }
 
 func (s *SQLiteStore) UpsertPushToken(ctx context.Context, token PushToken) error {
 	now := time.Now().UTC()
 	const stmt = `
-INSERT INTO push_tokens (user_id, device_id, apns_token, timezone, has_question_ready, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO push_tokens (
+	user_id,
+	device_id,
+	apns_token,
+	timezone,
+	has_question_ready,
+	notifications_enabled,
+	daily_question_enabled,
+	delivery_pace,
+	max_per_day,
+	quiet_start,
+	quiet_end,
+	created_at,
+	updated_at
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(user_id, device_id) DO UPDATE SET
     apns_token = excluded.apns_token,
     timezone = excluded.timezone,
     has_question_ready = excluded.has_question_ready,
+    notifications_enabled = excluded.notifications_enabled,
+    daily_question_enabled = excluded.daily_question_enabled,
+    delivery_pace = excluded.delivery_pace,
+    max_per_day = excluded.max_per_day,
+    quiet_start = excluded.quiet_start,
+    quiet_end = excluded.quiet_end,
     updated_at = excluded.updated_at;`
 	_, err := s.db.ExecContext(
 		ctx,
@@ -136,6 +199,12 @@ ON CONFLICT(user_id, device_id) DO UPDATE SET
 		token.APNSToken,
 		token.Timezone,
 		boolToInt(token.HasQuestionReady),
+		boolToInt(token.NotificationsEnabled),
+		boolToInt(token.DailyQuestionEnabled),
+		token.DeliveryPace,
+		token.MaxPerDay,
+		token.QuietStart,
+		token.QuietEnd,
 		now.Format(time.RFC3339),
 		now.Format(time.RFC3339),
 	)
@@ -147,12 +216,27 @@ ON CONFLICT(user_id, device_id) DO UPDATE SET
 
 func (s *SQLiteStore) GetPushToken(ctx context.Context, userID, deviceID string) (PushToken, error) {
 	const stmt = `
-SELECT user_id, device_id, apns_token, timezone, has_question_ready, created_at, updated_at
+SELECT
+	user_id,
+	device_id,
+	apns_token,
+	timezone,
+	has_question_ready,
+	notifications_enabled,
+	daily_question_enabled,
+	delivery_pace,
+	max_per_day,
+	quiet_start,
+	quiet_end,
+	created_at,
+	updated_at
 FROM push_tokens
 WHERE user_id = ? AND device_id = ?;`
 
 	var token PushToken
 	var hasQuestionReady int
+	var notificationsEnabled int
+	var dailyQuestionEnabled int
 	var createdAt string
 	var updatedAt string
 
@@ -162,6 +246,12 @@ WHERE user_id = ? AND device_id = ?;`
 		&token.APNSToken,
 		&token.Timezone,
 		&hasQuestionReady,
+		&notificationsEnabled,
+		&dailyQuestionEnabled,
+		&token.DeliveryPace,
+		&token.MaxPerDay,
+		&token.QuietStart,
+		&token.QuietEnd,
 		&createdAt,
 		&updatedAt,
 	)
@@ -170,9 +260,90 @@ WHERE user_id = ? AND device_id = ?;`
 	}
 
 	token.HasQuestionReady = hasQuestionReady == 1
+	token.NotificationsEnabled = notificationsEnabled == 1
+	token.DailyQuestionEnabled = dailyQuestionEnabled == 1
 	token.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
 	token.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
 	return token, nil
+}
+
+func (s *SQLiteStore) InsertPushDeliveryEvent(ctx context.Context, event PushDeliveryEvent) error {
+	now := time.Now().UTC()
+	occurredAt := event.OccurredAt.UTC()
+	if occurredAt.IsZero() {
+		occurredAt = now
+	}
+	const stmt = `
+INSERT INTO push_delivery_events (
+	user_id,
+	device_id,
+	intent_id,
+	action,
+	kind,
+	target_type,
+	target_id,
+	occurred_at,
+	created_at
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`
+	_, err := s.db.ExecContext(
+		ctx,
+		stmt,
+		event.UserID,
+		event.DeviceID,
+		event.IntentID,
+		event.Action,
+		event.Kind,
+		event.TargetType,
+		event.TargetID,
+		occurredAt.Format(time.RFC3339),
+		now.Format(time.RFC3339),
+	)
+	if err != nil {
+		return fmt.Errorf("insert push delivery event: %w", err)
+	}
+	return nil
+}
+
+func (s *SQLiteStore) ListPushDeliveryEvents(ctx context.Context, userID string) ([]PushDeliveryEvent, error) {
+	const stmt = `
+SELECT id, user_id, device_id, intent_id, action, kind, target_type, target_id, occurred_at, created_at
+FROM push_delivery_events
+WHERE user_id = ?
+ORDER BY id ASC;`
+	rows, err := s.db.QueryContext(ctx, stmt, userID)
+	if err != nil {
+		return nil, fmt.Errorf("query push delivery events: %w", err)
+	}
+	defer rows.Close()
+
+	events := make([]PushDeliveryEvent, 0)
+	for rows.Next() {
+		var event PushDeliveryEvent
+		var occurredAt string
+		var createdAt string
+		if err := rows.Scan(
+			&event.ID,
+			&event.UserID,
+			&event.DeviceID,
+			&event.IntentID,
+			&event.Action,
+			&event.Kind,
+			&event.TargetType,
+			&event.TargetID,
+			&occurredAt,
+			&createdAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan push delivery event: %w", err)
+		}
+		event.OccurredAt, _ = time.Parse(time.RFC3339, occurredAt)
+		event.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
+		events = append(events, event)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate push delivery events: %w", err)
+	}
+	return events, nil
 }
 
 func (s *SQLiteStore) GetOrCreateUserProfile(ctx context.Context, userID string) (UserProfile, bool, error) {
@@ -251,4 +422,32 @@ func boolToInt(value bool) int {
 		return 1
 	}
 	return 0
+}
+
+func (s *SQLiteStore) migratePushTokenColumns() error {
+	columnDefinitions := []string{
+		"notifications_enabled INTEGER NOT NULL DEFAULT 0",
+		"daily_question_enabled INTEGER NOT NULL DEFAULT 0",
+		"delivery_pace TEXT NOT NULL DEFAULT ''",
+		"max_per_day INTEGER NOT NULL DEFAULT 0",
+		"quiet_start TEXT NOT NULL DEFAULT ''",
+		"quiet_end TEXT NOT NULL DEFAULT ''",
+	}
+	for _, definition := range columnDefinitions {
+		if err := s.addColumnIfMissing("push_tokens", definition); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *SQLiteStore) addColumnIfMissing(table string, definition string) error {
+	stmt := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s;", table, definition)
+	if _, err := s.db.Exec(stmt); err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "duplicate column name") {
+			return nil
+		}
+		return fmt.Errorf("add column %q to %s: %w", definition, table, err)
+	}
+	return nil
 }

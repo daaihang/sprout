@@ -9,6 +9,11 @@ private struct CloudIntelligenceServiceKey: EnvironmentKey {
     static let defaultValue: any CloudIntelligenceServing = MissingCloudIntelligenceService()
 }
 
+private struct RemotePushSyncServiceKey: EnvironmentKey {
+    @MainActor
+    static let defaultValue: any RemotePushSyncing = MissingRemotePushSyncService()
+}
+
 extension EnvironmentValues {
     var memoryRepository: any MoryMemoryRepositorying {
         get { self[MemoryRepositoryKey.self] }
@@ -18,6 +23,11 @@ extension EnvironmentValues {
     var cloudIntelligenceService: any CloudIntelligenceServing {
         get { self[CloudIntelligenceServiceKey.self] }
         set { self[CloudIntelligenceServiceKey.self] = newValue }
+    }
+
+    var remotePushSyncService: any RemotePushSyncing {
+        get { self[RemotePushSyncServiceKey.self] }
+        set { self[RemotePushSyncServiceKey.self] = newValue }
     }
 }
 
@@ -108,4 +118,11 @@ private struct MissingCloudIntelligenceService: CloudIntelligenceServing {
     func suggestChapters(_ payload: MoryAPIClient.ChapterSuggestionPayload) async throws -> MoryAPIClient.ChapterSuggestionResponse { fail() }
     func analyzePhotoSemantics(_ payload: MoryAPIClient.PhotoSemanticAnalysisPayload) async throws -> MoryAPIClient.PhotoSemanticAnalysisResponse { fail() }
     func suggestNotificationIntent(_ payload: MoryAPIClient.NotificationIntentSuggestionPayload) async throws -> MoryAPIClient.NotificationIntentSuggestionResponse { fail() }
+}
+
+@MainActor
+private final class MissingRemotePushSyncService: RemotePushSyncing {
+    func registerSystemRemoteNotificationsIfNeeded(repository: any MoryMemoryRepositorying) {}
+    func syncRegistrationIfPossible(repository: any MoryMemoryRepositorying, force: Bool) async {}
+    func writeBackInteraction(_ event: NotificationInteractionEvent) async {}
 }

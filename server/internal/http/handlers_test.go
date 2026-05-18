@@ -170,7 +170,7 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 	})
 
 	t.Run("push register upsert", func(t *testing.T) {
-		body := `{"device_id":"iphone-1","apns_token":"token-a","timezone":"Asia/Shanghai","has_question_ready":true}`
+		body := `{"device_id":"iphone-1","apns_token":"token-a","timezone":"Asia/Shanghai","has_question_ready":true,"notifications_enabled":true,"daily_question_enabled":true,"delivery_pace":"balanced","max_per_day":3,"quiet_start":"22:00","quiet_end":"07:00"}`
 		req := httptest.NewRequest(http.MethodPost, "/api/push/register", bytes.NewBufferString(body))
 		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Set("Content-Type", "application/json")
@@ -185,11 +185,14 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 		if err != nil {
 			t.Fatalf("get push token after insert: %v", err)
 		}
-		if stored.APNSToken != "token-a" || !stored.HasQuestionReady {
+		if stored.APNSToken != "token-a" || !stored.HasQuestionReady || !stored.NotificationsEnabled || !stored.DailyQuestionEnabled {
 			t.Fatalf("unexpected stored token after insert: %+v", stored)
 		}
+		if stored.DeliveryPace != "balanced" || stored.MaxPerDay != 3 || stored.QuietStart != "22:00" || stored.QuietEnd != "07:00" {
+			t.Fatalf("unexpected push preference fields after insert: %+v", stored)
+		}
 
-		updateBody := `{"device_id":"iphone-1","apns_token":"token-b","timezone":"America/Los_Angeles","has_question_ready":false}`
+		updateBody := `{"device_id":"iphone-1","apns_token":"token-b","timezone":"America/Los_Angeles","has_question_ready":false,"notifications_enabled":false,"daily_question_enabled":false,"delivery_pace":"light","max_per_day":1,"quiet_start":"23:00","quiet_end":"08:00"}`
 		updateReq := httptest.NewRequest(http.MethodPost, "/api/push/register", bytes.NewBufferString(updateBody))
 		updateReq.Header.Set("Authorization", "Bearer "+token)
 		updateReq.Header.Set("Content-Type", "application/json")
@@ -204,8 +207,36 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 		if err != nil {
 			t.Fatalf("get push token after update: %v", err)
 		}
-		if updated.APNSToken != "token-b" || updated.Timezone != "America/Los_Angeles" || updated.HasQuestionReady {
+		if updated.APNSToken != "token-b" || updated.Timezone != "America/Los_Angeles" || updated.HasQuestionReady || updated.NotificationsEnabled || updated.DailyQuestionEnabled {
 			t.Fatalf("unexpected stored token after update: %+v", updated)
+		}
+		if updated.DeliveryPace != "light" || updated.MaxPerDay != 1 || updated.QuietStart != "23:00" || updated.QuietEnd != "08:00" {
+			t.Fatalf("unexpected push preference fields after update: %+v", updated)
+		}
+	})
+
+	t.Run("push delivery writeback inserts event", func(t *testing.T) {
+		body := `{"device_id":"iphone-1","intent_id":"intent-1","action":"opened","kind":"dailyQuestion","target_type":"question","target_id":"question-1","occurred_at":"2026-05-19T12:34:56Z"}`
+		req := httptest.NewRequest(http.MethodPost, "/api/push/delivery-writeback", bytes.NewBufferString(body))
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+
+		server.Handler().ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("push delivery writeback status = %d, body = %s", rec.Code, rec.Body.String())
+		}
+
+		events, err := store.ListPushDeliveryEvents(context.Background(), "tester-1")
+		if err != nil {
+			t.Fatalf("list push delivery events: %v", err)
+		}
+		if len(events) != 1 {
+			t.Fatalf("expected one delivery event, got %d", len(events))
+		}
+		event := events[0]
+		if event.Action != "opened" || event.TargetType != "question" || event.TargetID != "question-1" || event.IntentID != "intent-1" {
+			t.Fatalf("unexpected delivery event: %+v", event)
 		}
 	})
 

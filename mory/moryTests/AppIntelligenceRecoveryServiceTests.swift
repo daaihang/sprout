@@ -9,11 +9,27 @@ final class AppIntelligenceRecoveryServiceTests: XCTestCase {
         let repository = fixture.repository
         let now = Date(timeIntervalSince1970: 1_800_200_000)
         try enableRecoveryFeatures(on: repository, now: now)
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Recovery source",
+                rawText: "Recovery should re-run this pipeline job.",
+                captureSource: .composer,
+                artifacts: [.text(title: "Recovery source", body: "Recovery should re-run this pipeline job.")]
+            )
+        )
+        let questionAnchorMemory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Question anchor",
+                rawText: "Keep this memory as the source for daily question intent preparation.",
+                captureSource: .composer,
+                artifacts: [.text(title: "Question anchor", body: "Keep this memory as the source for daily question intent preparation.")]
+            )
+        )
 
         let runningJob = IntelligenceJob(
             kind: .postAnalysis,
             targetType: .record,
-            targetID: UUID(),
+            targetID: memory.id,
             status: .running,
             priority: 0.9,
             attemptCount: 0,
@@ -51,7 +67,8 @@ final class AppIntelligenceRecoveryServiceTests: XCTestCase {
             kind: .dailyReflection,
             prompt: "What should Mory ask today?",
             targetType: .record,
-            targetID: UUID(),
+            targetID: questionAnchorMemory.id,
+            sourceRecordIDs: [questionAnchorMemory.id],
             priority: 0.8,
             reason: "Prepared before app relaunch.",
             createdAt: now
@@ -74,14 +91,15 @@ final class AppIntelligenceRecoveryServiceTests: XCTestCase {
         XCTAssertEqual(report.resumedRunningJobIDs, [runningJob.id])
         XCTAssertEqual(report.retriedFailedJobIDs, [retryableFailedJob.id])
         XCTAssertEqual(report.abandonedFailedJobIDs, [exhaustedFailedJob.id])
+        XCTAssertTrue(report.workerReport.completedJobIDs.contains(runningJob.id))
         XCTAssertNotNil(report.preparedNotificationIntentID)
         XCTAssertEqual(report.notificationScheduleReport.scheduledCount, 1)
         XCTAssertEqual(center.requests.count, 1)
 
         let jobs = try repository.fetchIntelligenceJobs(status: nil, limit: nil)
         let resumed = try XCTUnwrap(jobs.first { $0.id == runningJob.id })
-        XCTAssertEqual(resumed.status, .pending)
-        XCTAssertNil(resumed.startedAt)
+        XCTAssertEqual(resumed.status, .completed)
+        XCTAssertNotNil(resumed.completedAt)
 
         let retried = try XCTUnwrap(jobs.first { $0.id == retryableFailedJob.id })
         XCTAssertEqual(retried.status, .pending)

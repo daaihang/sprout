@@ -81,6 +81,7 @@ struct NotificationSettingsService {
         mutation(&preferences)
         preferences.updatedAt = now
         try repository.saveIntelligencePreferences(preferences)
+        NotificationCenter.default.post(name: .moryNotificationPreferencesDidChange, object: nil)
 
         var authorizationRequested = false
         var authorizationGranted = false

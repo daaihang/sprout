@@ -12,6 +12,22 @@ final class MoryAppDelegate: NSObject, UIApplicationDelegate, UNUserNotification
         return true
     }
 
+    func application(
+        _ application: UIApplication,
+        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+    ) {
+        PushDeviceRegistrationStore.saveAPNSToken(deviceToken)
+    }
+
+    func application(
+        _ application: UIApplication,
+        didFailToRegisterForRemoteNotificationsWithError error: Error
+    ) {
+        #if DEBUG
+        print("APNs registration failed: \(error.localizedDescription)")
+        #endif
+    }
+
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification

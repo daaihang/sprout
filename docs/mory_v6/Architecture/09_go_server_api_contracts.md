@@ -250,32 +250,26 @@ Rules:
 - Client decides whether and how to attach the candidate to the photo artifact.
 - Binary image upload requires a later explicit product/privacy decision.
 
-## 7. Endpoint: Notification Preferences
+## 7. Endpoint: Push Registration And Preferences
 
 ```text
-POST /api/notifications/register-preferences
+POST /api/push/register
 ```
 
 Request:
 
 ```json
 {
-  "schemaVersion": 1,
-  "deviceID": "string",
-  "apnsToken": "string",
-  "locale": "zh-Hans",
-  "timeZone": "Asia/Shanghai",
-  "preferences": {
-    "enabled": true,
-    "dailyQuestion": true,
-    "backgroundDone": true,
-    "stageForming": true,
-    "revisit": true,
-    "maxPerDay": 2,
-    "quietHoursStart": "22:30",
-    "quietHoursEnd": "08:00",
-    "richPreviews": false
-  }
+  "device_id": "string",
+  "apns_token": "string",
+  "timezone": "Asia/Shanghai",
+  "has_question_ready": true,
+  "notifications_enabled": true,
+  "daily_question_enabled": true,
+  "delivery_pace": "balanced",
+  "max_per_day": 2,
+  "quiet_start": "22:30",
+  "quiet_end": "08:00"
 }
 ```
 
@@ -283,8 +277,8 @@ Response:
 
 ```json
 {
-  "ok": true,
-  "serverTime": "2026-05-18T10:00:00Z"
+  "registered": true,
+  "user_id": "string"
 }
 ```
 
@@ -353,32 +347,39 @@ Rules:
 - Rich private copy is only allowed when `rich_previews_enabled` is true.
 - Generic copy is the default.
 
-## 9. Endpoint: Remote Notification Intent
+## 9. Endpoint: Push Delivery Interaction Writeback
 
 ```text
-POST /api/notifications/intents
+POST /api/push/delivery-writeback
 ```
-
-This endpoint is only needed if remote push is approved.
 
 Request:
 
 ```json
 {
-  "schemaVersion": 1,
-  "deviceID": "string",
-  "intent": {
-    "kind": "dailyQuestion",
-    "privacyLevel": "generic",
-    "title": "Mory",
-    "body": "A question is ready for today.",
-    "deepLink": "mory://question/uuid",
-    "scheduledAt": "2026-05-18T18:30:00Z"
-  }
+  "device_id": "string",
+  "intent_id": "uuid-string",
+  "action": "opened",
+  "kind": "dailyQuestion",
+  "target_type": "question",
+  "target_id": "uuid-string",
+  "occurred_at": "2026-05-18T18:30:00Z"
 }
 ```
 
-Server should reject rich private content unless user enabled rich previews.
+Response:
+
+```json
+{
+  "accepted": true,
+  "user_id": "string"
+}
+```
+
+Rules:
+
+- Client should write back delivered/opened/dismissed interactions.
+- Server stores lightweight delivery telemetry only; no full memory content.
 
 ## 10. Error Schema
 

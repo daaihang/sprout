@@ -7,6 +7,7 @@ struct AppIntelligenceRecoveryReport: Hashable, Sendable {
     var preparedQuestionCount: Int = 0
     var preparedNotificationIntentID: UUID?
     var notificationScheduleReport: LocalNotificationSchedulerReport = .empty
+    var workerReport: IntelligenceJobWorkerReport = .init()
     var errors: [String] = []
 
     var recoveredJobCount: Int {
@@ -20,17 +21,20 @@ struct AppIntelligenceRecoveryService {
     private let baseRetryDelay: TimeInterval
     private let notificationIntentPreparationService: NotificationIntentPreparationService
     private let notificationScheduler: LocalNotificationScheduler
+    private let intelligenceJobWorker: IntelligenceJobWorker
 
     init(
         maxRetryAttempts: Int = 3,
         baseRetryDelay: TimeInterval = 15 * 60,
         notificationIntentPreparationService: NotificationIntentPreparationService? = nil,
-        notificationScheduler: LocalNotificationScheduler? = nil
+        notificationScheduler: LocalNotificationScheduler? = nil,
+        intelligenceJobWorker: IntelligenceJobWorker? = nil
     ) {
         self.maxRetryAttempts = max(1, maxRetryAttempts)
         self.baseRetryDelay = max(60, baseRetryDelay)
         self.notificationIntentPreparationService = notificationIntentPreparationService ?? NotificationIntentPreparationService()
         self.notificationScheduler = notificationScheduler ?? LocalNotificationScheduler()
+        self.intelligenceJobWorker = intelligenceJobWorker ?? IntelligenceJobWorker()
     }
 
     func recoverAfterLaunch(
@@ -49,6 +53,12 @@ struct AppIntelligenceRecoveryService {
         } catch {
             report.errors.append(error.localizedDescription)
         }
+
+        report.workerReport = await intelligenceJobWorker.processDueJobs(
+            repository: repository,
+            cloudIntelligenceService: cloudIntelligenceService,
+            now: now
+        )
 
         do {
             let preparedQuestions = try await DailyQuestionSuggestionService(

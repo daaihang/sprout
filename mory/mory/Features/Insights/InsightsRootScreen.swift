@@ -181,6 +181,8 @@ struct InsightsRootScreen: View {
                 ArcDetailView(arcID: arcID)
             case let .reflection(reflectionID):
                 ReflectionDetailView(reflectionID: reflectionID)
+            case let .entity(entityID):
+                EntityDetailView(entityID: entityID)
             }
         }
         .task {

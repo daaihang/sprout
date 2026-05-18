@@ -233,6 +233,8 @@ Tasks:
   - Current implementation status: local notification payload metadata is centralized; app-level `UNUserNotificationCenterDelegate` handling records foreground delivery, open, and dismiss events; open events can deep-link to a specific daily question card, memory detail, chapter candidate, or reflection detail when the payload target supports it.
 - Add retry/resume on app launch.
   - Current implementation status: `AppIntelligenceRecoveryService` resets interrupted running jobs to pending, reschedules retryable failed jobs with bounded backoff, attempts daily-question preparation, and schedules pending local notification intents without passive permission prompts.
+- Add push delivery writeback and APNs preference sync.
+  - Current implementation status: iOS now syncs APNs token and notification preferences to Go `/api/push/register`, and writes delivered/opened/dismissed interactions to `/api/push/delivery-writeback`.
 
 Files:
 
@@ -284,6 +286,7 @@ Tasks:
 Current implementation status:
 
 - Go V6 endpoints and OpenAPI contracts exist for transcript refinement, question suggestions, chapter suggestions, photo semantic placeholders, and notification intent suggestions.
+- Go push endpoints now include `/api/push/register` preference payload expansion and `/api/push/delivery-writeback` interaction writeback.
 - iOS clients/protocols exist for those endpoints.
 - Transcript refinement is wired into the unified capture composer.
 - Daily question suggestion is wired into the iOS Home data flow as a gated business path that persists local questions.

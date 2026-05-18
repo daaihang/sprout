@@ -171,11 +171,11 @@ struct NotificationInteractionService {
             }
         case .stageForming:
             switch payload.targetType {
-            case .chapter, .reflection, .theme:
+            case .chapter, .reflection, .theme, .entity, .place, .decision:
                 return .insights
             case .record, .artifact:
                 return .memories
-            case .question, .entity, .place, .decision:
+            case .question:
                 return .home
             }
         }
@@ -191,7 +191,9 @@ struct NotificationInteractionService {
             return .insights(.arc(payload.targetID))
         case .reflection:
             return .insights(.reflection(payload.targetID))
-        case .artifact, .entity, .place, .theme, .decision:
+        case .entity, .place, .theme, .decision:
+            return .insights(.entity(payload.targetID))
+        case .artifact:
             return nil
         }
     }

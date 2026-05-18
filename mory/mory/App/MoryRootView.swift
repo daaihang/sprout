@@ -7,6 +7,7 @@ struct MoryRootView: View {
 
     @Environment(\.memoryRepository) private var memoryRepository
     @Environment(\.cloudIntelligenceService) private var cloudIntelligenceService
+    @Environment(\.remotePushSyncService) private var remotePushSyncService
     @AppStorage(MoryOnboardingStep.completionStorageKey) private var hasCompletedOnboarding = false
     @StateObject private var notificationInbox = NotificationInteractionInbox.shared
     @State private var selectedTab: MoryAppTab = .today
@@ -105,6 +106,16 @@ struct MoryRootView: View {
                 await handleNotificationInteraction(event)
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .moryAPNSTokenDidUpdate)) { _ in
+            Task {
+                await syncRemotePushRegistration(force: true)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .moryNotificationPreferencesDidChange)) { _ in
+            Task {
+                await syncRemotePushRegistration(force: true)
+            }
+        }
         .task {
             await recoverStartupIntelligenceIfNeeded()
         }
@@ -164,6 +175,7 @@ struct MoryRootView: View {
                 event: event,
                 repository: memoryRepository
             )
+            await remotePushSyncService.writeBackInteraction(event)
             guard let route = result.route else { return }
             apply(route)
         } catch {
@@ -212,6 +224,16 @@ struct MoryRootView: View {
         _ = await startupRecoveryService.recoverAfterLaunch(
             repository: memoryRepository,
             cloudIntelligenceService: cloudIntelligenceService
+        )
+        remotePushSyncService.registerSystemRemoteNotificationsIfNeeded(repository: memoryRepository)
+        await syncRemotePushRegistration(force: true)
+    }
+
+    private func syncRemotePushRegistration(force: Bool) async {
+        remotePushSyncService.registerSystemRemoteNotificationsIfNeeded(repository: memoryRepository)
+        await remotePushSyncService.syncRegistrationIfPossible(
+            repository: memoryRepository,
+            force: force
         )
     }
 }

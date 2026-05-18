@@ -50,6 +50,7 @@ enum MemoriesRoute: Hashable, Identifiable, Sendable {
 enum InsightsRoute: Hashable, Identifiable, Sendable {
     case arc(UUID)
     case reflection(UUID)
+    case entity(UUID)
 
     var id: String {
         switch self {
@@ -57,6 +58,8 @@ enum InsightsRoute: Hashable, Identifiable, Sendable {
             return "arc-\(id.uuidString)"
         case let .reflection(id):
             return "reflection-\(id.uuidString)"
+        case let .entity(id):
+            return "entity-\(id.uuidString)"
         }
     }
 }

@@ -126,6 +126,38 @@ final class NotificationInteractionServiceTests: XCTestCase {
         XCTAssertEqual(result.route?.deepLink, .insights(.arc(intent.targetID)))
     }
 
+    func testOpenedThemeInteractionDeepLinksToEntityDetail() throws {
+        let fixture = makeRepositoryFixture()
+        let intent = makeIntent(kind: .repeatedTheme, targetType: .theme, status: .scheduled)
+        try fixture.repository.upsertNotificationIntent(intent)
+        let service = NotificationInteractionService()
+        let event = try XCTUnwrap(NotificationInteractionEvent(
+            action: .opened,
+            userInfo: anyUserInfo(for: intent)
+        ))
+
+        let result = try service.handle(event: event, repository: fixture.repository)
+
+        XCTAssertEqual(result.route?.destination, .insights)
+        XCTAssertEqual(result.route?.deepLink, .insights(.entity(intent.targetID)))
+    }
+
+    func testOpenedDecisionInteractionDeepLinksToEntityDetail() throws {
+        let fixture = makeRepositoryFixture()
+        let intent = makeIntent(kind: .stageForming, targetType: .decision, status: .scheduled)
+        try fixture.repository.upsertNotificationIntent(intent)
+        let service = NotificationInteractionService()
+        let event = try XCTUnwrap(NotificationInteractionEvent(
+            action: .opened,
+            userInfo: anyUserInfo(for: intent)
+        ))
+
+        let result = try service.handle(event: event, repository: fixture.repository)
+
+        XCTAssertEqual(result.route?.destination, .insights)
+        XCTAssertEqual(result.route?.deepLink, .insights(.entity(intent.targetID)))
+    }
+
     private func makeRepositoryFixture() -> NotificationInteractionRepositoryFixture {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(

@@ -43,15 +43,36 @@ type analyzePreviewResponseEnvelope struct {
 }
 
 type pushRegisterRequest struct {
-	DeviceID         string `json:"device_id"`
-	APNSToken        string `json:"apns_token"`
-	Timezone         string `json:"timezone"`
-	HasQuestionReady bool   `json:"has_question_ready"`
+	DeviceID             string `json:"device_id"`
+	APNSToken            string `json:"apns_token"`
+	Timezone             string `json:"timezone"`
+	HasQuestionReady     bool   `json:"has_question_ready"`
+	NotificationsEnabled bool   `json:"notifications_enabled"`
+	DailyQuestionEnabled bool   `json:"daily_question_enabled"`
+	DeliveryPace         string `json:"delivery_pace"`
+	MaxPerDay            int    `json:"max_per_day"`
+	QuietStart           string `json:"quiet_start"`
+	QuietEnd             string `json:"quiet_end"`
 }
 
 type pushRegisterResponse struct {
 	Registered bool   `json:"registered"`
 	UserID     string `json:"user_id"`
+}
+
+type pushDeliveryWritebackRequest struct {
+	DeviceID   string `json:"device_id"`
+	IntentID   string `json:"intent_id"`
+	Action     string `json:"action"`
+	Kind       string `json:"kind"`
+	TargetType string `json:"target_type"`
+	TargetID   string `json:"target_id"`
+	OccurredAt string `json:"occurred_at"`
+}
+
+type pushDeliveryWritebackResponse struct {
+	Accepted bool   `json:"accepted"`
+	UserID   string `json:"user_id"`
 }
 
 type analyzeResponseEnvelope struct {
@@ -652,11 +673,17 @@ func (s *Server) handlePushRegister(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.pushTokens.UpsertPushToken(r.Context(), db.PushToken{
-		UserID:           claims.UserID,
-		DeviceID:         strings.TrimSpace(req.DeviceID),
-		APNSToken:        strings.TrimSpace(req.APNSToken),
-		Timezone:         strings.TrimSpace(req.Timezone),
-		HasQuestionReady: req.HasQuestionReady,
+		UserID:               claims.UserID,
+		DeviceID:             strings.TrimSpace(req.DeviceID),
+		APNSToken:            strings.TrimSpace(req.APNSToken),
+		Timezone:             strings.TrimSpace(req.Timezone),
+		HasQuestionReady:     req.HasQuestionReady,
+		NotificationsEnabled: req.NotificationsEnabled,
+		DailyQuestionEnabled: req.DailyQuestionEnabled,
+		DeliveryPace:         strings.TrimSpace(req.DeliveryPace),
+		MaxPerDay:            req.MaxPerDay,
+		QuietStart:           strings.TrimSpace(req.QuietStart),
+		QuietEnd:             strings.TrimSpace(req.QuietEnd),
 	}); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to register push token")
 		return
@@ -665,6 +692,59 @@ func (s *Server) handlePushRegister(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, pushRegisterResponse{
 		Registered: true,
 		UserID:     claims.UserID,
+	})
+}
+
+func (s *Server) handlePushDeliveryWriteback(w http.ResponseWriter, r *http.Request) {
+	claims, ok := auth.ClaimsFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "missing auth claims")
+		return
+	}
+
+	var req pushDeliveryWritebackRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+
+	deviceID := strings.TrimSpace(req.DeviceID)
+	intentID := strings.TrimSpace(req.IntentID)
+	action := strings.TrimSpace(req.Action)
+	targetType := strings.TrimSpace(req.TargetType)
+	targetID := strings.TrimSpace(req.TargetID)
+	if deviceID == "" || intentID == "" || action == "" || targetType == "" || targetID == "" {
+		writeError(w, http.StatusBadRequest, "device_id, intent_id, action, target_type, and target_id are required")
+		return
+	}
+
+	occurredAt := time.Now().UTC()
+	if rawOccurredAt := strings.TrimSpace(req.OccurredAt); rawOccurredAt != "" {
+		parsed, err := time.Parse(time.RFC3339, rawOccurredAt)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "occurred_at must be RFC3339")
+			return
+		}
+		occurredAt = parsed.UTC()
+	}
+
+	if err := s.pushTokens.InsertPushDeliveryEvent(r.Context(), db.PushDeliveryEvent{
+		UserID:     claims.UserID,
+		DeviceID:   deviceID,
+		IntentID:   intentID,
+		Action:     action,
+		Kind:       strings.TrimSpace(req.Kind),
+		TargetType: targetType,
+		TargetID:   targetID,
+		OccurredAt: occurredAt,
+	}); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to write push delivery event")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, pushDeliveryWritebackResponse{
+		Accepted: true,
+		UserID:   claims.UserID,
 	})
 }
 
