@@ -42,13 +42,13 @@ final class ContextAutoCollector: ContextAutoCollecting {
         }) else {
             return results
         }
-        results.append(locationDraft)
+        results.append(locationDraft.withOrigin(.context))
 
         if let location = await locationService.currentLocation() {
             if let weatherDraft = await withTimeoutNil(seconds: timeout, operation: {
                 await self.weatherService.captureCurrentWeather(location: location)
             }) {
-                results.append(weatherDraft)
+                results.append(weatherDraft.withOrigin(.context))
             }
         }
         return results
@@ -56,7 +56,7 @@ final class ContextAutoCollector: ContextAutoCollecting {
 
     private func collectMusic(timeout: TimeInterval) async -> [CaptureArtifactDraft] {
         guard let music = await withTimeoutNil(seconds: timeout, operation: {
-            await self.musicService.captureNowPlaying()
+            await self.musicService.captureNowPlaying(origin: .context)
         }) else {
             return []
         }

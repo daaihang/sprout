@@ -2,8 +2,20 @@ import Foundation
 
 struct MemoryCaptureArtifactBuilder {
     func buildArtifacts(from draft: MemoryCaptureDraft, recordID: UUID, createdAt: Date) -> [Artifact] {
+        let hasTextArtifact = draft.artifacts.contains { artifactDraft in
+            if case .text = artifactDraft {
+                return true
+            }
+            return false
+        }
         let explicitArtifacts = draft.artifacts.map { artifactDraft in
-            makeArtifact(from: artifactDraft, fallbackTitle: draft.title, recordID: recordID, createdAt: createdAt)
+            makeArtifact(
+                from: artifactDraft,
+                fallbackTitle: draft.title?.generatedMemoryTitle(),
+                suppressAudioTranscriptText: hasTextArtifact,
+                recordID: recordID,
+                createdAt: createdAt
+            )
         }
 
         if explicitArtifacts.isEmpty {
@@ -11,7 +23,7 @@ struct MemoryCaptureArtifactBuilder {
                 Artifact(
                     recordID: recordID,
                     kind: .text,
-                    title: draft.title?.trimmedOrNil ?? draft.rawText.firstMeaningfulLine ?? "Untitled Memory",
+                    title: draft.title?.generatedMemoryTitle() ?? draft.rawText.generatedMemoryTitle() ?? "Untitled Memory",
                     summary: draft.rawText.trimmedOrNil ?? "Untitled Memory",
                     textContent: draft.rawText.trimmedOrNil ?? "Untitled Memory",
                     payload: .text(draft.rawText.trimmedOrNil ?? "Untitled Memory"),
@@ -54,24 +66,25 @@ struct MemoryCaptureArtifactBuilder {
     private func makeArtifact(
         from draft: CaptureArtifactDraft,
         fallbackTitle: String?,
+        suppressAudioTranscriptText: Bool,
         recordID: UUID,
         createdAt: Date
     ) -> Artifact {
         switch draft {
-        case let .text(title, body):
+        case let .text(title, body, _):
             let resolvedBody = body.trimmedOrNil ?? "Untitled Memory"
             return Artifact(
                 recordID: recordID,
                 kind: .text,
-                title: title?.trimmedOrNil ?? fallbackTitle?.trimmedOrNil ?? resolvedBody.firstMeaningfulLine ?? "Untitled Memory",
+                title: title?.generatedMemoryTitle() ?? fallbackTitle?.trimmedOrNil ?? resolvedBody.generatedMemoryTitle() ?? "Untitled Memory",
                 summary: resolvedBody,
                 textContent: resolvedBody,
                 payload: .text(resolvedBody),
-                metadata: [:],
+                metadata: metadataForOrigin(of: draft, base: [:]),
                 createdAt: createdAt,
                 updatedAt: createdAt
             )
-        case let .photo(title, summary, filename, imageData, thumbnailData, ocrText, photoMetadata):
+        case let .photo(title, summary, filename, imageData, thumbnailData, ocrText, photoMetadata, _):
             let resolvedSummary = summary.trimmedOrNil ?? "Photo capture"
             var textParts: [String] = []
             if let s = resolvedSummary.trimmedOrNil { textParts.append(s) }
@@ -85,21 +98,28 @@ struct MemoryCaptureArtifactBuilder {
                 textContent: textContent,
                 payload: .media(ArtifactMediaRef(filename: filename, mimeType: "image/jpeg")),
                 mediaRef: ArtifactMediaRef(filename: filename, mimeType: "image/jpeg"),
-                metadata: photoMetadata,
+                metadata: metadataForOrigin(of: draft, base: photoMetadata),
                 binaryPayload: imageData,
                 previewPayload: thumbnailData,
                 createdAt: createdAt,
                 updatedAt: createdAt
             )
-        case let .audio(title, summary, filename, audioData, transcriptionText):
+        case let .audio(title, summary, filename, audioData, transcriptionText, _):
             let resolvedSummary = summary.trimmedOrNil ?? "Audio capture"
             let textContent: String
-            if let transcript = transcriptionText.trimmedOrNil {
+            if suppressAudioTranscriptText {
+                textContent = ""
+            } else if let transcript = transcriptionText.trimmedOrNil {
                 textContent = transcript
             } else {
                 textContent = resolvedSummary
             }
             let mimeType = filename.lowercased().hasSuffix(".caf") ? "audio/x-caf" : "audio/m4a"
+            var metadata: [String: String] = [:]
+            if let transcript = transcriptionText.trimmedOrNil {
+                metadata["transcriptionText"] = transcript
+            }
+            metadata = metadataForOrigin(of: draft, base: metadata)
             return Artifact(
                 recordID: recordID,
                 kind: .audio,
@@ -108,17 +128,18 @@ struct MemoryCaptureArtifactBuilder {
                 textContent: textContent,
                 payload: .media(ArtifactMediaRef(filename: filename, mimeType: mimeType)),
                 mediaRef: ArtifactMediaRef(filename: filename, mimeType: mimeType),
-                metadata: [:],
+                metadata: metadata,
                 binaryPayload: audioData,
                 previewPayload: nil,
                 createdAt: createdAt,
                 updatedAt: createdAt
             )
-        case let .location(title, summary, latitude, longitude):
+        case let .location(title, summary, latitude, longitude, _):
             let resolvedSummary = summary.trimmedOrNil ?? "Location capture"
             var metadata: [String: String] = [:]
             if let latitude { metadata["latitude"] = String(latitude) }
             if let longitude { metadata["longitude"] = String(longitude) }
+            metadata = metadataForOrigin(of: draft, base: metadata)
             return Artifact(
                 recordID: recordID,
                 kind: .location,
@@ -130,7 +151,7 @@ struct MemoryCaptureArtifactBuilder {
                 createdAt: createdAt,
                 updatedAt: createdAt
             )
-        case let .link(title, url, note, summary, metadata, thumbnailData):
+        case let .link(title, url, note, summary, metadata, thumbnailData, _):
             let resolvedSummary = summary?.trimmedOrNil ?? note?.trimmedOrNil ?? url
             let textContent = [summary?.trimmedOrNil, note?.trimmedOrNil]
                 .compactMap { $0 }
@@ -139,6 +160,7 @@ struct MemoryCaptureArtifactBuilder {
                 ?? resolvedSummary
             var resolvedMetadata = metadata
             resolvedMetadata["url"] = url
+            resolvedMetadata = metadataForOrigin(of: draft, base: resolvedMetadata)
             return Artifact(
                 recordID: recordID,
                 kind: .link,
@@ -151,20 +173,21 @@ struct MemoryCaptureArtifactBuilder {
                 createdAt: createdAt,
                 updatedAt: createdAt
             )
-        case let .todo(title, note):
+        case let .todo(title, note, _):
             let resolvedSummary = note?.trimmedOrNil ?? title
+            let metadata = metadataForOrigin(of: draft, base: ["todo": "true"])
             return Artifact(
                 recordID: recordID,
                 kind: .todo,
                 title: title,
                 summary: resolvedSummary,
                 textContent: resolvedSummary,
-                payload: .metadata(["todo": "true"]),
-                metadata: ["todo": "true"],
+                payload: .metadata(metadata),
+                metadata: metadata,
                 createdAt: createdAt,
                 updatedAt: createdAt
             )
-        case let .weather(condition, temp, humidity, windSpeed, uvIndex, latitude, longitude):
+        case let .weather(condition, temp, humidity, windSpeed, uvIndex, latitude, longitude, _):
             let title = "\(condition) \(String(format: "%.0f", temp))°C"
             let summary = "\(condition) · \(String(format: "%.0f", temp))°C · Humidity \(String(format: "%.0f", humidity * 100))%"
             var metadata: [String: String] = [
@@ -176,6 +199,7 @@ struct MemoryCaptureArtifactBuilder {
             ]
             if let latitude { metadata["latitude"] = String(latitude) }
             if let longitude { metadata["longitude"] = String(longitude) }
+            metadata = metadataForOrigin(of: draft, base: metadata)
             return Artifact(
                 recordID: recordID,
                 kind: .weather,
@@ -187,7 +211,7 @@ struct MemoryCaptureArtifactBuilder {
                 createdAt: createdAt,
                 updatedAt: createdAt
             )
-        case let .music(trackName, artistName, albumName, durationSeconds, artworkURL):
+        case let .music(trackName, artistName, albumName, durationSeconds, artworkURL, _):
             let title = "\(trackName) – \(artistName)"
             let summary = [trackName, artistName, albumName].filter { !$0.isEmpty }.joined(separator: " · ")
             var metadata: [String: String] = [
@@ -197,6 +221,7 @@ struct MemoryCaptureArtifactBuilder {
             ]
             if !albumName.isEmpty { metadata["albumName"] = albumName }
             if let artworkURL { metadata["artworkURL"] = artworkURL }
+            metadata = metadataForOrigin(of: draft, base: metadata)
             return Artifact(
                 recordID: recordID,
                 kind: .music,
@@ -209,6 +234,12 @@ struct MemoryCaptureArtifactBuilder {
                 updatedAt: createdAt
             )
         }
+    }
+
+    private func metadataForOrigin(of draft: CaptureArtifactDraft, base: [String: String]) -> [String: String] {
+        var metadata = base
+        metadata["captureOrigin"] = draft.origin.rawValue
+        return metadata
     }
 }
 

@@ -247,6 +247,7 @@ struct CaptureComposerView: View {
                 }
             }
             .navigationTitle("capture.nav.title")
+            .navigationBarTitleDisplayMode(.inline)
             .onAppear {
                 permissionManager.refresh()
                 Task { await loadInitialAutoContextIfNeeded() }
@@ -314,7 +315,7 @@ struct CaptureComposerView: View {
             )]
         case .location:
             guard let selectedLocationDraft else { return [] }
-            guard case let .location(placeTitle, placeSummary, latitude, longitude) = selectedLocationDraft else { return [] }
+            guard case let .location(placeTitle, placeSummary, latitude, longitude, _) = selectedLocationDraft else { return [] }
             return [.location(
                 title: normalizedTitle ?? placeTitle,
                 summary: bodyText.trimmedOrNil ?? placeSummary,
@@ -345,7 +346,7 @@ struct CaptureComposerView: View {
         guard selectedType != .link, let metadata = autoDetectedLinkMetadata else { return [] }
         let detectedURL = metadata.url.trimmedOrNil
         let existingURLs = (stagedArtifactDrafts + currentArtifactDrafts).compactMap { draft -> String? in
-            guard case let .link(_, url, _, _, _, _) = draft else { return nil }
+            guard case let .link(_, url, _, _, _, _, _) = draft else { return nil }
             return url.trimmedOrNil
         }
         guard let detectedURL, !existingURLs.contains(detectedURL) else { return [] }

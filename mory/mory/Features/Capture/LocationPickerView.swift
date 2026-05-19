@@ -125,6 +125,7 @@ struct LocationPickerView: View {
                 }
             }
             .navigationTitle("capture.location.navTitle")
+            .navigationBarTitleDisplayMode(.inline)
             .onAppear {
                 if selectedDraft == nil {
                     selectedDraft = initialSelection
@@ -211,7 +212,7 @@ struct LocationPickerView: View {
     }
 
     private func focusMap(on draft: CaptureArtifactDraft?) {
-        guard case let .location(_, _, latitude, longitude) = draft,
+        guard case let .location(_, _, latitude, longitude, _) = draft,
               let latitude,
               let longitude else { return }
         let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
