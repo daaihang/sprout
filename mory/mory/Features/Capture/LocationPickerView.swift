@@ -232,12 +232,28 @@ private struct LocationSearchResult: Identifiable, Hashable {
     let draft: CaptureArtifactDraft
 
     init(mapItem: MKMapItem) {
-        let placemark = mapItem.placemark
-        let coordinate = placemark.coordinate
-        let resolvedTitle = mapItem.name?.trimmedOrNil
-            ?? placemark.name?.trimmedOrNil
-            ?? String(localized: "capture.location.searchResult")
-        let resolvedSubtitle = placemark.title?.trimmedOrNil
+        let fallbackTitle = String(localized: "capture.location.searchResult")
+        let coordinate: CLLocationCoordinate2D
+        let resolvedTitle: String
+        let resolvedSubtitle: String?
+
+        if #available(iOS 26.0, *) {
+            coordinate = mapItem.location.coordinate
+            resolvedTitle = mapItem.name?.trimmedOrNil
+                ?? mapItem.address?.shortAddress?.trimmedOrNil
+                ?? mapItem.address?.fullAddress.trimmedOrNil
+                ?? fallbackTitle
+            resolvedSubtitle = mapItem.addressRepresentations?.fullAddress(includingRegion: false, singleLine: true)?.trimmedOrNil
+                ?? mapItem.address?.fullAddress.trimmedOrNil
+        } else {
+            let placemark = mapItem.placemark
+            coordinate = placemark.coordinate
+            resolvedTitle = mapItem.name?.trimmedOrNil
+                ?? placemark.name?.trimmedOrNil
+                ?? fallbackTitle
+            resolvedSubtitle = placemark.title?.trimmedOrNil
+        }
+
         self.title = resolvedTitle
         self.subtitle = resolvedSubtitle
         self.draft = .location(

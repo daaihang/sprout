@@ -269,7 +269,7 @@ struct SettingsExportArtifact: Codable, Equatable, Sendable {
     let binaryByteCount: Int?
     let previewByteCount: Int?
 
-    init(artifact: Artifact) {
+    nonisolated init(artifact: Artifact) {
         id = artifact.id
         kind = artifact.kind.rawValue
         title = artifact.title

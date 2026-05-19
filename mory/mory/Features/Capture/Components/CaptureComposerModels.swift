@@ -55,7 +55,7 @@ struct CaptureComposerAttachmentItem: Identifiable {
     let isRemovable: Bool
     let isSelectable: Bool
 
-    static func staged(index: Int, draft: CaptureArtifactDraft) -> CaptureComposerAttachmentItem {
+    nonisolated static func staged(index: Int, draft: CaptureArtifactDraft) -> CaptureComposerAttachmentItem {
         CaptureComposerAttachmentItem(
             id: "staged-\(index)-\(draft.id)",
             source: .stagedArtifact(index: index),
@@ -70,7 +70,7 @@ struct CaptureComposerAttachmentItem: Identifiable {
         )
     }
 
-    static func context(_ candidate: ContextCandidate) -> CaptureComposerAttachmentItem {
+    nonisolated static func context(_ candidate: ContextCandidate) -> CaptureComposerAttachmentItem {
         CaptureComposerAttachmentItem(
             id: "context-\(candidate.id.uuidString)",
             source: .contextCandidate(id: candidate.id),
@@ -85,7 +85,7 @@ struct CaptureComposerAttachmentItem: Identifiable {
         )
     }
 
-    static func processing(id: String, detail: String) -> CaptureComposerAttachmentItem {
+    nonisolated static func processing(id: String, detail: String) -> CaptureComposerAttachmentItem {
         CaptureComposerAttachmentItem(
             id: "processing-\(id)",
             source: .processing(id: id),
@@ -102,7 +102,7 @@ struct CaptureComposerAttachmentItem: Identifiable {
 }
 
 extension CaptureArtifactDraft {
-    var captureComposerKind: CaptureComposerAttachmentItem.Kind {
+    nonisolated var captureComposerKind: CaptureComposerAttachmentItem.Kind {
         switch self {
         case .text: return .status
         case .photo: return .photo
@@ -115,7 +115,7 @@ extension CaptureArtifactDraft {
         }
     }
 
-    var captureComposerDetail: String {
+    nonisolated var captureComposerDetail: String {
         switch self {
         case let .text(_, body, _):
             return body.captureCardSnippet ?? "Text"
@@ -172,7 +172,7 @@ extension CaptureArtifactOrigin {
 }
 
 private extension String {
-    var captureCardSnippet: String? {
+    nonisolated var captureCardSnippet: String? {
         let value = trimmingCharacters(in: .whitespacesAndNewlines)
         guard !value.isEmpty else { return nil }
         let collapsed = value
