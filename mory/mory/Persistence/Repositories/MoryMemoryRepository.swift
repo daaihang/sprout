@@ -11,7 +11,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     private let memorySearchService = MemorySearchService()
     private let searchResultMerger = SearchResultMerger()
     private let spotlightIndexService: any SpotlightIndexServicing
-    private let spotlightItemBuilder = SpotlightSearchableItemBuilder()
+    private let spotlightItemBuilder: SpotlightSearchableItemBuilder
     private let captureArtifactBuilder = MemoryCaptureArtifactBuilder()
     private let temporalArcService = TemporalArcService()
     private let debugDiagnosticsService = DebugDiagnosticsService()
@@ -24,11 +24,13 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     init(
         modelContext: ModelContext,
         analysisService: any RecordAnalysisServing,
-        spotlightIndexService: (any SpotlightIndexServicing)? = nil
+        spotlightIndexService: (any SpotlightIndexServicing)? = nil,
+        localDataOwnerID: String? = nil
     ) {
         self.modelContext = modelContext
         self.analysisService = analysisService
         self.spotlightIndexService = spotlightIndexService ?? DefaultSpotlightIndexService()
+        self.spotlightItemBuilder = SpotlightSearchableItemBuilder(ownerID: localDataOwnerID)
     }
 
     func createMemory(from draft: MemoryCaptureDraft) async throws -> MemorySummary {
@@ -152,9 +154,9 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         let artifacts = try modelContext.fetch(FetchDescriptor<ArtifactStore>(predicate: #Predicate { $0.recordID == recordID }))
         artifacts.forEach { modelContext.delete($0) }
         try save()
-        Task { @MainActor [spotlightIndexService] in
+        Task { @MainActor [spotlightIndexService, spotlightItemBuilder] in
             try? await spotlightIndexService.deleteItems(
-                identifiers: [SpotlightSearchableItemIdentifier.memory(recordID)]
+                identifiers: [spotlightItemBuilder.memoryIdentifier(recordID)]
             )
         }
     }
@@ -759,7 +761,11 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         }
 
         do {
-            let semanticMemoryIDs = try await spotlightIndexService.searchMemoryIDs(query: query, limit: limit ?? 12)
+            let semanticMemoryIDs = try await spotlightIndexService.searchMemoryIDs(
+                query: query,
+                limit: limit ?? 12,
+                domainIdentifier: spotlightItemBuilder.memoryDomain
+            )
             let memories = try fetchRecentMemories(limit: nil)
             return searchResultMerger.merge(
                 fallback: fallback,
@@ -798,7 +804,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         guard spotlightIndexService.isIndexingAvailable else {
             return .skipped("Core Spotlight indexing is unavailable.")
         }
-        try await spotlightIndexService.deleteDomain(SpotlightSearchableItemIdentifier.memoryDomain)
+        try await spotlightIndexService.deleteDomain(spotlightItemBuilder.memoryDomain)
         return SpotlightIndexReport(indexedItemCount: 0, deletedItemCount: 0, skippedReason: nil)
     }
 
@@ -1324,8 +1330,8 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         try deleteAll(RecordShellStore.self)
         latestReflectionTrace = nil
         try save()
-        Task { @MainActor [spotlightIndexService] in
-            try? await spotlightIndexService.deleteDomain(SpotlightSearchableItemIdentifier.memoryDomain)
+        Task { @MainActor [spotlightIndexService, spotlightItemBuilder] in
+            try? await spotlightIndexService.deleteDomain(spotlightItemBuilder.memoryDomain)
         }
     }
 

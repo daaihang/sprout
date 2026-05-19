@@ -82,6 +82,45 @@ final class SpotlightSearchFoundationTests: XCTestCase {
         XCTAssertEqual(item.attributeSet.rankingHint?.intValue, 82)
     }
 
+    func testSpotlightMemoryItemBuilderScopesDomainAndIdentifierByOwner() {
+        let recordID = UUID()
+        let date = Date(timeIntervalSince1970: 1_800_000_000)
+        let artifact = Artifact(
+            recordID: recordID,
+            kind: .text,
+            title: "Owner scoped memory",
+            summary: "Owner scoped memory",
+            textContent: "Owner scoped memory",
+            createdAt: date,
+            updatedAt: date
+        )
+        let memory = MemorySummary(
+            record: RecordShell(
+                id: recordID,
+                createdAt: date,
+                updatedAt: date,
+                captureSource: .composer,
+                rawText: "Owner scoped memory",
+                artifactIDs: [artifact.id]
+            ),
+            primaryArtifact: artifact,
+            contextArtifacts: [],
+            artifactCount: 1,
+            pipelineStatus: nil
+        )
+        let ownerID = "user:apple-a"
+
+        let item = SpotlightSearchableItemBuilder(ownerID: ownerID).makeMemoryItem(
+            memory: memory,
+            artifacts: [artifact],
+            analysis: nil
+        )
+
+        XCTAssertEqual(item.uniqueIdentifier, SpotlightSearchableItemIdentifier.memory(recordID, ownerID: ownerID))
+        XCTAssertEqual(item.domainIdentifier, SpotlightSearchableItemIdentifier.memoryDomain(ownerID: ownerID))
+        XCTAssertEqual(SpotlightSearchableItemIdentifier.parseMemoryID(from: item.uniqueIdentifier), recordID)
+    }
+
     func testSearchResultMergerPlacesSemanticMatchesBeforeFallbackAndDeduplicates() {
         let first = makeMemory(title: "Semantic match")
         let second = makeMemory(title: "Fallback match")
@@ -136,6 +175,7 @@ final class SpotlightSearchFoundationTests: XCTestCase {
         XCTAssertEqual(result.memories.first?.id, memory.id)
         XCTAssertEqual(result.semanticSearchStatus, .succeeded(resultCount: 1))
         XCTAssertTrue(result.retrievalSources.contains(.spotlight))
+        XCTAssertEqual(spotlight.searchedDomains, [SpotlightSearchableItemIdentifier.memoryDomain])
     }
 
     func testRepositoryRebuildSpotlightIndexIndexesCurrentMemoriesWhenEnabled() async throws {
@@ -250,6 +290,39 @@ final class SpotlightSearchFoundationTests: XCTestCase {
         XCTAssertEqual(spotlight.deletedDomains, [SpotlightSearchableItemIdentifier.memoryDomain])
     }
 
+    func testRepositorySpotlightMutationsUseOwnerScopedDomainWhenOwnerIsProvided() async throws {
+        let ownerID = "user:apple-a"
+        let ownerDomain = SpotlightSearchableItemIdentifier.memoryDomain(ownerID: ownerID)
+        let spotlight = RecordingSpotlightIndexService()
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: SearchStubRecordAnalysisService(),
+            spotlightIndexService: spotlight,
+            localDataOwnerID: ownerID
+        )
+        try enableSemanticSearch(repository)
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Owner indexed memory",
+                rawText: "This memory should be indexed inside the owner domain.",
+                captureSource: .composer,
+                artifacts: [.text(title: "Owner indexed memory", body: "This memory should be indexed inside the owner domain.")]
+            )
+        )
+        XCTAssertEqual(spotlight.indexedItems.last?.domainIdentifier, ownerDomain)
+        XCTAssertEqual(spotlight.indexedItems.last?.uniqueIdentifier, SpotlightSearchableItemIdentifier.memory(memory.id, ownerID: ownerID))
+
+        spotlight.searchMemoryIDsResult = [memory.id]
+        _ = try await repository.searchSemanticFirst(query: "owner indexed", limit: 10)
+        XCTAssertEqual(spotlight.searchedDomains.last, ownerDomain)
+
+        let report = try await repository.deleteSpotlightIndex()
+        XCTAssertEqual(report.deletedItemCount, 0)
+        XCTAssertEqual(spotlight.deletedDomains.last, ownerDomain)
+    }
+
     private func enableSemanticSearch(_ repository: MoryMemoryRepository) throws {
         var flags = try repository.fetchV6FeatureFlags()
         flags.semanticSearch = true
@@ -307,6 +380,7 @@ private final class RecordingSpotlightIndexService: SpotlightIndexServicing {
     var deletedDomains: [String] = []
     var searchMemoryIDsResult: [UUID] = []
     var searchQueries: [String] = []
+    var searchedDomains: [String] = []
 
     func indexItems(_ items: [CSSearchableItem]) async throws {
         indexedItems.append(contentsOf: items)
@@ -320,8 +394,9 @@ private final class RecordingSpotlightIndexService: SpotlightIndexServicing {
         deletedDomains.append(domainIdentifier)
     }
 
-    func searchMemoryIDs(query: String, limit: Int) async throws -> [UUID] {
+    func searchMemoryIDs(query: String, limit: Int, domainIdentifier: String) async throws -> [UUID] {
         searchQueries.append(query)
+        searchedDomains.append(domainIdentifier)
         return Array(searchMemoryIDsResult.prefix(limit))
     }
 }

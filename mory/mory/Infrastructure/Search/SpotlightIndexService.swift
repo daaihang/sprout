@@ -7,7 +7,7 @@ protocol SpotlightIndexServicing: AnyObject {
     func indexItems(_ items: [CSSearchableItem]) async throws
     func deleteItems(identifiers: [String]) async throws
     func deleteDomain(_ domainIdentifier: String) async throws
-    func searchMemoryIDs(query: String, limit: Int) async throws -> [UUID]
+    func searchMemoryIDs(query: String, limit: Int, domainIdentifier: String) async throws -> [UUID]
 }
 
 @MainActor
@@ -23,7 +23,7 @@ final class NoopSpotlightIndexService: SpotlightIndexServicing {
     func deleteDomain(_ domainIdentifier: String) async throws {
     }
 
-    func searchMemoryIDs(query: String, limit: Int) async throws -> [UUID] {
+    func searchMemoryIDs(query: String, limit: Int, domainIdentifier: String) async throws -> [UUID] {
         []
     }
 }
@@ -79,7 +79,7 @@ final class DefaultSpotlightIndexService: SpotlightIndexServicing {
         }
     }
 
-    func searchMemoryIDs(query: String, limit: Int) async throws -> [UUID] {
+    func searchMemoryIDs(query: String, limit: Int, domainIdentifier: String) async throws -> [UUID] {
         guard isIndexingAvailable, let query = query.trimmedOrNil else { return [] }
         guard #available(iOS 16.0, *) else { return [] }
 
@@ -99,7 +99,7 @@ final class DefaultSpotlightIndexService: SpotlightIndexServicing {
             guard ids.count < limit else { break }
             guard case let .item(item) = response else { continue }
             guard let memoryID = SpotlightSearchableItemIdentifier.parseMemoryID(from: item.item.uniqueIdentifier) else { continue }
-            guard item.item.domainIdentifier == SpotlightSearchableItemIdentifier.memoryDomain else { continue }
+            guard item.item.domainIdentifier == domainIdentifier else { continue }
             guard seen.insert(memoryID).inserted else { continue }
             ids.append(memoryID)
         }

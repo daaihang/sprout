@@ -40,6 +40,9 @@
     "Actions" : {
 
     },
+    "Active vault" : {
+
+    },
     "Add" : {
 
     },
@@ -7454,6 +7457,9 @@
     "Device ID" : {
 
     },
+    "Device-scoped keys may persist across sign-out. Owner-scoped keys are namespaced by the active local data owner. Debug keys are development controls and do not store user memory content." : {
+
+    },
     "Disable tuning runtime" : {
 
     },
@@ -9123,6 +9129,12 @@
     "Leave fields empty to use the selected preset." : {
 
     },
+    "Legacy has user data" : {
+
+    },
+    "Legacy owner" : {
+
+    },
     "Less" : {
 
     },
@@ -9138,7 +9150,22 @@
     "Loading preview..." : {
 
     },
+    "Local data owner" : {
+
+    },
+    "Local data scope" : {
+
+    },
+    "Local data store" : {
+
+    },
+    "Local Data Vault" : {
+
+    },
     "Local Gate Overrides" : {
+
+    },
+    "Local owner" : {
 
     },
     "Local preferences" : {
@@ -10073,6 +10100,9 @@
     "Nickname or alternate name" : {
 
     },
+    "No active local data diagnostics." : {
+
+    },
     "No arc/reflection results" : {
 
     },
@@ -10372,6 +10402,9 @@
           }
         }
       }
+    },
+    "Owner" : {
+
     },
     "PASS" : {
 
@@ -12440,6 +12473,9 @@
 
     },
     "Scheduled intents" : {
+
+    },
+    "Scope" : {
 
     },
     "Search" : {
@@ -15060,6 +15096,9 @@
     "Stop" : {
 
     },
+    "Store" : {
+
+    },
     "Stored" : {
 
     },
@@ -15393,6 +15432,9 @@
       }
     },
     "User board cards" : {
+
+    },
+    "UserDefaults scopes" : {
 
     },
     "UV %@" : {

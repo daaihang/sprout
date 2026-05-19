@@ -3,6 +3,20 @@ import Foundation
 import UniformTypeIdentifiers
 
 struct SpotlightSearchableItemBuilder {
+    let ownerID: String?
+
+    init(ownerID: String? = nil) {
+        self.ownerID = ownerID?.trimmedOrNil
+    }
+
+    var memoryDomain: String {
+        SpotlightSearchableItemIdentifier.memoryDomain(ownerID: ownerID)
+    }
+
+    func memoryIdentifier(_ id: UUID) -> String {
+        SpotlightSearchableItemIdentifier.memory(id, ownerID: ownerID)
+    }
+
     func makeMemoryItem(
         memory: MemorySummary,
         artifacts: [Artifact],
@@ -39,8 +53,8 @@ struct SpotlightSearchableItemBuilder {
         }
 
         let item = CSSearchableItem(
-            uniqueIdentifier: SpotlightSearchableItemIdentifier.memory(memory.id),
-            domainIdentifier: SpotlightSearchableItemIdentifier.memoryDomain,
+            uniqueIdentifier: memoryIdentifier(memory.id),
+            domainIdentifier: memoryDomain,
             attributeSet: attributes
         )
         item.expirationDate = .distantFuture

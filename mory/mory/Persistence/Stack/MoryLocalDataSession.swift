@@ -90,7 +90,8 @@ final class MoryLocalDataSession {
         self.modelContainer = MoryPersistenceStack.makeSharedModelContainer(scope: scope)
         self.memoryRepository = MoryMemoryRepository(
             modelContext: modelContainer.mainContext,
-            analysisService: analysisService
+            analysisService: analysisService,
+            localDataOwnerID: ownerID
         )
         self.diagnostics = Self.makeDiagnostics(
             ownerID: ownerID,
@@ -114,7 +115,8 @@ final class MoryLocalDataSession {
         )
         self.memoryRepository = MoryMemoryRepository(
             modelContext: modelContainer.mainContext,
-            analysisService: analysisService
+            analysisService: analysisService,
+            localDataOwnerID: ownerID
         )
         self.diagnostics = Self.makeDiagnostics(
             ownerID: ownerID,
