@@ -71,6 +71,7 @@ struct ArcDetailView: View {
                         ForEach(snapshot.summary.relatedMemories) { memory in
                             NavigationLink {
                                 MemoryDetailView(recordID: memory.record.id)
+                                    .moryHidesTabChrome()
                             } label: {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(memory.title)
@@ -93,6 +94,7 @@ struct ArcDetailView: View {
                         ForEach(snapshot.entityDetails) { entity in
                             NavigationLink {
                                 EntityDestinationView(entityID: entity.entity.id, kind: entity.entity.kind)
+                                    .moryHidesTabChrome()
                             } label: {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(entity.entity.displayName)
@@ -114,6 +116,7 @@ struct ArcDetailView: View {
                         ForEach(snapshot.reflections) { reflection in
                             NavigationLink {
                                 ReflectionDetailView(reflectionID: reflection.reflection.id)
+                                    .moryHidesTabChrome()
                             } label: {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(reflection.reflection.title)
@@ -130,6 +133,7 @@ struct ArcDetailView: View {
             }
         }
         .navigationTitle("arc.nav.title")
+        .moryHidesTabChrome()
         .task {
             await load()
         }

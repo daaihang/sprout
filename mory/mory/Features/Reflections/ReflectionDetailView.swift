@@ -52,6 +52,7 @@ struct ReflectionDetailView: View {
                     if let linkedArc = snapshot.linkedArc {
                         NavigationLink {
                             ArcDetailView(arcID: linkedArc.arc.id)
+                                .moryHidesTabChrome()
                         } label: {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(linkedArc.arc.title)
@@ -76,6 +77,7 @@ struct ReflectionDetailView: View {
                         ForEach(snapshot.summary.relatedMemories) { memory in
                             NavigationLink {
                                 MemoryDetailView(recordID: memory.record.id)
+                                    .moryHidesTabChrome()
                             } label: {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(memory.title)
@@ -98,6 +100,7 @@ struct ReflectionDetailView: View {
                         ForEach(snapshot.entityDetails) { entity in
                             NavigationLink {
                                 EntityDestinationView(entityID: entity.entity.id, kind: entity.entity.kind)
+                                    .moryHidesTabChrome()
                             } label: {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(entity.entity.displayName)
@@ -113,6 +116,7 @@ struct ReflectionDetailView: View {
             }
         }
         .navigationTitle("reflection.nav.title")
+        .moryHidesTabChrome()
         .task {
             await load()
         }

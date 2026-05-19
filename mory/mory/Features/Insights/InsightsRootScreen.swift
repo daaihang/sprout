@@ -18,6 +18,7 @@ struct InsightsRootScreen: View {
             Section {
                 NavigationLink {
                     ArcsScreen()
+                        .moryHidesTabChrome()
                 } label: {
                     MoryHubRow(
                         title: "insights.hub.storylines.title",
@@ -28,6 +29,7 @@ struct InsightsRootScreen: View {
 
                 NavigationLink {
                     ReflectionsScreen()
+                        .moryHidesTabChrome()
                 } label: {
                     MoryHubRow(
                         title: "insights.hub.reflections.title",
@@ -76,6 +78,7 @@ struct InsightsRootScreen: View {
                     Section("insights.section.highlightedStoryline") {
                         NavigationLink {
                             ArcDetailView(arcID: highlighted.arc.id)
+                                .moryHidesTabChrome()
                         } label: {
                             StorylineRow(summary: highlighted)
                         }
@@ -89,6 +92,7 @@ struct InsightsRootScreen: View {
                 ) { item in
                     NavigationLink {
                         ArcDetailView(arcID: item.arc.id)
+                            .moryHidesTabChrome()
                     } label: {
                         StorylineRow(summary: item)
                     }
@@ -101,6 +105,7 @@ struct InsightsRootScreen: View {
                 ) { item in
                     NavigationLink {
                         ReflectionDetailView(reflectionID: item.reflection.id)
+                            .moryHidesTabChrome()
                     } label: {
                         ReflectionInsightRow(summary: item)
                     }
@@ -113,6 +118,7 @@ struct InsightsRootScreen: View {
                 ) { item in
                     NavigationLink {
                         PersonDetailView(entityID: item.entity.id)
+                            .moryHidesTabChrome()
                     } label: {
                         EntityInsightRow(snapshot: item)
                     }
@@ -125,6 +131,7 @@ struct InsightsRootScreen: View {
                 ) { item in
                     NavigationLink {
                         EntityDetailView(entityID: item.entity.id)
+                            .moryHidesTabChrome()
                     } label: {
                         EntityInsightRow(snapshot: item)
                     }
@@ -137,6 +144,7 @@ struct InsightsRootScreen: View {
                 ) { item in
                     NavigationLink {
                         EntityDetailView(entityID: item.entity.id)
+                            .moryHidesTabChrome()
                     } label: {
                         EntityInsightRow(snapshot: item)
                     }
@@ -149,6 +157,7 @@ struct InsightsRootScreen: View {
                 ) { item in
                     NavigationLink {
                         EntityDetailView(entityID: item.entity.id)
+                            .moryHidesTabChrome()
                     } label: {
                         EntityInsightRow(snapshot: item)
                     }
@@ -162,6 +171,7 @@ struct InsightsRootScreen: View {
                     ) { item in
                         NavigationLink {
                             ReflectionDetailView(reflectionID: item.reflection.id)
+                                .moryHidesTabChrome()
                         } label: {
                             ReflectionInsightRow(summary: item)
                         }
@@ -179,10 +189,13 @@ struct InsightsRootScreen: View {
             switch route {
             case let .arc(arcID):
                 ArcDetailView(arcID: arcID)
+                    .moryHidesTabChrome()
             case let .reflection(reflectionID):
                 ReflectionDetailView(reflectionID: reflectionID)
+                    .moryHidesTabChrome()
             case let .entity(entityID):
                 EntityDetailView(entityID: entityID)
+                    .moryHidesTabChrome()
             }
         }
         .task {

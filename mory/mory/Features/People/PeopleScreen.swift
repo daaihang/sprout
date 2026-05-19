@@ -26,6 +26,7 @@ struct PeopleScreen: View {
                     ForEach(people, id: \.id) { person in
                         NavigationLink {
                             PersonDetailView(entityID: person.entity.id)
+                                .moryHidesTabChrome()
                         } label: {
                             PersonRow(person: person)
                         }
@@ -41,6 +42,7 @@ struct PeopleScreen: View {
                     ForEach(themes, id: \.id) { theme in
                         NavigationLink {
                             EntityDetailView(entityID: theme.entity.id)
+                                .moryHidesTabChrome()
                         } label: {
                             ThemeRow(theme: theme)
                         }
@@ -56,6 +58,7 @@ struct PeopleScreen: View {
                     ForEach(places, id: \.id) { place in
                         NavigationLink {
                             EntityDetailView(entityID: place.entity.id)
+                                .moryHidesTabChrome()
                         } label: {
                             ThemeRow(theme: place)
                         }
@@ -71,6 +74,7 @@ struct PeopleScreen: View {
                     ForEach(decisions, id: \.id) { decision in
                         NavigationLink {
                             EntityDetailView(entityID: decision.entity.id)
+                                .moryHidesTabChrome()
                         } label: {
                             ThemeRow(theme: decision)
                         }
@@ -79,6 +83,7 @@ struct PeopleScreen: View {
             }
         }
         .navigationTitle("people.nav.title")
+        .moryHidesTabChrome()
         .task {
             await load()
         }

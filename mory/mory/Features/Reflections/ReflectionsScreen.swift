@@ -23,6 +23,7 @@ struct ReflectionsScreen: View {
                     ForEach(reflections) { item in
                         NavigationLink {
                             ReflectionDetailView(reflectionID: item.reflection.id)
+                                .moryHidesTabChrome()
                         } label: {
                             VStack(alignment: .leading, spacing: 8) {
                                 HStack {
@@ -60,6 +61,7 @@ struct ReflectionsScreen: View {
             }
         }
         .navigationTitle("reflections.nav.title")
+        .moryHidesTabChrome()
         .task {
             await load()
         }

@@ -70,6 +70,7 @@ struct SearchScreen: View {
                         ForEach(result.memories) { memoryResult in
                             NavigationLink {
                                 MemoryDetailView(recordID: memoryResult.memory.record.id)
+                                    .moryHidesTabChrome()
                             } label: {
                                 SearchMemoryRow(result: memoryResult)
                             }
@@ -86,6 +87,7 @@ struct SearchScreen: View {
                         ForEach(result.entities) { entityResult in
                             NavigationLink {
                                 EntityDestinationView(entityID: entityResult.entity.id, kind: entityResult.entity.kind)
+                                    .moryHidesTabChrome()
                             } label: {
                                 SearchEntityRow(result: entityResult)
                             }
@@ -102,6 +104,7 @@ struct SearchScreen: View {
                         ForEach(result.arcs) { arcResult in
                             NavigationLink {
                                 ArcDetailView(arcID: arcResult.summary.arc.id)
+                                    .moryHidesTabChrome()
                             } label: {
                                 SearchArcRow(result: arcResult)
                             }
@@ -118,6 +121,7 @@ struct SearchScreen: View {
                         ForEach(result.reflections) { reflectionResult in
                             NavigationLink {
                                 ReflectionDetailView(reflectionID: reflectionResult.summary.reflection.id)
+                                    .moryHidesTabChrome()
                             } label: {
                                 SearchReflectionRow(result: reflectionResult)
                             }

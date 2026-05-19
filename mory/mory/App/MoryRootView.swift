@@ -241,3 +241,9 @@ struct MoryRootView: View {
         )
     }
 }
+
+extension View {
+    func moryHidesTabChrome() -> some View {
+        toolbar(.hidden, for: .tabBar)
+    }
+}

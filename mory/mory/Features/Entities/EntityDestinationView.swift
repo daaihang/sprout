@@ -5,11 +5,14 @@ struct EntityDestinationView: View {
     let kind: EntityKind
 
     var body: some View {
-        switch kind {
-        case .person:
-            PersonDetailView(entityID: entityID)
-        case .theme, .place, .decision, .activity, .object:
-            EntityDetailView(entityID: entityID)
+        Group {
+            switch kind {
+            case .person:
+                PersonDetailView(entityID: entityID)
+            case .theme, .place, .decision, .activity, .object:
+                EntityDetailView(entityID: entityID)
+            }
         }
+        .moryHidesTabChrome()
     }
 }

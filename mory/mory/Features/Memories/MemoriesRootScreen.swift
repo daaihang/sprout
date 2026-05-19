@@ -62,6 +62,7 @@ struct MemoriesRootScreen: View {
                             ForEach(group.rows) { row in
                                 NavigationLink {
                                     MemoryDetailView(recordID: row.memory.id)
+                                        .moryHidesTabChrome()
                                 } label: {
                                     MemoryLibraryRowView(row: row)
                                 }
@@ -82,12 +83,14 @@ struct MemoriesRootScreen: View {
             switch route {
             case let .memory(recordID):
                 MemoryDetailView(recordID: recordID)
+                    .moryHidesTabChrome()
             }
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 NavigationLink {
                     TimelineScreen()
+                        .moryHidesTabChrome()
                 } label: {
                     Label("timeline.nav.title", systemImage: "clock.fill")
                 }

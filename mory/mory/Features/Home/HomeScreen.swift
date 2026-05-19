@@ -75,12 +75,16 @@ struct HomeScreen: View {
             switch route {
             case let .memory(recordID):
                 MemoryDetailView(recordID: recordID)
+                    .moryHidesTabChrome()
             case let .arc(arcID):
                 ArcDetailView(arcID: arcID)
+                    .moryHidesTabChrome()
             case let .reflection(reflectionID):
                 ReflectionDetailView(reflectionID: reflectionID)
+                    .moryHidesTabChrome()
             case let .question(questionID):
                 ClarificationQuestionDetailView(questionID: questionID)
+                    .moryHidesTabChrome()
             }
         }
         .toolbar {
@@ -575,6 +579,7 @@ struct ClarificationQuestionDetailView: View {
             }
         }
         .navigationTitle("Daily question")
+        .moryHidesTabChrome()
         .task {
             load()
         }

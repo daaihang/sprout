@@ -23,6 +23,7 @@ struct ArcsScreen: View {
                     ForEach(arcs) { item in
                         NavigationLink {
                             ArcDetailView(arcID: item.arc.id)
+                                .moryHidesTabChrome()
                         } label: {
                             VStack(alignment: .leading, spacing: 8) {
                                 HStack {
@@ -59,6 +60,7 @@ struct ArcsScreen: View {
             }
         }
         .navigationTitle("arcs.nav.title")
+        .moryHidesTabChrome()
         .task {
             await load()
         }

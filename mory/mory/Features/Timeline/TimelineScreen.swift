@@ -35,6 +35,7 @@ struct TimelineScreen: View {
                                 ForEach(group.memories) { memory in
                                     NavigationLink {
                                         MemoryDetailView(recordID: memory.id)
+                                            .moryHidesTabChrome()
                                     } label: {
                                         TimelineMemoryRow(memory: memory)
                                     }
@@ -50,6 +51,7 @@ struct TimelineScreen: View {
             }
         }
         .navigationTitle("timeline.nav.title")
+        .moryHidesTabChrome()
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Text("timeline.memoryCount \(timeline?.totalCount ?? 0)")
