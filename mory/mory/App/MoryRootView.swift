@@ -130,6 +130,7 @@ struct MoryRootView: View {
                 .toolbar {
                     settingsToolbar
                 }
+                .navigationBarTitleDisplayMode(.inline)
         }
     }
 

@@ -1,5 +1,6 @@
 import SwiftUI
 import Sentry
+import UIKit
 
 import SwiftData
 
@@ -20,6 +21,7 @@ struct MoryApp: App {
         let credentialStore = KeychainCredentialStore()
         let runtimeEnvironment = AppRuntimeEnvironment.current
         Self.configureSentry(runtimeEnvironment: runtimeEnvironment)
+        Self.configureNavigationAppearance()
 
         let apiConfiguration = MoryAPIConfiguration.fromBundle()
         let client = MoryAPIClient(configuration: apiConfiguration)
@@ -79,6 +81,10 @@ struct MoryApp: App {
 
             options.experimental.enableLogs = true
         }
+    }
+
+    private static func configureNavigationAppearance() {
+        UINavigationBar.appearance().prefersLargeTitles = false
     }
 
     var body: some Scene {
