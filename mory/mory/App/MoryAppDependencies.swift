@@ -84,6 +84,9 @@ private final class MissingMemoryRepository: MoryMemoryRepositorying {
     func clearAllLocalData() throws { let _: Void = fail() }
     func fetchUserSettingsPreference() throws -> UserSettingsPreference { fail() }
     func saveUserSettingsPreference(_ preference: UserSettingsPreference) throws { let _: Void = fail() }
+    func fetchMemoryDetailPresentationPreference(recordID: UUID) throws -> MemoryDetailPresentationPreference? { fail() }
+    func saveMemoryDetailPresentationPreference(_ preference: MemoryDetailPresentationPreference) throws { let _: Void = fail() }
+    func clearMemoryDetailPresentationPreference(recordID: UUID) throws { let _: Void = fail() }
     func fetchIntelligencePreferences() throws -> IntelligencePreferences { fail() }
     func saveIntelligencePreferences(_ preferences: IntelligencePreferences) throws { let _: Void = fail() }
     func fetchV6FeatureFlags() throws -> V6FeatureFlags { fail() }

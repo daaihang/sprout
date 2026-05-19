@@ -145,6 +145,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
 
     func deleteMemory(recordID: UUID) throws {
         try purgeDerivedData(forRecordIDs: [recordID], includePipelineStatus: true)
+        try deleteMemoryDetailPresentationPreference(recordID: recordID, saveAfterDelete: false)
         if let record = try modelContext.fetch(FetchDescriptor<RecordShellStore>(predicate: #Predicate { $0.id == recordID })).first {
             modelContext.delete(record)
         }
@@ -1267,6 +1268,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         try deleteAll(MemoryPipelineStatusStore.self)
         try deleteAll(ReflectionSnapshotStore.self)
         try deleteAll(TemporalArcStore.self)
+        try deleteAll(MemoryDetailPresentationPreferenceStore.self)
         try deleteAll(ArtifactStore.self)
         try deleteAll(RecordShellStore.self)
         latestReflectionTrace = nil
@@ -1290,6 +1292,29 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     func saveUserSettingsPreference(_ preference: UserSettingsPreference) throws {
         try upsert(userSettingsPreference: preference)
         try save()
+    }
+
+    func fetchMemoryDetailPresentationPreference(recordID: UUID) throws -> MemoryDetailPresentationPreference? {
+        let descriptor = FetchDescriptor<MemoryDetailPresentationPreferenceStore>(
+            predicate: #Predicate { $0.recordID == recordID }
+        )
+        return try modelContext.fetch(descriptor).first?.domainModel
+    }
+
+    func saveMemoryDetailPresentationPreference(_ preference: MemoryDetailPresentationPreference) throws {
+        let descriptor = FetchDescriptor<MemoryDetailPresentationPreferenceStore>(
+            predicate: #Predicate { $0.recordID == preference.recordID }
+        )
+        if let existing = try modelContext.fetch(descriptor).first {
+            existing.apply(domainModel: preference)
+        } else {
+            modelContext.insert(MemoryDetailPresentationPreferenceStore(domainModel: preference))
+        }
+        try save()
+    }
+
+    func clearMemoryDetailPresentationPreference(recordID: UUID) throws {
+        try deleteMemoryDetailPresentationPreference(recordID: recordID, saveAfterDelete: true)
     }
 
     func fetchIntelligencePreferences() throws -> IntelligencePreferences {
@@ -2024,6 +2049,18 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         let stores = try modelContext.fetch(FetchDescriptor<T>())
         for store in stores {
             modelContext.delete(store)
+        }
+    }
+
+    private func deleteMemoryDetailPresentationPreference(recordID: UUID, saveAfterDelete: Bool) throws {
+        let descriptor = FetchDescriptor<MemoryDetailPresentationPreferenceStore>(
+            predicate: #Predicate { $0.recordID == recordID }
+        )
+        for store in try modelContext.fetch(descriptor) {
+            modelContext.delete(store)
+        }
+        if saveAfterDelete {
+            try save()
         }
     }
 

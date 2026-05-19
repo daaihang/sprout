@@ -13,6 +13,8 @@ final class UserSettingsPreferenceStore {
     var defaultContextSelectionRawValue: String
     var insightFrequencyRawValue: String
     var promptToneRawValue: String
+    var detailPresentationStrategyRawValue: String?
+    var fixedDetailPresentationModeRawValue: String?
 
     init(
         id: UUID = UUID(),
@@ -24,7 +26,9 @@ final class UserSettingsPreferenceStore {
         linkAutoDetectEnabled: Bool,
         defaultContextSelectionRawValue: String,
         insightFrequencyRawValue: String,
-        promptToneRawValue: String
+        promptToneRawValue: String,
+        detailPresentationStrategyRawValue: String? = nil,
+        fixedDetailPresentationModeRawValue: String? = nil
     ) {
         self.id = id
         self.syncKey = syncKey
@@ -36,6 +40,31 @@ final class UserSettingsPreferenceStore {
         self.defaultContextSelectionRawValue = defaultContextSelectionRawValue
         self.insightFrequencyRawValue = insightFrequencyRawValue
         self.promptToneRawValue = promptToneRawValue
+        self.detailPresentationStrategyRawValue = detailPresentationStrategyRawValue
+        self.fixedDetailPresentationModeRawValue = fixedDetailPresentationModeRawValue
+    }
+}
+
+@Model
+final class MemoryDetailPresentationPreferenceStore {
+    @Attribute(.unique) var recordID: UUID
+    var id: UUID
+    var schemaVersion: Int
+    var modeRawValue: String
+    var updatedAt: Date
+
+    init(
+        id: UUID = UUID(),
+        recordID: UUID,
+        schemaVersion: Int = MemoryDetailPresentationPreference.schemaVersion,
+        modeRawValue: String,
+        updatedAt: Date
+    ) {
+        self.id = id
+        self.recordID = recordID
+        self.schemaVersion = schemaVersion
+        self.modeRawValue = modeRawValue
+        self.updatedAt = updatedAt
     }
 }
 

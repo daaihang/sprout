@@ -49,10 +49,16 @@
     "Add first suggestion to board" : {
 
     },
+    "AI analysis" : {
+
+    },
     "Aliases" : {
 
     },
     "Aliases, separated by commas" : {
+
+    },
+    "Analysis status" : {
 
     },
     "APNs" : {
@@ -361,6 +367,12 @@
           }
         }
       }
+    },
+    "Automatic layout" : {
+
+    },
+    "Automatic uses local rules in this version. AI automatic is reserved for a later cloud intelligence loop." : {
+
     },
     "Build Environment" : {
       "extractionState" : "manual",
@@ -2076,6 +2088,9 @@
           }
         }
       }
+    },
+    "common.more" : {
+
     },
     "common.no" : {
       "extractionState" : "manual",
@@ -7409,6 +7424,9 @@
         }
       }
     },
+    "Default layout" : {
+
+    },
     "Delete Core Spotlight index" : {
 
     },
@@ -8071,6 +8089,9 @@
 
     },
     "Finishing..." : {
+
+    },
+    "Fixed mode" : {
 
     },
     "Force APNs registration sync" : {
@@ -9552,6 +9573,9 @@
           }
         }
       }
+    },
+    "Memory detail layout" : {
+
     },
     "Memory results" : {
 
@@ -12278,6 +12302,9 @@
 
     },
     "Registration digest" : {
+
+    },
+    "Related" : {
 
     },
     "Relationship" : {

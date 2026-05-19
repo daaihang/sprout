@@ -29,7 +29,9 @@ extension UserSettingsPreferenceStore {
             linkAutoDetectEnabled: domainModel.linkAutoDetectEnabled,
             defaultContextSelectionRawValue: domainModel.defaultContextSelection.rawValue,
             insightFrequencyRawValue: domainModel.insightFrequency.rawValue,
-            promptToneRawValue: domainModel.promptTone.rawValue
+            promptToneRawValue: domainModel.promptTone.rawValue,
+            detailPresentationStrategyRawValue: domainModel.detailPresentationStrategy.rawValue,
+            fixedDetailPresentationModeRawValue: domainModel.fixedDetailPresentationMode.rawValue
         )
     }
 
@@ -44,7 +46,9 @@ extension UserSettingsPreferenceStore {
             linkAutoDetectEnabled: linkAutoDetectEnabled,
             defaultContextSelection: UserSettingsContextSelection(rawValue: defaultContextSelectionRawValue) ?? .allAvailable,
             insightFrequency: UserSettingsInsightFrequency(rawValue: insightFrequencyRawValue) ?? .balanced,
-            promptTone: UserSettingsPromptTone(rawValue: promptToneRawValue) ?? .balanced
+            promptTone: UserSettingsPromptTone(rawValue: promptToneRawValue) ?? .balanced,
+            detailPresentationStrategy: MemoryDetailPresentationStrategy(rawValue: detailPresentationStrategyRawValue ?? "") ?? .ruleBased,
+            fixedDetailPresentationMode: MemoryDetailPresentationMode(rawValue: fixedDetailPresentationModeRawValue ?? "") ?? .story
         )
     }
 
@@ -59,6 +63,39 @@ extension UserSettingsPreferenceStore {
         defaultContextSelectionRawValue = domainModel.defaultContextSelection.rawValue
         insightFrequencyRawValue = domainModel.insightFrequency.rawValue
         promptToneRawValue = domainModel.promptTone.rawValue
+        detailPresentationStrategyRawValue = domainModel.detailPresentationStrategy.rawValue
+        fixedDetailPresentationModeRawValue = domainModel.fixedDetailPresentationMode.rawValue
+    }
+}
+
+@MainActor
+extension MemoryDetailPresentationPreferenceStore {
+    convenience init(domainModel: MemoryDetailPresentationPreference) {
+        self.init(
+            id: domainModel.id,
+            recordID: domainModel.recordID,
+            schemaVersion: domainModel.schemaVersion,
+            modeRawValue: domainModel.mode.rawValue,
+            updatedAt: domainModel.updatedAt
+        )
+    }
+
+    var domainModel: MemoryDetailPresentationPreference {
+        MemoryDetailPresentationPreference(
+            id: id,
+            recordID: recordID,
+            schemaVersion: schemaVersion,
+            mode: MemoryDetailPresentationMode(rawValue: modeRawValue) ?? .story,
+            updatedAt: updatedAt
+        )
+    }
+
+    func apply(domainModel: MemoryDetailPresentationPreference) {
+        id = domainModel.id
+        recordID = domainModel.recordID
+        schemaVersion = domainModel.schemaVersion
+        modeRawValue = domainModel.mode.rawValue
+        updatedAt = domainModel.updatedAt
     }
 }
 

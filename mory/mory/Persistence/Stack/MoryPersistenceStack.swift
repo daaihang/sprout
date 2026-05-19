@@ -4,6 +4,7 @@ import SwiftData
 struct MoryPersistenceStack {
     static let schema = Schema([
         UserSettingsPreferenceStore.self,
+        MemoryDetailPresentationPreferenceStore.self,
         QualityTuningPreferenceStore.self,
         HomeBoardPreferenceStore.self,
         IntelligencePreferenceStore.self,

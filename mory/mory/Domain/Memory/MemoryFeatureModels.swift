@@ -33,7 +33,7 @@ enum UserSettingsPromptTone: String, CaseIterable, Identifiable, Codable, Sendab
 }
 
 struct UserSettingsPreference: Identifiable, Codable, Hashable, Sendable {
-    static let schemaVersion = 1
+    static let schemaVersion = 2
     static let defaultSyncKey = "user-settings-default"
 
     var id: UUID
@@ -46,6 +46,8 @@ struct UserSettingsPreference: Identifiable, Codable, Hashable, Sendable {
     var defaultContextSelection: UserSettingsContextSelection
     var insightFrequency: UserSettingsInsightFrequency
     var promptTone: UserSettingsPromptTone
+    var detailPresentationStrategy: MemoryDetailPresentationStrategy
+    var fixedDetailPresentationMode: MemoryDetailPresentationMode
 
     init(
         id: UUID = UUID(),
@@ -57,7 +59,9 @@ struct UserSettingsPreference: Identifiable, Codable, Hashable, Sendable {
         linkAutoDetectEnabled: Bool = true,
         defaultContextSelection: UserSettingsContextSelection = .allAvailable,
         insightFrequency: UserSettingsInsightFrequency = .balanced,
-        promptTone: UserSettingsPromptTone = .balanced
+        promptTone: UserSettingsPromptTone = .balanced,
+        detailPresentationStrategy: MemoryDetailPresentationStrategy = .ruleBased,
+        fixedDetailPresentationMode: MemoryDetailPresentationMode = .story
     ) {
         self.id = id
         self.syncKey = syncKey
@@ -69,6 +73,8 @@ struct UserSettingsPreference: Identifiable, Codable, Hashable, Sendable {
         self.defaultContextSelection = defaultContextSelection
         self.insightFrequency = insightFrequency
         self.promptTone = promptTone
+        self.detailPresentationStrategy = detailPresentationStrategy
+        self.fixedDetailPresentationMode = fixedDetailPresentationMode
     }
 
     static var defaults: UserSettingsPreference {
@@ -874,6 +880,9 @@ protocol MoryMemoryRepositorying: AnyObject {
     func clearAllLocalData() throws
     func fetchUserSettingsPreference() throws -> UserSettingsPreference
     func saveUserSettingsPreference(_ preference: UserSettingsPreference) throws
+    func fetchMemoryDetailPresentationPreference(recordID: UUID) throws -> MemoryDetailPresentationPreference?
+    func saveMemoryDetailPresentationPreference(_ preference: MemoryDetailPresentationPreference) throws
+    func clearMemoryDetailPresentationPreference(recordID: UUID) throws
     func fetchIntelligencePreferences() throws -> IntelligencePreferences
     func saveIntelligencePreferences(_ preferences: IntelligencePreferences) throws
     func fetchV6FeatureFlags() throws -> V6FeatureFlags

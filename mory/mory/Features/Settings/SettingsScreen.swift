@@ -912,6 +912,26 @@ private struct SettingsAppearanceLanguageSection: View {
                 }
             }
 
+            Section {
+                Picker("Default layout", selection: $preference.detailPresentationStrategy) {
+                    ForEach(MemoryDetailPresentationStrategy.userVisibleCases) { strategy in
+                        Text(strategy.title).tag(strategy)
+                    }
+                }
+
+                if preference.detailPresentationStrategy == .fixed {
+                    Picker("Fixed mode", selection: $preference.fixedDetailPresentationMode) {
+                        ForEach(MemoryDetailPresentationMode.allCases) { mode in
+                            Label(mode.title, systemImage: mode.systemImage).tag(mode)
+                        }
+                    }
+                }
+            } header: {
+                Text("Memory detail layout")
+            } footer: {
+                Text("Automatic uses local rules in this version. AI automatic is reserved for a later cloud intelligence loop.")
+            }
+
             Section("settings.language.section") {
                 LabeledContent("settings.language.current", value: Locale.current.localizedString(forIdentifier: Locale.current.identifier) ?? Locale.current.identifier)
                 Button("settings.language.openSettings") {
@@ -935,6 +955,12 @@ private struct SettingsAppearanceLanguageSection: View {
             load()
         }
         .onChange(of: preference.appearanceMode) { _, _ in
+            save()
+        }
+        .onChange(of: preference.detailPresentationStrategy) { _, _ in
+            save()
+        }
+        .onChange(of: preference.fixedDetailPresentationMode) { _, _ in
             save()
         }
     }
