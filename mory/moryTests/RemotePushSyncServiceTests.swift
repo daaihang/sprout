@@ -142,6 +142,28 @@ final class RemotePushSyncServiceTests: XCTestCase {
         XCTAssertEqual(PushDeviceRegistrationStore.pendingWritebackCountForTests(), 0)
     }
 
+    func testRegistrationDigestAndWritebackRetryQueueAreOwnerScoped() {
+        PushDeviceRegistrationStore.configureOwnerForTests("user:owner-a")
+        PushDeviceRegistrationStore.saveLastRegistrationDigest("digest-a")
+        PushDeviceRegistrationStore.enqueuePendingWriteback(makeWritebackPayload(intentID: "intent-a"))
+        XCTAssertEqual(PushDeviceRegistrationStore.lastRegistrationDigest(), "digest-a")
+        XCTAssertEqual(PushDeviceRegistrationStore.pendingWritebackCountForTests(), 1)
+
+        PushDeviceRegistrationStore.configureOwnerForTests("user:owner-b")
+        XCTAssertNil(PushDeviceRegistrationStore.lastRegistrationDigest())
+        XCTAssertEqual(PushDeviceRegistrationStore.pendingWritebackCountForTests(), 0)
+        PushDeviceRegistrationStore.saveLastRegistrationDigest("digest-b")
+        PushDeviceRegistrationStore.enqueuePendingWriteback(makeWritebackPayload(intentID: "intent-b"))
+
+        PushDeviceRegistrationStore.configureOwnerForTests("user:owner-a")
+        XCTAssertEqual(PushDeviceRegistrationStore.lastRegistrationDigest(), "digest-a")
+        XCTAssertEqual(PushDeviceRegistrationStore.pendingWritebackCountForTests(), 1)
+
+        PushDeviceRegistrationStore.configureOwnerForTests("user:owner-b")
+        XCTAssertEqual(PushDeviceRegistrationStore.lastRegistrationDigest(), "digest-b")
+        XCTAssertEqual(PushDeviceRegistrationStore.pendingWritebackCountForTests(), 1)
+    }
+
     func testEnqueueRemoteIntentSendsProductionTargetPayload() async throws {
         let targetID = UUID()
         let intentID = UUID()
@@ -222,6 +244,18 @@ final class RemotePushSyncServiceTests: XCTestCase {
             credentialStore: credentialStore
         )
         return RemotePushSyncService(apiClient: apiClient, tokenProvider: tokenProvider)
+    }
+
+    private func makeWritebackPayload(intentID: String) -> MoryAPIClient.PushDeliveryWritebackPayload {
+        MoryAPIClient.PushDeliveryWritebackPayload(
+            deviceID: "device",
+            intentID: intentID,
+            action: "opened",
+            kind: "debugTest",
+            targetType: "question",
+            targetID: UUID().uuidString,
+            occurredAt: ISO8601DateFormatter().string(from: Date(timeIntervalSince1970: 1_800_500_000))
+        )
     }
 
     private func configurePreferences(
