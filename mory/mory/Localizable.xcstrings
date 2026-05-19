@@ -7,6 +7,19 @@
     "%lld" : {
 
     },
+    "%lld mentions" : {
+
+    },
+    "%lld mentions · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld mentions · %2$@"
+          }
+        }
+      }
+    },
     "Action Log (%lld)" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -23,6 +36,33 @@
           }
         }
       }
+    },
+    "Actions" : {
+
+    },
+    "Add" : {
+
+    },
+    "Add currently playing song" : {
+
+    },
+    "Add first suggestion to board" : {
+
+    },
+    "Aliases" : {
+
+    },
+    "Aliases, separated by commas" : {
+
+    },
+    "APNs" : {
+
+    },
+    "APNs token" : {
+
+    },
+    "applied" : {
+
     },
     "Arc min records: %lld" : {
 
@@ -231,6 +271,9 @@
         }
       }
     },
+    "Arc/reflection results" : {
+
+    },
     "arcs.empty.description" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -282,6 +325,9 @@
         }
       }
     },
+    "Artifacts" : {
+
+    },
     "Audio note" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -332,6 +378,12 @@
           }
         }
       }
+    },
+    "Cancel" : {
+
+    },
+    "Caption hint" : {
+
     },
     "capture.action.addContent" : {
       "extractionState" : "manual",
@@ -1846,7 +1898,13 @@
         }
       }
     },
+    "Card actions" : {
+
+    },
     "Clear Lab Data" : {
+
+    },
+    "Cloud Intelligence" : {
 
     },
     "common.attachmentCount %lld" : {
@@ -2240,6 +2298,18 @@
         }
       }
     },
+    "Confidence" : {
+
+    },
+    "Context" : {
+
+    },
+    "Coordinates" : {
+
+    },
+    "Copy" : {
+
+    },
     "Copy All %@ Payloads" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2301,6 +2371,9 @@
     "Custom title override" : {
 
     },
+    "Daily question" : {
+
+    },
     "Debug" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2317,6 +2390,9 @@
           }
         }
       }
+    },
+    "Debug IDs" : {
+
     },
     "debug.action.analysis" : {
       "extractionState" : "manual",
@@ -7333,10 +7409,25 @@
         }
       }
     },
+    "Delete Core Spotlight index" : {
+
+    },
+    "Delivery pace" : {
+
+    },
+    "Device ID" : {
+
+    },
     "Disable tuning runtime" : {
 
     },
     "Disabled" : {
+
+    },
+    "Dismiss" : {
+
+    },
+    "Done" : {
 
     },
     "Each run creates real local memories and calls the configured Go API through the normal pipeline." : {
@@ -7790,6 +7881,21 @@
     "English" : {
 
     },
+    "Enqueue first pending intent" : {
+
+    },
+    "Enqueue selected debug job" : {
+
+    },
+    "Enqueue test push" : {
+
+    },
+    "Entity ID" : {
+
+    },
+    "Entity results" : {
+
+    },
     "entity.kind.activity" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7938,6 +8044,9 @@
     "FAIL" : {
 
     },
+    "Failed" : {
+
+    },
     "Failed Stage: %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7955,7 +8064,22 @@
         }
       }
     },
+    "Feature flags" : {
+
+    },
     "Filtered" : {
+
+    },
+    "Finishing..." : {
+
+    },
+    "Force APNs registration sync" : {
+
+    },
+    "Graph deltas" : {
+
+    },
+    "Home Board Debug" : {
 
     },
     "Home Board Rules" : {
@@ -8488,6 +8612,9 @@
         }
       }
     },
+    "Inputs" : {
+
+    },
     "insights.entity.stats %lld %lld %lld" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8913,6 +9040,9 @@
         }
       }
     },
+    "Internal-only diagnostics for APNs token sync, delivery writeback retry, and server-side queued push delivery." : {
+
+    },
     "iOS can reliably distinguish Debug, development install, TestFlight receipt, and App Store receipt. Internal vs public beta requires the MORY_BUILD_CHANNEL build setting." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8930,13 +9060,55 @@
         }
       }
     },
+    "Job kind counts" : {
+
+    },
+    "Job Queue" : {
+
+    },
+    "Job status counts" : {
+
+    },
+    "Last error" : {
+
+    },
+    "Last result" : {
+
+    },
+    "Last transport trace" : {
+
+    },
+    "Latitude" : {
+
+    },
     "Leave fields empty to use the selected preset." : {
+
+    },
+    "Less" : {
+
+    },
+    "Limit: %lld" : {
+
+    },
+    "Link" : {
+
+    },
+    "Load server worker metrics" : {
+
+    },
+    "Loading preview..." : {
 
     },
     "Local Gate Overrides" : {
 
     },
     "Local preferences" : {
+
+    },
+    "Location memories will appear here after Mory resolves them into saved places." : {
+
+    },
+    "Longitude" : {
 
     },
     "memories.empty.description" : {
@@ -9381,6 +9553,12 @@
         }
       }
     },
+    "Memory results" : {
+
+    },
+    "Memory revisit" : {
+
+    },
     "memory.analysis.retry" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -9806,6 +9984,18 @@
         }
       }
     },
+    "Mentions" : {
+
+    },
+    "Merge into this place" : {
+
+    },
+    "Merge selected places" : {
+
+    },
+    "More" : {
+
+    },
     "Mory" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -9822,6 +10012,24 @@
           }
         }
       }
+    },
+    "Music" : {
+
+    },
+    "Name" : {
+
+    },
+    "New job kind" : {
+
+    },
+    "New place name" : {
+
+    },
+    "Nickname or alternate name" : {
+
+    },
+    "No arc/reflection results" : {
+
     },
     "No auth manager attached." : {
       "extractionState" : "manual",
@@ -9840,7 +10048,43 @@
         }
       }
     },
+    "No entity results" : {
+
+    },
+    "No jobs" : {
+
+    },
+    "No memory results" : {
+
+    },
+    "No notification intents" : {
+
+    },
+    "No other places to merge." : {
+
+    },
+    "No places" : {
+
+    },
+    "No suggestion cards" : {
+
+    },
+    "No user board cards" : {
+
+    },
     "No visible cards" : {
+
+    },
+    "Not now" : {
+
+    },
+    "Not selected" : {
+
+    },
+    "Note" : {
+
+    },
+    "Notification intent counts" : {
 
     },
     "OCR: %@" : {
@@ -10084,6 +10328,12 @@
     "PASS" : {
 
     },
+    "Pending intents" : {
+
+    },
+    "Pending writebacks" : {
+
+    },
     "people.empty.decisions" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -10254,6 +10504,9 @@
         }
       }
     },
+    "Permanent failed" : {
+
+    },
     "person.nav.title" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -10305,6 +10558,9 @@
         }
       }
     },
+    "Photo labels" : {
+
+    },
     "Photo note" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -10321,6 +10577,12 @@
           }
         }
       }
+    },
+    "Photo OCR" : {
+
+    },
+    "Pin" : {
+
     },
     "pipeline.explain.completed" : {
       "extractionState" : "manual",
@@ -10458,6 +10720,18 @@
         }
       }
     },
+    "Place not found" : {
+
+    },
+    "Prefer less first suggestion" : {
+
+    },
+    "Prefer more first suggestion" : {
+
+    },
+    "Preference counters" : {
+
+    },
     "Preference: %@ · schema %lld · %@" : {
       "localizations" : {
         "en" : {
@@ -10468,7 +10742,16 @@
         }
       }
     },
+    "Preview" : {
+
+    },
     "priority %@" : {
+
+    },
+    "Process due jobs now" : {
+
+    },
+    "Profile ID" : {
 
     },
     "Profile: %@" : {
@@ -10478,6 +10761,12 @@
 
     },
     "Quality Tuning Lab" : {
+
+    },
+    "Query" : {
+
+    },
+    "Questions" : {
 
     },
     "quickCapture.contextCheckIn" : {
@@ -10990,6 +11279,57 @@
         }
       }
     },
+    "quickCapture.voice.cancel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取消"
+          }
+        }
+      }
+    },
+    "quickCapture.voice.complete" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完成"
+          }
+        }
+      }
+    },
+    "quickCapture.voice.continue" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "持续"
+          }
+        }
+      }
+    },
     "quickCapture.voice.defaultSummary" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -11024,74 +11364,21 @@
         }
       }
     },
-    "quickCapture.voice.cancel" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Cancel" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "取消" } }
-      }
-    },
-    "quickCapture.voice.complete" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Done" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "完成" } }
-      }
-    },
-    "quickCapture.voice.continue" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Keep" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "持续" } }
-      }
-    },
     "quickCapture.voice.discard" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Discard" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "丢弃" } }
-      }
-    },
-    "quickCapture.voice.start" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Record voice" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "录音" } }
-      }
-    },
-    "quickCapture.voice.start.hint" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Starts a voice recording." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "开始录音。" } }
-      }
-    },
-    "quickCapture.voice.stop" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Stop" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "停止" } }
-      }
-    },
-    "quickCapture.voice.stopSubmit" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Stop & Save" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "停止提交" } }
-      }
-    },
-    "quickCapture.voice.stopSubmit.hint" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Stops recording, transcribes it, and opens the capture sheet." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "停止录音、转写，并打开记录页。" } }
-      }
-    },
-    "quickCapture.voice.submit" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Save" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "提交" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discard"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "丢弃"
+          }
+        }
       }
     },
     "quickCapture.voice.duration" : {
@@ -11519,6 +11806,108 @@
         }
       }
     },
+    "quickCapture.voice.start" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Record voice"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "录音"
+          }
+        }
+      }
+    },
+    "quickCapture.voice.start.hint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starts a voice recording."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开始录音。"
+          }
+        }
+      }
+    },
+    "quickCapture.voice.stop" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "停止"
+          }
+        }
+      }
+    },
+    "quickCapture.voice.stopSubmit" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop & Save"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "停止提交"
+          }
+        }
+      }
+    },
+    "quickCapture.voice.stopSubmit.hint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stops recording, transcribes it, and opens the capture sheet."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "停止录音、转写，并打开记录页。"
+          }
+        }
+      }
+    },
+    "quickCapture.voice.submit" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "提交"
+          }
+        }
+      }
+    },
     "quickCapture.voice.transcribing" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -11553,10 +11942,46 @@
         }
       }
     },
+    "Quiet end" : {
+
+    },
+    "Quiet hours" : {
+
+    },
+    "Quiet start" : {
+
+    },
+    "Radius meters" : {
+
+    },
+    "Raw metrics" : {
+
+    },
     "Raw Response" : {
 
     },
+    "Raw transcript" : {
+
+    },
+    "Rebuild Core Spotlight index" : {
+
+    },
+    "Recent jobs" : {
+
+    },
+    "Recent notification intents" : {
+
+    },
+    "Record" : {
+
+    },
+    "Recording %llds" : {
+
+    },
     "Records: %@" : {
+
+    },
+    "Recover unfinished jobs" : {
 
     },
     "Reflection evidence chars: %lld" : {
@@ -11834,10 +12259,43 @@
         }
       }
     },
+    "Refresh Home Board debug snapshot" : {
+
+    },
+    "Refresh Preview" : {
+
+    },
+    "Refresh queue state" : {
+
+    },
+    "Refresh remote push state" : {
+
+    },
     "Refresh rule snapshot" : {
 
     },
     "Refreshing" : {
+
+    },
+    "Registration digest" : {
+
+    },
+    "Relationship" : {
+
+    },
+    "Remote intents" : {
+
+    },
+    "Remote Push" : {
+
+    },
+    "Remote push diagnostics have not been loaded." : {
+
+    },
+    "Remove attachment" : {
+
+    },
+    "Rename" : {
 
     },
     "Request" : {
@@ -11849,22 +12307,58 @@
     "Reset defaults" : {
 
     },
+    "Results" : {
+
+    },
+    "Retried" : {
+
+    },
+    "Retry" : {
+
+    },
+    "Retry failed jobs" : {
+
+    },
     "Rule inputs" : {
 
     },
     "Run All Presets" : {
 
     },
+    "Run chapter/stage suggest" : {
+
+    },
     "Run Core Batch" : {
+
+    },
+    "Run daily question suggest" : {
+
+    },
+    "Run exact local search" : {
 
     },
     "Run History" : {
 
     },
+    "Run notification intent suggest" : {
+
+    },
+    "Run photo semantic placeholder" : {
+
+    },
+    "Run provider eval" : {
+
+    },
     "Run Selected Scenario" : {
 
     },
+    "Run semantic-first search" : {
+
+    },
     "Run Strict + Balanced Matrix" : {
+
+    },
+    "Run transcript refine" : {
 
     },
     "Running..." : {
@@ -11876,10 +12370,31 @@
     "Runtime override" : {
 
     },
+    "Save" : {
+
+    },
     "Save Local Preference" : {
 
     },
+    "Save name" : {
+
+    },
     "Scenario" : {
+
+    },
+    "Scheduled intents" : {
+
+    },
+    "Search" : {
+
+    },
+    "Search songs" : {
+
+    },
+    "Search source" : {
+
+    },
+    "Search summary" : {
 
     },
     "search.empty.arcs" : {
@@ -12102,6 +12617,30 @@
           }
         }
       }
+    },
+    "Searching Apple Music catalog..." : {
+
+    },
+    "Searching..." : {
+
+    },
+    "Selected" : {
+
+    },
+    "Semantic index" : {
+
+    },
+    "Semantic Search" : {
+
+    },
+    "Semantic search is local/system-backed through Core Spotlight. Request ID is not applicable unless this later routes through a cloud retrieval service." : {
+
+    },
+    "Sent" : {
+
+    },
+    "Server worker metrics" : {
+
     },
     "settings.account.guest" : {
       "extractionState" : "manual",
@@ -14449,7 +14988,28 @@
         }
       }
     },
+    "Sources" : {
+
+    },
+    "Split selected artifacts" : {
+
+    },
+    "Start recording and attach voice to this memory." : {
+
+    },
+    "State" : {
+
+    },
+    "Stop" : {
+
+    },
     "Stored" : {
+
+    },
+    "Suggestion cards" : {
+
+    },
+    "Summary" : {
 
     },
     "tab.arcs" : {
@@ -14622,7 +15182,22 @@
         }
       }
     },
+    "Task" : {
+
+    },
+    "These requests call the same cloud intelligence client used by capture, daily questions, chapter suggestions, photo semantics, and notification intent generation." : {
+
+    },
     "This page calls the same repository and HomeBoardRuleEngine used by Today, then exposes the rule inputs, local preferences, and final visible cards." : {
+
+    },
+    "This page exposes the home memory desktop rule inputs, visible cards, user-controlled cards, suggestions, and preference actions before the formal UI polish pass." : {
+
+    },
+    "This page uses the same repository job stores and IntelligenceJobWorker used during launch recovery and background intelligence preparation." : {
+
+    },
+    "This place does not have enough linked location artifacts to split." : {
 
     },
     "timeline.empty.description" : {
@@ -14710,6 +15285,30 @@
         }
       }
     },
+    "Timezone" : {
+
+    },
+    "Title" : {
+
+    },
+    "Transcribing..." : {
+
+    },
+    "unapplied" : {
+
+    },
+    "Unpin" : {
+
+    },
+    "Updated" : {
+
+    },
+    "URL" : {
+
+    },
+    "Use APNs environment/topic, sent/failed/retried/permanent counters, and last_error to verify real-device push delivery." : {
+
+    },
     "Use this to confirm whether sign-in is blocked by Keychain persistence, server auth, or session state." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -14726,6 +15325,9 @@
           }
         }
       }
+    },
+    "User board cards" : {
+
     },
     "UV %@" : {
       "extractionState" : "manual",
@@ -14745,6 +15347,12 @@
       }
     },
     "Visible cards" : {
+
+    },
+    "Voice" : {
+
+    },
+    "Worker" : {
 
     },
     "한국어" : {

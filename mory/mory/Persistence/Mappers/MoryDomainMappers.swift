@@ -336,6 +336,67 @@ extension EntityProfileStore {
 }
 
 @MainActor
+extension PlaceProfileStore {
+    convenience init(domainModel: PlaceProfile) {
+        self.init(
+            id: domainModel.id,
+            entityID: domainModel.entityID,
+            displayName: domainModel.displayName,
+            canonicalName: domainModel.canonicalName,
+            aliases: domainModel.aliases,
+            centroidLatitude: domainModel.centroidLatitude,
+            centroidLongitude: domainModel.centroidLongitude,
+            radiusMeters: domainModel.radiusMeters,
+            mentionCount: domainModel.mentionCount,
+            sourceArtifactIDs: domainModel.sourceArtifactIDs,
+            sourceRecordIDs: domainModel.sourceRecordIDs,
+            confirmationStateRawValue: domainModel.confirmationState.rawValue,
+            confidence: domainModel.confidence,
+            createdAt: domainModel.createdAt,
+            updatedAt: domainModel.updatedAt
+        )
+    }
+
+    var domainModel: PlaceProfile {
+        PlaceProfile(
+            id: id,
+            entityID: entityID,
+            displayName: displayName,
+            canonicalName: canonicalName,
+            aliases: aliases,
+            centroidLatitude: centroidLatitude,
+            centroidLongitude: centroidLongitude,
+            radiusMeters: radiusMeters,
+            mentionCount: mentionCount,
+            sourceArtifactIDs: sourceArtifactIDs,
+            sourceRecordIDs: sourceRecordIDs,
+            confirmationState: IntelligenceConfirmationState(rawValue: confirmationStateRawValue) ?? .inferred,
+            confidence: confidence,
+            createdAt: createdAt,
+            updatedAt: updatedAt
+        )
+    }
+
+    func apply(domainModel: PlaceProfile) {
+        id = domainModel.id
+        entityID = domainModel.entityID
+        displayName = domainModel.displayName
+        canonicalName = domainModel.canonicalName
+        aliases = domainModel.aliases
+        centroidLatitude = domainModel.centroidLatitude
+        centroidLongitude = domainModel.centroidLongitude
+        radiusMeters = domainModel.radiusMeters
+        mentionCount = domainModel.mentionCount
+        sourceArtifactIDs = domainModel.sourceArtifactIDs
+        sourceRecordIDs = domainModel.sourceRecordIDs
+        confirmationStateRawValue = domainModel.confirmationState.rawValue
+        confidence = domainModel.confidence
+        createdAt = domainModel.createdAt
+        updatedAt = domainModel.updatedAt
+    }
+}
+
+@MainActor
 extension ClarificationQuestionStore {
     convenience init(domainModel: ClarificationQuestion) {
         self.init(

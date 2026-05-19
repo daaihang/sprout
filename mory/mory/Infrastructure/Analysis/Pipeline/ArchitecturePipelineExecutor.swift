@@ -7,6 +7,7 @@ extension Notification.Name {
 
 struct ArchitecturePipelineExecutor {
     private let graphUpdater = GraphUpdater()
+    private let placeProfileResolver = PlaceProfileResolver()
     private let candidateBuilder = TemporalArcCandidateBuilder()
     private let temporalArcService = TemporalArcService()
     private let arcQualityPolicy = ArcQualityPolicy()
@@ -18,6 +19,7 @@ struct ArchitecturePipelineExecutor {
         modelContext: ModelContext,
         analysisService: any RecordAnalysisServing,
         upsertRecordAnalysis: @escaping (RecordAnalysisSnapshot) throws -> Void,
+        upsertPlaceProfile: @escaping (PlaceProfile) throws -> Void,
         upsertEntityNode: @escaping (EntityNode) throws -> Void,
         upsertEntityEdge: @escaping (EntityEdge) throws -> Void,
         upsertArtifactEntityLink: @escaping (ArtifactEntityLink) throws -> Void,
@@ -61,15 +63,33 @@ struct ArchitecturePipelineExecutor {
             existingEntityEdges: try fetchExistingEntityEdges(modelContext: modelContext, recordScope: activeRecordScope),
             existingArtifactEntityLinks: try fetchExistingArtifactEntityLinks(modelContext: modelContext, recordScope: activeRecordScope)
         )
+        let placeResolution = placeProfileResolver.resolve(
+            locationArtifacts: artifacts.filter { $0.kind == .location },
+            recordID: record.id,
+            existingProfiles: try fetchExistingPlaceProfiles(modelContext: modelContext, recordScope: activeRecordScope),
+            existingEntityNodes: graphUpdate.entityNodes,
+            existingArtifactEntityLinks: graphUpdate.artifactEntityLinks,
+            timestamp: analysis.createdAt
+        )
+        let currentArtifactIDs = Set(artifacts.map(\.id))
+        let resolvedEntityIDs = mergeUniqueIDs(
+            graphUpdate.resolvedEntityIDs,
+            placeResolution.artifactEntityLinks
+                .filter { currentArtifactIDs.contains($0.artifactID) }
+                .map(\.entityID)
+        )
 
         // Step 5: Persist graph updates
-        for node in graphUpdate.entityNodes {
+        for profile in placeResolution.profiles {
+            try upsertPlaceProfile(profile)
+        }
+        for node in placeResolution.entityNodes {
             try upsertEntityNode(node)
         }
         for edge in graphUpdate.entityEdges {
             try upsertEntityEdge(edge)
         }
-        for link in graphUpdate.artifactEntityLinks {
+        for link in placeResolution.artifactEntityLinks {
             try upsertArtifactEntityLink(link)
         }
         try save()
@@ -83,8 +103,8 @@ struct ArchitecturePipelineExecutor {
             records: candidateRecords,
             analyses: candidateAnalyses,
             artifacts: candidateArtifacts,
-            artifactEntityLinks: graphUpdate.artifactEntityLinks,
-            entityNodes: graphUpdate.entityNodes,
+            artifactEntityLinks: placeResolution.artifactEntityLinks,
+            entityNodes: placeResolution.entityNodes,
             focusRecordID: record.id,
             maxCandidates: 3
         )
@@ -98,8 +118,8 @@ struct ArchitecturePipelineExecutor {
             let promotionResult = temporalArcService.promote(
                 candidate: candidate,
                 analyses: candidateAnalyses,
-                artifactEntityLinks: graphUpdate.artifactEntityLinks,
-                entityNodes: graphUpdate.entityNodes
+                artifactEntityLinks: placeResolution.artifactEntityLinks,
+                entityNodes: placeResolution.entityNodes
             )
             try upsertTemporalArc(promotionResult.arc)
             try upsertReflection(promotionResult.reflection)
@@ -136,7 +156,7 @@ struct ArchitecturePipelineExecutor {
                     linkedTemporalArcID: acceptedArcs.first?.id,
                     sourceRecordIDs: [record.id],
                     sourceArtifactIDs: artifacts.map(\.id),
-                    sourceEntityIDs: graphUpdate.resolvedEntityIDs,
+                    sourceEntityIDs: resolvedEntityIDs,
                     createdAt: Date.now,
                     savedAt: nil,
                     dismissedAt: nil
@@ -197,6 +217,15 @@ struct ArchitecturePipelineExecutor {
         }
     }
 
+    private func fetchExistingPlaceProfiles(modelContext: ModelContext, recordScope: Set<UUID>?) throws -> [PlaceProfile] {
+        let stores = try modelContext.fetch(FetchDescriptor<PlaceProfileStore>())
+        let profiles = stores.map(\.domainModel)
+        guard let recordScope else { return profiles }
+        return profiles.filter { profile in
+            !profile.sourceRecordIDs.isEmpty && profile.sourceRecordIDs.contains { recordScope.contains($0) }
+        }
+    }
+
     private func fetchExistingEntityEdges(modelContext: ModelContext, recordScope: Set<UUID>?) throws -> [EntityEdge] {
         let stores = try modelContext.fetch(FetchDescriptor<EntityEdgeStore>())
         let edges = stores.map(\.domainModel)
@@ -213,5 +242,15 @@ struct ArchitecturePipelineExecutor {
         return links.filter { link in
             link.sourceRecordID.map { recordScope.contains($0) } ?? false
         }
+    }
+
+    private func mergeUniqueIDs(_ lhs: [UUID], _ rhs: [UUID]) -> [UUID] {
+        var seen = Set<UUID>()
+        var result: [UUID] = []
+        for id in lhs + rhs where !seen.contains(id) {
+            seen.insert(id)
+            result.append(id)
+        }
+        return result
     }
 }

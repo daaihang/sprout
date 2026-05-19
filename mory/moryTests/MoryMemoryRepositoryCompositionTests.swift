@@ -268,6 +268,166 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertTrue(memory.contextArtifacts.contains { $0.summary.contains("Dreams") })
     }
 
+    func testLocationArtifactsResolveIntoPersistentPlaceProfiles() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        let firstMemory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Morning cafe",
+                rawText: "Worked from the cafe before standup.",
+                captureSource: .composer,
+                artifacts: [
+                    .text(title: "Morning cafe", body: "Worked from the cafe before standup."),
+                    .location(title: "Blue Bottle", summary: "Blue Bottle Coffee Shanghai", latitude: 31.2000, longitude: 121.4000)
+                ]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: firstMemory.record.id)
+
+        let secondMemory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Cafe follow-up",
+                rawText: "Returned to the same cafe entrance after lunch.",
+                captureSource: .composer,
+                artifacts: [
+                    .text(title: "Cafe follow-up", body: "Returned to the same cafe entrance after lunch."),
+                    .location(title: "Blue Bottle Coffee entrance", summary: "Blue Bottle by the station", latitude: 31.2004, longitude: 121.4003)
+                ]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: secondMemory.record.id)
+
+        var profiles = try repository.fetchPlaceProfiles(limit: nil)
+        let mergedProfile = try XCTUnwrap(profiles.first { $0.sourceRecordIDs.contains(firstMemory.record.id) })
+        XCTAssertEqual(mergedProfile.mentionCount, 2)
+        XCTAssertEqual(Set(mergedProfile.sourceRecordIDs), Set([firstMemory.record.id, secondMemory.record.id]))
+        XCTAssertEqual(mergedProfile.sourceArtifactIDs.count, 2)
+        XCTAssertTrue(mergedProfile.aliases.contains { $0.contains("Blue Bottle") })
+
+        let detail = try XCTUnwrap(repository.fetchEntityDetail(entityID: mergedProfile.entityID))
+        XCTAssertEqual(detail.entity.kind, .place)
+        XCTAssertGreaterThanOrEqual(detail.artifactCount, 2)
+
+        let farMemory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Different city cafe",
+                rawText: "Same cafe brand, different part of the city.",
+                captureSource: .composer,
+                artifacts: [
+                    .text(title: "Different city cafe", body: "Same cafe brand, different part of the city."),
+                    .location(title: "Blue Bottle", summary: "Blue Bottle Coffee Shanghai", latitude: 31.3000, longitude: 121.5000)
+                ]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: farMemory.record.id)
+
+        profiles = try repository.fetchPlaceProfiles(limit: nil)
+        XCTAssertEqual(profiles.count, 2)
+        XCTAssertTrue(profiles.contains { $0.sourceRecordIDs == [farMemory.record.id] })
+    }
+
+    func testPlaceProfileManualRenameMergeSplitAndDeletion() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        let firstMemory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Cafe one",
+                rawText: "Worked from the cafe.",
+                captureSource: .composer,
+                artifacts: [
+                    .text(title: "Cafe one", body: "Worked from the cafe."),
+                    .location(title: "Blue Bottle", summary: "Blue Bottle Coffee", latitude: 31.2000, longitude: 121.4000)
+                ]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: firstMemory.record.id)
+
+        let secondMemory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Cafe two",
+                rawText: "Returned to the cafe entrance.",
+                captureSource: .composer,
+                artifacts: [
+                    .text(title: "Cafe two", body: "Returned to the cafe entrance."),
+                    .location(title: "Blue Bottle entrance", summary: "Blue Bottle Coffee", latitude: 31.2004, longitude: 121.4003)
+                ]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: secondMemory.record.id)
+
+        let farMemory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Far cafe",
+                rawText: "Same brand, different district.",
+                captureSource: .composer,
+                artifacts: [
+                    .text(title: "Far cafe", body: "Same brand, different district."),
+                    .location(title: "Blue Bottle", summary: "Blue Bottle Coffee", latitude: 31.3000, longitude: 121.5000)
+                ]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: farMemory.record.id)
+
+        var profiles = try repository.fetchPlaceProfiles(limit: nil)
+        XCTAssertEqual(profiles.count, 2)
+        let primary = try XCTUnwrap(profiles.first { $0.sourceRecordIDs.contains(firstMemory.record.id) })
+        let secondary = try XCTUnwrap(profiles.first { $0.sourceRecordIDs == [farMemory.record.id] })
+
+        let renamed = try repository.renamePlaceProfile(
+            id: primary.id,
+            displayName: "Work Cafe",
+            aliases: ["Morning cafe"]
+        )
+        XCTAssertEqual(renamed.displayName, "Work Cafe")
+        XCTAssertEqual(renamed.confirmationState, .userConfirmed)
+        XCTAssertTrue(renamed.aliases.contains("Morning cafe"))
+        XCTAssertEqual(try repository.fetchEntityDetail(entityID: renamed.entityID)?.entity.displayName, "Work Cafe")
+
+        let merged = try repository.mergePlaceProfiles(
+            primaryID: renamed.id,
+            mergingIDs: [secondary.id],
+            displayName: "Work Cafe"
+        )
+        XCTAssertEqual(merged.confirmationState, .userConfirmed)
+        XCTAssertEqual(Set(merged.sourceRecordIDs), Set([firstMemory.record.id, secondMemory.record.id, farMemory.record.id]))
+        XCTAssertNil(try repository.fetchPlaceProfile(id: secondary.id))
+        XCTAssertEqual(try repository.fetchPlaceProfiles(limit: nil).count, 1)
+
+        let mergedArtifacts = try repository.fetchPlaceProfileArtifacts(id: merged.id)
+        let movingArtifact = try XCTUnwrap(mergedArtifacts.first { $0.recordID == farMemory.record.id })
+        let split = try repository.splitPlaceProfile(
+            id: merged.id,
+            movingArtifactIDs: [movingArtifact.id],
+            displayName: "Other District Cafe"
+        )
+        XCTAssertEqual(split.displayName, "Other District Cafe")
+        XCTAssertEqual(split.sourceArtifactIDs, [movingArtifact.id])
+        XCTAssertEqual(split.sourceRecordIDs, [farMemory.record.id])
+        XCTAssertEqual(try repository.fetchEntityDetail(entityID: split.entityID)?.artifactCount, 1)
+
+        profiles = try repository.fetchPlaceProfiles(limit: nil)
+        XCTAssertEqual(profiles.count, 2)
+        let remainingPrimary = try XCTUnwrap(try repository.fetchPlaceProfile(id: merged.id))
+        XCTAssertEqual(Set(remainingPrimary.sourceRecordIDs), Set([firstMemory.record.id, secondMemory.record.id]))
+
+        XCTAssertThrowsError(try repository.splitPlaceProfile(
+            id: split.id,
+            movingArtifactIDs: split.sourceArtifactIDs,
+            displayName: "Invalid split"
+        ))
+
+        try repository.deleteMemory(recordID: split.sourceRecordIDs[0])
+        XCTAssertNil(try repository.fetchPlaceProfile(id: split.id))
+    }
+
     func testHomeBoardCardMetadataReflectsTypedMemoryCard() async throws {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
@@ -571,7 +731,12 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
                     captureSource: .composer,
                     artifacts: [
                         .text(title: "Cafe context \(index)", body: "Cafe context \(index) with Linh."),
-                        .location(title: "Cafe", summary: "Cafe near the station", latitude: 31.2, longitude: 121.4)
+                        .location(
+                            title: index == 1 ? "Cafe" : "Cafe station entrance",
+                            summary: "Cafe near the station",
+                            latitude: index == 1 ? 31.2 : 31.2004,
+                            longitude: index == 1 ? 121.4 : 121.4003
+                        )
                     ]
                 )
             )
@@ -1415,6 +1580,46 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertEqual(audioArtifact.mediaRef?.filename, "quick_voice.caf")
         XCTAssertEqual(audioArtifact.textContent, "I keep returning to protecting mornings for writing before meetings.")
         XCTAssertEqual(detail.pipelineStatus?.stage, .pending)
+    }
+
+    func testVoiceComposerDraftKeepsTranscriptInTextArtifactAndAudioMetadata() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+        let transcript = "I keep returning to protecting mornings for writing before meetings."
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: nil,
+                rawText: transcript,
+                mood: nil,
+                inputContext: nil,
+                captureSource: .audio,
+                artifacts: [
+                    .text(title: nil, body: transcript),
+                    .audio(
+                        title: "Voice note",
+                        summary: "Audio capture",
+                        filename: "quick_voice.caf",
+                        audioData: Data([1, 2, 3, 4]),
+                        transcriptionText: transcript
+                    )
+                ]
+            )
+        )
+
+        let detail = try XCTUnwrap(repository.fetchMemoryDetail(recordID: memory.record.id))
+        let textArtifact = try XCTUnwrap(detail.artifacts.first(where: { $0.kind == .text }))
+        let audioArtifact = try XCTUnwrap(detail.artifacts.first(where: { $0.kind == .audio }))
+
+        XCTAssertEqual(textArtifact.textContent, transcript)
+        XCTAssertTrue(textArtifact.title.hasSuffix("..."))
+        XCTAssertLessThanOrEqual(textArtifact.title.count, 51)
+        XCTAssertEqual(audioArtifact.summary, "Audio capture")
+        XCTAssertEqual(audioArtifact.textContent, "")
+        XCTAssertEqual(audioArtifact.metadata["transcriptionText"], transcript)
     }
 
     func testQuickVoiceCaptureDraftCanPersistAudioWithoutTranscript() async throws {

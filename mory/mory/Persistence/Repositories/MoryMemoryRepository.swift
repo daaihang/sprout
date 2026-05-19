@@ -1254,6 +1254,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         try deleteAll(GraphDeltaStore.self)
         try deleteAll(IntelligenceJobStore.self)
         try deleteAll(ClarificationQuestionStore.self)
+        try deleteAll(PlaceProfileStore.self)
         try deleteAll(EntityProfileStore.self)
         try deleteAll(HomeBoardPreferenceStore.self)
         try deleteAll(CompositionItemStore.self)
@@ -1353,6 +1354,164 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     func upsertEntityProfile(_ profile: EntityProfile) throws {
         try upsert(entityProfile: profile)
         try save()
+    }
+
+    func fetchPlaceProfiles(limit: Int?) throws -> [PlaceProfile] {
+        let profiles = try modelContext.fetch(
+            FetchDescriptor<PlaceProfileStore>(
+                sortBy: [SortDescriptor(\.updatedAt, order: .reverse)]
+            )
+        )
+        .map(\.domainModel)
+        return applyLimit(limit, to: profiles)
+    }
+
+    func upsertPlaceProfile(_ profile: PlaceProfile) throws {
+        try upsert(placeProfile: profile)
+        try save()
+    }
+
+    func fetchPlaceProfile(id: UUID) throws -> PlaceProfile? {
+        try fetchPlaceProfileStore(id: id)?.domainModel
+    }
+
+    func fetchPlaceProfileArtifacts(id: UUID) throws -> [Artifact] {
+        guard let profile = try fetchPlaceProfile(id: id) else {
+            throw PlaceProfileMutationError.profileNotFound
+        }
+        let artifactsByID = Dictionary(uniqueKeysWithValues: try fetchArtifacts(ids: profile.sourceArtifactIDs).map { ($0.id, $0) })
+        return profile.sourceArtifactIDs.compactMap { artifactsByID[$0] }
+    }
+
+    func renamePlaceProfile(id: UUID, displayName: String, aliases: [String]) throws -> PlaceProfile {
+        let now = Date.now
+        let resolvedName = try normalizedPlaceDisplayName(displayName)
+        let store = try requirePlaceProfileStore(id: id)
+        var profile = store.domainModel
+        profile.displayName = resolvedName
+        profile.canonicalName = resolvedName
+        profile.aliases = normalizedPlaceAliases([resolvedName] + aliases)
+        profile.confirmationState = .userConfirmed
+        profile.updatedAt = now
+        store.apply(domainModel: profile)
+        try upsertPlaceEntityNode(for: profile, updatedAt: now)
+        try save()
+        return profile
+    }
+
+    func mergePlaceProfiles(primaryID: UUID, mergingIDs: [UUID], displayName: String?) throws -> PlaceProfile {
+        let now = Date.now
+        let mergingIDSet = Set(mergingIDs)
+        guard !mergingIDSet.isEmpty else {
+            throw PlaceProfileMutationError.mergeRequiresAtLeastOneOtherProfile
+        }
+        guard !mergingIDSet.contains(primaryID) else {
+            throw PlaceProfileMutationError.mergeCannotIncludePrimary
+        }
+
+        let primaryStore = try requirePlaceProfileStore(id: primaryID)
+        let mergingStores = try mergingIDSet.map { try requirePlaceProfileStore(id: $0) }
+        let mergingProfiles = mergingStores.map(\.domainModel)
+        let mergingEntityIDs = Set(mergingProfiles.map(\.entityID))
+        let replacementMap = Dictionary(uniqueKeysWithValues: mergingEntityIDs.map { ($0, primaryStore.entityID) })
+
+        var primaryProfile = primaryStore.domainModel
+        if let displayName, let trimmedName = displayName.trimmedOrNil {
+            primaryProfile.displayName = trimmedName
+            primaryProfile.canonicalName = trimmedName
+        }
+        primaryProfile.aliases = normalizedPlaceAliases(
+            [primaryProfile.displayName, primaryProfile.canonicalName]
+                + primaryProfile.aliases
+                + mergingProfiles.flatMap { [$0.displayName, $0.canonicalName] + $0.aliases }
+        )
+        primaryProfile.sourceArtifactIDs = mergeUniqueIDs(
+            primaryProfile.sourceArtifactIDs,
+            mergingProfiles.flatMap(\.sourceArtifactIDs)
+        )
+        primaryProfile.sourceRecordIDs = mergeUniqueIDs(
+            primaryProfile.sourceRecordIDs,
+            mergingProfiles.flatMap(\.sourceRecordIDs)
+        )
+        primaryProfile.confirmationState = .userConfirmed
+        primaryProfile.confidence = maxConfidence([primaryProfile] + mergingProfiles)
+        primaryProfile.updatedAt = now
+
+        let mergedArtifacts = try fetchArtifacts(ids: primaryProfile.sourceArtifactIDs)
+        primaryProfile = recalculatedPlaceProfile(primaryProfile, from: mergedArtifacts, updatedAt: now)
+        primaryStore.apply(domainModel: primaryProfile)
+
+        try rewritePlaceGraphReferences(replacing: replacementMap)
+        try upsertPlaceEntityNode(for: primaryProfile, updatedAt: now)
+        try deletePlaceProfilesAndNodes(stores: mergingStores)
+        try save()
+        return primaryProfile
+    }
+
+    func splitPlaceProfile(id: UUID, movingArtifactIDs: [UUID], displayName: String) throws -> PlaceProfile {
+        let now = Date.now
+        let resolvedName = try normalizedPlaceDisplayName(displayName)
+        let movingIDSet = Set(movingArtifactIDs)
+        guard !movingIDSet.isEmpty else {
+            throw PlaceProfileMutationError.splitRequiresMovingArtifacts
+        }
+
+        let originalStore = try requirePlaceProfileStore(id: id)
+        var originalProfile = originalStore.domainModel
+        let originalArtifactIDSet = Set(originalProfile.sourceArtifactIDs)
+        guard movingIDSet.isSubset(of: originalArtifactIDSet) else {
+            throw PlaceProfileMutationError.splitArtifactsNotInProfile
+        }
+        guard movingIDSet.count < originalArtifactIDSet.count else {
+            throw PlaceProfileMutationError.splitCannotMoveAllArtifacts
+        }
+
+        let allArtifacts = try fetchArtifacts(ids: originalProfile.sourceArtifactIDs)
+        let movingArtifacts = allArtifacts.filter { movingIDSet.contains($0.id) }
+        guard movingArtifacts.allSatisfy({ $0.kind == .location }) else {
+            throw PlaceProfileMutationError.splitArtifactsMustBeLocations
+        }
+        let remainingArtifacts = allArtifacts.filter { !movingIDSet.contains($0.id) }
+
+        let newProfile = recalculatedPlaceProfile(
+            PlaceProfile(
+                entityID: UUID(),
+                displayName: resolvedName,
+                aliases: [resolvedName],
+                sourceArtifactIDs: movingArtifacts.map(\.id),
+                sourceRecordIDs: movingArtifacts.map(\.recordID),
+                confirmationState: .userConfirmed,
+                confidence: originalProfile.confidence,
+                createdAt: now,
+                updatedAt: now
+            ),
+            from: movingArtifacts,
+            updatedAt: now
+        )
+        originalProfile.sourceArtifactIDs = remainingArtifacts.map(\.id)
+        originalProfile.sourceRecordIDs = mergeUniqueIDs([], remainingArtifacts.map(\.recordID))
+        originalProfile.confirmationState = .userConfirmed
+        originalProfile.updatedAt = now
+        originalProfile = recalculatedPlaceProfile(originalProfile, from: remainingArtifacts, updatedAt: now)
+
+        originalStore.apply(domainModel: originalProfile)
+        modelContext.insert(PlaceProfileStore(domainModel: newProfile))
+        try movePlaceArtifactLinks(
+            artifactIDs: movingIDSet,
+            fromEntityID: originalProfile.entityID,
+            toProfile: newProfile,
+            updatedAt: now
+        )
+        try splitPlaceEntityEdges(
+            fromEntityID: originalProfile.entityID,
+            toEntityID: newProfile.entityID,
+            movingArtifactIDs: movingIDSet,
+            movingRecordIDs: Set(movingArtifacts.map(\.recordID))
+        )
+        try upsertPlaceEntityNode(for: originalProfile, updatedAt: now)
+        try upsertPlaceEntityNode(for: newProfile, updatedAt: now)
+        try save()
+        return newProfile
     }
 
     func fetchClarificationQuestions(status: ClarificationQuestionStatus?, limit: Int?) throws -> [ClarificationQuestion] {
@@ -2066,6 +2225,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             removingRecordIDs: recordIDs,
             artifactIDs: artifactIDs
         )
+        try purgePlaceProfiles(removingRecordIDs: recordIDs, artifactIDs: artifactIDs)
         try purgeEntityProfiles(removing: recordIDs)
         try purgeEntityProvenance(removing: recordIDs, remainingLinkedEntityIDs: remainingLinkedEntityIDs)
     }
@@ -2250,6 +2410,35 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             || !profile.aliases.isEmpty
     }
 
+    private func purgePlaceProfiles(
+        removingRecordIDs recordIDs: Set<UUID>,
+        artifactIDs: Set<UUID>
+    ) throws {
+        let stores = try modelContext.fetch(FetchDescriptor<PlaceProfileStore>())
+
+        for store in stores {
+            var profile = store.domainModel
+            let originalArtifactIDs = profile.sourceArtifactIDs
+            let originalRecordIDs = profile.sourceRecordIDs
+            profile.sourceArtifactIDs.removeAll { artifactIDs.contains($0) }
+            profile.sourceRecordIDs.removeAll { recordIDs.contains($0) }
+
+            guard profile.sourceArtifactIDs != originalArtifactIDs || profile.sourceRecordIDs != originalRecordIDs else {
+                continue
+            }
+
+            if profile.sourceArtifactIDs.isEmpty {
+                modelContext.delete(store)
+                continue
+            }
+
+            let remainingArtifacts = try fetchArtifacts(ids: profile.sourceArtifactIDs)
+            profile = recalculatedPlaceProfile(profile, from: remainingArtifacts, updatedAt: Date.now)
+            store.apply(domainModel: profile)
+            try upsertPlaceEntityNode(for: profile, updatedAt: profile.updatedAt)
+        }
+    }
+
     private func fetchPersonEntityNodes(recordID: UUID, artifactIDs: [UUID]) throws -> [EntityNode] {
         let artifactIDSet = Set(artifactIDs)
         let linkedEntityIDs = Set(
@@ -2278,6 +2467,288 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         try modelContext.fetch(
             FetchDescriptor<EntityNodeStore>(predicate: #Predicate { $0.id == id })
         ).first?.domainModel
+    }
+
+    private func fetchPlaceProfileStore(id: UUID) throws -> PlaceProfileStore? {
+        try modelContext.fetch(
+            FetchDescriptor<PlaceProfileStore>(predicate: #Predicate { $0.id == id })
+        ).first
+    }
+
+    private func requirePlaceProfileStore(id: UUID) throws -> PlaceProfileStore {
+        guard let store = try fetchPlaceProfileStore(id: id) else {
+            throw PlaceProfileMutationError.profileNotFound
+        }
+        return store
+    }
+
+    private func fetchArtifacts(ids: [UUID]) throws -> [Artifact] {
+        guard !ids.isEmpty else { return [] }
+        let idSet = Set(ids)
+        let artifacts = try modelContext.fetch(FetchDescriptor<ArtifactStore>())
+            .map(\.domainModel)
+            .filter { idSet.contains($0.id) }
+        let artifactsByID = Dictionary(uniqueKeysWithValues: artifacts.map { ($0.id, $0) })
+        return ids.compactMap { artifactsByID[$0] }
+    }
+
+    private func normalizedPlaceDisplayName(_ displayName: String) throws -> String {
+        guard let resolvedName = displayName.trimmedOrNil else {
+            throw PlaceProfileMutationError.emptyDisplayName
+        }
+        return resolvedName
+    }
+
+    private func normalizedPlaceAliases(_ values: [String?]) -> [String] {
+        var seen = Set<String>()
+        var aliases: [String] = []
+        for value in values {
+            guard let trimmed = value?.trimmedOrNil else { continue }
+            let key = PlaceContextResolver.normalizedName(trimmed)
+            guard !key.isEmpty, !seen.contains(key) else { continue }
+            seen.insert(key)
+            aliases.append(trimmed)
+        }
+        return aliases
+    }
+
+    private func recalculatedPlaceProfile(_ profile: PlaceProfile, from artifacts: [Artifact], updatedAt: Date) -> PlaceProfile {
+        let locationArtifacts = artifacts.filter { $0.kind == .location }
+        let coordinates = locationArtifacts.compactMap { PlaceContextResolver.coordinate(for: $0) }
+        var updated = profile
+        updated.sourceArtifactIDs = mergeUniqueIDs([], locationArtifacts.map(\.id))
+        updated.sourceRecordIDs = mergeUniqueIDs([], locationArtifacts.map(\.recordID))
+        updated.mentionCount = locationArtifacts.isEmpty ? profile.mentionCount : locationArtifacts.count
+        updated.updatedAt = updatedAt
+
+        guard !coordinates.isEmpty else {
+            updated.centroidLatitude = nil
+            updated.centroidLongitude = nil
+            updated.radiusMeters = 0
+            return updated
+        }
+
+        let latitude = coordinates.map(\.latitude).reduce(0, +) / Double(coordinates.count)
+        let longitude = coordinates.map(\.longitude).reduce(0, +) / Double(coordinates.count)
+        let centroid = PlaceCoordinate(latitude: latitude, longitude: longitude)
+        let maxDistance = coordinates.map { $0.distance(to: centroid) }.max() ?? 0
+        updated.centroidLatitude = latitude
+        updated.centroidLongitude = longitude
+        updated.radiusMeters = max(120, min(maxDistance + 60, 900))
+        return updated
+    }
+
+    private func upsertPlaceEntityNode(for profile: PlaceProfile, updatedAt: Date) throws {
+        let entity = EntityNode(
+            id: profile.entityID,
+            kind: .place,
+            displayName: profile.displayName,
+            canonicalName: profile.canonicalName,
+            aliases: profile.aliases,
+            summary: placeProfileSummary(profile),
+            provenanceRecordIDs: profile.sourceRecordIDs,
+            createdAt: profile.createdAt,
+            updatedAt: updatedAt,
+            confidence: profile.confidence
+        )
+        try upsert(entityNode: entity)
+    }
+
+    private func placeProfileSummary(_ profile: PlaceProfile) -> String {
+        guard let latitude = profile.centroidLatitude, let longitude = profile.centroidLongitude else {
+            return profile.canonicalName
+        }
+        return "\(profile.canonicalName) · \(String(format: "%.5f", latitude)), \(String(format: "%.5f", longitude))"
+    }
+
+    private func movePlaceArtifactLinks(
+        artifactIDs: Set<UUID>,
+        fromEntityID: UUID,
+        toProfile: PlaceProfile,
+        updatedAt: Date
+    ) throws {
+        let linkStores = try modelContext.fetch(FetchDescriptor<ArtifactEntityLinkStore>())
+        let artifactStores = try modelContext.fetch(FetchDescriptor<ArtifactStore>())
+        let artifactsByID = Dictionary(uniqueKeysWithValues: artifactStores.map { ($0.id, $0.domainModel) })
+
+        for artifactID in artifactIDs {
+            var didMoveExistingLink = false
+            for store in linkStores where store.artifactID == artifactID && store.entityID == fromEntityID {
+                var link = store.domainModel
+                link.entityID = toProfile.entityID
+                link.confidence = max(link.confidence ?? 0, toProfile.confidence ?? 0)
+                link.source = "placeProfile"
+                link.sourceRecordID = artifactsByID[artifactID]?.recordID
+                link.evidenceSummary = "Moved to place profile: \(toProfile.canonicalName)"
+                store.apply(domainModel: link)
+                didMoveExistingLink = true
+            }
+
+            if !didMoveExistingLink, let artifact = artifactsByID[artifactID] {
+                modelContext.insert(ArtifactEntityLinkStore(domainModel: ArtifactEntityLink(
+                    artifactID: artifactID,
+                    entityID: toProfile.entityID,
+                    confidence: toProfile.confidence,
+                    source: "placeProfile",
+                    sourceRecordID: artifact.recordID,
+                    evidenceSummary: "Moved to place profile: \(toProfile.canonicalName)",
+                    createdAt: updatedAt
+                )))
+            }
+        }
+    }
+
+    private func rewritePlaceGraphReferences(replacing replacements: [UUID: UUID]) throws {
+        guard !replacements.isEmpty else { return }
+
+        let linkStores = try modelContext.fetch(FetchDescriptor<ArtifactEntityLinkStore>())
+        for store in linkStores {
+            guard let replacementID = replacements[store.entityID] else { continue }
+            var link = store.domainModel
+            link.entityID = replacementID
+            link.source = "placeProfile"
+            store.apply(domainModel: link)
+        }
+
+        let edgeStores = try modelContext.fetch(FetchDescriptor<EntityEdgeStore>())
+        for store in edgeStores {
+            var edge = store.domainModel
+            var changed = false
+            if let replacementID = replacements[edge.fromEntityID] {
+                edge.fromEntityID = replacementID
+                changed = true
+            }
+            if let replacementID = replacements[edge.toEntityID] {
+                edge.toEntityID = replacementID
+                changed = true
+            }
+            guard changed else { continue }
+            if edge.fromEntityID == edge.toEntityID {
+                modelContext.delete(store)
+            } else {
+                store.apply(domainModel: edge)
+            }
+        }
+
+        try deduplicateEntityEdges()
+    }
+
+    private func splitPlaceEntityEdges(
+        fromEntityID: UUID,
+        toEntityID: UUID,
+        movingArtifactIDs: Set<UUID>,
+        movingRecordIDs: Set<UUID>
+    ) throws {
+        guard !movingArtifactIDs.isEmpty else { return }
+        let edgeStores = try modelContext.fetch(FetchDescriptor<EntityEdgeStore>())
+
+        for store in edgeStores {
+            let edge = store.domainModel
+            guard edge.fromEntityID == fromEntityID || edge.toEntityID == fromEntityID else { continue }
+            let movingSourceArtifactIDs = edge.sourceArtifactIDs.filter { movingArtifactIDs.contains($0) }
+            let movingSourceRecordIDs = edge.sourceRecordIDs.filter { movingRecordIDs.contains($0) }
+            guard !movingSourceArtifactIDs.isEmpty || !movingSourceRecordIDs.isEmpty else { continue }
+
+            let remainingArtifactIDs = edge.sourceArtifactIDs.filter { !movingArtifactIDs.contains($0) }
+            let remainingRecordIDs = edge.sourceRecordIDs.filter { !movingRecordIDs.contains($0) }
+            var originalEdge = edge
+            originalEdge.sourceArtifactIDs = remainingArtifactIDs
+            originalEdge.sourceRecordIDs = remainingRecordIDs
+            originalEdge.evidenceCount = max(1, remainingArtifactIDs.count + remainingRecordIDs.count)
+
+            var movedEdge = edge
+            if movedEdge.fromEntityID == fromEntityID {
+                movedEdge.fromEntityID = toEntityID
+            }
+            if movedEdge.toEntityID == fromEntityID {
+                movedEdge.toEntityID = toEntityID
+            }
+            movedEdge.sourceArtifactIDs = movingSourceArtifactIDs
+            movedEdge.sourceRecordIDs = movingSourceRecordIDs
+            movedEdge.evidenceCount = max(1, movingSourceArtifactIDs.count + movingSourceRecordIDs.count)
+
+            if remainingArtifactIDs.isEmpty && remainingRecordIDs.isEmpty {
+                if movedEdge.fromEntityID == movedEdge.toEntityID {
+                    modelContext.delete(store)
+                } else {
+                    store.apply(domainModel: movedEdge)
+                }
+            } else {
+                store.apply(domainModel: originalEdge)
+                if movedEdge.fromEntityID != movedEdge.toEntityID {
+                    modelContext.insert(EntityEdgeStore(domainModel: EntityEdge(
+                        fromEntityID: movedEdge.fromEntityID,
+                        toEntityID: movedEdge.toEntityID,
+                        relationKind: movedEdge.relationKind,
+                        weight: movedEdge.weight,
+                        firstSeenAt: movedEdge.firstSeenAt,
+                        lastSeenAt: movedEdge.lastSeenAt,
+                        evidenceCount: movedEdge.evidenceCount,
+                        sourceArtifactIDs: movedEdge.sourceArtifactIDs,
+                        sourceRecordIDs: movedEdge.sourceRecordIDs
+                    )))
+                }
+            }
+        }
+
+        try deduplicateEntityEdges()
+    }
+
+    private func deduplicateEntityEdges() throws {
+        let edgeStores = try modelContext.fetch(FetchDescriptor<EntityEdgeStore>())
+        var storesByKey: [EntityEdgeKey: EntityEdgeStore] = [:]
+
+        for store in edgeStores {
+            let edge = store.domainModel
+            let key = EntityEdgeKey(edge)
+            if let existingStore = storesByKey[key] {
+                let merged = mergedEntityEdge(existingStore.domainModel, edge)
+                existingStore.apply(domainModel: merged)
+                modelContext.delete(store)
+            } else {
+                storesByKey[key] = store
+            }
+        }
+    }
+
+    private func mergedEntityEdge(_ lhs: EntityEdge, _ rhs: EntityEdge) -> EntityEdge {
+        EntityEdge(
+            id: lhs.id,
+            fromEntityID: lhs.fromEntityID,
+            toEntityID: lhs.toEntityID,
+            relationKind: lhs.relationKind,
+            weight: max(lhs.weight, rhs.weight),
+            firstSeenAt: min(lhs.firstSeenAt, rhs.firstSeenAt),
+            lastSeenAt: max(lhs.lastSeenAt, rhs.lastSeenAt),
+            evidenceCount: lhs.evidenceCount + rhs.evidenceCount,
+            sourceArtifactIDs: mergeUniqueIDs(lhs.sourceArtifactIDs, rhs.sourceArtifactIDs),
+            sourceRecordIDs: mergeUniqueIDs(lhs.sourceRecordIDs, rhs.sourceRecordIDs)
+        )
+    }
+
+    private func deletePlaceProfilesAndNodes(stores: [PlaceProfileStore]) throws {
+        let entityIDs = Set(stores.map(\.entityID))
+        for store in stores {
+            modelContext.delete(store)
+        }
+        let nodeStores = try modelContext.fetch(FetchDescriptor<EntityNodeStore>())
+        for store in nodeStores where entityIDs.contains(store.id) && store.kindRawValue == EntityKind.place.rawValue {
+            modelContext.delete(store)
+        }
+    }
+
+    private func maxConfidence(_ profiles: [PlaceProfile]) -> Double? {
+        profiles.compactMap(\.confidence).max()
+    }
+
+    private func mergeUniqueIDs(_ lhs: [UUID], _ rhs: [UUID]) -> [UUID] {
+        var seen = Set<UUID>()
+        var result: [UUID] = []
+        for id in lhs + rhs where !seen.contains(id) {
+            seen.insert(id)
+            result.append(id)
+        }
+        return result
     }
 
     private func purgeEntityProvenance(
@@ -2478,6 +2949,19 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         }
     }
 
+    func upsert(placeProfile: PlaceProfile) throws {
+        let descriptor = FetchDescriptor<PlaceProfileStore>(predicate: #Predicate { $0.id == placeProfile.id })
+        if let existing = try modelContext.fetch(descriptor).first {
+            existing.apply(domainModel: placeProfile)
+        } else if let existingByEntity = try modelContext.fetch(
+            FetchDescriptor<PlaceProfileStore>(predicate: #Predicate { $0.entityID == placeProfile.entityID })
+        ).first {
+            existingByEntity.apply(domainModel: placeProfile)
+        } else {
+            modelContext.insert(PlaceProfileStore(domainModel: placeProfile))
+        }
+    }
+
     func upsert(clarificationQuestion: ClarificationQuestion) throws {
         let descriptor = FetchDescriptor<ClarificationQuestionStore>(predicate: #Predicate { $0.id == clarificationQuestion.id })
         if let existing = try modelContext.fetch(descriptor).first {
@@ -2531,6 +3015,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             modelContext: modelContext,
             analysisService: analysisService,
             upsertRecordAnalysis: upsert(recordAnalysis:),
+            upsertPlaceProfile: upsert(placeProfile:),
             upsertEntityNode: upsert(entityNode:),
             upsertEntityEdge: upsert(entityEdge:),
             upsertArtifactEntityLink: upsert(artifactEntityLink:),
@@ -2691,5 +3176,17 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     private func applyLimit<T>(_ limit: Int?, to values: [T]) -> [T] {
         guard let limit else { return values }
         return Array(values.prefix(limit))
+    }
+}
+
+private struct EntityEdgeKey: Hashable {
+    let fromEntityID: UUID
+    let toEntityID: UUID
+    let relationKind: EntityRelationKind
+
+    init(_ edge: EntityEdge) {
+        self.fromEntityID = edge.fromEntityID
+        self.toEntityID = edge.toEntityID
+        self.relationKind = edge.relationKind
     }
 }

@@ -8,6 +8,8 @@ import Speech
 import MusicKit
 
 struct DebugDiagnosticsView: View {
+    @Environment(\.memoryRepository) private var memoryRepository
+
     let authManager: AuthSessionManager?
     let runtimeEnvironment: AppRuntimeEnvironment
 
@@ -79,6 +81,20 @@ struct DebugDiagnosticsView: View {
                         icon: "rectangle.grid.2x2",
                         title: "Home Board Debug",
                         subtitle: "Inspect memory desktop inputs, card layers, layout spans, reasons, and preference actions"
+                    )
+                }
+
+                NavigationLink {
+                    PlaceProfileManagementView(
+                        memoryRepository: memoryRepository,
+                        showsDebugDetails: true,
+                        title: "Place Profiles Debug"
+                    )
+                } label: {
+                    DebugMenuRow(
+                        icon: "mappin.and.ellipse",
+                        title: "Place Profiles",
+                        subtitle: "Inspect, rename, merge, and split persistent place profiles"
                     )
                 }
 

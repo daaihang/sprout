@@ -37,6 +37,7 @@ struct SettingsScreen: View {
 
             }
             .navigationTitle("settings.nav.title")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("common.done") {
@@ -56,6 +57,8 @@ struct SettingsScreen: View {
             SettingsPermissionsSection()
         case .notifications:
             SettingsNotificationPreferencesSection(memoryRepository: memoryRepository)
+        case .places:
+            PlaceProfileManagementView(memoryRepository: memoryRepository)
         case .privacy:
             SettingsPrivacySection(runtimeEnvironment: runtimeEnvironment)
         case .dataControls:

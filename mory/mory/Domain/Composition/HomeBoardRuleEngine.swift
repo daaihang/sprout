@@ -268,32 +268,49 @@ struct HomeBoardRuleEngine: Sendable {
     private func makeContextClusterCandidates(memories: [MemorySummary], boardID: UUID, date: Date) -> [HomeBoardCandidate] {
         let recentCutoff = date.addingTimeInterval(-7 * 24 * 60 * 60)
         let recent = memories.filter { $0.record.updatedAt >= recentCutoff }
-        let contextEntries = recent.flatMap { memory in
-            memory.contextArtifacts.compactMap { artifact -> (String, MemorySummary)? in
-                guard artifact.kind == .location || artifact.kind == .music else { return nil }
-                let key = "\(artifact.kind.rawValue)-\(artifact.title.lowercased())"
-                return (key, memory)
+        let memoryIndex = Dictionary(uniqueKeysWithValues: recent.map { ($0.id, $0) })
+        let locationEntries = recent.flatMap { memory in
+            memory.contextArtifacts.compactMap { artifact -> PlaceContextEntry? in
+                guard artifact.kind == .location else { return nil }
+                return PlaceContextEntry(artifact: artifact, recordID: memory.id)
             }
         }
-        let grouped = Dictionary(grouping: contextEntries, by: \.0)
-        guard let cluster = grouped.values
-            .filter({ Set($0.map(\.1.id)).count >= 2 })
-            .max(by: { lhs, rhs in Set(lhs.map(\.1.id)).count < Set(rhs.map(\.1.id)).count })
+        let locationClusters = PlaceContextResolver()
+            .clusters(from: locationEntries)
+            .map { cluster in
+                let memories = cluster.recordIDs.compactMap { memoryIndex[$0] }
+                return ContextClusterMatch(key: cluster.stableKey, title: cluster.displayTitle, memories: memories)
+            }
+        let musicClusters = Dictionary(grouping: recent.flatMap { memory in
+            memory.contextArtifacts.compactMap { artifact -> (String, String, MemorySummary)? in
+                guard artifact.kind == .music else { return nil }
+                let normalizedTitle = artifact.title.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+                return ("music-\(normalizedTitle)", artifact.title, memory)
+            }
+        }, by: \.0).map { key, values in
+            ContextClusterMatch(
+                key: key,
+                title: values.first?.1 ?? String(localized: "home.board.cluster.title"),
+                memories: values.map(\.2)
+            )
+        }
+        guard let cluster = (locationClusters + musicClusters)
+            .filter({ Set($0.memories.map(\.id)).count >= 2 })
+            .max(by: { lhs, rhs in Set(lhs.memories.map(\.id)).count < Set(rhs.memories.map(\.id)).count })
         else {
             return []
         }
-        let sourceMemories = Array(Dictionary(uniqueKeysWithValues: cluster.map { ($0.1.id, $0.1) }).values)
+        let sourceMemories = Array(Dictionary(grouping: cluster.memories, by: \.id).values.compactMap(\.first))
             .sorted { $0.record.updatedAt > $1.record.updatedAt }
-        let title = sourceMemories.first?.contextArtifacts.first?.title ?? String(localized: "home.board.cluster.title")
         return [
             HomeBoardCandidate(
-                cardKey: "context-cluster-\(cluster[0].0)",
+                cardKey: "context-cluster-\(cluster.key)",
                 cardKind: .contextCluster,
                 targetType: .system,
                 targetID: boardID,
                 sourceRecordIDs: sourceMemories.map(\.id),
                 renderValue: .contextCluster(
-                    title: title,
+                    title: cluster.title,
                     subtitle: String(localized: "home.board.cluster.subtitle \(sourceMemories.count)"),
                     sourceRecordIDs: sourceMemories.map(\.id)
                 ),
@@ -488,4 +505,10 @@ private struct HomeBoardCandidate {
     var layoutLayer: HomeBoardItemLayer {
         isPinned || acceptedAt != nil || userSortIndex != nil ? .userBoard : defaultLayer
     }
+}
+
+private struct ContextClusterMatch {
+    let key: String
+    let title: String
+    let memories: [MemorySummary]
 }

@@ -8,6 +8,7 @@ struct MoryPersistenceStack {
         HomeBoardPreferenceStore.self,
         IntelligencePreferenceStore.self,
         EntityProfileStore.self,
+        PlaceProfileStore.self,
         ClarificationQuestionStore.self,
         IntelligenceJobStore.self,
         GraphDeltaStore.self,

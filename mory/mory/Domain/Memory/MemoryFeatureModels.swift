@@ -76,58 +76,65 @@ struct UserSettingsPreference: Identifiable, Codable, Hashable, Sendable {
     }
 }
 
+enum CaptureArtifactOrigin: String, Codable, Hashable, Sendable, CaseIterable {
+    case manual
+    case context
+    case imported
+    case inferred
+}
+
 enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
-    case text(title: String?, body: String)
-    case photo(title: String?, summary: String, filename: String, imageData: Data?, thumbnailData: Data?, ocrText: String = "", photoMetadata: [String: String] = [:])
-    case audio(title: String?, summary: String, filename: String, audioData: Data?, transcriptionText: String = "")
-    case location(title: String?, summary: String, latitude: Double?, longitude: Double?)
-    case link(title: String?, url: String, note: String?, summary: String? = nil, metadata: [String: String] = [:], thumbnailData: Data? = nil)
-    case todo(title: String, note: String?)
-    case weather(condition: String, temperatureCelsius: Double, humidity: Double, windSpeedKmh: Double, uvIndex: Int, latitude: Double? = nil, longitude: Double? = nil)
-    case music(trackName: String, artistName: String, albumName: String, durationSeconds: Int, artworkURL: String?)
+    case text(title: String?, body: String, origin: CaptureArtifactOrigin = .manual)
+    case photo(title: String?, summary: String, filename: String, imageData: Data?, thumbnailData: Data?, ocrText: String = "", photoMetadata: [String: String] = [:], origin: CaptureArtifactOrigin = .manual)
+    case audio(title: String?, summary: String, filename: String, audioData: Data?, transcriptionText: String = "", origin: CaptureArtifactOrigin = .manual)
+    case location(title: String?, summary: String, latitude: Double?, longitude: Double?, origin: CaptureArtifactOrigin = .manual)
+    case link(title: String?, url: String, note: String?, summary: String? = nil, metadata: [String: String] = [:], thumbnailData: Data? = nil, origin: CaptureArtifactOrigin = .manual)
+    case todo(title: String, note: String?, origin: CaptureArtifactOrigin = .manual)
+    case weather(condition: String, temperatureCelsius: Double, humidity: Double, windSpeedKmh: Double, uvIndex: Int, latitude: Double? = nil, longitude: Double? = nil, origin: CaptureArtifactOrigin = .manual)
+    case music(trackName: String, artistName: String, albumName: String, durationSeconds: Int, artworkURL: String?, origin: CaptureArtifactOrigin = .manual)
 
     var id: String {
         switch self {
-        case let .text(title, body):
+        case let .text(title, body, _):
             return "text-\(title ?? body)"
-        case let .photo(title, summary, filename, _, _, _, _):
+        case let .photo(title, summary, filename, _, _, _, _, _):
             return "photo-\(title ?? summary)-\(filename)"
-        case let .audio(title, summary, filename, _, _):
+        case let .audio(title, summary, filename, _, _, _):
             return "audio-\(title ?? summary)-\(filename)"
-        case let .location(title, summary, _, _):
+        case let .location(title, summary, _, _, _):
             return "location-\(title ?? summary)"
-        case let .link(title, url, _, _, _, _):
+        case let .link(title, url, _, _, _, _, _):
             return "link-\(title ?? url)"
-        case let .todo(title, note):
+        case let .todo(title, note, _):
             return "todo-\(title)-\(note ?? "")"
-        case let .weather(condition, temp, _, _, _, _, _):
+        case let .weather(condition, temp, _, _, _, _, _, _):
             return "weather-\(condition)-\(temp)"
-        case let .music(trackName, artistName, _, _, _):
+        case let .music(trackName, artistName, _, _, _, _):
             return "music-\(trackName)-\(artistName)"
         }
     }
 
     var captureSummary: String {
         switch self {
-        case let .text(title, body):
+        case let .text(title, body, _):
             return [title?.trimmedOrNil, body.trimmedOrNil].compactMap { $0 }.joined(separator: " • ")
                 .trimmedOrNil
                 ?? body.trimmedOrNil
                 ?? title?.trimmedOrNil
                 ?? "Untitled Memory"
-        case let .photo(title, summary, filename, _, _, _, _):
+        case let .photo(title, summary, filename, _, _, _, _, _):
             return [title?.trimmedOrNil, summary.trimmedOrNil, filename.trimmedOrNil].compactMap { $0 }.joined(separator: " • ")
                 .trimmedOrNil
                 ?? summary.trimmedOrNil
                 ?? title?.trimmedOrNil
                 ?? filename
-        case let .audio(title, summary, filename, _, _):
+        case let .audio(title, summary, filename, _, _, _):
             return [title?.trimmedOrNil, summary.trimmedOrNil, filename.trimmedOrNil].compactMap { $0 }.joined(separator: " • ")
                 .trimmedOrNil
                 ?? summary.trimmedOrNil
                 ?? title?.trimmedOrNil
                 ?? filename
-        case let .location(title, summary, latitude, longitude):
+        case let .location(title, summary, latitude, longitude, _):
             var components = [title?.trimmedOrNil, summary.trimmedOrNil].compactMap { $0 }
             if let latitude {
                 components.append(String(latitude))
@@ -139,22 +146,110 @@ enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
                 ?? summary.trimmedOrNil
                 ?? title?.trimmedOrNil
                 ?? "Location capture"
-        case let .link(title, url, note, summary, _, _):
+        case let .link(title, url, note, summary, _, _, _):
             return [title?.trimmedOrNil, summary?.trimmedOrNil, note?.trimmedOrNil, url.trimmedOrNil].compactMap { $0 }.joined(separator: " • ")
                 .trimmedOrNil
                 ?? summary?.trimmedOrNil
                 ?? note?.trimmedOrNil
                 ?? title?.trimmedOrNil
                 ?? url
-        case let .todo(title, note):
+        case let .todo(title, note, _):
             return [title.trimmedOrNil, note?.trimmedOrNil].compactMap { $0 }.joined(separator: " • ")
                 .trimmedOrNil
                 ?? note?.trimmedOrNil
                 ?? title
-        case let .weather(condition, temp, humidity, _, _, _, _):
+        case let .weather(condition, temp, humidity, _, _, _, _, _):
             return "\(condition) \(String(format: "%.0f", temp))°C · Humidity \(String(format: "%.0f", humidity * 100))%"
-        case let .music(trackName, artistName, albumName, _, _):
+        case let .music(trackName, artistName, albumName, _, _, _):
             return [trackName, artistName, albumName].filter { !$0.isEmpty }.joined(separator: " · ")
+        }
+    }
+
+    var origin: CaptureArtifactOrigin {
+        switch self {
+        case let .text(_, _, origin):
+            return origin
+        case let .photo(_, _, _, _, _, _, _, origin):
+            return origin
+        case let .audio(_, _, _, _, _, origin):
+            return origin
+        case let .location(_, _, _, _, origin):
+            return origin
+        case let .link(_, _, _, _, _, _, origin):
+            return origin
+        case let .todo(_, _, origin):
+            return origin
+        case let .weather(_, _, _, _, _, _, _, origin):
+            return origin
+        case let .music(_, _, _, _, _, origin):
+            return origin
+        }
+    }
+
+    func withOrigin(_ origin: CaptureArtifactOrigin) -> CaptureArtifactDraft {
+        switch self {
+        case let .text(title, body, _):
+            return .text(title: title, body: body, origin: origin)
+        case let .photo(title, summary, filename, imageData, thumbnailData, ocrText, photoMetadata, _):
+            return .photo(
+                title: title,
+                summary: summary,
+                filename: filename,
+                imageData: imageData,
+                thumbnailData: thumbnailData,
+                ocrText: ocrText,
+                photoMetadata: photoMetadata,
+                origin: origin
+            )
+        case let .audio(title, summary, filename, audioData, transcriptionText, _):
+            return .audio(
+                title: title,
+                summary: summary,
+                filename: filename,
+                audioData: audioData,
+                transcriptionText: transcriptionText,
+                origin: origin
+            )
+        case let .location(title, summary, latitude, longitude, _):
+            return .location(
+                title: title,
+                summary: summary,
+                latitude: latitude,
+                longitude: longitude,
+                origin: origin
+            )
+        case let .link(title, url, note, summary, metadata, thumbnailData, _):
+            return .link(
+                title: title,
+                url: url,
+                note: note,
+                summary: summary,
+                metadata: metadata,
+                thumbnailData: thumbnailData,
+                origin: origin
+            )
+        case let .todo(title, note, _):
+            return .todo(title: title, note: note, origin: origin)
+        case let .weather(condition, temperatureCelsius, humidity, windSpeedKmh, uvIndex, latitude, longitude, _):
+            return .weather(
+                condition: condition,
+                temperatureCelsius: temperatureCelsius,
+                humidity: humidity,
+                windSpeedKmh: windSpeedKmh,
+                uvIndex: uvIndex,
+                latitude: latitude,
+                longitude: longitude,
+                origin: origin
+            )
+        case let .music(trackName, artistName, albumName, durationSeconds, artworkURL, _):
+            return .music(
+                trackName: trackName,
+                artistName: artistName,
+                albumName: albumName,
+                durationSeconds: durationSeconds,
+                artworkURL: artworkURL,
+                origin: origin
+            )
         }
     }
 }
@@ -508,6 +603,38 @@ struct EntityDetailSnapshot: Identifiable, Hashable, Sendable {
     var id: UUID { entity.id }
 }
 
+enum PlaceProfileMutationError: LocalizedError, Equatable {
+    case profileNotFound
+    case emptyDisplayName
+    case mergeRequiresAtLeastOneOtherProfile
+    case mergeCannotIncludePrimary
+    case splitRequiresMovingArtifacts
+    case splitCannotMoveAllArtifacts
+    case splitArtifactsNotInProfile
+    case splitArtifactsMustBeLocations
+
+    var errorDescription: String? {
+        switch self {
+        case .profileNotFound:
+            "Place profile was not found."
+        case .emptyDisplayName:
+            "Place name cannot be empty."
+        case .mergeRequiresAtLeastOneOtherProfile:
+            "Choose at least one other place to merge."
+        case .mergeCannotIncludePrimary:
+            "A place cannot be merged into itself."
+        case .splitRequiresMovingArtifacts:
+            "Choose at least one location artifact to split."
+        case .splitCannotMoveAllArtifacts:
+            "A split must leave at least one location artifact in the original place."
+        case .splitArtifactsNotInProfile:
+            "Selected artifacts are not linked to this place."
+        case .splitArtifactsMustBeLocations:
+            "Only location artifacts can be split into a place profile."
+        }
+    }
+}
+
 struct SearchMemoryResultSnapshot: Identifiable, Hashable, Sendable {
     let memory: MemorySummary
     let explanations: [SearchMatchExplanation]
@@ -754,6 +881,13 @@ protocol MoryMemoryRepositorying: AnyObject {
     func fetchEntityProfile(entityID: UUID) throws -> EntityProfile?
     func fetchEntityProfiles(kind: EntityKind?, limit: Int?) throws -> [EntityProfile]
     func upsertEntityProfile(_ profile: EntityProfile) throws
+    func fetchPlaceProfile(id: UUID) throws -> PlaceProfile?
+    func fetchPlaceProfiles(limit: Int?) throws -> [PlaceProfile]
+    func upsertPlaceProfile(_ profile: PlaceProfile) throws
+    func renamePlaceProfile(id: UUID, displayName: String, aliases: [String]) throws -> PlaceProfile
+    func mergePlaceProfiles(primaryID: UUID, mergingIDs: [UUID], displayName: String?) throws -> PlaceProfile
+    func splitPlaceProfile(id: UUID, movingArtifactIDs: [UUID], displayName: String) throws -> PlaceProfile
+    func fetchPlaceProfileArtifacts(id: UUID) throws -> [Artifact]
     func fetchClarificationQuestions(status: ClarificationQuestionStatus?, limit: Int?) throws -> [ClarificationQuestion]
     func upsertClarificationQuestion(_ question: ClarificationQuestion) throws
     func answerClarificationQuestion(_ id: UUID, answer: ClarificationAnswer) throws
@@ -809,6 +943,22 @@ extension String {
         split(whereSeparator: { $0.isNewline })
             .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
             .first(where: { !$0.isEmpty })
+    }
+
+    func generatedMemoryTitle(maxLength: Int = 48) -> String? {
+        guard let line = firstMeaningfulLine else { return nil }
+        let sentenceTerminators = CharacterSet(charactersIn: ".!?。！？;；")
+        let sentence = line.unicodeScalars.firstIndex(where: { sentenceTerminators.contains($0) })
+            .map { String(line.unicodeScalars[..<$0]) }
+            ?? line
+        let normalized = sentence
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .components(separatedBy: .whitespacesAndNewlines)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+        guard !normalized.isEmpty else { return nil }
+        guard normalized.count > maxLength else { return normalized }
+        return String(normalized.prefix(maxLength)).trimmingCharacters(in: .whitespacesAndNewlines) + "..."
     }
 
     func ifEmpty(_ fallback: String) -> String {

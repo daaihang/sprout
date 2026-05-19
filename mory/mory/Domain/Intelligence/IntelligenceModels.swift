@@ -86,6 +86,58 @@ struct EntityProfile: Identifiable, Codable, Hashable, Sendable {
     }
 }
 
+struct PlaceProfile: Identifiable, Codable, Hashable, Sendable {
+    let id: UUID
+    var entityID: UUID
+    var displayName: String
+    var canonicalName: String
+    var aliases: [String]
+    var centroidLatitude: Double?
+    var centroidLongitude: Double?
+    var radiusMeters: Double
+    var mentionCount: Int
+    var sourceArtifactIDs: [UUID]
+    var sourceRecordIDs: [UUID]
+    var confirmationState: IntelligenceConfirmationState
+    var confidence: Double?
+    var createdAt: Date
+    var updatedAt: Date
+
+    init(
+        id: UUID = UUID(),
+        entityID: UUID = UUID(),
+        displayName: String,
+        canonicalName: String? = nil,
+        aliases: [String] = [],
+        centroidLatitude: Double? = nil,
+        centroidLongitude: Double? = nil,
+        radiusMeters: Double = 120,
+        mentionCount: Int = 0,
+        sourceArtifactIDs: [UUID] = [],
+        sourceRecordIDs: [UUID] = [],
+        confirmationState: IntelligenceConfirmationState = .inferred,
+        confidence: Double? = nil,
+        createdAt: Date = .now,
+        updatedAt: Date = .now
+    ) {
+        self.id = id
+        self.entityID = entityID
+        self.displayName = displayName
+        self.canonicalName = canonicalName ?? displayName
+        self.aliases = aliases
+        self.centroidLatitude = centroidLatitude
+        self.centroidLongitude = centroidLongitude
+        self.radiusMeters = radiusMeters
+        self.mentionCount = mentionCount
+        self.sourceArtifactIDs = sourceArtifactIDs
+        self.sourceRecordIDs = sourceRecordIDs
+        self.confirmationState = confirmationState
+        self.confidence = confidence
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+}
+
 enum ClarificationQuestionKind: String, Codable, CaseIterable, Identifiable, Sendable {
     case entityRelationship
     case entityAlias

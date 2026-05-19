@@ -216,6 +216,59 @@ final class EntityProfileStore {
 }
 
 @Model
+final class PlaceProfileStore {
+    @Attribute(.unique) var id: UUID
+    var entityID: UUID
+    var displayName: String
+    var canonicalName: String
+    var aliases: [String]
+    var centroidLatitude: Double?
+    var centroidLongitude: Double?
+    var radiusMeters: Double
+    var mentionCount: Int
+    var sourceArtifactIDs: [UUID]
+    var sourceRecordIDs: [UUID]
+    var confirmationStateRawValue: String
+    var confidence: Double?
+    var createdAt: Date
+    var updatedAt: Date
+
+    init(
+        id: UUID,
+        entityID: UUID,
+        displayName: String,
+        canonicalName: String,
+        aliases: [String] = [],
+        centroidLatitude: Double? = nil,
+        centroidLongitude: Double? = nil,
+        radiusMeters: Double,
+        mentionCount: Int,
+        sourceArtifactIDs: [UUID] = [],
+        sourceRecordIDs: [UUID] = [],
+        confirmationStateRawValue: String,
+        confidence: Double? = nil,
+        createdAt: Date,
+        updatedAt: Date
+    ) {
+        self.id = id
+        self.entityID = entityID
+        self.displayName = displayName
+        self.canonicalName = canonicalName
+        self.aliases = aliases
+        self.centroidLatitude = centroidLatitude
+        self.centroidLongitude = centroidLongitude
+        self.radiusMeters = radiusMeters
+        self.mentionCount = mentionCount
+        self.sourceArtifactIDs = sourceArtifactIDs
+        self.sourceRecordIDs = sourceRecordIDs
+        self.confirmationStateRawValue = confirmationStateRawValue
+        self.confidence = confidence
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+}
+
+@Model
 final class ClarificationQuestionStore {
     @Attribute(.unique) var id: UUID
     var kindRawValue: String
