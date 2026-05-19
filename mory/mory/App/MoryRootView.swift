@@ -18,6 +18,8 @@ struct MoryRootView: View {
     @State private var pendingMemoriesRoute: MemoriesRoute?
     @State private var pendingInsightsRoute: InsightsRoute?
     @State private var didRunStartupRecovery = false
+    @State private var isEditingHomeBoard = false
+    @State private var isPresentingMemoriesFilters = false
     private let notificationInteractionService = NotificationInteractionService()
     private let startupRecoveryService = AppIntelligenceRecoveryService()
 
@@ -30,59 +32,73 @@ struct MoryRootView: View {
     }
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            Tab(
-                LocalizedStringKey(MoryAppTab.today.titleKey),
-                systemImage: MoryAppTab.today.systemImage,
-                value: MoryAppTab.today
-            ) {
-                tabRoot {
-                    HomeScreen(surface: .home, requestedRoute: $pendingHomeRoute)
+        NavigationStack {
+            TabView(selection: $selectedTab) {
+                Tab(
+                    LocalizedStringKey(MoryAppTab.today.titleKey),
+                    systemImage: MoryAppTab.today.systemImage,
+                    value: MoryAppTab.today
+                ) {
+                    tabRoot {
+                        HomeScreen(
+                            surface: .home,
+                            requestedRoute: $pendingHomeRoute,
+                            isEditingHomeBoard: $isEditingHomeBoard
+                        )
+                    }
+                    .id(tabRefreshID)
                 }
-                .id(tabRefreshID)
-            }
 
-            Tab(
-                LocalizedStringKey(MoryAppTab.memories.titleKey),
-                systemImage: MoryAppTab.memories.systemImage,
-                value: MoryAppTab.memories
-            ) {
-                tabRoot {
-                    MemoriesRootScreen(requestedRoute: $pendingMemoriesRoute)
+                Tab(
+                    LocalizedStringKey(MoryAppTab.memories.titleKey),
+                    systemImage: MoryAppTab.memories.systemImage,
+                    value: MoryAppTab.memories
+                ) {
+                    tabRoot {
+                        MemoriesRootScreen(
+                            requestedRoute: $pendingMemoriesRoute,
+                            isPresentingFilterSheet: $isPresentingMemoriesFilters
+                        )
+                    }
+                    .id(tabRefreshID)
                 }
-                .id(tabRefreshID)
-            }
 
-            Tab(
-                LocalizedStringKey(MoryAppTab.insights.titleKey),
-                systemImage: MoryAppTab.insights.systemImage,
-                value: MoryAppTab.insights
-            ) {
-                tabRoot {
-                    InsightsRootScreen(requestedRoute: $pendingInsightsRoute)
+                Tab(
+                    LocalizedStringKey(MoryAppTab.insights.titleKey),
+                    systemImage: MoryAppTab.insights.systemImage,
+                    value: MoryAppTab.insights
+                ) {
+                    tabRoot {
+                        InsightsRootScreen(requestedRoute: $pendingInsightsRoute)
+                    }
+                    .id(tabRefreshID)
                 }
-                .id(tabRefreshID)
-            }
 
-            Tab(
-                LocalizedStringKey(MoryAppTab.search.titleKey),
-                systemImage: MoryAppTab.search.systemImage,
-                value: MoryAppTab.search,
-                role: .search
-            ) {
-                tabRoot {
-                    SearchScreen()
+                Tab(
+                    LocalizedStringKey(MoryAppTab.search.titleKey),
+                    systemImage: MoryAppTab.search.systemImage,
+                    value: MoryAppTab.search,
+                    role: .search
+                ) {
+                    tabRoot {
+                        SearchScreen()
+                    }
+                    .id(tabRefreshID)
                 }
-                .id(tabRefreshID)
             }
-        }
-        .tabBarMinimizeBehavior(.onScrollDown)
-        .tabViewBottomAccessory {
-            QuickCaptureToolbar(
-                onTextCapture: { unifiedCaptureSeed = .empty },
-                onPhotoCapture: { unifiedCaptureSeed = .photoCapture },
-                onVoiceCaptureReady: { result in unifiedCaptureSeed = .voice(result) }
-            )
+            .tabBarMinimizeBehavior(.onScrollDown)
+            .moryTabViewBottomAccessory {
+                QuickCaptureToolbar(
+                    onTextCapture: { unifiedCaptureSeed = .empty },
+                    onPhotoCapture: { unifiedCaptureSeed = .photoCapture },
+                    onVoiceCaptureReady: { result in unifiedCaptureSeed = .voice(result) }
+                )
+            }
+            .navigationTitle(LocalizedStringKey(selectedTab.titleKey))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                rootToolbar
+            }
         }
         .sheet(isPresented: $isPresentingSettings) {
             SettingsScreen(
@@ -122,29 +138,80 @@ struct MoryRootView: View {
         .task {
             await recoverStartupIntelligenceIfNeeded()
         }
+        .onChange(of: selectedTab) { _, tab in
+            if tab != .today {
+                isEditingHomeBoard = false
+            }
+        }
     }
 
-    private func tabRoot<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        NavigationStack {
-            content()
-                .toolbar {
-                    settingsToolbar
-                }
-                .navigationBarTitleDisplayMode(.inline)
-        }
+    private func tabRoot<Content: View>(
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        content()
     }
 
     @ToolbarContentBuilder
-    private var settingsToolbar: some ToolbarContent {
-        ToolbarItem(placement: .topBarTrailing) {
-            Button {
-                isPresentingSettings = true
-            } label: {
-                Label("settings.nav.title", systemImage: "person.crop.circle")
+    private var rootToolbar: some ToolbarContent {
+        switch selectedTab {
+        case .today:
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                } label: {
+                    Image(systemName: "square.grid.2x2")
+                }
+                .disabled(true)
+                .accessibilityLabel(Text(verbatim: "Reserved action"))
             }
-            .accessibilityLabel(Text("settings.nav.title"))
-            .accessibilityHint(Text("settings.nav.hint"))
+            ToolbarItem(placement: .topBarTrailing) {
+                settingsButton
+            }
+            ToolbarSpacer(.fixed, placement: .topBarTrailing)
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    isEditingHomeBoard.toggle()
+                } label: {
+                    Image(systemName: isEditingHomeBoard ? "checkmark.circle.fill" : "square.and.pencil")
+                }
+                .accessibilityLabel(Text(verbatim: isEditingHomeBoard ? "Done editing board" : "Edit board"))
+            }
+        case .memories:
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    isPresentingMemoriesFilters = true
+                } label: {
+                    Image(systemName: "line.3.horizontal.decrease.circle")
+                }
+                .accessibilityLabel(Text("memories.filters.title"))
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                settingsButton
+            }
+            ToolbarSpacer(.fixed, placement: .topBarTrailing)
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink {
+                    TimelineScreen()
+                        .moryHidesTabChrome()
+                } label: {
+                    Image(systemName: "clock")
+                }
+                .accessibilityLabel(Text("timeline.nav.title"))
+            }
+        case .insights, .search:
+            ToolbarItem(placement: .topBarTrailing) {
+                settingsButton
+            }
         }
+    }
+
+    private var settingsButton: some View {
+        Button {
+            isPresentingSettings = true
+        } label: {
+            Image(systemName: "person.crop.circle")
+        }
+        .accessibilityLabel(Text("settings.nav.title"))
+        .accessibilityHint(Text("settings.nav.hint"))
     }
 
     private var onboardingPresentation: Binding<Bool> {
@@ -244,6 +311,15 @@ struct MoryRootView: View {
 
 extension View {
     func moryHidesTabChrome() -> some View {
-        toolbar(.hidden, for: .tabBar)
+        self
+    }
+
+    @ViewBuilder
+    func moryTabViewBottomAccessory<Content: View>(
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        tabViewBottomAccessory {
+            content()
+        }
     }
 }

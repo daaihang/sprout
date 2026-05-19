@@ -48,17 +48,22 @@ struct HomeScreen: View {
     @State private var homeBoard: HomeBoardSnapshot?
     @State private var isPresentingComposer = false
     @State private var isReloading = false
-    @State private var isEditingHomeBoard = false
     @State private var dailyQuestionPreparationEvidenceSignature: String?
     @State private var errorMessage: String?
     @State private var selectedRoute: HomeRoute?
     @State private var homeBoardActionContext: HomeBoardActionContext?
     @State private var homeBoardReasonItem: HomeBoardItemSnapshot?
     @Binding private var requestedRoute: HomeRoute?
+    @Binding private var isEditingHomeBoard: Bool
 
-    init(surface: Surface = .home, requestedRoute: Binding<HomeRoute?> = .constant(nil)) {
+    init(
+        surface: Surface = .home,
+        requestedRoute: Binding<HomeRoute?> = .constant(nil),
+        isEditingHomeBoard: Binding<Bool> = .constant(false)
+    ) {
         self.surface = surface
         _requestedRoute = requestedRoute
+        _isEditingHomeBoard = isEditingHomeBoard
     }
 
     var body: some View {
@@ -85,27 +90,6 @@ struct HomeScreen: View {
             case let .question(questionID):
                 ClarificationQuestionDetailView(questionID: questionID)
                     .moryHidesTabChrome()
-            }
-        }
-        .toolbar {
-            if surface == .home {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        isEditingHomeBoard.toggle()
-                    } label: {
-                        Text(verbatim: isEditingHomeBoard ? "Done" : "Edit")
-                    }
-                }
-            } else {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        isPresentingComposer = true
-                    } label: {
-                        Label("home.capture.title", systemImage: "plus")
-                    }
-                    .accessibilityLabel(Text("home.capture.title"))
-                    .accessibilityHint(Text("empty.action.addMemory"))
-                }
             }
         }
         .task {

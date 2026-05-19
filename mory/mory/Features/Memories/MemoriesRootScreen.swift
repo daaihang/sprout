@@ -4,6 +4,7 @@ struct MemoriesRootScreen: View {
     @Environment(\.memoryRepository) private var memoryRepository
 
     @Binding private var requestedRoute: MemoriesRoute?
+    @Binding private var isPresentingFilterSheet: Bool
     @State private var selectedArtifactKind: ArtifactKind?
     @State private var selectedPipelineStage: MemoryPipelineStage?
     @State private var selectedContext: MemoryLibraryContextFilter = .any
@@ -13,8 +14,12 @@ struct MemoriesRootScreen: View {
     @State private var errorMessage: String?
     @State private var selectedRoute: MemoriesRoute?
 
-    init(requestedRoute: Binding<MemoriesRoute?> = .constant(nil)) {
+    init(
+        requestedRoute: Binding<MemoriesRoute?> = .constant(nil),
+        isPresentingFilterSheet: Binding<Bool> = .constant(false)
+    ) {
         _requestedRoute = requestedRoute
+        _isPresentingFilterSheet = isPresentingFilterSheet
     }
 
     private var filter: MemoryLibraryFilter {
@@ -37,16 +42,12 @@ struct MemoriesRootScreen: View {
 
             if let snapshot {
                 Section {
-                    MemoryLibraryFilterBar(
-                        selectedArtifactKind: $selectedArtifactKind,
-                        selectedPipelineStage: $selectedPipelineStage,
-                        selectedContext: $selectedContext,
-                        selectedInsight: $selectedInsight,
-                        snapshot: snapshot,
-                        onClear: clearFilters
-                    )
+                    Text("memories.library.count \(snapshot.filteredCount) \(snapshot.totalCount)")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 } footer: {
-                    Text("memories.library.footer")
+                    Text(filter.isActive ? "memories.library.footer" : "memories.filters.title")
                 }
 
                 if snapshot.groups.isEmpty {
@@ -86,16 +87,6 @@ struct MemoriesRootScreen: View {
                     .moryHidesTabChrome()
             }
         }
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                NavigationLink {
-                    TimelineScreen()
-                        .moryHidesTabChrome()
-                } label: {
-                    Label("timeline.nav.title", systemImage: "clock.fill")
-                }
-            }
-        }
         .task {
             await load()
         }
@@ -116,6 +107,33 @@ struct MemoriesRootScreen: View {
             UnifiedCaptureComposerView(seed: .empty) {
                 Task { await load() }
             }
+        }
+        .sheet(isPresented: $isPresentingFilterSheet) {
+            NavigationStack {
+                Form {
+                    Section {
+                        MemoryLibraryFilterBar(
+                            selectedArtifactKind: $selectedArtifactKind,
+                            selectedPipelineStage: $selectedPipelineStage,
+                            selectedContext: $selectedContext,
+                            selectedInsight: $selectedInsight,
+                            snapshot: snapshot,
+                            onClear: clearFilters
+                        )
+                    }
+                }
+                .navigationTitle("memories.filters.title")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("common.done") {
+                            isPresentingFilterSheet = false
+                        }
+                    }
+                }
+            }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
     }
 
