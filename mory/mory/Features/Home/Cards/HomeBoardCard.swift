@@ -7,29 +7,6 @@ struct HomeBoardOrderControls {
     let moveLater: () -> Void
 }
 
-private struct HomeBoardResizeMenu: View {
-    let item: HomeBoardItemSnapshot
-    let onResize: (HomeBoardSpan) -> Void
-
-    var body: some View {
-        Menu {
-            ForEach(HomeBoardSpan.allowedSizes, id: \.self) { span in
-                Button {
-                    onResize(span)
-                } label: {
-                    Text(verbatim: "\(span.widthColumns)x\(span.heightUnits)")
-                }
-            }
-        } label: {
-            Label {
-                Text(verbatim: "\(item.layout.span.widthColumns)x\(item.layout.span.heightUnits)")
-            } icon: {
-                Image(systemName: "arrow.up.left.and.arrow.down.right")
-            }
-        }
-    }
-}
-
 private struct HomeBoardCardChrome<Content: View>: View {
     @ViewBuilder var content: Content
 
@@ -54,6 +31,7 @@ struct HomeBoardCard: View {
     let orderControls: HomeBoardOrderControls?
     let onSelect: (HomeRoute) -> Void
     let onPreference: (HomeBoardItemSnapshot, HomeBoardPreferenceAction) -> Void
+    let onShowActions: (HomeBoardItemSnapshot) -> Void
     let onAnswerQuestion: (ClarificationQuestion, ClarificationAnswer) -> Void
     let onDismissQuestion: (ClarificationQuestion) -> Void
     let onSystemAction: () -> Void
@@ -72,7 +50,7 @@ struct HomeBoardCard: View {
                                 .foregroundStyle(.secondary)
                         }
                         Spacer()
-                        preferenceMenu
+                        actionsButton
                     }
                     VStack(alignment: .leading, spacing: 6) {
                         Label(metadata.kindLabel, systemImage: metadata.iconName)
@@ -82,7 +60,7 @@ struct HomeBoardCard: View {
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
                             }
-                            preferenceMenu
+                            actionsButton
                         }
                     }
                 }
@@ -136,114 +114,16 @@ struct HomeBoardCard: View {
         }
     }
 
-    private var preferenceMenu: some View {
-        Menu {
-            Button {
-                isShowingReason = true
-            } label: {
-                Label {
-                    Text(verbatim: "Explain why")
-                } icon: {
-                    Image(systemName: "info.circle")
-                }
-            }
-
-            if item.layout.layer == .suggestion {
-                Button {
-                    onPreference(item, .addToBoard)
-                } label: {
-                    Label {
-                        Text(verbatim: "Add to board")
-                    } icon: {
-                        Image(systemName: "plus.square.on.square")
-                    }
-                }
-            }
-
-            Button {
-                onPreference(item, .preferMore)
-            } label: {
-                Label {
-                    Text(verbatim: "More like this")
-                } icon: {
-                    Image(systemName: "hand.thumbsup")
-                }
-            }
-
-            Button {
-                onPreference(item, .preferLess)
-            } label: {
-                Label {
-                    Text(verbatim: "Less like this")
-                } icon: {
-                    Image(systemName: "hand.thumbsdown")
-                }
-            }
-
-            if item.layout.feedbackAdjustment != 0 {
-                Button {
-                    onPreference(item, .resetFeedback)
-                } label: {
-                    Label {
-                        Text(verbatim: "Reset feedback")
-                    } icon: {
-                        Image(systemName: "arrow.counterclockwise")
-                    }
-                }
-            }
-
-            if item.cardKind != .clarificationQuestion {
-                Button {
-                    onPreference(item, .pin(!item.isPinned))
-                } label: {
-                    Label(item.isPinned ? "home.board.action.unpin" : "home.board.action.pin", systemImage: item.isPinned ? "pin.slash" : "pin")
-                }
-            }
-
-            if isEditing {
-                if let orderControls {
-                    Button {
-                        orderControls.moveEarlier()
-                    } label: {
-                        Label {
-                            Text(verbatim: "Move earlier")
-                        } icon: {
-                            Image(systemName: "arrow.up")
-                        }
-                    }
-                    .disabled(!orderControls.canMoveEarlier)
-
-                    Button {
-                        orderControls.moveLater()
-                    } label: {
-                        Label {
-                            Text(verbatim: "Move later")
-                        } icon: {
-                            Image(systemName: "arrow.down")
-                        }
-                    }
-                    .disabled(!orderControls.canMoveLater)
-                }
-
-                HomeBoardResizeMenu(item: item) { span in
-                    onPreference(item, .resize(span))
-                }
-            }
-
-            Button(role: .destructive) {
-                if case let .clarificationQuestion(question, _) = item.renderValue {
-                    onDismissQuestion(question)
-                } else {
-                    onPreference(item, item.layout.layer == .suggestion ? .dismiss : .hide)
-                }
-            } label: {
-                Label(item.layout.layer == .suggestion || item.cardKind == .clarificationQuestion ? "home.board.action.dismiss" : "home.board.action.hide", systemImage: "eye.slash")
-            }
+    private var actionsButton: some View {
+        Button {
+            onShowActions(item)
         } label: {
             Image(systemName: "ellipsis.circle")
                 .foregroundStyle(.secondary)
+                .frame(width: 32, height: 32, alignment: .trailing)
         }
-        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(verbatim: "More actions"))
     }
 
     private var reasonDetail: String {

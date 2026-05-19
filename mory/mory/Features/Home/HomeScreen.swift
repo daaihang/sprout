@@ -1,5 +1,11 @@
 import SwiftUI
 
+private struct HomeBoardActionContext: Identifiable {
+    let item: HomeBoardItemSnapshot
+
+    var id: UUID { item.id }
+}
+
 struct HomeScreen: View {
     enum Surface {
         case home
@@ -46,6 +52,8 @@ struct HomeScreen: View {
     @State private var dailyQuestionPreparationEvidenceSignature: String?
     @State private var errorMessage: String?
     @State private var selectedRoute: HomeRoute?
+    @State private var homeBoardActionContext: HomeBoardActionContext?
+    @State private var homeBoardReasonItem: HomeBoardItemSnapshot?
     @Binding private var requestedRoute: HomeRoute?
 
     init(surface: Surface = .home, requestedRoute: Binding<HomeRoute?> = .constant(nil)) {
@@ -107,6 +115,29 @@ struct HomeScreen: View {
                 Task { await reload() }
             }
         }
+        .confirmationDialog(
+            "Card actions",
+            isPresented: isShowingHomeBoardActionDialog,
+            titleVisibility: .hidden
+        ) {
+            if let item = homeBoardActionContext?.item {
+                homeBoardActionButtons(for: item)
+            }
+        } message: {
+            if let item = homeBoardActionContext?.item {
+                Text(verbatim: HomeBoardCardMetadata(item: item).title)
+            }
+        }
+        .alert(Text(verbatim: "Why this appears"), isPresented: isShowingHomeBoardReasonAlert) {
+            Button {
+            } label: {
+                Text(verbatim: "OK")
+            }
+        } message: {
+            if let item = homeBoardReasonItem {
+                Text(verbatim: homeBoardReasonDetail(for: item))
+            }
+        }
         .onAppear {
             consumeRequestedRouteIfNeeded()
         }
@@ -143,6 +174,7 @@ struct HomeScreen: View {
                             selectedRoute = route
                         },
                         onPreference: updateBoardPreference,
+                        onShowActions: showHomeBoardActions,
                         onReorder: updateBoardOrder,
                         onAnswerQuestion: answerQuestion,
                         onDismissQuestion: dismissQuestion,
@@ -204,6 +236,7 @@ struct HomeScreen: View {
         while !Task.isCancelled {
             try? await Task.sleep(nanoseconds: 5_000_000_000)
             guard !Task.isCancelled else { break }
+            guard homeBoardActionContext == nil, homeBoardReasonItem == nil else { continue }
             await reload()
         }
     }
@@ -279,6 +312,164 @@ struct HomeScreen: View {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func showHomeBoardActions(for item: HomeBoardItemSnapshot) {
+        homeBoardActionContext = HomeBoardActionContext(item: item)
+    }
+
+    @ViewBuilder
+    private func homeBoardActionButtons(for item: HomeBoardItemSnapshot) -> some View {
+        Button {
+            homeBoardActionContext = nil
+            homeBoardReasonItem = item
+        } label: {
+            Text(verbatim: "Explain why")
+        }
+
+        if item.layout.layer == .suggestion {
+            Button {
+                performHomeBoardAction(for: item) {
+                    updateBoardPreference(item, action: .addToBoard)
+                }
+            } label: {
+                Text(verbatim: "Add to board")
+            }
+        }
+
+        Button {
+            performHomeBoardAction(for: item) {
+                updateBoardPreference(item, action: .preferMore)
+            }
+        } label: {
+            Text(verbatim: "More like this")
+        }
+
+        Button {
+            performHomeBoardAction(for: item) {
+                updateBoardPreference(item, action: .preferLess)
+            }
+        } label: {
+            Text(verbatim: "Less like this")
+        }
+
+        if item.layout.feedbackAdjustment != 0 {
+            Button {
+                performHomeBoardAction(for: item) {
+                    updateBoardPreference(item, action: .resetFeedback)
+                }
+            } label: {
+                Text(verbatim: "Reset feedback")
+            }
+        }
+
+        if item.cardKind != .clarificationQuestion {
+            Button {
+                performHomeBoardAction(for: item) {
+                    updateBoardPreference(item, action: .pin(!item.isPinned))
+                }
+            } label: {
+                Text(item.isPinned ? "home.board.action.unpin" : "home.board.action.pin")
+            }
+        }
+
+        if isEditingHomeBoard {
+            Button {
+                performHomeBoardAction(for: item) {
+                    moveHomeBoardItem(item, direction: .earlier)
+                }
+            } label: {
+                Text(verbatim: "Move earlier")
+            }
+            .disabled(!canMoveHomeBoardItem(item, direction: .earlier))
+
+            Button {
+                performHomeBoardAction(for: item) {
+                    moveHomeBoardItem(item, direction: .later)
+                }
+            } label: {
+                Text(verbatim: "Move later")
+            }
+            .disabled(!canMoveHomeBoardItem(item, direction: .later))
+
+            ForEach(HomeBoardSpan.allowedSizes, id: \.self) { span in
+                Button {
+                    performHomeBoardAction(for: item) {
+                        updateBoardPreference(item, action: .resize(span))
+                    }
+                } label: {
+                    Text(verbatim: "Resize to \(span.widthColumns)x\(span.heightUnits)")
+                }
+                .disabled(span == item.layout.span)
+            }
+        }
+
+        Button(role: .destructive) {
+            performHomeBoardAction(for: item) {
+                if case let .clarificationQuestion(question, _) = item.renderValue {
+                    dismissQuestion(question)
+                } else {
+                    updateBoardPreference(item, action: item.layout.layer == .suggestion ? .dismiss : .hide)
+                }
+            }
+        } label: {
+            Text(item.layout.layer == .suggestion || item.cardKind == .clarificationQuestion ? "home.board.action.dismiss" : "home.board.action.hide")
+        }
+
+        Button("common.cancel", role: .cancel) {
+            homeBoardActionContext = nil
+        }
+    }
+
+    private var isShowingHomeBoardActionDialog: Binding<Bool> {
+        Binding(
+            get: { homeBoardActionContext != nil },
+            set: { isShowing in
+                if !isShowing {
+                    homeBoardActionContext = nil
+                }
+            }
+        )
+    }
+
+    private var isShowingHomeBoardReasonAlert: Binding<Bool> {
+        Binding(
+            get: { homeBoardReasonItem != nil },
+            set: { isShowing in
+                if !isShowing {
+                    homeBoardReasonItem = nil
+                }
+            }
+        )
+    }
+
+    private func performHomeBoardAction(for item: HomeBoardItemSnapshot, _ action: () -> Void) {
+        guard homeBoardActionContext?.item.id == item.id else { return }
+        homeBoardActionContext = nil
+        action()
+    }
+
+    private func canMoveHomeBoardItem(_ item: HomeBoardItemSnapshot, direction: HomeBoardMoveDirection) -> Bool {
+        guard let items = homeBoard?.userBoardItems, item.layout.layer == .userBoard else { return false }
+        return HomeBoardOrdering.canMove(item: item, in: items, direction: direction)
+    }
+
+    private func moveHomeBoardItem(_ item: HomeBoardItemSnapshot, direction: HomeBoardMoveDirection) {
+        guard let items = homeBoard?.userBoardItems else { return }
+        updateBoardOrder(HomeBoardOrdering.updatesForMove(items: items, moving: item, direction: direction))
+    }
+
+    private func homeBoardReasonDetail(for item: HomeBoardItemSnapshot) -> String {
+        var lines = [item.reason.ifEmpty("recent activity")]
+        if !item.sourceRecordIDs.isEmpty {
+            lines.append("\(item.sourceRecordIDs.count) source memories")
+        }
+        if item.layout.feedbackAdjustment > 0 {
+            lines.append("You asked for more like this.")
+        } else if item.layout.feedbackAdjustment < 0 {
+            lines.append("You asked for less like this.")
+        }
+        return lines.joined(separator: "\n")
     }
 
     private func updateBoardOrder(_ updates: [HomeBoardOrderUpdate]) {
@@ -486,6 +677,7 @@ private struct HomeBoardSection: View {
     let isEditing: Bool
     let onSelect: (HomeRoute) -> Void
     let onPreference: (HomeBoardItemSnapshot, HomeBoardPreferenceAction) -> Void
+    let onShowActions: (HomeBoardItemSnapshot) -> Void
     let onReorder: ([HomeBoardOrderUpdate]) -> Void
     let onAnswerQuestion: (ClarificationQuestion, ClarificationAnswer) -> Void
     let onDismissQuestion: (ClarificationQuestion) -> Void
@@ -499,6 +691,7 @@ private struct HomeBoardSection: View {
                     isEditing: isEditing,
                     onSelect: onSelect,
                     onPreference: onPreference,
+                    onShowActions: onShowActions,
                     onReorder: onReorder,
                     onAnswerQuestion: onAnswerQuestion,
                     onDismissQuestion: onDismissQuestion,
@@ -515,6 +708,7 @@ private struct HomeBoardSection: View {
                         isEditing: isEditing,
                         onSelect: onSelect,
                         onPreference: onPreference,
+                        onShowActions: onShowActions,
                         onReorder: onReorder,
                         onAnswerQuestion: onAnswerQuestion,
                         onDismissQuestion: onDismissQuestion,
@@ -534,6 +728,7 @@ private struct HomeBoardGrid: View {
     let isEditing: Bool
     let onSelect: (HomeRoute) -> Void
     let onPreference: (HomeBoardItemSnapshot, HomeBoardPreferenceAction) -> Void
+    let onShowActions: (HomeBoardItemSnapshot) -> Void
     let onReorder: ([HomeBoardOrderUpdate]) -> Void
     let onAnswerQuestion: (ClarificationQuestion, ClarificationAnswer) -> Void
     let onDismissQuestion: (ClarificationQuestion) -> Void
@@ -548,6 +743,7 @@ private struct HomeBoardGrid: View {
                     orderControls: orderControls(for: item),
                     onSelect: onSelect,
                     onPreference: onPreference,
+                    onShowActions: onShowActions,
                     onAnswerQuestion: onAnswerQuestion,
                     onDismissQuestion: onDismissQuestion,
                     onSystemAction: onSystemAction
