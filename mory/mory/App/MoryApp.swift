@@ -8,16 +8,17 @@ import SwiftData
 struct MoryApp: App {
     @UIApplicationDelegateAdaptor(MoryAppDelegate.self) private var appDelegate
 
-    private let sharedModelContainer: ModelContainer
-    private let memoryRepository: any MoryMemoryRepositorying
+    private let analysisService: any RecordAnalysisServing
     private let cloudIntelligenceService: any CloudIntelligenceServing
     private let remotePushSyncService: any RemotePushSyncing
     private let credentialStore: KeychainCredentialStore
     private let runtimeEnvironment: AppRuntimeEnvironment
+    private let ownerScopedSystemStateCoordinator = MoryOwnerScopedSystemStateCoordinator()
     @State private var authManager: AuthSessionManager
+    @State private var localDataSession: MoryLocalDataSession?
+    @State private var isClearingPreviousLocalDataOwner = false
 
     init() {
-        let sharedModelContainer = MoryPersistenceStack.makeSharedModelContainer()
         let credentialStore = KeychainCredentialStore()
         let runtimeEnvironment = AppRuntimeEnvironment.current
         Self.configureSentry(runtimeEnvironment: runtimeEnvironment)
@@ -30,13 +31,9 @@ struct MoryApp: App {
             apiClient: client,
             tokenProvider: tokenProvider
         )
-        self.sharedModelContainer = sharedModelContainer
         self.credentialStore = credentialStore
         self.runtimeEnvironment = runtimeEnvironment
-        memoryRepository = MoryMemoryRepository(
-            modelContext: sharedModelContainer.mainContext,
-            analysisService: analysisService
-        )
+        self.analysisService = analysisService
         cloudIntelligenceService = RemoteCloudIntelligenceClient(
             apiClient: client,
             tokenProvider: tokenProvider
@@ -94,13 +91,7 @@ struct MoryApp: App {
                 case .loading:
                     ProgressView()
                 case .authenticated:
-                    MoryRootView(
-                        authManager: authManager,
-                        runtimeEnvironment: runtimeEnvironment
-                    )
-                        .environment(\.memoryRepository, memoryRepository)
-                        .environment(\.cloudIntelligenceService, cloudIntelligenceService)
-                        .environment(\.remotePushSyncService, remotePushSyncService)
+                    authenticatedRoot
                 case .unauthenticated:
                     SignInView(
                         credentialStore: credentialStore,
@@ -111,7 +102,57 @@ struct MoryApp: App {
             .task {
                 await authManager.checkSession()
             }
+            .onChange(of: authManager.localDataOwnerID) { _, ownerID in
+                if localDataSession?.ownerID != ownerID {
+                    let previousSession = localDataSession
+                    localDataSession = nil
+
+                    if let previousSession {
+                        isClearingPreviousLocalDataOwner = true
+                        Task {
+                            await ownerScopedSystemStateCoordinator.clearActiveOwnerSystemState(
+                                repository: previousSession.memoryRepository
+                            )
+                            isClearingPreviousLocalDataOwner = false
+                        }
+                    }
+                }
+            }
         }
-        .modelContainer(sharedModelContainer)
+    }
+
+    @ViewBuilder
+    private var authenticatedRoot: some View {
+        if isClearingPreviousLocalDataOwner {
+            ProgressView()
+        } else if let ownerID = authManager.localDataOwnerID {
+            if let localDataSession, localDataSession.ownerID == ownerID {
+                MoryRootView(
+                    authManager: authManager,
+                    runtimeEnvironment: runtimeEnvironment
+                )
+                .environment(\.memoryRepository, localDataSession.memoryRepository)
+                .environment(\.cloudIntelligenceService, cloudIntelligenceService)
+                .environment(\.remotePushSyncService, remotePushSyncService)
+                .environment(\.localDataDiagnostics, localDataSession.diagnostics)
+                .modelContainer(localDataSession.modelContainer)
+            } else {
+                ProgressView()
+                    .task(id: ownerID) {
+                        let session = MoryLocalDataSession(
+                            ownerID: ownerID,
+                            analysisService: analysisService
+                        )
+                        await ownerScopedSystemStateCoordinator.prepareActiveOwner(
+                            ownerID: ownerID,
+                            repository: session.memoryRepository,
+                            remotePushSyncService: remotePushSyncService
+                        )
+                        localDataSession = session
+                    }
+            }
+        } else {
+            ProgressView()
+        }
     }
 }

@@ -994,6 +994,8 @@ private struct SettingsAppearanceLanguageSection: View {
 }
 
 private struct SettingsAccountSection: View {
+    @Environment(\.localDataDiagnostics) private var localDataDiagnostics
+
     let authManager: AuthSessionManager?
 
     @State private var diagnostics: AuthDiagnosticsSnapshot?
@@ -1007,6 +1009,11 @@ private struct SettingsAccountSection: View {
                 if let diagnostics {
                     LabeledContent("settings.account.state", value: diagnostics.state)
                     LabeledContent("settings.account.userID", value: diagnostics.userID ?? String(localized: "settings.account.localUser"))
+                    LabeledContent("Local data owner", value: diagnostics.localDataOwnerID ?? "None")
+                    if let localDataDiagnostics {
+                        LabeledContent("Local data scope", value: localDataDiagnostics.scopeLabel)
+                        LabeledContent("Local data store", value: localDataDiagnostics.storeURLDescription)
+                    }
                     LabeledContent("settings.account.guest", value: diagnostics.isGuest ? String(localized: "common.yes") : String(localized: "common.no"))
                 } else {
                     ProgressView()

@@ -14,6 +14,10 @@ private struct RemotePushSyncServiceKey: EnvironmentKey {
     static let defaultValue: any RemotePushSyncing = MissingRemotePushSyncService()
 }
 
+private struct LocalDataDiagnosticsKey: EnvironmentKey {
+    static let defaultValue: MoryLocalDataDiagnostics? = nil
+}
+
 extension EnvironmentValues {
     var memoryRepository: any MoryMemoryRepositorying {
         get { self[MemoryRepositoryKey.self] }
@@ -28,6 +32,11 @@ extension EnvironmentValues {
     var remotePushSyncService: any RemotePushSyncing {
         get { self[RemotePushSyncServiceKey.self] }
         set { self[RemotePushSyncServiceKey.self] = newValue }
+    }
+
+    var localDataDiagnostics: MoryLocalDataDiagnostics? {
+        get { self[LocalDataDiagnosticsKey.self] }
+        set { self[LocalDataDiagnosticsKey.self] = newValue }
     }
 }
 
@@ -144,6 +153,7 @@ private final class MissingRemotePushSyncService: RemotePushSyncing {
     func writeBackInteraction(_ event: NotificationInteractionEvent) async {}
     func fetchDebugSnapshot(repository: any MoryMemoryRepositorying) async -> RemotePushDebugSnapshot {
         RemotePushDebugSnapshot(
+            ownerID: nil,
             deviceID: "",
             timezone: "",
             hasAPNSToken: false,
@@ -158,4 +168,5 @@ private final class MissingRemotePushSyncService: RemotePushSyncing {
     func fetchServerMetricsText() async throws -> String {
         fatalError("Remote push sync dependency was not injected.")
     }
+    func prepareForLocalDataOwner(_ ownerID: String) {}
 }

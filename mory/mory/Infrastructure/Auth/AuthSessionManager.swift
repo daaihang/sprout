@@ -10,6 +10,7 @@ struct AuthDiagnosticsSnapshot: Hashable, Sendable {
     let hasAccessToken: Bool
     let hasRefreshToken: Bool
     let hasIdentityToken: Bool
+    let localDataOwnerID: String?
     let isExpired: Bool
     let expiresAt: Date?
     let lastEvent: String?
@@ -39,6 +40,7 @@ final class AuthSessionManager {
     private(set) var state: State = .loading
     private(set) var lastEvent: String?
     private(set) var lastErrorMessage: String?
+    private(set) var localDataOwnerID: String?
 
     private let credentialStore: KeychainCredentialStore
     private let apiClient: MoryAPIClient
@@ -59,6 +61,7 @@ final class AuthSessionManager {
         guard let credential else {
             logger.info("No stored credential — showing sign-in")
             lastEvent = "No stored credential"
+            localDataOwnerID = nil
             state = .unauthenticated
             return
         }
@@ -67,6 +70,7 @@ final class AuthSessionManager {
             logger.info("Guest credential found — entering guest mode")
             lastEvent = "Restored guest session"
             lastErrorMessage = nil
+            localDataOwnerID = credential.localDataOwnerID
             state = .authenticated
             return
         }
@@ -75,6 +79,7 @@ final class AuthSessionManager {
             logger.info("Local Apple credential found — entering local authenticated mode")
             lastEvent = "Restored local Apple session without server token"
             lastErrorMessage = nil
+            localDataOwnerID = credential.localDataOwnerID
             state = .authenticated
             return
         }
@@ -83,6 +88,7 @@ final class AuthSessionManager {
             logger.info("Valid credential found — user \(credential.userID)")
             lastEvent = "Restored server authenticated session"
             lastErrorMessage = nil
+            localDataOwnerID = credential.localDataOwnerID
             state = .authenticated
             return
         }
@@ -108,6 +114,7 @@ final class AuthSessionManager {
             guard !trimmedIdentityToken.isEmpty else {
                 try await saveLocalAppleSession(identityToken: nil, userID: userID)
                 lastEvent = "Apple sign-in returned no identity token; entered local mode"
+                localDataOwnerID = AuthCredential.localApple(userID: userID, identityToken: nil).localDataOwnerID
                 state = .authenticated
                 return true
             }
@@ -124,6 +131,7 @@ final class AuthSessionManager {
             logger.info("Sign-in successful — user \(credential.userID)")
             lastEvent = "Server Apple authentication succeeded"
             lastErrorMessage = nil
+            localDataOwnerID = credential.localDataOwnerID
             state = .authenticated
             return true
         } catch {
@@ -140,12 +148,14 @@ final class AuthSessionManager {
                 )
                 lastEvent = "Server Apple authentication failed; saved local Apple session"
                 lastErrorMessage = message
+                localDataOwnerID = AuthCredential.localApple(userID: userID, identityToken: trimmedIdentityToken).localDataOwnerID
                 state = .authenticated
                 return true
             } catch {
                 logger.error("Failed to save local Apple credential: \(error.localizedDescription)")
                 lastEvent = "Apple sign-in failed"
                 lastErrorMessage = error.localizedDescription
+                localDataOwnerID = nil
                 state = .unauthenticated
                 return false
             }
@@ -158,11 +168,13 @@ final class AuthSessionManager {
             try await credentialStore.saveCredential(.guest)
             lastEvent = "Entered guest mode"
             lastErrorMessage = nil
+            localDataOwnerID = AuthCredential.guest.localDataOwnerID
             state = .authenticated
         } catch {
             logger.error("Failed to save guest credential: \(error.localizedDescription)")
             lastEvent = "Entered guest mode without persisted credential"
             lastErrorMessage = error.localizedDescription
+            localDataOwnerID = AuthCredential.guest.localDataOwnerID
             state = .authenticated // still let them in
         }
     }
@@ -176,6 +188,7 @@ final class AuthSessionManager {
         }
         lastEvent = "Signed out"
         lastErrorMessage = nil
+        localDataOwnerID = nil
         state = .unauthenticated
     }
 
@@ -191,6 +204,7 @@ final class AuthSessionManager {
             hasAccessToken: credential?.accessToken.isEmpty == false,
             hasRefreshToken: credential?.refreshToken.isEmpty == false,
             hasIdentityToken: credential?.identityToken?.isEmpty == false,
+            localDataOwnerID: localDataOwnerID,
             isExpired: credential?.isExpired ?? false,
             expiresAt: credential?.expiresAt,
             lastEvent: lastEvent,
@@ -222,6 +236,7 @@ final class AuthSessionManager {
             logger.info("Token refresh successful")
             lastEvent = "Token refresh succeeded"
             lastErrorMessage = nil
+            localDataOwnerID = newCredential.localDataOwnerID
             state = .authenticated
         } catch {
             logger.warning("Token refresh failed: \(error.localizedDescription)")
@@ -254,6 +269,7 @@ final class AuthSessionManager {
             logger.info("Re-authentication with identity token successful")
             lastEvent = "Server re-authentication succeeded"
             lastErrorMessage = nil
+            localDataOwnerID = newCredential.localDataOwnerID
             state = .authenticated
         } catch {
             logger.warning("Re-authentication failed: \(error.localizedDescription)")
@@ -261,6 +277,7 @@ final class AuthSessionManager {
                 try await saveLocalAppleSession(identityToken: identityToken, userID: credential.userID)
                 lastEvent = "Server re-authentication failed; restored local Apple session"
                 lastErrorMessage = error.localizedDescription
+                localDataOwnerID = credential.localDataOwnerID
                 state = .authenticated
             } catch {
                 await clearAndSignOut()
@@ -269,14 +286,7 @@ final class AuthSessionManager {
     }
 
     private func saveLocalAppleSession(identityToken: String?, userID: String) async throws {
-        let credential = AuthCredential(
-            accessToken: "",
-            refreshToken: "",
-            expiresAt: nil,
-            userID: userID,
-            identityToken: identityToken
-        )
-        try await credentialStore.saveCredential(credential)
+        try await credentialStore.saveCredential(.localApple(userID: userID, identityToken: identityToken))
     }
 
     private func clearAndSignOut() async {
@@ -285,6 +295,7 @@ final class AuthSessionManager {
         } catch {
             logger.error("Failed to clear keychain on signout: \(error.localizedDescription)")
         }
+        localDataOwnerID = nil
         state = .unauthenticated
     }
 

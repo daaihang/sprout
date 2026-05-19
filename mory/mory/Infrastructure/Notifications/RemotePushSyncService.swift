@@ -10,6 +10,17 @@ enum PushDeviceRegistrationStore {
     private static let apnsTokenKey = "mory.apnsTokenHex"
     private static let registrationDigestKey = "mory.remotePush.lastRegistrationDigest"
     private static let pendingWritebacksKey = "mory.remotePush.pendingWritebacks"
+    private static let activeOwnerKey = "mory.remotePush.activeLocalOwnerID"
+    private static let fallbackOwnerID = "device"
+
+    static func configureOwner(_ ownerID: String) {
+        let normalized = ownerID.trimmedOrNil ?? fallbackOwnerID
+        UserDefaults.standard.set(normalized, forKey: activeOwnerKey)
+    }
+
+    static func currentOwnerID() -> String {
+        UserDefaults.standard.string(forKey: activeOwnerKey)?.trimmedOrNil ?? fallbackOwnerID
+    }
 
     static func saveAPNSToken(_ tokenData: Data) {
         let hex = tokenData.map { String(format: "%02x", $0) }.joined()
@@ -38,16 +49,21 @@ enum PushDeviceRegistrationStore {
     }
 
     static func lastRegistrationDigest() -> String? {
-        UserDefaults.standard.string(forKey: registrationDigestKey)?.trimmedOrNil
+        UserDefaults.standard.string(forKey: ownerScopedKey(registrationDigestKey))?.trimmedOrNil
     }
 
     static func saveLastRegistrationDigest(_ digest: String?) {
-        UserDefaults.standard.set(digest, forKey: registrationDigestKey)
+        let key = ownerScopedKey(registrationDigestKey)
+        if let digest {
+            UserDefaults.standard.set(digest, forKey: key)
+        } else {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
     }
 
     fileprivate static func loadPendingWritebacks() -> [StoredPushDeliveryWriteback] {
         guard
-            let data = UserDefaults.standard.data(forKey: pendingWritebacksKey),
+            let data = UserDefaults.standard.data(forKey: ownerScopedKey(pendingWritebacksKey)),
             let decoded = try? JSONDecoder().decode([StoredPushDeliveryWriteback].self, from: data)
         else {
             return []
@@ -71,23 +87,60 @@ enum PushDeviceRegistrationStore {
 
     private static func savePendingWritebacks(_ writebacks: [StoredPushDeliveryWriteback]) {
         guard let data = try? JSONEncoder().encode(writebacks) else { return }
-        UserDefaults.standard.set(data, forKey: pendingWritebacksKey)
+        UserDefaults.standard.set(data, forKey: ownerScopedKey(pendingWritebacksKey))
+    }
+
+    private static func ownerScopedKey(_ baseKey: String, ownerID: String = currentOwnerID()) -> String {
+        "\(baseKey).\(ownerStorageDirectoryName(ownerID))"
+    }
+
+    private static func ownerStorageDirectoryName(_ ownerID: String) -> String {
+        let sanitized = ownerID.unicodeScalars.map { scalar in
+            CharacterSet.alphanumerics.contains(scalar) ? String(scalar) : "_"
+        }.joined()
+        let limited = String(sanitized.prefix(48)).trimmingCharacters(in: CharacterSet(charactersIn: "_"))
+        let prefix = limited.isEmpty ? "owner" : limited
+        return "\(prefix)-\(stableHashHex(ownerID))"
+    }
+
+    private static func stableHashHex(_ value: String) -> String {
+        var hash: UInt64 = 14_695_981_039_346_656_037
+        for byte in value.utf8 {
+            hash ^= UInt64(byte)
+            hash &*= 1_099_511_628_211
+        }
+        return String(hash, radix: 16)
     }
 
     #if DEBUG
     static func resetForTests() {
         UserDefaults.standard.removeObject(forKey: apnsTokenKey)
-        UserDefaults.standard.removeObject(forKey: registrationDigestKey)
-        UserDefaults.standard.removeObject(forKey: pendingWritebacksKey)
+        UserDefaults.standard.removeObject(forKey: activeOwnerKey)
+        removeKeys(withPrefixes: [
+            registrationDigestKey,
+            pendingWritebacksKey,
+        ])
     }
 
     static func pendingWritebackCountForTests() -> Int {
         loadPendingWritebacks().count
     }
+
+    static func configureOwnerForTests(_ ownerID: String) {
+        configureOwner(ownerID)
+    }
+
+    private static func removeKeys(withPrefixes prefixes: [String]) {
+        let keys = UserDefaults.standard.dictionaryRepresentation().keys
+        for key in keys where prefixes.contains(where: { key == $0 || key.hasPrefix("\($0).") }) {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
+    }
     #endif
 }
 
 struct RemotePushDebugSnapshot: Hashable, Sendable {
+    var ownerID: String?
     var deviceID: String
     var timezone: String
     var hasAPNSToken: Bool
@@ -101,6 +154,7 @@ struct RemotePushDebugSnapshot: Hashable, Sendable {
 
 @MainActor
 protocol RemotePushSyncing: AnyObject {
+    func prepareForLocalDataOwner(_ ownerID: String)
     func registerSystemRemoteNotificationsIfNeeded(repository: any MoryMemoryRepositorying)
     func syncRegistrationIfPossible(repository: any MoryMemoryRepositorying, force: Bool) async
     func enqueueRemoteNotificationIntent(_ intent: NotificationIntent) async throws -> MoryAPIClient.PushEnqueueResponse
@@ -126,6 +180,11 @@ final class RemotePushSyncService: RemotePushSyncing {
         self.tokenProvider = tokenProvider
         self.isoFormatter = isoFormatter
         self.lastRegistrationDigest = PushDeviceRegistrationStore.lastRegistrationDigest()
+    }
+
+    func prepareForLocalDataOwner(_ ownerID: String) {
+        PushDeviceRegistrationStore.configureOwner(ownerID)
+        lastRegistrationDigest = PushDeviceRegistrationStore.lastRegistrationDigest()
     }
 
     func registerSystemRemoteNotificationsIfNeeded(repository: any MoryMemoryRepositorying) {
@@ -202,6 +261,7 @@ final class RemotePushSyncService: RemotePushSyncing {
         let intents = (try? repository.fetchNotificationIntents(status: nil, limit: nil)) ?? []
         let apnsToken = PushDeviceRegistrationStore.currentAPNSToken()
         return RemotePushDebugSnapshot(
+            ownerID: PushDeviceRegistrationStore.currentOwnerID(),
             deviceID: PushDeviceRegistrationStore.currentDeviceID(),
             timezone: PushDeviceRegistrationStore.currentTimezoneID(),
             hasAPNSToken: apnsToken != nil,

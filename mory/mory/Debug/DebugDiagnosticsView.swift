@@ -45,6 +45,16 @@ struct DebugDiagnosticsView: View {
                 }
 
                 NavigationLink {
+                    DebugLocalDataVaultView()
+                } label: {
+                    DebugMenuRow(
+                        icon: "externaldrive.badge.person.crop",
+                        title: "Local Data Vault",
+                        subtitle: "Inspect active owner, SwiftData store, legacy claim, and UserDefaults scope decisions"
+                    )
+                }
+
+                NavigationLink {
                     DebugCloudIntelligenceView()
                 } label: {
                     DebugMenuRow(
@@ -157,6 +167,67 @@ struct DebugDiagnosticsView: View {
             }
         }
         .navigationTitle("debug.title")
+    }
+}
+
+private struct DebugLocalDataVaultView: View {
+    @Environment(\.localDataDiagnostics) private var diagnostics
+
+    var body: some View {
+        List {
+            Section {
+                if let diagnostics {
+                    LabeledContent("Owner", value: diagnostics.ownerID)
+                    LabeledContent("Scope", value: diagnostics.scopeLabel)
+                    LabeledContent("Store", value: diagnostics.storeURLDescription)
+                    LabeledContent("Legacy owner", value: diagnostics.legacyOwnerID ?? "none")
+                    LabeledContent("Legacy has user data", value: diagnostics.legacyStoreHasUserData ? "yes" : "no")
+                } else {
+                    Text("No active local data diagnostics.")
+                        .foregroundStyle(.secondary)
+                }
+            } header: {
+                Text("Active vault")
+            }
+
+            if let diagnostics {
+                Section {
+                    ForEach(diagnostics.userDefaultsScopes) { entry in
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text(entry.key)
+                                    .font(.caption.monospaced())
+                                Spacer()
+                                Text(entry.scope.rawValue)
+                                    .font(.caption)
+                                    .foregroundStyle(scopeColor(entry.scope))
+                            }
+                            Text(entry.note)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .textSelection(.enabled)
+                    }
+                } header: {
+                    Text("UserDefaults scopes")
+                } footer: {
+                    Text("Device-scoped keys may persist across sign-out. Owner-scoped keys are namespaced by the active local data owner. Debug keys are development controls and do not store user memory content.")
+                }
+            }
+        }
+        .navigationTitle("Local Data Vault")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func scopeColor(_ scope: MoryUserDefaultsScopeKind) -> Color {
+        switch scope {
+        case .device:
+            return .blue
+        case .owner:
+            return .green
+        case .debug:
+            return .orange
+        }
     }
 }
 

@@ -18,6 +18,10 @@ nonisolated struct AuthCredential: Codable, Sendable {
 
     var isGuest: Bool { userID == "guest" }
 
+    var localDataOwnerID: String {
+        isGuest ? "guest:device" : "user:\(userID)"
+    }
+
     static let guest = AuthCredential(
         accessToken: "guest",
         refreshToken: "guest",
@@ -25,6 +29,16 @@ nonisolated struct AuthCredential: Codable, Sendable {
         userID: "guest",
         identityToken: nil
     )
+
+    static func localApple(userID: String, identityToken: String?) -> AuthCredential {
+        AuthCredential(
+            accessToken: "",
+            refreshToken: "",
+            expiresAt: nil,
+            userID: userID,
+            identityToken: identityToken
+        )
+    }
 }
 
 // MARK: - Keychain Store

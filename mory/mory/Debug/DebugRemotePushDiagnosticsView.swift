@@ -13,6 +13,7 @@ struct DebugRemotePushDiagnosticsView: View {
         List {
             Section {
                 if let snapshot {
+                    LabeledContent("Local owner", value: snapshot.ownerID ?? "none")
                     LabeledContent("Device ID", value: snapshot.deviceID)
                     LabeledContent("Timezone", value: snapshot.timezone)
                     LabeledContent("APNs token", value: snapshot.apnsTokenPreview ?? (snapshot.hasAPNSToken ? "present" : "missing"))
