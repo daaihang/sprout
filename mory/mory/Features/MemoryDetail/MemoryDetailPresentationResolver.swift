@@ -149,10 +149,7 @@ struct MemoryDetailPresentationResolver {
     }
 
     private func isContextArtifact(_ artifact: Artifact) -> Bool {
-        if artifact.metadata["captureOrigin"] == CaptureArtifactOrigin.context.rawValue {
-            return true
-        }
-        return artifact.kind == .weather
+        artifact.metadata["captureOrigin"] == CaptureArtifactOrigin.context.rawValue
     }
 
     private func isPlaceholderBody(_ body: String) -> Bool {

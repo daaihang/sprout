@@ -89,6 +89,27 @@ enum CaptureArtifactOrigin: String, Codable, Hashable, Sendable, CaseIterable {
     case inferred
 }
 
+struct ArtifactOriginRepairKindCount: Identifiable, Hashable, Sendable {
+    let kind: ArtifactKind
+    let count: Int
+
+    var id: ArtifactKind { kind }
+}
+
+struct ArtifactOriginRepairPreview: Hashable, Sendable {
+    let totalArtifactCount: Int
+    let missingOriginCount: Int
+    let kindCounts: [ArtifactOriginRepairKindCount]
+    let generatedAt: Date
+}
+
+struct ArtifactOriginRepairResult: Hashable, Sendable {
+    let repairedCount: Int
+    let origin: CaptureArtifactOrigin
+    let repairedArtifactIDs: [UUID]
+    let generatedAt: Date
+}
+
 enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
     case text(title: String?, body: String, origin: CaptureArtifactOrigin = .manual)
     case photo(title: String?, summary: String, filename: String, imageData: Data?, thumbnailData: Data?, ocrText: String = "", photoMetadata: [String: String] = [:], origin: CaptureArtifactOrigin = .manual)
@@ -847,6 +868,8 @@ protocol MoryMemoryRepositorying: AnyObject {
     func updateHomeBoardItemPreferences(_ updates: [(item: HomeBoardItemSnapshot, action: HomeBoardPreferenceAction)]) throws
     func fetchMemoryDetail(recordID: UUID) throws -> MemoryDetailSnapshot?
     func fetchArtifact(id: UUID) throws -> Artifact?
+    func fetchArtifactOriginRepairPreview() throws -> ArtifactOriginRepairPreview
+    func backfillMissingArtifactOrigins(_ origin: CaptureArtifactOrigin) throws -> ArtifactOriginRepairResult
     func fetchRecordAnalysis(recordID: UUID) throws -> RecordAnalysisSnapshot?
     func fetchPipelineStatus(recordID: UUID) throws -> MemoryPipelineStatusSnapshot?
     func fetchPipelineStatusSummaries(limit: Int?) throws -> [PipelineStatusSummary]

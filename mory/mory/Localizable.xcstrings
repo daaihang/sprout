@@ -374,6 +374,21 @@
     "Automatic uses local rules in this version. AI automatic is reserved for a later cloud intelligence loop." : {
 
     },
+    "Backfill as %@" : {
+
+    },
+    "Backfill missing captureOrigin?" : {
+
+    },
+    "Backfill missing origins" : {
+
+    },
+    "Backfill value" : {
+
+    },
+    "Backfilling" : {
+
+    },
     "Build Environment" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2387,6 +2402,9 @@
 
     },
     "Daily question" : {
+
+    },
+    "Data Repair" : {
 
     },
     "Debug" : {
@@ -10017,6 +10035,9 @@
     "Merge selected places" : {
 
     },
+    "Missing by kind" : {
+
+    },
     "More" : {
 
     },
@@ -10088,6 +10109,9 @@
 
     },
     "No places" : {
+
+    },
+    "No preview loaded." : {
 
     },
     "No suggestion cards" : {
@@ -12295,6 +12319,9 @@
     "Refresh remote push state" : {
 
     },
+    "Refresh repair preview" : {
+
+    },
     "Refresh rule snapshot" : {
 
     },
@@ -12323,6 +12350,9 @@
 
     },
     "Rename" : {
+
+    },
+    "Repair" : {
 
     },
     "Request" : {
@@ -15215,6 +15245,9 @@
     "These requests call the same cloud intelligence client used by capture, daily questions, chapter suggestions, photo semantics, and notification intent generation." : {
 
     },
+    "This mutates local debug data. Existing captureOrigin values will not be overwritten." : {
+
+    },
     "This page calls the same repository and HomeBoardRuleEngine used by Today, then exposes the rule inputs, local preferences, and final visible cards." : {
 
     },
@@ -15225,6 +15258,9 @@
 
     },
     "This place does not have enough linked location artifacts to split." : {
+
+    },
+    "This tool only updates artifacts that do not already have metadata.captureOrigin. Runtime readers do not infer fallback values." : {
 
     },
     "timeline.empty.description" : {
@@ -15334,6 +15370,9 @@
 
     },
     "Use APNs environment/topic, sent/failed/retried/permanent counters, and last_error to verify real-device push delivery." : {
+
+    },
+    "Use Manual for user-added legacy artifacts, Context for auto-collected legacy context artifacts, Imported for imports, or Inferred for pipeline-generated content." : {
 
     },
     "Use this to confirm whether sign-in is blocked by Keychain persistence, server auth, or session state." : {

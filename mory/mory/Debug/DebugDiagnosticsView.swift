@@ -99,6 +99,16 @@ struct DebugDiagnosticsView: View {
                 }
 
                 NavigationLink {
+                    DebugDataRepairView()
+                } label: {
+                    DebugMenuRow(
+                        icon: "wrench.and.screwdriver",
+                        title: "Data Repair",
+                        subtitle: "Backfill missing captureOrigin metadata for legacy local artifacts"
+                    )
+                }
+
+                NavigationLink {
                     DebugRemotePushDiagnosticsView()
                 } label: {
                     DebugMenuRow(
@@ -147,6 +157,144 @@ struct DebugDiagnosticsView: View {
             }
         }
         .navigationTitle("debug.title")
+    }
+}
+
+private struct DebugDataRepairView: View {
+    @Environment(\.memoryRepository) private var memoryRepository
+
+    @State private var preview: ArtifactOriginRepairPreview?
+    @State private var result: ArtifactOriginRepairResult?
+    @State private var selectedOrigin: CaptureArtifactOrigin = .manual
+    @State private var isRefreshing = false
+    @State private var isRepairing = false
+    @State private var errorMessage: String?
+    @State private var isConfirmingRepair = false
+
+    var body: some View {
+        List {
+            Section {
+                Button {
+                    refresh()
+                } label: {
+                    Label(isRefreshing ? "Refreshing" : "Refresh repair preview", systemImage: "arrow.clockwise")
+                }
+                .disabled(isRefreshing || isRepairing)
+
+                if isRefreshing {
+                    DebugProgressRow(text: "Scanning artifacts")
+                }
+
+                if let preview {
+                    DebugValueRow(title: "Total artifacts", value: "\(preview.totalArtifactCount)")
+                    DebugValueRow(title: "Missing captureOrigin", value: "\(preview.missingOriginCount)")
+                    DebugValueRow(title: "Generated", value: preview.generatedAt.formatted(date: .abbreviated, time: .standard))
+                } else if !isRefreshing {
+                    Text("No preview loaded.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } header: {
+                Text("Preview")
+            } footer: {
+                Text("This tool only updates artifacts that do not already have metadata.captureOrigin. Runtime readers do not infer fallback values.")
+            }
+
+            if let preview, !preview.kindCounts.isEmpty {
+                Section("Missing by kind") {
+                    ForEach(preview.kindCounts) { count in
+                        DebugValueRow(title: count.kind.rawValue, value: "\(count.count)")
+                    }
+                }
+            }
+
+            Section {
+                Picker("Backfill value", selection: $selectedOrigin) {
+                    ForEach(CaptureArtifactOrigin.allCases, id: \.self) { origin in
+                        Text(origin.captureBadgeLabel).tag(origin)
+                    }
+                }
+
+                Button(role: .destructive) {
+                    isConfirmingRepair = true
+                } label: {
+                    Label(isRepairing ? "Backfilling" : "Backfill missing origins", systemImage: "square.and.pencil")
+                }
+                .disabled(isRepairing || isRefreshing || (preview?.missingOriginCount ?? 0) == 0)
+
+                if isRepairing {
+                    DebugProgressRow(text: "Writing captureOrigin = \(selectedOrigin.rawValue)")
+                }
+            } header: {
+                Text("Repair")
+            } footer: {
+                Text("Use Manual for user-added legacy artifacts, Context for auto-collected legacy context artifacts, Imported for imports, or Inferred for pipeline-generated content.")
+            }
+
+            if let result {
+                Section("Last result") {
+                    DebugValueRow(title: "Repaired", value: "\(result.repairedCount)")
+                    DebugValueRow(title: "Origin", value: result.origin.rawValue)
+                    DebugValueRow(title: "Generated", value: result.generatedAt.formatted(date: .abbreviated, time: .standard))
+                    if !result.repairedArtifactIDs.isEmpty {
+                        Text(result.repairedArtifactIDs.prefix(24).map(\.uuidString).joined(separator: "\n"))
+                            .font(.caption.monospaced())
+                            .textSelection(.enabled)
+                    }
+                }
+            }
+
+            if let errorMessage {
+                Section("Error") {
+                    DebugErrorMessageRow(message: errorMessage)
+                }
+            }
+        }
+        .navigationTitle("Data Repair")
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            refresh()
+        }
+        .refreshable {
+            refresh()
+        }
+        .confirmationDialog(
+            "Backfill missing captureOrigin?",
+            isPresented: $isConfirmingRepair,
+            titleVisibility: .visible
+        ) {
+            Button("Backfill as \(selectedOrigin.captureBadgeLabel)", role: .destructive) {
+                repair()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This mutates local debug data. Existing captureOrigin values will not be overwritten.")
+        }
+    }
+
+    private func refresh() {
+        guard !isRefreshing else { return }
+        isRefreshing = true
+        errorMessage = nil
+        do {
+            preview = try memoryRepository.fetchArtifactOriginRepairPreview()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isRefreshing = false
+    }
+
+    private func repair() {
+        guard !isRepairing else { return }
+        isRepairing = true
+        errorMessage = nil
+        do {
+            result = try memoryRepository.backfillMissingArtifactOrigins(selectedOrigin)
+            preview = try memoryRepository.fetchArtifactOriginRepairPreview()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isRepairing = false
     }
 }
 

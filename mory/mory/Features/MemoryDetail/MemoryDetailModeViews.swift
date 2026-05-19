@@ -51,7 +51,7 @@ private struct MemoryStoryModeView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            MemoryDetailAttachmentCarousel(artifacts: presentation.contentArtifacts + presentation.contextArtifacts)
+            MemoryDetailAttachmentCarousel(artifacts: presentation.contentArtifacts)
             MemoryDetailBodyText(text: presentation.bodyText)
             MemoryContextSection(artifacts: presentation.contextArtifacts)
         }
@@ -203,12 +203,14 @@ private struct MemoryArtifactCard: View {
                 .lineLimit(2)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            Text(artifact.captureOriginLabel)
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(Color.secondary.opacity(0.12), in: Capsule())
+            if let originLabel = artifact.captureOriginLabel {
+                Text(originLabel)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.secondary.opacity(0.12), in: Capsule())
+            }
         }
         .padding(12)
         .frame(width: 176, height: 112, alignment: .topLeading)
@@ -541,10 +543,10 @@ private extension Artifact {
         }
     }
 
-    var captureOriginLabel: String {
+    var captureOriginLabel: String? {
         guard let raw = metadata["captureOrigin"],
               let origin = CaptureArtifactOrigin(rawValue: raw) else {
-            return "Saved"
+            return nil
         }
         return origin.captureBadgeLabel
     }

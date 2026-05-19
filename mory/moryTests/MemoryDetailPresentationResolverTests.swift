@@ -35,10 +35,59 @@ final class MemoryDetailPresentationResolverTests: XCTestCase {
             rawText: "Context check-in",
             artifacts: [
                 makeArtifact(kind: .location, summary: "Cafe", metadata: ["captureOrigin": CaptureArtifactOrigin.context.rawValue]),
-                makeArtifact(kind: .weather, summary: "Sunny")
+                makeArtifact(kind: .weather, summary: "Sunny", metadata: ["captureOrigin": CaptureArtifactOrigin.context.rawValue])
             ]
         )
         XCTAssertEqual(resolve(snapshot).mode, .checkIn)
+    }
+
+    func testMissingOriginDoesNotFallbackToContext() {
+        let snapshot = makeSnapshot(
+            rawText: "Context check-in",
+            artifacts: [
+                makeArtifact(kind: .weather, summary: "Sunny")
+            ]
+        )
+        let result = resolve(snapshot)
+
+        XCTAssertEqual(result.mode, .story)
+        XCTAssertTrue(result.contextArtifacts.isEmpty)
+        XCTAssertEqual(result.contentArtifacts.map(\.kind), [.weather])
+    }
+
+    func testManualWeatherDoesNotResolveAsContext() {
+        let snapshot = makeSnapshot(
+            rawText: "Context check-in",
+            artifacts: [
+                makeArtifact(kind: .weather, summary: "Sunny", metadata: ["captureOrigin": CaptureArtifactOrigin.manual.rawValue])
+            ]
+        )
+        let result = resolve(snapshot)
+
+        XCTAssertEqual(result.mode, .story)
+        XCTAssertTrue(result.contextArtifacts.isEmpty)
+        XCTAssertEqual(result.contentArtifacts.map(\.kind), [.weather])
+    }
+
+    func testContextArtifactsAreSeparatedFromContentArtifacts() {
+        let manualPhoto = makeArtifact(
+            kind: .photo,
+            summary: "Dinner photo",
+            metadata: ["captureOrigin": CaptureArtifactOrigin.manual.rawValue]
+        )
+        let contextLocation = makeArtifact(
+            kind: .location,
+            summary: "Cafe",
+            metadata: ["captureOrigin": CaptureArtifactOrigin.context.rawValue]
+        )
+        let snapshot = makeSnapshot(
+            rawText: "Dinner.",
+            artifacts: [manualPhoto, contextLocation]
+        )
+        let result = resolve(snapshot)
+
+        XCTAssertEqual(result.contentArtifacts.map(\.id), [manualPhoto.id])
+        XCTAssertEqual(result.contextArtifacts.map(\.id), [contextLocation.id])
     }
 
     func testLinkDominantResolvesToLink() {
@@ -263,5 +312,58 @@ final class MemoryDetailPresentationPreferenceRepositoryTests: XCTestCase {
         let stored = try repository.fetchUserSettingsPreference()
         XCTAssertEqual(stored.detailPresentationStrategy, .fixed)
         XCTAssertEqual(stored.fixedDetailPresentationMode, .article)
+    }
+
+    func testBackfillsMissingArtifactOriginsWithoutOverwritingExistingValues() throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let missingOriginID = UUID()
+        let existingOriginID = UUID()
+
+        container.mainContext.insert(
+            ArtifactStore(
+                id: missingOriginID,
+                recordID: UUID(),
+                kindRawValue: ArtifactKind.weather.rawValue,
+                title: "Sunny",
+                summary: "Sunny",
+                textContent: "",
+                createdAt: now,
+                updatedAt: now
+            )
+        )
+        container.mainContext.insert(
+            ArtifactStore(
+                id: existingOriginID,
+                recordID: UUID(),
+                kindRawValue: ArtifactKind.location.rawValue,
+                title: "Cafe",
+                summary: "Cafe",
+                textContent: "",
+                metadataData: try JSONEncoder().encode(["captureOrigin": CaptureArtifactOrigin.context.rawValue]),
+                createdAt: now,
+                updatedAt: now
+            )
+        )
+        try container.mainContext.save()
+
+        let preview = try repository.fetchArtifactOriginRepairPreview()
+        XCTAssertEqual(preview.totalArtifactCount, 2)
+        XCTAssertEqual(preview.missingOriginCount, 1)
+        XCTAssertEqual(preview.kindCounts, [ArtifactOriginRepairKindCount(kind: .weather, count: 1)])
+
+        let result = try repository.backfillMissingArtifactOrigins(.manual)
+        XCTAssertEqual(result.repairedCount, 1)
+        XCTAssertEqual(result.repairedArtifactIDs, [missingOriginID])
+
+        let repairedArtifact = try XCTUnwrap(repository.fetchArtifact(id: missingOriginID))
+        XCTAssertEqual(repairedArtifact.metadata["captureOrigin"], CaptureArtifactOrigin.manual.rawValue)
+        let existingArtifact = try XCTUnwrap(repository.fetchArtifact(id: existingOriginID))
+        XCTAssertEqual(existingArtifact.metadata["captureOrigin"], CaptureArtifactOrigin.context.rawValue)
+        XCTAssertEqual(try repository.fetchArtifactOriginRepairPreview().missingOriginCount, 0)
     }
 }

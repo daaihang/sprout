@@ -673,6 +673,57 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         return try modelContext.fetch(descriptor).first?.domainModel
     }
 
+    func fetchArtifactOriginRepairPreview() throws -> ArtifactOriginRepairPreview {
+        let stores = try modelContext.fetch(FetchDescriptor<ArtifactStore>())
+        let missingStores = stores.filter { store in
+            store.domainModel.metadata["captureOrigin"] == nil
+        }
+        let groupedKinds = Dictionary(grouping: missingStores) { store in
+            ArtifactKind(rawValue: store.kindRawValue) ?? .text
+        }
+        let kindCounts = groupedKinds
+            .map { ArtifactOriginRepairKindCount(kind: $0.key, count: $0.value.count) }
+            .sorted { lhs, rhs in
+                if lhs.count == rhs.count {
+                    return lhs.kind.rawValue < rhs.kind.rawValue
+                }
+                return lhs.count > rhs.count
+            }
+
+        return ArtifactOriginRepairPreview(
+            totalArtifactCount: stores.count,
+            missingOriginCount: missingStores.count,
+            kindCounts: kindCounts,
+            generatedAt: Date.now
+        )
+    }
+
+    func backfillMissingArtifactOrigins(_ origin: CaptureArtifactOrigin) throws -> ArtifactOriginRepairResult {
+        let stores = try modelContext.fetch(FetchDescriptor<ArtifactStore>())
+        let now = Date.now
+        var repairedArtifactIDs: [UUID] = []
+
+        for store in stores {
+            var artifact = store.domainModel
+            guard artifact.metadata["captureOrigin"] == nil else { continue }
+            artifact.metadata["captureOrigin"] = origin.rawValue
+            artifact.updatedAt = now
+            store.apply(domainModel: artifact)
+            repairedArtifactIDs.append(artifact.id)
+        }
+
+        if !repairedArtifactIDs.isEmpty {
+            try save()
+        }
+
+        return ArtifactOriginRepairResult(
+            repairedCount: repairedArtifactIDs.count,
+            origin: origin,
+            repairedArtifactIDs: repairedArtifactIDs,
+            generatedAt: now
+        )
+    }
+
     func fetchRecordAnalysis(recordID: UUID) throws -> RecordAnalysisSnapshot? {
         let descriptor = FetchDescriptor<RecordAnalysisSnapshotStore>(
             predicate: #Predicate { $0.recordID == recordID },

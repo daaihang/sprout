@@ -51,6 +51,8 @@ private final class MissingMemoryRepository: MoryMemoryRepositorying {
     func updateHomeBoardItemPreferences(_ updates: [(item: HomeBoardItemSnapshot, action: HomeBoardPreferenceAction)]) throws { let _: Void = fail() }
     func fetchMemoryDetail(recordID: UUID) throws -> MemoryDetailSnapshot? { fail() }
     func fetchArtifact(id: UUID) throws -> Artifact? { fail() }
+    func fetchArtifactOriginRepairPreview() throws -> ArtifactOriginRepairPreview { fail() }
+    func backfillMissingArtifactOrigins(_ origin: CaptureArtifactOrigin) throws -> ArtifactOriginRepairResult { fail() }
     func fetchRecordAnalysis(recordID: UUID) throws -> RecordAnalysisSnapshot? { fail() }
     func fetchPipelineStatus(recordID: UUID) throws -> MemoryPipelineStatusSnapshot? { fail() }
     func fetchPipelineStatusSummaries(limit: Int?) throws -> [PipelineStatusSummary] { fail() }
