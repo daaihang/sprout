@@ -52,6 +52,14 @@ struct CaptureCardPalette {
                     highContrast: highContrast
                 )
             }
+            if let hex = item.thumbnailData.flatMap(sampleHexColor(from:)) {
+                return fromHex(
+                    source: .musicArtwork,
+                    backgroundHex: hex,
+                    fallbackAccent: fallbackAccent(for: item.kind),
+                    highContrast: highContrast
+                )
+            }
             return fallback(kind: item.kind, highContrast: highContrast)
         default:
             return fallback(kind: item.kind, highContrast: highContrast)

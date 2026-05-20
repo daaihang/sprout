@@ -8,7 +8,8 @@ enum CapturePlaceMapSnapshotter {
         latitude: Double?,
         longitude: Double?,
         size: CGSize = CGSize(width: 380, height: 264),
-        privacyEnabled: Bool = false
+        privacyEnabled: Bool = false,
+        interfaceStyle: UIUserInterfaceStyle = .unspecified
     ) async -> Data? {
         guard !privacyEnabled,
               let latitude,
@@ -22,6 +23,9 @@ enum CapturePlaceMapSnapshotter {
         options.region = MKCoordinateRegion(center: coordinate, latitudinalMeters: 900, longitudinalMeters: 900)
         options.size = size
         options.pointOfInterestFilter = .includingAll
+        if interfaceStyle != .unspecified {
+            options.traitCollection = UITraitCollection(userInterfaceStyle: interfaceStyle)
+        }
 
         let snapshotter = MKMapSnapshotter(options: options)
         return await withCheckedContinuation { continuation in

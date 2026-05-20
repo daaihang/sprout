@@ -15,7 +15,7 @@ struct WeatherAtmosphereView: View {
             if spec.motionPattern == .staticPattern || isReduceMotionEnabled {
                 WeatherAtmosphereFrame(spec: spec, time: 0)
             } else {
-                TimelineView(.animation) { timeline in
+                TimelineView(.animation(minimumInterval: frameInterval)) { timeline in
                     WeatherAtmosphereFrame(
                         spec: spec,
                         time: timeline.date.timeIntervalSinceReferenceDate
@@ -55,6 +55,15 @@ struct WeatherAtmosphereView: View {
             return [Color.secondary.opacity(0.16), Color.secondary.opacity(0.06)]
         }
     }
+
+    private var frameInterval: TimeInterval {
+        switch spec.motionPattern {
+        case .thunderstorm, .heavyRainFall, .rainFall, .snowDrift:
+            return 1.0 / 24.0
+        default:
+            return 1.0 / 30.0
+        }
+    }
 }
 
 private struct WeatherAtmosphereFrame: View {
@@ -80,7 +89,7 @@ private struct WeatherAtmosphereFrame: View {
             case .snowDrift:
                 drawSnow(in: &context, size: size)
             case .thunderstorm:
-                drawRain(in: &context, size: size, count: 36, speed: 104, length: 36, opacity: 0.46)
+                drawRain(in: &context, size: size, count: 26, speed: 84, length: 32, opacity: 0.4)
                 drawStormClouds(in: &context, size: size)
                 drawThunderFlash(in: &context, size: size)
             case .fogDrift:
@@ -220,8 +229,10 @@ private struct WeatherAtmosphereFrame: View {
     }
 
     private func drawThunderFlash(in context: inout GraphicsContext, size: CGSize) {
-        let flash = pow(max(0, sin(time * 1.7 + 0.4)), 28)
-        guard flash > 0.18 else { return }
+        let cycle = time.truncatingRemainder(dividingBy: 6.5)
+        let pulse = max(0, 1 - abs(cycle - 0.42) / 0.42)
+        let flash = pow(pulse, 2.4)
+        guard flash > 0.04 else { return }
 
         var bolt = Path()
         bolt.move(to: CGPoint(x: size.width * 0.68, y: size.height * 0.14))
@@ -230,12 +241,12 @@ private struct WeatherAtmosphereFrame: View {
         bolt.addLine(to: CGPoint(x: size.width * 0.48, y: size.height * 0.86))
         context.stroke(
             bolt,
-            with: .color(Color.white.opacity(0.34 + 0.32 * flash)),
+            with: .color(Color.white.opacity(0.18 + 0.3 * flash)),
             style: StrokeStyle(lineWidth: 2.2, lineCap: .round, lineJoin: .round)
         )
         context.fill(
             Path(CGRect(origin: .zero, size: size)),
-            with: .color(Color.white.opacity(0.08 * flash))
+            with: .color(Color.white.opacity(0.04 * flash))
         )
     }
 

@@ -76,11 +76,11 @@ struct CaptureAttachmentCard: View {
                     .symbolRenderingMode(.hierarchical)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Remove attachment")
+            .accessibilityLabel("capture.card.removeAttachment")
         } else if item.isSelectable {
             Image(systemName: displaysSelection ? "checkmark.circle.fill" : "circle")
                 .foregroundStyle(displaysSelection ? Color.accentColor : Color.secondary.opacity(0.5))
-                .accessibilityLabel(displaysSelection ? "Selected" : "Not selected")
+                .accessibilityLabel(displaysSelection ? String(localized: "capture.card.selected") : String(localized: "capture.card.notSelected"))
         }
     }
 
