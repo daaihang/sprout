@@ -67,4 +67,37 @@ final class MemoryCaptureArtifactBuilderTests: XCTestCase {
         XCTAssertEqual(music.metadata["artworkPrimaryTextColor"], "#FFFFFF")
         XCTAssertEqual(music.metadata["artworkSecondaryTextColor"], "#DDDDDD")
     }
+
+    func testBuildArtifactsPersistsWeatherConditionMetadata() throws {
+        let builder = MemoryCaptureArtifactBuilder()
+        let artifacts = builder.buildArtifacts(
+            from: MemoryCaptureDraft(
+                rawText: "",
+                artifacts: [
+                    .weather(
+                        condition: "大部晴朗无云",
+                        temperatureCelsius: 21,
+                        humidity: 0.48,
+                        windSpeedKmh: 9,
+                        uvIndex: 4,
+                        latitude: 31.23,
+                        longitude: 121.47,
+                        conditionCode: "mostlyClear",
+                        symbolName: "sun.max.fill",
+                        isDaylight: true,
+                        origin: .context
+                    )
+                ]
+            ),
+            recordID: UUID(),
+            createdAt: Date(timeIntervalSince1970: 1_800_000_000)
+        )
+
+        let weather = try XCTUnwrap(artifacts.first(where: { $0.kind == .weather }))
+        XCTAssertEqual(weather.metadata["condition"], "大部晴朗无云")
+        XCTAssertEqual(weather.metadata["conditionCode"], "mostlyClear")
+        XCTAssertEqual(weather.metadata["symbolName"], "sun.max.fill")
+        XCTAssertEqual(weather.metadata["isDaylight"], "true")
+        XCTAssertEqual(weather.metadata["captureOrigin"], CaptureArtifactOrigin.context.rawValue)
+    }
 }

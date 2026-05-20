@@ -56,7 +56,7 @@ final class ContextAutoCollector: ContextAutoCollecting {
 
     private func collectMusic(timeout: TimeInterval) async -> [CaptureArtifactDraft] {
         guard let music = await withTimeoutNil(seconds: timeout, operation: {
-            await self.musicService.captureNowPlaying(origin: .context)
+            await self.musicService.captureNowPlaying(origin: .context, requireActivePlayback: true)
         }) else {
             return []
         }

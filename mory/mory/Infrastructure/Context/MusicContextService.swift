@@ -9,6 +9,7 @@ struct MusicNowPlayingSnapshot: Equatable, Sendable {
     let artistName: String
     let albumTitle: String
     let durationSeconds: Int
+    var artworkData: Data? = nil
     var artworkPalette: MusicArtworkPalette? = nil
 }
 
@@ -28,6 +29,7 @@ struct MusicCatalogSongCandidate: Identifiable, Hashable, Sendable {
             albumName: albumTitle,
             durationSeconds: durationSeconds,
             artworkURL: artworkURL,
+            artworkData: nil,
             artworkPalette: artworkPalette,
             origin: origin
         )
@@ -43,10 +45,17 @@ final class MusicContextService: Sendable {
         return await MusicAuthorization.request()
     }
 
-    func captureNowPlaying(origin: CaptureArtifactOrigin = .manual) async -> CaptureArtifactDraft? {
+    func captureNowPlaying(
+        origin: CaptureArtifactOrigin = .manual,
+        requireActivePlayback: Bool = true
+    ) async -> CaptureArtifactDraft? {
         let status = await requestAuthorizationIfNeeded()
         guard status == .authorized else { return nil }
-        return Self.captureNowPlayingFromMediaPlayer(origin: origin)
+        return Self.captureNowPlayingFromMediaPlayer(origin: origin, requireActivePlayback: requireActivePlayback)
+    }
+
+    func captureCurrentMusicItem(origin: CaptureArtifactOrigin = .manual) async -> CaptureArtifactDraft? {
+        await captureNowPlaying(origin: origin, requireActivePlayback: false)
     }
 
     func searchSongs(query: String, limit: Int = 10) async -> [MusicCatalogSongCandidate] {
@@ -82,6 +91,7 @@ final class MusicContextService: Sendable {
             albumName: song.albumTitle ?? "",
             durationSeconds: Int(song.duration ?? 0),
             artworkURL: song.artwork?.url(width: 300, height: 300)?.absoluteString,
+            artworkData: nil,
             artworkPalette: Self.makeArtworkPalette(from: song.artwork),
             origin: origin
         )
@@ -92,9 +102,12 @@ final class MusicContextService: Sendable {
     }
 
     @MainActor
-    private static func captureNowPlayingFromMediaPlayer(origin: CaptureArtifactOrigin) -> CaptureArtifactDraft? {
+    private static func captureNowPlayingFromMediaPlayer(
+        origin: CaptureArtifactOrigin,
+        requireActivePlayback: Bool
+    ) -> CaptureArtifactDraft? {
         let player = MPMusicPlayerController.systemMusicPlayer
-        guard shouldCaptureNowPlaying(playbackState: player.playbackState),
+        guard shouldCaptureCurrentItem(playbackState: player.playbackState, requireActivePlayback: requireActivePlayback),
               let item = player.nowPlayingItem,
               let snapshot = makeSnapshot(from: item) else {
             return nil
@@ -104,6 +117,13 @@ final class MusicContextService: Sendable {
 
     static func shouldCaptureNowPlaying(playbackState: MPMusicPlaybackState) -> Bool {
         playbackState == .playing
+    }
+
+    static func shouldCaptureCurrentItem(
+        playbackState: MPMusicPlaybackState,
+        requireActivePlayback: Bool
+    ) -> Bool {
+        requireActivePlayback ? shouldCaptureNowPlaying(playbackState: playbackState) : playbackState != .stopped
     }
 
     static func makeDraft(from snapshot: MusicNowPlayingSnapshot, origin: CaptureArtifactOrigin = .manual) -> CaptureArtifactDraft? {
@@ -116,6 +136,7 @@ final class MusicContextService: Sendable {
             albumName: snapshot.albumTitle,
             durationSeconds: snapshot.durationSeconds,
             artworkURL: nil,
+            artworkData: snapshot.artworkData,
             artworkPalette: snapshot.artworkPalette,
             origin: origin
         )
@@ -125,14 +146,14 @@ final class MusicContextService: Sendable {
     private static func makeSnapshot(from item: MPMediaItem) -> MusicNowPlayingSnapshot? {
         let title = (item.title ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         guard !title.isEmpty else { return nil }
+        let artworkImage = item.artwork?.image(at: CGSize(width: 180, height: 180))
         return MusicNowPlayingSnapshot(
             title: title,
             artistName: (item.artist ?? "").trimmingCharacters(in: .whitespacesAndNewlines),
             albumTitle: (item.albumTitle ?? "").trimmingCharacters(in: .whitespacesAndNewlines),
             durationSeconds: Int(item.playbackDuration),
-            artworkPalette: item.artwork
-                .flatMap { $0.image(at: CGSize(width: 80, height: 80)) }
-                .flatMap(Self.makeArtworkPalette(from:))
+            artworkData: artworkImage?.jpegData(compressionQuality: 0.82),
+            artworkPalette: artworkImage.flatMap(Self.makeArtworkPalette(from:))
         )
     }
 

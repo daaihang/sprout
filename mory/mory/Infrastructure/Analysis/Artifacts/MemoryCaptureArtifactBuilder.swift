@@ -187,7 +187,7 @@ struct MemoryCaptureArtifactBuilder {
                 createdAt: createdAt,
                 updatedAt: createdAt
             )
-        case let .weather(condition, temp, humidity, windSpeed, uvIndex, latitude, longitude, _):
+        case let .weather(condition, temp, humidity, windSpeed, uvIndex, latitude, longitude, conditionCode, symbolName, isDaylight, _):
             let title = "\(condition) \(String(format: "%.0f", temp))°C"
             let summary = "\(condition) · \(String(format: "%.0f", temp))°C · Humidity \(String(format: "%.0f", humidity * 100))%"
             var metadata: [String: String] = [
@@ -199,6 +199,9 @@ struct MemoryCaptureArtifactBuilder {
             ]
             if let latitude { metadata["latitude"] = String(latitude) }
             if let longitude { metadata["longitude"] = String(longitude) }
+            if let conditionCode { metadata["conditionCode"] = conditionCode }
+            if let symbolName { metadata["symbolName"] = symbolName }
+            if let isDaylight { metadata["isDaylight"] = String(isDaylight) }
             metadata = metadataForOrigin(of: draft, base: metadata)
             return Artifact(
                 recordID: recordID,
@@ -211,7 +214,7 @@ struct MemoryCaptureArtifactBuilder {
                 createdAt: createdAt,
                 updatedAt: createdAt
             )
-        case let .music(trackName, artistName, albumName, durationSeconds, artworkURL, artworkPalette, _):
+        case let .music(trackName, artistName, albumName, durationSeconds, artworkURL, artworkData, artworkPalette, _):
             let title = "\(trackName) – \(artistName)"
             let summary = [trackName, artistName, albumName].filter { !$0.isEmpty }.joined(separator: " · ")
             var metadata: [String: String] = [
@@ -221,6 +224,7 @@ struct MemoryCaptureArtifactBuilder {
             ]
             if !albumName.isEmpty { metadata["albumName"] = albumName }
             if let artworkURL { metadata["artworkURL"] = artworkURL }
+            if artworkData != nil { metadata["hasArtworkData"] = "true" }
             if let artworkPalette {
                 metadata.merge(artworkPalette.metadata) { _, new in new }
             }

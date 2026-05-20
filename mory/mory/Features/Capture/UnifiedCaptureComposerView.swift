@@ -79,7 +79,7 @@ struct UnifiedCaptureComposerView: View {
             items.append(.processing(id: "photo", detail: String(localized: "capture.photo.analyzing")))
         }
         if isRefiningVoiceTranscript {
-            items.append(.processing(id: "voice", detail: "Refining voice transcript"))
+            items.append(.processing(id: "voice", detail: String(localized: "capture.voice.refiningTranscript")))
         }
         if isCollectingContext {
             items.append(.processing(id: "context", detail: String(localized: "capture.context.collecting")))
@@ -361,7 +361,7 @@ struct UnifiedCaptureComposerView: View {
         do {
             let rawText = bodyText.trimmedOrNil
                 ?? stagedArtifactDrafts.map(\.captureComposerDetail).joined(separator: "\n").trimmedOrNil
-                ?? "Untitled Memory"
+                ?? String(localized: "capture.memory.untitled")
             let draft = MemoryCaptureDraft(
                 title: resolvedInternalTitle(rawText: rawText),
                 rawText: rawText,
@@ -402,7 +402,7 @@ struct UnifiedCaptureComposerView: View {
     private func resolvedInternalTitle(rawText: String) -> String {
         generatedTitle.generatedMemoryTitle()
             ?? rawText.generatedMemoryTitle()
-            ?? "Untitled Memory"
+            ?? String(localized: "capture.memory.untitled")
     }
 
     private var resolvedCaptureSource: CaptureSource {
@@ -435,7 +435,7 @@ private struct UnifiedAudioCaptureSheet: View {
                     HStack(spacing: 8) {
                         Image(systemName: "record.circle.fill")
                             .foregroundStyle(.red)
-                        Text("Recording \(Int(recorder.recordingDuration))s")
+                        Text(String(format: String(localized: "capture.voice.recordingSeconds.format"), Int(recorder.recordingDuration)))
                             .font(.subheadline.weight(.semibold))
                     }
                 }
@@ -449,7 +449,7 @@ private struct UnifiedAudioCaptureSheet: View {
                 if recorder.isStopping || recorder.isTranscribing {
                     HStack(spacing: 8) {
                         ProgressView()
-                        Text(recorder.isTranscribing ? "Transcribing..." : "Finishing...")
+                        Text(recorder.isTranscribing ? String(localized: "capture.audio.transcribing") : String(localized: "capture.audio.finalizing"))
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
@@ -462,7 +462,7 @@ private struct UnifiedAudioCaptureSheet: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 } else {
-                    Text("Start recording and attach voice to this memory.")
+                    Text("capture.voice.startAttachPrompt")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -470,11 +470,11 @@ private struct UnifiedAudioCaptureSheet: View {
                 Spacer(minLength: 0)
             }
             .padding(20)
-            .navigationTitle("Voice")
+            .navigationTitle("capture.card.kind.audio")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    Button("common.cancel") {
                         Task {
                             await recorder.cancelRecording()
                             dismiss()
@@ -482,13 +482,13 @@ private struct UnifiedAudioCaptureSheet: View {
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") {
+                    Button("capture.action.add") {
                         guard let output = recorder.recordedAudioData else { return }
                         let transcript = resolvedTranscript ?? ""
                         let filename = recorder.recordedFilename ?? "audio_\(Int(Date().timeIntervalSince1970)).caf"
                         let draft = CaptureArtifactDraft.audio(
                             title: nil,
-                            summary: "Voice note",
+                            summary: String(localized: "capture.voice.noteSummary"),
                             filename: filename,
                             audioData: output,
                             transcriptionText: transcript,
@@ -502,13 +502,13 @@ private struct UnifiedAudioCaptureSheet: View {
                 ToolbarItem(placement: .bottomBar) {
                     HStack {
                         if recorder.isRecording {
-                            Button("Stop") {
+                            Button("capture.audio.stop") {
                                 Task { _ = await recorder.stopAndTranscribe() }
                             }
                             .buttonStyle(.borderedProminent)
                             .tint(.red)
                         } else {
-                            Button("Record") {
+                            Button("capture.audio.record") {
                                 Task { await recorder.startRecording() }
                             }
                             .buttonStyle(.borderedProminent)
@@ -516,7 +516,7 @@ private struct UnifiedAudioCaptureSheet: View {
                         }
                         Spacer()
                         if recorder.recordedAudioData != nil {
-                            Button("Retry") {
+                            Button("capture.action.retry") {
                                 recorder.clearRecording()
                             }
                             .buttonStyle(.bordered)
@@ -545,8 +545,8 @@ private struct UnifiedLinkCaptureSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Link") {
-                    TextField("URL", text: $urlText)
+                Section("capture.card.kind.link") {
+                    TextField("capture.field.url", text: $urlText)
                         .textInputAutocapitalization(.never)
                         .keyboardType(.URL)
                         .autocorrectionDisabled()
@@ -554,7 +554,7 @@ private struct UnifiedLinkCaptureSheet: View {
                         .onSubmit {
                             Task { await fetchMetadata() }
                         }
-                    TextField("Note", text: $noteText, axis: .vertical)
+                    TextField("capture.field.note", text: $noteText, axis: .vertical)
                         .lineLimit(2...5)
                 }
 
@@ -562,7 +562,7 @@ private struct UnifiedLinkCaptureSheet: View {
                     Section {
                         HStack(spacing: 8) {
                             ProgressView()
-                            Text("Loading preview...")
+                            Text("capture.link.loadingPreview")
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
                         }
@@ -570,7 +570,7 @@ private struct UnifiedLinkCaptureSheet: View {
                 }
 
                 if let metadata {
-                    Section("Preview") {
+                    Section("capture.section.preview") {
                         if let title = metadata.title?.trimmedOrNil {
                             Text(title).font(.subheadline.weight(.semibold))
                         }
@@ -589,21 +589,21 @@ private struct UnifiedLinkCaptureSheet: View {
                     }
                 }
             }
-            .navigationTitle("Link")
+            .navigationTitle("capture.card.kind.link")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("common.cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") {
+                    Button("capture.action.add") {
                         onAdd(makeDraft())
                         dismiss()
                     }
                     .disabled(urlText.trimmedOrNil == nil)
                 }
                 ToolbarItem(placement: .bottomBar) {
-                    Button("Refresh Preview") {
+                    Button("capture.link.refreshPreview") {
                         Task { await fetchMetadata() }
                     }
                     .disabled(urlText.trimmedOrNil == nil || isFetching)
@@ -617,7 +617,7 @@ private struct UnifiedLinkCaptureSheet: View {
         isFetching = true
         defer { isFetching = false }
         metadata = await LinkMetadataExtractor().extract(urlString: normalizedURL)
-        errorMessage = metadata == nil ? "Could not load link preview." : nil
+        errorMessage = metadata == nil ? String(localized: "capture.link.previewFailed") : nil
     }
 
     private func makeDraft() -> CaptureArtifactDraft {
@@ -651,10 +651,10 @@ private struct UnifiedMusicCaptureSheet: View {
                     Button {
                         Task { await addNowPlaying() }
                     } label: {
-                        Label("Add currently playing song", systemImage: "music.note")
+                        Label("capture.music.addNowPlaying", systemImage: "music.note")
                     }
 
-                    TextField("Search songs", text: $query)
+                    TextField("capture.music.searchSongs", text: $query)
                         .textInputAutocapitalization(.never)
                         .submitLabel(.search)
                         .onSubmit {
@@ -664,7 +664,7 @@ private struct UnifiedMusicCaptureSheet: View {
                     Button {
                         Task { await searchSongs() }
                     } label: {
-                        Label(isSearching ? "Searching..." : "Search", systemImage: "magnifyingglass")
+                        Label(isSearching ? String(localized: "capture.action.searching") : String(localized: "capture.action.search"), systemImage: "magnifyingglass")
                     }
                     .disabled(isSearching || query.trimmedOrNil == nil)
                 }
@@ -673,7 +673,7 @@ private struct UnifiedMusicCaptureSheet: View {
                     Section {
                         HStack(spacing: 8) {
                             ProgressView()
-                            Text("Searching Apple Music catalog...")
+                            Text("capture.music.searchingCatalog")
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
                         }
@@ -681,7 +681,7 @@ private struct UnifiedMusicCaptureSheet: View {
                 }
 
                 if !results.isEmpty {
-                    Section("Results") {
+                    Section("capture.section.results") {
                         ForEach(results) { song in
                             Button {
                                 onAdd(song.toDraft(origin: .manual))
@@ -707,11 +707,11 @@ private struct UnifiedMusicCaptureSheet: View {
                     }
                 }
             }
-            .navigationTitle("Music")
+            .navigationTitle("capture.card.kind.music")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
+                    Button("common.done") { dismiss() }
                 }
             }
         }
@@ -719,12 +719,12 @@ private struct UnifiedMusicCaptureSheet: View {
 
     @MainActor
     private func addNowPlaying() async {
-        if let draft = await musicService.captureNowPlaying(origin: .manual) {
+        if let draft = await musicService.captureCurrentMusicItem(origin: .manual) {
             onAdd(draft)
             errorMessage = nil
             return
         }
-        errorMessage = "No currently playing song available."
+        errorMessage = String(localized: "capture.music.noNowPlaying")
     }
 
     @MainActor
@@ -734,7 +734,7 @@ private struct UnifiedMusicCaptureSheet: View {
         defer { isSearching = false }
         let songs = await musicService.searchSongs(query: normalized, limit: 20)
         results = songs
-        errorMessage = songs.isEmpty ? "No songs found." : nil
+        errorMessage = songs.isEmpty ? String(localized: "capture.music.noSongsFound") : nil
     }
 }
 
@@ -747,20 +747,20 @@ private struct UnifiedTodoCaptureSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Task") {
-                    TextField("Title", text: $title)
-                    TextField("Note", text: $note, axis: .vertical)
+                Section("capture.card.kind.todo") {
+                    TextField("capture.field.title", text: $title)
+                    TextField("capture.field.note", text: $note, axis: .vertical)
                         .lineLimit(2...5)
                 }
             }
-            .navigationTitle("Task")
+            .navigationTitle("capture.card.kind.todo")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("common.cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") {
+                    Button("capture.action.add") {
                         guard let resolvedTitle = title.trimmedOrNil else { return }
                         onAdd(.todo(title: resolvedTitle, note: note.trimmedOrNil, origin: .manual))
                         dismiss()

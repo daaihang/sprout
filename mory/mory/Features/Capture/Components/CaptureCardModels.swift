@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 enum CaptureCardKind: String, CaseIterable, Hashable, Sendable {
@@ -12,14 +13,14 @@ enum CaptureCardKind: String, CaseIterable, Hashable, Sendable {
 
     var label: String {
         switch self {
-        case .photo: return "Photo"
-        case .audio: return "Voice"
-        case .place: return "Place"
-        case .weather: return "Weather"
-        case .music: return "Music"
-        case .link: return "Link"
-        case .todo: return "Task"
-        case .status: return "Status"
+        case .photo: return String(localized: "capture.card.kind.photo")
+        case .audio: return String(localized: "capture.card.kind.audio")
+        case .place: return String(localized: "capture.card.kind.place")
+        case .weather: return String(localized: "capture.card.kind.weather")
+        case .music: return String(localized: "capture.card.kind.music")
+        case .link: return String(localized: "capture.card.kind.link")
+        case .todo: return String(localized: "capture.card.kind.todo")
+        case .status: return String(localized: "capture.card.kind.status")
         }
     }
 
@@ -54,11 +55,11 @@ enum CaptureCardProvenanceDisplayMode: String, CaseIterable, Hashable, Sendable,
     var label: String {
         switch self {
         case .production:
-            return "Production"
+            return String(localized: "capture.card.provenanceDisplay.production")
         case .debug:
-            return "Debug"
+            return String(localized: "capture.card.provenanceDisplay.debug")
         case .hidden:
-            return "Hidden"
+            return String(localized: "capture.card.provenanceDisplay.hidden")
         }
     }
 
@@ -100,18 +101,18 @@ enum CaptureWeatherVisualStyle: String, CaseIterable, Hashable, Sendable, Identi
 
     var label: String {
         switch self {
-        case .sunny: return "Sunny"
-        case .clearNight: return "Clear night"
-        case .cloudy: return "Cloudy"
-        case .rain: return "Rain"
-        case .heavyRain: return "Heavy rain"
-        case .snow: return "Snow"
-        case .thunderstorm: return "Thunderstorm"
-        case .fog: return "Fog"
-        case .wind: return "Wind"
-        case .hot: return "Hot"
-        case .cold: return "Cold"
-        case .unknown: return "Unknown"
+        case .sunny: return String(localized: "capture.card.weather.sunny")
+        case .clearNight: return String(localized: "capture.card.weather.clearNight")
+        case .cloudy: return String(localized: "capture.card.weather.cloudy")
+        case .rain: return String(localized: "capture.card.weather.rain")
+        case .heavyRain: return String(localized: "capture.card.weather.heavyRain")
+        case .snow: return String(localized: "capture.card.weather.snow")
+        case .thunderstorm: return String(localized: "capture.card.weather.thunderstorm")
+        case .fog: return String(localized: "capture.card.weather.fog")
+        case .wind: return String(localized: "capture.card.weather.wind")
+        case .hot: return String(localized: "capture.card.weather.hot")
+        case .cold: return String(localized: "capture.card.weather.cold")
+        case .unknown: return String(localized: "capture.card.weather.unknown")
         }
     }
 
@@ -244,7 +245,25 @@ enum CaptureWeatherVisualStyle: String, CaseIterable, Hashable, Sendable, Identi
         }
     }
 
-    static func resolve(
+    nonisolated static func resolve(
+        conditionCode: String?,
+        condition: String? = nil,
+        temperatureCelsius: Double? = nil,
+        windSpeedKmh: Double? = nil,
+        isDaylight: Bool? = nil
+    ) -> CaptureWeatherVisualStyle {
+        if let style = resolveOfficialConditionCode(conditionCode, isDaylight: isDaylight) {
+            return style
+        }
+        return resolve(
+            condition: condition,
+            temperatureCelsius: temperatureCelsius,
+            windSpeedKmh: windSpeedKmh,
+            isNight: isDaylight == false
+        )
+    }
+
+    nonisolated static func resolve(
         condition: String?,
         temperatureCelsius: Double? = nil,
         windSpeedKmh: Double? = nil,
@@ -252,37 +271,74 @@ enum CaptureWeatherVisualStyle: String, CaseIterable, Hashable, Sendable, Identi
     ) -> CaptureWeatherVisualStyle {
         let value = condition?.lowercased() ?? ""
 
-        if value.contains("thunder") || value.contains("storm") {
+        if value.contains("thunder") || value.contains("storm") || value.contains("雷") || value.contains("台风") || value.contains("飓风") || value.contains("冰雹") {
             return .thunderstorm
         }
-        if value.contains("heavy rain") || value.contains("downpour") {
+        if value.contains("heavy rain") || value.contains("downpour") || value.contains("暴雨") || value.contains("大雨") {
             return .heavyRain
         }
-        if value.contains("rain") || value.contains("shower") || value.contains("drizzle") {
-            return .rain
-        }
-        if value.contains("snow") || value.contains("sleet") || value.contains("hail") {
+        if value.contains("snow") || value.contains("sleet") || value.contains("雪") || value.contains("雨夹雪") || value.contains("冻雨") {
             return .snow
         }
-        if value.contains("fog") || value.contains("mist") || value.contains("haze") {
+        if value.contains("rain") || value.contains("shower") || value.contains("drizzle") || value.contains("雨") || value.contains("阵雨") {
+            return .rain
+        }
+        if value.contains("fog") || value.contains("mist") || value.contains("haze") || value.contains("雾") || value.contains("霾") || value.contains("烟") {
             return .fog
         }
-        if value.contains("wind") || (windSpeedKmh ?? 0) >= 40 {
+        if value.contains("wind") || value.contains("breezy") || value.contains("风") || (windSpeedKmh ?? 0) >= 40 {
             return .wind
+        }
+        if value.contains("hot") || value.contains("炎热") {
+            return .hot
         }
         if let temperatureCelsius, temperatureCelsius >= 32 {
             return .hot
         }
+        if value.contains("frigid") || value.contains("cold") || value.contains("寒冷") {
+            return .cold
+        }
         if let temperatureCelsius, temperatureCelsius <= 2 {
             return .cold
         }
-        if value.contains("cloud") || value.contains("overcast") {
+        if value.contains("cloud") || value.contains("overcast") || value.contains("多云") || value.contains("阴") {
             return .cloudy
         }
-        if value.contains("clear") || value.contains("sun") || value.contains("fair") {
+        if value.contains("clear") || value.contains("sun") || value.contains("fair") || value.contains("晴") || value.contains("无云") {
             return isNight ? .clearNight : .sunny
         }
         return isNight ? .clearNight : .unknown
+    }
+
+    private nonisolated static func resolveOfficialConditionCode(
+        _ conditionCode: String?,
+        isDaylight: Bool?
+    ) -> CaptureWeatherVisualStyle? {
+        guard let normalized = conditionCode?.normalizedWeatherConditionCode else { return nil }
+        switch normalized {
+        case "clear", "mostlyclear":
+            return isDaylight == false ? .clearNight : .sunny
+        case "partlycloudy", "mostlycloudy", "cloudy":
+            return .cloudy
+        case "foggy", "haze", "smoky", "blowingdust":
+            return .fog
+        case "breezy", "windy":
+            return .wind
+        case "drizzle", "rain", "sunshowers":
+            return .rain
+        case "heavyrain":
+            return .heavyRain
+        case "isolatedthunderstorms", "scatteredthunderstorms", "strongstorms", "thunderstorms", "tropicalstorm", "hurricane", "hail":
+            return .thunderstorm
+        case "flurries", "sleet", "snow", "sunflurries", "wintrymix", "blizzard", "blowingsnow", "freezingdrizzle", "freezingrain", "heavysnow":
+            return .snow
+        case "hot":
+            return .hot
+        case "frigid":
+            return .cold
+        default:
+            return nil
+        }
     }
 }
 
@@ -305,11 +361,11 @@ enum CaptureWeatherSymbolMotionLevel: String, CaseIterable, Hashable, Sendable, 
     var label: String {
         switch self {
         case .staticOnly:
-            return "Static"
+            return String(localized: "capture.card.motion.static")
         case .subtle:
-            return "Subtle"
+            return String(localized: "capture.card.motion.subtle")
         case .enhanced:
-            return "Enhanced"
+            return String(localized: "capture.card.motion.enhanced")
         }
     }
 }
@@ -357,11 +413,85 @@ enum CaptureMusicPlaybackState: String, CaseIterable, Hashable, Sendable, Identi
 
     var label: String {
         switch self {
-        case .playing: return "Playing"
-        case .paused: return "Paused"
-        case .stopped: return "Stopped"
-        case .unavailable: return "Unavailable"
-        case .searchResult: return "Search result"
+        case .playing: return String(localized: "capture.card.music.playing")
+        case .paused: return String(localized: "capture.card.music.paused")
+        case .stopped: return String(localized: "capture.card.music.stopped")
+        case .unavailable: return String(localized: "capture.card.music.unavailable")
+        case .searchResult: return String(localized: "capture.card.music.searchResult")
+        }
+    }
+}
+
+enum CaptureMusicCardStyle: String, CaseIterable, Hashable, Sendable, Identifiable {
+    case compactRow
+    case compactTile
+    case cover
+    case auto
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .compactRow: return String(localized: "capture.card.music.style.compactRow")
+        case .compactTile: return String(localized: "capture.card.music.style.compactTile")
+        case .cover: return String(localized: "capture.card.music.style.cover")
+        case .auto: return String(localized: "capture.card.music.style.auto")
+        }
+    }
+
+    func resolved(for item: CaptureCardItem) -> CaptureMusicCardStyle {
+        switch self {
+        case .compactRow:
+            return .compactRow
+        case .compactTile:
+            return .compactTile
+        case .cover:
+            return item.hasArtwork ? .cover : .compactRow
+        case .auto:
+            return .compactRow
+        }
+    }
+}
+
+enum CapturePlaceCardStyle: String, CaseIterable, Hashable, Sendable, Identifiable {
+    case standard
+    case immersive
+    case auto
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .standard: return String(localized: "capture.card.place.style.standard")
+        case .immersive: return String(localized: "capture.card.place.style.immersive")
+        case .auto: return String(localized: "capture.card.place.style.auto")
+        }
+    }
+
+    func resolved(for item: CaptureCardItem) -> CapturePlaceCardStyle {
+        switch self {
+        case .standard:
+            return .standard
+        case .immersive:
+            return .immersive
+        case .auto:
+            return item.mapSnapshotData == nil ? .standard : .standard
+        }
+    }
+}
+
+enum CapturePhotoGroupStyle: String, CaseIterable, Hashable, Sendable, Identifiable {
+    case mosaic
+    case stack
+    case carousel
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .mosaic: return String(localized: "capture.card.photoGroup.mosaic")
+        case .stack: return String(localized: "capture.card.photoGroup.stack")
+        case .carousel: return String(localized: "capture.card.photoGroup.carousel")
         }
     }
 }
@@ -375,12 +505,17 @@ struct CaptureCardItem: Identifiable, Hashable, Sendable {
     var detail: String
     var metadata: String?
     var thumbnailData: Data?
+    var photoCount: Int
+    var photoGroupStyle: CapturePhotoGroupStyle?
     var artworkURL: String?
     var artworkPalette: MusicArtworkPalette?
     var latitude: Double?
     var longitude: Double?
     var durationSeconds: Int?
     var weatherStyle: CaptureWeatherVisualStyle?
+    var weatherConditionCode: String?
+    var weatherSymbolName: String?
+    var weatherIsDaylight: Bool?
     var musicPlaybackState: CaptureMusicPlaybackState?
     var mapSnapshotData: Data?
     var isLocationPrivacyEnabled: Bool
@@ -388,7 +523,7 @@ struct CaptureCardItem: Identifiable, Hashable, Sendable {
     var isRemovable: Bool
 
     var displaysSelection: Bool {
-        state == .normal && isSelected
+        state == .normal && isSelected && !displaysRemoveControl
     }
 
     var allowsPrimaryAction: Bool {
@@ -397,6 +532,14 @@ struct CaptureCardItem: Identifiable, Hashable, Sendable {
 
     var displaysRemoveControl: Bool {
         isRemovable && (state == .normal || state == .error)
+    }
+
+    var hasTrailingControl: Bool {
+        state == .loading || state == .error || displaysRemoveControl || displaysSelection
+    }
+
+    var topTrailingAvoidance: CGFloat {
+        hasTrailingControl ? 42 : 0
     }
 
     init(
@@ -408,12 +551,17 @@ struct CaptureCardItem: Identifiable, Hashable, Sendable {
         detail: String,
         metadata: String? = nil,
         thumbnailData: Data? = nil,
+        photoCount: Int = 1,
+        photoGroupStyle: CapturePhotoGroupStyle? = nil,
         artworkURL: String? = nil,
         artworkPalette: MusicArtworkPalette? = nil,
         latitude: Double? = nil,
         longitude: Double? = nil,
         durationSeconds: Int? = nil,
         weatherStyle: CaptureWeatherVisualStyle? = nil,
+        weatherConditionCode: String? = nil,
+        weatherSymbolName: String? = nil,
+        weatherIsDaylight: Bool? = nil,
         musicPlaybackState: CaptureMusicPlaybackState? = nil,
         mapSnapshotData: Data? = nil,
         isLocationPrivacyEnabled: Bool = false,
@@ -428,17 +576,28 @@ struct CaptureCardItem: Identifiable, Hashable, Sendable {
         self.detail = detail
         self.metadata = metadata
         self.thumbnailData = thumbnailData
+        self.photoCount = photoCount
+        self.photoGroupStyle = photoGroupStyle
         self.artworkURL = artworkURL
         self.artworkPalette = artworkPalette
         self.latitude = latitude
         self.longitude = longitude
         self.durationSeconds = durationSeconds
         self.weatherStyle = weatherStyle
+        self.weatherConditionCode = weatherConditionCode
+        self.weatherSymbolName = weatherSymbolName
+        self.weatherIsDaylight = weatherIsDaylight
         self.musicPlaybackState = musicPlaybackState
         self.mapSnapshotData = mapSnapshotData
         self.isLocationPrivacyEnabled = isLocationPrivacyEnabled
         self.isSelected = isSelected
         self.isRemovable = isRemovable
+    }
+}
+
+extension CaptureCardItem {
+    var hasArtwork: Bool {
+        kind == .music && (artworkURL?.trimmedOrNil != nil || thumbnailData != nil)
     }
 }
 
@@ -455,7 +614,12 @@ extension CaptureCardItem {
             thumbnailData: item.thumbnailData,
             artworkURL: item.artworkURL,
             artworkPalette: item.artworkPalette,
+            latitude: item.latitude,
+            longitude: item.longitude,
             weatherStyle: item.weatherStyle,
+            weatherConditionCode: item.weatherConditionCode,
+            weatherSymbolName: item.weatherSymbolName,
+            weatherIsDaylight: item.weatherIsDaylight,
             isSelected: item.isSelected,
             isRemovable: item.isRemovable
         )
@@ -474,8 +638,8 @@ extension CaptureCardItem {
                 kind: .status,
                 origin: origin,
                 state: state,
-                title: title ?? "Text",
-                detail: captureCardModelSnippet(body) ?? "Text"
+                title: title ?? String(localized: "capture.card.kind.text"),
+                detail: captureCardModelSnippet(body) ?? String(localized: "capture.card.kind.text")
             )
         case let .photo(title, summary, filename, _, thumbnailData, ocrText, _, origin):
             self.init(
@@ -484,7 +648,7 @@ extension CaptureCardItem {
                 origin: origin,
                 state: state,
                 title: title,
-                detail: [captureCardModelSnippet(summary), captureCardModelSnippet(ocrText), filename.trimmedOrNil].compactMap { $0 }.first ?? "Photo attached",
+                detail: [captureCardModelSnippet(summary), captureCardModelSnippet(ocrText), filename.trimmedOrNil].compactMap { $0 }.first ?? String(localized: "capture.card.photo.attached"),
                 metadata: filename.trimmedOrNil,
                 thumbnailData: thumbnailData,
                 isRemovable: origin == .manual || origin == .context
@@ -495,8 +659,8 @@ extension CaptureCardItem {
                 kind: .audio,
                 origin: origin,
                 state: state,
-                title: title ?? "Voice",
-                detail: captureCardModelSnippet(transcriptionText) ?? captureCardModelSnippet(summary) ?? "Voice attached",
+                title: title ?? String(localized: "capture.card.kind.audio"),
+                detail: captureCardModelSnippet(transcriptionText) ?? captureCardModelSnippet(summary) ?? String(localized: "capture.card.audio.attached"),
                 metadata: filename.trimmedOrNil,
                 isRemovable: origin == .manual || origin == .context
             )
@@ -506,9 +670,9 @@ extension CaptureCardItem {
                 kind: .place,
                 origin: origin,
                 state: state,
-                title: title ?? "Place",
-                detail: captureCardModelSnippet(summary) ?? "Location attached",
-                metadata: coordinateMetadata(latitude: latitude, longitude: longitude),
+                title: title ?? String(localized: "capture.card.kind.place"),
+                detail: captureCardModelSnippet(summary) ?? String(localized: "capture.card.place.attached"),
+                metadata: nil,
                 latitude: latitude,
                 longitude: longitude,
                 isSelected: false,
@@ -520,8 +684,8 @@ extension CaptureCardItem {
                 kind: .link,
                 origin: origin,
                 state: state,
-                title: title ?? "Link",
-                detail: summary.flatMap(captureCardModelSnippet) ?? note.flatMap(captureCardModelSnippet) ?? captureCardModelSnippet(url) ?? "Link attached",
+                title: title ?? String(localized: "capture.card.kind.link"),
+                detail: summary.flatMap(captureCardModelSnippet) ?? note.flatMap(captureCardModelSnippet) ?? captureCardModelSnippet(url) ?? String(localized: "capture.card.link.attached"),
                 metadata: URL(string: url)?.host() ?? url,
                 thumbnailData: thumbnailData,
                 isRemovable: origin == .manual || origin == .context
@@ -533,26 +697,40 @@ extension CaptureCardItem {
                 origin: origin,
                 state: state,
                 title: title,
-                detail: note.flatMap(captureCardModelSnippet) ?? "Task",
-                metadata: "Task",
+                detail: note.flatMap(captureCardModelSnippet) ?? String(localized: "capture.card.kind.todo"),
+                metadata: String(localized: "capture.card.kind.todo"),
                 isRemovable: origin == .manual || origin == .context
             )
-        case let .weather(condition, temp, humidity, windSpeed, uvIndex, latitude, longitude, origin):
+        case let .weather(condition, temp, humidity, windSpeed, uvIndex, latitude, longitude, conditionCode, symbolName, isDaylight, origin):
             self.init(
                 id: id ?? "draft-\(draft.id)",
                 kind: .weather,
                 origin: origin,
                 state: state,
                 title: condition,
-                detail: "\(String(format: "%.0f", temp))°C · \(String(format: "%.0f", humidity * 100))% humidity · wind \(String(format: "%.0f", windSpeed)) km/h",
-                metadata: "UV \(uvIndex)",
+                detail: String(
+                    format: String(localized: "capture.card.weather.detail.format"),
+                    temp,
+                    humidity * 100,
+                    windSpeed
+                ),
+                metadata: String(format: String(localized: "capture.card.weather.uv.format"), uvIndex),
                 latitude: latitude,
                 longitude: longitude,
-                weatherStyle: .resolve(condition: condition, temperatureCelsius: temp, windSpeedKmh: windSpeed),
+                weatherStyle: .resolve(
+                    conditionCode: conditionCode,
+                    condition: condition,
+                    temperatureCelsius: temp,
+                    windSpeedKmh: windSpeed,
+                    isDaylight: isDaylight
+                ),
+                weatherConditionCode: conditionCode,
+                weatherSymbolName: symbolName,
+                weatherIsDaylight: isDaylight,
                 isSelected: false,
                 isRemovable: origin == .manual || origin == .context
             )
-        case let .music(trackName, artistName, albumName, durationSeconds, artworkURL, artworkPalette, origin):
+        case let .music(trackName, artistName, albumName, durationSeconds, artworkURL, artworkData, artworkPalette, origin):
             self.init(
                 id: id ?? "draft-\(draft.id)",
                 kind: .music,
@@ -560,7 +738,8 @@ extension CaptureCardItem {
                 state: state,
                 title: trackName,
                 detail: [artistName.trimmedOrNil, albumName.trimmedOrNil].compactMap { $0 }.joined(separator: " · "),
-                metadata: musicPlaybackState?.label ?? (origin == .context ? "Now playing" : "Music"),
+                metadata: nil,
+                thumbnailData: artworkData,
                 artworkURL: artworkURL,
                 artworkPalette: artworkPalette,
                 durationSeconds: durationSeconds,
@@ -600,17 +779,19 @@ enum CaptureCardLabFixtures {
         CaptureCardItem(
             id: "fixture-photo",
             kind: .photo,
-            title: "Weekend light",
-            detail: "Three photos from the kitchen table.",
-            metadata: "3 images",
+            title: String(localized: "debug.captureCardLab.fixture.photo.title"),
+            detail: String(localized: "debug.captureCardLab.fixture.photo.detail"),
+            metadata: String(format: String(localized: "capture.card.photo.count.format"), 3),
+            photoCount: 3,
+            photoGroupStyle: .mosaic,
             isRemovable: true
         ),
         CaptureCardItem(
             id: "fixture-audio",
             kind: .audio,
-            title: "Voice note",
-            detail: "I should remember the way this idea clicked after lunch.",
-            metadata: "Transcript ready",
+            title: String(localized: "debug.captureCardLab.fixture.audio.title"),
+            detail: String(localized: "debug.captureCardLab.fixture.audio.detail"),
+            metadata: String(localized: "debug.captureCardLab.fixture.audio.metadata"),
             durationSeconds: 74,
             isRemovable: true
         ),
@@ -618,22 +799,22 @@ enum CaptureCardLabFixtures {
             id: "fixture-place",
             kind: .place,
             origin: .context,
-            title: "Anfu Road",
-            detail: "Shanghai, near the corner cafe.",
+            title: String(localized: "debug.captureCardLab.fixture.place.title"),
+            detail: String(localized: "debug.captureCardLab.fixture.place.detail"),
             metadata: "31.218, 121.446",
             latitude: 31.218,
             longitude: 121.446,
-            isSelected: true
+            isRemovable: true
         ),
         CaptureCardItem(
             id: "fixture-weather",
             kind: .weather,
             origin: .context,
-            title: "Cloudy",
+            title: String(localized: "capture.card.weather.cloudy"),
             detail: "23°C · light wind · humidity 61%",
-            metadata: "Captured nearby",
+            metadata: String(localized: "debug.captureCardLab.fixture.weather.metadata"),
             weatherStyle: .cloudy,
-            isSelected: true
+            isRemovable: true
         ),
         CaptureCardItem(
             id: "fixture-music",
@@ -641,25 +822,25 @@ enum CaptureCardLabFixtures {
             origin: .context,
             title: "Midnight City",
             detail: "M83 · Hurry Up, We're Dreaming",
-            metadata: "Now playing",
+            metadata: String(localized: "capture.card.music.nowPlaying"),
             durationSeconds: 244,
             musicPlaybackState: .playing,
-            isSelected: true
+            isRemovable: true
         ),
         CaptureCardItem(
             id: "fixture-link",
             kind: .link,
             title: "SwiftUI ToolbarItemPlacement",
             detail: "developer.apple.com/documentation/swiftui/toolbaritemplacement",
-            metadata: "Apple Developer",
+            metadata: String(localized: "debug.captureCardLab.fixture.link.metadata"),
             isRemovable: true
         ),
         CaptureCardItem(
             id: "fixture-todo",
             kind: .todo,
-            title: "Follow up",
-            detail: "Send the draft invitation before Friday.",
-            metadata: "Task",
+            title: String(localized: "debug.captureCardLab.fixture.todo.title"),
+            detail: String(localized: "debug.captureCardLab.fixture.todo.detail"),
+            metadata: String(localized: "capture.card.kind.todo"),
             isRemovable: true
         ),
     ]
@@ -669,13 +850,13 @@ enum CaptureCardLabFixtures {
             id: "origin-\(origin.rawValue)",
             kind: .place,
             origin: origin,
-            title: "Same place",
-            detail: "One place card rendered with \(origin.captureBadgeLabel) origin.",
-            metadata: origin.rawValue,
+            title: String(localized: "debug.captureCardLab.origins.title"),
+            detail: String(localized: "debug.captureCardLab.origins.detail"),
+            metadata: nil,
             latitude: 31.218,
             longitude: 121.446,
-            isSelected: origin == .context,
-            isRemovable: origin == .manual
+            isSelected: false,
+            isRemovable: false
         )
     }
 
@@ -683,17 +864,16 @@ enum CaptureCardLabFixtures {
         CaptureCardItem(
             id: "state-normal",
             kind: .music,
-            title: "Normal",
-            detail: "A regular card with no transient state.",
-            metadata: "Ready"
+            title: String(localized: "debug.captureCardLab.state.normal.title"),
+            detail: String(localized: "debug.captureCardLab.state.normal.detail"),
+            metadata: String(localized: "debug.captureCardLab.state.normal.metadata")
         ),
         CaptureCardItem(
             id: "state-selected",
             kind: .weather,
-            origin: .context,
-            title: "Selected",
-            detail: "Context cards can be selected without changing their content type.",
-            metadata: "Context",
+            title: String(localized: "debug.captureCardLab.state.selected.title"),
+            detail: String(localized: "debug.captureCardLab.state.selected.detail"),
+            metadata: String(localized: "capture.card.selected"),
             isSelected: true
         ),
         CaptureCardItem(
@@ -701,33 +881,33 @@ enum CaptureCardLabFixtures {
             kind: .status,
             origin: nil,
             state: .loading,
-            title: "Collecting context",
-            detail: "Looking for nearby place, weather, and music.",
-            metadata: "Working"
+            title: String(localized: "debug.captureCardLab.state.loading.title"),
+            detail: String(localized: "debug.captureCardLab.state.loading.detail"),
+            metadata: String(localized: "capture.card.kind.working")
         ),
         CaptureCardItem(
             id: "state-error",
             kind: .status,
             origin: nil,
             state: .error,
-            title: "Context failed",
-            detail: "Location permission is unavailable.",
-            metadata: "Retry available"
+            title: String(localized: "debug.captureCardLab.state.error.title"),
+            detail: String(localized: "debug.captureCardLab.state.error.detail"),
+            metadata: String(localized: "debug.captureCardLab.state.error.metadata")
         ),
         CaptureCardItem(
             id: "state-disabled",
             kind: .link,
             state: .disabled,
-            title: "Disabled",
-            detail: "This card is visible but not currently interactive.",
-            metadata: "Unavailable"
+            title: String(localized: "debug.captureCardLab.state.disabled.title"),
+            detail: String(localized: "debug.captureCardLab.state.disabled.detail"),
+            metadata: String(localized: "capture.card.music.unavailable")
         ),
         CaptureCardItem(
             id: "state-removable",
             kind: .photo,
-            title: "Removable",
-            detail: "Manual attachments can expose a remove affordance.",
-            metadata: "Manual",
+            title: String(localized: "debug.captureCardLab.state.removable.title"),
+            detail: String(localized: "debug.captureCardLab.state.removable.detail"),
+            metadata: String(localized: "debug.captureCardLab.state.removable.metadata"),
             isRemovable: true
         ),
     ]
@@ -737,7 +917,7 @@ enum CaptureCardLabFixtures {
             id: "edge-long",
             kind: .audio,
             title: nil,
-            detail: "A very long transcript preview that should wrap cleanly without making the card feel like a form field or requiring the user to create an artificial title before saving a memory.",
+            detail: String(localized: "debug.captureCardLab.edge.longTranscript.detail"),
             metadata: "12:04",
             durationSeconds: 724,
             isRemovable: true
@@ -746,26 +926,76 @@ enum CaptureCardLabFixtures {
             id: "edge-no-image",
             kind: .photo,
             title: nil,
-            detail: "Photo has no generated thumbnail yet.",
-            metadata: "Processing",
+            detail: String(localized: "debug.captureCardLab.edge.noImage.detail"),
+            metadata: String(localized: "debug.captureCardLab.status.processing"),
             isRemovable: true
         ),
         CaptureCardItem(
             id: "edge-manual-music",
             kind: .music,
             origin: .manual,
-            title: "Searched song",
-            detail: "A manually searched song should not look like automatic context.",
-            metadata: "Manual"
+            title: String(localized: "debug.captureCardLab.edge.manualMusic.title"),
+            detail: String(localized: "debug.captureCardLab.edge.manualMusic.detail"),
+            metadata: String(localized: "capture.card.music.searchResult")
         ),
         CaptureCardItem(
             id: "edge-context-weather",
             kind: .weather,
             origin: .context,
-            title: "Rain",
+            title: String(localized: "capture.card.weather.rain"),
             detail: "16°C · umbrella weather",
-            metadata: "Context",
+            metadata: "UV 2",
             isSelected: false
+        ),
+        CaptureCardItem(
+            id: "edge-weather-zh-mostly-clear",
+            kind: .weather,
+            origin: .context,
+            title: "大部晴朗无云",
+            detail: "21°C · 湿度 48%",
+            metadata: "UV 4",
+            weatherStyle: .resolve(condition: "大部晴朗无云"),
+            isRemovable: true
+        ),
+        CaptureCardItem(
+            id: "edge-weather-zh-mostly-cloudy",
+            kind: .weather,
+            origin: .context,
+            title: "大部多云",
+            detail: "19°C · 湿度 64%",
+            metadata: "UV 2",
+            weatherStyle: .resolve(condition: "大部多云"),
+            isRemovable: true
+        ),
+        CaptureCardItem(
+            id: "edge-weather-zh-thunder-shower",
+            kind: .weather,
+            origin: .context,
+            title: "雷阵雨",
+            detail: "17°C · 湿度 86%",
+            metadata: "UV 1",
+            weatherStyle: .resolve(condition: "雷阵雨"),
+            isRemovable: true
+        ),
+        CaptureCardItem(
+            id: "edge-weather-zh-wintry-mix",
+            kind: .weather,
+            origin: .context,
+            title: "雨夹雪",
+            detail: "1°C · 湿度 82%",
+            metadata: "UV 0",
+            weatherStyle: .resolve(condition: "雨夹雪"),
+            isRemovable: true
+        ),
+        CaptureCardItem(
+            id: "edge-weather-zh-haze",
+            kind: .weather,
+            origin: .context,
+            title: "霾",
+            detail: "12°C · 湿度 58%",
+            metadata: "UV 1",
+            weatherStyle: .resolve(condition: "霾"),
+            isRemovable: true
         ),
     ]
 
@@ -775,31 +1005,69 @@ enum CaptureCardLabFixtures {
             kind: .status,
             origin: nil,
             state: .loading,
-            title: "Collecting context",
-            detail: "Checking place, weather, and currently playing music."
+            title: String(localized: "debug.captureCardLab.status.context.title"),
+            detail: String(localized: "debug.captureCardLab.status.context.detail")
         ),
         CaptureCardItem(
             id: "status-empty-context",
             kind: .status,
             origin: nil,
-            title: "No context found",
-            detail: "Nothing automatic will be added unless the user chooses it."
+            title: String(localized: "debug.captureCardLab.status.emptyContext.title"),
+            detail: String(localized: "debug.captureCardLab.status.emptyContext.detail")
         ),
         CaptureCardItem(
             id: "status-photo-processing",
             kind: .status,
             origin: nil,
             state: .loading,
-            title: "Processing photo",
-            detail: "Preparing the image attachment."
+            title: String(localized: "debug.captureCardLab.status.photoProcessing.title"),
+            detail: String(localized: "debug.captureCardLab.status.photoProcessing.detail")
         ),
         CaptureCardItem(
             id: "status-voice-refining",
             kind: .status,
             origin: nil,
             state: .loading,
-            title: "Refining transcript",
-            detail: "Cleaning repeated words and generating a concise internal title."
+            title: String(localized: "debug.captureCardLab.status.voiceRefining.title"),
+            detail: String(localized: "debug.captureCardLab.status.voiceRefining.detail")
+        ),
+    ]
+
+    static let photoGroups: [CaptureCardItem] = [
+        CaptureCardItem(
+            id: "photo-single",
+            kind: .photo,
+            title: String(localized: "debug.captureCardLab.photo.single.title"),
+            detail: String(localized: "debug.captureCardLab.photo.single.detail"),
+            metadata: String(format: String(localized: "capture.card.photo.count.format"), 1),
+            photoCount: 1
+        ),
+        CaptureCardItem(
+            id: "photo-group-mosaic",
+            kind: .photo,
+            title: String(localized: "debug.captureCardLab.photo.mosaic.title"),
+            detail: String(localized: "debug.captureCardLab.photo.mosaic.detail"),
+            metadata: String(format: String(localized: "capture.card.photo.count.format"), 4),
+            photoCount: 4,
+            photoGroupStyle: .mosaic
+        ),
+        CaptureCardItem(
+            id: "photo-group-stack",
+            kind: .photo,
+            title: String(localized: "debug.captureCardLab.photo.stack.title"),
+            detail: String(localized: "debug.captureCardLab.photo.stack.detail"),
+            metadata: String(format: String(localized: "capture.card.photo.count.format"), 5),
+            photoCount: 5,
+            photoGroupStyle: .stack
+        ),
+        CaptureCardItem(
+            id: "photo-group-carousel",
+            kind: .photo,
+            title: String(localized: "debug.captureCardLab.photo.carousel.title"),
+            detail: String(localized: "debug.captureCardLab.photo.carousel.detail"),
+            metadata: String(format: String(localized: "capture.card.photo.count.format"), 8),
+            photoCount: 8,
+            photoGroupStyle: .carousel
         ),
     ]
 
@@ -810,7 +1078,7 @@ enum CaptureCardLabFixtures {
             origin: .context,
             title: "Midnight City",
             detail: "M83 · Hurry Up, We're Dreaming",
-            metadata: "Now playing",
+            metadata: String(localized: "capture.card.music.nowPlaying"),
             durationSeconds: 244,
             musicPlaybackState: .playing,
             isSelected: true
@@ -821,7 +1089,7 @@ enum CaptureCardLabFixtures {
             origin: .manual,
             title: "Sunshine Baby",
             detail: "The Japanese House · In the End It Always Does",
-            metadata: "Search result",
+            metadata: String(localized: "capture.card.music.searchResult"),
             durationSeconds: 220,
             musicPlaybackState: .searchResult,
             isRemovable: true
@@ -830,9 +1098,9 @@ enum CaptureCardLabFixtures {
             id: "music-fixture-paused",
             kind: .music,
             origin: .context,
-            title: "Paused song",
-            detail: "A context candidate should calm down when playback pauses.",
-            metadata: "Paused",
+            title: String(localized: "debug.captureCardLab.music.paused.title"),
+            detail: String(localized: "debug.captureCardLab.music.paused.detail"),
+            metadata: String(localized: "capture.card.music.paused"),
             durationSeconds: 184,
             musicPlaybackState: .paused
         ),
@@ -841,28 +1109,28 @@ enum CaptureCardLabFixtures {
     static let placeScenarios: [CapturePlaceLabScenario] = [
         CapturePlaceLabScenario(
             id: "current-place",
-            label: "Current context",
+            label: String(localized: "debug.captureCardLab.place.current.label"),
             item: CaptureCardItem(
                 id: "place-current",
                 kind: .place,
                 origin: .context,
-                title: "Anfu Road",
-                detail: "Shanghai · near the corner cafe",
+                title: String(localized: "debug.captureCardLab.fixture.place.title"),
+                detail: String(localized: "debug.captureCardLab.place.current.detail"),
                 metadata: "31.218, 121.446",
                 latitude: 31.218,
                 longitude: 121.446,
-                isSelected: true
+                isRemovable: true
             )
         ),
         CapturePlaceLabScenario(
             id: "manual-pin",
-            label: "Manual map pin",
+            label: String(localized: "debug.captureCardLab.place.manual.label"),
             item: CaptureCardItem(
                 id: "place-manual",
                 kind: .place,
                 origin: .manual,
-                title: "Selected point",
-                detail: "A hand-picked point on the map.",
+                title: String(localized: "debug.captureCardLab.place.manual.title"),
+                detail: String(localized: "debug.captureCardLab.place.manual.detail"),
                 metadata: "31.230, 121.474",
                 latitude: 31.230,
                 longitude: 121.474,
@@ -871,14 +1139,14 @@ enum CaptureCardLabFixtures {
         ),
         CapturePlaceLabScenario(
             id: "search-result",
-            label: "Search result",
+            label: String(localized: "capture.card.music.searchResult"),
             item: CaptureCardItem(
                 id: "place-search",
                 kind: .place,
                 origin: .manual,
                 title: "Shanghai Library",
                 detail: "1555 Huaihai Middle Road",
-                metadata: "Search",
+                metadata: String(localized: "capture.action.search"),
                 latitude: 31.207,
                 longitude: 121.444,
                 isRemovable: true
@@ -886,43 +1154,43 @@ enum CaptureCardLabFixtures {
         ),
         CapturePlaceLabScenario(
             id: "same-name-far",
-            label: "Same name far away",
+            label: String(localized: "debug.captureCardLab.place.sameNameFar.label"),
             item: CaptureCardItem(
                 id: "place-same-name-far",
                 kind: .place,
                 origin: .inferred,
                 title: "Blue Bottle Coffee",
-                detail: "Name match but coordinates should keep it separate.",
-                metadata: "Far coordinate",
+                detail: String(localized: "debug.captureCardLab.place.sameNameFar.detail"),
+                metadata: String(localized: "debug.captureCardLab.place.sameNameFar.metadata"),
                 latitude: 37.776,
                 longitude: -122.423
             )
         ),
         CapturePlaceLabScenario(
             id: "near-different-name",
-            label: "Near different name",
+            label: String(localized: "debug.captureCardLab.place.nearDifferentName.label"),
             item: CaptureCardItem(
                 id: "place-near-different-name",
                 kind: .place,
                 origin: .context,
-                title: "Different reverse geocode",
-                detail: "Coordinates are close, but the resolved name changed.",
-                metadata: "Nearby",
+                title: String(localized: "debug.captureCardLab.place.nearDifferentName.title"),
+                detail: String(localized: "debug.captureCardLab.place.nearDifferentName.detail"),
+                metadata: String(localized: "debug.captureCardLab.place.nearDifferentName.metadata"),
                 latitude: 31.2184,
                 longitude: 121.4463,
-                isSelected: true
+                isRemovable: true
             )
         ),
         CapturePlaceLabScenario(
             id: "no-coordinate",
-            label: "No coordinate",
+            label: String(localized: "debug.captureCardLab.place.noCoordinate.label"),
             item: CaptureCardItem(
                 id: "place-no-coordinate",
                 kind: .place,
                 origin: .imported,
-                title: "Imported place name",
-                detail: "No coordinates available yet.",
-                metadata: "No map"
+                title: String(localized: "debug.captureCardLab.place.noCoordinate.title"),
+                detail: String(localized: "debug.captureCardLab.place.noCoordinate.detail"),
+                metadata: String(localized: "debug.captureCardLab.place.noCoordinate.metadata")
             )
         ),
     ]
@@ -948,4 +1216,13 @@ private func captureCardModelSnippet(_ string: String) -> String? {
         .joined(separator: " ")
     guard collapsed.count > 96 else { return collapsed }
     return String(collapsed.prefix(93)).trimmingCharacters(in: .whitespacesAndNewlines) + "..."
+}
+
+private extension String {
+    nonisolated var normalizedWeatherConditionCode: String? {
+        let normalized = trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+            .filter { $0.isLetter || $0.isNumber }
+        return normalized.isEmpty ? nil : String(normalized)
+    }
 }

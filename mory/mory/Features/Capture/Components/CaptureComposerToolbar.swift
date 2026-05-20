@@ -27,20 +27,20 @@ struct CaptureComposerToolbar: ToolbarContent {
     private var actionStrip: some View {
         ScrollView(.horizontal) {
             HStack(spacing: 8) {
-                actionButton(icon: "camera", title: "Camera", action: onCamera)
+                actionButton(icon: "camera", title: String(localized: "capture.toolbar.camera"), action: onCamera)
                     .disabled(isProcessingPhoto)
 
                 PhotosPicker(selection: $selectedPhotoItems, maxSelectionCount: 0, matching: .images) {
-                    actionButtonLabel(icon: "photo.on.rectangle", title: "Photo")
+                    actionButtonLabel(icon: "photo.on.rectangle", title: String(localized: "capture.toolbar.photo"))
                 }
                 .disabled(isProcessingPhoto)
 
-                actionButton(icon: "mic", title: "Voice", action: onAudio)
-                actionButton(icon: "link", title: "Link", action: onLink)
-                actionButton(icon: "music.note", title: "Music", action: onMusic)
-                actionButton(icon: "mappin.and.ellipse", title: "Place", action: onLocation)
-                actionButton(icon: "checklist", title: "Task", action: onTodo)
-                actionButton(icon: "arrow.clockwise", title: "Context", action: onRefreshContext)
+                actionButton(icon: "mic", title: String(localized: "capture.toolbar.voice"), action: onAudio)
+                actionButton(icon: "link", title: String(localized: "capture.toolbar.link"), action: onLink)
+                actionButton(icon: "music.note", title: String(localized: "capture.toolbar.music"), action: onMusic)
+                actionButton(icon: "mappin.and.ellipse", title: String(localized: "capture.toolbar.place"), action: onLocation)
+                actionButton(icon: "checklist", title: String(localized: "capture.toolbar.task"), action: onTodo)
+                actionButton(icon: "arrow.clockwise", title: String(localized: "capture.toolbar.context"), action: onRefreshContext)
                     .disabled(isCollectingContext)
             }
             .padding(.vertical, 4)

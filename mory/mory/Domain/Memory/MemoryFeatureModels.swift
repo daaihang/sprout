@@ -145,8 +145,8 @@ enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
     case location(title: String?, summary: String, latitude: Double?, longitude: Double?, origin: CaptureArtifactOrigin = .manual)
     case link(title: String?, url: String, note: String?, summary: String? = nil, metadata: [String: String] = [:], thumbnailData: Data? = nil, origin: CaptureArtifactOrigin = .manual)
     case todo(title: String, note: String?, origin: CaptureArtifactOrigin = .manual)
-    case weather(condition: String, temperatureCelsius: Double, humidity: Double, windSpeedKmh: Double, uvIndex: Int, latitude: Double? = nil, longitude: Double? = nil, origin: CaptureArtifactOrigin = .manual)
-    case music(trackName: String, artistName: String, albumName: String, durationSeconds: Int, artworkURL: String?, artworkPalette: MusicArtworkPalette? = nil, origin: CaptureArtifactOrigin = .manual)
+    case weather(condition: String, temperatureCelsius: Double, humidity: Double, windSpeedKmh: Double, uvIndex: Int, latitude: Double? = nil, longitude: Double? = nil, conditionCode: String? = nil, symbolName: String? = nil, isDaylight: Bool? = nil, origin: CaptureArtifactOrigin = .manual)
+    case music(trackName: String, artistName: String, albumName: String, durationSeconds: Int, artworkURL: String?, artworkData: Data? = nil, artworkPalette: MusicArtworkPalette? = nil, origin: CaptureArtifactOrigin = .manual)
 
     var id: String {
         switch self {
@@ -162,9 +162,9 @@ enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
             return "link-\(title ?? url)"
         case let .todo(title, note, _):
             return "todo-\(title)-\(note ?? "")"
-        case let .weather(condition, temp, _, _, _, _, _, _):
+        case let .weather(condition, temp, _, _, _, _, _, _, _, _, _):
             return "weather-\(condition)-\(temp)"
-        case let .music(trackName, artistName, _, _, _, _, _):
+        case let .music(trackName, artistName, _, _, _, _, _, _):
             return "music-\(trackName)-\(artistName)"
         }
     }
@@ -213,9 +213,9 @@ enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
                 .trimmedOrNil
                 ?? note?.trimmedOrNil
                 ?? title
-        case let .weather(condition, temp, humidity, _, _, _, _, _):
+        case let .weather(condition, temp, humidity, _, _, _, _, _, _, _, _):
             return "\(condition) \(String(format: "%.0f", temp))°C · Humidity \(String(format: "%.0f", humidity * 100))%"
-        case let .music(trackName, artistName, albumName, _, _, _, _):
+        case let .music(trackName, artistName, albumName, _, _, _, _, _):
             return [trackName, artistName, albumName].filter { !$0.isEmpty }.joined(separator: " · ")
         }
     }
@@ -234,9 +234,9 @@ enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
             return origin
         case let .todo(_, _, origin):
             return origin
-        case let .weather(_, _, _, _, _, _, _, origin):
+        case let .weather(_, _, _, _, _, _, _, _, _, _, origin):
             return origin
-        case let .music(_, _, _, _, _, _, origin):
+        case let .music(_, _, _, _, _, _, _, origin):
             return origin
         }
     }
@@ -285,7 +285,7 @@ enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
             )
         case let .todo(title, note, _):
             return .todo(title: title, note: note, origin: origin)
-        case let .weather(condition, temperatureCelsius, humidity, windSpeedKmh, uvIndex, latitude, longitude, _):
+        case let .weather(condition, temperatureCelsius, humidity, windSpeedKmh, uvIndex, latitude, longitude, conditionCode, symbolName, isDaylight, _):
             return .weather(
                 condition: condition,
                 temperatureCelsius: temperatureCelsius,
@@ -294,15 +294,19 @@ enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
                 uvIndex: uvIndex,
                 latitude: latitude,
                 longitude: longitude,
+                conditionCode: conditionCode,
+                symbolName: symbolName,
+                isDaylight: isDaylight,
                 origin: origin
             )
-        case let .music(trackName, artistName, albumName, durationSeconds, artworkURL, artworkPalette, _):
+        case let .music(trackName, artistName, albumName, durationSeconds, artworkURL, artworkData, artworkPalette, _):
             return .music(
                 trackName: trackName,
                 artistName: artistName,
                 albumName: albumName,
                 durationSeconds: durationSeconds,
                 artworkURL: artworkURL,
+                artworkData: artworkData,
                 artworkPalette: artworkPalette,
                 origin: origin
             )

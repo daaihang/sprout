@@ -32,14 +32,14 @@ struct CaptureComposerAttachmentItem: Identifiable {
 
         var label: String {
             switch self {
-            case .photo: return "Photo"
-            case .audio: return "Voice"
-            case .location: return "Location"
-            case .link: return "Link"
-            case .todo: return "Task"
-            case .weather: return "Weather"
-            case .music: return "Music"
-            case .status: return "Working"
+            case .photo: return String(localized: "capture.card.kind.photo")
+            case .audio: return String(localized: "capture.card.kind.audio")
+            case .location: return String(localized: "capture.card.kind.location")
+            case .link: return String(localized: "capture.card.kind.link")
+            case .todo: return String(localized: "capture.card.kind.todo")
+            case .weather: return String(localized: "capture.card.kind.weather")
+            case .music: return String(localized: "capture.card.kind.music")
+            case .status: return String(localized: "capture.card.kind.working")
             }
         }
     }
@@ -54,6 +54,11 @@ struct CaptureComposerAttachmentItem: Identifiable {
     let artworkURL: String?
     let artworkPalette: MusicArtworkPalette?
     let weatherStyle: CaptureWeatherVisualStyle?
+    let weatherConditionCode: String?
+    let weatherSymbolName: String?
+    let weatherIsDaylight: Bool?
+    let latitude: Double?
+    let longitude: Double?
     let isSelected: Bool
     let isProcessing: Bool
     let isRemovable: Bool
@@ -71,6 +76,11 @@ struct CaptureComposerAttachmentItem: Identifiable {
             artworkURL: draft.captureComposerArtworkURL,
             artworkPalette: draft.captureComposerArtworkPalette,
             weatherStyle: draft.captureComposerWeatherStyle,
+            weatherConditionCode: draft.captureComposerWeatherConditionCode,
+            weatherSymbolName: draft.captureComposerWeatherSymbolName,
+            weatherIsDaylight: draft.captureComposerWeatherIsDaylight,
+            latitude: draft.captureComposerLatitude,
+            longitude: draft.captureComposerLongitude,
             isSelected: false,
             isProcessing: false,
             isRemovable: true,
@@ -90,6 +100,11 @@ struct CaptureComposerAttachmentItem: Identifiable {
             artworkURL: candidate.draft.captureComposerArtworkURL,
             artworkPalette: candidate.draft.captureComposerArtworkPalette,
             weatherStyle: candidate.draft.captureComposerWeatherStyle,
+            weatherConditionCode: candidate.draft.captureComposerWeatherConditionCode,
+            weatherSymbolName: candidate.draft.captureComposerWeatherSymbolName,
+            weatherIsDaylight: candidate.draft.captureComposerWeatherIsDaylight,
+            latitude: candidate.draft.captureComposerLatitude,
+            longitude: candidate.draft.captureComposerLongitude,
             isSelected: false,
             isProcessing: false,
             isRemovable: true,
@@ -109,6 +124,11 @@ struct CaptureComposerAttachmentItem: Identifiable {
             artworkURL: nil,
             artworkPalette: nil,
             weatherStyle: nil,
+            weatherConditionCode: nil,
+            weatherSymbolName: nil,
+            weatherIsDaylight: nil,
+            latitude: nil,
+            longitude: nil,
             isSelected: false,
             isProcessing: true,
             isRemovable: false,
@@ -134,40 +154,42 @@ extension CaptureArtifactDraft {
     nonisolated var captureComposerDetail: String {
         switch self {
         case let .text(_, body, _):
-            return body.captureCardSnippet ?? "Text"
+            return body.captureCardSnippet ?? String(localized: "capture.card.kind.text")
         case let .photo(_, summary, filename, _, _, ocrText, _, _):
             return [summary.captureCardSnippet, ocrText.captureCardSnippet, filename.trimmedOrNil]
                 .compactMap { $0 }
-                .first ?? "Photo attached"
+                .first ?? String(localized: "capture.card.photo.attached")
         case let .audio(_, summary, _, _, transcriptionText, _):
             if transcriptionText.trimmedOrNil != nil {
-                return "Transcript added to note"
+                return String(localized: "capture.card.audio.transcriptAdded")
             }
-            return summary.captureCardSnippet ?? "Voice attached"
-        case let .location(_, summary, latitude, longitude, _):
+            return summary.captureCardSnippet ?? String(localized: "capture.card.audio.attached")
+        case let .location(_, summary, _, _, _):
             if let summary = summary.captureCardSnippet {
                 return summary
             }
-            if let latitude, let longitude {
-                return "\(latitude), \(longitude)"
-            }
-            return "Location attached"
+            return String(localized: "capture.card.place.attached")
         case let .link(_, url, note, summary, _, _, _):
             return summary?.captureCardSnippet
                 ?? note?.captureCardSnippet
                 ?? url.captureCardSnippet
-                ?? "Link attached"
+                ?? String(localized: "capture.card.link.attached")
         case let .todo(title, note, _):
             return note?.captureCardSnippet
                 ?? title.captureCardSnippet
-                ?? "Task attached"
-        case let .weather(condition, temp, humidity, _, _, _, _, _):
-            return "\(condition) \(String(format: "%.0f", temp))°C · \(String(format: "%.0f", humidity * 100))% humidity"
-        case let .music(trackName, artistName, albumName, _, _, _, _):
+                ?? String(localized: "capture.card.todo.attached")
+        case let .weather(condition, temp, humidity, _, _, _, _, _, _, _, _):
+            return String(
+                format: String(localized: "capture.card.weather.shortDetail.format"),
+                condition,
+                temp,
+                humidity * 100
+            )
+        case let .music(trackName, artistName, albumName, _, _, _, _, _):
             return [trackName.trimmedOrNil, artistName.trimmedOrNil, albumName.trimmedOrNil]
                 .compactMap { $0 }
                 .joined(separator: " · ")
-                .trimmedOrNil ?? "Music attached"
+                .trimmedOrNil ?? String(localized: "capture.card.music.attached")
         }
     }
 
@@ -177,6 +199,8 @@ extension CaptureArtifactDraft {
             return thumbnailData
         case let .link(_, _, _, _, _, thumbnailData, _):
             return thumbnailData
+        case let .music(_, _, _, _, _, artworkData, _, _):
+            return artworkData
         default:
             return nil
         }
@@ -184,7 +208,7 @@ extension CaptureArtifactDraft {
 
     nonisolated var captureComposerArtworkURL: String? {
         switch self {
-        case let .music(_, _, _, _, artworkURL, _, _):
+        case let .music(_, _, _, _, artworkURL, _, _, _):
             return artworkURL
         default:
             return nil
@@ -193,7 +217,7 @@ extension CaptureArtifactDraft {
 
     nonisolated var captureComposerArtworkPalette: MusicArtworkPalette? {
         switch self {
-        case let .music(_, _, _, _, _, artworkPalette, _):
+        case let .music(_, _, _, _, _, _, artworkPalette, _):
             return artworkPalette
         default:
             return nil
@@ -202,8 +226,63 @@ extension CaptureArtifactDraft {
 
     nonisolated var captureComposerWeatherStyle: CaptureWeatherVisualStyle? {
         switch self {
-        case let .weather(condition, temperatureCelsius, _, windSpeedKmh, _, _, _, _):
-            return .resolve(condition: condition, temperatureCelsius: temperatureCelsius, windSpeedKmh: windSpeedKmh)
+        case let .weather(condition, temperatureCelsius, _, windSpeedKmh, _, _, _, conditionCode, _, isDaylight, _):
+            return .resolve(
+                conditionCode: conditionCode,
+                condition: condition,
+                temperatureCelsius: temperatureCelsius,
+                windSpeedKmh: windSpeedKmh,
+                isDaylight: isDaylight
+            )
+        default:
+            return nil
+        }
+    }
+
+    nonisolated var captureComposerWeatherConditionCode: String? {
+        switch self {
+        case let .weather(_, _, _, _, _, _, _, conditionCode, _, _, _):
+            return conditionCode
+        default:
+            return nil
+        }
+    }
+
+    nonisolated var captureComposerWeatherSymbolName: String? {
+        switch self {
+        case let .weather(_, _, _, _, _, _, _, _, symbolName, _, _):
+            return symbolName
+        default:
+            return nil
+        }
+    }
+
+    nonisolated var captureComposerWeatherIsDaylight: Bool? {
+        switch self {
+        case let .weather(_, _, _, _, _, _, _, _, _, isDaylight, _):
+            return isDaylight
+        default:
+            return nil
+        }
+    }
+
+    nonisolated var captureComposerLatitude: Double? {
+        switch self {
+        case let .location(_, _, latitude, _, _):
+            return latitude
+        case let .weather(_, _, _, _, _, latitude, _, _, _, _, _):
+            return latitude
+        default:
+            return nil
+        }
+    }
+
+    nonisolated var captureComposerLongitude: Double? {
+        switch self {
+        case let .location(_, _, _, longitude, _):
+            return longitude
+        case let .weather(_, _, _, _, _, _, longitude, _, _, _, _):
+            return longitude
         default:
             return nil
         }
@@ -214,13 +293,13 @@ extension CaptureArtifactOrigin {
     var captureBadgeLabel: String {
         switch self {
         case .manual:
-            return "Manual"
+            return String(localized: "capture.origin.manual")
         case .context:
-            return "Context"
+            return String(localized: "capture.origin.context")
         case .imported:
-            return "Imported"
+            return String(localized: "capture.origin.imported")
         case .inferred:
-            return "Inferred"
+            return String(localized: "capture.origin.inferred")
         }
     }
 }

@@ -15,7 +15,10 @@ final class WeatherContextService: Sendable {
             windSpeedKmh: current.wind.speed.converted(to: .kilometersPerHour).value,
             uvIndex: current.uvIndex.value,
             latitude: location.coordinate.latitude,
-            longitude: location.coordinate.longitude
+            longitude: location.coordinate.longitude,
+            conditionCode: current.condition.rawValue,
+            symbolName: current.symbolName,
+            isDaylight: current.isDaylight
         )
     }
 }
