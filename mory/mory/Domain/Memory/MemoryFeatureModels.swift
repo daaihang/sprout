@@ -89,6 +89,34 @@ enum CaptureArtifactOrigin: String, Codable, Hashable, Sendable, CaseIterable {
     case inferred
 }
 
+struct MusicArtworkPalette: Codable, Hashable, Sendable {
+    let backgroundColorHex: String?
+    let primaryTextColorHex: String?
+    let secondaryTextColorHex: String?
+
+    init(
+        backgroundColorHex: String? = nil,
+        primaryTextColorHex: String? = nil,
+        secondaryTextColorHex: String? = nil
+    ) {
+        self.backgroundColorHex = backgroundColorHex
+        self.primaryTextColorHex = primaryTextColorHex
+        self.secondaryTextColorHex = secondaryTextColorHex
+    }
+
+    var isEmpty: Bool {
+        backgroundColorHex == nil && primaryTextColorHex == nil && secondaryTextColorHex == nil
+    }
+
+    var metadata: [String: String] {
+        var metadata: [String: String] = [:]
+        if let backgroundColorHex { metadata["artworkBackgroundColor"] = backgroundColorHex }
+        if let primaryTextColorHex { metadata["artworkPrimaryTextColor"] = primaryTextColorHex }
+        if let secondaryTextColorHex { metadata["artworkSecondaryTextColor"] = secondaryTextColorHex }
+        return metadata
+    }
+}
+
 struct ArtifactOriginRepairKindCount: Identifiable, Hashable, Sendable {
     let kind: ArtifactKind
     let count: Int
@@ -118,7 +146,7 @@ enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
     case link(title: String?, url: String, note: String?, summary: String? = nil, metadata: [String: String] = [:], thumbnailData: Data? = nil, origin: CaptureArtifactOrigin = .manual)
     case todo(title: String, note: String?, origin: CaptureArtifactOrigin = .manual)
     case weather(condition: String, temperatureCelsius: Double, humidity: Double, windSpeedKmh: Double, uvIndex: Int, latitude: Double? = nil, longitude: Double? = nil, origin: CaptureArtifactOrigin = .manual)
-    case music(trackName: String, artistName: String, albumName: String, durationSeconds: Int, artworkURL: String?, origin: CaptureArtifactOrigin = .manual)
+    case music(trackName: String, artistName: String, albumName: String, durationSeconds: Int, artworkURL: String?, artworkPalette: MusicArtworkPalette? = nil, origin: CaptureArtifactOrigin = .manual)
 
     var id: String {
         switch self {
@@ -136,7 +164,7 @@ enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
             return "todo-\(title)-\(note ?? "")"
         case let .weather(condition, temp, _, _, _, _, _, _):
             return "weather-\(condition)-\(temp)"
-        case let .music(trackName, artistName, _, _, _, _):
+        case let .music(trackName, artistName, _, _, _, _, _):
             return "music-\(trackName)-\(artistName)"
         }
     }
@@ -187,7 +215,7 @@ enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
                 ?? title
         case let .weather(condition, temp, humidity, _, _, _, _, _):
             return "\(condition) \(String(format: "%.0f", temp))°C · Humidity \(String(format: "%.0f", humidity * 100))%"
-        case let .music(trackName, artistName, albumName, _, _, _):
+        case let .music(trackName, artistName, albumName, _, _, _, _):
             return [trackName, artistName, albumName].filter { !$0.isEmpty }.joined(separator: " · ")
         }
     }
@@ -208,7 +236,7 @@ enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
             return origin
         case let .weather(_, _, _, _, _, _, _, origin):
             return origin
-        case let .music(_, _, _, _, _, origin):
+        case let .music(_, _, _, _, _, _, origin):
             return origin
         }
     }
@@ -268,13 +296,14 @@ enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
                 longitude: longitude,
                 origin: origin
             )
-        case let .music(trackName, artistName, albumName, durationSeconds, artworkURL, _):
+        case let .music(trackName, artistName, albumName, durationSeconds, artworkURL, artworkPalette, _):
             return .music(
                 trackName: trackName,
                 artistName: artistName,
                 albumName: albumName,
                 durationSeconds: durationSeconds,
                 artworkURL: artworkURL,
+                artworkPalette: artworkPalette,
                 origin: origin
             )
         }

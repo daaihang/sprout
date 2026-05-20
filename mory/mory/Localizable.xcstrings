@@ -70,6 +70,12 @@
     "APNs token" : {
 
     },
+    "Appearance" : {
+
+    },
+    "Appearance Lab" : {
+
+    },
     "applied" : {
 
     },
@@ -337,6 +343,9 @@
     "Artifacts" : {
 
     },
+    "Atmosphere" : {
+
+    },
     "Audio note" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -413,6 +422,9 @@
 
     },
     "Caption hint" : {
+
+    },
+    "Capture Card Lab" : {
 
     },
     "capture.action.addContent" : {
@@ -2331,10 +2343,22 @@
         }
       }
     },
+    "Compare the same origin fixtures in production, debug, and hidden source label modes." : {
+
+    },
+    "Condition" : {
+
+    },
     "Confidence" : {
 
     },
     "Context" : {
+
+    },
+    "Contrast" : {
+
+    },
+    "Controls" : {
 
     },
     "Coordinates" : {
@@ -8118,7 +8142,16 @@
     "Fixed mode" : {
 
     },
+    "Fixture" : {
+
+    },
     "Force APNs registration sync" : {
+
+    },
+    "Generate map snapshot" : {
+
+    },
+    "Generating map" : {
 
     },
     "Graph deltas" : {
@@ -9144,7 +9177,16 @@
     "Link" : {
 
     },
+    "Live and search previews only update this debug page. They do not save memories." : {
+
+    },
+    "Load current playing song" : {
+
+    },
     "Load server worker metrics" : {
+
+    },
+    "Loading now playing" : {
 
     },
     "Loading preview..." : {
@@ -9175,6 +9217,9 @@
 
     },
     "Longitude" : {
+
+    },
+    "Map snapshots are static images. Cards fall back to a lightweight map texture when no snapshot is available." : {
 
     },
     "memories.empty.description" : {
@@ -10088,6 +10133,9 @@
     "Music" : {
 
     },
+    "Music Lab" : {
+
+    },
     "Name" : {
 
     },
@@ -10385,6 +10433,12 @@
           }
         }
       }
+    },
+    "Origin" : {
+
+    },
+    "Origins" : {
+
     },
     "Overlap %@" : {
       "extractionState" : "manual",
@@ -10801,7 +10855,13 @@
         }
       }
     },
+    "Place Lab" : {
+
+    },
     "Place not found" : {
+
+    },
+    "Playback" : {
 
     },
     "Prefer less first suggestion" : {
@@ -10826,7 +10886,16 @@
     "Preview" : {
 
     },
+    "Preview motion states" : {
+
+    },
+    "Preview the same card system across light, dark, high contrast, and reduced motion environments." : {
+
+    },
     "priority %@" : {
+
+    },
+    "Privacy blur" : {
 
     },
     "Process due jobs now" : {
@@ -12065,6 +12134,9 @@
     "Recover unfinished jobs" : {
 
     },
+    "Reduce Motion" : {
+
+    },
     "Reflection evidence chars: %lld" : {
 
     },
@@ -12379,6 +12451,9 @@
     "Remote push diagnostics have not been loaded." : {
 
     },
+    "Remove" : {
+
+    },
     "Remove attachment" : {
 
     },
@@ -12479,6 +12554,12 @@
 
     },
     "Search" : {
+
+    },
+    "Search Apple Music" : {
+
+    },
+    "Search music preview" : {
 
     },
     "Search songs" : {
@@ -12712,6 +12793,9 @@
       }
     },
     "Searching Apple Music catalog..." : {
+
+    },
+    "Searching music" : {
 
     },
     "Searching..." : {
@@ -15081,6 +15165,9 @@
         }
       }
     },
+    "Source labels" : {
+
+    },
     "Sources" : {
 
     },
@@ -15106,6 +15193,9 @@
 
     },
     "Summary" : {
+
+    },
+    "Symbol motion" : {
 
     },
     "tab.arcs" : {
@@ -15281,7 +15371,13 @@
     "Task" : {
 
     },
+    "Temperature %lld°C" : {
+
+    },
     "These requests call the same cloud intelligence client used by capture, daily questions, chapter suggestions, photo semantics, and notification intent generation." : {
+
+    },
+    "This lab uses fixture-only data. It does not request permissions, save memories, or alter the production composer." : {
 
     },
     "This mutates local debug data. Existing captureOrigin values will not be overwritten." : {
@@ -15458,6 +15554,12 @@
 
     },
     "Voice" : {
+
+    },
+    "Weather cards keep kind=weather. The selected origin only changes the badge and context affordance." : {
+
+    },
+    "Weather Lab" : {
 
     },
     "Worker" : {

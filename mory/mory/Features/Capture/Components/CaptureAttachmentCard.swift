@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct CaptureAttachmentCard: View {
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
     let item: CaptureComposerAttachmentItem
     let onRemove: () -> Void
     let onToggleSelection: () -> Void
@@ -10,7 +12,7 @@ struct CaptureAttachmentCard: View {
             HStack(spacing: 8) {
                 Image(systemName: item.kind.iconName)
                     .font(.subheadline)
-                    .foregroundStyle(item.isSelected ? Color.accentColor : Color.secondary)
+                    .foregroundStyle(displaysSelection ? palette.controlTint : palette.controlTint.opacity(0.78))
                     .frame(width: 22, height: 22)
 
                 Text(item.kind.label)
@@ -24,38 +26,40 @@ struct CaptureAttachmentCard: View {
 
             Text(item.detail)
                 .font(.subheadline)
-                .foregroundStyle(.primary)
+                .foregroundStyle(palette.primaryText)
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            HStack(spacing: 6) {
-                if let origin = item.origin {
-                    Text(origin.captureBadgeLabel)
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.secondary.opacity(0.14), in: Capsule())
-                }
-
-                if let secondaryText = item.secondaryText {
+            if let secondaryText = item.secondaryText {
+                HStack(spacing: 6) {
                     Text(secondaryText)
                         .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(palette.secondaryText.opacity(0.72))
                 }
             }
         }
         .padding(12)
         .frame(width: 176, height: 112, alignment: .topLeading)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(.regularMaterial)
+                .overlay {
+                    LinearGradient(
+                        colors: palette.background.map { $0.opacity(0.1) },
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
         .overlay {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(item.isSelected ? Color.accentColor.opacity(0.45) : Color.secondary.opacity(0.16), lineWidth: 1)
+                .stroke(displaysSelection ? palette.selectionStroke : Color.secondary.opacity(0.16), lineWidth: 1)
         }
         .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .onTapGesture {
-            guard item.isSelectable else { return }
+            guard canToggleSelection else { return }
             onToggleSelection()
         }
         .accessibilityElement(children: .combine)
@@ -74,9 +78,24 @@ struct CaptureAttachmentCard: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Remove attachment")
         } else if item.isSelectable {
-            Image(systemName: item.isSelected ? "checkmark.circle.fill" : "circle")
-                .foregroundStyle(item.isSelected ? Color.accentColor : Color.secondary.opacity(0.5))
-                .accessibilityLabel(item.isSelected ? "Selected" : "Not selected")
+            Image(systemName: displaysSelection ? "checkmark.circle.fill" : "circle")
+                .foregroundStyle(displaysSelection ? Color.accentColor : Color.secondary.opacity(0.5))
+                .accessibilityLabel(displaysSelection ? "Selected" : "Not selected")
         }
+    }
+
+    private var displaysSelection: Bool {
+        item.isSelectable && item.isSelected && !item.isProcessing
+    }
+
+    private var canToggleSelection: Bool {
+        item.isSelectable && !item.isProcessing
+    }
+
+    private var palette: CaptureCardPalette {
+        CaptureCardPalette.resolve(
+            for: CaptureCardItem(attachment: item),
+            highContrast: colorSchemeContrast == .increased
+        )
     }
 }

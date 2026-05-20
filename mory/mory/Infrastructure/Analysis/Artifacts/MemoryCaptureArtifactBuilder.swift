@@ -211,7 +211,7 @@ struct MemoryCaptureArtifactBuilder {
                 createdAt: createdAt,
                 updatedAt: createdAt
             )
-        case let .music(trackName, artistName, albumName, durationSeconds, artworkURL, _):
+        case let .music(trackName, artistName, albumName, durationSeconds, artworkURL, artworkPalette, _):
             let title = "\(trackName) – \(artistName)"
             let summary = [trackName, artistName, albumName].filter { !$0.isEmpty }.joined(separator: " · ")
             var metadata: [String: String] = [
@@ -221,6 +221,9 @@ struct MemoryCaptureArtifactBuilder {
             ]
             if !albumName.isEmpty { metadata["albumName"] = albumName }
             if let artworkURL { metadata["artworkURL"] = artworkURL }
+            if let artworkPalette {
+                metadata.merge(artworkPalette.metadata) { _, new in new }
+            }
             metadata = metadataForOrigin(of: draft, base: metadata)
             return Artifact(
                 recordID: recordID,

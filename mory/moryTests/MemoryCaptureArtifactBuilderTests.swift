@@ -35,4 +35,36 @@ final class MemoryCaptureArtifactBuilderTests: XCTestCase {
         let todo = try XCTUnwrap(artifacts.first(where: { $0.kind == .todo }))
         XCTAssertEqual(todo.metadata["captureOrigin"], CaptureArtifactOrigin.imported.rawValue)
     }
+
+    func testBuildArtifactsPersistsMusicArtworkPaletteMetadata() throws {
+        let builder = MemoryCaptureArtifactBuilder()
+        let artifacts = builder.buildArtifacts(
+            from: MemoryCaptureDraft(
+                rawText: "",
+                artifacts: [
+                    .music(
+                        trackName: "Intro",
+                        artistName: "The Band",
+                        albumName: "Morning",
+                        durationSeconds: 180,
+                        artworkURL: "https://example.com/art.jpg",
+                        artworkPalette: MusicArtworkPalette(
+                            backgroundColorHex: "#123456",
+                            primaryTextColorHex: "#FFFFFF",
+                            secondaryTextColorHex: "#DDDDDD"
+                        ),
+                        origin: .manual
+                    )
+                ]
+            ),
+            recordID: UUID(),
+            createdAt: Date(timeIntervalSince1970: 1_800_000_000)
+        )
+
+        let music = try XCTUnwrap(artifacts.first(where: { $0.kind == .music }))
+        XCTAssertEqual(music.metadata["artworkURL"], "https://example.com/art.jpg")
+        XCTAssertEqual(music.metadata["artworkBackgroundColor"], "#123456")
+        XCTAssertEqual(music.metadata["artworkPrimaryTextColor"], "#FFFFFF")
+        XCTAssertEqual(music.metadata["artworkSecondaryTextColor"], "#DDDDDD")
+    }
 }

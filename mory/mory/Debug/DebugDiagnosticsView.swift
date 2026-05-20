@@ -95,6 +95,16 @@ struct DebugDiagnosticsView: View {
                 }
 
                 NavigationLink {
+                    CaptureCardLabView()
+                } label: {
+                    DebugMenuRow(
+                        icon: "rectangle.stack",
+                        title: "Capture Card Lab",
+                        subtitle: "Preview capture attachment card styles, origins, states, and motion fixtures"
+                    )
+                }
+
+                NavigationLink {
                     PlaceProfileManagementView(
                         memoryRepository: memoryRepository,
                         showsDebugDetails: true,

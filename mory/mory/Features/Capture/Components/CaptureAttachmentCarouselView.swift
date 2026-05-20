@@ -3,7 +3,7 @@ import SwiftUI
 struct CaptureAttachmentCarouselView: View {
     let items: [CaptureComposerAttachmentItem]
     let onRemoveStagedArtifact: (Int) -> Void
-    let onToggleContextCandidate: (UUID) -> Void
+    let onRemoveContextCandidate: (UUID) -> Void
 
     var body: some View {
         if !items.isEmpty {
@@ -13,7 +13,7 @@ struct CaptureAttachmentCarouselView: View {
                         CaptureAttachmentCard(
                             item: item,
                             onRemove: { remove(item) },
-                            onToggleSelection: { toggle(item) }
+                            onToggleSelection: {}
                         )
                         .scrollTransition(.animated, axis: .horizontal) { content, phase in
                             content
@@ -33,12 +33,13 @@ struct CaptureAttachmentCarouselView: View {
     }
 
     private func remove(_ item: CaptureComposerAttachmentItem) {
-        guard case let .stagedArtifact(index) = item.source else { return }
-        onRemoveStagedArtifact(index)
-    }
-
-    private func toggle(_ item: CaptureComposerAttachmentItem) {
-        guard case let .contextCandidate(id) = item.source else { return }
-        onToggleContextCandidate(id)
+        switch item.source {
+        case let .stagedArtifact(index):
+            onRemoveStagedArtifact(index)
+        case let .contextCandidate(id):
+            onRemoveContextCandidate(id)
+        case .processing:
+            return
+        }
     }
 }

@@ -53,7 +53,7 @@ struct UnifiedCaptureComposerView: View {
     @FocusState private var isBodyFocused: Bool
 
     private var selectedContextDrafts: [CaptureArtifactDraft] {
-        contextCandidates.filter(\.isSelected).map(\.draft)
+        contextCandidates.map(\.draft)
     }
 
     private var primaryArtifactDrafts: [CaptureArtifactDraft] {
@@ -99,7 +99,7 @@ struct UnifiedCaptureComposerView: View {
                         CaptureAttachmentCarouselView(
                             items: attachmentItems,
                             onRemoveStagedArtifact: removeStagedArtifact(at:),
-                            onToggleContextCandidate: toggleContextCandidate(id:)
+                            onRemoveContextCandidate: removeContextCandidate(id:)
                         )
 
                         CaptureBodyEditorView(
@@ -385,9 +385,9 @@ struct UnifiedCaptureComposerView: View {
     }
 
     @MainActor
-    private func toggleContextCandidate(id: UUID) {
+    private func removeContextCandidate(id: UUID) {
         guard let index = contextCandidates.firstIndex(where: { $0.id == id }) else { return }
-        contextCandidates[index].isSelected.toggle()
+        contextCandidates.remove(at: index)
     }
 
     @MainActor

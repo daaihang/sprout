@@ -50,6 +50,10 @@ struct CaptureComposerAttachmentItem: Identifiable {
     let detail: String
     let secondaryText: String?
     let origin: CaptureArtifactOrigin?
+    let thumbnailData: Data?
+    let artworkURL: String?
+    let artworkPalette: MusicArtworkPalette?
+    let weatherStyle: CaptureWeatherVisualStyle?
     let isSelected: Bool
     let isProcessing: Bool
     let isRemovable: Bool
@@ -63,7 +67,11 @@ struct CaptureComposerAttachmentItem: Identifiable {
             detail: draft.captureComposerDetail,
             secondaryText: nil,
             origin: draft.origin,
-            isSelected: true,
+            thumbnailData: draft.captureComposerThumbnailData,
+            artworkURL: draft.captureComposerArtworkURL,
+            artworkPalette: draft.captureComposerArtworkPalette,
+            weatherStyle: draft.captureComposerWeatherStyle,
+            isSelected: false,
             isProcessing: false,
             isRemovable: true,
             isSelectable: false
@@ -78,10 +86,14 @@ struct CaptureComposerAttachmentItem: Identifiable {
             detail: candidate.draft.captureComposerDetail,
             secondaryText: candidate.capturedAt.formatted(date: .omitted, time: .shortened),
             origin: candidate.draft.origin,
-            isSelected: candidate.isSelected,
+            thumbnailData: candidate.draft.captureComposerThumbnailData,
+            artworkURL: candidate.draft.captureComposerArtworkURL,
+            artworkPalette: candidate.draft.captureComposerArtworkPalette,
+            weatherStyle: candidate.draft.captureComposerWeatherStyle,
+            isSelected: false,
             isProcessing: false,
-            isRemovable: false,
-            isSelectable: true
+            isRemovable: true,
+            isSelectable: false
         )
     }
 
@@ -93,7 +105,11 @@ struct CaptureComposerAttachmentItem: Identifiable {
             detail: detail,
             secondaryText: nil,
             origin: nil,
-            isSelected: true,
+            thumbnailData: nil,
+            artworkURL: nil,
+            artworkPalette: nil,
+            weatherStyle: nil,
+            isSelected: false,
             isProcessing: true,
             isRemovable: false,
             isSelectable: false
@@ -147,11 +163,49 @@ extension CaptureArtifactDraft {
                 ?? "Task attached"
         case let .weather(condition, temp, humidity, _, _, _, _, _):
             return "\(condition) \(String(format: "%.0f", temp))°C · \(String(format: "%.0f", humidity * 100))% humidity"
-        case let .music(trackName, artistName, albumName, _, _, _):
+        case let .music(trackName, artistName, albumName, _, _, _, _):
             return [trackName.trimmedOrNil, artistName.trimmedOrNil, albumName.trimmedOrNil]
                 .compactMap { $0 }
                 .joined(separator: " · ")
                 .trimmedOrNil ?? "Music attached"
+        }
+    }
+
+    nonisolated var captureComposerThumbnailData: Data? {
+        switch self {
+        case let .photo(_, _, _, _, thumbnailData, _, _, _):
+            return thumbnailData
+        case let .link(_, _, _, _, _, thumbnailData, _):
+            return thumbnailData
+        default:
+            return nil
+        }
+    }
+
+    nonisolated var captureComposerArtworkURL: String? {
+        switch self {
+        case let .music(_, _, _, _, artworkURL, _, _):
+            return artworkURL
+        default:
+            return nil
+        }
+    }
+
+    nonisolated var captureComposerArtworkPalette: MusicArtworkPalette? {
+        switch self {
+        case let .music(_, _, _, _, _, artworkPalette, _):
+            return artworkPalette
+        default:
+            return nil
+        }
+    }
+
+    nonisolated var captureComposerWeatherStyle: CaptureWeatherVisualStyle? {
+        switch self {
+        case let .weather(condition, temperatureCelsius, _, windSpeedKmh, _, _, _, _):
+            return .resolve(condition: condition, temperatureCelsius: temperatureCelsius, windSpeedKmh: windSpeedKmh)
+        default:
+            return nil
         }
     }
 }
