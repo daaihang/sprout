@@ -20,6 +20,7 @@ struct MoryRootView: View {
     @State private var didRunStartupRecovery = false
     @State private var isEditingHomeBoard = false
     @State private var isPresentingMemoriesFilters = false
+    @State private var searchQuery = ""
     private let notificationInteractionService = NotificationInteractionService()
     private let startupRecoveryService = AppIntelligenceRecoveryService()
 
@@ -32,73 +33,62 @@ struct MoryRootView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            TabView(selection: $selectedTab) {
-                Tab(
-                    LocalizedStringKey(MoryAppTab.today.titleKey),
-                    systemImage: MoryAppTab.today.systemImage,
-                    value: MoryAppTab.today
-                ) {
-                    tabRoot {
-                        HomeScreen(
-                            surface: .home,
-                            requestedRoute: $pendingHomeRoute,
-                            isEditingHomeBoard: $isEditingHomeBoard
-                        )
-                    }
-                    .id(tabRefreshID)
+        TabView(selection: $selectedTab) {
+            Tab(
+                LocalizedStringKey(MoryAppTab.today.titleKey),
+                systemImage: MoryAppTab.today.systemImage,
+                value: MoryAppTab.today
+            ) {
+                tabRoot(for: .today) {
+                    HomeScreen(
+                        surface: .home,
+                        requestedRoute: $pendingHomeRoute,
+                        isEditingHomeBoard: $isEditingHomeBoard
+                    )
                 }
-
-                Tab(
-                    LocalizedStringKey(MoryAppTab.memories.titleKey),
-                    systemImage: MoryAppTab.memories.systemImage,
-                    value: MoryAppTab.memories
-                ) {
-                    tabRoot {
-                        MemoriesRootScreen(
-                            requestedRoute: $pendingMemoriesRoute,
-                            isPresentingFilterSheet: $isPresentingMemoriesFilters
-                        )
-                    }
-                    .id(tabRefreshID)
-                }
-
-                Tab(
-                    LocalizedStringKey(MoryAppTab.insights.titleKey),
-                    systemImage: MoryAppTab.insights.systemImage,
-                    value: MoryAppTab.insights
-                ) {
-                    tabRoot {
-                        InsightsRootScreen(requestedRoute: $pendingInsightsRoute)
-                    }
-                    .id(tabRefreshID)
-                }
-
-                Tab(
-                    LocalizedStringKey(MoryAppTab.search.titleKey),
-                    systemImage: MoryAppTab.search.systemImage,
-                    value: MoryAppTab.search,
-                    role: .search
-                ) {
-                    tabRoot {
-                        SearchScreen()
-                    }
-                    .id(tabRefreshID)
-                }
+                .id(tabRefreshID)
             }
-            .tabBarMinimizeBehavior(.onScrollDown)
-            .moryTabViewBottomAccessory {
-                QuickCaptureToolbar(
-                    onTextCapture: { unifiedCaptureSeed = .empty },
-                    onPhotoCapture: { unifiedCaptureSeed = .photoCapture },
-                    onVoiceCaptureReady: { result in unifiedCaptureSeed = .voice(result) }
-                )
+
+            Tab(
+                LocalizedStringKey(MoryAppTab.memories.titleKey),
+                systemImage: MoryAppTab.memories.systemImage,
+                value: MoryAppTab.memories
+            ) {
+                tabRoot(for: .memories) {
+                    MemoriesRootScreen(
+                        requestedRoute: $pendingMemoriesRoute,
+                        isPresentingFilterSheet: $isPresentingMemoriesFilters
+                    )
+                }
+                .id(tabRefreshID)
             }
-            .navigationTitle(LocalizedStringKey(selectedTab.titleKey))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                rootToolbar
+
+            Tab(
+                LocalizedStringKey(MoryAppTab.insights.titleKey),
+                systemImage: MoryAppTab.insights.systemImage,
+                value: MoryAppTab.insights
+            ) {
+                tabRoot(for: .insights) {
+                    InsightsRootScreen(requestedRoute: $pendingInsightsRoute)
+                }
+                .id(tabRefreshID)
             }
+
+            Tab(value: MoryAppTab.search, role: .search) {
+                tabRoot(for: .search) {
+                    SearchScreen(query: $searchQuery)
+                }
+                .id(tabRefreshID)
+            }
+        }
+        .tabViewSearchActivation(.searchTabSelection)
+        .tabBarMinimizeBehavior(.onScrollDown)
+        .moryTabViewBottomAccessory(isVisible: selectedTab != .search) {
+            QuickCaptureToolbar(
+                onTextCapture: { unifiedCaptureSeed = .empty },
+                onPhotoCapture: { unifiedCaptureSeed = .photoCapture },
+                onVoiceCaptureReady: { result in unifiedCaptureSeed = .voice(result) }
+            )
         }
         .sheet(isPresented: $isPresentingSettings) {
             SettingsScreen(
@@ -145,15 +135,52 @@ struct MoryRootView: View {
         }
     }
 
+    @ViewBuilder
     private func tabRoot<Content: View>(
+        for tab: MoryAppTab,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        if tab == .search {
+            tabNavigationStack(for: tab, content: content)
+                .searchable(text: $searchQuery, prompt: "search.prompt")
+        } else {
+            tabNavigationStack(for: tab, content: content)
+        }
+    }
+
+    private func tabNavigationStack<Content: View>(
+        for tab: MoryAppTab,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        NavigationStack {
+            tabContent(for: tab, content: content)
+        }
+    }
+
+    private func tabContent<Content: View>(
+        for tab: MoryAppTab,
         @ViewBuilder content: () -> Content
     ) -> some View {
         content()
+            .safeAreaInset(edge: .bottom) {
+                Color.clear
+                    .frame(height: rootBottomContentInset)
+                    .accessibilityHidden(true)
+            }
+            .navigationTitle(LocalizedStringKey(tab.titleKey))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                rootToolbar(for: tab)
+            }
+    }
+
+    private var rootBottomContentInset: CGFloat {
+        selectedTab == .search ? 0 : 58
     }
 
     @ToolbarContentBuilder
-    private var rootToolbar: some ToolbarContent {
-        switch selectedTab {
+    private func rootToolbar(for tab: MoryAppTab) -> some ToolbarContent {
+        switch tab {
         case .today:
             ToolbarItem(placement: .topBarLeading) {
                 Button {
@@ -311,15 +338,20 @@ struct MoryRootView: View {
 
 extension View {
     func moryHidesTabChrome() -> some View {
-        self
+        toolbarVisibility(.hidden, for: .tabBar)
     }
 
     @ViewBuilder
     func moryTabViewBottomAccessory<Content: View>(
+        isVisible: Bool = true,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        tabViewBottomAccessory {
-            content()
+        if isVisible {
+            tabViewBottomAccessory {
+                content()
+            }
+        } else {
+            self
         }
     }
 }

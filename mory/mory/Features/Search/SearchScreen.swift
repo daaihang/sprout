@@ -3,13 +3,11 @@ import SwiftUI
 struct SearchScreen: View {
     @Environment(\.memoryRepository) private var memoryRepository
 
-    @State private var query = ""
+    @Binding var query: String
     @State private var result = SearchSnapshot(query: "", memories: [], entities: [], arcs: [], reflections: [])
     @State private var errorMessage: String?
     @State private var indexStatusMessage: String?
     @State private var isRebuildingIndex = false
-    @State private var isSearchPresented = false
-    @FocusState private var isSearchFocused: Bool
 
     var body: some View {
         List {
@@ -132,14 +130,6 @@ struct SearchScreen: View {
             }
         }
         .navigationTitle("search.nav.title")
-        .searchable(text: $query, isPresented: $isSearchPresented, prompt: "search.prompt")
-        .searchFocused($isSearchFocused)
-        .onAppear {
-            DispatchQueue.main.async {
-                isSearchPresented = true
-                isSearchFocused = true
-            }
-        }
         .task(id: query) {
             await load()
         }
