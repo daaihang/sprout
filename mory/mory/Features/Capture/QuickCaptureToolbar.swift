@@ -20,49 +20,26 @@ struct QuickCaptureToolbar: View {
     @State private var capsulePressTask: Task<Void, Never>?
 
     var body: some View {
-        Group {
-            if isVoiceSessionActive {
-                voiceAccessoryContent
-            } else {
-                HStack(spacing: 0) {
-                    quickActionButton(
-                        systemImage: "camera.fill",
-                        accessibilityLabel: "quickCapture.photo",
-                        accessibilityHint: "quickCapture.photo.hint",
-                        action: onPhotoCapture
-                    )
+        HStack(spacing: 0) {
+            quickActionButton(
+                systemImage: "camera.fill",
+                accessibilityLabel: "quickCapture.photo",
+                accessibilityHint: "quickCapture.photo.hint",
+                action: onPhotoCapture
+            )
+            .opacity(isVoiceSessionActive ? 0 : 1)
+            .disabled(isVoiceSessionActive)
 
-                    captureCapsule
+            captureCapsule
 
-                    voiceButton
-                }
-            }
+            voiceButton
+                .opacity(isVoiceSessionActive ? 0 : 1)
+                .disabled(isVoiceSessionActive)
         }
         .padding(.horizontal, contentHorizontalInset)
         .frame(maxWidth: .infinity)
         .frame(height: accessoryHeight)
         .animation(.spring(response: 0.28, dampingFraction: 0.82), value: isVoiceSessionActive)
-    }
-
-    private var voiceAccessoryContent: some View {
-        HStack(spacing: voiceContentSpacing) {
-            Text(voiceElapsedText)
-                .font(.caption.monospacedDigit().weight(.semibold))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .frame(width: durationWidth, alignment: .leading)
-
-            Text(voiceTranscriptText)
-                .font(capsuleFont)
-                .foregroundStyle(capsulePrimaryColor)
-                .lineLimit(1)
-                .truncationMode(.head)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity, minHeight: controlSize, maxHeight: controlSize)
-
-            voiceStopButton
-        }
-        .transition(.opacity.combined(with: .scale(scale: 0.98)))
     }
 
     private var captureCapsule: some View {
@@ -79,7 +56,6 @@ struct QuickCaptureToolbar: View {
         .gesture(
             DragGesture(minimumDistance: 0)
                 .onChanged { _ in
-                    // Start the 0.5s hold timer only once per press
                     guard capsulePressTask == nil, !isHoldToTalkMode else { return }
                     capsulePressTask = Task { @MainActor in
                         try? await Task.sleep(for: .seconds(0.5))
@@ -91,7 +67,6 @@ struct QuickCaptureToolbar: View {
                 }
                 .onEnded { _ in
                     if let task = capsulePressTask {
-                        // Released before 0.5s = tap, fire action immediately
                         task.cancel()
                         capsulePressTask = nil
                         if let recoveryAction = audioRecorder.recoveryAction {
@@ -100,7 +75,6 @@ struct QuickCaptureToolbar: View {
                             onTextCapture()
                         }
                     } else if isHoldToTalkMode {
-                        // Released after 0.5s = hold-to-talk ended, submit
                         isHoldToTalkMode = false
                         onStopVoiceCapture()
                     }
@@ -133,18 +107,6 @@ struct QuickCaptureToolbar: View {
 
     private var iconFont: Font {
         isInlineAccessory ? .subheadline.weight(.semibold) : .headline.weight(.semibold)
-    }
-
-    private var durationWidth: CGFloat {
-        isInlineAccessory ? 44 : 50
-    }
-
-    private var stopButtonWidth: CGFloat {
-        isInlineAccessory ? 72 : 84
-    }
-
-    private var voiceContentSpacing: CGFloat {
-        isInlineAccessory ? 8 : 10
     }
 
     private var isVoiceSessionActive: Bool {
@@ -183,22 +145,9 @@ struct QuickCaptureToolbar: View {
         }
     }
 
-    private var voiceElapsedText: String {
-        formatDuration(audioRecorder.recordingDuration)
-    }
-
-    private var voiceTranscriptText: String {
-        let liveTranscript = audioRecorder.liveTranscription.trimmedOrNil
-        if audioRecorder.isStopping { return liveTranscript ?? String(localized: "quickCapture.voice.finalizing") }
-        if audioRecorder.isTranscribing {
-            return liveTranscript ?? String(localized: "quickCapture.voice.transcribing")
-        }
-        return liveTranscript ?? String(localized: "quickCapture.voice.transcriptPlaceholder")
-    }
-
     private var capsuleAccessibilityLabel: String {
         if audioRecorder.isRecording || audioRecorder.isStopping || audioRecorder.isTranscribing {
-            return "\(voiceElapsedText), \(voiceTranscriptText)"
+            return "\(formatDuration(audioRecorder.recordingDuration)), \(capsulePrimaryText)"
         }
         return String(localized: "quickCapture.unified.placeholder")
     }
@@ -224,33 +173,6 @@ struct QuickCaptureToolbar: View {
         .disabled(audioRecorder.isStopping || audioRecorder.isTranscribing)
         .accessibilityLabel(Text(audioRecorder.isRecording ? "quickCapture.voice.stopSubmit" : "quickCapture.voice.start"))
         .accessibilityHint(Text(audioRecorder.isRecording ? "quickCapture.voice.stopSubmit.hint" : "quickCapture.voice.start.hint"))
-    }
-
-    private var voiceStopButton: some View {
-        Button {
-            handleVoiceButtonTap()
-        } label: {
-            Group {
-                if audioRecorder.isStopping || audioRecorder.isTranscribing {
-                    ProgressView()
-                        .controlSize(.small)
-                } else {
-                    Label("quickCapture.voice.stop", systemImage: "stop.fill")
-                        .font(.caption.weight(.semibold))
-                        .labelStyle(.titleAndIcon)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.78)
-                }
-            }
-            .foregroundStyle(.red)
-            .frame(width: stopButtonWidth, height: controlSize)
-            .background(Color.red.opacity(0.12), in: Capsule())
-            .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .disabled(audioRecorder.isStopping || audioRecorder.isTranscribing)
-        .accessibilityLabel(Text("quickCapture.voice.stopSubmit"))
-        .accessibilityHint(Text("quickCapture.voice.stopSubmit.hint"))
     }
 
     private func quickActionButton(

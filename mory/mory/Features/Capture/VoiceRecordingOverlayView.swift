@@ -13,10 +13,14 @@ struct VoiceRecordingOverlayView: View {
             Spacer(minLength: 0)
 
             glowBubble
-                .padding(.bottom, 140)
 
-            Spacer(minLength: 0)
-                .frame(maxHeight: 160)
+            Spacer(minLength: 0).frame(maxHeight: 40)
+
+            if !isHoldToTalkMode {
+                stopButton
+            }
+
+            Spacer(minLength: 0).frame(height: 16)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear {
@@ -45,12 +49,21 @@ struct VoiceRecordingOverlayView: View {
             .scaleEffect(glowBreathing ? 1.06 : 1.0)
             .allowsHitTesting(false)
 
-            VStack(spacing: MorySpacing.large) {
+            VStack(spacing: MorySpacing.medium) {
+                timerRow
                 transcriptView
-                bottomRow
             }
             .padding(.horizontal, MorySpacing.xLarge)
             .frame(width: 300)
+        }
+    }
+
+    private var timerRow: some View {
+        HStack(spacing: MorySpacing.small) {
+            PulsingDot(isActive: audioRecorder.isRecording, reduceMotion: reduceMotion)
+            Text(formatDuration(audioRecorder.recordingDuration))
+                .font(.caption.monospacedDigit().weight(.semibold))
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -62,38 +75,21 @@ struct VoiceRecordingOverlayView: View {
             .animation(.default, value: transcriptText)
     }
 
-    private var bottomRow: some View {
-        HStack(spacing: MorySpacing.medium) {
-            HStack(spacing: MorySpacing.small) {
-                PulsingDot(isActive: audioRecorder.isRecording, reduceMotion: reduceMotion)
-                Text(formatDuration(audioRecorder.recordingDuration))
-                    .font(.caption.monospacedDigit().weight(.semibold))
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            if !isHoldToTalkMode {
-                stopButton
-            }
-        }
-    }
-
     private var stopButton: some View {
-        Button { onStop() } label: {
-            Group {
-                if audioRecorder.isStopping || audioRecorder.isTranscribing {
-                    ProgressView().controlSize(.small).tint(Color.accentColor)
-                } else {
-                    Label("quickCapture.voice.stop", systemImage: "stop.fill")
-                        .font(.subheadline.weight(.semibold))
-                        .labelStyle(.titleAndIcon)
-                        .foregroundStyle(Color.accentColor)
-                }
+        Button {
+            onStop()
+        } label: {
+            if audioRecorder.isStopping || audioRecorder.isTranscribing {
+                ProgressView()
+                    .frame(minWidth: 120)
+            } else {
+                Label("quickCapture.voice.stop", systemImage: "stop.fill")
             }
-            .frame(width: 84, height: 36)
         }
-        .background(Color.accentColor.opacity(0.12), in: Capsule())
+        .buttonStyle(.borderedProminent)
+        .controlSize(.large)
+        .tint(Color.accentColor)
         .disabled(audioRecorder.isStopping || audioRecorder.isTranscribing)
-        .buttonStyle(.plain)
         .accessibilityLabel(Text("quickCapture.voice.stopSubmit"))
         .accessibilityHint(Text("quickCapture.voice.stopSubmit.hint"))
     }
