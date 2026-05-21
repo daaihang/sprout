@@ -10,7 +10,7 @@ extension CaptureCardItem {
         case .text:
             self.init(
                 id: "artifact-\(artifact.id.uuidString)",
-                kind: .status,
+                payload: .status(CaptureStatusCardPayload()),
                 origin: artifact.captureCardOrigin,
                 state: state,
                 title: artifact.title.trimmedOrNil ?? String(localized: "capture.card.kind.text"),
@@ -21,7 +21,7 @@ extension CaptureCardItem {
         case .photo:
             self.init(
                 id: "artifact-\(artifact.id.uuidString)",
-                kind: .photo,
+                payload: .photo(CapturePhotoCardPayload(thumbnailData: artifact.previewPayload ?? artifact.binaryPayload)),
                 origin: artifact.captureCardOrigin,
                 state: state,
                 title: artifact.title.trimmedOrNil,
@@ -29,13 +29,12 @@ extension CaptureCardItem {
                     ?? captureCardModelSnippet(artifact.textContent)
                     ?? String(localized: "capture.card.photo.attached"),
                 metadata: artifact.mediaRef?.filename.trimmedOrNil,
-                thumbnailData: artifact.previewPayload ?? artifact.binaryPayload,
                 isRemovable: false
             )
         case .audio:
             self.init(
                 id: "artifact-\(artifact.id.uuidString)",
-                kind: .audio,
+                payload: .audio(CaptureAudioCardPayload()),
                 origin: artifact.captureCardOrigin,
                 state: state,
                 title: artifact.title.trimmedOrNil ?? String(localized: "capture.card.kind.audio"),
@@ -49,7 +48,13 @@ extension CaptureCardItem {
         case .music:
             self.init(
                 id: "artifact-\(artifact.id.uuidString)",
-                kind: .music,
+                payload: .music(CaptureMusicCardPayload(
+                    artworkURL: artifact.metadata["artworkURL"]?.trimmedOrNil,
+                    artworkData: artifact.previewPayload ?? artifact.binaryPayload,
+                    artworkPalette: artifact.captureCardArtworkPalette,
+                    durationSeconds: artifact.metadata["durationSeconds"].flatMap(Int.init),
+                    playbackState: .stopped
+                )),
                 origin: artifact.captureCardOrigin,
                 state: state,
                 title: artifact.metadata["trackName"]?.trimmedOrNil
@@ -65,18 +70,13 @@ extension CaptureCardItem {
                     ?? captureCardModelSnippet(artifact.summary)
                     ?? String(localized: "capture.card.kind.music"),
                 metadata: nil,
-                thumbnailData: artifact.previewPayload ?? artifact.binaryPayload,
-                artworkURL: artifact.metadata["artworkURL"]?.trimmedOrNil,
-                artworkPalette: artifact.captureCardArtworkPalette,
-                durationSeconds: artifact.metadata["durationSeconds"].flatMap(Int.init),
-                musicPlaybackState: .stopped,
                 isRemovable: false
             )
         case .link:
             let url = artifact.metadata["url"]?.trimmedOrNil
             self.init(
                 id: "artifact-\(artifact.id.uuidString)",
-                kind: .link,
+                payload: .link(CaptureLinkCardPayload(thumbnailData: artifact.previewPayload)),
                 origin: artifact.captureCardOrigin,
                 state: state,
                 title: artifact.title.trimmedOrNil ?? String(localized: "capture.card.kind.link"),
@@ -85,13 +85,15 @@ extension CaptureCardItem {
                     ?? url
                     ?? String(localized: "capture.card.link.attached"),
                 metadata: url.flatMap { URL(string: $0)?.host() },
-                thumbnailData: artifact.previewPayload,
                 isRemovable: false
             )
         case .location:
             self.init(
                 id: "artifact-\(artifact.id.uuidString)",
-                kind: .place,
+                payload: .place(CapturePlaceCardPayload(
+                    latitude: artifact.metadata["latitude"].flatMap(Double.init),
+                    longitude: artifact.metadata["longitude"].flatMap(Double.init)
+                )),
                 origin: artifact.captureCardOrigin,
                 state: state,
                 title: artifact.title.trimmedOrNil ?? String(localized: "capture.card.kind.place"),
@@ -99,8 +101,6 @@ extension CaptureCardItem {
                     ?? captureCardModelSnippet(artifact.textContent)
                     ?? String(localized: "capture.card.place.attached"),
                 metadata: nil,
-                latitude: artifact.metadata["latitude"].flatMap(Double.init),
-                longitude: artifact.metadata["longitude"].flatMap(Double.init),
                 isRemovable: false
             )
         case .weather:
@@ -115,30 +115,31 @@ extension CaptureCardItem {
             let isDaylight = artifact.metadata["isDaylight"].flatMap(Bool.init)
             self.init(
                 id: "artifact-\(artifact.id.uuidString)",
-                kind: .weather,
+                payload: .weather(CaptureWeatherCardPayload(
+                    latitude: artifact.metadata["latitude"].flatMap(Double.init),
+                    longitude: artifact.metadata["longitude"].flatMap(Double.init),
+                    style: .resolve(
+                        conditionCode: artifact.metadata["conditionCode"],
+                        condition: condition,
+                        temperatureCelsius: temperature,
+                        windSpeedKmh: windSpeed,
+                        isDaylight: isDaylight
+                    ),
+                    conditionCode: artifact.metadata["conditionCode"]?.trimmedOrNil,
+                    symbolName: artifact.metadata["symbolName"]?.trimmedOrNil,
+                    isDaylight: isDaylight
+                )),
                 origin: artifact.captureCardOrigin,
                 state: state,
                 title: temperature.map(captureWeatherTemperatureTitle) ?? artifact.title.trimmedOrNil,
                 detail: condition,
                 metadata: Self.weatherMetadata(humidity: humidity, windSpeedKmh: windSpeed, uvIndex: uvIndex),
-                latitude: artifact.metadata["latitude"].flatMap(Double.init),
-                longitude: artifact.metadata["longitude"].flatMap(Double.init),
-                weatherStyle: .resolve(
-                    conditionCode: artifact.metadata["conditionCode"],
-                    condition: condition,
-                    temperatureCelsius: temperature,
-                    windSpeedKmh: windSpeed,
-                    isDaylight: isDaylight
-                ),
-                weatherConditionCode: artifact.metadata["conditionCode"]?.trimmedOrNil,
-                weatherSymbolName: artifact.metadata["symbolName"]?.trimmedOrNil,
-                weatherIsDaylight: isDaylight,
                 isRemovable: false
             )
         case .todo:
             self.init(
                 id: "artifact-\(artifact.id.uuidString)",
-                kind: .todo,
+                payload: .todo(CaptureTodoCardPayload()),
                 origin: artifact.captureCardOrigin,
                 state: state,
                 title: artifact.title.trimmedOrNil ?? String(localized: "capture.card.kind.todo"),
@@ -151,7 +152,7 @@ extension CaptureCardItem {
         case .document:
             self.init(
                 id: "artifact-\(artifact.id.uuidString)",
-                kind: .status,
+                payload: .status(CaptureStatusCardPayload()),
                 origin: artifact.captureCardOrigin,
                 state: state,
                 title: artifact.title.trimmedOrNil ?? String(localized: "capture.card.kind.status"),
@@ -175,7 +176,7 @@ extension CaptureCardItem {
         case let .text(title, body, origin):
             self.init(
                 id: id ?? "draft-\(draft.id)",
-                kind: .status,
+                payload: .status(CaptureStatusCardPayload()),
                 origin: origin,
                 state: state,
                 title: title ?? String(localized: "capture.card.kind.text"),
@@ -184,19 +185,18 @@ extension CaptureCardItem {
         case let .photo(title, summary, filename, _, thumbnailData, ocrText, _, origin):
             self.init(
                 id: id ?? "draft-\(draft.id)",
-                kind: .photo,
+                payload: .photo(CapturePhotoCardPayload(thumbnailData: thumbnailData)),
                 origin: origin,
                 state: state,
                 title: title,
                 detail: [captureCardModelSnippet(summary), captureCardModelSnippet(ocrText), filename.trimmedOrNil].compactMap { $0 }.first ?? String(localized: "capture.card.photo.attached"),
                 metadata: filename.trimmedOrNil,
-                thumbnailData: thumbnailData,
                 isRemovable: origin == .manual || origin == .context
             )
         case let .audio(title, summary, filename, _, transcriptionText, origin):
             self.init(
                 id: id ?? "draft-\(draft.id)",
-                kind: .audio,
+                payload: .audio(CaptureAudioCardPayload()),
                 origin: origin,
                 state: state,
                 title: title ?? String(localized: "capture.card.kind.audio"),
@@ -207,33 +207,30 @@ extension CaptureCardItem {
         case let .location(title, summary, latitude, longitude, origin):
             self.init(
                 id: id ?? "draft-\(draft.id)",
-                kind: .place,
+                payload: .place(CapturePlaceCardPayload(latitude: latitude, longitude: longitude)),
                 origin: origin,
                 state: state,
                 title: title ?? String(localized: "capture.card.kind.place"),
                 detail: captureCardModelSnippet(summary) ?? String(localized: "capture.card.place.attached"),
                 metadata: nil,
-                latitude: latitude,
-                longitude: longitude,
                 isSelected: false,
                 isRemovable: origin == .manual || origin == .context
             )
         case let .link(title, url, note, summary, _, thumbnailData, origin):
             self.init(
                 id: id ?? "draft-\(draft.id)",
-                kind: .link,
+                payload: .link(CaptureLinkCardPayload(thumbnailData: thumbnailData)),
                 origin: origin,
                 state: state,
                 title: title ?? String(localized: "capture.card.kind.link"),
                 detail: summary.flatMap(captureCardModelSnippet) ?? note.flatMap(captureCardModelSnippet) ?? captureCardModelSnippet(url) ?? String(localized: "capture.card.link.attached"),
                 metadata: URL(string: url)?.host() ?? url,
-                thumbnailData: thumbnailData,
                 isRemovable: origin == .manual || origin == .context
             )
         case let .todo(title, note, origin):
             self.init(
                 id: id ?? "draft-\(draft.id)",
-                kind: .todo,
+                payload: .todo(CaptureTodoCardPayload()),
                 origin: origin,
                 state: state,
                 title: title,
@@ -244,41 +241,43 @@ extension CaptureCardItem {
         case let .weather(condition, temp, humidity, windSpeed, uvIndex, latitude, longitude, conditionCode, symbolName, isDaylight, origin):
             self.init(
                 id: id ?? "draft-\(draft.id)",
-                kind: .weather,
+                payload: .weather(CaptureWeatherCardPayload(
+                    latitude: latitude,
+                    longitude: longitude,
+                    style: .resolve(
+                        conditionCode: conditionCode,
+                        condition: condition,
+                        temperatureCelsius: temp,
+                        windSpeedKmh: windSpeed,
+                        isDaylight: isDaylight
+                    ),
+                    conditionCode: conditionCode,
+                    symbolName: symbolName,
+                    isDaylight: isDaylight
+                )),
                 origin: origin,
                 state: state,
                 title: captureWeatherTemperatureTitle(temp),
                 detail: condition,
                 metadata: captureWeatherMetadata(humidity: humidity, windSpeedKmh: windSpeed, uvIndex: uvIndex),
-                latitude: latitude,
-                longitude: longitude,
-                weatherStyle: .resolve(
-                    conditionCode: conditionCode,
-                    condition: condition,
-                    temperatureCelsius: temp,
-                    windSpeedKmh: windSpeed,
-                    isDaylight: isDaylight
-                ),
-                weatherConditionCode: conditionCode,
-                weatherSymbolName: symbolName,
-                weatherIsDaylight: isDaylight,
                 isSelected: false,
                 isRemovable: origin == .manual || origin == .context
             )
         case let .music(trackName, artistName, albumName, durationSeconds, artworkURL, artworkData, artworkPalette, origin):
             self.init(
                 id: id ?? "draft-\(draft.id)",
-                kind: .music,
+                payload: .music(CaptureMusicCardPayload(
+                    artworkURL: artworkURL,
+                    artworkData: artworkData,
+                    artworkPalette: artworkPalette,
+                    durationSeconds: durationSeconds,
+                    playbackState: musicPlaybackState
+                )),
                 origin: origin,
                 state: state,
                 title: trackName,
                 detail: [artistName.trimmedOrNil, albumName.trimmedOrNil].compactMap { $0 }.joined(separator: " · "),
                 metadata: nil,
-                thumbnailData: artworkData,
-                artworkURL: artworkURL,
-                artworkPalette: artworkPalette,
-                durationSeconds: durationSeconds,
-                musicPlaybackState: musicPlaybackState,
                 isSelected: false,
                 isRemovable: origin == .manual || origin == .context
             )

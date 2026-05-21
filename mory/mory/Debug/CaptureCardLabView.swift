@@ -504,7 +504,12 @@ struct CaptureCardLabView: View {
     private var weatherPreviewCard: CaptureCardItem {
         CaptureCardItem(
             id: "weather-lab-\(selectedWeatherConditionCode)-\(isWeatherDaylight)",
-            kind: .weather,
+            payload: .weather(CaptureWeatherCardPayload(
+                style: resolvedWeatherStyle,
+                conditionCode: selectedWeatherConditionCode,
+                symbolName: resolvedWeatherStyle.symbolName,
+                isDaylight: isWeatherDaylight
+            )),
             origin: selectedWeatherOrigin,
             title: captureWeatherTemperatureTitle(weatherTemperature),
             detail: selectedWeatherConditionCode,
@@ -513,10 +518,6 @@ struct CaptureCardLabView: View {
                 windSpeedKmh: Double(weatherPreviewWind),
                 uvIndex: 3
             ),
-            weatherStyle: resolvedWeatherStyle,
-            weatherConditionCode: selectedWeatherConditionCode,
-            weatherSymbolName: resolvedWeatherStyle.symbolName,
-            weatherIsDaylight: isWeatherDaylight,
             isSelected: false,
             isRemovable: selectedWeatherOrigin == .manual || selectedWeatherOrigin == .context
         )
@@ -606,7 +607,7 @@ struct CaptureCardLabView: View {
         } else {
             liveMusicPreview = CaptureCardItem(
                 id: "music-live-unavailable",
-                kind: .status,
+                payload: .status(CaptureStatusCardPayload()),
                 origin: nil,
                 state: .normal,
                 title: String(localized: "debug.captureCardLab.music.noCurrentSong.title"),
@@ -708,21 +709,34 @@ struct CaptureCardLabView: View {
 
     private var palettePreviewCards: [CaptureCardItem] {
         [
-            CaptureCardItem(kind: .audio, title: String(localized: "debug.captureCardLab.palette.default.title"), detail: String(localized: "debug.captureCardLab.palette.default.detail"), durationSeconds: 42),
-            CaptureCardItem(kind: .weather, title: String(localized: "capture.card.weather.rain"), detail: String(localized: "debug.captureCardLab.palette.weather.detail"), weatherStyle: .rain),
-            placePreviewCard,
-            CaptureCardItem(kind: .photo, title: String(localized: "debug.captureCardLab.palette.photo.title"), detail: String(localized: "debug.captureCardLab.palette.photo.detail"), thumbnailData: samplePaletteImageData),
             CaptureCardItem(
-                kind: .music,
+                payload: .audio(CaptureAudioCardPayload(durationSeconds: 42)),
+                title: String(localized: "debug.captureCardLab.palette.default.title"),
+                detail: String(localized: "debug.captureCardLab.palette.default.detail")
+            ),
+            CaptureCardItem(
+                payload: .weather(CaptureWeatherCardPayload(style: .rain)),
+                title: String(localized: "capture.card.weather.rain"),
+                detail: String(localized: "debug.captureCardLab.palette.weather.detail")
+            ),
+            placePreviewCard,
+            CaptureCardItem(
+                payload: .photo(CapturePhotoCardPayload(thumbnailData: samplePaletteImageData)),
+                title: String(localized: "debug.captureCardLab.palette.photo.title"),
+                detail: String(localized: "debug.captureCardLab.palette.photo.detail")
+            ),
+            CaptureCardItem(
+                payload: .music(CaptureMusicCardPayload(
+                    artworkData: sampleMusicArtworkData,
+                    artworkPalette: MusicArtworkPalette(
+                        backgroundColorHex: "#3B2148",
+                        primaryTextColorHex: "#FFFFFF",
+                        secondaryTextColorHex: "#D8C6E6"
+                    ),
+                    playbackState: .playing
+                )),
                 title: String(localized: "debug.captureCardLab.palette.music.title"),
-                detail: String(localized: "debug.captureCardLab.palette.music.detail"),
-                thumbnailData: sampleMusicArtworkData,
-                artworkPalette: MusicArtworkPalette(
-                    backgroundColorHex: "#3B2148",
-                    primaryTextColorHex: "#FFFFFF",
-                    secondaryTextColorHex: "#D8C6E6"
-                ),
-                musicPlaybackState: .playing
+                detail: String(localized: "debug.captureCardLab.palette.music.detail")
             ),
         ]
     }

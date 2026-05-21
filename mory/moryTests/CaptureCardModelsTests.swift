@@ -42,15 +42,16 @@ final class CaptureCardModelsTests: XCTestCase {
 
     func testPayloadDerivesKindAndScopesTypedFields() {
         let card = CaptureCardItem(
-            kind: .weather,
+            payload: .weather(CaptureWeatherCardPayload(
+                latitude: 31.2,
+                longitude: 121.4,
+                style: .rain,
+                conditionCode: "rain",
+                symbolName: "cloud.rain.fill",
+                isDaylight: true
+            )),
             title: "18°",
-            detail: "Rain",
-            latitude: 31.2,
-            longitude: 121.4,
-            weatherStyle: .rain,
-            weatherConditionCode: "rain",
-            weatherSymbolName: "cloud.rain.fill",
-            weatherIsDaylight: true
+            detail: "Rain"
         )
 
         XCTAssertEqual(card.kind, .weather)
@@ -68,10 +69,9 @@ final class CaptureCardModelsTests: XCTestCase {
     func testPayloadMutationsStayInsideTypedPayload() {
         let artwork = makeImageData(color: .systemIndigo)
         var card = CaptureCardItem(
-            kind: .music,
+            payload: .music(CaptureMusicCardPayload(playbackState: .paused)),
             title: "Track",
-            detail: "Artist",
-            musicPlaybackState: .paused
+            detail: "Artist"
         )
 
         guard case .music(var musicPayload) = card.payload else {
@@ -211,7 +211,7 @@ final class CaptureCardModelsTests: XCTestCase {
     func testOnlyNormalCardsDisplaySelection() {
         for state in CaptureCardVisualState.allCases {
             let card = CaptureCardItem(
-                kind: .weather,
+                payload: .weather(CaptureWeatherCardPayload()),
                 state: state,
                 detail: "State test",
                 isSelected: true
@@ -222,15 +222,15 @@ final class CaptureCardModelsTests: XCTestCase {
     }
 
     func testTransientCardsDoNotAllowPrimaryAction() {
-        XCTAssertTrue(CaptureCardItem(kind: .photo, state: .normal, detail: "Ready").allowsPrimaryAction)
-        XCTAssertFalse(CaptureCardItem(kind: .photo, state: .loading, detail: "Loading").allowsPrimaryAction)
-        XCTAssertFalse(CaptureCardItem(kind: .photo, state: .error, detail: "Failed").allowsPrimaryAction)
-        XCTAssertFalse(CaptureCardItem(kind: .photo, state: .disabled, detail: "Unavailable").allowsPrimaryAction)
+        XCTAssertTrue(CaptureCardItem(payload: .photo(CapturePhotoCardPayload()), state: .normal, detail: "Ready").allowsPrimaryAction)
+        XCTAssertFalse(CaptureCardItem(payload: .photo(CapturePhotoCardPayload()), state: .loading, detail: "Loading").allowsPrimaryAction)
+        XCTAssertFalse(CaptureCardItem(payload: .photo(CapturePhotoCardPayload()), state: .error, detail: "Failed").allowsPrimaryAction)
+        XCTAssertFalse(CaptureCardItem(payload: .photo(CapturePhotoCardPayload()), state: .disabled, detail: "Unavailable").allowsPrimaryAction)
     }
 
     func testErrorRemovableCardsKeepRemoveAffordanceButNotSelection() {
         let card = CaptureCardItem(
-            kind: .photo,
+            payload: .photo(CapturePhotoCardPayload()),
             state: .error,
             detail: "Upload failed",
             isSelected: true,
@@ -243,7 +243,7 @@ final class CaptureCardModelsTests: XCTestCase {
 
     func testRemovableNormalCardsPreferRemoveOverSelectedAffordance() {
         let card = CaptureCardItem(
-            kind: .weather,
+            payload: .weather(CaptureWeatherCardPayload()),
             state: .normal,
             detail: "Included context",
             isSelected: true,
@@ -255,10 +255,10 @@ final class CaptureCardModelsTests: XCTestCase {
     }
 
     func testTrailingControlsOverlayWithoutContentAvoidanceModel() {
-        let plain = CaptureCardItem(kind: .link, state: .normal, detail: "Plain")
-        let removable = CaptureCardItem(kind: .link, state: .normal, detail: "Remove", isRemovable: true)
-        let selected = CaptureCardItem(kind: .link, state: .normal, detail: "Selected", isSelected: true)
-        let loading = CaptureCardItem(kind: .link, state: .loading, detail: "Loading")
+        let plain = CaptureCardItem(payload: .link(CaptureLinkCardPayload()), state: .normal, detail: "Plain")
+        let removable = CaptureCardItem(payload: .link(CaptureLinkCardPayload()), state: .normal, detail: "Remove", isRemovable: true)
+        let selected = CaptureCardItem(payload: .link(CaptureLinkCardPayload()), state: .normal, detail: "Selected", isSelected: true)
+        let loading = CaptureCardItem(payload: .link(CaptureLinkCardPayload()), state: .loading, detail: "Loading")
 
         XCTAssertFalse(plain.hasTrailingControl)
         XCTAssertTrue(removable.hasTrailingControl)
@@ -267,8 +267,8 @@ final class CaptureCardModelsTests: XCTestCase {
     }
 
     func testLoadingAndDisabledCardsDoNotDisplayRemoveControl() {
-        let loading = CaptureCardItem(kind: .photo, state: .loading, detail: "Processing", isRemovable: true)
-        let disabled = CaptureCardItem(kind: .photo, state: .disabled, detail: "Unavailable", isRemovable: true)
+        let loading = CaptureCardItem(payload: .photo(CapturePhotoCardPayload()), state: .loading, detail: "Processing", isRemovable: true)
+        let disabled = CaptureCardItem(payload: .photo(CapturePhotoCardPayload()), state: .disabled, detail: "Unavailable", isRemovable: true)
 
         XCTAssertFalse(loading.displaysRemoveControl)
         XCTAssertFalse(disabled.displaysRemoveControl)
@@ -276,7 +276,7 @@ final class CaptureCardModelsTests: XCTestCase {
 
     func testComposerPresentationControlsRemoveButNotSelection() {
         let card = CaptureCardItem(
-            kind: .weather,
+            payload: .weather(CaptureWeatherCardPayload()),
             state: .normal,
             detail: "Included context",
             isSelected: true,
@@ -296,12 +296,12 @@ final class CaptureCardModelsTests: XCTestCase {
 
     func testComposerPresentationDoesNotRemoveLoadingOrDisabledCards() {
         let loading = CaptureCardPresentation(
-            item: CaptureCardItem(kind: .photo, state: .loading, detail: "Processing", isRemovable: true),
+            item: CaptureCardItem(payload: .photo(CapturePhotoCardPayload()), state: .loading, detail: "Processing", isRemovable: true),
             role: .composerEditing,
             provenanceDisplayMode: .production
         )
         let disabled = CaptureCardPresentation(
-            item: CaptureCardItem(kind: .photo, state: .disabled, detail: "Unavailable", isRemovable: true),
+            item: CaptureCardItem(payload: .photo(CapturePhotoCardPayload()), state: .disabled, detail: "Unavailable", isRemovable: true),
             role: .composerEditing,
             provenanceDisplayMode: .production
         )
@@ -315,7 +315,7 @@ final class CaptureCardModelsTests: XCTestCase {
 
     func testDetailViewingPresentationNeverDisplaysEditControls() {
         let card = CaptureCardItem(
-            kind: .photo,
+            payload: .photo(CapturePhotoCardPayload()),
             state: .normal,
             detail: "Saved photo",
             isSelected: true,
@@ -335,10 +335,10 @@ final class CaptureCardModelsTests: XCTestCase {
 
     func testDebugLabPresentationRespectsFixtureSelectionAndRemoval() {
         let selected = CaptureCardPresentation.debug(
-            CaptureCardItem(kind: .todo, state: .normal, detail: "Selected", isSelected: true)
+            CaptureCardItem(payload: .todo(CaptureTodoCardPayload()), state: .normal, detail: "Selected", isSelected: true)
         )
         let removable = CaptureCardPresentation.debug(
-            CaptureCardItem(kind: .todo, state: .normal, detail: "Remove", isRemovable: true)
+            CaptureCardItem(payload: .todo(CaptureTodoCardPayload()), state: .normal, detail: "Remove", isRemovable: true)
         )
 
         XCTAssertTrue(selected.displaysSelection)
@@ -674,12 +674,11 @@ final class CaptureCardModelsTests: XCTestCase {
     }
 
     func testMusicCardStyleResolutionUsesCompactFallbackWithoutArtwork() {
-        let noArtwork = CaptureCardItem(kind: .music, title: "Track", detail: "Artist")
+        let noArtwork = CaptureCardItem(payload: .music(CaptureMusicCardPayload()), title: "Track", detail: "Artist")
         let withArtwork = CaptureCardItem(
-            kind: .music,
+            payload: .music(CaptureMusicCardPayload(artworkData: makeImageData(color: .purple))),
             title: "Track",
-            detail: "Artist",
-            thumbnailData: makeImageData(color: .purple)
+            detail: "Artist"
         )
 
         XCTAssertEqual(CaptureMusicCardStyle.compactRow.resolved(for: noArtwork), .compactRow)
@@ -707,28 +706,27 @@ final class CaptureCardModelsTests: XCTestCase {
 
     func testCaptureCardPaletteUsesWeatherPhotoAndMusicSources() {
         let weather = CaptureCardPalette.resolve(
-            for: CaptureCardItem(kind: .weather, title: "Rain", detail: "Rain", weatherStyle: .rain),
+            for: CaptureCardItem(payload: .weather(CaptureWeatherCardPayload(style: .rain)), title: "Rain", detail: "Rain"),
             highContrast: false
         )
         XCTAssertEqual(weather.source, .weather)
 
         let music = CaptureCardPalette.resolve(
             for: CaptureCardItem(
-                kind: .music,
-                title: "Track",
-                detail: "Artist",
-                artworkPalette: MusicArtworkPalette(
+                payload: .music(CaptureMusicCardPayload(artworkPalette: MusicArtworkPalette(
                     backgroundColorHex: "#123456",
                     primaryTextColorHex: "#FFFFFF",
                     secondaryTextColorHex: "#DDDDDD"
-                )
+                ))),
+                title: "Track",
+                detail: "Artist"
             ),
             highContrast: false
         )
         XCTAssertEqual(music.source, .musicArtwork)
 
         let photo = CaptureCardPalette.resolve(
-            for: CaptureCardItem(kind: .photo, detail: "Photo", thumbnailData: makeImageData(color: .systemPink)),
+            for: CaptureCardItem(payload: .photo(CapturePhotoCardPayload(thumbnailData: makeImageData(color: .systemPink))), detail: "Photo"),
             highContrast: false
         )
         XCTAssertEqual(photo.source, .photoSample)
@@ -784,14 +782,13 @@ final class CaptureCardModelsTests: XCTestCase {
     func testCardLegibilityUsesMusicPaletteWithoutMaterialDependency() {
         let palette = CaptureCardPalette.resolve(
             for: CaptureCardItem(
-                kind: .music,
-                title: "Track",
-                detail: "Artist",
-                artworkPalette: MusicArtworkPalette(
+                payload: .music(CaptureMusicCardPayload(artworkPalette: MusicArtworkPalette(
                     backgroundColorHex: "#101820",
                     primaryTextColorHex: "#FFFFFF",
                     secondaryTextColorHex: "#CCCCCC"
-                )
+                ))),
+                title: "Track",
+                detail: "Artist"
             ),
             highContrast: false
         )

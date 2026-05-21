@@ -502,103 +502,44 @@ enum CaptureCardPayload: Hashable, Sendable {
         }
     }
 
-    init(
-        kind: CaptureCardKind,
-        thumbnailData: Data? = nil,
-        photoCount: Int = 1,
-        photoGroupStyle: CapturePhotoGroupStyle? = nil,
-        artworkURL: String? = nil,
-        artworkPalette: MusicArtworkPalette? = nil,
-        latitude: Double? = nil,
-        longitude: Double? = nil,
-        durationSeconds: Int? = nil,
-        weatherStyle: CaptureWeatherVisualStyle? = nil,
-        weatherConditionCode: String? = nil,
-        weatherSymbolName: String? = nil,
-        weatherIsDaylight: Bool? = nil,
-        musicPlaybackState: CaptureMusicPlaybackState? = nil,
-        mapSnapshotData: Data? = nil,
-        isLocationPrivacyEnabled: Bool = false
-    ) {
-        switch kind {
-        case .photo:
-            self = .photo(CapturePhotoCardPayload(
-                thumbnailData: thumbnailData,
-                photoCount: photoCount,
-                groupStyle: photoGroupStyle
-            ))
-        case .audio:
-            self = .audio(CaptureAudioCardPayload(durationSeconds: durationSeconds))
-        case .place:
-            self = .place(CapturePlaceCardPayload(
-                latitude: latitude,
-                longitude: longitude,
-                mapSnapshotData: mapSnapshotData,
-                isPrivacyEnabled: isLocationPrivacyEnabled
-            ))
-        case .weather:
-            self = .weather(CaptureWeatherCardPayload(
-                latitude: latitude,
-                longitude: longitude,
-                style: weatherStyle,
-                conditionCode: weatherConditionCode,
-                symbolName: weatherSymbolName,
-                isDaylight: weatherIsDaylight
-            ))
-        case .music:
-            self = .music(CaptureMusicCardPayload(
-                artworkURL: artworkURL,
-                artworkData: thumbnailData,
-                artworkPalette: artworkPalette,
-                durationSeconds: durationSeconds,
-                playbackState: musicPlaybackState
-            ))
-        case .link:
-            self = .link(CaptureLinkCardPayload(thumbnailData: thumbnailData))
-        case .todo:
-            self = .todo(CaptureTodoCardPayload())
-        case .status:
-            self = .status(CaptureStatusCardPayload())
-        }
-    }
 }
 
 struct CapturePhotoCardPayload: Hashable, Sendable {
-    var thumbnailData: Data?
-    var photoCount: Int
-    var groupStyle: CapturePhotoGroupStyle?
+    var thumbnailData: Data? = nil
+    var photoCount: Int = 1
+    var groupStyle: CapturePhotoGroupStyle? = nil
 }
 
 struct CaptureAudioCardPayload: Hashable, Sendable {
-    var durationSeconds: Int?
+    var durationSeconds: Int? = nil
 }
 
 struct CapturePlaceCardPayload: Hashable, Sendable {
-    var latitude: Double?
-    var longitude: Double?
-    var mapSnapshotData: Data?
-    var isPrivacyEnabled: Bool
+    var latitude: Double? = nil
+    var longitude: Double? = nil
+    var mapSnapshotData: Data? = nil
+    var isPrivacyEnabled: Bool = false
 }
 
 struct CaptureWeatherCardPayload: Hashable, Sendable {
-    var latitude: Double?
-    var longitude: Double?
-    var style: CaptureWeatherVisualStyle?
-    var conditionCode: String?
-    var symbolName: String?
-    var isDaylight: Bool?
+    var latitude: Double? = nil
+    var longitude: Double? = nil
+    var style: CaptureWeatherVisualStyle? = nil
+    var conditionCode: String? = nil
+    var symbolName: String? = nil
+    var isDaylight: Bool? = nil
 }
 
 struct CaptureMusicCardPayload: Hashable, Sendable {
-    var artworkURL: String?
-    var artworkData: Data?
-    var artworkPalette: MusicArtworkPalette?
-    var durationSeconds: Int?
-    var playbackState: CaptureMusicPlaybackState?
+    var artworkURL: String? = nil
+    var artworkData: Data? = nil
+    var artworkPalette: MusicArtworkPalette? = nil
+    var durationSeconds: Int? = nil
+    var playbackState: CaptureMusicPlaybackState? = nil
 }
 
 struct CaptureLinkCardPayload: Hashable, Sendable {
-    var thumbnailData: Data?
+    var thumbnailData: Data? = nil
 }
 
 struct CaptureTodoCardPayload: Hashable, Sendable {}
@@ -638,49 +579,17 @@ struct CaptureCardItem: Identifiable, Hashable, Sendable {
 
     init(
         id: String = UUID().uuidString,
-        kind: CaptureCardKind,
+        payload: CaptureCardPayload,
         origin: CaptureArtifactOrigin? = .manual,
         state: CaptureCardVisualState = .normal,
         title: String? = nil,
         detail: String,
         metadata: String? = nil,
-        thumbnailData: Data? = nil,
-        photoCount: Int = 1,
-        photoGroupStyle: CapturePhotoGroupStyle? = nil,
-        artworkURL: String? = nil,
-        artworkPalette: MusicArtworkPalette? = nil,
-        latitude: Double? = nil,
-        longitude: Double? = nil,
-        durationSeconds: Int? = nil,
-        weatherStyle: CaptureWeatherVisualStyle? = nil,
-        weatherConditionCode: String? = nil,
-        weatherSymbolName: String? = nil,
-        weatherIsDaylight: Bool? = nil,
-        musicPlaybackState: CaptureMusicPlaybackState? = nil,
-        mapSnapshotData: Data? = nil,
-        isLocationPrivacyEnabled: Bool = false,
         isSelected: Bool = false,
         isRemovable: Bool = false
     ) {
         self.id = id
-        self.payload = CaptureCardPayload(
-            kind: kind,
-            thumbnailData: thumbnailData,
-            photoCount: photoCount,
-            photoGroupStyle: photoGroupStyle,
-            artworkURL: artworkURL,
-            artworkPalette: artworkPalette,
-            latitude: latitude,
-            longitude: longitude,
-            durationSeconds: durationSeconds,
-            weatherStyle: weatherStyle,
-            weatherConditionCode: weatherConditionCode,
-            weatherSymbolName: weatherSymbolName,
-            weatherIsDaylight: weatherIsDaylight,
-            musicPlaybackState: musicPlaybackState,
-            mapSnapshotData: mapSnapshotData,
-            isLocationPrivacyEnabled: isLocationPrivacyEnabled
-        )
+        self.payload = payload
         self.origin = origin
         self.state = state
         self.title = title

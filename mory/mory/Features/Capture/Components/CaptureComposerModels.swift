@@ -48,7 +48,7 @@ struct CaptureComposerAttachmentItem: Identifiable {
             source: .processing(id: id),
             card: CaptureCardItem(
                 id: itemID,
-                kind: kind,
+                payload: processingPayload(for: kind),
                 origin: nil,
                 state: .loading,
                 title: kind.label,
@@ -56,5 +56,26 @@ struct CaptureComposerAttachmentItem: Identifiable {
                 isRemovable: false
             )
         )
+    }
+
+    private static func processingPayload(for kind: CaptureCardKind) -> CaptureCardPayload {
+        switch kind {
+        case .photo:
+            return .photo(CapturePhotoCardPayload())
+        case .audio:
+            return .audio(CaptureAudioCardPayload())
+        case .place:
+            return .place(CapturePlaceCardPayload())
+        case .weather:
+            return .weather(CaptureWeatherCardPayload())
+        case .music:
+            return .music(CaptureMusicCardPayload())
+        case .link:
+            return .link(CaptureLinkCardPayload())
+        case .todo:
+            return .todo(CaptureTodoCardPayload())
+        case .status:
+            return .status(CaptureStatusCardPayload())
+        }
     }
 }
