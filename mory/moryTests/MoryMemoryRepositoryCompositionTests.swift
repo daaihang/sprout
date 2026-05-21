@@ -1492,6 +1492,186 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertEqual(detail.pipelineStatus?.stage, .pending)
     }
 
+    func testApplyMemoryMutationUpdatesRecordAndInvalidatesDerivedData() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Mutation source",
+                rawText: "Original memory about Linh and launch planning.",
+                mood: "unclear",
+                inputContext: "before mutation",
+                captureSource: .composer,
+                artifacts: [.text(title: "Mutation source", body: "Original memory about Linh and launch planning.")]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: memory.record.id)
+        XCTAssertNotNil(try repository.fetchRecordAnalysis(recordID: memory.record.id))
+
+        let result = try await repository.applyMemoryMutation(
+            recordID: memory.record.id,
+            mutation: MemoryMutationDraft(
+                recordPatch: MemoryMutationRecordPatch(
+                    rawText: .set("Rewritten memory about clearer launch planning."),
+                    userMood: .set("focused"),
+                    inputContext: .set(nil)
+                )
+            ),
+            refreshPolicy: .markPending
+        )
+
+        let detail = try XCTUnwrap(result.detail)
+        XCTAssertEqual(detail.record.rawText, "Rewritten memory about clearer launch planning.")
+        XCTAssertEqual(detail.record.userMood, "focused")
+        XCTAssertNil(detail.record.inputContext)
+        XCTAssertEqual(result.pipelineStatus?.stage, .pending)
+        XCTAssertTrue(result.invalidatedDerivedData)
+        XCTAssertNil(try repository.fetchRecordAnalysis(recordID: memory.record.id))
+    }
+
+    func testApplyMemoryMutationAddsArtifactsAndPreservesRecordOrder() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Artifact mutation",
+                rawText: "A memory that will receive artifacts.",
+                captureSource: .composer,
+                artifacts: [.text(title: "Artifact mutation", body: "A memory that will receive artifacts.")]
+            )
+        )
+
+        let result = try await repository.applyMemoryMutation(
+            recordID: memory.record.id,
+            mutation: MemoryMutationDraft(
+                addedArtifacts: [
+                    .location(title: "Office", summary: "Shanghai Jing'an", latitude: 31.23, longitude: 121.47),
+                    .todo(title: "Send recap", note: "Before Friday")
+                ]
+            ),
+            refreshPolicy: .markPending
+        )
+
+        let record = try XCTUnwrap(try repository.fetchRecordShell(id: memory.record.id))
+        XCTAssertEqual(result.addedArtifactIDs.count, 2)
+        XCTAssertEqual(record.artifactIDs.suffix(2), result.addedArtifactIDs[...])
+        XCTAssertEqual(result.pipelineStatus?.stage, .pending)
+
+        let detail = try XCTUnwrap(result.detail)
+        XCTAssertTrue(detail.artifacts.contains(where: { $0.kind == .location && $0.title == "Office" }))
+        XCTAssertTrue(detail.artifacts.contains(where: { $0.kind == .todo && $0.title == "Send recap" }))
+    }
+
+    func testApplyMemoryMutationUpdatesDeletesReordersAndPurgesGraphLinks() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Multi artifact",
+                rawText: "A memory with several artifacts.",
+                captureSource: .composer,
+                artifacts: [
+                    .text(title: "Original text", body: "A memory with several artifacts."),
+                    .photo(title: "Photo", summary: "Photo summary", filename: "photo.jpg", imageData: nil, thumbnailData: nil),
+                    .todo(title: "Todo", note: "Original todo")
+                ]
+            )
+        )
+
+        let initialDetail = try XCTUnwrap(repository.fetchMemoryDetail(recordID: memory.record.id))
+        let text = try XCTUnwrap(initialDetail.artifacts.first(where: { $0.kind == .text }))
+        let photo = try XCTUnwrap(initialDetail.artifacts.first(where: { $0.kind == .photo }))
+        let todo = try XCTUnwrap(initialDetail.artifacts.first(where: { $0.kind == .todo }))
+        let linkedEntity = EntityNode(
+            kind: .theme,
+            displayName: "Linked Theme",
+            summary: "A link that should be purged by mutation.",
+            provenanceRecordIDs: [memory.record.id],
+            createdAt: Date.now,
+            updatedAt: Date.now,
+            confidence: 0.8
+        )
+        try repository.upsert(entityNode: linkedEntity)
+        try repository.upsert(artifactEntityLink: ArtifactEntityLink(
+            artifactID: text.id,
+            entityID: linkedEntity.id,
+            confidence: 0.8,
+            source: "test",
+            sourceRecordID: memory.record.id,
+            sourceAnalysisRecordID: memory.record.id,
+            createdAt: Date.now
+        ))
+        XCTAssertFalse(try XCTUnwrap(repository.fetchMemoryDetail(recordID: memory.record.id)).entities.isEmpty)
+
+        var updatedText = text
+        updatedText.title = "Updated text"
+        updatedText.summary = "Updated summary"
+        updatedText.textContent = "Updated text content"
+        updatedText.payload = .text("Updated text content")
+
+        let result = try await repository.applyMemoryMutation(
+            recordID: memory.record.id,
+            mutation: MemoryMutationDraft(
+                updatedArtifacts: [updatedText],
+                deletedArtifactIDs: [photo.id],
+                artifactOrder: [todo.id, text.id]
+            ),
+            refreshPolicy: .markPending
+        )
+
+        XCTAssertEqual(result.updatedArtifactIDs, [text.id])
+        XCTAssertEqual(result.deletedArtifactIDs, [photo.id])
+        XCTAssertEqual(result.reorderedArtifactIDs, [todo.id, text.id])
+
+        let record = try XCTUnwrap(try repository.fetchRecordShell(id: memory.record.id))
+        XCTAssertEqual(Array(record.artifactIDs.prefix(2)), [todo.id, text.id])
+        XCTAssertFalse(record.artifactIDs.contains(photo.id))
+        XCTAssertNil(try repository.fetchArtifact(id: photo.id))
+        XCTAssertEqual(try repository.fetchArtifact(id: text.id)?.summary, "Updated summary")
+        XCTAssertTrue(try XCTUnwrap(repository.fetchMemoryDetail(recordID: memory.record.id)).entities.isEmpty)
+    }
+
+    func testApplyMemoryMutationRunImmediatelyRefreshesPipeline() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService()
+        )
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Immediate mutation",
+                rawText: "A memory waiting for immediate refresh.",
+                captureSource: .composer,
+                artifacts: [.text(title: "Immediate mutation", body: "A memory waiting for immediate refresh.")]
+            )
+        )
+
+        let result = try await repository.applyMemoryMutation(
+            recordID: memory.record.id,
+            mutation: MemoryMutationDraft(
+                recordPatch: MemoryMutationRecordPatch(rawText: .set("A memory refreshed through mutation."))
+            ),
+            refreshPolicy: .runImmediately
+        )
+
+        XCTAssertEqual(result.detail?.record.rawText, "A memory refreshed through mutation.")
+        XCTAssertEqual(result.pipelineStatus?.stage, .completed)
+        XCTAssertNotNil(try repository.fetchRecordAnalysis(recordID: memory.record.id))
+    }
+
     func testTodoCapturePersistsCanonicalTodoArtifactKind() async throws {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
