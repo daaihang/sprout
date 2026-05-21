@@ -55,6 +55,16 @@ struct DebugDiagnosticsView: View {
                 }
 
                 NavigationLink {
+                    DebugV6ControlsView()
+                } label: {
+                    DebugMenuRow(
+                        icon: "slider.horizontal.3",
+                        title: "V6 Controls",
+                        subtitle: "Edit V6 flags, AI preferences, and effective gate diagnostics"
+                    )
+                }
+
+                NavigationLink {
                     DebugCloudIntelligenceView()
                 } label: {
                     DebugMenuRow(

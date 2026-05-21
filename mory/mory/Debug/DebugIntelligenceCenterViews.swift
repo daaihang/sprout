@@ -1,6 +1,256 @@
 import SwiftUI
 import UIKit
 
+struct DebugV6ControlsView: View {
+    @Environment(\.memoryRepository) private var memoryRepository
+
+    @State private var preferences: IntelligencePreferences?
+    @State private var flags: V6FeatureFlags?
+    @State private var isWorking = false
+    @State private var message: String?
+
+    var body: some View {
+        List {
+            Section {
+                Button("Refresh V6 controls") {
+                    refresh()
+                }
+                .disabled(isWorking)
+
+                if isWorking {
+                    DebugCenterProgressRow(text: "Saving V6 controls")
+                }
+                if let message {
+                    Text(message)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
+            } header: {
+                Text("Actions")
+            } footer: {
+                Text("These controls are internal gates only. They do not request system permissions such as notifications.")
+            }
+
+            Section("Effective gate status") {
+                if let preferences, let flags {
+                    ForEach(V6DebugControls.gateDiagnostics(preferences: preferences, flags: flags)) { diagnostic in
+                        DebugV6GateDiagnosticRow(diagnostic: diagnostic)
+                    }
+                } else {
+                    DebugCenterProgressRow(text: "Loading V6 gates")
+                }
+            }
+
+            Section("Bulk controls") {
+                Button("Enable all V6 flags") {
+                    enableAllFlags()
+                }
+                .disabled(flags == nil || isWorking)
+
+                Button("Reset V6 flags to defaults") {
+                    saveFlags(V6FeatureFlags.defaults, message: "Reset V6 flags to defaults.")
+                }
+                .disabled(isWorking)
+
+                Button("Enable cloud-first strongest policy") {
+                    enableCloudFirstStrongestPolicy()
+                }
+                .disabled(preferences == nil || isWorking)
+
+                Button("Reset intelligence preferences to defaults") {
+                    savePreferences(IntelligencePreferences.defaults, message: "Reset intelligence preferences to defaults.")
+                }
+                .disabled(isWorking)
+            }
+
+            Section {
+                if preferences != nil {
+                    Toggle("Local intelligence", isOn: preferenceBoolBinding(\.localIntelligenceEnabled))
+                    Toggle("Cloud intelligence", isOn: preferenceBoolBinding(\.cloudIntelligenceEnabled))
+                    Toggle("Voice refinement", isOn: preferenceBoolBinding(\.voiceRefinementEnabled))
+                    Toggle("Semantic search", isOn: preferenceBoolBinding(\.semanticSearchEnabled))
+                    Toggle("Home suggestions", isOn: preferenceBoolBinding(\.homeSuggestionsEnabled))
+                    Toggle("Daily questions", isOn: preferenceBoolBinding(\.dailyQuestionsEnabled))
+
+                    Picker("Question tone", selection: questionToneBinding) {
+                        ForEach(DailyQuestionTone.allCases) { tone in
+                            Text(debugControlLabel(tone.rawValue)).tag(tone)
+                        }
+                    }
+
+                    Picker("Sensitive topic policy", selection: sensitiveTopicPolicyBinding) {
+                        ForEach(SensitiveTopicPolicy.allCases) { policy in
+                            Text(debugControlLabel(policy.rawValue)).tag(policy)
+                        }
+                    }
+                } else {
+                    DebugCenterProgressRow(text: "Loading preferences")
+                }
+            } header: {
+                Text("Intelligence preferences")
+            } footer: {
+                if let preferences {
+                    Text("Updated \(preferences.updatedAt.formatted(.iso8601))")
+                }
+            }
+
+            Section {
+                if flags != nil {
+                    Toggle("intelligenceJobs", isOn: flagBoolBinding(\.intelligenceJobs))
+                    Toggle("entityProfiles", isOn: flagBoolBinding(\.entityProfiles))
+                    Toggle("clarificationQuestions", isOn: flagBoolBinding(\.clarificationQuestions))
+                    Toggle("homeGrid", isOn: flagBoolBinding(\.homeGrid))
+                    Toggle("semanticSearch", isOn: flagBoolBinding(\.semanticSearch))
+                    Toggle("dailyQuestions", isOn: flagBoolBinding(\.dailyQuestions))
+                    Toggle("localNotifications", isOn: flagBoolBinding(\.localNotifications))
+                    Toggle("cloudQuestionSuggestions", isOn: flagBoolBinding(\.cloudQuestionSuggestions))
+                    Toggle("cloudChapterSuggestions", isOn: flagBoolBinding(\.cloudChapterSuggestions))
+                    Toggle("multimediaViews", isOn: flagBoolBinding(\.multimediaViews))
+                } else {
+                    DebugCenterProgressRow(text: "Loading V6 flags")
+                }
+            } header: {
+                Text("V6 feature flags")
+            } footer: {
+                if let flags {
+                    Text("Updated \(flags.updatedAt.formatted(.iso8601))")
+                }
+            }
+        }
+        .navigationTitle("V6 Controls")
+        .task {
+            refresh()
+        }
+    }
+
+    private var questionToneBinding: Binding<DailyQuestionTone> {
+        Binding {
+            preferences?.questionTone ?? .evidenceBased
+        } set: { newValue in
+            guard var updated = preferences else { return }
+            updated.questionTone = newValue
+            savePreferences(updated, message: "Saved question tone.")
+        }
+    }
+
+    private var sensitiveTopicPolicyBinding: Binding<SensitiveTopicPolicy> {
+        Binding {
+            preferences?.sensitiveTopicPolicy ?? .askBeforeShowing
+        } set: { newValue in
+            guard var updated = preferences else { return }
+            updated.sensitiveTopicPolicy = newValue
+            savePreferences(updated, message: "Saved sensitive topic policy.")
+        }
+    }
+
+    private func preferenceBoolBinding(_ keyPath: WritableKeyPath<IntelligencePreferences, Bool>) -> Binding<Bool> {
+        Binding {
+            preferences?[keyPath: keyPath] ?? false
+        } set: { newValue in
+            guard var updated = preferences else { return }
+            updated[keyPath: keyPath] = newValue
+            savePreferences(updated, message: "Saved intelligence preference.")
+        }
+    }
+
+    private func flagBoolBinding(_ keyPath: WritableKeyPath<V6FeatureFlags, Bool>) -> Binding<Bool> {
+        Binding {
+            flags?[keyPath: keyPath] ?? false
+        } set: { newValue in
+            guard var updated = flags else { return }
+            updated[keyPath: keyPath] = newValue
+            saveFlags(updated, message: "Saved V6 feature flag.")
+        }
+    }
+
+    @MainActor
+    private func refresh() {
+        do {
+            preferences = try memoryRepository.fetchIntelligencePreferences()
+            flags = try memoryRepository.fetchV6FeatureFlags()
+            message = nil
+        } catch {
+            message = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func savePreferences(_ updatedPreferences: IntelligencePreferences, message: String) {
+        isWorking = true
+        defer { isWorking = false }
+        do {
+            var stamped = updatedPreferences
+            stamped.updatedAt = .now
+            try memoryRepository.saveIntelligencePreferences(stamped)
+            preferences = try memoryRepository.fetchIntelligencePreferences()
+            self.message = message
+        } catch {
+            self.message = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func saveFlags(_ updatedFlags: V6FeatureFlags, message: String) {
+        isWorking = true
+        defer { isWorking = false }
+        do {
+            var stamped = updatedFlags
+            stamped.updatedAt = .now
+            try memoryRepository.saveV6FeatureFlags(stamped)
+            flags = try memoryRepository.fetchV6FeatureFlags()
+            self.message = message
+        } catch {
+            self.message = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func enableAllFlags() {
+        guard let flags else { return }
+        saveFlags(
+            V6DebugControls.allFlagsEnabled(from: flags),
+            message: "Enabled all V6 flags."
+        )
+    }
+
+    @MainActor
+    private func enableCloudFirstStrongestPolicy() {
+        guard let preferences else { return }
+        savePreferences(
+            V6DebugControls.cloudFirstStrongestPolicy(from: preferences),
+            message: "Enabled cloud-first strongest policy."
+        )
+    }
+}
+
+private struct DebugV6GateDiagnosticRow: View {
+    let diagnostic: V6GateDiagnostic
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Label(
+                    diagnostic.statusText,
+                    systemImage: diagnostic.isEnabled ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
+                )
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(diagnostic.isEnabled ? .green : .orange)
+                Spacer()
+                Text(diagnostic.title)
+                    .font(.caption.weight(.semibold))
+            }
+            if !diagnostic.isEnabled {
+                Text(diagnostic.reasonText)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+            }
+        }
+        .padding(.vertical, 3)
+    }
+}
+
 struct DebugCloudIntelligenceView: View {
     @Environment(\.memoryRepository) private var memoryRepository
     @Environment(\.cloudIntelligenceService) private var cloudIntelligenceService
@@ -12,9 +262,22 @@ struct DebugCloudIntelligenceView: View {
     @State private var isRunning = false
     @State private var latestSummary: DebugCloudRunSummary?
     @State private var latestErrorTrace: MoryAPIClient.DebugErrorSnapshot?
+    @State private var preferences: IntelligencePreferences?
+    @State private var flags: V6FeatureFlags?
 
     var body: some View {
         List {
+            Section("Effective gates") {
+                if let preferences, let flags {
+                    DebugCenterValueRow(title: "Cloud intelligence", value: preferences.cloudIntelligenceEnabled ? "enabled" : "blocked: cloudIntelligenceEnabled=false")
+                    DebugV6GateDiagnosticRow(diagnostic: V6DebugControls.voiceRefinementGate(preferences: preferences))
+                    DebugCenterValueRow(title: "Question suggestions", value: preferences.cloudIntelligenceEnabled && flags.cloudQuestionSuggestions ? "enabled" : cloudGateReason(preferences.cloudIntelligenceEnabled, flags.cloudQuestionSuggestions, flagName: "v6.cloudQuestionSuggestions"))
+                    DebugCenterValueRow(title: "Chapter suggestions", value: preferences.cloudIntelligenceEnabled && flags.cloudChapterSuggestions ? "enabled" : cloudGateReason(preferences.cloudIntelligenceEnabled, flags.cloudChapterSuggestions, flagName: "v6.cloudChapterSuggestions"))
+                } else {
+                    DebugCenterProgressRow(text: "Loading cloud gates")
+                }
+            }
+
             Section {
                 TextField("Raw transcript", text: $rawTranscript, axis: .vertical)
                     .lineLimit(3...6)
@@ -109,6 +372,15 @@ struct DebugCloudIntelligenceView: View {
             }
             .disabled(latestSummary == nil)
         }
+        .task {
+            refreshCloudGates()
+        }
+    }
+
+    @MainActor
+    private func refreshCloudGates() {
+        preferences = try? memoryRepository.fetchIntelligencePreferences()
+        flags = try? memoryRepository.fetchV6FeatureFlags()
     }
 
     @MainActor
@@ -382,12 +654,21 @@ struct DebugJobQueueView: View {
     @Environment(\.cloudIntelligenceService) private var cloudIntelligenceService
 
     @State private var snapshot: DebugJobQueueSnapshot?
+    @State private var flags: V6FeatureFlags?
     @State private var isWorking = false
     @State private var resultMessage: String?
     @State private var selectedJobKind: DebugEnqueueableJobKind = .dailyQuestion
 
     var body: some View {
         List {
+            Section("Effective gates") {
+                if let flags {
+                    DebugV6GateDiagnosticRow(diagnostic: V6DebugControls.jobWorkerGate(flags: flags))
+                } else {
+                    DebugCenterProgressRow(text: "Loading job worker gate")
+                }
+            }
+
             Section {
                 Button("Refresh queue state") {
                     refresh()
@@ -522,6 +803,7 @@ struct DebugJobQueueView: View {
                 .sorted { $0.createdAt > $1.createdAt }
             let deltas = try memoryRepository.fetchGraphDeltas(applied: nil, limit: nil)
                 .sorted { $0.createdAt > $1.createdAt }
+            flags = try memoryRepository.fetchV6FeatureFlags()
             snapshot = DebugJobQueueSnapshot(
                 generatedAt: .now,
                 jobs: jobs,
@@ -638,6 +920,7 @@ struct DebugSemanticSearchView: View {
 
     @State private var query = "work pressure"
     @State private var result: SearchSnapshot?
+    @State private var preferences: IntelligencePreferences?
     @State private var flags: V6FeatureFlags?
     @State private var isWorking = false
     @State private var message: String?
@@ -656,6 +939,16 @@ struct DebugSemanticSearchView: View {
                     Task { await runSemanticSearch() }
                 }
                 .disabled(isWorking)
+
+                Button("Enable semantic search") {
+                    enableSemanticSearch()
+                }
+                .disabled(isWorking || preferences == nil || flags == nil)
+
+                Button("Enable semantic search + rebuild index") {
+                    Task { await enableSemanticSearchAndRebuildIndex() }
+                }
+                .disabled(isWorking || preferences == nil || flags == nil)
 
                 Button("Rebuild Core Spotlight index") {
                     Task { await rebuildIndex() }
@@ -684,8 +977,12 @@ struct DebugSemanticSearchView: View {
                 Text("Semantic search is local/system-backed through Core Spotlight. Request ID is not applicable unless this later routes through a cloud retrieval service.")
             }
 
-            Section("Feature flags") {
-                DebugCenterValueRow(title: "Semantic search", value: flags?.semanticSearch == true ? "enabled" : "disabled")
+            Section("Feature gates") {
+                DebugCenterValueRow(title: "Preference semanticSearchEnabled", value: preferences?.semanticSearchEnabled == true ? "enabled" : "disabled")
+                DebugCenterValueRow(title: "V6 semanticSearch", value: flags?.semanticSearch == true ? "enabled" : "disabled")
+                if let preferences, let flags {
+                    DebugV6GateDiagnosticRow(diagnostic: V6DebugControls.semanticSearchGate(preferences: preferences, flags: flags))
+                }
                 DebugCenterValueRow(title: "Cloud intelligence", value: flags?.cloudQuestionSuggestions == true ? "question cloud enabled" : "question cloud disabled")
             }
 
@@ -742,13 +1039,30 @@ struct DebugSemanticSearchView: View {
         }
         .navigationTitle("Semantic Search")
         .task {
-            refreshFlags()
+            refreshControls()
         }
     }
 
     @MainActor
-    private func refreshFlags() {
+    private func refreshControls() {
+        preferences = try? memoryRepository.fetchIntelligencePreferences()
         flags = try? memoryRepository.fetchV6FeatureFlags()
+    }
+
+    @MainActor
+    private func enableSemanticSearch() {
+        guard let preferences, let flags else { return }
+        isWorking = true
+        defer { isWorking = false }
+        do {
+            let enabled = V6DebugControls.semanticSearchEnabled(preferences: preferences, flags: flags)
+            try memoryRepository.saveIntelligencePreferences(enabled.preferences)
+            try memoryRepository.saveV6FeatureFlags(enabled.flags)
+            message = "Enabled semantic search preference and V6 flag."
+            refreshControls()
+        } catch {
+            message = error.localizedDescription
+        }
     }
 
     @MainActor
@@ -758,7 +1072,7 @@ struct DebugSemanticSearchView: View {
         do {
             result = try memoryRepository.search(query: query, limit: 12)
             message = "Exact search completed."
-            refreshFlags()
+            refreshControls()
         } catch {
             message = error.localizedDescription
         }
@@ -771,7 +1085,24 @@ struct DebugSemanticSearchView: View {
         do {
             result = try await memoryRepository.searchSemanticFirst(query: query, limit: 12)
             message = "Semantic-first search completed."
-            refreshFlags()
+            refreshControls()
+        } catch {
+            message = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func enableSemanticSearchAndRebuildIndex() async {
+        guard let preferences, let flags else { return }
+        isWorking = true
+        defer { isWorking = false }
+        do {
+            let enabled = V6DebugControls.semanticSearchEnabled(preferences: preferences, flags: flags)
+            try memoryRepository.saveIntelligencePreferences(enabled.preferences)
+            try memoryRepository.saveV6FeatureFlags(enabled.flags)
+            let report = try await memoryRepository.rebuildSpotlightIndex()
+            message = "Enabled semantic search. \(DebugCenterFormatting.spotlightReportText(report))"
+            refreshControls()
         } catch {
             message = error.localizedDescription
         }
@@ -784,7 +1115,7 @@ struct DebugSemanticSearchView: View {
         do {
             let report = try await memoryRepository.rebuildSpotlightIndex()
             message = DebugCenterFormatting.spotlightReportText(report)
-            refreshFlags()
+            refreshControls()
         } catch {
             message = error.localizedDescription
         }
@@ -797,7 +1128,7 @@ struct DebugSemanticSearchView: View {
         do {
             let report = try await memoryRepository.deleteSpotlightIndex()
             message = DebugCenterFormatting.spotlightReportText(report)
-            refreshFlags()
+            refreshControls()
         } catch {
             message = error.localizedDescription
         }
@@ -808,12 +1139,26 @@ struct DebugHomeBoardDiagnosticsView: View {
     @Environment(\.memoryRepository) private var memoryRepository
 
     @State private var snapshot: HomeBoardDebugSnapshot?
+    @State private var preferences: IntelligencePreferences?
+    @State private var flags: V6FeatureFlags?
     @State private var limit = 12
     @State private var isWorking = false
     @State private var message: String?
 
     var body: some View {
         List {
+            Section("Effective gates") {
+                if let preferences, let flags {
+                    DebugV6GateDiagnosticRow(diagnostic: V6DebugControls.homeBoardGate(preferences: preferences, flags: flags))
+                    DebugCenterValueRow(title: "Home suggestions", value: preferences.homeSuggestionsEnabled ? "enabled" : "disabled")
+                    DebugCenterValueRow(title: "Home grid", value: flags.homeGrid ? "enabled" : "disabled")
+                    DebugCenterValueRow(title: "Entity profiles", value: flags.entityProfiles ? "enabled" : "disabled")
+                    DebugCenterValueRow(title: "Clarification questions", value: flags.clarificationQuestions ? "enabled" : "disabled")
+                } else {
+                    DebugCenterProgressRow(text: "Loading Home Board gates")
+                }
+            }
+
             Section {
                 Stepper("Limit: \(limit)", value: $limit, in: 4...24)
                 Button("Refresh Home Board debug snapshot") {
@@ -916,6 +1261,8 @@ struct DebugHomeBoardDiagnosticsView: View {
         isWorking = true
         defer { isWorking = false }
         do {
+            preferences = try memoryRepository.fetchIntelligencePreferences()
+            flags = try memoryRepository.fetchV6FeatureFlags()
             snapshot = try memoryRepository.fetchHomeBoardDebugSnapshot(for: .now, limit: limit)
             message = nil
         } catch {
@@ -1184,6 +1531,24 @@ private struct DebugCenterProgressRow: View {
                 .foregroundStyle(.secondary)
         }
     }
+}
+
+private func debugControlLabel(_ rawValue: String) -> String {
+    rawValue
+        .replacingOccurrences(of: "([a-z])([A-Z])", with: "$1 $2", options: .regularExpression)
+        .replacingOccurrences(of: "_", with: " ")
+        .capitalized
+}
+
+private func cloudGateReason(_ cloudEnabled: Bool, _ flagEnabled: Bool, flagName: String) -> String {
+    var reasons: [String] = []
+    if !cloudEnabled {
+        reasons.append("cloudIntelligenceEnabled=false")
+    }
+    if !flagEnabled {
+        reasons.append("\(flagName)=false")
+    }
+    return reasons.isEmpty ? "enabled" : "blocked: \(reasons.joined(separator: ", "))"
 }
 
 private func debugHomeBoardTitle(_ item: HomeBoardItemSnapshot) -> String {
