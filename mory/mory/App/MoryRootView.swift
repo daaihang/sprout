@@ -12,6 +12,7 @@ struct MoryRootView: View {
     @StateObject private var notificationInbox = NotificationInteractionInbox.shared
     @StateObject private var audioRecorder = AudioRecorderModel()
     @State private var voiceStopTrigger = false
+    @State private var isHoldToTalkMode = false
     @State private var selectedTab: MoryAppTab = .today
     @State private var isPresentingSettings = false
     @State private var unifiedCaptureSeed: UnifiedCaptureSeed?
@@ -89,16 +90,21 @@ struct MoryRootView: View {
             if audioRecorder.isBusy {
                 VoiceRecordingOverlayView(
                     audioRecorder: audioRecorder,
+                    isHoldToTalkMode: isHoldToTalkMode,
                     onStop: { voiceStopTrigger = true }
                 )
-                .transition(.opacity.combined(with: .scale(scale: 0.98)))
+                .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .center)))
             }
         }
-        .animation(.spring(response: 0.28, dampingFraction: 0.82), value: audioRecorder.isBusy)
+        .animation(.spring(response: 0.32, dampingFraction: 0.8), value: audioRecorder.isBusy)
+        .onChange(of: audioRecorder.isBusy) { _, busy in
+            if !busy { isHoldToTalkMode = false }
+        }
         .moryTabViewBottomAccessory {
             QuickCaptureToolbar(
                 audioRecorder: audioRecorder,
                 stopTrigger: $voiceStopTrigger,
+                isHoldToTalkMode: $isHoldToTalkMode,
                 onTextCapture: { unifiedCaptureSeed = .empty },
                 onPhotoCapture: { unifiedCaptureSeed = .photoCapture },
                 onVoiceCaptureReady: { result in unifiedCaptureSeed = .voice(result) }

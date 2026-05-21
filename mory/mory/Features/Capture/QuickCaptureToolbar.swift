@@ -12,6 +12,7 @@ struct QuickVoiceCaptureResult: Identifiable, Equatable, Sendable {
 struct QuickCaptureToolbar: View {
     @ObservedObject var audioRecorder: AudioRecorderModel
     @Binding var stopTrigger: Bool
+    @Binding var isHoldToTalkMode: Bool
     let onTextCapture: () -> Void
     let onPhotoCapture: () -> Void
     let onVoiceCaptureReady: (QuickVoiceCaptureResult) -> Void
@@ -71,33 +72,36 @@ struct QuickCaptureToolbar: View {
     }
 
     private var captureCapsule: some View {
-        Button {
+        Group {
+            Text(capsulePrimaryText)
+                .font(capsuleFont)
+                .foregroundStyle(capsulePrimaryColor)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, minHeight: controlSize, maxHeight: controlSize)
+        .contentShape(Rectangle())
+        .onTapGesture {
             if let recoveryAction = audioRecorder.recoveryAction {
                 handleRecoveryAction(recoveryAction)
             } else if !isVoiceSessionActive {
                 onTextCapture()
             }
-        } label: {
-            Group {
-                Text(capsulePrimaryText)
-                    .font(capsuleFont)
-                    .foregroundStyle(capsulePrimaryColor)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .multilineTextAlignment(.center)
-            }
-            .frame(maxWidth: .infinity, minHeight: controlSize, maxHeight: controlSize)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .onLongPressGesture(minimumDuration: 0.5, pressing: { isPressing in
+            if !isPressing && isHoldToTalkMode {
+                isHoldToTalkMode = false
+                stopVoiceCapture()
+            }
+        }, perform: {
+            guard !audioRecorder.isBusy else { return }
+            isHoldToTalkMode = true
+            startVoiceCapture()
+        })
         .accessibilityLabel(Text(capsuleAccessibilityLabel))
         .accessibilityHint(Text("quickCapture.unified.hint"))
-        .simultaneousGesture(
-            LongPressGesture(minimumDuration: 0.5).onEnded { _ in
-                guard !audioRecorder.isBusy else { return }
-                handleVoiceButtonTap()
-            }
-        )
+        .accessibilityAddTraits(.isButton)
     }
 
     private var isInlineAccessory: Bool {
