@@ -360,7 +360,7 @@ struct UnifiedCaptureComposerView: View {
 
         do {
             let rawText = bodyText.trimmedOrNil
-                ?? stagedArtifactDrafts.map(\.captureComposerDetail).joined(separator: "\n").trimmedOrNil
+                ?? stagedArtifactDrafts.map { CaptureCardItem(draft: $0).detail }.joined(separator: "\n").trimmedOrNil
                 ?? String(localized: "capture.memory.untitled")
             let draft = MemoryCaptureDraft(
                 title: resolvedInternalTitle(rawText: rawText),

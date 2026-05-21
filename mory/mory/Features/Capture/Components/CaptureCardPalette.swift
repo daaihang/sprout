@@ -25,9 +25,9 @@ struct CaptureCardPalette {
         highContrast: Bool,
         mapLegibility: CaptureMapLegibilityStyle = .fallback
     ) -> CaptureCardPalette {
-        switch item.kind {
-        case .photo:
-            if let hex = item.thumbnailData.flatMap(sampleHexColor(from:)) {
+        switch item.payload {
+        case let .photo(payload):
+            if let hex = payload.thumbnailData.flatMap(sampleHexColor(from:)) {
                 return fromHex(
                     source: .photoSample,
                     backgroundHex: hex,
@@ -38,10 +38,10 @@ struct CaptureCardPalette {
             return fallback(kind: item.kind, highContrast: highContrast)
         case .place:
             return place(mapLegibility: mapLegibility, highContrast: highContrast)
-        case .weather:
-            return weather(style: item.weatherStyle ?? .unknown, highContrast: highContrast)
-        case .music:
-            if let palette = item.artworkPalette,
+        case let .weather(payload):
+            return weather(style: payload.style ?? .unknown, highContrast: highContrast)
+        case let .music(payload):
+            if let palette = payload.artworkPalette,
                let backgroundHex = palette.backgroundColorHex {
                 return fromHex(
                     source: .musicArtwork,
@@ -52,7 +52,7 @@ struct CaptureCardPalette {
                     highContrast: highContrast
                 )
             }
-            if let hex = item.thumbnailData.flatMap(sampleHexColor(from:)) {
+            if let hex = payload.artworkData.flatMap(sampleHexColor(from:)) {
                 return fromHex(
                     source: .musicArtwork,
                     backgroundHex: hex,
@@ -61,7 +61,7 @@ struct CaptureCardPalette {
                 )
             }
             return fallback(kind: item.kind, highContrast: highContrast)
-        default:
+        case .audio, .link, .todo, .status:
             return fallback(kind: item.kind, highContrast: highContrast)
         }
     }
@@ -85,31 +85,58 @@ struct CaptureCardPalette {
         let accent: Color
         switch style.atmosphereSpec.palette {
         case .warmLight:
-            colors = [Color(red: 1, green: 0.82, blue: 0.34), Color(red: 1, green: 0.58, blue: 0.24)]
+            colors = [
+                Color(red: 0.56, green: 0.82, blue: 1.0),
+                Color(red: 1.0, green: 0.83, blue: 0.42)
+            ]
             accent = .orange
         case .night:
-            colors = [Color(red: 0.08, green: 0.11, blue: 0.23), Color(red: 0.18, green: 0.22, blue: 0.38)]
+            colors = [
+                Color(red: 0.05, green: 0.08, blue: 0.2),
+                Color(red: 0.2, green: 0.19, blue: 0.38)
+            ]
             accent = .indigo
         case .softCloud:
-            colors = [Color(red: 0.78, green: 0.85, blue: 0.9), Color(red: 0.55, green: 0.66, blue: 0.76)]
+            colors = [
+                Color(red: 0.62, green: 0.76, blue: 0.88),
+                Color(red: 0.95, green: 0.97, blue: 0.98)
+            ]
             accent = .cyan
         case .coolRain:
-            colors = [Color(red: 0.2, green: 0.36, blue: 0.48), Color(red: 0.13, green: 0.22, blue: 0.32)]
+            colors = [
+                Color(red: 0.24, green: 0.42, blue: 0.58),
+                Color(red: 0.1, green: 0.19, blue: 0.31)
+            ]
             accent = .blue
         case .storm:
-            colors = [Color(red: 0.08, green: 0.1, blue: 0.16), Color(red: 0.24, green: 0.22, blue: 0.35)]
+            colors = [
+                Color(red: 0.07, green: 0.1, blue: 0.18),
+                Color(red: 0.2, green: 0.15, blue: 0.34)
+            ]
             accent = .purple
         case .frost:
-            colors = [Color(red: 0.82, green: 0.94, blue: 1), Color(red: 0.62, green: 0.78, blue: 0.9)]
+            colors = [
+                Color(red: 0.72, green: 0.9, blue: 1.0),
+                Color(red: 0.99, green: 1.0, blue: 1.0)
+            ]
             accent = .cyan
         case .fog:
-            colors = [Color(red: 0.68, green: 0.72, blue: 0.72), Color(red: 0.5, green: 0.56, blue: 0.58)]
+            colors = [
+                Color(red: 0.7, green: 0.77, blue: 0.82),
+                Color(red: 0.94, green: 0.95, blue: 0.94)
+            ]
             accent = .gray
         case .wind:
-            colors = [Color(red: 0.68, green: 0.84, blue: 0.82), Color(red: 0.36, green: 0.62, blue: 0.62)]
+            colors = [
+                Color(red: 0.58, green: 0.86, blue: 0.92),
+                Color(red: 0.96, green: 0.99, blue: 0.97)
+            ]
             accent = .teal
         case .heat:
-            colors = [Color(red: 1, green: 0.38, blue: 0.2), Color(red: 0.9, green: 0.18, blue: 0.16)]
+            colors = [
+                Color(red: 1.0, green: 0.58, blue: 0.36),
+                Color(red: 1.0, green: 0.9, blue: 0.58)
+            ]
             accent = .red
         case .neutral:
             colors = [Color(.secondarySystemBackground), Color(.tertiarySystemBackground)]

@@ -625,6 +625,9 @@
         }
       }
     },
+    "Bulk controls" : {
+
+    },
     "Cancel" : {
       "localizations" : {
         "zh-Hans" : {
@@ -3800,6 +3803,9 @@
         }
       }
     },
+    "clarificationQuestions" : {
+
+    },
     "Clear Lab Data" : {
       "localizations" : {
         "zh-Hans" : {
@@ -3810,6 +3816,9 @@
         }
       }
     },
+    "Cloud intelligence" : {
+
+    },
     "Cloud Intelligence" : {
       "localizations" : {
         "zh-Hans" : {
@@ -3819,6 +3828,12 @@
           }
         }
       }
+    },
+    "cloudChapterSuggestions" : {
+
+    },
+    "cloudQuestionSuggestions" : {
+
     },
     "common.attachmentCount %lld" : {
       "extractionState" : "manual",
@@ -4435,6 +4450,12 @@
           }
         }
       }
+    },
+    "Daily questions" : {
+
+    },
+    "dailyQuestions" : {
+
     },
     "Data Repair" : {
       "localizations" : {
@@ -11400,6 +11421,12 @@
         }
       }
     },
+    "Effective gate status" : {
+
+    },
+    "Effective gates" : {
+
+    },
     "empty.action.addFirstMemory" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -11842,6 +11869,18 @@
         }
       }
     },
+    "Enable all V6 flags" : {
+
+    },
+    "Enable cloud-first strongest policy" : {
+
+    },
+    "Enable semantic search" : {
+
+    },
+    "Enable semantic search + rebuild index" : {
+
+    },
     "Enabled" : {
       "localizations" : {
         "zh-Hans" : {
@@ -12048,6 +12087,9 @@
         }
       }
     },
+    "entityProfiles" : {
+
+    },
     "Error" : {
       "localizations" : {
         "zh-Hans" : {
@@ -12116,6 +12158,7 @@
       }
     },
     "Feature flags" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -12124,6 +12167,9 @@
           }
         }
       }
+    },
+    "Feature gates" : {
+
     },
     "Filtered" : {
       "localizations" : {
@@ -12227,6 +12273,9 @@
           }
         }
       }
+    },
+    "Home suggestions" : {
+
     },
     "home.board.action.dismiss" : {
       "extractionState" : "manual",
@@ -12755,6 +12804,9 @@
         }
       }
     },
+    "homeGrid" : {
+
+    },
     "Inputs" : {
       "localizations" : {
         "zh-Hans" : {
@@ -13173,6 +13225,12 @@
         }
       }
     },
+    "Intelligence preferences" : {
+
+    },
+    "intelligenceJobs" : {
+
+    },
     "Internal diagnostics are enabled for Debug, development installs, and InternalBeta TestFlight builds only." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13450,6 +13508,9 @@
         }
       }
     },
+    "Local intelligence" : {
+
+    },
     "Local owner" : {
       "localizations" : {
         "zh-Hans" : {
@@ -13469,6 +13530,9 @@
           }
         }
       }
+    },
+    "localNotifications" : {
+
     },
     "Location memories will appear here after Mory resolves them into saved places." : {
       "localizations" : {
@@ -14463,6 +14527,9 @@
           }
         }
       }
+    },
+    "multimediaViews" : {
+
     },
     "Music" : {
       "localizations" : {
@@ -15611,6 +15678,9 @@
           }
         }
       }
+    },
+    "Question tone" : {
+
     },
     "Questions" : {
       "localizations" : {
@@ -17290,6 +17360,9 @@
         }
       }
     },
+    "Refresh V6 controls" : {
+
+    },
     "Refreshing" : {
       "localizations" : {
         "zh-Hans" : {
@@ -17442,6 +17515,12 @@
           }
         }
       }
+    },
+    "Reset intelligence preferences to defaults" : {
+
+    },
+    "Reset V6 flags to defaults" : {
+
     },
     "Results" : {
       "extractionState" : "stale",
@@ -18053,6 +18132,9 @@
         }
       }
     },
+    "Semantic search" : {
+
+    },
     "Semantic Search" : {
       "localizations" : {
         "zh-Hans" : {
@@ -18072,6 +18154,12 @@
           }
         }
       }
+    },
+    "semanticSearch" : {
+
+    },
+    "Sensitive topic policy" : {
+
     },
     "Sent" : {
       "localizations" : {
@@ -20761,6 +20849,9 @@
         }
       }
     },
+    "These controls are internal gates only. They do not request system permissions such as notifications." : {
+
+    },
     "These requests call the same cloud intelligence client used by capture, daily questions, chapter suggestions, photo semantics, and notification intent generation." : {
       "localizations" : {
         "zh-Hans" : {
@@ -20999,6 +21090,9 @@
         }
       }
     },
+    "Updated %@" : {
+
+    },
     "URL" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -21084,6 +21178,12 @@
         }
       }
     },
+    "V6 Controls" : {
+
+    },
+    "V6 feature flags" : {
+
+    },
     "Visible cards" : {
       "localizations" : {
         "zh-Hans" : {
@@ -21104,6 +21204,9 @@
           }
         }
       }
+    },
+    "Voice refinement" : {
+
     },
     "Weather cards keep kind=weather. Origin remains debug data; production cards hide source labels." : {
       "localizations" : {

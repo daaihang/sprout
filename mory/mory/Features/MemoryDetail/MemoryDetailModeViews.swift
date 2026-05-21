@@ -186,10 +186,7 @@ private struct MemoryDetailCaptureCard: View {
 
     var body: some View {
         CaptureCardView(
-            item: CaptureCardItem(artifact: artifact),
-            provenanceDisplayMode: .production,
-            musicCardStyle: .compactRow,
-            placeCardStyle: .standard
+            presentation: .detailArtifact(artifact)
         )
     }
 }

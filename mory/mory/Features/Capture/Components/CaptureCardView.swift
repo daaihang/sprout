@@ -4,22 +4,55 @@ import UIKit
 struct CaptureCardView: View {
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
-    let item: CaptureCardItem
-    var reduceMotionOverride: Bool?
-    var highContrastOverride: Bool?
-    var provenanceDisplayMode: CaptureCardProvenanceDisplayMode = .production
-    var weatherSymbolMotionLevel: CaptureWeatherSymbolMotionLevel = .subtle
-    var weatherAtmosphereIntensityScale: Double = 1
-    var musicCardStyle: CaptureMusicCardStyle = .auto
-    var placeCardStyle: CapturePlaceCardStyle = .auto
-    var showsLayoutGuides = false
-    var showsFieldAudit = false
+    let presentation: CaptureCardPresentation
     var onTap: (() -> Void)?
     var onRemove: (() -> Void)?
 
+    init(
+        presentation: CaptureCardPresentation,
+        onTap: (() -> Void)? = nil,
+        onRemove: (() -> Void)? = nil
+    ) {
+        self.presentation = presentation
+        self.onTap = onTap
+        self.onRemove = onRemove
+    }
+
+    init(
+        item: CaptureCardItem,
+        reduceMotionOverride: Bool? = nil,
+        highContrastOverride: Bool? = nil,
+        provenanceDisplayMode: CaptureCardProvenanceDisplayMode = .production,
+        weatherSymbolMotionLevel: CaptureWeatherSymbolMotionLevel = .subtle,
+        weatherAtmosphereIntensityScale: Double = 1,
+        musicCardStyle: CaptureMusicCardStyle = .auto,
+        placeCardStyle: CapturePlaceCardStyle = .auto,
+        showsLayoutGuides: Bool = false,
+        showsFieldAudit: Bool = false,
+        onTap: (() -> Void)? = nil,
+        onRemove: (() -> Void)? = nil
+    ) {
+        self.init(
+            presentation: .debug(
+                item,
+                reduceMotionOverride: reduceMotionOverride,
+                highContrastOverride: highContrastOverride,
+                provenanceDisplayMode: provenanceDisplayMode,
+                weatherSymbolMotionLevel: weatherSymbolMotionLevel,
+                weatherAtmosphereIntensityScale: weatherAtmosphereIntensityScale,
+                musicCardStyle: musicCardStyle,
+                placeCardStyle: placeCardStyle,
+                showsLayoutGuides: showsLayoutGuides,
+                showsFieldAudit: showsFieldAudit
+            ),
+            onTap: onTap,
+            onRemove: onRemove
+        )
+    }
+
     var body: some View {
         Button {
-            guard item.allowsPrimaryAction else { return }
+            guard presentation.allowsPrimaryAction else { return }
             onTap?()
         } label: {
             cardBody
@@ -27,11 +60,19 @@ struct CaptureCardView: View {
         .buttonStyle(.plain)
         .disabled(item.state == .disabled)
         .opacity(item.state == .disabled ? 0.48 : 1)
-        .scaleEffect(item.displaysSelection ? 1.018 : 1)
-        .animation(.spring(response: 0.28, dampingFraction: 0.82), value: item.displaysSelection)
+        .scaleEffect(presentation.displaysSelection ? 1.018 : 1)
+        .animation(.spring(response: 0.28, dampingFraction: 0.82), value: presentation.displaysSelection)
         .transition(.scale(scale: 0.96).combined(with: .opacity))
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
+    }
+
+    private var item: CaptureCardItem {
+        presentation.item
+    }
+
+    private var common: CaptureCardCommonDisplay {
+        item.commonDisplay
     }
 
     private var cardBody: some View {
@@ -50,48 +91,51 @@ struct CaptureCardView: View {
 
     @ViewBuilder
     private var content: some View {
-        switch item.kind {
-        case .photo:
-            PhotoCaptureCardContent(item: item, accent: accent, highContrast: highContrast)
-        case .audio:
-            AudioCaptureCardContent(item: item, accent: accent)
-        case .place:
+        switch item.payload {
+        case let .photo(payload):
+            PhotoCaptureCardContent(common: common, payload: payload, accent: accent, highContrast: highContrast)
+        case let .audio(payload):
+            AudioCaptureCardContent(common: common, payload: payload, accent: accent)
+        case let .place(payload):
             PlaceCaptureCardContent(
-                item: item,
+                common: common,
+                payload: payload,
                 accent: accent,
                 highContrastOverride: highContrastOverride,
-                style: placeCardStyle.resolved(for: item)
+                style: presentation.placeCardStyle.resolved(for: item)
             )
-        case .weather:
+        case let .weather(payload):
             WeatherCaptureCardContent(
-                item: item,
+                common: common,
+                payload: payload,
                 accent: accent,
                 reduceMotionOverride: reduceMotionOverride,
-                symbolMotionLevel: weatherSymbolMotionLevel,
-                atmosphereIntensityScale: weatherAtmosphereIntensityScale,
+                symbolMotionLevel: presentation.weatherSymbolMotionLevel,
+                atmosphereIntensityScale: presentation.weatherAtmosphereIntensityScale,
                 highContrast: highContrast
             )
-        case .music:
+        case let .music(payload):
             MusicCaptureCardContent(
-                item: item,
+                common: common,
+                payload: payload,
                 accent: accent,
                 palette: palette,
-                style: musicCardStyle.resolved(for: item),
+                style: presentation.musicCardStyle.resolved(for: item),
                 highContrast: highContrast
             )
-        case .link:
-            LinkCaptureCardContent(item: item, accent: accent)
-        case .todo:
-            TodoCaptureCardContent(item: item, accent: accent)
-        case .status:
-            StatusCaptureCardContent(item: item, accent: accent)
+        case let .link(payload):
+            LinkCaptureCardContent(common: common, payload: payload, accent: accent)
+        case let .todo(payload):
+            TodoCaptureCardContent(common: common, payload: payload, accent: accent, isSelected: presentation.displaysSelection)
+        case let .status(payload):
+            StatusCaptureCardContent(common: common, payload: payload, accent: accent)
         }
     }
 
     private var cardFooter: some View {
         HStack(spacing: 6) {
             if let origin = item.origin,
-               let visual = provenanceDisplayMode.visual(for: origin) {
+               let visual = presentation.provenanceDisplayMode.visual(for: origin) {
                 originBadge(visual, origin: origin)
             }
 
@@ -134,7 +178,7 @@ struct CaptureCardView: View {
                 .controlSize(.small)
                 .padding(6)
                 .background(Color(.secondarySystemBackground).opacity(0.92), in: Circle())
-        } else if item.displaysRemoveControl {
+        } else if presentation.displaysRemoveControl {
             removeButton
         } else if item.state == .error {
             Image(systemName: "exclamationmark.triangle.fill")
@@ -142,7 +186,7 @@ struct CaptureCardView: View {
                 .foregroundStyle(.red)
                 .padding(7)
                 .background(Color(.secondarySystemBackground).opacity(0.92), in: Circle())
-        } else if item.displaysSelection {
+        } else if presentation.displaysSelection {
             Image(systemName: "checkmark.circle.fill")
                 .symbolRenderingMode(.palette)
                 .foregroundStyle(.white, accent)
@@ -171,8 +215,8 @@ struct CaptureCardView: View {
     private var containerStroke: some View {
         RoundedRectangle(cornerRadius: 20, style: .continuous)
             .stroke(
-                item.displaysSelection ? palette.selectionStroke : Color.primary.opacity(highContrast ? 0.18 : 0.08),
-                lineWidth: item.displaysSelection ? (highContrast ? 1.8 : 1.35) : (highContrast ? 1.2 : 1)
+                presentation.displaysSelection ? palette.selectionStroke : Color.primary.opacity(highContrast ? 0.18 : 0.08),
+                lineWidth: presentation.displaysSelection ? (highContrast ? 1.8 : 1.35) : (highContrast ? 1.2 : 1)
             )
     }
 
@@ -207,7 +251,7 @@ struct CaptureCardView: View {
 
     private var visibleFooterMetadata: String? {
         guard let metadata = item.metadata?.trimmedOrNil else { return nil }
-        guard provenanceDisplayMode != .debug else { return metadata }
+        guard presentation.provenanceDisplayMode != .debug else { return metadata }
         guard item.kind == .weather else { return nil }
         guard let origin = item.origin else { return metadata }
         let normalizedMetadata = metadata.lowercased()
@@ -219,11 +263,13 @@ struct CaptureCardView: View {
     }
 
     private var usesMapLegibility: Bool {
-        item.kind == .place && item.mapSnapshotData != nil && !item.isLocationPrivacyEnabled
+        guard case let .place(payload) = item.payload else { return false }
+        return payload.mapSnapshotData != nil && !payload.isPrivacyEnabled
     }
 
     private var mapLegibilityStyle: CaptureMapLegibilityStyle {
-        usesMapLegibility ? CaptureMapLegibilityStyle.resolve(snapshotData: item.mapSnapshotData) : .fallback
+        guard case let .place(payload) = item.payload, usesMapLegibility else { return .fallback }
+        return CaptureMapLegibilityStyle.resolve(snapshotData: payload.mapSnapshotData)
     }
 
     private var mapFooterForeground: Color {
@@ -252,6 +298,22 @@ struct CaptureCardView: View {
         highContrastOverride ?? (colorSchemeContrast == .increased)
     }
 
+    private var reduceMotionOverride: Bool? {
+        presentation.reduceMotionOverride
+    }
+
+    private var highContrastOverride: Bool? {
+        presentation.highContrastOverride
+    }
+
+    private var showsLayoutGuides: Bool {
+        presentation.showsLayoutGuides
+    }
+
+    private var showsFieldAudit: Bool {
+        presentation.showsFieldAudit
+    }
+
     private var accent: Color {
         palette.accent
     }
@@ -278,24 +340,34 @@ struct CaptureCardView: View {
 
     private var fieldAuditText: String {
         [
+            "role=\(presentation.role.rawValue)",
             "kind=\(item.kind.rawValue)",
+            "payload=\(item.payload.kind.rawValue)",
             "state=\(item.state.rawValue)",
             "origin=\(item.origin?.rawValue ?? "nil")",
+            "canOpen=\(presentation.capabilities.canOpen)",
+            "canRemove=\(presentation.capabilities.canRemove)",
+            "canSelect=\(presentation.capabilities.canSelect)",
             "title=\(item.title ?? "nil")",
             "detail=\(item.detail)",
             "metadata=\(item.metadata ?? "nil")",
-            "conditionCode=\(item.weatherConditionCode ?? "nil")",
-            "symbolName=\(item.weatherSymbolName ?? "nil")",
-            "isDaylight=\(item.weatherIsDaylight.map(String.init) ?? "nil")",
+            "conditionCode=\(weatherPayloadForAudit?.conditionCode ?? "nil")",
+            "symbolName=\(weatherPayloadForAudit?.symbolName ?? "nil")",
+            "isDaylight=\(weatherPayloadForAudit?.isDaylight.map(String.init) ?? "nil")",
             "weatherStyle=\(resolvedWeatherStyleForAudit.rawValue)",
         ].joined(separator: "\n")
     }
 
+    private var weatherPayloadForAudit: CaptureWeatherCardPayload? {
+        guard case let .weather(payload) = item.payload else { return nil }
+        return payload
+    }
+
     private var resolvedWeatherStyleForAudit: CaptureWeatherVisualStyle {
-        item.weatherStyle ?? .resolve(
-            conditionCode: item.weatherConditionCode,
+        weatherPayloadForAudit?.style ?? .resolve(
+            conditionCode: weatherPayloadForAudit?.conditionCode,
             condition: [item.title, item.detail].compactMap { $0 }.joined(separator: " "),
-            isDaylight: item.weatherIsDaylight
+            isDaylight: weatherPayloadForAudit?.isDaylight
         )
     }
 }
@@ -350,12 +422,13 @@ private struct CaptureCardChrome<Content: View, Footer: View, TrailingControl: V
 private struct PhotoCaptureCardContent: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    let item: CaptureCardItem
+    let common: CaptureCardCommonDisplay
+    let payload: CapturePhotoCardPayload
     let accent: Color
     let highContrast: Bool
 
     var body: some View {
-        if item.photoCount > 1 {
+        if payload.photoCount > 1 {
             photoGroupContent
         } else {
             singlePhotoContent
@@ -374,7 +447,7 @@ private struct PhotoCaptureCardContent: View {
 
     private var photoGroupContent: some View {
         ZStack(alignment: .bottomLeading) {
-            switch item.photoGroupStyle ?? .mosaic {
+            switch payload.groupStyle ?? .mosaic {
             case .mosaic:
                 mosaicBackground
             case .stack:
@@ -385,10 +458,10 @@ private struct PhotoCaptureCardContent: View {
 
             photoScrim
             VStack(alignment: .leading, spacing: 5) {
-                Text(item.title?.trimmedOrNil ?? String(localized: "capture.card.kind.photos"))
+                Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.photos"))
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
-                Text(String(format: String(localized: "capture.card.photo.count.format"), item.photoCount))
+                Text(String(format: String(localized: "capture.card.photo.count.format"), payload.photoCount))
                     .font(.caption.weight(.medium))
             }
             .foregroundStyle(legibility.primaryText)
@@ -400,7 +473,7 @@ private struct PhotoCaptureCardContent: View {
 
     @ViewBuilder
     private var photoBackground: some View {
-        if let image = item.thumbnailImage {
+        if let image = payload.thumbnailImage {
             Image(uiImage: image)
                 .resizable()
                 .scaledToFill()
@@ -474,7 +547,7 @@ private struct PhotoCaptureCardContent: View {
     private func sampleTile(index: Int) -> some View {
         ZStack {
             sampleGradient(index: index)
-            if let image = item.thumbnailImage, index == 0 {
+            if let image = payload.thumbnailImage, index == 0 {
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFill()
@@ -507,15 +580,15 @@ private struct PhotoCaptureCardContent: View {
     }
 
     private var legibility: CaptureCardLegibility {
-        CaptureCardLegibility.imageData(item.thumbnailData, highContrast: highContrast)
+        CaptureCardLegibility.imageData(payload.thumbnailData, highContrast: highContrast)
     }
 
     private func titleBlock(legibility: CaptureCardLegibility) -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(item.title?.trimmedOrNil ?? String(localized: "capture.card.kind.photo"))
+            Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.photo"))
                 .font(.subheadline.weight(.semibold))
                 .lineLimit(1)
-            Text(item.detail)
+            Text(common.detail)
                 .font(.caption)
                 .lineLimit(2)
         }
@@ -525,7 +598,8 @@ private struct PhotoCaptureCardContent: View {
 }
 
 private struct AudioCaptureCardContent: View {
-    let item: CaptureCardItem
+    let common: CaptureCardCommonDisplay
+    let payload: CaptureAudioCardPayload
     let accent: Color
 
     var body: some View {
@@ -537,14 +611,14 @@ private struct AudioCaptureCardContent: View {
                     .frame(width: 26, height: 26)
                     .background(accent, in: Circle())
 
-                Text(item.title?.trimmedOrNil ?? String(localized: "capture.card.kind.audio"))
+                Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.audio"))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
 
                 Spacer(minLength: 0)
 
-                if let duration = item.durationSeconds {
+                if let duration = payload.durationSeconds {
                     Text(formatDuration(duration))
                         .font(.caption2.monospacedDigit().weight(.medium))
                     .foregroundStyle(.secondary)
@@ -574,21 +648,22 @@ private struct AudioCaptureCardContent: View {
     }
 
     private var transcriptPreview: String {
-        guard let detail = item.detail.trimmedOrNil, detail != String(localized: "capture.card.audio.attached") else {
+        guard let detail = common.detail.trimmedOrNil, detail != String(localized: "capture.card.audio.attached") else {
             return String(localized: "capture.card.audio.originalAttached")
         }
         return detail
     }
 
     private var transcriptIsAvailable: Bool {
-        item.detail.trimmedOrNil != nil && item.detail != String(localized: "capture.card.audio.attached")
+        common.detail.trimmedOrNil != nil && common.detail != String(localized: "capture.card.audio.attached")
     }
 }
 
 private struct PlaceCaptureCardContent: View {
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
-    let item: CaptureCardItem
+    let common: CaptureCardCommonDisplay
+    let payload: CapturePlaceCardPayload
     let accent: Color
     let highContrastOverride: Bool?
     let style: CapturePlaceCardStyle
@@ -616,11 +691,11 @@ private struct PlaceCaptureCardContent: View {
             Spacer()
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(item.title?.trimmedOrNil ?? String(localized: "capture.card.kind.place"))
+                Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.place"))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(placePrimaryText)
                     .lineLimit(1)
-                Text(item.detail)
+                Text(common.detail)
                     .font(.caption)
                     .foregroundStyle(placeSecondaryText)
                     .lineLimit(2)
@@ -633,11 +708,11 @@ private struct PlaceCaptureCardContent: View {
 
     private var immersiveFooter: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(item.title?.trimmedOrNil ?? String(localized: "capture.card.kind.place"))
+            Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.place"))
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(placePrimaryText)
                 .lineLimit(1)
-            Text(item.detail)
+            Text(common.detail)
                 .font(.caption)
                 .foregroundStyle(placeSecondaryText)
                 .lineLimit(1)
@@ -650,7 +725,7 @@ private struct PlaceCaptureCardContent: View {
 
     @ViewBuilder
     private var placeBackground: some View {
-        if let image = item.mapSnapshotImage, !item.isLocationPrivacyEnabled {
+        if let image = payload.mapSnapshotImage, !payload.isPrivacyEnabled {
             Image(uiImage: image)
                 .resizable()
                 .scaledToFill()
@@ -658,7 +733,7 @@ private struct PlaceCaptureCardContent: View {
         } else {
             mapBackground
                 .overlay {
-                    if item.isLocationPrivacyEnabled {
+                    if payload.isPrivacyEnabled {
                         privacyLocationMask
                     }
                 }
@@ -704,16 +779,16 @@ private struct PlaceCaptureCardContent: View {
     }
 
     private var legibilityStyle: CaptureMapLegibilityStyle {
-        guard item.mapSnapshotData != nil, !item.isLocationPrivacyEnabled else {
+        guard payload.mapSnapshotData != nil, !payload.isPrivacyEnabled else {
             return .fallback
         }
-        return CaptureMapLegibilityStyle.resolve(snapshotData: item.mapSnapshotData)
+        return CaptureMapLegibilityStyle.resolve(snapshotData: payload.mapSnapshotData)
     }
 
     private var legibility: CaptureCardLegibility {
         CaptureCardLegibility.map(
-            snapshotData: item.mapSnapshotData,
-            isPrivacyEnabled: item.isLocationPrivacyEnabled,
+            snapshotData: payload.mapSnapshotData,
+            isPrivacyEnabled: payload.isPrivacyEnabled,
             highContrast: highContrast
         )
     }
@@ -750,7 +825,8 @@ private struct PlaceCaptureCardContent: View {
 private struct WeatherCaptureCardContent: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    let item: CaptureCardItem
+    let common: CaptureCardCommonDisplay
+    let payload: CaptureWeatherCardPayload
     let accent: Color
     let reduceMotionOverride: Bool?
     let symbolMotionLevel: CaptureWeatherSymbolMotionLevel
@@ -760,7 +836,7 @@ private struct WeatherCaptureCardContent: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .top) {
-                Text(item.title?.trimmedOrNil ?? String(localized: "capture.card.kind.weather"))
+                Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.weather"))
                     .font(.system(size: 35, weight: .bold, design: .rounded))
                     .foregroundStyle(legibility.primaryText)
                     .lineLimit(1)
@@ -770,7 +846,7 @@ private struct WeatherCaptureCardContent: View {
                 weatherIcon
             }
 
-            Text(item.detail)
+            Text(common.detail)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(legibility.secondaryText)
                 .lineLimit(2)
@@ -788,10 +864,10 @@ private struct WeatherCaptureCardContent: View {
     }
 
     private var weatherStyle: CaptureWeatherVisualStyle {
-        item.weatherStyle ?? .resolve(
-            conditionCode: item.weatherConditionCode,
-            condition: [item.title, item.detail].compactMap { $0 }.joined(separator: " "),
-            isDaylight: item.weatherIsDaylight
+        payload.style ?? .resolve(
+            conditionCode: payload.conditionCode,
+            condition: [common.title, common.detail].compactMap { $0 }.joined(separator: " "),
+            isDaylight: payload.isDaylight
         )
     }
 
@@ -818,7 +894,7 @@ private struct WeatherCaptureCardContent: View {
     }
 
     private var weatherIconBase: some View {
-        Image(systemName: item.weatherSymbolName?.trimmedOrNil ?? weatherStyle.symbolName)
+        Image(systemName: payload.symbolName?.trimmedOrNil ?? weatherStyle.symbolName)
             .font(.system(size: 27, weight: .semibold))
             .symbolRenderingMode(.multicolor)
             .frame(width: 32, height: 32)
@@ -855,7 +931,8 @@ private struct WeatherCaptureCardContent: View {
 }
 
 private struct MusicCaptureCardContent: View {
-    let item: CaptureCardItem
+    let common: CaptureCardCommonDisplay
+    let payload: CaptureMusicCardPayload
     let accent: Color
     let palette: CaptureCardPalette
     let style: CaptureMusicCardStyle
@@ -876,24 +953,26 @@ private struct MusicCaptureCardContent: View {
         ZStack {
             musicBackground
 
-            HStack(alignment: .top, spacing: 11) {
-                compactArtwork(size: 54)
+            HStack(alignment: .center, spacing: 10) {
+                compactArtwork(size: 48)
 
                 VStack(alignment: .leading, spacing: 5) {
-                    Text(item.title?.trimmedOrNil ?? String(localized: "capture.card.kind.music"))
+                    Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.music"))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(coverLegibility.primaryText)
-                        .lineLimit(2)
-                    Text(item.detail)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.86)
+                    Text(common.detail)
                         .font(.caption)
                         .foregroundStyle(coverLegibility.secondaryText)
-                        .lineLimit(2)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.86)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(12)
             .shadow(color: coverLegibility.shadow, radius: 3, y: 1)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         }
     }
 
@@ -904,11 +983,11 @@ private struct MusicCaptureCardContent: View {
             VStack(alignment: .leading, spacing: 7) {
                 compactArtwork(size: 46)
 
-                Text(item.title?.trimmedOrNil ?? String(localized: "capture.card.kind.music"))
+                Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.music"))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(coverLegibility.primaryText)
                     .lineLimit(2)
-                Text(item.detail)
+                Text(common.detail)
                     .font(.caption2)
                     .foregroundStyle(coverLegibility.secondaryText)
                     .lineLimit(1)
@@ -924,12 +1003,12 @@ private struct MusicCaptureCardContent: View {
             musicBackground
 
             VStack(spacing: 5) {
-                Text(item.title?.trimmedOrNil ?? String(localized: "capture.card.kind.music"))
+                Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.music"))
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(coverLegibility.primaryText)
                     .lineLimit(2)
                     .multilineTextAlignment(.center)
-                Text(item.detail)
+                Text(common.detail)
                     .font(.caption.weight(.medium))
                     .foregroundStyle(coverLegibility.secondaryText)
                     .lineLimit(1)
@@ -950,7 +1029,7 @@ private struct MusicCaptureCardContent: View {
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: size >= 50 ? 12 : 10, style: .continuous))
         .overlay(alignment: .bottomLeading) {
-            if musicState == .playing && item.hasArtwork {
+            if musicState == .playing && payload.hasArtwork {
                 MusicEqualizerView(isPlaying: true, accent: .white)
                     .padding(.horizontal, 5)
                     .padding(.vertical, 4)
@@ -965,8 +1044,8 @@ private struct MusicCaptureCardContent: View {
     }
 
     private var coverLegibility: CaptureCardLegibility {
-        if item.thumbnailData != nil {
-            return CaptureCardLegibility.imageData(item.thumbnailData, highContrast: highContrast)
+        if payload.artworkData != nil {
+            return CaptureCardLegibility.imageData(payload.artworkData, highContrast: highContrast)
         }
         return CaptureCardLegibility.palette(palette, highContrast: highContrast)
     }
@@ -989,13 +1068,13 @@ private struct MusicCaptureCardContent: View {
 
     @ViewBuilder
     private var artworkBackgroundImage: some View {
-        if let image = item.thumbnailImage {
+        if let image = payload.artworkImage {
             Image(uiImage: image)
                 .resizable()
                 .aspectRatio(contentMode: .fill)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .clipped()
-        } else if let artworkURL = item.artworkURL, let url = URL(string: artworkURL) {
+        } else if let artworkURL = payload.artworkURL, let url = URL(string: artworkURL) {
             AsyncImage(url: url) { phase in
                 switch phase {
                 case let .success(image):
@@ -1015,13 +1094,13 @@ private struct MusicCaptureCardContent: View {
 
     @ViewBuilder
     private func artworkImageView(contentMode: ContentMode) -> some View {
-        if let image = item.thumbnailImage {
+        if let image = payload.artworkImage {
             Image(uiImage: image)
                 .resizable()
                 .aspectRatio(contentMode: contentMode)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .clipped()
-        } else if let artworkURL = item.artworkURL, let url = URL(string: artworkURL) {
+        } else if let artworkURL = payload.artworkURL, let url = URL(string: artworkURL) {
             AsyncImage(url: url) { phase in
                 switch phase {
                 case let .success(image):
@@ -1040,7 +1119,7 @@ private struct MusicCaptureCardContent: View {
     }
 
     private var musicState: CaptureMusicPlaybackState {
-        item.musicPlaybackState ?? (item.origin == .context ? .playing : .searchResult)
+        payload.playbackState ?? (common.origin == .context ? .playing : .searchResult)
     }
 
     private var musicPlaceholder: some View {
@@ -1051,7 +1130,8 @@ private struct MusicCaptureCardContent: View {
 }
 
 private struct LinkCaptureCardContent: View {
-    let item: CaptureCardItem
+    let common: CaptureCardCommonDisplay
+    let payload: CaptureLinkCardPayload
     let accent: Color
 
     var body: some View {
@@ -1083,11 +1163,11 @@ private struct LinkCaptureCardContent: View {
     }
 
     private var linkHeader: String {
-        item.metadata?.trimmedOrNil ?? URL(string: item.detail)?.host() ?? String(localized: "capture.card.kind.link")
+        common.metadata?.trimmedOrNil ?? URL(string: common.detail)?.host() ?? String(localized: "capture.card.kind.link")
     }
 
     private var linkTitle: String {
-        let title = item.title?.trimmedOrNil
+        let title = common.title?.trimmedOrNil
         if let title, !sameField(title, linkHeader) {
             return title
         }
@@ -1095,7 +1175,7 @@ private struct LinkCaptureCardContent: View {
     }
 
     private var linkDetail: String? {
-        let detail = item.detail.trimmedOrNil
+        let detail = common.detail.trimmedOrNil
         guard let detail, !sameField(detail, linkTitle), !sameField(detail, linkHeader) else {
             return nil
         }
@@ -1109,21 +1189,23 @@ private struct LinkCaptureCardContent: View {
 }
 
 private struct TodoCaptureCardContent: View {
-    let item: CaptureCardItem
+    let common: CaptureCardCommonDisplay
+    let payload: CaptureTodoCardPayload
     let accent: Color
+    let isSelected: Bool
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            Image(systemName: item.displaysSelection ? "checkmark.circle.fill" : "circle")
+            Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                 .font(.title3)
                 .foregroundStyle(accent)
                 .padding(.top, 1)
 
             VStack(alignment: .leading, spacing: 6) {
-                Text(item.title?.trimmedOrNil ?? String(localized: "capture.card.kind.todo"))
+                Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.todo"))
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(2)
-                Text(item.detail)
+                Text(common.detail)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(3)
@@ -1136,7 +1218,8 @@ private struct TodoCaptureCardContent: View {
 }
 
 private struct StatusCaptureCardContent: View {
-    let item: CaptureCardItem
+    let common: CaptureCardCommonDisplay
+    let payload: CaptureStatusCardPayload
     let accent: Color
 
     var body: some View {
@@ -1145,11 +1228,11 @@ private struct StatusCaptureCardContent: View {
                 .font(.title2)
                 .foregroundStyle(statusColor)
 
-            Text(item.title?.trimmedOrNil ?? String(localized: "capture.card.kind.status"))
+            Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.status"))
                 .font(.subheadline.weight(.semibold))
                 .lineLimit(1)
 
-            Text(item.detail)
+            Text(common.detail)
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(3)
@@ -1160,7 +1243,7 @@ private struct StatusCaptureCardContent: View {
     }
 
     private var statusIcon: String {
-        switch item.state {
+        switch common.state {
         case .loading:
             return "hourglass"
         case .error:
@@ -1173,7 +1256,7 @@ private struct StatusCaptureCardContent: View {
     }
 
     private var statusColor: Color {
-        switch item.state {
+        switch common.state {
         case .loading:
             return .blue
         case .error:
@@ -1186,12 +1269,25 @@ private struct StatusCaptureCardContent: View {
     }
 }
 
-private extension CaptureCardItem {
+private extension CapturePhotoCardPayload {
     var thumbnailImage: UIImage? {
         guard let thumbnailData else { return nil }
         return UIImage(data: thumbnailData)
     }
+}
 
+private extension CaptureMusicCardPayload {
+    var artworkImage: UIImage? {
+        guard let artworkData else { return nil }
+        return UIImage(data: artworkData)
+    }
+
+    var hasArtwork: Bool {
+        artworkURL?.trimmedOrNil != nil || artworkData != nil
+    }
+}
+
+private extension CapturePlaceCardPayload {
     var mapSnapshotImage: UIImage? {
         guard let mapSnapshotData else { return nil }
         return UIImage(data: mapSnapshotData)

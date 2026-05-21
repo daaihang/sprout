@@ -96,6 +96,174 @@ struct CaptureCardProvenanceVisual: Hashable, Sendable {
     let isCompact: Bool
 }
 
+enum CaptureCardRole: String, CaseIterable, Hashable, Sendable {
+    case composerEditing
+    case detailViewing
+    case detailEditing
+    case debugLab
+}
+
+struct CaptureCardCapabilities: Hashable, Sendable {
+    var canOpen: Bool
+    var canRemove: Bool
+    var canRetry: Bool
+    var canSelect: Bool
+    var canReorder: Bool
+
+    static func resolve(role: CaptureCardRole, item: CaptureCardItem) -> CaptureCardCapabilities {
+        switch role {
+        case .composerEditing:
+            return CaptureCardCapabilities(
+                canOpen: true,
+                canRemove: item.isRemovable,
+                canRetry: false,
+                canSelect: false,
+                canReorder: false
+            )
+        case .detailViewing:
+            return CaptureCardCapabilities(
+                canOpen: true,
+                canRemove: false,
+                canRetry: false,
+                canSelect: false,
+                canReorder: false
+            )
+        case .detailEditing:
+            return CaptureCardCapabilities(
+                canOpen: true,
+                canRemove: item.isRemovable,
+                canRetry: false,
+                canSelect: false,
+                canReorder: false
+            )
+        case .debugLab:
+            return CaptureCardCapabilities(
+                canOpen: true,
+                canRemove: item.isRemovable,
+                canRetry: false,
+                canSelect: item.isSelected,
+                canReorder: false
+            )
+        }
+    }
+}
+
+struct CaptureCardPresentation: Hashable, Sendable {
+    var item: CaptureCardItem
+    var role: CaptureCardRole
+    var capabilities: CaptureCardCapabilities
+    var provenanceDisplayMode: CaptureCardProvenanceDisplayMode
+    var reduceMotionOverride: Bool?
+    var highContrastOverride: Bool?
+    var weatherSymbolMotionLevel: CaptureWeatherSymbolMotionLevel
+    var weatherAtmosphereIntensityScale: Double
+    var musicCardStyle: CaptureMusicCardStyle
+    var placeCardStyle: CapturePlaceCardStyle
+    var showsLayoutGuides: Bool
+    var showsFieldAudit: Bool
+
+    init(
+        item: CaptureCardItem,
+        role: CaptureCardRole,
+        capabilities: CaptureCardCapabilities? = nil,
+        provenanceDisplayMode: CaptureCardProvenanceDisplayMode,
+        reduceMotionOverride: Bool? = nil,
+        highContrastOverride: Bool? = nil,
+        weatherSymbolMotionLevel: CaptureWeatherSymbolMotionLevel = .subtle,
+        weatherAtmosphereIntensityScale: Double = 1,
+        musicCardStyle: CaptureMusicCardStyle = .auto,
+        placeCardStyle: CapturePlaceCardStyle = .auto,
+        showsLayoutGuides: Bool = false,
+        showsFieldAudit: Bool = false
+    ) {
+        self.item = item
+        self.role = role
+        self.capabilities = capabilities ?? CaptureCardCapabilities.resolve(role: role, item: item)
+        self.provenanceDisplayMode = provenanceDisplayMode
+        self.reduceMotionOverride = reduceMotionOverride
+        self.highContrastOverride = highContrastOverride
+        self.weatherSymbolMotionLevel = weatherSymbolMotionLevel
+        self.weatherAtmosphereIntensityScale = weatherAtmosphereIntensityScale
+        self.musicCardStyle = musicCardStyle
+        self.placeCardStyle = placeCardStyle
+        self.showsLayoutGuides = showsLayoutGuides
+        self.showsFieldAudit = showsFieldAudit
+    }
+
+    static func composerAttachment(_ attachment: CaptureComposerAttachmentItem) -> CaptureCardPresentation {
+        CaptureCardPresentation(
+            item: attachment.card,
+            role: .composerEditing,
+            provenanceDisplayMode: .production,
+            musicCardStyle: .compactRow,
+            placeCardStyle: .standard
+        )
+    }
+
+    static func detailArtifact(_ artifact: Artifact) -> CaptureCardPresentation {
+        CaptureCardPresentation(
+            item: CaptureCardItem(artifact: artifact),
+            role: .detailViewing,
+            provenanceDisplayMode: .production,
+            musicCardStyle: .compactRow,
+            placeCardStyle: .standard
+        )
+    }
+
+    static func detailEditing(_ item: CaptureCardItem) -> CaptureCardPresentation {
+        CaptureCardPresentation(
+            item: item,
+            role: .detailEditing,
+            provenanceDisplayMode: .production,
+            musicCardStyle: .compactRow,
+            placeCardStyle: .standard
+        )
+    }
+
+    static func debug(
+        _ item: CaptureCardItem,
+        reduceMotionOverride: Bool? = nil,
+        highContrastOverride: Bool? = nil,
+        provenanceDisplayMode: CaptureCardProvenanceDisplayMode = .debug,
+        weatherSymbolMotionLevel: CaptureWeatherSymbolMotionLevel = .subtle,
+        weatherAtmosphereIntensityScale: Double = 1,
+        musicCardStyle: CaptureMusicCardStyle = .auto,
+        placeCardStyle: CapturePlaceCardStyle = .auto,
+        showsLayoutGuides: Bool = false,
+        showsFieldAudit: Bool = false
+    ) -> CaptureCardPresentation {
+        CaptureCardPresentation(
+            item: item,
+            role: .debugLab,
+            provenanceDisplayMode: provenanceDisplayMode,
+            reduceMotionOverride: reduceMotionOverride,
+            highContrastOverride: highContrastOverride,
+            weatherSymbolMotionLevel: weatherSymbolMotionLevel,
+            weatherAtmosphereIntensityScale: weatherAtmosphereIntensityScale,
+            musicCardStyle: musicCardStyle,
+            placeCardStyle: placeCardStyle,
+            showsLayoutGuides: showsLayoutGuides,
+            showsFieldAudit: showsFieldAudit
+        )
+    }
+
+    var allowsPrimaryAction: Bool {
+        item.state == .normal && capabilities.canOpen
+    }
+
+    var displaysRemoveControl: Bool {
+        capabilities.canRemove && (item.state == .normal || item.state == .error)
+    }
+
+    var displaysSelection: Bool {
+        capabilities.canSelect && item.state == .normal && item.isSelected && !displaysRemoveControl
+    }
+
+    var hasTrailingControl: Bool {
+        item.state == .loading || item.state == .error || displaysRemoveControl || displaysSelection
+    }
+}
+
 enum CaptureWeatherVisualStyle: String, CaseIterable, Hashable, Sendable, Identifiable {
     case sunny
     case clearNight
@@ -488,7 +656,7 @@ enum CapturePlaceCardStyle: String, CaseIterable, Hashable, Sendable, Identifiab
         case .immersive:
             return .immersive
         case .auto:
-            return item.mapSnapshotData == nil ? .standard : .standard
+            return .standard
         }
     }
 }
@@ -509,31 +677,154 @@ enum CapturePhotoGroupStyle: String, CaseIterable, Hashable, Sendable, Identifia
     }
 }
 
+enum CaptureCardPayload: Hashable, Sendable {
+    case photo(CapturePhotoCardPayload)
+    case audio(CaptureAudioCardPayload)
+    case place(CapturePlaceCardPayload)
+    case weather(CaptureWeatherCardPayload)
+    case music(CaptureMusicCardPayload)
+    case link(CaptureLinkCardPayload)
+    case todo(CaptureTodoCardPayload)
+    case status(CaptureStatusCardPayload)
+
+    var kind: CaptureCardKind {
+        switch self {
+        case .photo:
+            return .photo
+        case .audio:
+            return .audio
+        case .place:
+            return .place
+        case .weather:
+            return .weather
+        case .music:
+            return .music
+        case .link:
+            return .link
+        case .todo:
+            return .todo
+        case .status:
+            return .status
+        }
+    }
+
+    init(
+        kind: CaptureCardKind,
+        thumbnailData: Data? = nil,
+        photoCount: Int = 1,
+        photoGroupStyle: CapturePhotoGroupStyle? = nil,
+        artworkURL: String? = nil,
+        artworkPalette: MusicArtworkPalette? = nil,
+        latitude: Double? = nil,
+        longitude: Double? = nil,
+        durationSeconds: Int? = nil,
+        weatherStyle: CaptureWeatherVisualStyle? = nil,
+        weatherConditionCode: String? = nil,
+        weatherSymbolName: String? = nil,
+        weatherIsDaylight: Bool? = nil,
+        musicPlaybackState: CaptureMusicPlaybackState? = nil,
+        mapSnapshotData: Data? = nil,
+        isLocationPrivacyEnabled: Bool = false
+    ) {
+        switch kind {
+        case .photo:
+            self = .photo(CapturePhotoCardPayload(
+                thumbnailData: thumbnailData,
+                photoCount: photoCount,
+                groupStyle: photoGroupStyle
+            ))
+        case .audio:
+            self = .audio(CaptureAudioCardPayload(durationSeconds: durationSeconds))
+        case .place:
+            self = .place(CapturePlaceCardPayload(
+                latitude: latitude,
+                longitude: longitude,
+                mapSnapshotData: mapSnapshotData,
+                isPrivacyEnabled: isLocationPrivacyEnabled
+            ))
+        case .weather:
+            self = .weather(CaptureWeatherCardPayload(
+                latitude: latitude,
+                longitude: longitude,
+                style: weatherStyle,
+                conditionCode: weatherConditionCode,
+                symbolName: weatherSymbolName,
+                isDaylight: weatherIsDaylight
+            ))
+        case .music:
+            self = .music(CaptureMusicCardPayload(
+                artworkURL: artworkURL,
+                artworkData: thumbnailData,
+                artworkPalette: artworkPalette,
+                durationSeconds: durationSeconds,
+                playbackState: musicPlaybackState
+            ))
+        case .link:
+            self = .link(CaptureLinkCardPayload(thumbnailData: thumbnailData))
+        case .todo:
+            self = .todo(CaptureTodoCardPayload())
+        case .status:
+            self = .status(CaptureStatusCardPayload())
+        }
+    }
+}
+
+struct CapturePhotoCardPayload: Hashable, Sendable {
+    var thumbnailData: Data?
+    var photoCount: Int
+    var groupStyle: CapturePhotoGroupStyle?
+}
+
+struct CaptureAudioCardPayload: Hashable, Sendable {
+    var durationSeconds: Int?
+}
+
+struct CapturePlaceCardPayload: Hashable, Sendable {
+    var latitude: Double?
+    var longitude: Double?
+    var mapSnapshotData: Data?
+    var isPrivacyEnabled: Bool
+}
+
+struct CaptureWeatherCardPayload: Hashable, Sendable {
+    var latitude: Double?
+    var longitude: Double?
+    var style: CaptureWeatherVisualStyle?
+    var conditionCode: String?
+    var symbolName: String?
+    var isDaylight: Bool?
+}
+
+struct CaptureMusicCardPayload: Hashable, Sendable {
+    var artworkURL: String?
+    var artworkData: Data?
+    var artworkPalette: MusicArtworkPalette?
+    var durationSeconds: Int?
+    var playbackState: CaptureMusicPlaybackState?
+}
+
+struct CaptureLinkCardPayload: Hashable, Sendable {
+    var thumbnailData: Data?
+}
+
+struct CaptureTodoCardPayload: Hashable, Sendable {}
+
+struct CaptureStatusCardPayload: Hashable, Sendable {}
+
 struct CaptureCardItem: Identifiable, Hashable, Sendable {
     let id: String
-    var kind: CaptureCardKind
+    var payload: CaptureCardPayload
     var origin: CaptureArtifactOrigin?
     var state: CaptureCardVisualState
     var title: String?
     var detail: String
     var metadata: String?
-    var thumbnailData: Data?
-    var photoCount: Int
-    var photoGroupStyle: CapturePhotoGroupStyle?
-    var artworkURL: String?
-    var artworkPalette: MusicArtworkPalette?
-    var latitude: Double?
-    var longitude: Double?
-    var durationSeconds: Int?
-    var weatherStyle: CaptureWeatherVisualStyle?
-    var weatherConditionCode: String?
-    var weatherSymbolName: String?
-    var weatherIsDaylight: Bool?
-    var musicPlaybackState: CaptureMusicPlaybackState?
-    var mapSnapshotData: Data?
-    var isLocationPrivacyEnabled: Bool
     var isSelected: Bool
     var isRemovable: Bool
+
+    var kind: CaptureCardKind {
+        payload.kind
+    }
 
     var displaysSelection: Bool {
         state == .normal && isSelected && !displaysRemoveControl
@@ -578,382 +869,75 @@ struct CaptureCardItem: Identifiable, Hashable, Sendable {
         isRemovable: Bool = false
     ) {
         self.id = id
-        self.kind = kind
+        self.payload = CaptureCardPayload(
+            kind: kind,
+            thumbnailData: thumbnailData,
+            photoCount: photoCount,
+            photoGroupStyle: photoGroupStyle,
+            artworkURL: artworkURL,
+            artworkPalette: artworkPalette,
+            latitude: latitude,
+            longitude: longitude,
+            durationSeconds: durationSeconds,
+            weatherStyle: weatherStyle,
+            weatherConditionCode: weatherConditionCode,
+            weatherSymbolName: weatherSymbolName,
+            weatherIsDaylight: weatherIsDaylight,
+            musicPlaybackState: musicPlaybackState,
+            mapSnapshotData: mapSnapshotData,
+            isLocationPrivacyEnabled: isLocationPrivacyEnabled
+        )
         self.origin = origin
         self.state = state
         self.title = title
         self.detail = detail
         self.metadata = metadata
-        self.thumbnailData = thumbnailData
-        self.photoCount = photoCount
-        self.photoGroupStyle = photoGroupStyle
-        self.artworkURL = artworkURL
-        self.artworkPalette = artworkPalette
-        self.latitude = latitude
-        self.longitude = longitude
-        self.durationSeconds = durationSeconds
-        self.weatherStyle = weatherStyle
-        self.weatherConditionCode = weatherConditionCode
-        self.weatherSymbolName = weatherSymbolName
-        self.weatherIsDaylight = weatherIsDaylight
-        self.musicPlaybackState = musicPlaybackState
-        self.mapSnapshotData = mapSnapshotData
-        self.isLocationPrivacyEnabled = isLocationPrivacyEnabled
         self.isSelected = isSelected
         self.isRemovable = isRemovable
     }
 }
 
 extension CaptureCardItem {
-    var hasArtwork: Bool {
-        kind == .music && (artworkURL?.trimmedOrNil != nil || thumbnailData != nil)
+    var commonDisplay: CaptureCardCommonDisplay {
+        CaptureCardCommonDisplay(item: self)
     }
 }
 
-extension CaptureCardItem {
-    init(attachment item: CaptureComposerAttachmentItem) {
-        self.init(
-            id: item.id,
-            kind: CaptureCardKind(composerKind: item.kind),
-            origin: item.origin,
-            state: item.isProcessing ? .loading : .normal,
-            title: item.title ?? item.kind.label,
-            detail: item.detail,
-            metadata: item.metadata ?? item.secondaryText,
-            thumbnailData: item.thumbnailData,
-            artworkURL: item.artworkURL,
-            artworkPalette: item.artworkPalette,
-            latitude: item.latitude,
-            longitude: item.longitude,
-            weatherStyle: item.weatherStyle,
-            weatherConditionCode: item.weatherConditionCode,
-            weatherSymbolName: item.weatherSymbolName,
-            weatherIsDaylight: item.weatherIsDaylight,
-            isSelected: item.isSelected,
-            isRemovable: item.isRemovable
-        )
-    }
+struct CaptureCardCommonDisplay: Hashable, Sendable {
+    let id: String
+    let kind: CaptureCardKind
+    let origin: CaptureArtifactOrigin?
+    let state: CaptureCardVisualState
+    let title: String?
+    let detail: String
+    let metadata: String?
+    let isSelected: Bool
+    let isRemovable: Bool
 
-    init(artifact: Artifact, state: CaptureCardVisualState = .normal) {
-        switch artifact.kind {
-        case .text:
-            self.init(
-                id: "artifact-\(artifact.id.uuidString)",
-                kind: .status,
-                origin: artifact.captureCardOrigin,
-                state: state,
-                title: artifact.title.trimmedOrNil ?? String(localized: "capture.card.kind.text"),
-                detail: captureCardModelSnippet(artifact.textContent)
-                    ?? captureCardModelSnippet(artifact.summary)
-                    ?? String(localized: "capture.card.kind.text")
-            )
-        case .photo:
-            self.init(
-                id: "artifact-\(artifact.id.uuidString)",
-                kind: .photo,
-                origin: artifact.captureCardOrigin,
-                state: state,
-                title: artifact.title.trimmedOrNil,
-                detail: captureCardModelSnippet(artifact.summary)
-                    ?? captureCardModelSnippet(artifact.textContent)
-                    ?? String(localized: "capture.card.photo.attached"),
-                metadata: artifact.mediaRef?.filename.trimmedOrNil,
-                thumbnailData: artifact.previewPayload ?? artifact.binaryPayload,
-                isRemovable: false
-            )
-        case .audio:
-            self.init(
-                id: "artifact-\(artifact.id.uuidString)",
-                kind: .audio,
-                origin: artifact.captureCardOrigin,
-                state: state,
-                title: artifact.title.trimmedOrNil ?? String(localized: "capture.card.kind.audio"),
-                detail: artifact.metadata["transcriptionText"].flatMap(captureCardModelSnippet)
-                    ?? captureCardModelSnippet(artifact.textContent)
-                    ?? captureCardModelSnippet(artifact.summary)
-                    ?? String(localized: "capture.card.audio.attached"),
-                metadata: artifact.mediaRef?.filename.trimmedOrNil,
-                isRemovable: false
-            )
-        case .music:
-            self.init(
-                id: "artifact-\(artifact.id.uuidString)",
-                kind: .music,
-                origin: artifact.captureCardOrigin,
-                state: state,
-                title: artifact.metadata["trackName"]?.trimmedOrNil
-                    ?? artifact.title.trimmedOrNil
-                    ?? String(localized: "capture.card.kind.music"),
-                detail: [
-                    artifact.metadata["artistName"]?.trimmedOrNil,
-                    artifact.metadata["albumName"]?.trimmedOrNil
-                ]
-                .compactMap { $0 }
-                .joined(separator: " · ")
-                .trimmedOrNil
-                    ?? captureCardModelSnippet(artifact.summary)
-                    ?? String(localized: "capture.card.kind.music"),
-                metadata: nil,
-                thumbnailData: artifact.previewPayload ?? artifact.binaryPayload,
-                artworkURL: artifact.metadata["artworkURL"]?.trimmedOrNil,
-                artworkPalette: artifact.captureCardArtworkPalette,
-                durationSeconds: artifact.metadata["durationSeconds"].flatMap(Int.init),
-                musicPlaybackState: .stopped,
-                isRemovable: false
-            )
-        case .link:
-            let url = artifact.metadata["url"]?.trimmedOrNil
-            self.init(
-                id: "artifact-\(artifact.id.uuidString)",
-                kind: .link,
-                origin: artifact.captureCardOrigin,
-                state: state,
-                title: artifact.title.trimmedOrNil ?? String(localized: "capture.card.kind.link"),
-                detail: captureCardModelSnippet(artifact.summary)
-                    ?? captureCardModelSnippet(artifact.textContent)
-                    ?? url
-                    ?? String(localized: "capture.card.link.attached"),
-                metadata: url.flatMap { URL(string: $0)?.host() },
-                thumbnailData: artifact.previewPayload,
-                isRemovable: false
-            )
-        case .location:
-            self.init(
-                id: "artifact-\(artifact.id.uuidString)",
-                kind: .place,
-                origin: artifact.captureCardOrigin,
-                state: state,
-                title: artifact.title.trimmedOrNil ?? String(localized: "capture.card.kind.place"),
-                detail: captureCardModelSnippet(artifact.summary)
-                    ?? captureCardModelSnippet(artifact.textContent)
-                    ?? String(localized: "capture.card.place.attached"),
-                metadata: nil,
-                latitude: artifact.metadata["latitude"].flatMap(Double.init),
-                longitude: artifact.metadata["longitude"].flatMap(Double.init),
-                isRemovable: false
-            )
-        case .weather:
-            let condition = artifact.metadata["condition"]?.trimmedOrNil
-                ?? artifact.summary.trimmedOrNil
-                ?? artifact.title.trimmedOrNil
-                ?? String(localized: "capture.card.kind.weather")
-            let temperature = artifact.metadata["temperatureCelsius"].flatMap(Double.init)
-            let windSpeed = artifact.metadata["windSpeedKmh"].flatMap(Double.init)
-            let humidity = artifact.metadata["humidity"].flatMap(Double.init)
-            let uvIndex = artifact.metadata["uvIndex"].flatMap(Int.init)
-            let isDaylight = artifact.metadata["isDaylight"].flatMap(Bool.init)
-            self.init(
-                id: "artifact-\(artifact.id.uuidString)",
-                kind: .weather,
-                origin: artifact.captureCardOrigin,
-                state: state,
-                title: temperature.map(captureWeatherTemperatureTitle) ?? artifact.title.trimmedOrNil,
-                detail: condition,
-                metadata: Self.weatherMetadata(humidity: humidity, windSpeedKmh: windSpeed, uvIndex: uvIndex),
-                latitude: artifact.metadata["latitude"].flatMap(Double.init),
-                longitude: artifact.metadata["longitude"].flatMap(Double.init),
-                weatherStyle: .resolve(
-                    conditionCode: artifact.metadata["conditionCode"],
-                    condition: condition,
-                    temperatureCelsius: temperature,
-                    windSpeedKmh: windSpeed,
-                    isDaylight: isDaylight
-                ),
-                weatherConditionCode: artifact.metadata["conditionCode"]?.trimmedOrNil,
-                weatherSymbolName: artifact.metadata["symbolName"]?.trimmedOrNil,
-                weatherIsDaylight: isDaylight,
-                isRemovable: false
-            )
-        case .todo:
-            self.init(
-                id: "artifact-\(artifact.id.uuidString)",
-                kind: .todo,
-                origin: artifact.captureCardOrigin,
-                state: state,
-                title: artifact.title.trimmedOrNil ?? String(localized: "capture.card.kind.todo"),
-                detail: captureCardModelSnippet(artifact.summary)
-                    ?? captureCardModelSnippet(artifact.textContent)
-                    ?? String(localized: "capture.card.kind.todo"),
-                metadata: nil,
-                isRemovable: false
-            )
-        case .document:
-            self.init(
-                id: "artifact-\(artifact.id.uuidString)",
-                kind: .status,
-                origin: artifact.captureCardOrigin,
-                state: state,
-                title: artifact.title.trimmedOrNil ?? String(localized: "capture.card.kind.status"),
-                detail: captureCardModelSnippet(artifact.summary)
-                    ?? captureCardModelSnippet(artifact.textContent)
-                    ?? artifact.mediaRef?.filename
-                    ?? String(localized: "capture.card.kind.status"),
-                metadata: artifact.mediaRef?.filename.trimmedOrNil,
-                isRemovable: false
-            )
-        }
-    }
-
-    init(
-        draft: CaptureArtifactDraft,
-        id: String? = nil,
-        state: CaptureCardVisualState = .normal,
-        musicPlaybackState: CaptureMusicPlaybackState? = nil
-    ) {
-        switch draft {
-        case let .text(title, body, origin):
-            self.init(
-                id: id ?? "draft-\(draft.id)",
-                kind: .status,
-                origin: origin,
-                state: state,
-                title: title ?? String(localized: "capture.card.kind.text"),
-                detail: captureCardModelSnippet(body) ?? String(localized: "capture.card.kind.text")
-            )
-        case let .photo(title, summary, filename, _, thumbnailData, ocrText, _, origin):
-            self.init(
-                id: id ?? "draft-\(draft.id)",
-                kind: .photo,
-                origin: origin,
-                state: state,
-                title: title,
-                detail: [captureCardModelSnippet(summary), captureCardModelSnippet(ocrText), filename.trimmedOrNil].compactMap { $0 }.first ?? String(localized: "capture.card.photo.attached"),
-                metadata: filename.trimmedOrNil,
-                thumbnailData: thumbnailData,
-                isRemovable: origin == .manual || origin == .context
-            )
-        case let .audio(title, summary, filename, _, transcriptionText, origin):
-            self.init(
-                id: id ?? "draft-\(draft.id)",
-                kind: .audio,
-                origin: origin,
-                state: state,
-                title: title ?? String(localized: "capture.card.kind.audio"),
-                detail: captureCardModelSnippet(transcriptionText) ?? captureCardModelSnippet(summary) ?? String(localized: "capture.card.audio.attached"),
-                metadata: filename.trimmedOrNil,
-                isRemovable: origin == .manual || origin == .context
-            )
-        case let .location(title, summary, latitude, longitude, origin):
-            self.init(
-                id: id ?? "draft-\(draft.id)",
-                kind: .place,
-                origin: origin,
-                state: state,
-                title: title ?? String(localized: "capture.card.kind.place"),
-                detail: captureCardModelSnippet(summary) ?? String(localized: "capture.card.place.attached"),
-                metadata: nil,
-                latitude: latitude,
-                longitude: longitude,
-                isSelected: false,
-                isRemovable: origin == .manual || origin == .context
-            )
-        case let .link(title, url, note, summary, _, thumbnailData, origin):
-            self.init(
-                id: id ?? "draft-\(draft.id)",
-                kind: .link,
-                origin: origin,
-                state: state,
-                title: title ?? String(localized: "capture.card.kind.link"),
-                detail: summary.flatMap(captureCardModelSnippet) ?? note.flatMap(captureCardModelSnippet) ?? captureCardModelSnippet(url) ?? String(localized: "capture.card.link.attached"),
-                metadata: URL(string: url)?.host() ?? url,
-                thumbnailData: thumbnailData,
-                isRemovable: origin == .manual || origin == .context
-            )
-        case let .todo(title, note, origin):
-            self.init(
-                id: id ?? "draft-\(draft.id)",
-                kind: .todo,
-                origin: origin,
-                state: state,
-                title: title,
-                detail: note.flatMap(captureCardModelSnippet) ?? String(localized: "capture.card.kind.todo"),
-                metadata: String(localized: "capture.card.kind.todo"),
-                isRemovable: origin == .manual || origin == .context
-            )
-        case let .weather(condition, temp, humidity, windSpeed, uvIndex, latitude, longitude, conditionCode, symbolName, isDaylight, origin):
-            self.init(
-                id: id ?? "draft-\(draft.id)",
-                kind: .weather,
-                origin: origin,
-                state: state,
-                title: captureWeatherTemperatureTitle(temp),
-                detail: condition,
-                metadata: captureWeatherMetadata(humidity: humidity, windSpeedKmh: windSpeed, uvIndex: uvIndex),
-                latitude: latitude,
-                longitude: longitude,
-                weatherStyle: .resolve(
-                    conditionCode: conditionCode,
-                    condition: condition,
-                    temperatureCelsius: temp,
-                    windSpeedKmh: windSpeed,
-                    isDaylight: isDaylight
-                ),
-                weatherConditionCode: conditionCode,
-                weatherSymbolName: symbolName,
-                weatherIsDaylight: isDaylight,
-                isSelected: false,
-                isRemovable: origin == .manual || origin == .context
-            )
-        case let .music(trackName, artistName, albumName, durationSeconds, artworkURL, artworkData, artworkPalette, origin):
-            self.init(
-                id: id ?? "draft-\(draft.id)",
-                kind: .music,
-                origin: origin,
-                state: state,
-                title: trackName,
-                detail: [artistName.trimmedOrNil, albumName.trimmedOrNil].compactMap { $0 }.joined(separator: " · "),
-                metadata: nil,
-                thumbnailData: artworkData,
-                artworkURL: artworkURL,
-                artworkPalette: artworkPalette,
-                durationSeconds: durationSeconds,
-                musicPlaybackState: musicPlaybackState,
-                isSelected: false,
-                isRemovable: origin == .manual || origin == .context
-            )
-        }
-    }
-
-    private static func weatherMetadata(humidity: Double?, windSpeedKmh: Double?, uvIndex: Int?) -> String? {
-        guard let humidity, let windSpeedKmh, let uvIndex else { return nil }
-        return captureWeatherMetadata(humidity: humidity, windSpeedKmh: windSpeedKmh, uvIndex: uvIndex)
+    init(item: CaptureCardItem) {
+        id = item.id
+        kind = item.kind
+        origin = item.origin
+        state = item.state
+        title = item.title
+        detail = item.detail
+        metadata = item.metadata
+        isSelected = item.isSelected
+        isRemovable = item.isRemovable
     }
 }
 
-private extension Artifact {
-    var captureCardOrigin: CaptureArtifactOrigin? {
-        metadata["captureOrigin"].flatMap(CaptureArtifactOrigin.init(rawValue:))
-    }
-
-    var captureCardArtworkPalette: MusicArtworkPalette? {
-        let palette = MusicArtworkPalette(
-            backgroundColorHex: metadata["artworkBackgroundColor"]?.trimmedOrNil,
-            primaryTextColorHex: metadata["artworkPrimaryTextColor"]?.trimmedOrNil,
-            secondaryTextColorHex: metadata["artworkSecondaryTextColor"]?.trimmedOrNil
-        )
-        return palette.isEmpty ? nil : palette
-    }
-}
-
-extension CaptureCardKind {
-    init(composerKind: CaptureComposerAttachmentItem.Kind) {
-        switch composerKind {
-        case .photo:
-            self = .photo
-        case .audio:
-            self = .audio
-        case .location:
-            self = .place
-        case .link:
-            self = .link
-        case .todo:
-            self = .todo
-        case .weather:
-            self = .weather
-        case .music:
-            self = .music
-        case .status:
-            self = .status
+extension CaptureArtifactOrigin {
+    var captureBadgeLabel: String {
+        switch self {
+        case .manual:
+            return String(localized: "capture.origin.manual")
+        case .context:
+            return String(localized: "capture.origin.context")
+        case .imported:
+            return String(localized: "capture.origin.imported")
+        case .inferred:
+            return String(localized: "capture.origin.inferred")
         }
     }
 }

@@ -11,10 +11,7 @@ struct CaptureAttachmentCarouselView: View {
                 LazyHStack(spacing: 10) {
                     ForEach(items) { item in
                         CaptureCardView(
-                            item: CaptureCardItem(attachment: item),
-                            provenanceDisplayMode: .production,
-                            musicCardStyle: .compactRow,
-                            placeCardStyle: .standard,
+                            presentation: .composerAttachment(item),
                             onRemove: { remove(item) }
                         )
                         .scrollTransition(.animated, axis: .horizontal) { content, phase in

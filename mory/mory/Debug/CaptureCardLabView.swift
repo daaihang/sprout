@@ -175,13 +175,12 @@ struct CaptureCardLabView: View {
             Stepper(String(format: String(localized: "debug.captureCardLab.weather.temperature.format"), Int(weatherTemperature)), value: $weatherTemperature, in: -15...42, step: 1)
 
             CaptureCardView(
-                item: weatherPreviewCard,
-                reduceMotionOverride: isWeatherReduceMotionEnabled,
-                provenanceDisplayMode: selectedProvenanceDisplayMode,
-                weatherSymbolMotionLevel: selectedWeatherSymbolMotionLevel,
-                weatherAtmosphereIntensityScale: selectedWeatherIntensity.scale,
-                showsLayoutGuides: showsLayoutGuides,
-                showsFieldAudit: showsFieldAudit
+                presentation: debugPresentation(
+                    weatherPreviewCard,
+                    reduceMotionOverride: isWeatherReduceMotionEnabled,
+                    weatherSymbolMotionLevel: selectedWeatherSymbolMotionLevel,
+                    weatherAtmosphereIntensityScale: selectedWeatherIntensity.scale
+                )
             )
                 .padding(.vertical, 4)
         } header: {
@@ -212,11 +211,7 @@ struct CaptureCardLabView: View {
             }
 
             CaptureCardView(
-                item: musicFixturePreviewCard,
-                provenanceDisplayMode: selectedProvenanceDisplayMode,
-                musicCardStyle: selectedMusicCardStyle,
-                showsLayoutGuides: showsLayoutGuides,
-                showsFieldAudit: showsFieldAudit
+                presentation: debugPresentation(musicFixturePreviewCard)
             )
                 .padding(.vertical, 4)
 
@@ -229,11 +224,7 @@ struct CaptureCardLabView: View {
 
             if let liveMusicPreview {
                 CaptureCardView(
-                    item: liveMusicPreview,
-                    provenanceDisplayMode: selectedProvenanceDisplayMode,
-                    musicCardStyle: selectedMusicCardStyle,
-                    showsLayoutGuides: showsLayoutGuides,
-                    showsFieldAudit: showsFieldAudit
+                    presentation: debugPresentation(liveMusicPreview)
                 )
                     .padding(.vertical, 4)
             }
@@ -274,11 +265,7 @@ struct CaptureCardLabView: View {
 
             if let selectedSearchMusicPreview {
                 CaptureCardView(
-                    item: selectedSearchMusicPreview,
-                    provenanceDisplayMode: selectedProvenanceDisplayMode,
-                    musicCardStyle: selectedMusicCardStyle,
-                    showsLayoutGuides: showsLayoutGuides,
-                    showsFieldAudit: showsFieldAudit
+                    presentation: debugPresentation(selectedSearchMusicPreview)
                 )
                     .padding(.vertical, 4)
             }
@@ -325,11 +312,7 @@ struct CaptureCardLabView: View {
             .disabled(isGeneratingPlaceSnapshot || !selectedPlaceScenario.item.hasCoordinate || isPlacePrivacyEnabled)
 
             CaptureCardView(
-                item: placePreviewCard,
-                provenanceDisplayMode: selectedProvenanceDisplayMode,
-                placeCardStyle: selectedPlaceCardStyle,
-                showsLayoutGuides: showsLayoutGuides,
-                showsFieldAudit: showsFieldAudit
+                presentation: debugPresentation(placePreviewCard)
             )
                 .padding(.vertical, 4)
 
@@ -371,16 +354,13 @@ struct CaptureCardLabView: View {
                 LazyHStack(spacing: 12) {
                     ForEach(appearancePreviewCards) { item in
                         CaptureCardView(
-                            item: item,
-                            reduceMotionOverride: isAppearanceReduceMotionEnabled,
-                            highContrastOverride: selectedAppearanceContrast.isHighContrast,
-                            provenanceDisplayMode: selectedProvenanceDisplayMode,
-                            weatherSymbolMotionLevel: selectedWeatherSymbolMotionLevel,
-                            weatherAtmosphereIntensityScale: selectedWeatherIntensity.scale,
-                            musicCardStyle: selectedMusicCardStyle,
-                            placeCardStyle: selectedPlaceCardStyle,
-                            showsLayoutGuides: showsLayoutGuides,
-                            showsFieldAudit: showsFieldAudit
+                            presentation: debugPresentation(
+                                item,
+                                reduceMotionOverride: isAppearanceReduceMotionEnabled,
+                                highContrastOverride: selectedAppearanceContrast.isHighContrast,
+                                weatherSymbolMotionLevel: selectedWeatherSymbolMotionLevel,
+                                weatherAtmosphereIntensityScale: selectedWeatherIntensity.scale
+                            )
                         )
                     }
                 }
@@ -413,12 +393,11 @@ struct CaptureCardLabView: View {
                         ScrollView(.horizontal) {
                             LazyHStack(spacing: 12) {
                                 ForEach(CaptureCardLabFixtures.origins) { item in
-                            CaptureCardView(
-                                item: item,
-                                provenanceDisplayMode: mode,
-                                placeCardStyle: selectedPlaceCardStyle,
-                                showsLayoutGuides: showsLayoutGuides,
-                                showsFieldAudit: showsFieldAudit
+                                    CaptureCardView(
+                                        presentation: debugPresentation(
+                                            item,
+                                            provenanceDisplayMode: mode
+                                        )
                                     )
                                 }
                             }
@@ -448,12 +427,7 @@ struct CaptureCardLabView: View {
                     LazyHStack(spacing: 12) {
                         ForEach(renderedItems(items)) { item in
                             CaptureCardView(
-                                item: item,
-                                provenanceDisplayMode: selectedProvenanceDisplayMode,
-                                musicCardStyle: selectedMusicCardStyle,
-                                placeCardStyle: selectedPlaceCardStyle,
-                                showsLayoutGuides: showsLayoutGuides,
-                                showsFieldAudit: showsFieldAudit,
+                                presentation: debugPresentation(item),
                                 onTap: { toggleSelection(for: item.id) },
                                 onRemove: { remove(item.id) }
                             )
@@ -474,6 +448,28 @@ struct CaptureCardLabView: View {
         } header: {
             Text(title)
         }
+    }
+
+    private func debugPresentation(
+        _ item: CaptureCardItem,
+        reduceMotionOverride: Bool? = nil,
+        highContrastOverride: Bool? = nil,
+        provenanceDisplayMode: CaptureCardProvenanceDisplayMode? = nil,
+        weatherSymbolMotionLevel: CaptureWeatherSymbolMotionLevel? = nil,
+        weatherAtmosphereIntensityScale: Double? = nil
+    ) -> CaptureCardPresentation {
+        .debug(
+            item,
+            reduceMotionOverride: reduceMotionOverride,
+            highContrastOverride: highContrastOverride,
+            provenanceDisplayMode: provenanceDisplayMode ?? selectedProvenanceDisplayMode,
+            weatherSymbolMotionLevel: weatherSymbolMotionLevel ?? selectedWeatherSymbolMotionLevel,
+            weatherAtmosphereIntensityScale: weatherAtmosphereIntensityScale ?? selectedWeatherIntensity.scale,
+            musicCardStyle: selectedMusicCardStyle,
+            placeCardStyle: selectedPlaceCardStyle,
+            showsLayoutGuides: showsLayoutGuides,
+            showsFieldAudit: showsFieldAudit
+        )
     }
 
     private func renderedItems(_ items: [CaptureCardItem]) -> [CaptureCardItem] {
@@ -566,17 +562,22 @@ struct CaptureCardLabView: View {
 
     private var musicFixturePreviewCard: CaptureCardItem {
         var item = selectedMusicFixture
-        item.musicPlaybackState = selectedMusicState
+        if case .music(var payload) = item.payload {
+            payload.playbackState = selectedMusicState
+            if selectedMusicCardStyle == .cover,
+               payload.artworkURL?.trimmedOrNil == nil,
+               payload.artworkData == nil {
+                payload.artworkData = sampleMusicArtworkData
+                payload.artworkPalette = MusicArtworkPalette(
+                    backgroundColorHex: "#291539",
+                    primaryTextColorHex: "#FFFFFF",
+                    secondaryTextColorHex: "#E6D5F2"
+                )
+            }
+            item.payload = .music(payload)
+        }
         item.metadata = selectedMusicState.label
         item.origin = selectedMusicState == .searchResult ? .manual : item.origin
-        if selectedMusicCardStyle == .cover, !item.hasArtwork {
-            item.thumbnailData = sampleMusicArtworkData
-            item.artworkPalette = MusicArtworkPalette(
-                backgroundColorHex: "#291539",
-                primaryTextColorHex: "#FFFFFF",
-                secondaryTextColorHex: "#E6D5F2"
-            )
-        }
         if selectedMusicState == .stopped || selectedMusicState == .unavailable {
             item.title = selectedMusicState.label
             item.detail = selectedMusicState == .stopped
@@ -637,8 +638,11 @@ struct CaptureCardLabView: View {
 
     private var placePreviewCard: CaptureCardItem {
         var item = selectedPlaceScenario.item
-        item.mapSnapshotData = placeSnapshotData
-        item.isLocationPrivacyEnabled = isPlacePrivacyEnabled
+        if case .place(var payload) = item.payload {
+            payload.mapSnapshotData = placeSnapshotData
+            payload.isPrivacyEnabled = isPlacePrivacyEnabled
+            item.payload = .place(payload)
+        }
         if isPlacePrivacyEnabled {
             item.metadata = String(localized: "debug.captureCardLab.place.privacy")
         }
@@ -726,7 +730,10 @@ struct CaptureCardLabView: View {
     private var photoGroupPreviewCards: [CaptureCardItem] {
         CaptureCardLabFixtures.photoGroups.map { item in
             var preview = item
-            preview.thumbnailData = samplePaletteImageData
+            if case .photo(var payload) = preview.payload {
+                payload.thumbnailData = samplePaletteImageData
+                preview.payload = .photo(payload)
+            }
             return preview
         }
     }
@@ -760,9 +767,10 @@ struct CaptureCardLabView: View {
         defer { isGeneratingPlaceSnapshot = false }
 
         let item = selectedPlaceScenario.item
+        guard case let .place(payload) = item.payload else { return }
         let data = await CapturePlaceMapSnapshotter.snapshotData(
-            latitude: item.latitude,
-            longitude: item.longitude,
+            latitude: payload.latitude,
+            longitude: payload.longitude,
             privacyEnabled: isPlacePrivacyEnabled,
             interfaceStyle: selectedPlaceSnapshotAppearance.userInterfaceStyle
         )
@@ -869,6 +877,7 @@ private enum CaptureCardLabWeatherIntensity: String, CaseIterable, Identifiable 
 
 private extension CaptureCardItem {
     var hasCoordinate: Bool {
-        latitude != nil && longitude != nil
+        guard case let .place(payload) = payload else { return false }
+        return payload.latitude != nil && payload.longitude != nil
     }
 }

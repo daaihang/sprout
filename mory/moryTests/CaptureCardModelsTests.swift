@@ -40,6 +40,58 @@ final class CaptureCardModelsTests: XCTestCase {
         XCTAssertEqual(card.detail, "Collecting context")
     }
 
+    func testPayloadDerivesKindAndScopesTypedFields() {
+        let card = CaptureCardItem(
+            kind: .weather,
+            title: "18°",
+            detail: "Rain",
+            latitude: 31.2,
+            longitude: 121.4,
+            weatherStyle: .rain,
+            weatherConditionCode: "rain",
+            weatherSymbolName: "cloud.rain.fill",
+            weatherIsDaylight: true
+        )
+
+        XCTAssertEqual(card.kind, .weather)
+        guard case let .weather(payload) = card.payload else {
+            return XCTFail("Expected weather payload.")
+        }
+        XCTAssertEqual(payload.latitude, 31.2)
+        XCTAssertEqual(payload.longitude, 121.4)
+        XCTAssertEqual(payload.style, .rain)
+        XCTAssertEqual(payload.conditionCode, "rain")
+        XCTAssertEqual(payload.symbolName, "cloud.rain.fill")
+        XCTAssertEqual(payload.isDaylight, true)
+    }
+
+    func testPayloadMutationsStayInsideTypedPayload() {
+        let artwork = makeImageData(color: .systemIndigo)
+        var card = CaptureCardItem(
+            kind: .music,
+            title: "Track",
+            detail: "Artist",
+            musicPlaybackState: .paused
+        )
+
+        guard case .music(var musicPayload) = card.payload else {
+            return XCTFail("Expected music payload.")
+        }
+        musicPayload.artworkData = artwork
+        musicPayload.artworkURL = "https://example.com/artwork.jpg"
+        musicPayload.playbackState = .playing
+        card.payload = .music(musicPayload)
+
+        guard case let .music(payload) = card.payload else {
+            return XCTFail("Expected music payload.")
+        }
+        XCTAssertEqual(card.kind, .music)
+        XCTAssertEqual(payload.artworkData, artwork)
+        XCTAssertEqual(payload.artworkURL, "https://example.com/artwork.jpg")
+        XCTAssertEqual(payload.playbackState, .playing)
+        XCTAssertTrue(payload.artworkData != nil || payload.artworkURL?.trimmedOrNil != nil)
+    }
+
     func testSavedPhotoArtifactMapsToProductionCaptureCard() {
         let thumbnail = makeImageData(color: .systemPink)
         let artifact = Artifact(
@@ -60,7 +112,10 @@ final class CaptureCardModelsTests: XCTestCase {
         XCTAssertEqual(card.origin, .manual)
         XCTAssertEqual(card.title, "Morning photo")
         XCTAssertEqual(card.detail, "Kitchen light")
-        XCTAssertEqual(card.thumbnailData, thumbnail)
+        guard case let .photo(payload) = card.payload else {
+            return XCTFail("Expected photo payload.")
+        }
+        XCTAssertEqual(payload.thumbnailData, thumbnail)
         XCTAssertFalse(card.isRemovable)
     }
 
@@ -91,9 +146,12 @@ final class CaptureCardModelsTests: XCTestCase {
         XCTAssertEqual(card.origin, .context)
         XCTAssertEqual(card.title, captureWeatherTemperatureTitle(24.2))
         XCTAssertEqual(card.detail, "大部晴朗无云")
-        XCTAssertEqual(card.weatherConditionCode, "mostlyClear")
-        XCTAssertEqual(card.weatherSymbolName, "sun.max.fill")
-        XCTAssertEqual(card.weatherStyle, .sunny)
+        guard case let .weather(payload) = card.payload else {
+            return XCTFail("Expected weather payload.")
+        }
+        XCTAssertEqual(payload.conditionCode, "mostlyClear")
+        XCTAssertEqual(payload.symbolName, "sun.max.fill")
+        XCTAssertEqual(payload.style, .sunny)
         XCTAssertNotNil(card.metadata)
     }
 
@@ -122,9 +180,12 @@ final class CaptureCardModelsTests: XCTestCase {
         XCTAssertEqual(card.origin, .context)
         XCTAssertEqual(card.title, "Track")
         XCTAssertEqual(card.detail, "Artist · Album")
-        XCTAssertEqual(card.durationSeconds, 180)
-        XCTAssertEqual(card.musicPlaybackState, .stopped)
-        XCTAssertEqual(card.artworkPalette?.backgroundColorHex, "#101820")
+        guard case let .music(payload) = card.payload else {
+            return XCTFail("Expected music payload.")
+        }
+        XCTAssertEqual(payload.durationSeconds, 180)
+        XCTAssertEqual(payload.playbackState, .stopped)
+        XCTAssertEqual(payload.artworkPalette?.backgroundColorHex, "#101820")
     }
 
     func testProcessingAttachmentsCanKeepConcreteCardKinds() {
@@ -141,10 +202,10 @@ final class CaptureCardModelsTests: XCTestCase {
 
         XCTAssertEqual(photo.kind, .photo)
         XCTAssertEqual(photo.state, .loading)
-        XCTAssertEqual(photo.title, CaptureComposerAttachmentItem.Kind.photo.label)
+        XCTAssertEqual(photo.title, CaptureCardKind.photo.label)
         XCTAssertEqual(audio.kind, .audio)
         XCTAssertEqual(audio.state, .loading)
-        XCTAssertEqual(audio.title, CaptureComposerAttachmentItem.Kind.audio.label)
+        XCTAssertEqual(audio.title, CaptureCardKind.audio.label)
     }
 
     func testOnlyNormalCardsDisplaySelection() {
@@ -211,6 +272,122 @@ final class CaptureCardModelsTests: XCTestCase {
 
         XCTAssertFalse(loading.displaysRemoveControl)
         XCTAssertFalse(disabled.displaysRemoveControl)
+    }
+
+    func testComposerPresentationControlsRemoveButNotSelection() {
+        let card = CaptureCardItem(
+            kind: .weather,
+            state: .normal,
+            detail: "Included context",
+            isSelected: true,
+            isRemovable: true
+        )
+        let presentation = CaptureCardPresentation(
+            item: card,
+            role: .composerEditing,
+            provenanceDisplayMode: .production
+        )
+
+        XCTAssertTrue(presentation.allowsPrimaryAction)
+        XCTAssertTrue(presentation.displaysRemoveControl)
+        XCTAssertFalse(presentation.displaysSelection)
+        XCTAssertTrue(presentation.hasTrailingControl)
+    }
+
+    func testComposerPresentationDoesNotRemoveLoadingOrDisabledCards() {
+        let loading = CaptureCardPresentation(
+            item: CaptureCardItem(kind: .photo, state: .loading, detail: "Processing", isRemovable: true),
+            role: .composerEditing,
+            provenanceDisplayMode: .production
+        )
+        let disabled = CaptureCardPresentation(
+            item: CaptureCardItem(kind: .photo, state: .disabled, detail: "Unavailable", isRemovable: true),
+            role: .composerEditing,
+            provenanceDisplayMode: .production
+        )
+
+        XCTAssertFalse(loading.allowsPrimaryAction)
+        XCTAssertFalse(loading.displaysRemoveControl)
+        XCTAssertTrue(loading.hasTrailingControl)
+        XCTAssertFalse(disabled.allowsPrimaryAction)
+        XCTAssertFalse(disabled.displaysRemoveControl)
+    }
+
+    func testDetailViewingPresentationNeverDisplaysEditControls() {
+        let card = CaptureCardItem(
+            kind: .photo,
+            state: .normal,
+            detail: "Saved photo",
+            isSelected: true,
+            isRemovable: true
+        )
+        let presentation = CaptureCardPresentation(
+            item: card,
+            role: .detailViewing,
+            provenanceDisplayMode: .production
+        )
+
+        XCTAssertTrue(presentation.allowsPrimaryAction)
+        XCTAssertFalse(presentation.displaysRemoveControl)
+        XCTAssertFalse(presentation.displaysSelection)
+        XCTAssertFalse(presentation.hasTrailingControl)
+    }
+
+    func testDebugLabPresentationRespectsFixtureSelectionAndRemoval() {
+        let selected = CaptureCardPresentation.debug(
+            CaptureCardItem(kind: .todo, state: .normal, detail: "Selected", isSelected: true)
+        )
+        let removable = CaptureCardPresentation.debug(
+            CaptureCardItem(kind: .todo, state: .normal, detail: "Remove", isRemovable: true)
+        )
+
+        XCTAssertTrue(selected.displaysSelection)
+        XCTAssertFalse(selected.displaysRemoveControl)
+        XCTAssertTrue(removable.displaysRemoveControl)
+        XCTAssertFalse(removable.displaysSelection)
+    }
+
+    func testComposerAndDetailFactoriesChooseProductionPresentation() {
+        let candidate = ContextCandidate(
+            draft: .weather(
+                condition: "Rain",
+                temperatureCelsius: 18,
+                humidity: 0.8,
+                windSpeedKmh: 12,
+                uvIndex: 2,
+                latitude: nil,
+                longitude: nil,
+                conditionCode: "rain",
+                symbolName: "cloud.rain.fill",
+                isDaylight: true,
+                origin: .context
+            ),
+            capturedAt: Date(timeIntervalSince1970: 1_800_000_000),
+            isSelected: true
+        )
+        let composer = CaptureCardPresentation.composerAttachment(.context(candidate))
+
+        XCTAssertEqual(composer.role, .composerEditing)
+        XCTAssertEqual(composer.provenanceDisplayMode, .production)
+        XCTAssertEqual(composer.item.kind, .weather)
+        XCTAssertEqual(composer.item.origin, .context)
+        XCTAssertTrue(composer.displaysRemoveControl)
+
+        let artifact = Artifact(
+            recordID: UUID(),
+            kind: .weather,
+            title: "Rain",
+            summary: "Rain",
+            metadata: ["captureOrigin": CaptureArtifactOrigin.context.rawValue],
+            createdAt: .now,
+            updatedAt: .now
+        )
+        let detail = CaptureCardPresentation.detailArtifact(artifact)
+
+        XCTAssertEqual(detail.role, .detailViewing)
+        XCTAssertEqual(detail.provenanceDisplayMode, .production)
+        XCTAssertEqual(detail.item.kind, .weather)
+        XCTAssertFalse(detail.displaysRemoveControl)
     }
 
     func testFixturesCoverAllConcreteArtifactKindsWithoutAutoContextKind() {
@@ -376,19 +553,25 @@ final class CaptureCardModelsTests: XCTestCase {
         XCTAssertEqual(weatherCard.title, captureWeatherTemperatureTitle(18))
         XCTAssertEqual(weatherCard.detail, "Rain")
         XCTAssertEqual(weatherCard.metadata, captureWeatherMetadata(humidity: 0.8, windSpeedKmh: 12, uvIndex: 2))
-        XCTAssertEqual(weatherCard.weatherStyle, .rain)
-        XCTAssertEqual(weatherCard.weatherConditionCode, "rain")
-        XCTAssertEqual(weatherCard.weatherSymbolName, "cloud.rain.fill")
-        XCTAssertEqual(weatherCard.weatherIsDaylight, true)
+        guard case let .weather(weatherPayload) = weatherCard.payload else {
+            return XCTFail("Expected weather payload.")
+        }
+        XCTAssertEqual(weatherPayload.style, .rain)
+        XCTAssertEqual(weatherPayload.conditionCode, "rain")
+        XCTAssertEqual(weatherPayload.symbolName, "cloud.rain.fill")
+        XCTAssertEqual(weatherPayload.isDaylight, true)
 
         let weatherAttachment = CaptureComposerAttachmentItem.staged(index: 0, draft: weatherDraft)
         let weatherCardFromAttachment = CaptureCardItem(attachment: weatherAttachment)
         XCTAssertEqual(weatherCardFromAttachment.title, captureWeatherTemperatureTitle(18))
         XCTAssertEqual(weatherCardFromAttachment.detail, "Rain")
         XCTAssertEqual(weatherCardFromAttachment.metadata, captureWeatherMetadata(humidity: 0.8, windSpeedKmh: 12, uvIndex: 2))
-        XCTAssertEqual(weatherCardFromAttachment.weatherConditionCode, "rain")
-        XCTAssertEqual(weatherCardFromAttachment.weatherSymbolName, "cloud.rain.fill")
-        XCTAssertEqual(weatherCardFromAttachment.weatherIsDaylight, true)
+        guard case let .weather(weatherAttachmentPayload) = weatherCardFromAttachment.payload else {
+            return XCTFail("Expected weather payload.")
+        }
+        XCTAssertEqual(weatherAttachmentPayload.conditionCode, "rain")
+        XCTAssertEqual(weatherAttachmentPayload.symbolName, "cloud.rain.fill")
+        XCTAssertEqual(weatherAttachmentPayload.isDaylight, true)
 
         let musicCard = CaptureCardItem(
             draft: .music(
@@ -404,10 +587,28 @@ final class CaptureCardModelsTests: XCTestCase {
         )
         XCTAssertEqual(musicCard.kind, .music)
         XCTAssertEqual(musicCard.origin, .context)
-        XCTAssertEqual(musicCard.musicPlaybackState, .playing)
-        XCTAssertEqual(musicCard.thumbnailData, artworkData)
+        XCTAssertEqual(musicCard.title, "Track")
+        XCTAssertEqual(musicCard.detail, "Artist · Album")
+        guard case let .music(musicPayload) = musicCard.payload else {
+            return XCTFail("Expected music payload.")
+        }
+        XCTAssertEqual(musicPayload.playbackState, .playing)
+        XCTAssertEqual(musicPayload.artworkData, artworkData)
         XCTAssertFalse(musicCard.isSelected)
         XCTAssertTrue(musicCard.isRemovable)
+
+        let musicAttachment = CaptureComposerAttachmentItem.staged(index: 1, draft: .music(
+            trackName: "Track",
+            artistName: "Artist",
+            albumName: "Album",
+            durationSeconds: 180,
+            artworkURL: nil,
+            artworkData: artworkData,
+            origin: .manual
+        ))
+        let musicCardFromAttachment = CaptureCardItem(attachment: musicAttachment)
+        XCTAssertEqual(musicCardFromAttachment.title, "Track")
+        XCTAssertEqual(musicCardFromAttachment.detail, "Artist · Album")
 
         let placeCard = CaptureCardItem(draft: .location(
             title: "Place",
@@ -419,7 +620,10 @@ final class CaptureCardModelsTests: XCTestCase {
         XCTAssertEqual(placeCard.kind, .place)
         XCTAssertEqual(placeCard.origin, .manual)
         XCTAssertNil(placeCard.metadata)
-        XCTAssertNil(placeCard.mapSnapshotData)
+        guard case let .place(placePayload) = placeCard.payload else {
+            return XCTFail("Expected place payload.")
+        }
+        XCTAssertNil(placePayload.mapSnapshotData)
     }
 
     func testMusicSearchResultStateDoesNotChangeManualOrigin() {
@@ -437,7 +641,10 @@ final class CaptureCardModelsTests: XCTestCase {
 
         XCTAssertEqual(card.kind, .music)
         XCTAssertEqual(card.origin, .manual)
-        XCTAssertEqual(card.musicPlaybackState, .searchResult)
+        guard case let .music(payload) = card.payload else {
+            return XCTFail("Expected music payload.")
+        }
+        XCTAssertEqual(payload.playbackState, .searchResult)
     }
 
     func testMusicStyleLabelsUseLayoutNamesOnly() {
@@ -485,10 +692,17 @@ final class CaptureCardModelsTests: XCTestCase {
     func testPhotoGroupFixturesKeepPhotoKindAndStyles() {
         let groups = CaptureCardLabFixtures.photoGroups
 
-        XCTAssertEqual(groups.first?.photoCount, 1)
+        let payloads: [CapturePhotoCardPayload] = groups.compactMap { item in
+            guard case let .photo(payload) = item.payload else {
+                return nil
+            }
+            return payload
+        }
+
+        XCTAssertEqual(payloads.first?.photoCount, 1)
         XCTAssertTrue(groups.allSatisfy { $0.kind == .photo })
-        XCTAssertEqual(Set(groups.compactMap(\.photoGroupStyle)), Set(CapturePhotoGroupStyle.allCases))
-        XCTAssertTrue(groups.dropFirst().allSatisfy { $0.photoCount > 1 })
+        XCTAssertEqual(Set(payloads.compactMap(\.groupStyle)), Set(CapturePhotoGroupStyle.allCases))
+        XCTAssertTrue(payloads.dropFirst().allSatisfy { $0.photoCount > 1 })
     }
 
     func testCaptureCardPaletteUsesWeatherPhotoAndMusicSources() {

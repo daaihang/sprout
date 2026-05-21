@@ -8,8 +8,8 @@ struct WeatherAtmosphereView: View {
         ZStack {
             LinearGradient(
                 colors: paletteColors,
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
+                startPoint: .top,
+                endPoint: .bottom
             )
 
             if spec.motionPattern == .staticPattern || isReduceMotionEnabled {
@@ -34,25 +34,64 @@ struct WeatherAtmosphereView: View {
     private var paletteColors: [Color] {
         switch spec.palette {
         case .warmLight:
-            return [Color.yellow.opacity(0.44), Color.orange.opacity(0.22), Color.white.opacity(0.12)]
+            return [
+                Color(red: 0.56, green: 0.82, blue: 1.0),
+                Color(red: 0.9, green: 0.96, blue: 1.0),
+                Color(red: 1.0, green: 0.83, blue: 0.42)
+            ]
         case .night:
-            return [Color.indigo.opacity(0.66), Color.blue.opacity(0.32), Color.black.opacity(0.16)]
+            return [
+                Color(red: 0.05, green: 0.08, blue: 0.2),
+                Color(red: 0.1, green: 0.14, blue: 0.32),
+                Color(red: 0.2, green: 0.19, blue: 0.38)
+            ]
         case .softCloud:
-            return [Color.gray.opacity(0.28), Color.cyan.opacity(0.14), Color.white.opacity(0.2)]
+            return [
+                Color(red: 0.62, green: 0.76, blue: 0.88),
+                Color(red: 0.82, green: 0.89, blue: 0.94),
+                Color(red: 0.95, green: 0.97, blue: 0.98)
+            ]
         case .coolRain:
-            return [Color.blue.opacity(0.38), Color.gray.opacity(0.2), Color.cyan.opacity(0.14)]
+            return [
+                Color(red: 0.24, green: 0.42, blue: 0.58),
+                Color(red: 0.17, green: 0.31, blue: 0.46),
+                Color(red: 0.1, green: 0.19, blue: 0.31)
+            ]
         case .storm:
-            return [Color.indigo.opacity(0.58), Color.gray.opacity(0.38), Color.black.opacity(0.18)]
+            return [
+                Color(red: 0.07, green: 0.1, blue: 0.18),
+                Color(red: 0.12, green: 0.16, blue: 0.3),
+                Color(red: 0.2, green: 0.15, blue: 0.34)
+            ]
         case .frost:
-            return [Color.cyan.opacity(0.18), Color.white.opacity(0.54), Color.blue.opacity(0.14)]
+            return [
+                Color(red: 0.72, green: 0.9, blue: 1.0),
+                Color(red: 0.91, green: 0.97, blue: 1.0),
+                Color(red: 0.99, green: 1.0, blue: 1.0)
+            ]
         case .fog:
-            return [Color.gray.opacity(0.22), Color.white.opacity(0.48), Color.cyan.opacity(0.1)]
+            return [
+                Color(red: 0.7, green: 0.77, blue: 0.82),
+                Color(red: 0.84, green: 0.88, blue: 0.9),
+                Color(red: 0.94, green: 0.95, blue: 0.94)
+            ]
         case .wind:
-            return [Color.mint.opacity(0.24), Color.cyan.opacity(0.16), Color.white.opacity(0.12)]
+            return [
+                Color(red: 0.58, green: 0.86, blue: 0.92),
+                Color(red: 0.78, green: 0.93, blue: 0.94),
+                Color(red: 0.96, green: 0.99, blue: 0.97)
+            ]
         case .heat:
-            return [Color.orange.opacity(0.42), Color.red.opacity(0.18), Color.yellow.opacity(0.16)]
+            return [
+                Color(red: 1.0, green: 0.58, blue: 0.36),
+                Color(red: 1.0, green: 0.74, blue: 0.45),
+                Color(red: 1.0, green: 0.9, blue: 0.58)
+            ]
         case .neutral:
-            return [Color.secondary.opacity(0.16), Color.secondary.opacity(0.06)]
+            return [
+                Color(.secondarySystemBackground),
+                Color(.tertiarySystemBackground)
+            ]
         }
     }
 
