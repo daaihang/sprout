@@ -73,10 +73,10 @@ struct CaptureCardCapabilities: Hashable, Sendable {
         case .detailEditing:
             return CaptureCardCapabilities(
                 canOpen: true,
-                canRemove: item.isRemovable,
+                canRemove: false,
                 canRetry: false,
                 canSelect: false,
-                canReorder: false
+                canReorder: true
             )
         case .debugLab:
             return CaptureCardCapabilities(
@@ -160,6 +160,10 @@ struct CaptureCardPresentation: Hashable, Sendable {
             musicCardStyle: .compactRow,
             placeCardStyle: .standard
         )
+    }
+
+    static func detailEditing(_ artifact: Artifact) -> CaptureCardPresentation {
+        detailEditing(CaptureCardItem(artifact: artifact))
     }
 
     static func debug(

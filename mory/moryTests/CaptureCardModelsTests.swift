@@ -421,6 +421,15 @@ final class CaptureCardModelsTests: XCTestCase {
         XCTAssertEqual(detail.provenanceDisplayMode, .production)
         XCTAssertEqual(detail.item.kind, .weather)
         XCTAssertFalse(detail.displaysRemoveControl)
+
+        let editing = CaptureCardPresentation.detailEditing(artifact)
+        XCTAssertEqual(editing.role, .detailEditing)
+        XCTAssertEqual(editing.provenanceDisplayMode, .production)
+        XCTAssertTrue(editing.capabilities.canOpen)
+        XCTAssertTrue(editing.capabilities.canReorder)
+        XCTAssertFalse(editing.capabilities.canRemove)
+        XCTAssertFalse(editing.displaysRemoveControl)
+        XCTAssertFalse(editing.displaysSelection)
     }
 
     func testFixturesCoverAllConcreteArtifactKindsWithoutAutoContextKind() {
