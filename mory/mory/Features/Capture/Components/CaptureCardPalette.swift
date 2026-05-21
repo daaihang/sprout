@@ -23,7 +23,7 @@ struct CaptureCardPalette {
     static func resolve(
         for item: CaptureCardItem,
         highContrast: Bool,
-        mapLegibility: CaptureMapLegibilityStyle = .materialFallback
+        mapLegibility: CaptureMapLegibilityStyle = .fallback
     ) -> CaptureCardPalette {
         switch item.kind {
         case .photo:
@@ -138,7 +138,7 @@ struct CaptureCardPalette {
         case .darkText:
             primary = .black.opacity(0.88)
             secondary = .black.opacity(highContrast ? 0.78 : 0.62)
-        case .materialFallback:
+        case .fallback:
             primary = .primary
             secondary = .secondary
         }

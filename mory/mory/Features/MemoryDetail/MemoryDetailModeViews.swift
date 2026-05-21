@@ -163,7 +163,7 @@ private struct MemoryDetailAttachmentCarousel: View {
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 10) {
                     ForEach(artifacts) { artifact in
-                        MemoryArtifactCard(artifact: artifact)
+                        MemoryDetailCaptureCard(artifact: artifact)
                             .scrollTransition(.animated, axis: .horizontal) { content, phase in
                                 content
                                     .scaleEffect(phase.isIdentity ? 1 : 0.97)
@@ -176,45 +176,21 @@ private struct MemoryDetailAttachmentCarousel: View {
             .scrollIndicators(.hidden)
             .scrollTargetBehavior(.viewAligned)
             .contentMargins(.horizontal, 20, for: .scrollContent)
-            .frame(height: 128)
+            .frame(height: 148)
         }
     }
 }
 
-private struct MemoryArtifactCard: View {
+private struct MemoryDetailCaptureCard: View {
     let artifact: Artifact
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                Image(systemName: artifact.kind.systemImage)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .frame(width: 22, height: 22)
-                Text(artifact.kind.displayName)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-
-            Text(artifact.memoryDetailSummary)
-                .font(.subheadline)
-                .foregroundStyle(.primary)
-                .lineLimit(2)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            if let originLabel = artifact.captureOriginLabel {
-                Text(originLabel)
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Color.secondary.opacity(0.12), in: Capsule())
-            }
-        }
-        .padding(12)
-        .frame(width: 176, height: 112, alignment: .topLeading)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        CaptureCardView(
+            item: CaptureCardItem(artifact: artifact),
+            provenanceDisplayMode: .production,
+            musicCardStyle: .compactRow,
+            placeCardStyle: .standard
+        )
     }
 }
 
@@ -404,7 +380,7 @@ private struct MemoryArticleArtifactView: View {
             MemoryLinkList(artifacts: [artifact])
                 .padding(.horizontal, -20)
         default:
-            MemoryArtifactCard(artifact: artifact)
+            MemoryDetailCaptureCard(artifact: artifact)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
     }

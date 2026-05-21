@@ -39,7 +39,6 @@ struct CaptureCardView: View {
             item: item,
             containerBackground: containerBackground,
             containerStroke: containerStroke,
-            loadingOverlay: loadingOverlay,
             footer: cardFooter,
             trailingControl: trailingControl,
             showsLayoutGuides: showsLayoutGuides,
@@ -53,15 +52,14 @@ struct CaptureCardView: View {
     private var content: some View {
         switch item.kind {
         case .photo:
-            PhotoCaptureCardContent(item: item, accent: accent, topTrailingAvoidance: topTrailingAvoidance)
+            PhotoCaptureCardContent(item: item, accent: accent, highContrast: highContrast)
         case .audio:
-            AudioCaptureCardContent(item: item, accent: accent, topTrailingAvoidance: topTrailingAvoidance)
+            AudioCaptureCardContent(item: item, accent: accent)
         case .place:
             PlaceCaptureCardContent(
                 item: item,
                 accent: accent,
                 highContrastOverride: highContrastOverride,
-                topTrailingAvoidance: topTrailingAvoidance,
                 style: placeCardStyle.resolved(for: item)
             )
         case .weather:
@@ -71,7 +69,7 @@ struct CaptureCardView: View {
                 reduceMotionOverride: reduceMotionOverride,
                 symbolMotionLevel: weatherSymbolMotionLevel,
                 atmosphereIntensityScale: weatherAtmosphereIntensityScale,
-                topTrailingAvoidance: topTrailingAvoidance
+                highContrast: highContrast
             )
         case .music:
             MusicCaptureCardContent(
@@ -79,14 +77,14 @@ struct CaptureCardView: View {
                 accent: accent,
                 palette: palette,
                 style: musicCardStyle.resolved(for: item),
-                topTrailingAvoidance: topTrailingAvoidance
+                highContrast: highContrast
             )
         case .link:
-            LinkCaptureCardContent(item: item, accent: accent, topTrailingAvoidance: topTrailingAvoidance)
+            LinkCaptureCardContent(item: item, accent: accent)
         case .todo:
-            TodoCaptureCardContent(item: item, accent: accent, topTrailingAvoidance: topTrailingAvoidance)
+            TodoCaptureCardContent(item: item, accent: accent)
         case .status:
-            StatusCaptureCardContent(item: item, accent: accent, topTrailingAvoidance: topTrailingAvoidance)
+            StatusCaptureCardContent(item: item, accent: accent)
         }
     }
 
@@ -135,7 +133,7 @@ struct CaptureCardView: View {
             ProgressView()
                 .controlSize(.small)
                 .padding(6)
-                .background(.regularMaterial, in: Circle())
+                .background(Color(.secondarySystemBackground).opacity(0.92), in: Circle())
         } else if item.displaysRemoveControl {
             removeButton
         } else if item.state == .error {
@@ -143,7 +141,7 @@ struct CaptureCardView: View {
                 .font(.caption)
                 .foregroundStyle(.red)
                 .padding(7)
-                .background(.regularMaterial, in: Circle())
+                .background(Color(.secondarySystemBackground).opacity(0.92), in: Circle())
         } else if item.displaysSelection {
             Image(systemName: "checkmark.circle.fill")
                 .symbolRenderingMode(.palette)
@@ -166,17 +164,8 @@ struct CaptureCardView: View {
         .accessibilityLabel(item.state == .error ? String(localized: "capture.card.removeFailed") : String(localized: "common.delete"))
     }
 
-    private var loadingOverlay: some View {
-        LinearGradient(
-            colors: [.clear, palette.primaryText.opacity(0.2), .clear],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-        .allowsHitTesting(false)
-    }
-
     private var containerBackground: AnyShapeStyle {
-        AnyShapeStyle(.regularMaterial)
+        AnyShapeStyle(Color(.secondarySystemBackground))
     }
 
     private var containerStroke: some View {
@@ -234,7 +223,7 @@ struct CaptureCardView: View {
     }
 
     private var mapLegibilityStyle: CaptureMapLegibilityStyle {
-        usesMapLegibility ? CaptureMapLegibilityStyle.resolve(snapshotData: item.mapSnapshotData) : .materialFallback
+        usesMapLegibility ? CaptureMapLegibilityStyle.resolve(snapshotData: item.mapSnapshotData) : .fallback
     }
 
     private var mapFooterForeground: Color {
@@ -243,7 +232,7 @@ struct CaptureCardView: View {
             return .white
         case .darkText:
             return .black.opacity(0.86)
-        case .materialFallback:
+        case .fallback:
             return .primary
         }
     }
@@ -254,17 +243,13 @@ struct CaptureCardView: View {
             return .black.opacity(highContrast ? 0.48 : 0.28)
         case .darkText:
             return .white.opacity(highContrast ? 0.78 : 0.56)
-        case .materialFallback:
+        case .fallback:
             return Color.primary.opacity(highContrast ? 0.18 : 0.1)
         }
     }
 
     private var highContrast: Bool {
         highContrastOverride ?? (colorSchemeContrast == .increased)
-    }
-
-    private var topTrailingAvoidance: CGFloat {
-        item.topTrailingAvoidance
     }
 
     private var accent: Color {
@@ -315,11 +300,10 @@ struct CaptureCardView: View {
     }
 }
 
-private struct CaptureCardChrome<Content: View, Footer: View, TrailingControl: View, LoadingOverlay: View, ContainerStroke: View>: View {
+private struct CaptureCardChrome<Content: View, Footer: View, TrailingControl: View, ContainerStroke: View>: View {
     let item: CaptureCardItem
     let containerBackground: AnyShapeStyle
     let containerStroke: ContainerStroke
-    let loadingOverlay: LoadingOverlay
     let footer: Footer
     let trailingControl: TrailingControl
     let showsLayoutGuides: Bool
@@ -331,14 +315,8 @@ private struct CaptureCardChrome<Content: View, Footer: View, TrailingControl: V
             content
                 .frame(width: 190, height: 132)
                 .background(containerBackground, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-                .overlay(containerStroke)
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .redacted(reason: item.state == .loading ? .placeholder : [])
                 .overlay(alignment: .bottomLeading) { footer }
-                .overlay {
-                    if item.state == .loading {
-                        loadingOverlay
-                    }
-                }
                 .overlay {
                     if showsLayoutGuides {
                         layoutGuides
@@ -354,6 +332,8 @@ private struct CaptureCardChrome<Content: View, Footer: View, TrailingControl: V
                             .padding(6)
                     }
                 }
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .overlay(containerStroke)
 
             trailingControl
                 .padding(9)
@@ -361,15 +341,8 @@ private struct CaptureCardChrome<Content: View, Footer: View, TrailingControl: V
     }
 
     private var layoutGuides: some View {
-        ZStack(alignment: .topTrailing) {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(.yellow.opacity(0.7), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
-            if item.hasTrailingControl {
-                Rectangle()
-                    .fill(.red.opacity(0.14))
-                    .frame(width: item.topTrailingAvoidance, height: item.topTrailingAvoidance)
-            }
-        }
+        RoundedRectangle(cornerRadius: 20, style: .continuous)
+            .stroke(.yellow.opacity(0.7), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
         .allowsHitTesting(false)
     }
 }
@@ -379,7 +352,7 @@ private struct PhotoCaptureCardContent: View {
 
     let item: CaptureCardItem
     let accent: Color
-    let topTrailingAvoidance: CGFloat
+    let highContrast: Bool
 
     var body: some View {
         if item.photoCount > 1 {
@@ -393,13 +366,9 @@ private struct PhotoCaptureCardContent: View {
         ZStack(alignment: .bottomLeading) {
             photoBackground
             photoScrim
-            titleBlock(foreground: .primary, shadow: false)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            titleBlock(legibility: legibility)
                 .padding(.horizontal, 12)
-                .padding(.bottom, 36)
-                .padding(.trailing, titleTrailingPadding)
+                .padding(.bottom, 12)
         }
     }
 
@@ -422,13 +391,10 @@ private struct PhotoCaptureCardContent: View {
                 Text(String(format: String(localized: "capture.card.photo.count.format"), item.photoCount))
                     .font(.caption.weight(.medium))
             }
-            .foregroundStyle(.primary)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .foregroundStyle(legibility.primaryText)
+            .shadow(color: legibility.shadow, radius: 3, y: 1)
             .padding(.horizontal, 12)
-            .padding(.bottom, 36)
-            .padding(.trailing, titleTrailingPadding)
+            .padding(.bottom, 12)
         }
     }
 
@@ -534,23 +500,17 @@ private struct PhotoCaptureCardContent: View {
 
     private var photoScrim: some View {
         LinearGradient(
-            colors: photoUsesLightText
-                ? [.clear, .black.opacity(0.12), .black.opacity(0.52)]
-                : [.clear, .white.opacity(0.16), .white.opacity(0.64)],
+            colors: legibility.scrimColors,
             startPoint: .top,
             endPoint: .bottom
         )
     }
 
-    private var photoUsesLightText: Bool {
-        CaptureImageLegibilityStyle.resolve(imageData: item.thumbnailData) != .darkText
+    private var legibility: CaptureCardLegibility {
+        CaptureCardLegibility.imageData(item.thumbnailData, highContrast: highContrast)
     }
 
-    private var titleTrailingPadding: CGFloat {
-        topTrailingAvoidance > 0 ? max(0, topTrailingAvoidance - 14) : 0
-    }
-
-    private func titleBlock(foreground: Color, shadow: Bool) -> some View {
+    private func titleBlock(legibility: CaptureCardLegibility) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(item.title?.trimmedOrNil ?? String(localized: "capture.card.kind.photo"))
                 .font(.subheadline.weight(.semibold))
@@ -559,15 +519,14 @@ private struct PhotoCaptureCardContent: View {
                 .font(.caption)
                 .lineLimit(2)
         }
-        .foregroundStyle(foreground)
-        .shadow(color: shadow ? .black.opacity(0.22) : .clear, radius: 3, y: 1)
+        .foregroundStyle(legibility.primaryText)
+        .shadow(color: legibility.shadow, radius: 3, y: 1)
     }
 }
 
 private struct AudioCaptureCardContent: View {
     let item: CaptureCardItem
     let accent: Color
-    let topTrailingAvoidance: CGFloat
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -588,10 +547,9 @@ private struct AudioCaptureCardContent: View {
                 if let duration = item.durationSeconds {
                     Text(formatDuration(duration))
                         .font(.caption2.monospacedDigit().weight(.medium))
-                        .foregroundStyle(.secondary)
+                    .foregroundStyle(.secondary)
                 }
             }
-            .padding(.trailing, topTrailingAvoidance)
 
             Text(transcriptPreview)
                 .font(.subheadline.weight(.semibold))
@@ -633,7 +591,6 @@ private struct PlaceCaptureCardContent: View {
     let item: CaptureCardItem
     let accent: Color
     let highContrastOverride: Bool?
-    let topTrailingAvoidance: CGFloat
     let style: CapturePlaceCardStyle
 
     var body: some View {
@@ -655,27 +612,22 @@ private struct PlaceCaptureCardContent: View {
                 .font(.title2)
                 .symbolRenderingMode(.palette)
                 .foregroundStyle(placePrimaryText, accent)
-                .padding(.trailing, topTrailingAvoidance)
 
             Spacer()
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(item.title?.trimmedOrNil ?? String(localized: "capture.card.kind.place"))
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(placePrimaryText)
                     .lineLimit(1)
                 Text(item.detail)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(placeSecondaryText)
                     .lineLimit(2)
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
         .shadow(color: placeTextShadow, radius: 3, y: 1)
         .padding(12)
-        .padding(.trailing, topTrailingAvoidance > 0 ? 10 : 0)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
 
@@ -683,23 +635,17 @@ private struct PlaceCaptureCardContent: View {
         VStack(alignment: .leading, spacing: 3) {
             Text(item.title?.trimmedOrNil ?? String(localized: "capture.card.kind.place"))
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.primary)
+                .foregroundStyle(placePrimaryText)
                 .lineLimit(1)
             Text(item.detail)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(placeSecondaryText)
                 .lineLimit(1)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 9)
-        .padding(.trailing, topTrailingAvoidance > 0 ? 10 : 0)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(immersiveFooterBackground)
-    }
-
-    private var immersiveFooterBackground: some View {
-        Rectangle()
-            .fill(.regularMaterial)
+        .shadow(color: placeTextShadow, radius: 3, y: 1)
     }
 
     @ViewBuilder
@@ -713,11 +659,22 @@ private struct PlaceCaptureCardContent: View {
             mapBackground
                 .overlay {
                     if item.isLocationPrivacyEnabled {
-                        Rectangle()
-                            .fill(.regularMaterial)
+                        privacyLocationMask
                     }
                 }
         }
+    }
+
+    private var privacyLocationMask: some View {
+        LinearGradient(
+            colors: [
+                Color(.secondarySystemBackground).opacity(0.34),
+                accent.opacity(0.12),
+                Color(.systemBackground).opacity(0.52),
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
     }
 
     private var mapBackground: some View {
@@ -748,35 +705,29 @@ private struct PlaceCaptureCardContent: View {
 
     private var legibilityStyle: CaptureMapLegibilityStyle {
         guard item.mapSnapshotData != nil, !item.isLocationPrivacyEnabled else {
-            return .materialFallback
+            return .fallback
         }
         return CaptureMapLegibilityStyle.resolve(snapshotData: item.mapSnapshotData)
     }
 
+    private var legibility: CaptureCardLegibility {
+        CaptureCardLegibility.map(
+            snapshotData: item.mapSnapshotData,
+            isPrivacyEnabled: item.isLocationPrivacyEnabled,
+            highContrast: highContrast
+        )
+    }
+
     private var placePrimaryText: Color {
-        switch legibilityStyle {
-        case .lightText:
-            return .white
-        case .darkText:
-            return .black.opacity(0.88)
-        case .materialFallback:
-            return .primary
-        }
+        legibility.primaryText
     }
 
     private var placeSecondaryText: Color {
-        switch legibilityStyle {
-        case .lightText:
-            return .white.opacity(highContrast ? 0.92 : 0.78)
-        case .darkText:
-            return .black.opacity(highContrast ? 0.78 : 0.62)
-        case .materialFallback:
-            return .secondary
-        }
+        legibility.secondaryText
     }
 
     private var placeTextShadow: Color {
-        legibilityStyle == .lightText ? .black.opacity(0.26) : .clear
+        legibility.shadow
     }
 
     private var placeSnapshotScrim: some View {
@@ -788,14 +739,7 @@ private struct PlaceCaptureCardContent: View {
     }
 
     private var placeScrimColors: [Color] {
-        switch legibilityStyle {
-        case .lightText:
-            return [.black.opacity(0.05), .black.opacity(highContrast ? 0.62 : 0.42)]
-        case .darkText:
-            return [.white.opacity(0.16), .white.opacity(highContrast ? 0.74 : 0.54)]
-        case .materialFallback:
-            return [.clear, .black.opacity(0.18)]
-        }
+        legibility.scrimColors
     }
 
     private var highContrast: Bool {
@@ -811,26 +755,30 @@ private struct WeatherCaptureCardContent: View {
     let reduceMotionOverride: Bool?
     let symbolMotionLevel: CaptureWeatherSymbolMotionLevel
     let atmosphereIntensityScale: Double
-    let topTrailingAvoidance: CGFloat
+    let highContrast: Bool
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            weatherIcon
-
-            VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .top) {
                 Text(item.title?.trimmedOrNil ?? String(localized: "capture.card.kind.weather"))
-                    .font(.title3.weight(.semibold))
+                    .font(.system(size: 35, weight: .bold, design: .rounded))
+                    .foregroundStyle(legibility.primaryText)
                     .lineLimit(1)
-                Text(item.detail)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(3)
+                    .minimumScaleFactor(0.72)
+
+                Spacer(minLength: 8)
+                weatherIcon
             }
-            .padding(.trailing, topTrailingAvoidance)
-            Spacer(minLength: 0)
+
+            Text(item.detail)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(legibility.secondaryText)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
         }
-        .padding(13)
+        .padding(14)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .shadow(color: legibility.shadow, radius: 3, y: 1)
         .background {
             WeatherAtmosphereView(
                 spec: weatherAtmosphereSpec,
@@ -845,6 +793,10 @@ private struct WeatherCaptureCardContent: View {
             condition: [item.title, item.detail].compactMap { $0 }.joined(separator: " "),
             isDaylight: item.weatherIsDaylight
         )
+    }
+
+    private var legibility: CaptureCardLegibility {
+        CaptureCardLegibility.weather(style: weatherStyle, highContrast: highContrast)
     }
 
     @ViewBuilder
@@ -867,9 +819,9 @@ private struct WeatherCaptureCardContent: View {
 
     private var weatherIconBase: some View {
         Image(systemName: item.weatherSymbolName?.trimmedOrNil ?? weatherStyle.symbolName)
-            .font(.system(size: 34, weight: .semibold))
+            .font(.system(size: 27, weight: .semibold))
             .symbolRenderingMode(.multicolor)
-            .frame(width: 44)
+            .frame(width: 32, height: 32)
     }
 
     private var resolvedReduceMotion: Bool {
@@ -907,7 +859,7 @@ private struct MusicCaptureCardContent: View {
     let accent: Color
     let palette: CaptureCardPalette
     let style: CaptureMusicCardStyle
-    let topTrailingAvoidance: CGFloat
+    let highContrast: Bool
 
     var body: some View {
         switch style {
@@ -921,91 +873,71 @@ private struct MusicCaptureCardContent: View {
     }
 
     private var compactRowBody: some View {
-        HStack(alignment: .top, spacing: 11) {
-            compactArtwork(size: 54)
+        ZStack {
+            musicBackground
 
-            VStack(alignment: .leading, spacing: 5) {
-                Text(item.title?.trimmedOrNil ?? String(localized: "capture.card.kind.music"))
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(palette.primaryText)
-                    .lineLimit(1)
-                Text(item.detail)
-                    .font(.caption)
-                    .foregroundStyle(palette.secondaryText)
-                    .lineLimit(2)
-                Spacer(minLength: 0)
-                musicFooter()
+            HStack(alignment: .top, spacing: 11) {
+                compactArtwork(size: 54)
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(item.title?.trimmedOrNil ?? String(localized: "capture.card.kind.music"))
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(coverLegibility.primaryText)
+                        .lineLimit(2)
+                    Text(item.detail)
+                        .font(.caption)
+                        .foregroundStyle(coverLegibility.secondaryText)
+                        .lineLimit(2)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxHeight: .infinity, alignment: .top)
-            .padding(.trailing, topTrailingAvoidance)
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background {
-            LinearGradient(
-                colors: musicState == .unavailable || musicState == .stopped
-                    ? [Color.secondary.opacity(0.08), Color.secondary.opacity(0.04)]
-                    : palette.background.map { $0.opacity(0.16) },
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            .padding(12)
+            .shadow(color: coverLegibility.shadow, radius: 3, y: 1)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
     }
 
     private var compactTileBody: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            HStack(alignment: .top, spacing: 9) {
-                compactArtwork(size: 42)
+        ZStack {
+            musicBackground
 
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(item.title?.trimmedOrNil ?? String(localized: "capture.card.kind.music"))
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(palette.primaryText)
-                        .lineLimit(2)
-                    Text(item.detail)
-                        .font(.caption2)
-                        .foregroundStyle(palette.secondaryText)
-                        .lineLimit(1)
-                }
-                .padding(.trailing, topTrailingAvoidance)
+            VStack(alignment: .leading, spacing: 7) {
+                compactArtwork(size: 46)
+
+                Text(item.title?.trimmedOrNil ?? String(localized: "capture.card.kind.music"))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(coverLegibility.primaryText)
+                    .lineLimit(2)
+                Text(item.detail)
+                    .font(.caption2)
+                    .foregroundStyle(coverLegibility.secondaryText)
+                    .lineLimit(1)
             }
-
-            Spacer(minLength: 0)
-            musicFooter()
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background {
-            LinearGradient(
-                colors: musicState == .unavailable || musicState == .stopped
-                    ? [Color.secondary.opacity(0.08), Color.secondary.opacity(0.04)]
-                    : palette.background.map { $0.opacity(0.16) },
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            .padding(12)
+            .shadow(color: coverLegibility.shadow, radius: 3, y: 1)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
     }
 
     private var coverBody: some View {
         ZStack {
-            coverBackground
+            musicBackground
 
             VStack(spacing: 5) {
                 Text(item.title?.trimmedOrNil ?? String(localized: "capture.card.kind.music"))
                     .font(.headline.weight(.semibold))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(coverLegibility.primaryText)
                     .lineLimit(2)
                     .multilineTextAlignment(.center)
                 Text(item.detail)
                     .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(coverLegibility.secondaryText)
                     .lineLimit(1)
                     .multilineTextAlignment(.center)
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 12)
-            .padding(.top, topTrailingAvoidance > 0 ? 12 : 0)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .shadow(color: coverLegibility.shadow, radius: 3, y: 1)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         }
     }
@@ -1017,48 +949,32 @@ private struct MusicCaptureCardContent: View {
         }
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: size >= 50 ? 12 : 10, style: .continuous))
-    }
-
-    private func musicFooter(alignment: Alignment = .leading) -> some View {
-        HStack(spacing: 6) {
-            if musicState == .playing {
-                MusicEqualizerView(isPlaying: true, accent: accent)
-            }
-
-            if let visibleMusicStateText {
-                Text(visibleMusicStateText)
-                    .font(.caption2.weight(.medium))
-                    .foregroundStyle(palette.secondaryText)
-                    .lineLimit(1)
+        .overlay(alignment: .bottomLeading) {
+            if musicState == .playing && item.hasArtwork {
+                MusicEqualizerView(isPlaying: true, accent: .white)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 4)
+                    .background(Color.black.opacity(0.34), in: Capsule())
+                    .padding(5)
             }
         }
-        .frame(maxWidth: .infinity, alignment: alignment)
-    }
-
-    private var musicCoverUsesLightText: Bool {
-        CaptureImageLegibilityStyle.resolve(imageData: item.thumbnailData) != .darkText
     }
 
     private var musicCoverScrimColors: [Color] {
-        if musicCoverUsesLightText {
-            return [.black.opacity(0.16), .black.opacity(0.5)]
-        }
-        return [.white.opacity(0.24), .white.opacity(0.68)]
+        coverLegibility.scrimColors
     }
 
-    private var visibleMusicStateText: String? {
-        switch musicState {
-        case .playing:
-            return nil
-        case .paused, .stopped, .unavailable, .searchResult:
-            return musicState.label
+    private var coverLegibility: CaptureCardLegibility {
+        if item.thumbnailData != nil {
+            return CaptureCardLegibility.imageData(item.thumbnailData, highContrast: highContrast)
         }
+        return CaptureCardLegibility.palette(palette, highContrast: highContrast)
     }
 
-    private var coverBackground: some View {
+    private var musicBackground: some View {
         ZStack {
             LinearGradient(colors: palette.background, startPoint: .topLeading, endPoint: .bottomTrailing)
-            artworkImageView(contentMode: .fill)
+            artworkBackgroundImage
                 .scaleEffect(1.24)
                 .blur(radius: 16)
                 .saturation(1.08)
@@ -1068,6 +984,32 @@ private struct MusicCaptureCardContent: View {
                 startPoint: .top,
                 endPoint: .bottom
             )
+        }
+    }
+
+    @ViewBuilder
+    private var artworkBackgroundImage: some View {
+        if let image = item.thumbnailImage {
+            Image(uiImage: image)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
+        } else if let artworkURL = item.artworkURL, let url = URL(string: artworkURL) {
+            AsyncImage(url: url) { phase in
+                switch phase {
+                case let .success(image):
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .clipped()
+                default:
+                    Color.clear
+                }
+            }
+        } else {
+            Color.clear
         }
     }
 
@@ -1111,7 +1053,6 @@ private struct MusicCaptureCardContent: View {
 private struct LinkCaptureCardContent: View {
     let item: CaptureCardItem
     let accent: Color
-    let topTrailingAvoidance: CGFloat
 
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
@@ -1124,7 +1065,6 @@ private struct LinkCaptureCardContent: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
-            .padding(.trailing, topTrailingAvoidance)
 
             Text(linkTitle)
                 .font(.subheadline.weight(.semibold))
@@ -1171,7 +1111,6 @@ private struct LinkCaptureCardContent: View {
 private struct TodoCaptureCardContent: View {
     let item: CaptureCardItem
     let accent: Color
-    let topTrailingAvoidance: CGFloat
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
@@ -1189,7 +1128,6 @@ private struct TodoCaptureCardContent: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(3)
             }
-            .padding(.trailing, topTrailingAvoidance)
         }
         .padding(12)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -1200,7 +1138,6 @@ private struct TodoCaptureCardContent: View {
 private struct StatusCaptureCardContent: View {
     let item: CaptureCardItem
     let accent: Color
-    let topTrailingAvoidance: CGFloat
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -1211,7 +1148,6 @@ private struct StatusCaptureCardContent: View {
             Text(item.title?.trimmedOrNil ?? String(localized: "capture.card.kind.status"))
                 .font(.subheadline.weight(.semibold))
                 .lineLimit(1)
-                .padding(.trailing, topTrailingAvoidance)
 
             Text(item.detail)
                 .font(.caption)
@@ -1247,44 +1183,6 @@ private struct StatusCaptureCardContent: View {
         case .normal:
             return .secondary
         }
-    }
-}
-
-private enum CaptureImageLegibilityStyle {
-    case lightText
-    case darkText
-
-    static func resolve(imageData: Data?) -> CaptureImageLegibilityStyle {
-        guard let imageData,
-              let image = UIImage(data: imageData) else {
-            return .lightText
-        }
-        return resolve(image: image)
-    }
-
-    static func resolve(image: UIImage) -> CaptureImageLegibilityStyle {
-        guard let cgImage = image.cgImage else { return .lightText }
-        let width = 1
-        let height = 1
-        var pixel = [UInt8](repeating: 0, count: 4)
-        let colorSpace = CGColorSpaceCreateDeviceRGB()
-        guard let context = CGContext(
-            data: &pixel,
-            width: width,
-            height: height,
-            bitsPerComponent: 8,
-            bytesPerRow: 4,
-            space: colorSpace,
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else {
-            return .lightText
-        }
-        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
-        let red = Double(pixel[0]) / 255
-        let green = Double(pixel[1]) / 255
-        let blue = Double(pixel[2]) / 255
-        let luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue
-        return luminance > 0.58 ? .darkText : .lightText
     }
 }
 

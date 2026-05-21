@@ -76,10 +76,10 @@ struct UnifiedCaptureComposerView: View {
     private var attachmentItems: [CaptureComposerAttachmentItem] {
         var items: [CaptureComposerAttachmentItem] = []
         if isProcessingPhoto {
-            items.append(.processing(id: "photo", detail: String(localized: "capture.photo.analyzing")))
+            items.append(.processing(id: "photo", kind: .photo, detail: String(localized: "capture.photo.analyzing")))
         }
         if isRefiningVoiceTranscript {
-            items.append(.processing(id: "voice", detail: String(localized: "capture.voice.refiningTranscript")))
+            items.append(.processing(id: "voice", kind: .audio, detail: String(localized: "capture.voice.refiningTranscript")))
         }
         if isCollectingContext {
             items.append(.processing(id: "context", detail: String(localized: "capture.context.collecting")))

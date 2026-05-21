@@ -1,6 +1,19 @@
 import CoreGraphics
 import Foundation
 
+nonisolated func captureWeatherTemperatureTitle(_ temperatureCelsius: Double) -> String {
+    String(format: String(localized: "capture.card.weather.temperature.format"), temperatureCelsius)
+}
+
+nonisolated func captureWeatherMetadata(humidity: Double, windSpeedKmh: Double, uvIndex: Int) -> String {
+    String(
+        format: String(localized: "capture.card.weather.metadata.format"),
+        humidity * 100,
+        windSpeedKmh,
+        uvIndex
+    )
+}
+
 enum CaptureCardKind: String, CaseIterable, Hashable, Sendable {
     case photo
     case audio
@@ -446,7 +459,7 @@ enum CaptureMusicCardStyle: String, CaseIterable, Hashable, Sendable, Identifiab
         case .compactTile:
             return .compactTile
         case .cover:
-            return item.hasArtwork ? .cover : .compactRow
+            return .cover
         case .auto:
             return .compactRow
         }
@@ -538,10 +551,6 @@ struct CaptureCardItem: Identifiable, Hashable, Sendable {
         state == .loading || state == .error || displaysRemoveControl || displaysSelection
     }
 
-    var topTrailingAvoidance: CGFloat {
-        hasTrailingControl ? 42 : 0
-    }
-
     init(
         id: String = UUID().uuidString,
         kind: CaptureCardKind,
@@ -608,9 +617,9 @@ extension CaptureCardItem {
             kind: CaptureCardKind(composerKind: item.kind),
             origin: item.origin,
             state: item.isProcessing ? .loading : .normal,
-            title: item.kind.label,
+            title: item.title ?? item.kind.label,
             detail: item.detail,
-            metadata: item.secondaryText,
+            metadata: item.metadata ?? item.secondaryText,
             thumbnailData: item.thumbnailData,
             artworkURL: item.artworkURL,
             artworkPalette: item.artworkPalette,
@@ -623,6 +632,166 @@ extension CaptureCardItem {
             isSelected: item.isSelected,
             isRemovable: item.isRemovable
         )
+    }
+
+    init(artifact: Artifact, state: CaptureCardVisualState = .normal) {
+        switch artifact.kind {
+        case .text:
+            self.init(
+                id: "artifact-\(artifact.id.uuidString)",
+                kind: .status,
+                origin: artifact.captureCardOrigin,
+                state: state,
+                title: artifact.title.trimmedOrNil ?? String(localized: "capture.card.kind.text"),
+                detail: captureCardModelSnippet(artifact.textContent)
+                    ?? captureCardModelSnippet(artifact.summary)
+                    ?? String(localized: "capture.card.kind.text")
+            )
+        case .photo:
+            self.init(
+                id: "artifact-\(artifact.id.uuidString)",
+                kind: .photo,
+                origin: artifact.captureCardOrigin,
+                state: state,
+                title: artifact.title.trimmedOrNil,
+                detail: captureCardModelSnippet(artifact.summary)
+                    ?? captureCardModelSnippet(artifact.textContent)
+                    ?? String(localized: "capture.card.photo.attached"),
+                metadata: artifact.mediaRef?.filename.trimmedOrNil,
+                thumbnailData: artifact.previewPayload ?? artifact.binaryPayload,
+                isRemovable: false
+            )
+        case .audio:
+            self.init(
+                id: "artifact-\(artifact.id.uuidString)",
+                kind: .audio,
+                origin: artifact.captureCardOrigin,
+                state: state,
+                title: artifact.title.trimmedOrNil ?? String(localized: "capture.card.kind.audio"),
+                detail: artifact.metadata["transcriptionText"].flatMap(captureCardModelSnippet)
+                    ?? captureCardModelSnippet(artifact.textContent)
+                    ?? captureCardModelSnippet(artifact.summary)
+                    ?? String(localized: "capture.card.audio.attached"),
+                metadata: artifact.mediaRef?.filename.trimmedOrNil,
+                isRemovable: false
+            )
+        case .music:
+            self.init(
+                id: "artifact-\(artifact.id.uuidString)",
+                kind: .music,
+                origin: artifact.captureCardOrigin,
+                state: state,
+                title: artifact.metadata["trackName"]?.trimmedOrNil
+                    ?? artifact.title.trimmedOrNil
+                    ?? String(localized: "capture.card.kind.music"),
+                detail: [
+                    artifact.metadata["artistName"]?.trimmedOrNil,
+                    artifact.metadata["albumName"]?.trimmedOrNil
+                ]
+                .compactMap { $0 }
+                .joined(separator: " · ")
+                .trimmedOrNil
+                    ?? captureCardModelSnippet(artifact.summary)
+                    ?? String(localized: "capture.card.kind.music"),
+                metadata: nil,
+                thumbnailData: artifact.previewPayload ?? artifact.binaryPayload,
+                artworkURL: artifact.metadata["artworkURL"]?.trimmedOrNil,
+                artworkPalette: artifact.captureCardArtworkPalette,
+                durationSeconds: artifact.metadata["durationSeconds"].flatMap(Int.init),
+                musicPlaybackState: .stopped,
+                isRemovable: false
+            )
+        case .link:
+            let url = artifact.metadata["url"]?.trimmedOrNil
+            self.init(
+                id: "artifact-\(artifact.id.uuidString)",
+                kind: .link,
+                origin: artifact.captureCardOrigin,
+                state: state,
+                title: artifact.title.trimmedOrNil ?? String(localized: "capture.card.kind.link"),
+                detail: captureCardModelSnippet(artifact.summary)
+                    ?? captureCardModelSnippet(artifact.textContent)
+                    ?? url
+                    ?? String(localized: "capture.card.link.attached"),
+                metadata: url.flatMap { URL(string: $0)?.host() },
+                thumbnailData: artifact.previewPayload,
+                isRemovable: false
+            )
+        case .location:
+            self.init(
+                id: "artifact-\(artifact.id.uuidString)",
+                kind: .place,
+                origin: artifact.captureCardOrigin,
+                state: state,
+                title: artifact.title.trimmedOrNil ?? String(localized: "capture.card.kind.place"),
+                detail: captureCardModelSnippet(artifact.summary)
+                    ?? captureCardModelSnippet(artifact.textContent)
+                    ?? String(localized: "capture.card.place.attached"),
+                metadata: nil,
+                latitude: artifact.metadata["latitude"].flatMap(Double.init),
+                longitude: artifact.metadata["longitude"].flatMap(Double.init),
+                isRemovable: false
+            )
+        case .weather:
+            let condition = artifact.metadata["condition"]?.trimmedOrNil
+                ?? artifact.summary.trimmedOrNil
+                ?? artifact.title.trimmedOrNil
+                ?? String(localized: "capture.card.kind.weather")
+            let temperature = artifact.metadata["temperatureCelsius"].flatMap(Double.init)
+            let windSpeed = artifact.metadata["windSpeedKmh"].flatMap(Double.init)
+            let humidity = artifact.metadata["humidity"].flatMap(Double.init)
+            let uvIndex = artifact.metadata["uvIndex"].flatMap(Int.init)
+            let isDaylight = artifact.metadata["isDaylight"].flatMap(Bool.init)
+            self.init(
+                id: "artifact-\(artifact.id.uuidString)",
+                kind: .weather,
+                origin: artifact.captureCardOrigin,
+                state: state,
+                title: temperature.map(captureWeatherTemperatureTitle) ?? artifact.title.trimmedOrNil,
+                detail: condition,
+                metadata: Self.weatherMetadata(humidity: humidity, windSpeedKmh: windSpeed, uvIndex: uvIndex),
+                latitude: artifact.metadata["latitude"].flatMap(Double.init),
+                longitude: artifact.metadata["longitude"].flatMap(Double.init),
+                weatherStyle: .resolve(
+                    conditionCode: artifact.metadata["conditionCode"],
+                    condition: condition,
+                    temperatureCelsius: temperature,
+                    windSpeedKmh: windSpeed,
+                    isDaylight: isDaylight
+                ),
+                weatherConditionCode: artifact.metadata["conditionCode"]?.trimmedOrNil,
+                weatherSymbolName: artifact.metadata["symbolName"]?.trimmedOrNil,
+                weatherIsDaylight: isDaylight,
+                isRemovable: false
+            )
+        case .todo:
+            self.init(
+                id: "artifact-\(artifact.id.uuidString)",
+                kind: .todo,
+                origin: artifact.captureCardOrigin,
+                state: state,
+                title: artifact.title.trimmedOrNil ?? String(localized: "capture.card.kind.todo"),
+                detail: captureCardModelSnippet(artifact.summary)
+                    ?? captureCardModelSnippet(artifact.textContent)
+                    ?? String(localized: "capture.card.kind.todo"),
+                metadata: nil,
+                isRemovable: false
+            )
+        case .document:
+            self.init(
+                id: "artifact-\(artifact.id.uuidString)",
+                kind: .status,
+                origin: artifact.captureCardOrigin,
+                state: state,
+                title: artifact.title.trimmedOrNil ?? String(localized: "capture.card.kind.status"),
+                detail: captureCardModelSnippet(artifact.summary)
+                    ?? captureCardModelSnippet(artifact.textContent)
+                    ?? artifact.mediaRef?.filename
+                    ?? String(localized: "capture.card.kind.status"),
+                metadata: artifact.mediaRef?.filename.trimmedOrNil,
+                isRemovable: false
+            )
+        }
     }
 
     init(
@@ -707,14 +876,9 @@ extension CaptureCardItem {
                 kind: .weather,
                 origin: origin,
                 state: state,
-                title: condition,
-                detail: String(
-                    format: String(localized: "capture.card.weather.detail.format"),
-                    temp,
-                    humidity * 100,
-                    windSpeed
-                ),
-                metadata: String(format: String(localized: "capture.card.weather.uv.format"), uvIndex),
+                title: captureWeatherTemperatureTitle(temp),
+                detail: condition,
+                metadata: captureWeatherMetadata(humidity: humidity, windSpeedKmh: windSpeed, uvIndex: uvIndex),
                 latitude: latitude,
                 longitude: longitude,
                 weatherStyle: .resolve(
@@ -748,6 +912,26 @@ extension CaptureCardItem {
                 isRemovable: origin == .manual || origin == .context
             )
         }
+    }
+
+    private static func weatherMetadata(humidity: Double?, windSpeedKmh: Double?, uvIndex: Int?) -> String? {
+        guard let humidity, let windSpeedKmh, let uvIndex else { return nil }
+        return captureWeatherMetadata(humidity: humidity, windSpeedKmh: windSpeedKmh, uvIndex: uvIndex)
+    }
+}
+
+private extension Artifact {
+    var captureCardOrigin: CaptureArtifactOrigin? {
+        metadata["captureOrigin"].flatMap(CaptureArtifactOrigin.init(rawValue:))
+    }
+
+    var captureCardArtworkPalette: MusicArtworkPalette? {
+        let palette = MusicArtworkPalette(
+            backgroundColorHex: metadata["artworkBackgroundColor"]?.trimmedOrNil,
+            primaryTextColorHex: metadata["artworkPrimaryTextColor"]?.trimmedOrNil,
+            secondaryTextColorHex: metadata["artworkSecondaryTextColor"]?.trimmedOrNil
+        )
+        return palette.isEmpty ? nil : palette
     }
 }
 

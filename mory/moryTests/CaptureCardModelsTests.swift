@@ -40,6 +40,113 @@ final class CaptureCardModelsTests: XCTestCase {
         XCTAssertEqual(card.detail, "Collecting context")
     }
 
+    func testSavedPhotoArtifactMapsToProductionCaptureCard() {
+        let thumbnail = makeImageData(color: .systemPink)
+        let artifact = Artifact(
+            recordID: UUID(),
+            kind: .photo,
+            title: "Morning photo",
+            summary: "Kitchen light",
+            mediaRef: ArtifactMediaRef(filename: "photo.jpg", mimeType: "image/jpeg"),
+            metadata: ["captureOrigin": CaptureArtifactOrigin.manual.rawValue],
+            previewPayload: thumbnail,
+            createdAt: .now,
+            updatedAt: .now
+        )
+
+        let card = CaptureCardItem(artifact: artifact)
+
+        XCTAssertEqual(card.kind, .photo)
+        XCTAssertEqual(card.origin, .manual)
+        XCTAssertEqual(card.title, "Morning photo")
+        XCTAssertEqual(card.detail, "Kitchen light")
+        XCTAssertEqual(card.thumbnailData, thumbnail)
+        XCTAssertFalse(card.isRemovable)
+    }
+
+    func testSavedWeatherArtifactMapsStableConditionFields() {
+        let artifact = Artifact(
+            recordID: UUID(),
+            kind: .weather,
+            title: "Mostly clear 24°C",
+            summary: "Mostly clear · 24°C",
+            metadata: [
+                "captureOrigin": CaptureArtifactOrigin.context.rawValue,
+                "condition": "大部晴朗无云",
+                "temperatureCelsius": "24.2",
+                "humidity": "0.62",
+                "windSpeedKmh": "9.5",
+                "uvIndex": "2",
+                "conditionCode": "mostlyClear",
+                "symbolName": "sun.max.fill",
+                "isDaylight": "true"
+            ],
+            createdAt: .now,
+            updatedAt: .now
+        )
+
+        let card = CaptureCardItem(artifact: artifact)
+
+        XCTAssertEqual(card.kind, .weather)
+        XCTAssertEqual(card.origin, .context)
+        XCTAssertEqual(card.title, captureWeatherTemperatureTitle(24.2))
+        XCTAssertEqual(card.detail, "大部晴朗无云")
+        XCTAssertEqual(card.weatherConditionCode, "mostlyClear")
+        XCTAssertEqual(card.weatherSymbolName, "sun.max.fill")
+        XCTAssertEqual(card.weatherStyle, .sunny)
+        XCTAssertNotNil(card.metadata)
+    }
+
+    func testSavedMusicArtifactDoesNotAnimateAsLivePlayback() {
+        let artifact = Artifact(
+            recordID: UUID(),
+            kind: .music,
+            title: "Track - Artist",
+            summary: "Track · Artist · Album",
+            metadata: [
+                "captureOrigin": CaptureArtifactOrigin.context.rawValue,
+                "trackName": "Track",
+                "artistName": "Artist",
+                "albumName": "Album",
+                "durationSeconds": "180",
+                "artworkBackgroundColor": "#101820",
+                "artworkPrimaryTextColor": "#FFFFFF"
+            ],
+            createdAt: .now,
+            updatedAt: .now
+        )
+
+        let card = CaptureCardItem(artifact: artifact)
+
+        XCTAssertEqual(card.kind, .music)
+        XCTAssertEqual(card.origin, .context)
+        XCTAssertEqual(card.title, "Track")
+        XCTAssertEqual(card.detail, "Artist · Album")
+        XCTAssertEqual(card.durationSeconds, 180)
+        XCTAssertEqual(card.musicPlaybackState, .stopped)
+        XCTAssertEqual(card.artworkPalette?.backgroundColorHex, "#101820")
+    }
+
+    func testProcessingAttachmentsCanKeepConcreteCardKinds() {
+        let photo = CaptureCardItem(attachment: .processing(
+            id: "photo",
+            kind: .photo,
+            detail: "Analyzing photo"
+        ))
+        let audio = CaptureCardItem(attachment: .processing(
+            id: "voice",
+            kind: .audio,
+            detail: "Refining transcript"
+        ))
+
+        XCTAssertEqual(photo.kind, .photo)
+        XCTAssertEqual(photo.state, .loading)
+        XCTAssertEqual(photo.title, CaptureComposerAttachmentItem.Kind.photo.label)
+        XCTAssertEqual(audio.kind, .audio)
+        XCTAssertEqual(audio.state, .loading)
+        XCTAssertEqual(audio.title, CaptureComposerAttachmentItem.Kind.audio.label)
+    }
+
     func testOnlyNormalCardsDisplaySelection() {
         for state in CaptureCardVisualState.allCases {
             let card = CaptureCardItem(
@@ -86,16 +193,16 @@ final class CaptureCardModelsTests: XCTestCase {
         XCTAssertTrue(card.displaysRemoveControl)
     }
 
-    func testTopTrailingAvoidanceOnlyAppearsWhenControlsAreVisible() {
+    func testTrailingControlsOverlayWithoutContentAvoidanceModel() {
         let plain = CaptureCardItem(kind: .link, state: .normal, detail: "Plain")
         let removable = CaptureCardItem(kind: .link, state: .normal, detail: "Remove", isRemovable: true)
         let selected = CaptureCardItem(kind: .link, state: .normal, detail: "Selected", isSelected: true)
         let loading = CaptureCardItem(kind: .link, state: .loading, detail: "Loading")
 
-        XCTAssertEqual(plain.topTrailingAvoidance, 0)
-        XCTAssertGreaterThan(removable.topTrailingAvoidance, 0)
-        XCTAssertGreaterThan(selected.topTrailingAvoidance, 0)
-        XCTAssertGreaterThan(loading.topTrailingAvoidance, 0)
+        XCTAssertFalse(plain.hasTrailingControl)
+        XCTAssertTrue(removable.hasTrailingControl)
+        XCTAssertTrue(selected.hasTrailingControl)
+        XCTAssertTrue(loading.hasTrailingControl)
     }
 
     func testLoadingAndDisabledCardsDoNotDisplayRemoveControl() {
@@ -266,6 +373,9 @@ final class CaptureCardModelsTests: XCTestCase {
         let weatherCard = CaptureCardItem(draft: weatherDraft)
         XCTAssertEqual(weatherCard.kind, .weather)
         XCTAssertEqual(weatherCard.origin, .context)
+        XCTAssertEqual(weatherCard.title, captureWeatherTemperatureTitle(18))
+        XCTAssertEqual(weatherCard.detail, "Rain")
+        XCTAssertEqual(weatherCard.metadata, captureWeatherMetadata(humidity: 0.8, windSpeedKmh: 12, uvIndex: 2))
         XCTAssertEqual(weatherCard.weatherStyle, .rain)
         XCTAssertEqual(weatherCard.weatherConditionCode, "rain")
         XCTAssertEqual(weatherCard.weatherSymbolName, "cloud.rain.fill")
@@ -273,6 +383,9 @@ final class CaptureCardModelsTests: XCTestCase {
 
         let weatherAttachment = CaptureComposerAttachmentItem.staged(index: 0, draft: weatherDraft)
         let weatherCardFromAttachment = CaptureCardItem(attachment: weatherAttachment)
+        XCTAssertEqual(weatherCardFromAttachment.title, captureWeatherTemperatureTitle(18))
+        XCTAssertEqual(weatherCardFromAttachment.detail, "Rain")
+        XCTAssertEqual(weatherCardFromAttachment.metadata, captureWeatherMetadata(humidity: 0.8, windSpeedKmh: 12, uvIndex: 2))
         XCTAssertEqual(weatherCardFromAttachment.weatherConditionCode, "rain")
         XCTAssertEqual(weatherCardFromAttachment.weatherSymbolName, "cloud.rain.fill")
         XCTAssertEqual(weatherCardFromAttachment.weatherIsDaylight, true)
@@ -327,6 +440,17 @@ final class CaptureCardModelsTests: XCTestCase {
         XCTAssertEqual(card.musicPlaybackState, .searchResult)
     }
 
+    func testMusicStyleLabelsUseLayoutNamesOnly() {
+        XCTAssertEqual(CaptureMusicCardStyle.compactRow.label, String(localized: "capture.card.music.style.compactRow"))
+        XCTAssertEqual(CaptureMusicCardStyle.compactTile.label, String(localized: "capture.card.music.style.compactTile"))
+        XCTAssertEqual(CaptureMusicCardStyle.cover.label, String(localized: "capture.card.music.style.cover"))
+        XCTAssertEqual(CaptureMusicCardStyle.auto.label, String(localized: "capture.card.music.style.auto"))
+        XCTAssertFalse(CaptureMusicCardStyle.compactRow.label.localizedCaseInsensitiveContains("compact"))
+        XCTAssertFalse(CaptureMusicCardStyle.compactTile.label.localizedCaseInsensitiveContains("compact"))
+        XCTAssertFalse(CaptureMusicCardStyle.compactRow.label.contains("紧凑"))
+        XCTAssertFalse(CaptureMusicCardStyle.compactTile.label.contains("紧凑"))
+    }
+
     func testAudioDraftMappingUsesTranscriptAsPrimaryDetail() {
         let card = CaptureCardItem(draft: .audio(
             title: "Voice",
@@ -353,7 +477,7 @@ final class CaptureCardModelsTests: XCTestCase {
 
         XCTAssertEqual(CaptureMusicCardStyle.compactRow.resolved(for: noArtwork), .compactRow)
         XCTAssertEqual(CaptureMusicCardStyle.compactTile.resolved(for: noArtwork), .compactTile)
-        XCTAssertEqual(CaptureMusicCardStyle.cover.resolved(for: noArtwork), .compactRow)
+        XCTAssertEqual(CaptureMusicCardStyle.cover.resolved(for: noArtwork), .cover)
         XCTAssertEqual(CaptureMusicCardStyle.cover.resolved(for: withArtwork), .cover)
         XCTAssertEqual(CaptureMusicCardStyle.auto.resolved(for: withArtwork), .compactRow)
     }
@@ -408,9 +532,59 @@ final class CaptureCardModelsTests: XCTestCase {
         XCTAssertEqual(CaptureMapLegibilityStyle.resolve(snapshotData: data), .darkText)
     }
 
-    func testMapLegibilityUsesMaterialFallbackWithoutSnapshot() {
-        XCTAssertEqual(CaptureMapLegibilityStyle.resolve(snapshotData: nil), .materialFallback)
-        XCTAssertEqual(CaptureMapLegibilityStyle.resolve(snapshotData: Data("bad-image".utf8)), .materialFallback)
+    func testMapLegibilityUsesFallbackWithoutSnapshot() {
+        XCTAssertEqual(CaptureMapLegibilityStyle.resolve(snapshotData: nil), .fallback)
+        XCTAssertEqual(CaptureMapLegibilityStyle.resolve(snapshotData: Data("bad-image".utf8)), .fallback)
+    }
+
+    func testCardLegibilityChoosesTextToneForImageData() {
+        XCTAssertEqual(
+            CaptureCardLegibility.imageData(makeImageData(color: .black), highContrast: false).tone,
+            .lightText
+        )
+        XCTAssertEqual(
+            CaptureCardLegibility.imageData(makeImageData(color: .white), highContrast: false).tone,
+            .darkText
+        )
+    }
+
+    func testCardLegibilityChoosesTextToneForMapAndWeather() {
+        XCTAssertEqual(
+            CaptureCardLegibility.map(snapshotData: makeImageData(color: .black), isPrivacyEnabled: false, highContrast: false).tone,
+            .lightText
+        )
+        XCTAssertEqual(
+            CaptureCardLegibility.map(snapshotData: makeImageData(color: .white), isPrivacyEnabled: false, highContrast: false).tone,
+            .darkText
+        )
+        XCTAssertEqual(
+            CaptureCardLegibility.weather(style: .thunderstorm, highContrast: false).tone,
+            .lightText
+        )
+        XCTAssertEqual(
+            CaptureCardLegibility.weather(style: .sunny, highContrast: false).tone,
+            .darkText
+        )
+    }
+
+    func testCardLegibilityUsesMusicPaletteWithoutMaterialDependency() {
+        let palette = CaptureCardPalette.resolve(
+            for: CaptureCardItem(
+                kind: .music,
+                title: "Track",
+                detail: "Artist",
+                artworkPalette: MusicArtworkPalette(
+                    backgroundColorHex: "#101820",
+                    primaryTextColorHex: "#FFFFFF",
+                    secondaryTextColorHex: "#CCCCCC"
+                )
+            ),
+            highContrast: false
+        )
+        let legibility = CaptureCardLegibility.palette(palette, highContrast: false)
+
+        XCTAssertEqual(legibility.tone, .semantic)
+        XCTAssertFalse(legibility.scrimColors.isEmpty)
     }
 
     private func makeImageData(color: UIColor) -> Data {

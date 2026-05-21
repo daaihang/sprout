@@ -47,7 +47,9 @@ struct CaptureComposerAttachmentItem: Identifiable {
     let id: String
     let source: Source
     let kind: Kind
+    let title: String?
     let detail: String
+    let metadata: String?
     let secondaryText: String?
     let origin: CaptureArtifactOrigin?
     let thumbnailData: Data?
@@ -69,7 +71,9 @@ struct CaptureComposerAttachmentItem: Identifiable {
             id: "staged-\(index)-\(draft.id)",
             source: .stagedArtifact(index: index),
             kind: draft.captureComposerKind,
+            title: draft.captureComposerTitle,
             detail: draft.captureComposerDetail,
+            metadata: draft.captureComposerMetadata,
             secondaryText: nil,
             origin: draft.origin,
             thumbnailData: draft.captureComposerThumbnailData,
@@ -93,7 +97,9 @@ struct CaptureComposerAttachmentItem: Identifiable {
             id: "context-\(candidate.id.uuidString)",
             source: .contextCandidate(id: candidate.id),
             kind: candidate.draft.captureComposerKind,
+            title: candidate.draft.captureComposerTitle,
             detail: candidate.draft.captureComposerDetail,
+            metadata: candidate.draft.captureComposerMetadata,
             secondaryText: candidate.capturedAt.formatted(date: .omitted, time: .shortened),
             origin: candidate.draft.origin,
             thumbnailData: candidate.draft.captureComposerThumbnailData,
@@ -112,12 +118,14 @@ struct CaptureComposerAttachmentItem: Identifiable {
         )
     }
 
-    nonisolated static func processing(id: String, detail: String) -> CaptureComposerAttachmentItem {
+    nonisolated static func processing(id: String, kind: Kind = .status, detail: String) -> CaptureComposerAttachmentItem {
         CaptureComposerAttachmentItem(
             id: "processing-\(id)",
             source: .processing(id: id),
-            kind: .status,
+            kind: kind,
+            title: nil,
             detail: detail,
+            metadata: nil,
             secondaryText: nil,
             origin: nil,
             thumbnailData: nil,
@@ -138,6 +146,15 @@ struct CaptureComposerAttachmentItem: Identifiable {
 }
 
 extension CaptureArtifactDraft {
+    nonisolated var captureComposerTitle: String? {
+        switch self {
+        case let .weather(_, temperatureCelsius, _, _, _, _, _, _, _, _, _):
+            return captureWeatherTemperatureTitle(temperatureCelsius)
+        default:
+            return nil
+        }
+    }
+
     nonisolated var captureComposerKind: CaptureComposerAttachmentItem.Kind {
         switch self {
         case .text: return .status
@@ -178,18 +195,22 @@ extension CaptureArtifactDraft {
             return note?.captureCardSnippet
                 ?? title.captureCardSnippet
                 ?? String(localized: "capture.card.todo.attached")
-        case let .weather(condition, temp, humidity, _, _, _, _, _, _, _, _):
-            return String(
-                format: String(localized: "capture.card.weather.shortDetail.format"),
-                condition,
-                temp,
-                humidity * 100
-            )
+        case let .weather(condition, _, _, _, _, _, _, _, _, _, _):
+            return condition
         case let .music(trackName, artistName, albumName, _, _, _, _, _):
             return [trackName.trimmedOrNil, artistName.trimmedOrNil, albumName.trimmedOrNil]
                 .compactMap { $0 }
                 .joined(separator: " · ")
                 .trimmedOrNil ?? String(localized: "capture.card.music.attached")
+        }
+    }
+
+    nonisolated var captureComposerMetadata: String? {
+        switch self {
+        case let .weather(_, _, humidity, windSpeedKmh, uvIndex, _, _, _, _, _, _):
+            return captureWeatherMetadata(humidity: humidity, windSpeedKmh: windSpeedKmh, uvIndex: uvIndex)
+        default:
+            return nil
         }
     }
 

@@ -510,9 +510,13 @@ struct CaptureCardLabView: View {
             id: "weather-lab-\(selectedWeatherConditionCode)-\(isWeatherDaylight)",
             kind: .weather,
             origin: selectedWeatherOrigin,
-            title: selectedWeatherConditionCode,
-            detail: "\(Int(weatherTemperature))°C · \(weatherPreviewHumidity)% humidity · \(weatherPreviewWind) km/h wind",
-            metadata: String(format: String(localized: "capture.card.weather.uv.format"), 3),
+            title: captureWeatherTemperatureTitle(weatherTemperature),
+            detail: selectedWeatherConditionCode,
+            metadata: captureWeatherMetadata(
+                humidity: Double(weatherPreviewHumidity) / 100,
+                windSpeedKmh: Double(weatherPreviewWind),
+                uvIndex: 3
+            ),
             weatherStyle: resolvedWeatherStyle,
             weatherConditionCode: selectedWeatherConditionCode,
             weatherSymbolName: resolvedWeatherStyle.symbolName,

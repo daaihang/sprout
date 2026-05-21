@@ -1477,13 +1477,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Compact row"
+            "value" : "Row"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "紧凑横排"
+            "value" : "横排"
           }
         }
       }
@@ -1493,13 +1493,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Compact tile"
+            "value" : "Tile"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "紧凑竖排"
+            "value" : "竖排"
           }
         }
       }
@@ -1537,6 +1537,7 @@
       }
     },
     "capture.card.notSelected" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1745,6 +1746,7 @@
       }
     },
     "capture.card.removeAttachment" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1857,6 +1859,7 @@
       }
     },
     "capture.card.weather.detail.format" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1920,6 +1923,22 @@
         }
       }
     },
+    "capture.card.weather.metadata.format" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%.0f%% humidity · wind %.0f km/h · UV %d"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%.0f%% 湿度 · 风速 %.0f km/h · UV %d"
+          }
+        }
+      }
+    },
     "capture.card.weather.rain" : {
       "localizations" : {
         "en" : {
@@ -1937,6 +1956,7 @@
       }
     },
     "capture.card.weather.shortDetail.format" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1984,6 +2004,22 @@
         }
       }
     },
+    "capture.card.weather.temperature.format" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%.0f°"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%.0f°"
+          }
+        }
+      }
+    },
     "capture.card.weather.thunderstorm" : {
       "localizations" : {
         "en" : {
@@ -2017,6 +2053,7 @@
       }
     },
     "capture.card.weather.uv.format" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
