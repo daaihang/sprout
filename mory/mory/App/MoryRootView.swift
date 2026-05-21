@@ -1,5 +1,6 @@
 import Combine
 import SwiftUI
+import UIKit
 
 struct MoryRootView: View {
     let authManager: AuthSessionManager?
@@ -11,7 +12,6 @@ struct MoryRootView: View {
     @AppStorage(MoryOnboardingStep.completionStorageKey) private var hasCompletedOnboarding = false
     @StateObject private var notificationInbox = NotificationInteractionInbox.shared
     @StateObject private var audioRecorder = AudioRecorderModel()
-    @State private var voiceStopTrigger = false
     @State private var isHoldToTalkMode = false
     @State private var selectedTab: MoryAppTab = .today
     @State private var isPresentingSettings = false
@@ -91,7 +91,7 @@ struct MoryRootView: View {
                 VoiceRecordingOverlayView(
                     audioRecorder: audioRecorder,
                     isHoldToTalkMode: isHoldToTalkMode,
-                    onStop: { voiceStopTrigger = true }
+                    onStop: stopVoiceCapture
                 )
                 .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .center)))
             }
@@ -103,11 +103,10 @@ struct MoryRootView: View {
         .moryTabViewBottomAccessory {
             QuickCaptureToolbar(
                 audioRecorder: audioRecorder,
-                stopTrigger: $voiceStopTrigger,
+                onStopVoiceCapture: stopVoiceCapture,
                 isHoldToTalkMode: $isHoldToTalkMode,
                 onTextCapture: { unifiedCaptureSeed = .empty },
-                onPhotoCapture: { unifiedCaptureSeed = .photoCapture },
-                onVoiceCaptureReady: { result in unifiedCaptureSeed = .voice(result) }
+                onPhotoCapture: { unifiedCaptureSeed = .photoCapture }
             )
         }
         .sheet(isPresented: $isPresentingSettings) {
@@ -280,6 +279,28 @@ struct MoryRootView: View {
         hasCompletedOnboarding = true
         DispatchQueue.main.async {
             unifiedCaptureSeed = .empty
+        }
+    }
+
+    private func stopVoiceCapture() {
+        Task {
+            guard let output = await audioRecorder.stopAndTranscribe() else {
+                if audioRecorder.state == .failed {
+                    let g = UINotificationFeedbackGenerator()
+                    g.prepare()
+                    g.notificationOccurred(.error)
+                }
+                return
+            }
+            let g = UINotificationFeedbackGenerator()
+            g.prepare()
+            g.notificationOccurred(.success)
+            unifiedCaptureSeed = .voice(QuickVoiceCaptureResult(
+                filename: output.filename,
+                audioData: output.audioData,
+                transcription: audioRecorder.finalTranscription.trimmedOrNil ?? audioRecorder.liveTranscription,
+                duration: audioRecorder.transcriptionDuration
+            ))
         }
     }
 

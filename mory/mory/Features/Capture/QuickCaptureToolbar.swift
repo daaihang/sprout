@@ -11,11 +11,10 @@ struct QuickVoiceCaptureResult: Identifiable, Equatable, Sendable {
 
 struct QuickCaptureToolbar: View {
     @ObservedObject var audioRecorder: AudioRecorderModel
-    @Binding var stopTrigger: Bool
+    let onStopVoiceCapture: () -> Void
     @Binding var isHoldToTalkMode: Bool
     let onTextCapture: () -> Void
     let onPhotoCapture: () -> Void
-    let onVoiceCaptureReady: (QuickVoiceCaptureResult) -> Void
 
     @Environment(\.tabViewBottomAccessoryPlacement) private var accessoryPlacement
     @State private var capsulePressTask: Task<Void, Never>?
@@ -43,12 +42,6 @@ struct QuickCaptureToolbar: View {
         .frame(maxWidth: .infinity)
         .frame(height: accessoryHeight)
         .animation(.spring(response: 0.28, dampingFraction: 0.82), value: isVoiceSessionActive)
-        .onChange(of: stopTrigger) { _, triggered in
-            if triggered {
-                stopTrigger = false
-                handleVoiceButtonTap()
-            }
-        }
     }
 
     private var voiceAccessoryContent: some View {
@@ -109,7 +102,7 @@ struct QuickCaptureToolbar: View {
                     } else if isHoldToTalkMode {
                         // Released after 0.5s = hold-to-talk ended, submit
                         isHoldToTalkMode = false
-                        stopVoiceCapture()
+                        onStopVoiceCapture()
                     }
                 }
         )
@@ -285,7 +278,7 @@ struct QuickCaptureToolbar: View {
         }
 
         if audioRecorder.isRecording {
-            stopVoiceCapture()
+            onStopVoiceCapture()
         } else {
             startVoiceCapture()
         }
@@ -295,26 +288,6 @@ struct QuickCaptureToolbar: View {
         playImpact(.medium)
         Task {
             await audioRecorder.startRecording()
-        }
-    }
-
-    private func stopVoiceCapture() {
-        Task {
-            guard let output = await audioRecorder.stopAndTranscribe() else {
-                if audioRecorder.state == .failed {
-                    notify(.error)
-                }
-                return
-            }
-            notify(.success)
-            onVoiceCaptureReady(
-                QuickVoiceCaptureResult(
-                    filename: output.filename,
-                    audioData: output.audioData,
-                    transcription: audioRecorder.finalTranscription.trimmedOrNil ?? audioRecorder.liveTranscription,
-                    duration: audioRecorder.transcriptionDuration
-                )
-            )
         }
     }
 
@@ -333,12 +306,6 @@ struct QuickCaptureToolbar: View {
         let generator = UIImpactFeedbackGenerator(style: style)
         generator.prepare()
         generator.impactOccurred()
-    }
-
-    private func notify(_ type: UINotificationFeedbackGenerator.FeedbackType) {
-        let generator = UINotificationFeedbackGenerator()
-        generator.prepare()
-        generator.notificationOccurred(type)
     }
 
     private func formatDuration(_ duration: TimeInterval) -> String {
