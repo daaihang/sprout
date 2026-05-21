@@ -5,7 +5,7 @@ extension CaptureCardItem {
         self = item.card
     }
 
-    init(artifact: Artifact, state: CaptureCardVisualState = .normal) {
+    init(artifact: Artifact, state: CaptureCardState = .normal) {
         switch artifact.kind {
         case .text:
             self.init(
@@ -169,7 +169,7 @@ extension CaptureCardItem {
     init(
         draft: CaptureArtifactDraft,
         id: String? = nil,
-        state: CaptureCardVisualState = .normal,
+        state: CaptureCardState = .normal,
         musicPlaybackState: CaptureMusicPlaybackState? = nil
     ) {
         switch draft {

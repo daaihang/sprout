@@ -209,56 +209,81 @@ final class CaptureCardModelsTests: XCTestCase {
     }
 
     func testOnlyNormalCardsDisplaySelection() {
-        for state in CaptureCardVisualState.allCases {
-            let card = CaptureCardItem(
-                payload: .weather(CaptureWeatherCardPayload()),
-                state: state,
-                detail: "State test",
-                isSelected: true
+        for state in CaptureCardState.allCases {
+            let presentation = CaptureCardPresentation.debug(
+                CaptureCardItem(
+                    payload: .weather(CaptureWeatherCardPayload()),
+                    state: state,
+                    detail: "State test",
+                    isSelected: true
+                )
             )
-
-            XCTAssertEqual(card.displaysSelection, state == .normal)
+            XCTAssertEqual(presentation.displaysSelection, state == .normal)
         }
     }
 
     func testTransientCardsDoNotAllowPrimaryAction() {
-        XCTAssertTrue(CaptureCardItem(payload: .photo(CapturePhotoCardPayload()), state: .normal, detail: "Ready").allowsPrimaryAction)
-        XCTAssertFalse(CaptureCardItem(payload: .photo(CapturePhotoCardPayload()), state: .loading, detail: "Loading").allowsPrimaryAction)
-        XCTAssertFalse(CaptureCardItem(payload: .photo(CapturePhotoCardPayload()), state: .error, detail: "Failed").allowsPrimaryAction)
-        XCTAssertFalse(CaptureCardItem(payload: .photo(CapturePhotoCardPayload()), state: .disabled, detail: "Unavailable").allowsPrimaryAction)
+        let make = { (state: CaptureCardState) in
+            CaptureCardPresentation(
+                item: CaptureCardItem(payload: .photo(CapturePhotoCardPayload()), state: state, detail: "Test"),
+                role: .composerEditing,
+                provenanceDisplayMode: .production
+            )
+        }
+        XCTAssertTrue(make(.normal).allowsPrimaryAction)
+        XCTAssertFalse(make(.loading).allowsPrimaryAction)
+        XCTAssertFalse(make(.error).allowsPrimaryAction)
+        XCTAssertFalse(make(.disabled).allowsPrimaryAction)
     }
 
     func testErrorRemovableCardsKeepRemoveAffordanceButNotSelection() {
-        let card = CaptureCardItem(
-            payload: .photo(CapturePhotoCardPayload()),
-            state: .error,
-            detail: "Upload failed",
-            isSelected: true,
-            isRemovable: true
+        let presentation = CaptureCardPresentation(
+            item: CaptureCardItem(
+                payload: .photo(CapturePhotoCardPayload()),
+                state: .error,
+                detail: "Upload failed",
+                isSelected: true,
+                isRemovable: true
+            ),
+            role: .composerEditing,
+            provenanceDisplayMode: .production
         )
 
-        XCTAssertFalse(card.displaysSelection)
-        XCTAssertTrue(card.displaysRemoveControl)
+        XCTAssertFalse(presentation.displaysSelection)
+        XCTAssertTrue(presentation.displaysRemoveControl)
     }
 
     func testRemovableNormalCardsPreferRemoveOverSelectedAffordance() {
-        let card = CaptureCardItem(
-            payload: .weather(CaptureWeatherCardPayload()),
-            state: .normal,
-            detail: "Included context",
-            isSelected: true,
-            isRemovable: true
+        let presentation = CaptureCardPresentation.debug(
+            CaptureCardItem(
+                payload: .weather(CaptureWeatherCardPayload()),
+                state: .normal,
+                detail: "Included context",
+                isSelected: true,
+                isRemovable: true
+            )
         )
 
-        XCTAssertFalse(card.displaysSelection)
-        XCTAssertTrue(card.displaysRemoveControl)
+        XCTAssertFalse(presentation.displaysSelection)
+        XCTAssertTrue(presentation.displaysRemoveControl)
     }
 
     func testTrailingControlsOverlayWithoutContentAvoidanceModel() {
-        let plain = CaptureCardItem(payload: .link(CaptureLinkCardPayload()), state: .normal, detail: "Plain")
-        let removable = CaptureCardItem(payload: .link(CaptureLinkCardPayload()), state: .normal, detail: "Remove", isRemovable: true)
-        let selected = CaptureCardItem(payload: .link(CaptureLinkCardPayload()), state: .normal, detail: "Selected", isSelected: true)
-        let loading = CaptureCardItem(payload: .link(CaptureLinkCardPayload()), state: .loading, detail: "Loading")
+        let plain = CaptureCardPresentation(
+            item: CaptureCardItem(payload: .link(CaptureLinkCardPayload()), state: .normal, detail: "Plain"),
+            role: .composerEditing, provenanceDisplayMode: .production
+        )
+        let removable = CaptureCardPresentation(
+            item: CaptureCardItem(payload: .link(CaptureLinkCardPayload()), state: .normal, detail: "Remove", isRemovable: true),
+            role: .composerEditing, provenanceDisplayMode: .production
+        )
+        let selected = CaptureCardPresentation.debug(
+            CaptureCardItem(payload: .link(CaptureLinkCardPayload()), state: .normal, detail: "Selected", isSelected: true)
+        )
+        let loading = CaptureCardPresentation(
+            item: CaptureCardItem(payload: .link(CaptureLinkCardPayload()), state: .loading, detail: "Loading"),
+            role: .composerEditing, provenanceDisplayMode: .production
+        )
 
         XCTAssertFalse(plain.hasTrailingControl)
         XCTAssertTrue(removable.hasTrailingControl)
@@ -267,8 +292,16 @@ final class CaptureCardModelsTests: XCTestCase {
     }
 
     func testLoadingAndDisabledCardsDoNotDisplayRemoveControl() {
-        let loading = CaptureCardItem(payload: .photo(CapturePhotoCardPayload()), state: .loading, detail: "Processing", isRemovable: true)
-        let disabled = CaptureCardItem(payload: .photo(CapturePhotoCardPayload()), state: .disabled, detail: "Unavailable", isRemovable: true)
+        let loading = CaptureCardPresentation(
+            item: CaptureCardItem(payload: .photo(CapturePhotoCardPayload()), state: .loading, detail: "Processing", isRemovable: true),
+            role: .composerEditing,
+            provenanceDisplayMode: .production
+        )
+        let disabled = CaptureCardPresentation(
+            item: CaptureCardItem(payload: .photo(CapturePhotoCardPayload()), state: .disabled, detail: "Unavailable", isRemovable: true),
+            role: .composerEditing,
+            provenanceDisplayMode: .production
+        )
 
         XCTAssertFalse(loading.displaysRemoveControl)
         XCTAssertFalse(disabled.displaysRemoveControl)

@@ -51,7 +51,7 @@ enum CaptureCardKind: String, CaseIterable, Hashable, Sendable {
     }
 }
 
-enum CaptureCardVisualState: String, CaseIterable, Hashable, Sendable {
+enum CaptureCardState: String, CaseIterable, Hashable, Sendable {
     case normal
     case loading
     case error
@@ -550,7 +550,7 @@ struct CaptureCardItem: Identifiable, Hashable, Sendable {
     let id: String
     var payload: CaptureCardPayload
     var origin: CaptureArtifactOrigin?
-    var state: CaptureCardVisualState
+    var state: CaptureCardState
     var title: String?
     var detail: String
     var metadata: String?
@@ -561,27 +561,11 @@ struct CaptureCardItem: Identifiable, Hashable, Sendable {
         payload.kind
     }
 
-    var displaysSelection: Bool {
-        state == .normal && isSelected && !displaysRemoveControl
-    }
-
-    var allowsPrimaryAction: Bool {
-        state == .normal
-    }
-
-    var displaysRemoveControl: Bool {
-        isRemovable && (state == .normal || state == .error)
-    }
-
-    var hasTrailingControl: Bool {
-        state == .loading || state == .error || displaysRemoveControl || displaysSelection
-    }
-
     init(
         id: String = UUID().uuidString,
         payload: CaptureCardPayload,
         origin: CaptureArtifactOrigin? = .manual,
-        state: CaptureCardVisualState = .normal,
+        state: CaptureCardState = .normal,
         title: String? = nil,
         detail: String,
         metadata: String? = nil,
@@ -610,7 +594,7 @@ struct CaptureCardCommonDisplay: Hashable, Sendable {
     let id: String
     let kind: CaptureCardKind
     let origin: CaptureArtifactOrigin?
-    let state: CaptureCardVisualState
+    let state: CaptureCardState
     let title: String?
     let detail: String
     let metadata: String?
