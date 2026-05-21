@@ -86,6 +86,184 @@ struct DebugCloudRunSummary: Hashable, Sendable {
     }
 }
 
+struct V6GateDiagnostic: Identifiable, Hashable, Sendable {
+    let id: String
+    let title: String
+    let isEnabled: Bool
+    let blockedReasons: [String]
+
+    var statusText: String {
+        isEnabled ? "enabled" : "blocked"
+    }
+
+    var reasonText: String {
+        blockedReasons.isEmpty ? "none" : blockedReasons.joined(separator: "\n")
+    }
+}
+
+enum V6DebugControls {
+    static func gateDiagnostics(
+        preferences: IntelligencePreferences,
+        flags: V6FeatureFlags
+    ) -> [V6GateDiagnostic] {
+        [
+            semanticSearchGate(preferences: preferences, flags: flags),
+            voiceRefinementGate(preferences: preferences),
+            dailyQuestionsGate(preferences: preferences, flags: flags),
+            jobWorkerGate(flags: flags),
+            homeBoardGate(preferences: preferences, flags: flags),
+            notificationsGate(preferences: preferences, flags: flags),
+        ]
+    }
+
+    static func semanticSearchGate(
+        preferences: IntelligencePreferences,
+        flags: V6FeatureFlags
+    ) -> V6GateDiagnostic {
+        gate(
+            id: "semantic_search",
+            title: "Semantic Search",
+            checks: [
+                ("semanticSearchEnabled", preferences.semanticSearchEnabled),
+                ("v6.semanticSearch", flags.semanticSearch),
+            ]
+        )
+    }
+
+    static func voiceRefinementGate(preferences: IntelligencePreferences) -> V6GateDiagnostic {
+        gate(
+            id: "voice_refinement",
+            title: "Voice Refinement",
+            checks: [
+                ("cloudIntelligenceEnabled", preferences.cloudIntelligenceEnabled),
+                ("voiceRefinementEnabled", preferences.voiceRefinementEnabled),
+            ]
+        )
+    }
+
+    static func dailyQuestionsGate(
+        preferences: IntelligencePreferences,
+        flags: V6FeatureFlags
+    ) -> V6GateDiagnostic {
+        gate(
+            id: "daily_questions",
+            title: "Daily Questions",
+            checks: [
+                ("localIntelligenceEnabled", preferences.localIntelligenceEnabled),
+                ("cloudIntelligenceEnabled", preferences.cloudIntelligenceEnabled),
+                ("homeSuggestionsEnabled", preferences.homeSuggestionsEnabled),
+                ("dailyQuestionsEnabled", preferences.dailyQuestionsEnabled),
+                ("v6.dailyQuestions", flags.dailyQuestions),
+                ("v6.cloudQuestionSuggestions", flags.cloudQuestionSuggestions),
+            ]
+        )
+    }
+
+    static func jobWorkerGate(flags: V6FeatureFlags) -> V6GateDiagnostic {
+        gate(
+            id: "job_worker",
+            title: "Job Worker",
+            checks: [
+                ("v6.intelligenceJobs", flags.intelligenceJobs),
+            ]
+        )
+    }
+
+    static func homeBoardGate(
+        preferences: IntelligencePreferences,
+        flags: V6FeatureFlags
+    ) -> V6GateDiagnostic {
+        gate(
+            id: "home_board",
+            title: "Home Board Intelligence",
+            checks: [
+                ("homeSuggestionsEnabled", preferences.homeSuggestionsEnabled),
+                ("v6.homeGrid", flags.homeGrid),
+                ("v6.entityProfiles", flags.entityProfiles),
+                ("v6.clarificationQuestions", flags.clarificationQuestions),
+            ]
+        )
+    }
+
+    static func notificationsGate(
+        preferences: IntelligencePreferences,
+        flags: V6FeatureFlags
+    ) -> V6GateDiagnostic {
+        gate(
+            id: "notifications",
+            title: "Notifications",
+            checks: [
+                ("notificationPreferences.enabled", preferences.notificationPreferences.enabled),
+                ("v6.localNotifications", flags.localNotifications),
+            ]
+        )
+    }
+
+    static func cloudFirstStrongestPolicy(
+        from preferences: IntelligencePreferences,
+        now: Date = .now
+    ) -> IntelligencePreferences {
+        var updated = preferences
+        updated.localIntelligenceEnabled = true
+        updated.cloudIntelligenceEnabled = true
+        updated.voiceRefinementEnabled = true
+        updated.semanticSearchEnabled = true
+        updated.homeSuggestionsEnabled = true
+        updated.dailyQuestionsEnabled = true
+        updated.updatedAt = now
+        return updated
+    }
+
+    static func allFlagsEnabled(
+        from flags: V6FeatureFlags,
+        now: Date = .now
+    ) -> V6FeatureFlags {
+        var updated = flags
+        updated.intelligenceJobs = true
+        updated.entityProfiles = true
+        updated.clarificationQuestions = true
+        updated.homeGrid = true
+        updated.semanticSearch = true
+        updated.dailyQuestions = true
+        updated.localNotifications = true
+        updated.cloudQuestionSuggestions = true
+        updated.cloudChapterSuggestions = true
+        updated.multimediaViews = true
+        updated.updatedAt = now
+        return updated
+    }
+
+    static func semanticSearchEnabled(
+        preferences: IntelligencePreferences,
+        flags: V6FeatureFlags,
+        now: Date = .now
+    ) -> (preferences: IntelligencePreferences, flags: V6FeatureFlags) {
+        var updatedPreferences = preferences
+        var updatedFlags = flags
+        updatedPreferences.semanticSearchEnabled = true
+        updatedPreferences.updatedAt = now
+        updatedFlags.semanticSearch = true
+        updatedFlags.updatedAt = now
+        return (updatedPreferences, updatedFlags)
+    }
+
+    private static func gate(
+        id: String,
+        title: String,
+        checks: [(String, Bool)]
+    ) -> V6GateDiagnostic {
+        let blockedReasons = checks.compactMap { name, enabled in
+            enabled ? nil : "\(name)=false"
+        }
+        return V6GateDiagnostic(
+            id: id,
+            title: title,
+            isEnabled: blockedReasons.isEmpty,
+            blockedReasons: blockedReasons
+        )
+    }
+}
+
 enum DebugCenterFormatting {
     static func semanticStatusText(_ status: SemanticSearchStatus) -> String {
         switch status {
