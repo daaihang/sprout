@@ -18,6 +18,7 @@ struct QuickCaptureToolbar: View {
     let onVoiceCaptureReady: (QuickVoiceCaptureResult) -> Void
 
     @Environment(\.tabViewBottomAccessoryPlacement) private var accessoryPlacement
+    @State private var capsulePressTask: Task<Void, Never>?
 
     var body: some View {
         Group {
@@ -82,23 +83,36 @@ struct QuickCaptureToolbar: View {
         }
         .frame(maxWidth: .infinity, minHeight: controlSize, maxHeight: controlSize)
         .contentShape(Rectangle())
-        .onTapGesture {
-            if let recoveryAction = audioRecorder.recoveryAction {
-                handleRecoveryAction(recoveryAction)
-            } else if !isVoiceSessionActive {
-                onTextCapture()
-            }
-        }
-        .onLongPressGesture(minimumDuration: 0.5, pressing: { isPressing in
-            if !isPressing && isHoldToTalkMode {
-                isHoldToTalkMode = false
-                stopVoiceCapture()
-            }
-        }, perform: {
-            guard !audioRecorder.isBusy else { return }
-            isHoldToTalkMode = true
-            startVoiceCapture()
-        })
+        .gesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in
+                    // Start the 0.5s hold timer only once per press
+                    guard capsulePressTask == nil, !isHoldToTalkMode else { return }
+                    capsulePressTask = Task { @MainActor in
+                        try? await Task.sleep(for: .seconds(0.5))
+                        guard !Task.isCancelled, !audioRecorder.isBusy else { return }
+                        isHoldToTalkMode = true
+                        capsulePressTask = nil
+                        startVoiceCapture()
+                    }
+                }
+                .onEnded { _ in
+                    if let task = capsulePressTask {
+                        // Released before 0.5s = tap, fire action immediately
+                        task.cancel()
+                        capsulePressTask = nil
+                        if let recoveryAction = audioRecorder.recoveryAction {
+                            handleRecoveryAction(recoveryAction)
+                        } else if !isVoiceSessionActive {
+                            onTextCapture()
+                        }
+                    } else if isHoldToTalkMode {
+                        // Released after 0.5s = hold-to-talk ended, submit
+                        isHoldToTalkMode = false
+                        stopVoiceCapture()
+                    }
+                }
+        )
         .accessibilityLabel(Text(capsuleAccessibilityLabel))
         .accessibilityHint(Text("quickCapture.unified.hint"))
         .accessibilityAddTraits(.isButton)
