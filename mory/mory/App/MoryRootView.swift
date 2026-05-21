@@ -83,7 +83,7 @@ struct MoryRootView: View {
         }
         .tabViewSearchActivation(.searchTabSelection)
         .tabBarMinimizeBehavior(.onScrollDown)
-        .moryTabViewBottomAccessory(isVisible: selectedTab != .search) {
+        .moryTabViewBottomAccessory {
             QuickCaptureToolbar(
                 onTextCapture: { unifiedCaptureSeed = .empty },
                 onPhotoCapture: { unifiedCaptureSeed = .photoCapture },
@@ -175,7 +175,7 @@ struct MoryRootView: View {
     }
 
     private var rootBottomContentInset: CGFloat {
-        selectedTab == .search ? 0 : 58
+        58
     }
 
     @ToolbarContentBuilder
@@ -338,7 +338,7 @@ struct MoryRootView: View {
 
 extension View {
     func moryHidesTabChrome() -> some View {
-        toolbarVisibility(.hidden, for: .tabBar)
+        self
     }
 
     @ViewBuilder
@@ -346,7 +346,11 @@ extension View {
         isVisible: Bool = true,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        if isVisible {
+        if #available(iOS 26.1, *) {
+            tabViewBottomAccessory(isEnabled: isVisible) {
+                content()
+            }
+        } else if isVisible {
             tabViewBottomAccessory {
                 content()
             }
