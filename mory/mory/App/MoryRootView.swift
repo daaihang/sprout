@@ -10,6 +10,8 @@ struct MoryRootView: View {
     @Environment(\.remotePushSyncService) private var remotePushSyncService
     @AppStorage(MoryOnboardingStep.completionStorageKey) private var hasCompletedOnboarding = false
     @StateObject private var notificationInbox = NotificationInteractionInbox.shared
+    @StateObject private var audioRecorder = AudioRecorderModel()
+    @State private var voiceStopTrigger = false
     @State private var selectedTab: MoryAppTab = .today
     @State private var isPresentingSettings = false
     @State private var unifiedCaptureSeed: UnifiedCaptureSeed?
@@ -83,8 +85,20 @@ struct MoryRootView: View {
         }
         .tabViewSearchActivation(.searchTabSelection)
         .tabBarMinimizeBehavior(.onScrollDown)
+        .overlay {
+            if audioRecorder.isBusy {
+                VoiceRecordingOverlayView(
+                    audioRecorder: audioRecorder,
+                    onStop: { voiceStopTrigger = true }
+                )
+                .transition(.opacity.combined(with: .scale(scale: 0.98)))
+            }
+        }
+        .animation(.spring(response: 0.28, dampingFraction: 0.82), value: audioRecorder.isBusy)
         .moryTabViewBottomAccessory {
             QuickCaptureToolbar(
+                audioRecorder: audioRecorder,
+                stopTrigger: $voiceStopTrigger,
                 onTextCapture: { unifiedCaptureSeed = .empty },
                 onPhotoCapture: { unifiedCaptureSeed = .photoCapture },
                 onVoiceCaptureReady: { result in unifiedCaptureSeed = .voice(result) }

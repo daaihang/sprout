@@ -10,11 +10,12 @@ struct QuickVoiceCaptureResult: Identifiable, Equatable, Sendable {
 }
 
 struct QuickCaptureToolbar: View {
+    @ObservedObject var audioRecorder: AudioRecorderModel
+    @Binding var stopTrigger: Bool
     let onTextCapture: () -> Void
     let onPhotoCapture: () -> Void
     let onVoiceCaptureReady: (QuickVoiceCaptureResult) -> Void
 
-    @StateObject private var audioRecorder = AudioRecorderModel()
     @Environment(\.tabViewBottomAccessoryPlacement) private var accessoryPlacement
 
     var body: some View {
@@ -40,6 +41,12 @@ struct QuickCaptureToolbar: View {
         .frame(maxWidth: .infinity)
         .frame(height: accessoryHeight)
         .animation(.spring(response: 0.28, dampingFraction: 0.82), value: isVoiceSessionActive)
+        .onChange(of: stopTrigger) { _, triggered in
+            if triggered {
+                stopTrigger = false
+                handleVoiceButtonTap()
+            }
+        }
     }
 
     private var voiceAccessoryContent: some View {
@@ -85,6 +92,12 @@ struct QuickCaptureToolbar: View {
         .buttonStyle(.plain)
         .accessibilityLabel(Text(capsuleAccessibilityLabel))
         .accessibilityHint(Text("quickCapture.unified.hint"))
+        .simultaneousGesture(
+            LongPressGesture(minimumDuration: 0.5).onEnded { _ in
+                guard !audioRecorder.isBusy else { return }
+                handleVoiceButtonTap()
+            }
+        )
     }
 
     private var isInlineAccessory: Bool {
