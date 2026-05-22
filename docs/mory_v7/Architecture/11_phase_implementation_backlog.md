@@ -18,6 +18,15 @@ Exit criteria:
 
 - docs cover identity, retrieval, correction, mood, background, notifications, cloud contracts, mutation, recompute, eval.
 
+Completion evidence:
+
+- v7 README, PRD docs, and Architecture docs exist under `docs/mory_v7/`.
+- current v6 gap matrix exists in `12_current_v6_gap_matrix.md`.
+- phase backlog exists in this document.
+- acceptance and test matrix exists in `19_testing_acceptance_matrix.md`.
+- identity, retrieval, correction, mood, background, notifications, cloud contracts, graph mutation, recompute, privacy, and eval are covered by dedicated v7 docs.
+- Phase 1 is the first runtime implementation phase; Phase 0 intentionally does not add `SelfProfile`, `AnalysisContextPack`, or other runtime business models.
+
 ## Phase 1: SelfProfile + AnalysisContextPack Skeleton
 
 Goal:
@@ -185,7 +194,7 @@ Exit criteria:
 
 | Phase | Current status | Gap |
 | --- | --- | --- |
-| Phase 0 | in progress | docs being expanded |
+| Phase 0 | completed | docs/gap matrix completed; implementation starts at Phase 1 |
 | Phase 1 | not started | requires model + builder |
 | Phase 2 | not started | place has partial precedent, person missing |
 | Phase 3 | not started | current EntityProfile too thin |
