@@ -725,6 +725,28 @@ struct MoryAPIClient: Sendable {
         }
     }
 
+    func analyzeRecordsV7(
+        payload: AnalyzeV7RequestPayload,
+        bearerToken: String
+    ) async throws -> AnalyzeV7ResponseEnvelope {
+        var request = URLRequest(url: configuration.url(for: "/api/analyze/v7"))
+        let requestID = makeDebugRequestID(prefix: "analysis-v7")
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
+        request.setValue(requestID, forHTTPHeaderField: "X-Request-ID")
+        request.httpBody = try encoder.encode(payload)
+
+        do {
+            let (data, response) = try await session.data(for: request)
+            let decoded = try decodeResponse(data: data, response: response, as: AnalyzeV7ResponseEnvelope.self, failedStage: "analysis_v7", requestID: requestID)
+            await debugTraceBox.setRequestID(responseRequestID(response) ?? requestID)
+            return decoded
+        } catch {
+            throw normalize(error: error, failedStage: "analysis_v7")
+        }
+    }
+
     func generateReflection(
         payload: ReflectionPayload,
         bearerToken: String

@@ -113,6 +113,60 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 		}
 	})
 
+	t.Run("analyze v7", func(t *testing.T) {
+		body := `{
+			"schema_version":7,
+			"client_request_id":"client-v7-test",
+			"record_shell":{"id":"rec-v7","raw_text":"今天和妈妈看电影，很开心","capture_source":"composer","user_mood":"开心"},
+			"artifacts":[{"id":"a1","kind":"text","title":"电影夜晚","summary":"和妈妈看电影","text_content":"今天和妈妈看电影，很开心"}],
+			"known_entities":[{"id":"p1","kind":"person","name":"妈妈","aliases":["母亲"]}],
+			"mood_evidence":[],
+			"context_pack":{
+				"pack_id":"pack-v7",
+				"target_record_id":"rec-v7",
+				"self_brief":{"self_entity_id":"self-1","aliases":["我"],"privacy_mode":"localFirst"},
+				"known_profiles":[{"entity_id":"p1","kind":"person","display_name":"妈妈","relationship_to_user":"family","mention_count":4,"common_context_labels":["movie"],"inclusion_reason":"entity overlap"}],
+				"related_memories":[{"record_id":"rec-old","title":"上次电影","snippet":"上次也和妈妈看电影后觉得开心。","score":0.82,"inclusion_reasons":["entity overlap"]}],
+				"privacy_decisions":[{"source_type":"memory","source_id":"sensitive-old","action":"redact","reason":"sensitive boundary"}],
+				"budget_report":{"max_profiles":8,"max_related_memories":12,"selected_profiles":1,"selected_related_memories":1,"dropped_by_privacy":1},
+				"retrieval_report":{"semantic_search_status":"available","retrieval_sources":["semantic"],"candidate_memory_count":1}
+			},
+			"client_capabilities":{"supports_affect_snapshot":true,"supports_context_aware_reflection":true,"supports_proposal_only_writeback":true}
+		}`
+		req := httptest.NewRequest(http.MethodPost, "/api/analyze/v7", bytes.NewBufferString(body))
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+
+		server.Handler().ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("analyze v7 status = %d, body = %s", rec.Code, rec.Body.String())
+		}
+
+		var resp analyzeV7ResponseEnvelope
+		if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("decode analyze v7 response: %v", err)
+		}
+		if resp.Meta.Provider != "mock" {
+			t.Fatalf("expected mock provider, got %q", resp.Meta.Provider)
+		}
+		if resp.Meta.PromptVersion != ai.V7AnalyzePromptVersion {
+			t.Fatalf("expected prompt version %q, got %q", ai.V7AnalyzePromptVersion, resp.Meta.PromptVersion)
+		}
+		if len(resp.AffectProposals) == 0 {
+			t.Fatalf("expected affect proposals")
+		}
+		if len(resp.ReflectionCandidates) == 0 {
+			t.Fatalf("expected context-aware reflection candidate")
+		}
+		if !containsString(resp.Quality.UncertaintyReasons, "sensitive_content_redacted") {
+			t.Fatalf("expected privacy uncertainty reason, got %+v", resp.Quality)
+		}
+		if !containsString(resp.Quality.NeedsUserCheck, "tone") {
+			t.Fatalf("expected tone user check, got %+v", resp.Quality)
+		}
+	})
+
 	t.Run("analyze preview", func(t *testing.T) {
 		body := `{
 			"schema_version":"record_aggregate.v1",
@@ -894,4 +948,13 @@ func fakeAppleJWT(t *testing.T, sub string) string {
 	return base64.RawURLEncoding.EncodeToString([]byte(headerJSON)) + "." +
 		base64.RawURLEncoding.EncodeToString([]byte(claimsJSON)) + "." +
 		base64.RawURLEncoding.EncodeToString([]byte("signature"))
+}
+
+func containsString(values []string, needle string) bool {
+	for _, value := range values {
+		if value == needle {
+			return true
+		}
+	}
+	return false
 }

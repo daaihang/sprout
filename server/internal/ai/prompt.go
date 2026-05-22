@@ -62,12 +62,22 @@ func buildAnalyzeUserPrompt(req AnalyzeRequest, user UserContext) (string, error
 			"user_id": user.UserID,
 			"tier":    user.Tier,
 		},
-		"schema_version":  req.SchemaVersion,
-		"client_version":  req.ClientVersion,
-		"analysis_reason": req.AnalysisReason,
-		"record_shell":    req.RecordShell,
-		"artifacts":       req.Artifacts,
-		"known_entities":  req.KnownEntities,
+		"schema_version":    req.SchemaVersion,
+		"client_version":    req.ClientVersion,
+		"client_request_id": req.ClientRequestID,
+		"analysis_reason":   req.AnalysisReason,
+		"record_shell":      req.RecordShell,
+		"artifacts":         req.Artifacts,
+		"known_entities":    req.KnownEntities,
+	}
+	if len(req.MoodEvidence) > 0 {
+		payload["mood_evidence"] = req.MoodEvidence
+	}
+	if req.ContextPack != nil {
+		payload["context_pack"] = req.ContextPack
+	}
+	if req.ClientCapabilities != nil {
+		payload["client_capabilities"] = req.ClientCapabilities
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {

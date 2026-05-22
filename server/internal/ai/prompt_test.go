@@ -76,6 +76,60 @@ func TestBuildAnalyzeUserPromptIncludesContextArtifacts(t *testing.T) {
 	}
 }
 
+func TestBuildAnalyzeUserPromptIncludesV7ContextPackAndMoodEvidence(t *testing.T) {
+	confidence := 0.64
+	req := AnalyzeRequest{
+		SchemaVersion:   "analyze.v7",
+		ClientVersion:   "mory.v7",
+		ClientRequestID: "client-v7",
+		AnalysisReason:  "capture_ingest_context_v7",
+		RecordShell: AnalyzeRecordShell{
+			ID:      "rec-1",
+			RawText: "I joked that I was annoyed after dinner.",
+		},
+		MoodEvidence: []AnalyzeV7MoodEvidence{
+			{
+				ID:            "mood-1",
+				RecordID:      "rec-1",
+				Labels:        []string{"mockFrustrated"},
+				ToneHints:     []string{"joking"},
+				Confidence:    &confidence,
+				UserConfirmed: true,
+			},
+		},
+		ContextPack: &AnalyzeV7ContextPack{
+			PackID:         "pack-1",
+			TargetRecordID: "rec-1",
+			RelatedMemories: []AnalyzeV7RelatedMemory{
+				{RecordID: "rec-old", Snippet: "Earlier dinner joke with the same roommate."},
+			},
+			PrivacyDecisions: []AnalyzeV7PrivacyDecision{
+				{SourceType: "memory", SourceID: "sensitive-1", Action: "redact", Reason: "sensitive boundary"},
+			},
+		},
+		ClientCapabilities: &AnalyzeV7ClientCapabilities{SupportsContextAwareReflection: true},
+	}
+
+	body, err := buildAnalyzeUserPrompt(req, UserContext{UserID: "u1", Tier: "free"})
+	if err != nil {
+		t.Fatalf("buildAnalyzeUserPrompt error: %v", err)
+	}
+
+	for _, needle := range []string{
+		`"client_request_id":"client-v7"`,
+		`"mood_evidence"`,
+		`"tone_hints":["joking"]`,
+		`"context_pack"`,
+		`"related_memories"`,
+		`"privacy_decisions"`,
+		`"client_capabilities"`,
+	} {
+		if !strings.Contains(body, needle) {
+			t.Errorf("prompt body missing %q; body=%s", needle, body)
+		}
+	}
+}
+
 func TestBuildAnalyzeSystemPromptMentionsContextKinds(t *testing.T) {
 	sys := buildAnalyzeSystemPrompt()
 	for _, kind := range []string{"weather", "music", "location"} {

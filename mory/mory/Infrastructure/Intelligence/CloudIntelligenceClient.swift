@@ -1,12 +1,30 @@
 import Foundation
 
 protocol CloudIntelligenceServing: Sendable {
+    func analyzeV7(_ payload: AnalyzeV7RequestPayload) async throws -> AnalyzeV7ResponseEnvelope
     func refineTranscript(_ payload: MoryAPIClient.TranscriptRefinementPayload) async throws -> MoryAPIClient.TranscriptRefinementResponse
     func suggestQuestions(_ payload: MoryAPIClient.QuestionSuggestionPayload) async throws -> MoryAPIClient.QuestionSuggestionResponse
     func suggestChapters(_ payload: MoryAPIClient.ChapterSuggestionPayload) async throws -> MoryAPIClient.ChapterSuggestionResponse
     func analyzePhotoSemantics(_ payload: MoryAPIClient.PhotoSemanticAnalysisPayload) async throws -> MoryAPIClient.PhotoSemanticAnalysisResponse
     func suggestNotificationIntent(_ payload: MoryAPIClient.NotificationIntentSuggestionPayload) async throws -> MoryAPIClient.NotificationIntentSuggestionResponse
     func runProviderEval() async throws -> MoryAPIClient.CloudIntelligenceEvalResponse
+}
+
+enum CloudIntelligenceContractError: LocalizedError {
+    case analyzeV7Unavailable
+
+    var errorDescription: String? {
+        switch self {
+        case .analyzeV7Unavailable:
+            return "Analyze v7 is not implemented by this cloud intelligence service."
+        }
+    }
+}
+
+extension CloudIntelligenceServing {
+    func analyzeV7(_ payload: AnalyzeV7RequestPayload) async throws -> AnalyzeV7ResponseEnvelope {
+        throw CloudIntelligenceContractError.analyzeV7Unavailable
+    }
 }
 
 protocol CloudIntelligenceDebugging: Sendable {
@@ -21,6 +39,12 @@ struct RemoteCloudIntelligenceClient: CloudIntelligenceServing {
     init(apiClient: MoryAPIClient, tokenProvider: MoryAuthTokenProvider) {
         self.apiClient = apiClient
         self.tokenProvider = tokenProvider
+    }
+
+    func analyzeV7(_ payload: AnalyzeV7RequestPayload) async throws -> AnalyzeV7ResponseEnvelope {
+        try await send { token in
+            try await apiClient.analyzeRecordsV7(payload: payload, bearerToken: token)
+        }
     }
 
     func refineTranscript(_ payload: MoryAPIClient.TranscriptRefinementPayload) async throws -> MoryAPIClient.TranscriptRefinementResponse {

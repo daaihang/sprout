@@ -116,6 +116,11 @@ type analyzeResponseEnvelope struct {
 	Meta analyzeMeta `json:"meta"`
 }
 
+type analyzeV7ResponseEnvelope struct {
+	ai.AnalyzeV7Response
+	Meta analyzeMeta `json:"meta"`
+}
+
 type analyzeMeta struct {
 	Provider      string   `json:"provider"`
 	Model         string   `json:"model"`
@@ -406,6 +411,46 @@ func (s *Server) handleAnalyze(w http.ResponseWriter, r *http.Request) {
 			Provider: result.Provider,
 			Model:    result.Model,
 			Usage:    result.Usage,
+		},
+	})
+}
+
+func (s *Server) handleAnalyzeV7(w http.ResponseWriter, r *http.Request) {
+	user, ok := userContextFromRequest(w, r)
+	if !ok {
+		return
+	}
+
+	var req ai.AnalyzeV7Request
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	if err := req.Validate(); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid analyze v7 request")
+		return
+	}
+	if !s.allowAIRequest(w, r, user.UserID, "analyze_v7") {
+		return
+	}
+
+	providerReq := req.ToAnalyzeRequest()
+	start := time.Now()
+	result, err := s.aiProvider.Analyze(r.Context(), providerReq, user)
+	s.recordAI("analyze_v7", result.Provider, result.Usage, time.Since(start), err)
+	if err != nil {
+		writeAIProviderError(w, r, "analysis v7 request failed", err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, analyzeV7ResponseEnvelope{
+		AnalyzeV7Response: ai.BuildAnalyzeV7Response(req, result.Response),
+		Meta: analyzeMeta{
+			Provider:      result.Provider,
+			Model:         result.Model,
+			Usage:         result.Usage,
+			RequestID:     requestIDFromContext(r.Context()),
+			PromptVersion: ai.V7AnalyzePromptVersion,
 		},
 	})
 }

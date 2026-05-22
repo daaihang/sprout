@@ -2,9 +2,14 @@ import SwiftUI
 
 struct DebugAnalysisContextPackView: View {
     @Environment(\.memoryRepository) private var memoryRepository
+    @Environment(\.cloudIntelligenceService) private var cloudIntelligenceService
 
     @State private var pack: AnalysisContextPack?
+    @State private var requestPayload: AnalyzeV7RequestPayload?
+    @State private var responseEnvelope: AnalyzeV7ResponseEnvelope?
+    @State private var mappedResult: AnalyzeV7MappedResult?
     @State private var isWorking = false
+    @State private var isSending = false
     @State private var message: String?
 
     var body: some View {
@@ -15,8 +20,17 @@ struct DebugAnalysisContextPackView: View {
                 }
                 .disabled(isWorking)
 
+                Button("Send Analyze v7 for latest memory") {
+                    Task { await sendAnalyzeV7() }
+                }
+                .disabled(isWorking || isSending || requestPayload == nil)
+
                 if isWorking {
                     ProgressView("Building context pack")
+                }
+
+                if isSending {
+                    ProgressView("Sending Analyze v7")
                 }
 
                 if let message {
@@ -28,7 +42,7 @@ struct DebugAnalysisContextPackView: View {
             } header: {
                 Text("Actions")
             } footer: {
-                Text("Phase 1 builds a local context pack only. It is not attached to /api/analyze until the v7 cloud contract phase.")
+                Text("Phase 5 keeps production Analyze unchanged. This debug view builds the v7 request from local context and can send /api/analyze/v7 for side-by-side contract validation.")
             }
 
             if let pack {
@@ -116,7 +130,33 @@ struct DebugAnalysisContextPackView: View {
                 }
 
                 Section("Payload preview") {
-                    DebugContextPayloadBlock(title: "JSON", content: payloadPreview(pack))
+                    DebugContextPayloadBlock(title: "Context pack JSON", content: payloadPreview(pack))
+                    if let requestPayload {
+                        DebugContextPayloadBlock(title: "Analyze v7 request JSON", content: payloadPreview(requestPayload))
+                    }
+                }
+
+                if let responseEnvelope {
+                    Section("Analyze v7 response") {
+                        DebugContextValueRow(title: "Quality", value: "\(responseEnvelope.quality.confidence)")
+                        DebugContextValueRow(title: "Uncertainty", value: responseEnvelope.quality.uncertaintyReasons.joined(separator: ", "))
+                        DebugContextValueRow(title: "Needs user check", value: responseEnvelope.quality.needsUserCheck.joined(separator: ", "))
+                        DebugContextValueRow(title: "Affect proposals", value: "\(responseEnvelope.affectProposals.count)")
+                        DebugContextValueRow(title: "Graph deltas", value: "\(responseEnvelope.graphDeltaProposals.count + responseEnvelope.profileUpdateProposals.count)")
+                        DebugContextValueRow(title: "Reflection candidates", value: "\(responseEnvelope.reflectionCandidates.count)")
+                        DebugContextValueRow(title: "Question candidates", value: "\(responseEnvelope.questionCandidates.count)")
+                        DebugContextPayloadBlock(title: "Response JSON", content: payloadPreview(responseEnvelope))
+                    }
+                }
+
+                if let mappedResult {
+                    Section("Mapped local proposals") {
+                        DebugContextValueRow(title: "Affect snapshots", value: "\(mappedResult.affectProposals.count)")
+                        DebugContextValueRow(title: "Graph delta proposals", value: "\(mappedResult.graphDeltaProposals.count)")
+                        DebugContextValueRow(title: "Reflection proposals", value: "\(mappedResult.reflectionProposals.count)")
+                        DebugContextValueRow(title: "Question proposals", value: "\(mappedResult.questionProposals.count)")
+                        DebugContextValueRow(title: "Merge/split questions", value: "\(mappedResult.mergeSplitQuestions.count)")
+                    }
                 }
             }
         }
@@ -133,25 +173,84 @@ struct DebugAnalysisContextPackView: View {
         do {
             guard let latest = try memoryRepository.fetchRecentMemories(limit: 1).first else {
                 pack = nil
+                requestPayload = nil
+                responseEnvelope = nil
+                mappedResult = nil
                 message = "No memories available."
                 return
             }
             let builder = ContextPackBuilder(repository: memoryRepository)
-            pack = try await builder.build(targetRecordID: latest.id)
+            let builtPack = try await builder.build(targetRecordID: latest.id)
+            guard let detail = try memoryRepository.fetchMemoryDetail(recordID: latest.id) else {
+                pack = builtPack
+                requestPayload = nil
+                responseEnvelope = nil
+                mappedResult = nil
+                message = "Built context pack, but latest memory detail was unavailable."
+                return
+            }
+            let affectSnapshots = try memoryRepository.fetchAffectSnapshots(recordID: latest.id, limit: 4)
+            let knownEntities = detail.entities.map {
+                EntityReference(
+                    id: $0.id,
+                    kind: $0.kind,
+                    name: $0.displayName,
+                    aliases: $0.aliases,
+                    confidence: $0.confidence
+                )
+            }
+            pack = builtPack
+            requestPayload = AnalyzeV7RequestBuilder().build(
+                record: detail.record,
+                artifacts: detail.artifacts,
+                knownEntities: knownEntities,
+                contextPack: builtPack,
+                affectSnapshots: affectSnapshots
+            )
+            responseEnvelope = nil
+            mappedResult = nil
             message = "Built context pack for \(latest.title)."
         } catch {
             message = error.localizedDescription
         }
     }
 
-    private func payloadPreview(_ pack: AnalysisContextPack) -> String {
+    @MainActor
+    private func sendAnalyzeV7() async {
+        if requestPayload == nil {
+            await buildLatestPack()
+        }
+        guard let payload = requestPayload else {
+            message = "No Analyze v7 request payload is available."
+            return
+        }
+        isSending = true
+        defer { isSending = false }
+        do {
+            let response = try await cloudIntelligenceService.analyzeV7(payload)
+            responseEnvelope = response
+            let recordID = UUID(uuidString: payload.recordShell.id) ?? payload.contextPack.targetRecordIDUUID
+            mappedResult = AnalyzeV7ResponseMapper().map(recordID: recordID, response: response)
+            message = "Analyze v7 returned \(response.affectProposals.count) affect proposal(s), \(response.reflectionCandidates.count) reflection candidate(s), and \(response.questionCandidates.count) question candidate(s)."
+        } catch {
+            message = error.localizedDescription
+        }
+    }
+
+    private func payloadPreview<T: Encodable>(_ value: T) -> String {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         encoder.dateEncodingStrategy = .iso8601
-        guard let data = try? encoder.encode(pack), let text = String(data: data, encoding: .utf8) else {
-            return "Unable to encode context pack."
+        guard let data = try? encoder.encode(value), let text = String(data: data, encoding: .utf8) else {
+            return "Unable to encode payload."
         }
         return text
+    }
+}
+
+private extension AnalyzeV7RequestPayload.ContextPackPayload {
+    var targetRecordIDUUID: UUID {
+        UUID(uuidString: targetRecordID) ?? UUID()
     }
 }
 

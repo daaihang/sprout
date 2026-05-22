@@ -186,6 +186,14 @@ Tests:
 - privacy redaction in payload,
 - reflection evidence coverage.
 
+Completion evidence:
+
+- iOS has `AnalyzeV7RequestPayload`, `AnalyzeV7ResponseEnvelope`, and `AnalyzeV7ResponseMapper` for bounded context-pack and structured mood transport.
+- iOS cloud client can call `/api/analyze/v7` through a debug-only dual-run path; production legacy Analyze remains unchanged.
+- Server exposes `/api/analyze/v7`, validates schema version 7, forwards context evidence into the provider prompt, and wraps results as proposal-first v7 output.
+- v7 quality flags identify thin context, insufficient longitudinal evidence, privacy redaction, missing structured mood evidence, and tone checks.
+- Contract tests cover request payload privacy/budget contents, proposal mapping, low-context decode behavior, and server route metadata.
+
 ## Phase 6: Background And Notification Reliability
 
 Goal:
@@ -242,6 +250,6 @@ Exit criteria:
 | Phase 2 | completed | entity resolution foundation, correction ledger, and person merge/split mutation are implemented; proposal consumption and cloud-context integration continue in Phase 5 |
 | Phase 3 | completed | local PersonProfile persistence, deterministic portrait refresh jobs, mutation actions, evidence invalidation, and debug inspection are implemented; cloud AI portrait proposals remain Phase 5 |
 | Phase 4 | completed | local structured affect persistence, correction events, context-pack affect history, and Journaling suggestion draft mapping are implemented; real Apple picker entitlement/App Intents/Share extension remain later phases |
-| Phase 5 | not started | legacy Analyze still current-record centered |
+| Phase 5 | completed | Analyze v7 contract and debug dual-run are implemented; production proposal consumption and replacement of legacy Analyze remain later work |
 | Phase 6 | not started | no BGTask/background URLSession production loop |
 | Phase 7 | not started | eval fixtures and debug surfaces missing |

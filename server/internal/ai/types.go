@@ -27,13 +27,17 @@ type UserContext struct {
 }
 
 type AnalyzeRequest struct {
-	SchemaVersion string                 `json:"schema_version"`
-	ClientVersion string                 `json:"client_version,omitempty"`
-	AnalysisReason string                `json:"analysis_reason"`
-	RecordShell   AnalyzeRecordShell     `json:"record_shell"`
-	Artifacts     []AnalyzeArtifact      `json:"artifacts"`
-	KnownEntities []KnownEntityReference `json:"known_entities"`
-	DebugOptions  *DebugOptions          `json:"debug_options,omitempty"`
+	SchemaVersion      string                       `json:"schema_version"`
+	ClientVersion      string                       `json:"client_version,omitempty"`
+	ClientRequestID    string                       `json:"client_request_id,omitempty"`
+	AnalysisReason     string                       `json:"analysis_reason"`
+	RecordShell        AnalyzeRecordShell           `json:"record_shell"`
+	Artifacts          []AnalyzeArtifact            `json:"artifacts"`
+	KnownEntities      []KnownEntityReference       `json:"known_entities"`
+	MoodEvidence       []AnalyzeV7MoodEvidence      `json:"mood_evidence,omitempty"`
+	ContextPack        *AnalyzeV7ContextPack        `json:"context_pack,omitempty"`
+	ClientCapabilities *AnalyzeV7ClientCapabilities `json:"client_capabilities,omitempty"`
+	DebugOptions       *DebugOptions                `json:"debug_options,omitempty"`
 }
 
 type AnalyzeRecordShell struct {
@@ -92,12 +96,12 @@ type EntityMention struct {
 }
 
 type CandidateEdge struct {
-	FromName    string   `json:"from_name"`
-	FromKind    string   `json:"from_kind"`
-	ToName      string   `json:"to_name"`
-	ToKind      string   `json:"to_kind"`
-	Relation    string   `json:"relation"`
-	Confidence  *float64 `json:"confidence,omitempty"`
+	FromName   string   `json:"from_name"`
+	FromKind   string   `json:"from_kind"`
+	ToName     string   `json:"to_name"`
+	ToKind     string   `json:"to_kind"`
+	Relation   string   `json:"relation"`
+	Confidence *float64 `json:"confidence,omitempty"`
 }
 
 type FollowUp struct {
@@ -145,10 +149,10 @@ func (d *DebugOptions) PromptProfileOrDefault() string {
 }
 
 type ReflectionResponse struct {
-	Title          string   `json:"title"`
-	Body           string   `json:"body"`
-	EvidenceSummary string  `json:"evidence_summary"`
-	Confidence     float64  `json:"confidence"`
+	Title           string   `json:"title"`
+	Body            string   `json:"body"`
+	EvidenceSummary string   `json:"evidence_summary"`
+	Confidence      float64  `json:"confidence"`
 	SourceRecordIDs []string `json:"source_record_ids"`
 }
 
