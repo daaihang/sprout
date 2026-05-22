@@ -110,6 +110,7 @@ struct VoiceRecordingOverlayView: View {
                 }
             }
             .frame(height: 88) // ≈ 4 lines of body text
+            .background(.clear)
             .onChange(of: transcriptText) { _, _ in
                 proxy.scrollTo("transcriptBottom", anchor: .bottom)
             }
