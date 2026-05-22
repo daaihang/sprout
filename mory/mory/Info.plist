@@ -35,6 +35,13 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
+		<string>fetch</string>
+		<string>processing</string>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>dev.mory.intelligence.process</string>
+		<string>dev.mory.intelligence.refresh</string>
 	</array>
 </dict>
 </plist>

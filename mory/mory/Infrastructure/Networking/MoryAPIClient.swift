@@ -20,6 +20,8 @@ struct MoryAuthResponse: Decodable, Sendable {
 }
 
 struct MoryAPIClient: Sendable {
+    static let backgroundSessionID = "dev.mory.api.background"
+
     struct ReflectionPayload: Encodable, Sendable {
         var recordShell: AnalyzeRequestPayload.RecordShellPayload
         var artifacts: [AnalyzeRequestPayload.ArtifactPayload]
