@@ -10,6 +10,13 @@ struct VoiceRecordingOverlayView: View {
 
     var body: some View {
         ZStack {
+            // Background: subtle full-screen material blur
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .opacity(0.4)
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+
             // Bubble: upper portion, independent of button
             VStack(spacing: 0) {
                 Spacer().frame(minHeight: 60, maxHeight: 120)
@@ -40,14 +47,14 @@ struct VoiceRecordingOverlayView: View {
     // MARK: - Glow Bubble
 
     private var glowBubble: some View {
-        VStack(spacing: MorySpacing.medium) {
+        VStack(spacing: MorySpacing.small) {
+            transcriptScrollView
             timerRow
-            transcriptView
         }
         .padding(.horizontal, 32)
         .padding(.vertical, 28)
         .frame(minWidth: 240, maxWidth: 300)
-        // Layer 2: frosted material with radial fade — no hard edges
+        // Frosted material with radial fade — no hard edge
         .background {
             Rectangle()
                 .fill(.ultraThinMaterial)
@@ -66,7 +73,7 @@ struct VoiceRecordingOverlayView: View {
                 }
                 .allowsHitTesting(false)
         }
-        // Layer 1: large accent glow — overflow, doesn't affect layout
+        // Large accent glow — overflows layout bounds, doesn't affect sizing
         .background {
             RadialGradient(
                 colors: [
@@ -87,23 +94,35 @@ struct VoiceRecordingOverlayView: View {
 
     // MARK: - Content
 
+    /// Fixed 4-line viewport, always scrolled to show the latest (bottom) text.
+    private var transcriptScrollView: some View {
+        ScrollViewReader { proxy in
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(spacing: 0) {
+                    Text(transcriptText)
+                        .font(.body.weight(.medium))
+                        .foregroundStyle(.primary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                    Color.clear
+                        .frame(height: 1)
+                        .id("transcriptBottom")
+                }
+            }
+            .frame(height: 88) // ≈ 4 lines of body text
+            .onChange(of: transcriptText) { _, _ in
+                proxy.scrollTo("transcriptBottom", anchor: .bottom)
+            }
+        }
+    }
+
     private var timerRow: some View {
         HStack(spacing: MorySpacing.small) {
             PulsingDot(isActive: audioRecorder.isRecording, reduceMotion: reduceMotion)
             Text(formatDuration(audioRecorder.recordingDuration))
                 .font(.caption.monospacedDigit().weight(.semibold))
                 .foregroundStyle(.secondary)
-                .shadow(color: Color.primary.opacity(0.1), radius: 2, x: 0, y: 1)
         }
-    }
-
-    private var transcriptView: some View {
-        Text(transcriptText)
-            .font(.body.weight(.medium))
-            .foregroundStyle(.primary)
-            .multilineTextAlignment(.center)
-            .shadow(color: Color.primary.opacity(0.15), radius: 4, x: 0, y: 1)
-            .animation(.default, value: transcriptText)
     }
 
     // MARK: - Stop Button
@@ -121,7 +140,7 @@ struct VoiceRecordingOverlayView: View {
         }
         .buttonStyle(.borderedProminent)
         .controlSize(.large)
-        .tint(Color.accentColor)
+        .tint(.red)
         .disabled(audioRecorder.isStopping || audioRecorder.isTranscribing)
         .accessibilityLabel(Text("quickCapture.voice.stopSubmit"))
         .accessibilityHint(Text("quickCapture.voice.stopSubmit.hint"))
