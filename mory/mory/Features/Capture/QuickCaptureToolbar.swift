@@ -13,6 +13,7 @@ struct QuickCaptureToolbar: View {
     @ObservedObject var audioRecorder: AudioRecorderModel
     let onTextCapture: () -> Void
     let onPhotoCapture: () -> Void
+    let onVoiceCapture: () -> Void
 
     @Environment(\.tabViewBottomAccessoryPlacement) private var accessoryPlacement
 
@@ -150,14 +151,7 @@ struct QuickCaptureToolbar: View {
             handleRecoveryAction(recoveryAction)
             return
         }
-        startVoiceCapture()
-    }
-
-    private func startVoiceCapture() {
-        playImpact(.medium)
-        Task {
-            await audioRecorder.startRecording()
-        }
+        onVoiceCapture()
     }
 
     private func handleRecoveryAction(_ action: AudioRecordingRecoveryAction) {
@@ -177,8 +171,4 @@ struct QuickCaptureToolbar: View {
         generator.impactOccurred()
     }
 
-    private func formatDuration(_ duration: TimeInterval) -> String {
-        let totalSeconds = max(0, Int(duration.rounded(.down)))
-        return String(format: "%02d:%02d", totalSeconds / 60, totalSeconds % 60)
-    }
 }

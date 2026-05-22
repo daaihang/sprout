@@ -3,74 +3,97 @@ import SwiftUI
 struct VoiceRecordingSheetView: View {
     @ObservedObject var audioRecorder: AudioRecorderModel
     let onStop: () -> Void
+    let onCancel: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        VStack(spacing: MorySpacing.large) {
-            Spacer(minLength: 0)
+        VStack(spacing: 0) {
+            sheetHeader
+                .padding(.horizontal, MorySpacing.large)
+                .padding(.top, MorySpacing.medium)
+
             transcriptScrollView
-            timerRow
-            Spacer(minLength: 0)
-            stopButton
+                .padding(.horizontal, MorySpacing.large)
+                .padding(.top, MorySpacing.medium)
+
+            Spacer(minLength: MorySpacing.medium)
+
+            doneButton
+                .padding(.horizontal, MorySpacing.large)
                 .padding(.bottom, MorySpacing.large)
         }
-        .padding(.horizontal, MorySpacing.xLarge)
         .frame(maxWidth: .infinity)
         .interactiveDismissDisabled()
     }
 
+    // MARK: - Header
+
+    private var sheetHeader: some View {
+        HStack {
+            Button(action: onCancel) {
+                Image(systemName: "xmark")
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("quickCapture.voice.cancel"))
+
+            Spacer()
+
+            HStack(spacing: 6) {
+                PulsingDot(isActive: audioRecorder.isRecording, reduceMotion: reduceMotion)
+                Text(formatDuration(audioRecorder.recordingDuration))
+                    .font(.system(.body, design: .monospaced).weight(.semibold))
+            }
+
+            Spacer()
+
+            // Balance the xmark on the left
+            Color.clear.frame(width: 44, height: 44)
+        }
+    }
+
     // MARK: - Transcript
 
-    /// Fixed 4-line viewport, always scrolled to show the latest (bottom) text.
     private var transcriptScrollView: some View {
         ScrollViewReader { proxy in
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: 0) {
+                VStack(alignment: .leading, spacing: 0) {
                     Text(transcriptText)
-                        .font(.body.weight(.medium))
-                        .foregroundStyle(.primary)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
+                        .font(.body)
+                        .foregroundStyle(transcriptStyle)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     Color.clear
                         .frame(height: 1)
-                        .id("transcriptBottom")
+                        .id("bottom")
                 }
             }
-            .frame(height: 88) // ≈ 4 lines of body text
             .onChange(of: transcriptText) { _, _ in
                 withAnimation {
-                    proxy.scrollTo("transcriptBottom", anchor: .bottom)
+                    proxy.scrollTo("bottom", anchor: .bottom)
                 }
             }
         }
     }
 
-    private var timerRow: some View {
-        HStack(spacing: MorySpacing.small) {
-            PulsingDot(isActive: audioRecorder.isRecording, reduceMotion: reduceMotion)
-            Text(formatDuration(audioRecorder.recordingDuration))
-                .font(.caption.monospacedDigit().weight(.semibold))
-                .foregroundStyle(.secondary)
-        }
-    }
+    // MARK: - Done Button
 
-    // MARK: - Stop Button
-
-    private var stopButton: some View {
-        Button {
-            onStop()
-        } label: {
+    private var doneButton: some View {
+        Button(action: onStop) {
             if audioRecorder.isStopping || audioRecorder.isTranscribing {
                 ProgressView()
-                    .frame(minWidth: 120)
+                    .frame(maxWidth: .infinity)
             } else {
-                Label("quickCapture.voice.stop", systemImage: "stop.fill")
+                Text("quickCapture.voice.stop")
+                    .frame(maxWidth: .infinity)
             }
         }
         .buttonStyle(.borderedProminent)
         .controlSize(.large)
-        .tint(.red)
         .disabled(audioRecorder.isStopping || audioRecorder.isTranscribing)
         .accessibilityLabel(Text("quickCapture.voice.stopSubmit"))
         .accessibilityHint(Text("quickCapture.voice.stopSubmit.hint"))
@@ -87,6 +110,12 @@ struct VoiceRecordingSheetView: View {
             return live ?? String(localized: "quickCapture.voice.transcribing")
         }
         return live ?? String(localized: "quickCapture.voice.transcriptPlaceholder")
+    }
+
+    private var transcriptStyle: AnyShapeStyle {
+        audioRecorder.liveTranscription.trimmedOrNil == nil
+            ? AnyShapeStyle(.secondary)
+            : AnyShapeStyle(.primary)
     }
 
     private func formatDuration(_ duration: TimeInterval) -> String {

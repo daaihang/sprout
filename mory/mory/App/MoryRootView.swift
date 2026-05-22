@@ -13,6 +13,7 @@ struct MoryRootView: View {
     @StateObject private var notificationInbox = NotificationInteractionInbox.shared
     @StateObject private var audioRecorder = AudioRecorderModel()
     @State private var selectedTab: MoryAppTab = .today
+    @State private var isPresentingVoiceSheet = false
     @State private var isPresentingSettings = false
     @State private var unifiedCaptureSeed: UnifiedCaptureSeed?
     @State private var tabRefreshID = UUID()
@@ -85,16 +86,21 @@ struct MoryRootView: View {
         }
         .tabViewSearchActivation(.searchTabSelection)
         .tabBarMinimizeBehavior(.onScrollDown)
-        .sheet(isPresented: Binding(get: { audioRecorder.isBusy }, set: { _ in })) {
-            VoiceRecordingSheetView(audioRecorder: audioRecorder, onStop: stopVoiceCapture)
-                .presentationDetents([.height(280)])
-                .presentationDragIndicator(.hidden)
+        .sheet(isPresented: $isPresentingVoiceSheet) {
+            VoiceRecordingSheetView(
+                audioRecorder: audioRecorder,
+                onStop: stopVoiceCapture,
+                onCancel: cancelVoiceCapture
+            )
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.hidden)
         }
         .moryTabViewBottomAccessory {
             QuickCaptureToolbar(
                 audioRecorder: audioRecorder,
                 onTextCapture: { unifiedCaptureSeed = .empty },
-                onPhotoCapture: { unifiedCaptureSeed = .photoCapture }
+                onPhotoCapture: { unifiedCaptureSeed = .photoCapture },
+                onVoiceCapture: startVoiceCapture
             )
         }
         .sheet(isPresented: $isPresentingSettings) {
@@ -270,6 +276,19 @@ struct MoryRootView: View {
         }
     }
 
+    private func startVoiceCapture() {
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.prepare()
+        generator.impactOccurred()
+        isPresentingVoiceSheet = true
+        Task {
+            await audioRecorder.startRecording()
+            if audioRecorder.state == .failed {
+                isPresentingVoiceSheet = false
+            }
+        }
+    }
+
     private func stopVoiceCapture() {
         Task {
             guard let output = await audioRecorder.stopAndTranscribe() else {
@@ -278,19 +297,26 @@ struct MoryRootView: View {
                     g.prepare()
                     g.notificationOccurred(.error)
                 }
+                isPresentingVoiceSheet = false
                 return
             }
             let g = UINotificationFeedbackGenerator()
             g.prepare()
             g.notificationOccurred(.success)
-            // Allow recording sheet to dismiss before presenting composer sheet
-            try? await Task.sleep(for: .milliseconds(200))
+            isPresentingVoiceSheet = false
             unifiedCaptureSeed = .voice(QuickVoiceCaptureResult(
                 filename: output.filename,
                 audioData: output.audioData,
                 transcription: audioRecorder.finalTranscription.trimmedOrNil ?? audioRecorder.liveTranscription,
                 duration: audioRecorder.transcriptionDuration
             ))
+        }
+    }
+
+    private func cancelVoiceCapture() {
+        Task {
+            await audioRecorder.cancelRecording()
+            isPresentingVoiceSheet = false
         }
     }
 
