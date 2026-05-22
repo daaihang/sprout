@@ -12,7 +12,6 @@ struct MoryRootView: View {
     @AppStorage(MoryOnboardingStep.completionStorageKey) private var hasCompletedOnboarding = false
     @StateObject private var notificationInbox = NotificationInteractionInbox.shared
     @StateObject private var audioRecorder = AudioRecorderModel()
-    @State private var isHoldToTalkMode = false
     @State private var selectedTab: MoryAppTab = .today
     @State private var isPresentingSettings = false
     @State private var unifiedCaptureSeed: UnifiedCaptureSeed?
@@ -86,25 +85,14 @@ struct MoryRootView: View {
         }
         .tabViewSearchActivation(.searchTabSelection)
         .tabBarMinimizeBehavior(.onScrollDown)
-        .overlay {
-            if audioRecorder.isBusy {
-                VoiceRecordingOverlayView(
-                    audioRecorder: audioRecorder,
-                    isHoldToTalkMode: isHoldToTalkMode,
-                    onStop: stopVoiceCapture
-                )
-                .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .center)))
-            }
-        }
-        .animation(.spring(response: 0.32, dampingFraction: 0.8), value: audioRecorder.isBusy)
-        .onChange(of: audioRecorder.isBusy) { _, busy in
-            if !busy { isHoldToTalkMode = false }
+        .sheet(isPresented: Binding(get: { audioRecorder.isBusy }, set: { _ in })) {
+            VoiceRecordingSheetView(audioRecorder: audioRecorder, onStop: stopVoiceCapture)
+                .presentationDetents([.height(280)])
+                .presentationDragIndicator(.hidden)
         }
         .moryTabViewBottomAccessory {
             QuickCaptureToolbar(
                 audioRecorder: audioRecorder,
-                onStopVoiceCapture: stopVoiceCapture,
-                isHoldToTalkMode: $isHoldToTalkMode,
                 onTextCapture: { unifiedCaptureSeed = .empty },
                 onPhotoCapture: { unifiedCaptureSeed = .photoCapture }
             )
@@ -295,6 +283,8 @@ struct MoryRootView: View {
             let g = UINotificationFeedbackGenerator()
             g.prepare()
             g.notificationOccurred(.success)
+            // Allow recording sheet to dismiss before presenting composer sheet
+            try? await Task.sleep(for: .milliseconds(200))
             unifiedCaptureSeed = .voice(QuickVoiceCaptureResult(
                 filename: output.filename,
                 audioData: output.audioData,

@@ -1,98 +1,26 @@
 import SwiftUI
 
-struct VoiceRecordingOverlayView: View {
+struct VoiceRecordingSheetView: View {
     @ObservedObject var audioRecorder: AudioRecorderModel
-    let isHoldToTalkMode: Bool
     let onStop: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var glowBreathing = false
 
     var body: some View {
-        ZStack {
-            // Background: subtle full-screen material blur
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .opacity(0.4)
-                .ignoresSafeArea()
-                .allowsHitTesting(false)
-
-            // Bubble: upper portion, independent of button
-            VStack(spacing: 0) {
-                Spacer().frame(minHeight: 60, maxHeight: 120)
-                glowBubble
-                Spacer()
-            }
-
-            // Stop button: lower portion, independent of bubble
-            VStack(spacing: 0) {
-                Spacer()
-                if !isHoldToTalkMode {
-                    stopButton
-                        .transition(.opacity.combined(with: .scale(scale: 0.95)))
-                }
-                Spacer().frame(height: 28)
-            }
-            .animation(.spring(response: 0.28, dampingFraction: 0.8), value: isHoldToTalkMode)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .onAppear {
-            guard !reduceMotion else { return }
-            withAnimation(.easeInOut(duration: 2.4).repeatForever(autoreverses: true)) {
-                glowBreathing = true
-            }
-        }
-    }
-
-    // MARK: - Glow Bubble
-
-    private var glowBubble: some View {
-        VStack(spacing: MorySpacing.small) {
+        VStack(spacing: MorySpacing.large) {
+            Spacer(minLength: 0)
             transcriptScrollView
             timerRow
+            Spacer(minLength: 0)
+            stopButton
+                .padding(.bottom, MorySpacing.large)
         }
-        .padding(.horizontal, 32)
-        .padding(.vertical, 28)
-        .frame(minWidth: 240, maxWidth: 300)
-        // Frosted material with radial fade — no hard edge
-        .background {
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .mask {
-                    RadialGradient(
-                        colors: [
-                            .white,
-                            .white.opacity(0.92),
-                            .white.opacity(0.4),
-                            .clear
-                        ],
-                        center: .center,
-                        startRadius: 40,
-                        endRadius: 200
-                    )
-                }
-                .allowsHitTesting(false)
-        }
-        // Large accent glow — overflows layout bounds, doesn't affect sizing
-        .background {
-            RadialGradient(
-                colors: [
-                    Color.accentColor.opacity(0.52),
-                    Color.accentColor.opacity(0.22),
-                    Color.clear
-                ],
-                center: .center,
-                startRadius: 0,
-                endRadius: 200
-            )
-            .frame(width: 480, height: 480)
-            .blur(radius: 50)
-            .scaleEffect(glowBreathing ? 1.08 : 1.0)
-            .allowsHitTesting(false)
-        }
+        .padding(.horizontal, MorySpacing.xLarge)
+        .frame(maxWidth: .infinity)
+        .interactiveDismissDisabled()
     }
 
-    // MARK: - Content
+    // MARK: - Transcript
 
     /// Fixed 4-line viewport, always scrolled to show the latest (bottom) text.
     private var transcriptScrollView: some View {
@@ -110,9 +38,10 @@ struct VoiceRecordingOverlayView: View {
                 }
             }
             .frame(height: 88) // ≈ 4 lines of body text
-            .background(.clear)
             .onChange(of: transcriptText) { _, _ in
-                proxy.scrollTo("transcriptBottom", anchor: .bottom)
+                withAnimation {
+                    proxy.scrollTo("transcriptBottom", anchor: .bottom)
+                }
             }
         }
     }
