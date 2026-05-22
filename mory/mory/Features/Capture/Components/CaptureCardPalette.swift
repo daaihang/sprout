@@ -217,15 +217,15 @@ struct CaptureCardPalette {
         }
     }
 
-    private static func contrastTextColor(for hex: String) -> Color {
+    nonisolated private static func contrastTextColor(for hex: String) -> Color {
         (luminance(for: hex) ?? 0) > 0.54 ? .black.opacity(0.88) : .white
     }
 
-    private static func contrastScrimColor(for hex: String) -> Color {
+    nonisolated private static func contrastScrimColor(for hex: String) -> Color {
         (luminance(for: hex) ?? 0) > 0.54 ? .white : .black
     }
 
-    private static func luminance(for hex: String) -> Double? {
+    nonisolated private static func luminance(for hex: String) -> Double? {
         let cleaned = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
         guard cleaned.count == 6, let value = Int(cleaned, radix: 16) else { return nil }
         let red = Double((value >> 16) & 0xFF) / 255
@@ -234,7 +234,7 @@ struct CaptureCardPalette {
         return (0.2126 * red) + (0.7152 * green) + (0.0722 * blue)
     }
 
-    private static func sampleHexColor(from data: Data) -> String? {
+    nonisolated private static func sampleHexColor(from data: Data) -> String? {
         guard let image = UIImage(data: data),
               let inputImage = CIImage(image: image),
               let outputImage = CIFilter(name: "CIAreaAverage", parameters: [
@@ -257,7 +257,7 @@ struct CaptureCardPalette {
 }
 
 private extension Color {
-    init?(hex: String) {
+    nonisolated init?(hex: String) {
         let cleaned = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
         guard cleaned.count == 6, let value = Int(cleaned, radix: 16) else { return nil }
         self.init(

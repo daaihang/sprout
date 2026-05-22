@@ -237,22 +237,13 @@ private struct LocationSearchResult: Identifiable, Hashable {
         let resolvedTitle: String
         let resolvedSubtitle: String?
 
-        if #available(iOS 26.0, *) {
-            coordinate = mapItem.location.coordinate
-            resolvedTitle = mapItem.name?.trimmedOrNil
-                ?? mapItem.address?.shortAddress?.trimmedOrNil
-                ?? mapItem.address?.fullAddress.trimmedOrNil
-                ?? fallbackTitle
-            resolvedSubtitle = mapItem.addressRepresentations?.fullAddress(includingRegion: false, singleLine: true)?.trimmedOrNil
-                ?? mapItem.address?.fullAddress.trimmedOrNil
-        } else {
-            let placemark = mapItem.placemark
-            coordinate = placemark.coordinate
-            resolvedTitle = mapItem.name?.trimmedOrNil
-                ?? placemark.name?.trimmedOrNil
-                ?? fallbackTitle
-            resolvedSubtitle = placemark.title?.trimmedOrNil
-        }
+        coordinate = mapItem.location.coordinate
+        resolvedTitle = mapItem.name?.trimmedOrNil
+            ?? mapItem.address?.shortAddress?.trimmedOrNil
+            ?? mapItem.address?.fullAddress.trimmedOrNil
+            ?? fallbackTitle
+        resolvedSubtitle = mapItem.addressRepresentations?.fullAddress(includingRegion: false, singleLine: true)?.trimmedOrNil
+            ?? mapItem.address?.fullAddress.trimmedOrNil
 
         self.title = resolvedTitle
         self.subtitle = resolvedSubtitle

@@ -157,7 +157,7 @@ final class MusicContextService: Sendable, ContextMusicProviding {
         )
     }
 
-    private static func makeArtworkPalette(from artwork: Artwork?) -> MusicArtworkPalette? {
+    nonisolated private static func makeArtworkPalette(from artwork: Artwork?) -> MusicArtworkPalette? {
         guard let artwork else { return nil }
         let background = artwork.backgroundColor.flatMap(hexString(from:))
         let primary = artwork.primaryTextColor.flatMap(hexString(from:))
@@ -179,14 +179,20 @@ final class MusicContextService: Sendable, ContextMusicProviding {
         )
     }
 
-    private static func hexString(from color: CGColor) -> String? {
-        let uiColor = UIColor(cgColor: color)
-        var red: CGFloat = 0
-        var green: CGFloat = 0
-        var blue: CGFloat = 0
-        var alpha: CGFloat = 0
-        guard uiColor.getRed(&red, green: &green, blue: &blue, alpha: &alpha) else { return nil }
-        return hexString(red: red, green: green, blue: blue)
+    nonisolated private static func hexString(from color: CGColor) -> String? {
+        let colorSpace = CGColorSpace(name: CGColorSpace.sRGB)
+        let resolvedColor = colorSpace.flatMap {
+            color.converted(to: $0, intent: .defaultIntent, options: nil)
+        } ?? color
+        guard let components = resolvedColor.components else { return nil }
+
+        if components.count >= 3 {
+            return hexString(red: components[0], green: components[1], blue: components[2])
+        }
+        if components.count == 2 {
+            return hexString(red: components[0], green: components[0], blue: components[0])
+        }
+        return nil
     }
 
     private static func averageHexColor(from image: UIImage) -> String? {
@@ -209,7 +215,7 @@ final class MusicContextService: Sendable, ContextMusicProviding {
         return String(format: "#%02X%02X%02X", bitmap[0], bitmap[1], bitmap[2])
     }
 
-    private static func hexString(red: CGFloat, green: CGFloat, blue: CGFloat) -> String {
+    nonisolated private static func hexString(red: CGFloat, green: CGFloat, blue: CGFloat) -> String {
         String(
             format: "#%02X%02X%02X",
             Int(max(0, min(1, red)) * 255),
@@ -218,15 +224,15 @@ final class MusicContextService: Sendable, ContextMusicProviding {
         )
     }
 
-    private static func contrastingTextHex(for backgroundHex: String) -> String {
+    nonisolated private static func contrastingTextHex(for backgroundHex: String) -> String {
         luminance(for: backgroundHex).map { $0 > 0.54 ? "#111111" : "#FFFFFF" } ?? "#FFFFFF"
     }
 
-    private static func contrastingSecondaryTextHex(for backgroundHex: String) -> String {
+    nonisolated private static func contrastingSecondaryTextHex(for backgroundHex: String) -> String {
         luminance(for: backgroundHex).map { $0 > 0.54 ? "#333333" : "#EDEDED" } ?? "#EDEDED"
     }
 
-    private static func luminance(for hex: String) -> Double? {
+    nonisolated private static func luminance(for hex: String) -> Double? {
         let cleaned = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
         guard cleaned.count == 6, let value = Int(cleaned, radix: 16) else { return nil }
         let red = Double((value >> 16) & 0xFF) / 255

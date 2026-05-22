@@ -94,7 +94,7 @@ struct MusicArtworkPalette: Codable, Hashable, Sendable {
     let primaryTextColorHex: String?
     let secondaryTextColorHex: String?
 
-    init(
+    nonisolated init(
         backgroundColorHex: String? = nil,
         primaryTextColorHex: String? = nil,
         secondaryTextColorHex: String? = nil
@@ -104,11 +104,11 @@ struct MusicArtworkPalette: Codable, Hashable, Sendable {
         self.secondaryTextColorHex = secondaryTextColorHex
     }
 
-    var isEmpty: Bool {
+    nonisolated var isEmpty: Bool {
         backgroundColorHex == nil && primaryTextColorHex == nil && secondaryTextColorHex == nil
     }
 
-    var metadata: [String: String] {
+    nonisolated var metadata: [String: String] {
         var metadata: [String: String] = [:]
         if let backgroundColorHex { metadata["artworkBackgroundColor"] = backgroundColorHex }
         if let primaryTextColorHex { metadata["artworkPrimaryTextColor"] = primaryTextColorHex }
