@@ -9,18 +9,24 @@ struct VoiceRecordingOverlayView: View {
     @State private var glowBreathing = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            Spacer(minLength: 0)
-
-            glowBubble
-
-            Spacer(minLength: 0).frame(maxHeight: 40)
-
-            if !isHoldToTalkMode {
-                stopButton
+        ZStack {
+            // Bubble: upper portion, independent of button
+            VStack(spacing: 0) {
+                Spacer().frame(minHeight: 60, maxHeight: 120)
+                glowBubble
+                Spacer()
             }
 
-            Spacer(minLength: 0).frame(height: 16)
+            // Stop button: lower portion, independent of bubble
+            VStack(spacing: 0) {
+                Spacer()
+                if !isHoldToTalkMode {
+                    stopButton
+                        .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                }
+                Spacer().frame(height: 28)
+            }
+            .animation(.spring(response: 0.28, dampingFraction: 0.8), value: isHoldToTalkMode)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear {
@@ -31,32 +37,55 @@ struct VoiceRecordingOverlayView: View {
         }
     }
 
+    // MARK: - Glow Bubble
+
     private var glowBubble: some View {
-        ZStack {
+        VStack(spacing: MorySpacing.medium) {
+            timerRow
+            transcriptView
+        }
+        .padding(.horizontal, 32)
+        .padding(.vertical, 28)
+        .frame(minWidth: 240, maxWidth: 300)
+        // Layer 2: frosted material with radial fade — no hard edges
+        .background {
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .mask {
+                    RadialGradient(
+                        colors: [
+                            .white,
+                            .white.opacity(0.92),
+                            .white.opacity(0.4),
+                            .clear
+                        ],
+                        center: .center,
+                        startRadius: 40,
+                        endRadius: 200
+                    )
+                }
+                .allowsHitTesting(false)
+        }
+        // Layer 1: large accent glow — overflow, doesn't affect layout
+        .background {
             RadialGradient(
                 colors: [
-                    Color.white.opacity(0.85),
-                    Color.accentColor.opacity(0.55),
-                    Color.accentColor.opacity(0.18),
+                    Color.accentColor.opacity(0.52),
+                    Color.accentColor.opacity(0.22),
                     Color.clear
                 ],
                 center: .center,
                 startRadius: 0,
-                endRadius: 160
+                endRadius: 200
             )
-            .frame(width: 380, height: 380)
-            .blur(radius: 36)
-            .scaleEffect(glowBreathing ? 1.06 : 1.0)
+            .frame(width: 480, height: 480)
+            .blur(radius: 50)
+            .scaleEffect(glowBreathing ? 1.08 : 1.0)
             .allowsHitTesting(false)
-
-            VStack(spacing: MorySpacing.medium) {
-                timerRow
-                transcriptView
-            }
-            .padding(.horizontal, MorySpacing.xLarge)
-            .frame(width: 300)
         }
     }
+
+    // MARK: - Content
 
     private var timerRow: some View {
         HStack(spacing: MorySpacing.small) {
@@ -64,6 +93,7 @@ struct VoiceRecordingOverlayView: View {
             Text(formatDuration(audioRecorder.recordingDuration))
                 .font(.caption.monospacedDigit().weight(.semibold))
                 .foregroundStyle(.secondary)
+                .shadow(color: Color.primary.opacity(0.1), radius: 2, x: 0, y: 1)
         }
     }
 
@@ -72,8 +102,11 @@ struct VoiceRecordingOverlayView: View {
             .font(.body.weight(.medium))
             .foregroundStyle(.primary)
             .multilineTextAlignment(.center)
+            .shadow(color: Color.primary.opacity(0.15), radius: 4, x: 0, y: 1)
             .animation(.default, value: transcriptText)
     }
+
+    // MARK: - Stop Button
 
     private var stopButton: some View {
         Button {
@@ -94,6 +127,8 @@ struct VoiceRecordingOverlayView: View {
         .accessibilityHint(Text("quickCapture.voice.stopSubmit.hint"))
     }
 
+    // MARK: - Helpers
+
     private var transcriptText: String {
         let live = audioRecorder.liveTranscription.trimmedOrNil
         if audioRecorder.isStopping {
@@ -110,6 +145,8 @@ struct VoiceRecordingOverlayView: View {
         return String(format: "%02d:%02d", totalSeconds / 60, totalSeconds % 60)
     }
 }
+
+// MARK: - Pulsing Dot
 
 private struct PulsingDot: View {
     let isActive: Bool
