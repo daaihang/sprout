@@ -186,6 +186,68 @@ final class IntelligencePreferenceStore {
 }
 
 @Model
+final class SelfProfileStore {
+    @Attribute(.unique) var syncKey: String
+    var id: UUID
+    var schemaVersion: Int
+    var selfEntityID: UUID
+    var displayName: String?
+    var aliases: [String]
+    var pronouns: [String]
+    var lifeRolesData: Data?
+    var longTermGoalsData: Data?
+    var preferencesData: Data?
+    var sensitiveBoundariesData: Data?
+    var importantRelationshipIDs: [UUID]
+    var commonPlaceIDs: [UUID]
+    var commonThemeIDs: [UUID]
+    var expressionPatternsData: Data?
+    var privacyModeRawValue: String
+    var createdAt: Date
+    var updatedAt: Date
+
+    init(
+        id: UUID = UUID(),
+        syncKey: String = SelfProfile.defaultSyncKey,
+        schemaVersion: Int = SelfProfile.schemaVersion,
+        selfEntityID: UUID,
+        displayName: String?,
+        aliases: [String],
+        pronouns: [String],
+        lifeRolesData: Data?,
+        longTermGoalsData: Data?,
+        preferencesData: Data?,
+        sensitiveBoundariesData: Data?,
+        importantRelationshipIDs: [UUID],
+        commonPlaceIDs: [UUID],
+        commonThemeIDs: [UUID],
+        expressionPatternsData: Data?,
+        privacyModeRawValue: String,
+        createdAt: Date,
+        updatedAt: Date
+    ) {
+        self.id = id
+        self.syncKey = syncKey
+        self.schemaVersion = schemaVersion
+        self.selfEntityID = selfEntityID
+        self.displayName = displayName
+        self.aliases = aliases
+        self.pronouns = pronouns
+        self.lifeRolesData = lifeRolesData
+        self.longTermGoalsData = longTermGoalsData
+        self.preferencesData = preferencesData
+        self.sensitiveBoundariesData = sensitiveBoundariesData
+        self.importantRelationshipIDs = importantRelationshipIDs
+        self.commonPlaceIDs = commonPlaceIDs
+        self.commonThemeIDs = commonThemeIDs
+        self.expressionPatternsData = expressionPatternsData
+        self.privacyModeRawValue = privacyModeRawValue
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+}
+
+@Model
 final class EntityProfileStore {
     @Attribute(.unique) var id: UUID
     var entityID: UUID

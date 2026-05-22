@@ -1403,6 +1403,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         try deleteAll(IntelligenceJobStore.self)
         try deleteAll(ClarificationQuestionStore.self)
         try deleteAll(PlaceProfileStore.self)
+        try deleteAll(SelfProfileStore.self)
         try deleteAll(EntityProfileStore.self)
         try deleteAll(HomeBoardPreferenceStore.self)
         try deleteAll(CompositionItemStore.self)
@@ -1499,6 +1500,28 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             modelContext.insert(IntelligencePreferenceStore(preferences: .defaults, featureFlags: flags))
         }
         try save()
+    }
+
+    func fetchSelfProfile() throws -> SelfProfile? {
+        try fetchSelfProfileStore()?.domainModel
+    }
+
+    func upsertSelfProfile(_ profile: SelfProfile) throws {
+        if let existing = try fetchSelfProfileStore(syncKey: profile.syncKey) {
+            existing.apply(domainModel: profile)
+        } else {
+            modelContext.insert(SelfProfileStore(domainModel: profile))
+        }
+        try save()
+    }
+
+    func ensureSelfProfile() throws -> SelfProfile {
+        if let existing = try fetchSelfProfile() {
+            return existing
+        }
+        let profile = SelfProfile()
+        try upsertSelfProfile(profile)
+        return profile
     }
 
     func fetchEntityProfile(entityID: UUID) throws -> EntityProfile? {
@@ -3138,6 +3161,14 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     private func fetchIntelligencePreferenceStore() throws -> IntelligencePreferenceStore? {
         let syncKey = IntelligencePreferences.defaultSyncKey
         let descriptor = FetchDescriptor<IntelligencePreferenceStore>(
+            predicate: #Predicate { $0.syncKey == syncKey },
+            sortBy: [SortDescriptor(\.updatedAt, order: .reverse)]
+        )
+        return try modelContext.fetch(descriptor).first
+    }
+
+    private func fetchSelfProfileStore(syncKey: String = SelfProfile.defaultSyncKey) throws -> SelfProfileStore? {
+        let descriptor = FetchDescriptor<SelfProfileStore>(
             predicate: #Predicate { $0.syncKey == syncKey },
             sortBy: [SortDescriptor(\.updatedAt, order: .reverse)]
         )

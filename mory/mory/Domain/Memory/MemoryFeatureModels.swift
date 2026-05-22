@@ -1029,6 +1029,9 @@ protocol MoryMemoryRepositorying: AnyObject {
     func saveIntelligencePreferences(_ preferences: IntelligencePreferences) throws
     func fetchV6FeatureFlags() throws -> V6FeatureFlags
     func saveV6FeatureFlags(_ flags: V6FeatureFlags) throws
+    func fetchSelfProfile() throws -> SelfProfile?
+    func upsertSelfProfile(_ profile: SelfProfile) throws
+    func ensureSelfProfile() throws -> SelfProfile
     func fetchEntityProfile(entityID: UUID) throws -> EntityProfile?
     func fetchEntityProfiles(kind: EntityKind?, limit: Int?) throws -> [EntityProfile]
     func upsertEntityProfile(_ profile: EntityProfile) throws

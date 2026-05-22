@@ -103,6 +103,9 @@ private final class MissingMemoryRepository: MoryMemoryRepositorying {
     func saveIntelligencePreferences(_ preferences: IntelligencePreferences) throws { let _: Void = fail() }
     func fetchV6FeatureFlags() throws -> V6FeatureFlags { fail() }
     func saveV6FeatureFlags(_ flags: V6FeatureFlags) throws { let _: Void = fail() }
+    func fetchSelfProfile() throws -> SelfProfile? { fail() }
+    func upsertSelfProfile(_ profile: SelfProfile) throws { let _: Void = fail() }
+    func ensureSelfProfile() throws -> SelfProfile { fail() }
     func fetchEntityProfile(entityID: UUID) throws -> EntityProfile? { fail() }
     func fetchEntityProfiles(kind: EntityKind?, limit: Int?) throws -> [EntityProfile] { fail() }
     func upsertEntityProfile(_ profile: EntityProfile) throws { let _: Void = fail() }

@@ -9,6 +9,39 @@ final class MoryMemoryRepositoryIntelligenceTests: XCTestCase {
         XCTAssertNotNil(container.mainContext)
     }
 
+    func testSelfProfileRoundTripAndDefaultCreation() throws {
+        let fixture = makeRepositoryFixture()
+        let repository = fixture.repository
+
+        XCTAssertNil(try repository.fetchSelfProfile())
+
+        var profile = try repository.ensureSelfProfile()
+        XCTAssertEqual(profile.syncKey, SelfProfile.defaultSyncKey)
+        XCTAssertTrue(profile.aliases.contains("我"))
+
+        profile.displayName = "Mory Tester"
+        profile.aliases.append("tester")
+        profile.lifeRoles = [SelfRole(label: "founder", detail: "building Mory", confidence: 1)]
+        profile.longTermGoals = [SelfGoal(title: "ship v7", status: "active")]
+        profile.preferences = [SelfPreference(key: "questionTone", value: "direct")]
+        profile.sensitiveBoundaries = [SensitiveBoundary(label: "health", keywords: ["medical"])]
+        profile.expressionPatterns = [ExpressionPattern(phrase: "I am done", interpretation: "may be venting", confidence: 0.7)]
+        profile.updatedAt = Date(timeIntervalSince1970: 1_900_000_000)
+        try repository.upsertSelfProfile(profile)
+
+        let stored = try XCTUnwrap(repository.fetchSelfProfile())
+        XCTAssertEqual(stored.displayName, "Mory Tester")
+        XCTAssertEqual(stored.aliases.last, "tester")
+        XCTAssertEqual(stored.lifeRoles.first?.label, "founder")
+        XCTAssertEqual(stored.longTermGoals.first?.title, "ship v7")
+        XCTAssertEqual(stored.preferences.first?.value, "direct")
+        XCTAssertEqual(stored.sensitiveBoundaries.first?.keywords, ["medical"])
+        XCTAssertEqual(stored.expressionPatterns.first?.interpretation, "may be venting")
+
+        let ensuredAgain = try repository.ensureSelfProfile()
+        XCTAssertEqual(ensuredAgain.id, stored.id)
+    }
+
     func testIntelligencePreferencesAndFeatureFlagsPersistAndSurviveLocalDataClear() throws {
         let fixture = makeRepositoryFixture()
         let repository = fixture.repository

@@ -306,6 +306,76 @@ extension IntelligencePreferenceStore {
 }
 
 @MainActor
+extension SelfProfileStore {
+    convenience init(domainModel: SelfProfile) {
+        self.init(
+            id: domainModel.id,
+            syncKey: domainModel.syncKey,
+            schemaVersion: domainModel.schemaVersion,
+            selfEntityID: domainModel.selfEntityID,
+            displayName: domainModel.displayName,
+            aliases: domainModel.aliases,
+            pronouns: domainModel.pronouns,
+            lifeRolesData: PersistenceCoding.encode(domainModel.lifeRoles),
+            longTermGoalsData: PersistenceCoding.encode(domainModel.longTermGoals),
+            preferencesData: PersistenceCoding.encode(domainModel.preferences),
+            sensitiveBoundariesData: PersistenceCoding.encode(domainModel.sensitiveBoundaries),
+            importantRelationshipIDs: domainModel.importantRelationshipIDs,
+            commonPlaceIDs: domainModel.commonPlaceIDs,
+            commonThemeIDs: domainModel.commonThemeIDs,
+            expressionPatternsData: PersistenceCoding.encode(domainModel.expressionPatterns),
+            privacyModeRawValue: domainModel.privacyMode.rawValue,
+            createdAt: domainModel.createdAt,
+            updatedAt: domainModel.updatedAt
+        )
+    }
+
+    var domainModel: SelfProfile {
+        SelfProfile(
+            id: id,
+            syncKey: syncKey,
+            schemaVersion: schemaVersion,
+            selfEntityID: selfEntityID,
+            displayName: displayName,
+            aliases: aliases,
+            pronouns: pronouns,
+            lifeRoles: PersistenceCoding.decode([SelfRole].self, from: lifeRolesData) ?? [],
+            longTermGoals: PersistenceCoding.decode([SelfGoal].self, from: longTermGoalsData) ?? [],
+            preferences: PersistenceCoding.decode([SelfPreference].self, from: preferencesData) ?? [],
+            sensitiveBoundaries: PersistenceCoding.decode([SensitiveBoundary].self, from: sensitiveBoundariesData) ?? [],
+            importantRelationshipIDs: importantRelationshipIDs,
+            commonPlaceIDs: commonPlaceIDs,
+            commonThemeIDs: commonThemeIDs,
+            expressionPatterns: PersistenceCoding.decode([ExpressionPattern].self, from: expressionPatternsData) ?? [],
+            privacyMode: SelfProfilePrivacyMode(rawValue: privacyModeRawValue) ?? .localFirst,
+            createdAt: createdAt,
+            updatedAt: updatedAt
+        )
+    }
+
+    func apply(domainModel: SelfProfile) {
+        id = domainModel.id
+        syncKey = domainModel.syncKey
+        schemaVersion = domainModel.schemaVersion
+        selfEntityID = domainModel.selfEntityID
+        displayName = domainModel.displayName
+        aliases = domainModel.aliases
+        pronouns = domainModel.pronouns
+        lifeRolesData = PersistenceCoding.encode(domainModel.lifeRoles)
+        longTermGoalsData = PersistenceCoding.encode(domainModel.longTermGoals)
+        preferencesData = PersistenceCoding.encode(domainModel.preferences)
+        sensitiveBoundariesData = PersistenceCoding.encode(domainModel.sensitiveBoundaries)
+        importantRelationshipIDs = domainModel.importantRelationshipIDs
+        commonPlaceIDs = domainModel.commonPlaceIDs
+        commonThemeIDs = domainModel.commonThemeIDs
+        expressionPatternsData = PersistenceCoding.encode(domainModel.expressionPatterns)
+        privacyModeRawValue = domainModel.privacyMode.rawValue
+        createdAt = domainModel.createdAt
+        updatedAt = domainModel.updatedAt
+    }
+}
+
+@MainActor
 extension EntityProfileStore {
     convenience init(domainModel: EntityProfile) {
         self.init(

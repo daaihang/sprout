@@ -96,6 +96,6 @@ final class MoryShellNavigationTests: XCTestCase {
         XCTAssertEqual(rows.first { $0.id == .microphone }?.status, .authorized)
         XCTAssertEqual(rows.first { $0.id == .speech }?.status, .restricted)
         XCTAssertEqual(rows.first { $0.id == .music }?.status, .denied)
-        XCTAssertEqual(rows.first { $0.id == .weather }?.status, .authorized)
+        XCTAssertEqual(rows.first { $0.id == .weather }?.status, .diagnosticRequired)
     }
 }

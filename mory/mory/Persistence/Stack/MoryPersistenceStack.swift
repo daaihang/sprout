@@ -46,6 +46,7 @@ struct MoryPersistenceStack {
         QualityTuningPreferenceStore.self,
         HomeBoardPreferenceStore.self,
         IntelligencePreferenceStore.self,
+        SelfProfileStore.self,
         EntityProfileStore.self,
         PlaceProfileStore.self,
         ClarificationQuestionStore.self,

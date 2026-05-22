@@ -95,6 +95,16 @@ struct DebugDiagnosticsView: View {
                 }
 
                 NavigationLink {
+                    DebugAnalysisContextPackView()
+                } label: {
+                    DebugMenuRow(
+                        icon: "rectangle.stack.badge.person.crop",
+                        title: "Analysis Context Pack",
+                        subtitle: "Build the v7 local context pack for the latest memory and inspect budget, privacy, and evidence"
+                    )
+                }
+
+                NavigationLink {
                     DebugHomeBoardDiagnosticsView()
                 } label: {
                     DebugMenuRow(

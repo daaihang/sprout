@@ -52,6 +52,15 @@ Tests:
 - semantic-search-disabled fallback,
 - no full-history payload.
 
+Completion evidence:
+
+- `SelfProfile` domain model and SwiftData-backed `SelfProfileStore` are implemented locally.
+- repository APIs can fetch, upsert, and create the default self profile.
+- `SelfReferenceResolver`, `AnalysisContextPack`, `ContextPackBuilder`, `ContextRanker`, `ContextBudgeter`, and `PrivacyGate` are implemented as Phase 1 local runtime services.
+- Debug Center includes an `Analysis Context Pack` viewer for latest-memory pack inspection.
+- Phase 1 tests cover self-reference, repository roundtrip, ranking, privacy drop, semantic-disabled fallback, and budget cap behavior.
+- Analyze payload and cloud contracts remain unchanged; v7 cloud consumption starts in Phase 5.
+
 ## Phase 2: Entity Resolution + GraphDelta v2
 
 Goal:
@@ -195,7 +204,7 @@ Exit criteria:
 | Phase | Current status | Gap |
 | --- | --- | --- |
 | Phase 0 | completed | docs/gap matrix completed; implementation starts at Phase 1 |
-| Phase 1 | not started | requires model + builder |
+| Phase 1 | completed | local SelfProfile persistence and inspectable context pack skeleton are implemented; Analyze v7 integration starts at Phase 5 |
 | Phase 2 | not started | place has partial precedent, person missing |
 | Phase 3 | not started | current EntityProfile too thin |
 | Phase 4 | not started | mood is free text; Journaling Suggestions absent |
