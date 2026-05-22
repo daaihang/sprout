@@ -219,6 +219,15 @@ Tests:
 - sensitive preview suppression,
 - remote push writeback.
 
+Completion evidence:
+
+- `BackgroundTaskCoordinator` registers `BGProcessingTask` (ID: `dev.mory.intelligence.process`) and `BGAppRefreshTask` (ID: `dev.mory.intelligence.refresh`) before first runloop via `MoryAppDelegate`.
+- `NotificationDeliveryRouter` routes `NotificationIntent` to `.local` or `.remote` channel based on APNS token presence in `PushDeviceRegistrationStore`.
+- `BackgroundURLSessionInfrastructure` provides `BackgroundURLSessionCompletionStore`, `BackgroundURLSessionDelegate`, and a `MoryAPIClient.backgroundSession` static lazy property.
+- `MoryAppDelegate` handles silent push `didReceiveRemoteNotification` and `handleEventsForBackgroundURLSession` callbacks.
+- `Info.plist` includes `UIBackgroundModes: [fetch, processing]` and `BGTaskSchedulerPermittedIdentifiers` with both task IDs.
+- Tests: `BackgroundTaskCoordinatorTests` (4 tests: nil-before-configure, configure stores repo, scheduleIfNeeded no-crash, reconfigure) and `NotificationDeliveryRouterTests` (2 tests: local channel when no token, remote channel when token present).
+
 ## Phase 7: Eval, Hardening, And Release Gate
 
 Goal:
@@ -252,5 +261,5 @@ Exit criteria:
 | Phase 3 | completed | local PersonProfile persistence, deterministic portrait refresh jobs, mutation actions, evidence invalidation, and debug inspection are implemented; cloud AI portrait proposals remain Phase 5 |
 | Phase 4 | completed | local structured affect persistence, correction events, context-pack affect history, and Journaling suggestion draft mapping are implemented; real Apple picker entitlement/App Intents/Share extension remain later phases |
 | Phase 5 | completed | Analyze v7 contract and debug dual-run are implemented; production proposal consumption and replacement of legacy Analyze remain later work |
-| Phase 6 | not started | no BGTask/background URLSession production loop |
-| Phase 7 | not started | eval fixtures and debug surfaces missing |
+| Phase 6 | completed | BGTask (BGProcessingTask + BGAppRefreshTask) + BackgroundURLSession + NotificationDeliveryRouter + silent push handler implemented; tests in BackgroundTaskCoordinatorTests + NotificationDeliveryRouterTests |
+| Phase 7 | in progress | applyGraphDelta + ClarificationQuestions debug view + BGTask/router tests + eval golden fixture tests complete; notification quality dashboard and privacy audit deferred (no real users at dev stage) |

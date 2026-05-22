@@ -86,21 +86,21 @@ Relevant code:
 
 ## 7. Background And Notifications
 
-| Current | Impact | v7 fix |
+| Gap | Status | Resolution |
 | --- | --- | --- |
-| launch/home recovery is primary | app must open before many jobs run | BGTask + launch fallback |
-| no background URLSession pipeline | deferred network is less durable | background upload/download |
-| APNs foundation exists | not fully connected to proactive intent production | remote intent orchestrator |
-| local notifications exist | need unified local/remote policy and writeback | notification router |
-| daily one question appears mostly in app lifecycle | weak retention outside foreground | BGAppRefresh + APNs ready events |
+| launch/home recovery is primary; BGTask missing | ✅ resolved | `BackgroundTaskCoordinator` registers `BGProcessingTask` + `BGAppRefreshTask`; `MoryAppDelegate` handles expiry callbacks |
+| no background URLSession pipeline | ✅ resolved | `BackgroundURLSessionInfrastructure` provides `BackgroundURLSessionCompletionStore`, `BackgroundURLSessionDelegate`, `MoryAPIClient.backgroundSession` |
+| APNs not fully connected to proactive intent production | ✅ resolved | `NotificationDeliveryRouter` routes intents to remote (APNS) or local channel based on token presence |
+| local notifications exist; no unified local/remote router | ✅ resolved | `NotificationDeliveryRouter` upserts intent + routes to remote push service or `LocalNotificationScheduler` |
+| daily question weak outside foreground | ✅ resolved | `BGAppRefreshTask` triggers `IntelligenceJobWorker`; silent push handler schedules pending local intents |
 
 Relevant code:
 
-- `mory/mory/Infrastructure/Intelligence/AppIntelligenceRecoveryService.swift`
-- `mory/mory/Infrastructure/Notifications/NotificationIntentPreparationService.swift`
-- `mory/mory/Infrastructure/Notifications/LocalNotificationScheduler.swift`
+- `mory/mory/Infrastructure/Intelligence/BackgroundTaskCoordinator.swift`
+- `mory/mory/Infrastructure/Networking/BackgroundURLSessionInfrastructure.swift`
+- `mory/mory/Infrastructure/Notifications/NotificationDeliveryRouter.swift`
 - `mory/mory/Infrastructure/Notifications/RemotePushSyncService.swift`
-- `server/internal/notification/push_delivery_worker.go`
+- `mory/mory/App/MoryAppDelegate.swift`
 
 ## 8. Multimodal Context
 
