@@ -393,6 +393,91 @@ struct MemoryEditDraft: Hashable, Sendable {
     }
 }
 
+enum MemoryMutationField<Value: Hashable & Sendable>: Hashable, Sendable {
+    case unchanged
+    case set(Value?)
+
+    var shouldUpdate: Bool {
+        if case .set = self { true } else { false }
+    }
+
+    var value: Value? {
+        if case let .set(value) = self { value } else { nil }
+    }
+}
+
+struct MemoryMutationRecordPatch: Hashable, Sendable {
+    var rawText: MemoryMutationField<String>
+    var userMood: MemoryMutationField<String>
+    var inputContext: MemoryMutationField<String>
+    var captureSource: MemoryMutationField<CaptureSource>
+
+    init(
+        rawText: MemoryMutationField<String> = .unchanged,
+        userMood: MemoryMutationField<String> = .unchanged,
+        inputContext: MemoryMutationField<String> = .unchanged,
+        captureSource: MemoryMutationField<CaptureSource> = .unchanged
+    ) {
+        self.rawText = rawText
+        self.userMood = userMood
+        self.inputContext = inputContext
+        self.captureSource = captureSource
+    }
+
+    var hasChanges: Bool {
+        rawText.shouldUpdate
+            || userMood.shouldUpdate
+            || inputContext.shouldUpdate
+            || captureSource.shouldUpdate
+    }
+}
+
+struct MemoryMutationDraft: Hashable, Sendable {
+    var recordPatch: MemoryMutationRecordPatch
+    var addedArtifacts: [CaptureArtifactDraft]
+    var updatedArtifacts: [Artifact]
+    var deletedArtifactIDs: [UUID]
+    var artifactOrder: [UUID]?
+
+    init(
+        recordPatch: MemoryMutationRecordPatch = MemoryMutationRecordPatch(),
+        addedArtifacts: [CaptureArtifactDraft] = [],
+        updatedArtifacts: [Artifact] = [],
+        deletedArtifactIDs: [UUID] = [],
+        artifactOrder: [UUID]? = nil
+    ) {
+        self.recordPatch = recordPatch
+        self.addedArtifacts = addedArtifacts
+        self.updatedArtifacts = updatedArtifacts
+        self.deletedArtifactIDs = deletedArtifactIDs
+        self.artifactOrder = artifactOrder
+    }
+
+    var hasChanges: Bool {
+        recordPatch.hasChanges
+            || !addedArtifacts.isEmpty
+            || !updatedArtifacts.isEmpty
+            || !deletedArtifactIDs.isEmpty
+            || artifactOrder != nil
+    }
+}
+
+enum MemoryMutationRefreshPolicy: Hashable, Sendable {
+    case markPending
+    case runImmediately
+}
+
+struct MemoryMutationResult: Hashable, Sendable {
+    let mutationID: UUID
+    let detail: MemoryDetailSnapshot?
+    let addedArtifactIDs: [UUID]
+    let updatedArtifactIDs: [UUID]
+    let deletedArtifactIDs: [UUID]
+    let reorderedArtifactIDs: [UUID]
+    let invalidatedDerivedData: Bool
+    let pipelineStatus: MemoryPipelineStatusSnapshot?
+}
+
 enum MemoryPipelineStage: String, Codable, CaseIterable, Identifiable, Sendable {
     case pending
     case running
@@ -888,6 +973,7 @@ struct InsightsPresentationSnapshot: Hashable, Sendable {
 @MainActor
 protocol MoryMemoryRepositorying: AnyObject {
     func createMemory(from draft: MemoryCaptureDraft) async throws -> MemorySummary
+    func applyMemoryMutation(recordID: UUID, mutation: MemoryMutationDraft, refreshPolicy: MemoryMutationRefreshPolicy) async throws -> MemoryMutationResult
     func appendArtifacts(recordID: UUID, drafts: [CaptureArtifactDraft]) async throws -> MemorySummary?
     func updateMemory(recordID: UUID, draft: MemoryEditDraft) async throws -> MemoryDetailSnapshot?
     func deleteMemory(recordID: UUID) throws

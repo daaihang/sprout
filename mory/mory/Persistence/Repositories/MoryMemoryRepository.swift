@@ -81,6 +81,180 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         return summary
     }
 
+    func applyMemoryMutation(
+        recordID: UUID,
+        mutation: MemoryMutationDraft,
+        refreshPolicy: MemoryMutationRefreshPolicy
+    ) async throws -> MemoryMutationResult {
+        let mutationID = UUID()
+        guard mutation.hasChanges else {
+            let detail = try fetchMemoryDetail(recordID: recordID)
+            let pipelineStatus = if let detail {
+                detail.pipelineStatus
+            } else {
+                try fetchPipelineStatus(recordID: recordID)
+            }
+            return MemoryMutationResult(
+                mutationID: mutationID,
+                detail: detail,
+                addedArtifactIDs: [],
+                updatedArtifactIDs: [],
+                deletedArtifactIDs: [],
+                reorderedArtifactIDs: [],
+                invalidatedDerivedData: false,
+                pipelineStatus: pipelineStatus
+            )
+        }
+
+        guard let recordStore = try modelContext.fetch(
+            FetchDescriptor<RecordShellStore>(predicate: #Predicate { $0.id == recordID })
+        ).first else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+
+        let now = Date.now
+        var updatedRecord = recordStore.domainModel
+        let existingArtifactIDs = Set(updatedRecord.artifactIDs)
+        let deletedArtifactIDs = orderedUniqueUUIDs(mutation.deletedArtifactIDs)
+
+        switch mutation.recordPatch.rawText {
+        case .unchanged:
+            break
+        case let .set(rawText):
+            updatedRecord.rawText = rawText?.trimmedOrNil ?? updatedRecord.rawText
+        }
+
+        switch mutation.recordPatch.userMood {
+        case .unchanged:
+            break
+        case let .set(userMood):
+            updatedRecord.userMood = userMood?.trimmedOrNil
+        }
+
+        switch mutation.recordPatch.inputContext {
+        case .unchanged:
+            break
+        case let .set(inputContext):
+            updatedRecord.inputContext = inputContext?.trimmedOrNil
+        }
+
+        switch mutation.recordPatch.captureSource {
+        case .unchanged:
+            break
+        case let .set(captureSource):
+            if let captureSource {
+                updatedRecord.captureSource = captureSource
+            }
+        }
+
+        let addedArtifacts = mutation.addedArtifacts.isEmpty
+            ? []
+            : captureArtifactBuilder.buildArtifacts(
+                from: MemoryCaptureDraft(rawText: "", artifacts: mutation.addedArtifacts),
+                recordID: recordID,
+                createdAt: now
+            )
+
+        var updatedArtifactIDs: [UUID] = []
+        var normalizedUpdatedArtifacts: [Artifact] = []
+        for var artifact in mutation.updatedArtifacts {
+            guard artifact.recordID == recordID else {
+                throw CocoaError(.fileNoSuchFile)
+            }
+            guard try fetchArtifact(id: artifact.id)?.recordID == recordID else {
+                throw CocoaError(.fileNoSuchFile)
+            }
+            artifact.updatedAt = now
+            normalizedUpdatedArtifacts.append(artifact)
+            updatedArtifactIDs.append(artifact.id)
+        }
+        updatedArtifactIDs = orderedUniqueUUIDs(updatedArtifactIDs)
+
+        for artifactID in deletedArtifactIDs {
+            let belongsToRecord: Bool
+            if existingArtifactIDs.contains(artifactID) {
+                belongsToRecord = true
+            } else {
+                belongsToRecord = try fetchArtifact(id: artifactID)?.recordID == recordID
+            }
+            guard belongsToRecord else {
+                throw CocoaError(.fileNoSuchFile)
+            }
+        }
+
+        var artifactIDs = updatedRecord.artifactIDs
+        artifactIDs.removeAll { deletedArtifactIDs.contains($0) }
+        artifactIDs.append(contentsOf: addedArtifacts.map(\.id))
+        artifactIDs = orderedUniqueUUIDs(artifactIDs)
+
+        var reorderedArtifactIDs: [UUID] = []
+        if let requestedOrder = mutation.artifactOrder {
+            let uniqueRequestedOrder = orderedUniqueUUIDs(requestedOrder)
+            let requestedSet = Set(uniqueRequestedOrder)
+            let knownSet = Set(artifactIDs)
+            guard requestedSet.isSubset(of: knownSet) else {
+                throw CocoaError(.fileNoSuchFile)
+            }
+            let remaining = artifactIDs.filter { !requestedSet.contains($0) }
+            artifactIDs = uniqueRequestedOrder + remaining
+            reorderedArtifactIDs = uniqueRequestedOrder
+        }
+
+        try purgeDerivedDataForRefresh(recordID: recordID)
+
+        for artifact in addedArtifacts {
+            try upsert(artifact: artifact)
+        }
+        for artifact in normalizedUpdatedArtifacts {
+            try upsert(artifact: artifact)
+        }
+        for artifactID in deletedArtifactIDs {
+            if let store = try modelContext.fetch(FetchDescriptor<ArtifactStore>(predicate: #Predicate { $0.id == artifactID })).first {
+                modelContext.delete(store)
+            }
+        }
+
+        updatedRecord.artifactIDs = artifactIDs
+        updatedRecord.updatedAt = now
+        recordStore.apply(domainModel: updatedRecord)
+
+        try upsertPendingPipelineStatus(recordID: recordID, updatedAt: now)
+        try save()
+
+        var detail = try fetchMemoryDetail(recordID: recordID)
+        if let detail {
+            await indexMemoryIfPossible(
+                makeMemorySummary(
+                    record: detail.record,
+                    artifacts: detail.artifacts,
+                    pipelineStatus: detail.pipelineStatus
+                )
+            )
+        }
+
+        if refreshPolicy == .runImmediately {
+            try await refreshMemoryPipeline(recordID: recordID)
+            detail = try fetchMemoryDetail(recordID: recordID)
+        }
+
+        let pipelineStatus = if let detail {
+            detail.pipelineStatus
+        } else {
+            try fetchPipelineStatus(recordID: recordID)
+        }
+
+        return MemoryMutationResult(
+            mutationID: mutationID,
+            detail: detail,
+            addedArtifactIDs: addedArtifacts.map(\.id),
+            updatedArtifactIDs: updatedArtifactIDs,
+            deletedArtifactIDs: deletedArtifactIDs,
+            reorderedArtifactIDs: reorderedArtifactIDs,
+            invalidatedDerivedData: true,
+            pipelineStatus: pipelineStatus
+        )
+    }
+
     func appendArtifacts(recordID: UUID, drafts: [CaptureArtifactDraft]) async throws -> MemorySummary? {
         guard !drafts.isEmpty else {
             guard let record = try fetchRecordShell(id: recordID) else { return nil }
@@ -91,58 +265,17 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             )
         }
 
-        guard let recordStore = try modelContext.fetch(
-            FetchDescriptor<RecordShellStore>(predicate: #Predicate { $0.id == recordID })
-        ).first else {
-            return nil
-        }
-
-        let now = Date.now
-        let draft = MemoryCaptureDraft(rawText: recordStore.rawText, artifacts: drafts)
-        let newArtifacts = captureArtifactBuilder.buildArtifacts(from: draft, recordID: recordID, createdAt: now)
-        guard !newArtifacts.isEmpty else {
-            return try makeMemorySummary(
-                record: recordStore.domainModel,
-                artifacts: fetchArtifacts(recordID: recordID),
-                pipelineStatus: fetchPipelineStatus(recordID: recordID)
-            )
-        }
-
-        for artifact in newArtifacts {
-            try upsert(artifact: artifact)
-        }
-
-        var updatedRecord = recordStore.domainModel
-        updatedRecord.artifactIDs.append(contentsOf: newArtifacts.map(\.id))
-        updatedRecord.artifactIDs = Array(NSOrderedSet(array: updatedRecord.artifactIDs)) as? [UUID] ?? Array(Set(updatedRecord.artifactIDs))
-        updatedRecord.updatedAt = now
-        recordStore.apply(domainModel: updatedRecord)
-
-        try upsertPipelineStatus(
-            MemoryPipelineStatusSnapshot(
-                recordID: recordID,
-                stage: .pending,
-                requestID: try fetchPipelineStatus(recordID: recordID)?.requestID,
-                lastError: nil,
-                requestBody: try fetchPipelineStatus(recordID: recordID)?.requestBody,
-                responseBody: nil,
-                rawErrorBody: nil,
-                lastHTTPStatusCode: nil,
-                failedStage: nil,
-                lastAttemptAt: nil,
-                completedAt: nil,
-                updatedAt: now
-            )
+        let result = try await applyMemoryMutation(
+            recordID: recordID,
+            mutation: MemoryMutationDraft(addedArtifacts: drafts),
+            refreshPolicy: .markPending
         )
-        try save()
-
-        let summary = try makeMemorySummary(
-            record: updatedRecord,
-            artifacts: fetchArtifacts(recordID: recordID),
-            pipelineStatus: fetchPipelineStatus(recordID: recordID)
+        guard let detail = result.detail else { return nil }
+        return makeMemorySummary(
+            record: detail.record,
+            artifacts: detail.artifacts,
+            pipelineStatus: detail.pipelineStatus
         )
-        await indexMemoryIfPossible(summary)
-        return summary
     }
 
     func deleteMemory(recordID: UUID) throws {
@@ -162,69 +295,26 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     }
 
     func updateMemory(recordID: UUID, draft: MemoryEditDraft) async throws -> MemoryDetailSnapshot? {
-        guard let existingRecordStore = try modelContext.fetch(
-            FetchDescriptor<RecordShellStore>(predicate: #Predicate { $0.id == recordID })
-        ).first else {
-            throw CocoaError(.fileNoSuchFile)
-        }
-
-        let now = Date.now
-        let trimmedRawText = draft.rawText.trimmedOrNil ?? existingRecordStore.rawText
-        var updatedRecord = existingRecordStore.domainModel
-        updatedRecord.rawText = trimmedRawText
-        updatedRecord.userMood = draft.userMood?.trimmedOrNil
-        updatedRecord.inputContext = draft.inputContext?.trimmedOrNil
-        updatedRecord.updatedAt = now
-
-        existingRecordStore.apply(domainModel: updatedRecord)
-
+        let addedArtifacts: [CaptureArtifactDraft]
         if let appendedArtifactText = draft.appendedArtifactText?.trimmedOrNil {
-            let appendedArtifact = Artifact(
-                recordID: recordID,
-                kind: .text,
-                title: appendedArtifactText.firstMeaningfulLine ?? "Added Note",
-                summary: appendedArtifactText,
-                textContent: appendedArtifactText,
-                payload: .text(appendedArtifactText),
-                metadata: ["origin": "memory_detail_edit"],
-                createdAt: now,
-                updatedAt: now
-            )
-            try upsert(artifact: appendedArtifact)
-            updatedRecord.artifactIDs.append(appendedArtifact.id)
-            updatedRecord.artifactIDs = Array(NSOrderedSet(array: updatedRecord.artifactIDs)) as? [UUID] ?? Array(Set(updatedRecord.artifactIDs))
-            existingRecordStore.apply(domainModel: updatedRecord)
+            addedArtifacts = [.text(title: appendedArtifactText.firstMeaningfulLine ?? "Added Note", body: appendedArtifactText)]
+        } else {
+            addedArtifacts = []
         }
 
-        try upsertPipelineStatus(
-            MemoryPipelineStatusSnapshot(
-                recordID: recordID,
-                stage: .pending,
-                requestID: nil,
-                lastError: nil,
-                requestBody: nil,
-                responseBody: nil,
-                rawErrorBody: nil,
-                lastHTTPStatusCode: nil,
-                failedStage: nil,
-                lastAttemptAt: nil,
-                completedAt: nil,
-                updatedAt: now
-            )
+        let result = try await applyMemoryMutation(
+            recordID: recordID,
+            mutation: MemoryMutationDraft(
+                recordPatch: MemoryMutationRecordPatch(
+                    rawText: .set(draft.rawText),
+                    userMood: .set(draft.userMood),
+                    inputContext: .set(draft.inputContext)
+                ),
+                addedArtifacts: addedArtifacts
+            ),
+            refreshPolicy: .markPending
         )
-        try save()
-
-        let detail = try fetchMemoryDetail(recordID: recordID)
-        if let detail {
-            await indexMemoryIfPossible(
-                makeMemorySummary(
-                    record: detail.record,
-                    artifacts: detail.artifacts,
-                    pipelineStatus: detail.pipelineStatus
-                )
-            )
-        }
-        return detail
+        return result.detail
     }
 
     func refreshMemoryPipeline(recordID: UUID) async throws {
@@ -2123,6 +2213,30 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
 
     private func purgeDerivedDataForRefresh(recordID: UUID) throws {
         try purgeDerivedData(forRecordIDs: [recordID], includePipelineStatus: false)
+    }
+
+    private func upsertPendingPipelineStatus(recordID: UUID, updatedAt: Date) throws {
+        try upsertPipelineStatus(
+            MemoryPipelineStatusSnapshot(
+                recordID: recordID,
+                stage: .pending,
+                requestID: nil,
+                lastError: nil,
+                requestBody: nil,
+                responseBody: nil,
+                rawErrorBody: nil,
+                lastHTTPStatusCode: nil,
+                failedStage: nil,
+                lastAttemptAt: nil,
+                completedAt: nil,
+                updatedAt: updatedAt
+            )
+        )
+    }
+
+    private func orderedUniqueUUIDs(_ ids: [UUID]) -> [UUID] {
+        var seen = Set<UUID>()
+        return ids.filter { seen.insert($0).inserted }
     }
 
     private func runLocalIntelligenceLoop(record: RecordShell, artifacts: [Artifact]) throws {

@@ -447,7 +447,8 @@ struct CaptureComposerView: View {
         isCollectingContext = true
         defer { isCollectingContext = false }
         let collectedAt = Date.now
-        let drafts = await ContextAutoCollector().collectContextDrafts()
+        let policy = (try? memoryRepository.fetchUserSettingsPreference().defaultContextSelection) ?? .allAvailable
+        let drafts = await ContextAutoCollector().collectContextDrafts(policy: policy)
         contextCandidates = drafts.map { draft in
             ContextCandidate(
                 draft: draft,

@@ -2,10 +2,14 @@ import Foundation
 import WeatherKit
 import CoreLocation
 
-final class WeatherContextService: Sendable {
+final class WeatherContextService: Sendable, ContextWeatherProviding {
 
-    func captureCurrentWeather(location: CLLocation) async -> CaptureArtifactDraft? {
-        guard let weather = try? await WeatherService.shared.weather(for: location) else { return nil }
+    func captureWeather(location: ContextLocationSnapshot) async throws -> CaptureArtifactDraft {
+        try await captureCurrentWeather(location: location.clLocation)
+    }
+
+    func captureCurrentWeather(location: CLLocation) async throws -> CaptureArtifactDraft {
+        let weather = try await WeatherService.shared.weather(for: location)
         let current = weather.currentWeather
 
         return .weather(

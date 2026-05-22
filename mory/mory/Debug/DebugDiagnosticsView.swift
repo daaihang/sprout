@@ -1121,8 +1121,11 @@ private struct DebugPhotoTestView: View {
 }
 
 private struct DebugContextServicesTestView: View {
+    @Environment(\.memoryRepository) private var memoryRepository
+
     @StateObject private var permissionManager = ContextPermissionManager(locationService: LocationContextService())
     @State private var drafts: [CaptureArtifactDraft] = []
+    @State private var diagnostics: [ContextCollectionDiagnostic] = []
     @State private var isCollecting = false
     @State private var message: String?
 
@@ -1170,6 +1173,17 @@ private struct DebugContextServicesTestView: View {
                 }
             }
 
+            if !diagnostics.isEmpty {
+                Section("Diagnostics") {
+                    ForEach(diagnostics) { diagnostic in
+                        DebugCapabilityChecklistRow(
+                            title: "\(diagnostic.component.rawValue): \(diagnostic.status.rawValue)",
+                            detail: "\(diagnostic.elapsedMilliseconds)ms · \(diagnostic.message)"
+                        )
+                    }
+                }
+            }
+
             if let message {
                 Section {
                     Text(message)
@@ -1190,10 +1204,16 @@ private struct DebugContextServicesTestView: View {
         isCollecting = true
         drafts = []
         message = nil
+        diagnostics = []
         defer { isCollecting = false }
 
-        drafts = await ContextAutoCollector().collectContextDrafts()
-        message = drafts.isEmpty ? String(localized: "debug.context.empty") : String(format: String(localized: "debug.context.count"), drafts.count)
+        let policy = (try? memoryRepository.fetchUserSettingsPreference().defaultContextSelection) ?? .allAvailable
+        let result = await ContextAutoCollector().collectContext(policy: policy)
+        drafts = result.drafts
+        diagnostics = result.diagnostics
+        message = drafts.isEmpty
+            ? "\(String(localized: "debug.context.empty")) · \(result.elapsedMilliseconds)ms"
+            : "\(String(format: String(localized: "debug.context.count"), drafts.count)) · \(result.elapsedMilliseconds)ms"
         permissionManager.refresh()
     }
 
@@ -1676,14 +1696,37 @@ private struct DebugPermissionMatrixView: View {
             weatherStatus = String(localized: "debug.permission.weather.locationRequired")
             return
         }
-        guard let location = await locationService.currentLocation() else {
-            weatherStatus = String(localized: "debug.permission.weather.noLocation")
+        let location: ContextLocationSnapshot
+        do {
+            location = try await locationService.currentLocationSnapshot(timeout: 5)
+        } catch {
+            weatherStatus = "\(String(localized: "debug.permission.weather.noLocation"))\n\(error.localizedDescription)"
             return
         }
-        if let draft = await WeatherContextService().captureCurrentWeather(location: location) {
-            weatherStatus = draft.captureSummary
-        } else {
-            weatherStatus = String(localized: "debug.permission.weather.failed")
+
+        let placeStartedAt = Date()
+        let place = await PlaceContextService().capturePlace(location: location)
+        let placeElapsed = Int(Date().timeIntervalSince(placeStartedAt) * 1_000)
+        let placeLine = [
+            "Place: \(place.draft.captureSummary)",
+            "\(place.diagnostic.status.rawValue) · \(placeElapsed)ms · \(place.diagnostic.message)"
+        ].joined(separator: "\n")
+
+        do {
+            let startedAt = Date()
+            let draft = try await WeatherContextService().captureWeather(location: location)
+            let elapsed = Int(Date().timeIntervalSince(startedAt) * 1_000)
+            weatherStatus = [
+                "Location: \(location.coordinateSummary)",
+                placeLine,
+                "Weather: \(draft.captureSummary)\nsuccess · \(elapsed)ms"
+            ].joined(separator: "\n")
+        } catch {
+            weatherStatus = [
+                "Location: \(location.coordinateSummary)",
+                placeLine,
+                "\(String(localized: "debug.permission.weather.failed"))\n\(error.localizedDescription)"
+            ].joined(separator: "\n")
         }
     }
 
@@ -3406,7 +3449,8 @@ private struct DebugFullDiagnosticsView: View {
 
         appendLog("Creating custom diagnostic memory...")
         do {
-            let contextDrafts = customIncludeAutoContext ? await ContextAutoCollector().collectContextDrafts() : []
+            let policy = (try? memoryRepository.fetchUserSettingsPreference().defaultContextSelection) ?? .allAvailable
+            let contextDrafts = customIncludeAutoContext ? await ContextAutoCollector().collectContextDrafts(policy: policy) : []
             customContextDrafts = contextDrafts
             let inputContext = [
                 "debug fixture seed",

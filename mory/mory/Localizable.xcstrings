@@ -1075,6 +1075,7 @@
       }
     },
     "capture.card.audio.transcriptAdded" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1123,6 +1124,7 @@
       }
     },
     "capture.card.kind.location" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1347,6 +1349,7 @@
       }
     },
     "capture.card.music.attached" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1798,6 +1801,7 @@
       }
     },
     "capture.card.todo.attached" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -11370,6 +11374,9 @@
         }
       }
     },
+    "Diagnostics" : {
+
+    },
     "Disable tuning runtime" : {
       "localizations" : {
         "zh-Hans" : {
@@ -14104,6 +14111,57 @@
         }
       }
     },
+    "memory.edit.addAttachment.placeholder" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add one more note to this memory"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "给这条记忆补充一句"
+          }
+        }
+      }
+    },
+    "memory.edit.attachments.footer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deleting or reordering attachments will rerun memory analysis after saving."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除或调整附件顺序后，保存会重新分析这条记忆。"
+          }
+        }
+      }
+    },
+    "memory.edit.body.placeholder" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Write the memory..."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "写下这条记忆…"
+          }
+        }
+      }
+    },
     "memory.edit.button" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -14138,6 +14196,125 @@
         }
       }
     },
+    "memory.edit.deletedAttachments.format" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld attachments marked for deletion"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已标记删除 %lld 个附件"
+          }
+        }
+      }
+    },
+    "memory.edit.details" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Details"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "细节"
+          }
+        }
+      }
+    },
+    "memory.edit.discard.action" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discard Changes"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "放弃修改"
+          }
+        }
+      }
+    },
+    "memory.edit.discard.message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your edits have not been saved."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当前修改还没有保存。"
+          }
+        }
+      }
+    },
+    "memory.edit.discard.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discard edits?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "放弃编辑？"
+          }
+        }
+      }
+    },
+    "memory.edit.done" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完成"
+          }
+        }
+      }
+    },
+    "memory.edit.existingAttachments" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Existing Attachments"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已有附件"
+          }
+        }
+      }
+    },
     "memory.edit.hint" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -14151,6 +14328,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "在重新解析前，可以修改文本、心情、背景信息，或补充一条附注。"
+          }
+        }
+      }
+    },
+    "memory.edit.moveAttachmentDown" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Move attachment down"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下移附件"
+          }
+        }
+      }
+    },
+    "memory.edit.moveAttachmentUp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Move attachment up"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "上移附件"
           }
         }
       }
@@ -20030,6 +20241,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已拒绝"
+          }
+        }
+      }
+    },
+    "settings.permission.status.diagnosticRequired" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Requires WeatherKit test"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需 WeatherKit 测试"
           }
         }
       }

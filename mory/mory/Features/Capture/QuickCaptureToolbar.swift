@@ -10,57 +10,29 @@ struct QuickVoiceCaptureResult: Identifiable, Equatable, Sendable {
 }
 
 struct QuickCaptureToolbar: View {
+    @ObservedObject var audioRecorder: AudioRecorderModel
     let onTextCapture: () -> Void
     let onPhotoCapture: () -> Void
-    let onVoiceCaptureReady: (QuickVoiceCaptureResult) -> Void
+    let onVoiceCapture: () -> Void
 
-    @StateObject private var audioRecorder = AudioRecorderModel()
     @Environment(\.tabViewBottomAccessoryPlacement) private var accessoryPlacement
 
     var body: some View {
-        Group {
-            if isVoiceSessionActive {
-                voiceAccessoryContent
-            } else {
-                HStack(spacing: 0) {
-                    quickActionButton(
-                        systemImage: "camera.fill",
-                        accessibilityLabel: "quickCapture.photo",
-                        accessibilityHint: "quickCapture.photo.hint",
-                        action: onPhotoCapture
-                    )
+        HStack(spacing: 0) {
+            quickActionButton(
+                systemImage: "camera.fill",
+                accessibilityLabel: "quickCapture.photo",
+                accessibilityHint: "quickCapture.photo.hint",
+                action: onPhotoCapture
+            )
 
-                    captureCapsule
+            captureCapsule
 
-                    voiceButton
-                }
-            }
+            voiceButton
         }
         .padding(.horizontal, contentHorizontalInset)
         .frame(maxWidth: .infinity)
         .frame(height: accessoryHeight)
-        .animation(.spring(response: 0.28, dampingFraction: 0.82), value: isVoiceSessionActive)
-    }
-
-    private var voiceAccessoryContent: some View {
-        HStack(spacing: voiceContentSpacing) {
-            Text(voiceElapsedText)
-                .font(.caption.monospacedDigit().weight(.semibold))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .frame(width: durationWidth, alignment: .leading)
-
-            Text(voiceTranscriptText)
-                .font(capsuleFont)
-                .foregroundStyle(capsulePrimaryColor)
-                .lineLimit(1)
-                .truncationMode(.head)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity, minHeight: controlSize, maxHeight: controlSize)
-
-            voiceStopButton
-        }
-        .transition(.opacity.combined(with: .scale(scale: 0.98)))
     }
 
     private var captureCapsule: some View {
@@ -111,18 +83,6 @@ struct QuickCaptureToolbar: View {
         isInlineAccessory ? .subheadline.weight(.semibold) : .headline.weight(.semibold)
     }
 
-    private var durationWidth: CGFloat {
-        isInlineAccessory ? 44 : 50
-    }
-
-    private var stopButtonWidth: CGFloat {
-        isInlineAccessory ? 72 : 84
-    }
-
-    private var voiceContentSpacing: CGFloat {
-        isInlineAccessory ? 8 : 10
-    }
-
     private var isVoiceSessionActive: Bool {
         switch audioRecorder.state {
         case .preparing, .recording, .finalizing, .transcribing:
@@ -145,88 +105,27 @@ struct QuickCaptureToolbar: View {
         if let error = audioRecorder.errorMessage {
             return error
         }
-        switch audioRecorder.state {
-        case .preparing:
-            return String(localized: "quickCapture.voice.preparing")
-        case .recording:
-            return String(localized: "quickCapture.voice.recording \(Int(audioRecorder.recordingDuration))")
-        case .finalizing:
-            return String(localized: "quickCapture.voice.finalizing")
-        case .transcribing:
-            return String(localized: "quickCapture.voice.transcribing")
-        default:
-            return String(localized: "quickCapture.unified.placeholder")
-        }
-    }
-
-    private var voiceElapsedText: String {
-        formatDuration(audioRecorder.recordingDuration)
-    }
-
-    private var voiceTranscriptText: String {
-        let liveTranscript = audioRecorder.liveTranscription.trimmedOrNil
-        if audioRecorder.isStopping { return liveTranscript ?? String(localized: "quickCapture.voice.finalizing") }
-        if audioRecorder.isTranscribing {
-            return liveTranscript ?? String(localized: "quickCapture.voice.transcribing")
-        }
-        return liveTranscript ?? String(localized: "quickCapture.voice.transcriptPlaceholder")
+        return String(localized: "quickCapture.unified.placeholder")
     }
 
     private var capsuleAccessibilityLabel: String {
-        if audioRecorder.isRecording || audioRecorder.isStopping || audioRecorder.isTranscribing {
-            return "\(voiceElapsedText), \(voiceTranscriptText)"
-        }
-        return String(localized: "quickCapture.unified.placeholder")
+        String(localized: "quickCapture.unified.placeholder")
     }
 
     private var voiceButton: some View {
         Button {
             handleVoiceButtonTap()
         } label: {
-            Group {
-                if audioRecorder.isStopping || audioRecorder.isTranscribing {
-                    ProgressView()
-                        .controlSize(.small)
-                } else {
-                    Image(systemName: audioRecorder.isRecording ? "stop.fill" : "mic.fill")
-                        .font(iconFont)
-                        .foregroundStyle(audioRecorder.isRecording ? .red : .primary)
-                }
-            }
-            .frame(width: controlSize, height: controlSize)
-            .contentShape(Rectangle())
+            Image(systemName: "mic.fill")
+                .font(iconFont)
+                .frame(width: controlSize, height: controlSize)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .disabled(audioRecorder.isStopping || audioRecorder.isTranscribing)
-        .accessibilityLabel(Text(audioRecorder.isRecording ? "quickCapture.voice.stopSubmit" : "quickCapture.voice.start"))
-        .accessibilityHint(Text(audioRecorder.isRecording ? "quickCapture.voice.stopSubmit.hint" : "quickCapture.voice.start.hint"))
-    }
-
-    private var voiceStopButton: some View {
-        Button {
-            handleVoiceButtonTap()
-        } label: {
-            Group {
-                if audioRecorder.isStopping || audioRecorder.isTranscribing {
-                    ProgressView()
-                        .controlSize(.small)
-                } else {
-                    Label("quickCapture.voice.stop", systemImage: "stop.fill")
-                        .font(.caption.weight(.semibold))
-                        .labelStyle(.titleAndIcon)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.78)
-                }
-            }
-            .foregroundStyle(.red)
-            .frame(width: stopButtonWidth, height: controlSize)
-            .background(Color.red.opacity(0.12), in: Capsule())
-            .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .disabled(audioRecorder.isStopping || audioRecorder.isTranscribing)
-        .accessibilityLabel(Text("quickCapture.voice.stopSubmit"))
-        .accessibilityHint(Text("quickCapture.voice.stopSubmit.hint"))
+        .foregroundStyle(.primary)
+        .disabled(isVoiceSessionActive)
+        .accessibilityLabel(Text("quickCapture.voice.start"))
+        .accessibilityHint(Text("quickCapture.voice.start.hint"))
     }
 
     private func quickActionButton(
@@ -252,39 +151,7 @@ struct QuickCaptureToolbar: View {
             handleRecoveryAction(recoveryAction)
             return
         }
-
-        if audioRecorder.isRecording {
-            stopVoiceCapture()
-        } else {
-            startVoiceCapture()
-        }
-    }
-
-    private func startVoiceCapture() {
-        playImpact(.medium)
-        Task {
-            await audioRecorder.startRecording()
-        }
-    }
-
-    private func stopVoiceCapture() {
-        Task {
-            guard let output = await audioRecorder.stopAndTranscribe() else {
-                if audioRecorder.state == .failed {
-                    notify(.error)
-                }
-                return
-            }
-            notify(.success)
-            onVoiceCaptureReady(
-                QuickVoiceCaptureResult(
-                    filename: output.filename,
-                    audioData: output.audioData,
-                    transcription: audioRecorder.finalTranscription.trimmedOrNil ?? audioRecorder.liveTranscription,
-                    duration: audioRecorder.transcriptionDuration
-                )
-            )
-        }
+        onVoiceCapture()
     }
 
     private func handleRecoveryAction(_ action: AudioRecordingRecoveryAction) {
@@ -304,14 +171,4 @@ struct QuickCaptureToolbar: View {
         generator.impactOccurred()
     }
 
-    private func notify(_ type: UINotificationFeedbackGenerator.FeedbackType) {
-        let generator = UINotificationFeedbackGenerator()
-        generator.prepare()
-        generator.notificationOccurred(type)
-    }
-
-    private func formatDuration(_ duration: TimeInterval) -> String {
-        let totalSeconds = max(0, Int(duration.rounded(.down)))
-        return String(format: "%02d:%02d", totalSeconds / 60, totalSeconds % 60)
-    }
 }

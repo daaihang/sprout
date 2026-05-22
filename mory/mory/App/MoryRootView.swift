@@ -1,5 +1,6 @@
 import Combine
 import SwiftUI
+import UIKit
 
 struct MoryRootView: View {
     let authManager: AuthSessionManager?
@@ -10,7 +11,9 @@ struct MoryRootView: View {
     @Environment(\.remotePushSyncService) private var remotePushSyncService
     @AppStorage(MoryOnboardingStep.completionStorageKey) private var hasCompletedOnboarding = false
     @StateObject private var notificationInbox = NotificationInteractionInbox.shared
+    @StateObject private var audioRecorder = AudioRecorderModel()
     @State private var selectedTab: MoryAppTab = .today
+    @State private var isPresentingVoiceSheet = false
     @State private var isPresentingSettings = false
     @State private var unifiedCaptureSeed: UnifiedCaptureSeed?
     @State private var tabRefreshID = UUID()
@@ -83,11 +86,21 @@ struct MoryRootView: View {
         }
         .tabViewSearchActivation(.searchTabSelection)
         .tabBarMinimizeBehavior(.onScrollDown)
+        .sheet(isPresented: $isPresentingVoiceSheet) {
+            VoiceRecordingSheetView(
+                audioRecorder: audioRecorder,
+                onStop: stopVoiceCapture,
+                onCancel: cancelVoiceCapture
+            )
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.hidden)
+        }
         .moryTabViewBottomAccessory {
             QuickCaptureToolbar(
+                audioRecorder: audioRecorder,
                 onTextCapture: { unifiedCaptureSeed = .empty },
                 onPhotoCapture: { unifiedCaptureSeed = .photoCapture },
-                onVoiceCaptureReady: { result in unifiedCaptureSeed = .voice(result) }
+                onVoiceCapture: startVoiceCapture
             )
         }
         .sheet(isPresented: $isPresentingSettings) {
@@ -260,6 +273,50 @@ struct MoryRootView: View {
         hasCompletedOnboarding = true
         DispatchQueue.main.async {
             unifiedCaptureSeed = .empty
+        }
+    }
+
+    private func startVoiceCapture() {
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.prepare()
+        generator.impactOccurred()
+        isPresentingVoiceSheet = true
+        Task {
+            await audioRecorder.startRecording()
+            if audioRecorder.state == .failed {
+                isPresentingVoiceSheet = false
+            }
+        }
+    }
+
+    private func stopVoiceCapture() {
+        Task {
+            guard let output = await audioRecorder.stopAndTranscribe() else {
+                if audioRecorder.state == .failed {
+                    let g = UINotificationFeedbackGenerator()
+                    g.prepare()
+                    g.notificationOccurred(.error)
+                }
+                isPresentingVoiceSheet = false
+                return
+            }
+            let g = UINotificationFeedbackGenerator()
+            g.prepare()
+            g.notificationOccurred(.success)
+            isPresentingVoiceSheet = false
+            unifiedCaptureSeed = .voice(QuickVoiceCaptureResult(
+                filename: output.filename,
+                audioData: output.audioData,
+                transcription: audioRecorder.finalTranscription.trimmedOrNil ?? audioRecorder.liveTranscription,
+                duration: audioRecorder.transcriptionDuration
+            ))
+        }
+    }
+
+    private func cancelVoiceCapture() {
+        Task {
+            await audioRecorder.cancelRecording()
+            isPresentingVoiceSheet = false
         }
     }
 

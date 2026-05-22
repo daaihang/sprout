@@ -621,7 +621,7 @@ private struct SettingsPermissionsSection: View {
     private func statusColor(_ status: SettingsPermissionStatus) -> Color {
         switch status {
         case .authorized, .limited: .green
-        case .notDetermined: .secondary
+        case .notDetermined, .diagnosticRequired: .secondary
         case .denied, .restricted, .unavailable: .orange
         }
     }

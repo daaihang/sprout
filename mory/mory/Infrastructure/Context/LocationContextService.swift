@@ -1,16 +1,11 @@
 import Foundation
 import CoreLocation
-import MapKit
 
-final class LocationContextService: NSObject, CLLocationManagerDelegate, Sendable {
+@MainActor
+final class LocationContextService: NSObject, CLLocationManagerDelegate, @unchecked Sendable, ContextLocationProviding {
     private let manager = CLLocationManager()
-
-    struct Result: Sendable {
-        let latitude: Double
-        let longitude: Double
-        let placeName: String?
-        let localitySummary: String
-    }
+    private var locationContinuation: CheckedContinuation<CLLocation, Error>?
+    private var activeRequestToken: UUID?
 
     override init() {
         super.init()
@@ -34,54 +29,72 @@ final class LocationContextService: NSObject, CLLocationManagerDelegate, Sendabl
     }
 
     func captureCurrentLocation() async -> CaptureArtifactDraft? {
-        guard isAuthorized else { return nil }
-        guard let location = await requestSingleLocation(timeout: 5) else { return nil }
-
-        let mapItem = try? await MKReverseGeocodingRequest(location: location)?.mapItems.first
-        let formattedAddress = mapItem?.addressRepresentations?.fullAddress(includingRegion: true, singleLine: true)
-        let localitySummary = formattedAddress
-            ?? mapItem?.addressRepresentations?.cityWithContext(.full)
-            ?? mapItem?.address?.shortAddress
-            ?? mapItem?.address?.fullAddress
-
-        return .location(
-            title: mapItem?.name,
-            summary: localitySummary?.trimmedOrNil ?? String(format: "%.6f, %.6f", location.coordinate.latitude, location.coordinate.longitude),
-            latitude: location.coordinate.latitude,
-            longitude: location.coordinate.longitude
-        )
+        guard let snapshot = try? await currentLocationSnapshot(timeout: 5) else { return nil }
+        return await PlaceContextService().capturePlace(location: snapshot).draft
     }
 
     func currentLocation() async -> CLLocation? {
-        guard isAuthorized else { return nil }
-        return await requestSingleLocation(timeout: 3)
+        guard let snapshot = try? await currentLocationSnapshot(timeout: 3) else { return nil }
+        return snapshot.clLocation
     }
 
-    private var locationContinuation: CheckedContinuation<CLLocation?, Never>?
+    func currentLocationSnapshot(timeout: TimeInterval = 3) async throws -> ContextLocationSnapshot {
+        guard CLLocationManager.locationServicesEnabled() else {
+            throw ContextCollectionError.locationServicesDisabled
+        }
+        guard isAuthorized else {
+            throw ContextCollectionError.locationNotAuthorized
+        }
+        let location = try await requestSingleLocation(timeout: timeout)
+        return ContextLocationSnapshot(location: location)
+    }
 
-    private func requestSingleLocation(timeout: TimeInterval) async -> CLLocation? {
-        await withCheckedContinuation { continuation in
+    private func requestSingleLocation(timeout: TimeInterval) async throws -> CLLocation {
+        if let continuation = locationContinuation {
+            continuation.resume(throwing: ContextCollectionError.locationFailed("A newer location request started."))
+            locationContinuation = nil
+            activeRequestToken = nil
+        }
+
+        let token = UUID()
+        activeRequestToken = token
+        return try await withCheckedThrowingContinuation { continuation in
             self.locationContinuation = continuation
             manager.requestLocation()
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + timeout) { [weak self] in
-                self?.locationContinuation?.resume(returning: nil)
-                self?.locationContinuation = nil
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+                self?.finishLocationRequest(
+                    token: token,
+                    result: .failure(ContextCollectionError.locationTimeout)
+                )
             }
         }
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        MainActor.assumeIsolated {
-            locationContinuation?.resume(returning: locations.first)
-            locationContinuation = nil
+        Task { @MainActor [weak self] in
+            guard let location = locations.last else {
+                self?.finishLocationRequest(result: .failure(ContextCollectionError.noLocation))
+                return
+            }
+            self?.finishLocationRequest(result: .success(location))
         }
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        MainActor.assumeIsolated {
-            locationContinuation?.resume(returning: nil)
-            locationContinuation = nil
+        Task { @MainActor [weak self] in
+            self?.finishLocationRequest(result: .failure(ContextCollectionError.locationFailed(error.localizedDescription)))
         }
+    }
+
+    private func finishLocationRequest(token: UUID? = nil, result: Swift.Result<CLLocation, Error>) {
+        if let token, token != activeRequestToken {
+            return
+        }
+        guard let continuation = locationContinuation else { return }
+        locationContinuation = nil
+        activeRequestToken = nil
+        continuation.resume(with: result)
     }
 }

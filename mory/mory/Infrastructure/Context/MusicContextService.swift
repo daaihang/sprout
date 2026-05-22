@@ -36,7 +36,7 @@ struct MusicCatalogSongCandidate: Identifiable, Hashable, Sendable {
     }
 }
 
-final class MusicContextService: Sendable {
+final class MusicContextService: Sendable, ContextMusicProviding {
     func requestAuthorizationIfNeeded() async -> MusicAuthorization.Status {
         let current = MusicAuthorization.currentStatus
         if current == .authorized {
