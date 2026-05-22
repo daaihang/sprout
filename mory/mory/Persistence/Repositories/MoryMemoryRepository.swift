@@ -2372,6 +2372,40 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         try save()
     }
 
+    func applyGraphDelta(_ id: UUID) throws {
+        guard let existing = try modelContext.fetch(
+            FetchDescriptor<GraphDeltaStore>(predicate: #Predicate { $0.id == id })
+        ).first else { throw CocoaError(.fileNoSuchFile) }
+        let delta = existing.domainModel
+        guard delta.appliedAt == nil else { return } // idempotent
+
+        let primaryID = delta.operations.first?.targetID ?? UUID()
+        let profile = try fetchEntityProfile(entityID: primaryID)
+        let entityNode = try fetchEntityNode(id: primaryID)
+
+        let result = graphDeltaApplier.apply(
+            delta: delta,
+            profile: profile,
+            entityNode: entityNode,
+            appliedAt: .now
+        )
+        if let updatedProfile = result.profile {
+            try upsert(entityProfile: updatedProfile)
+        }
+        if let updatedEntity = result.entityNode {
+            try upsert(entityNode: updatedEntity)
+        }
+        for op in delta.operations where op.kind == .mergeEntity {
+            guard op.targetType == .entity, let relatedID = op.relatedID else { continue }
+            _ = try mergePersonEntities(
+                primaryID: op.targetID,
+                mergingIDs: [relatedID],
+                displayName: nil
+            )
+        }
+        try markGraphDeltaApplied(id)
+    }
+
     func fetchQualityTuningPreference() throws -> QualityTuningPreference {
         let syncKey = QualityTuningPreference.defaultSyncKey
         let descriptor = FetchDescriptor<QualityTuningPreferenceStore>(

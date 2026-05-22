@@ -1103,6 +1103,9 @@ protocol MoryMemoryRepositorying: AnyObject {
     func fetchGraphDeltas(applied: Bool?, limit: Int?) throws -> [GraphDelta]
     func upsertGraphDelta(_ delta: GraphDelta) throws
     func markGraphDeltaApplied(_ id: UUID, appliedAt: Date) throws
+    /// Applies a stored GraphDelta's operations to the entity graph (profile + node + optional merge).
+    /// Idempotent: does nothing if `delta.appliedAt` is already set.
+    func applyGraphDelta(_ id: UUID) throws
     func fetchQualityTuningPreference() throws -> QualityTuningPreference
     func saveQualityTuningPreference(_ preference: QualityTuningPreference) throws
     func runQualityTuningScenario(_ request: QualityTuningRunRequest) async throws -> QualityTuningRunReport

@@ -142,6 +142,7 @@ private final class MissingMemoryRepository: MoryMemoryRepositorying {
     func fetchGraphDeltas(applied: Bool?, limit: Int?) throws -> [GraphDelta] { fail() }
     func upsertGraphDelta(_ delta: GraphDelta) throws { let _: Void = fail() }
     func markGraphDeltaApplied(_ id: UUID, appliedAt: Date) throws { let _: Void = fail() }
+    func applyGraphDelta(_ id: UUID) throws { let _: Void = fail() }
     func fetchQualityTuningPreference() throws -> QualityTuningPreference { fail() }
     func saveQualityTuningPreference(_ preference: QualityTuningPreference) throws { let _: Void = fail() }
     func runQualityTuningScenario(_ request: QualityTuningRunRequest) async throws -> QualityTuningRunReport { fail() }
