@@ -704,6 +704,10 @@ struct DebugJobQueueView: View {
                 }
                 .disabled(isWorking)
 
+                NavigationLink("Clarification Questions") {
+                    DebugClarificationQuestionsView()
+                }
+
                 if isWorking {
                     DebugCenterProgressRow(text: "Working on job queue")
                 }
