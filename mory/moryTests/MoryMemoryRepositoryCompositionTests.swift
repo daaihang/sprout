@@ -1528,6 +1528,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertEqual(detail.record.rawText, "Rewritten memory about clearer launch planning.")
         XCTAssertEqual(detail.record.userMood, "focused")
         XCTAssertNil(detail.record.inputContext)
+        XCTAssertEqual(result.addedArtifactIDs.count, 0)
+        XCTAssertEqual(detail.artifacts.filter { $0.kind == .text }.count, 1)
         XCTAssertEqual(result.pipelineStatus?.stage, .pending)
         XCTAssertTrue(result.invalidatedDerivedData)
         XCTAssertNil(try repository.fetchRecordAnalysis(recordID: memory.record.id))

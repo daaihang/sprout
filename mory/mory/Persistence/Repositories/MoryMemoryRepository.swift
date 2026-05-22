@@ -147,11 +147,13 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             }
         }
 
-        let addedArtifacts = captureArtifactBuilder.buildArtifacts(
-            from: MemoryCaptureDraft(rawText: updatedRecord.rawText, artifacts: mutation.addedArtifacts),
-            recordID: recordID,
-            createdAt: now
-        )
+        let addedArtifacts = mutation.addedArtifacts.isEmpty
+            ? []
+            : captureArtifactBuilder.buildArtifacts(
+                from: MemoryCaptureDraft(rawText: "", artifacts: mutation.addedArtifacts),
+                recordID: recordID,
+                createdAt: now
+            )
 
         var updatedArtifactIDs: [UUID] = []
         var normalizedUpdatedArtifacts: [Artifact] = []

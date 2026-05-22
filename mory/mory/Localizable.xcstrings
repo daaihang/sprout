@@ -11374,6 +11374,9 @@
         }
       }
     },
+    "Diagnostics" : {
+
+    },
     "Disable tuning runtime" : {
       "localizations" : {
         "zh-Hans" : {
@@ -14108,23 +14111,6 @@
         }
       }
     },
-    "memory.edit.attachments.footer" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deleting or reordering attachments will rerun memory analysis after saving."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "删除或调整附件顺序后，保存会重新分析这条记忆。"
-          }
-        }
-      }
-    },
     "memory.edit.addAttachment.placeholder" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -14138,6 +14124,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "给这条记忆补充一句"
+          }
+        }
+      }
+    },
+    "memory.edit.attachments.footer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deleting or reordering attachments will rerun memory analysis after saving."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除或调整附件顺序后，保存会重新分析这条记忆。"
           }
         }
       }
@@ -14189,6 +14192,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "取消编辑"
+          }
+        }
+      }
+    },
+    "memory.edit.deletedAttachments.format" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld attachments marked for deletion"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已标记删除 %lld 个附件"
           }
         }
       }
@@ -14274,23 +14294,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "完成"
-          }
-        }
-      }
-    },
-    "memory.edit.deletedAttachments.format" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld attachments marked for deletion"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "已标记删除 %lld 个附件"
           }
         }
       }
@@ -20238,6 +20241,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已拒绝"
+          }
+        }
+      }
+    },
+    "settings.permission.status.diagnosticRequired" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Requires WeatherKit test"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需 WeatherKit 测试"
           }
         }
       }

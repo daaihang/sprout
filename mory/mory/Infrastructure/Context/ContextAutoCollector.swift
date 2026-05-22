@@ -1,90 +1,257 @@
 import Foundation
-import CoreLocation
 
 protocol ContextAutoCollecting: Sendable {
-    func collectContextDrafts() async -> [CaptureArtifactDraft]
+    func collectContext(policy: UserSettingsContextSelection) async -> ContextCollectionResult
+    func collectContextDrafts(policy: UserSettingsContextSelection) async -> [CaptureArtifactDraft]
 }
 
-final class ContextAutoCollector: ContextAutoCollecting {
-    private let locationService = LocationContextService()
-    private let weatherService = WeatherContextService()
-    private let musicService = MusicContextService()
-    private let collectionTimeoutSeconds: TimeInterval
+final class ContextAutoCollector: ContextAutoCollecting, @unchecked Sendable {
+    private let locationService: any ContextLocationProviding
+    private let placeService: any ContextPlaceDraftProviding
+    private let weatherService: any ContextWeatherProviding
+    private let musicService: any ContextMusicProviding
+    private let locationTimeoutSeconds: TimeInterval
+    private let placeTimeoutSeconds: TimeInterval
+    private let weatherTimeoutSeconds: TimeInterval
+    private let musicTimeoutSeconds: TimeInterval
 
-    init(collectionTimeoutSeconds: TimeInterval = 3) {
-        self.collectionTimeoutSeconds = collectionTimeoutSeconds
+    init(
+        locationService: any ContextLocationProviding,
+        placeService: any ContextPlaceDraftProviding,
+        weatherService: any ContextWeatherProviding,
+        musicService: any ContextMusicProviding,
+        locationTimeoutSeconds: TimeInterval = 5,
+        placeTimeoutSeconds: TimeInterval = 3,
+        weatherTimeoutSeconds: TimeInterval = 4,
+        musicTimeoutSeconds: TimeInterval = 1
+    ) {
+        self.locationService = locationService
+        self.placeService = placeService
+        self.weatherService = weatherService
+        self.musicService = musicService
+        self.locationTimeoutSeconds = locationTimeoutSeconds
+        self.placeTimeoutSeconds = placeTimeoutSeconds
+        self.weatherTimeoutSeconds = weatherTimeoutSeconds
+        self.musicTimeoutSeconds = musicTimeoutSeconds
     }
 
-    /// Collects location, weather, and music drafts without blocking capture save.
-    func collectContextDrafts() async -> [CaptureArtifactDraft] {
-        await withTimeoutValue(seconds: collectionTimeoutSeconds, fallback: [], operation: {
-            await self.collectAvailableDrafts()
-        })
+    @MainActor
+    convenience init(
+        locationTimeoutSeconds: TimeInterval = 5,
+        placeTimeoutSeconds: TimeInterval = 3,
+        weatherTimeoutSeconds: TimeInterval = 4,
+        musicTimeoutSeconds: TimeInterval = 1
+    ) {
+        self.init(
+            locationService: LocationContextService(),
+            placeService: PlaceContextService(),
+            weatherService: WeatherContextService(),
+            musicService: MusicContextService(),
+            locationTimeoutSeconds: locationTimeoutSeconds,
+            placeTimeoutSeconds: placeTimeoutSeconds,
+            weatherTimeoutSeconds: weatherTimeoutSeconds,
+            musicTimeoutSeconds: musicTimeoutSeconds
+        )
     }
 
-    private func collectAvailableDrafts() async -> [CaptureArtifactDraft] {
-        await withTaskGroup(of: [CaptureArtifactDraft].self) { group in
-            group.addTask { await self.collectLocationAndWeather(timeout: self.collectionTimeoutSeconds) }
-            group.addTask { await self.collectMusic(timeout: min(self.collectionTimeoutSeconds, 1)) }
+    @MainActor
+    convenience init(collectionTimeoutSeconds: TimeInterval) {
+        self.init(
+            locationTimeoutSeconds: collectionTimeoutSeconds,
+            placeTimeoutSeconds: collectionTimeoutSeconds,
+            weatherTimeoutSeconds: collectionTimeoutSeconds,
+            musicTimeoutSeconds: min(collectionTimeoutSeconds, 1)
+        )
+    }
 
-            var drafts: [CaptureArtifactDraft] = []
-            for await results in group {
-                drafts.append(contentsOf: results)
-            }
-            return drafts
+    func collectContextDrafts(policy: UserSettingsContextSelection = .allAvailable) async -> [CaptureArtifactDraft] {
+        await collectContext(policy: policy).drafts
+    }
+
+    func collectContext(policy: UserSettingsContextSelection = .allAvailable) async -> ContextCollectionResult {
+        let startedAt = Date()
+        guard policy != .manual else {
+            return .empty(
+                startedAt: startedAt,
+                diagnostics: [
+                    .skipped(.location, message: "Automatic context is disabled.", startedAt: startedAt),
+                    .skipped(.placeGeocoding, message: "Automatic context is disabled.", startedAt: startedAt),
+                    .skipped(.weather, message: "Automatic context is disabled.", startedAt: startedAt),
+                    .skipped(.music, message: "Automatic context is disabled.", startedAt: startedAt)
+                ]
+            )
+        }
+
+        async let locationResult = collectLocationWeatherContext()
+        async let musicResult = collectMusicContextIfNeeded(policy: policy)
+
+        let (locationDrafts, locationDiagnostics) = await locationResult
+        let (musicDrafts, musicDiagnostics) = await musicResult
+        return ContextCollectionResult(
+            drafts: locationDrafts + musicDrafts,
+            diagnostics: locationDiagnostics + musicDiagnostics,
+            elapsedMilliseconds: max(0, Int(Date().timeIntervalSince(startedAt) * 1_000))
+        )
+    }
+
+    private func collectLocationWeatherContext() async -> ([CaptureArtifactDraft], [ContextCollectionDiagnostic]) {
+        let locationStartedAt = Date()
+        let locationOutcome = await withTimeoutOutcome(seconds: locationTimeoutSeconds) {
+            try await self.locationService.currentLocationSnapshot(timeout: self.locationTimeoutSeconds)
+        }
+
+        switch locationOutcome {
+        case let .success(location):
+            let locationDiagnostic = ContextCollectionDiagnostic.success(
+                .location,
+                message: location.coordinateSummary,
+                startedAt: locationStartedAt
+            )
+            async let place = collectPlaceContext(location: location)
+            async let weather = collectWeatherContext(location: location)
+            let (placeDrafts, placeDiagnostics) = await place
+            let (weatherDrafts, weatherDiagnostics) = await weather
+            return (
+                placeDrafts + weatherDrafts,
+                [locationDiagnostic] + placeDiagnostics + weatherDiagnostics
+            )
+        case .timeout:
+            let diagnostic = ContextCollectionDiagnostic.timeout(
+                .location,
+                message: ContextCollectionError.locationTimeout.localizedDescription,
+                startedAt: locationStartedAt
+            )
+            return (
+                [],
+                [
+                    diagnostic,
+                    .skipped(.placeGeocoding, message: "Skipped because location was unavailable.", startedAt: Date()),
+                    .skipped(.weather, message: "Skipped because location was unavailable.", startedAt: Date())
+                ]
+            )
+        case let .failure(error):
+            let diagnostic = ContextCollectionDiagnostic.failed(.location, error: error, startedAt: locationStartedAt)
+            return (
+                [],
+                [
+                    diagnostic,
+                    .skipped(.placeGeocoding, message: "Skipped because location was unavailable.", startedAt: Date()),
+                    .skipped(.weather, message: "Skipped because location was unavailable.", startedAt: Date())
+                ]
+            )
         }
     }
 
-    private func collectLocationAndWeather(timeout: TimeInterval) async -> [CaptureArtifactDraft] {
-        var results: [CaptureArtifactDraft] = []
-        guard let locationDraft = await withTimeoutNil(seconds: timeout, operation: {
-            await self.locationService.captureCurrentLocation()
-        }) else {
-            return results
+    private func collectPlaceContext(location: ContextLocationSnapshot) async -> ([CaptureArtifactDraft], [ContextCollectionDiagnostic]) {
+        let startedAt = Date()
+        let outcome = await withTimeoutOutcome(seconds: placeTimeoutSeconds) {
+            await self.placeService.capturePlace(location: location)
         }
-        results.append(locationDraft.withOrigin(.context))
-
-        if let location = await locationService.currentLocation() {
-            if let weatherDraft = await withTimeoutNil(seconds: timeout, operation: {
-                await self.weatherService.captureCurrentWeather(location: location)
-            }) {
-                results.append(weatherDraft.withOrigin(.context))
-            }
+        switch outcome {
+        case let .success(result):
+            return ([result.draft.withOrigin(.context)], [result.diagnostic])
+        case .timeout:
+            return (
+                [PlaceContextService.fallbackDraft(location: location).withOrigin(.context)],
+                [.timeout(.placeGeocoding, message: "Place reverse geocoding timed out.", startedAt: startedAt)]
+            )
+        case let .failure(error):
+            return (
+                [PlaceContextService.fallbackDraft(location: location).withOrigin(.context)],
+                [.failed(.placeGeocoding, error: error, startedAt: startedAt)]
+            )
         }
-        return results
     }
 
-    private func collectMusic(timeout: TimeInterval) async -> [CaptureArtifactDraft] {
-        guard let music = await withTimeoutNil(seconds: timeout, operation: {
+    private func collectWeatherContext(location: ContextLocationSnapshot) async -> ([CaptureArtifactDraft], [ContextCollectionDiagnostic]) {
+        let startedAt = Date()
+        let outcome = await withTimeoutOutcome(seconds: weatherTimeoutSeconds) {
+            try await self.weatherService.captureWeather(location: location)
+        }
+        switch outcome {
+        case let .success(draft):
+            return (
+                [draft.withOrigin(.context)],
+                [.success(.weather, message: draft.captureSummary, startedAt: startedAt)]
+            )
+        case .timeout:
+            return (
+                [],
+                [.timeout(.weather, message: "WeatherKit request timed out.", startedAt: startedAt)]
+            )
+        case let .failure(error):
+            return (
+                [],
+                [.failed(.weather, error: error, startedAt: startedAt)]
+            )
+        }
+    }
+
+    private func collectMusicContextIfNeeded(policy: UserSettingsContextSelection) async -> ([CaptureArtifactDraft], [ContextCollectionDiagnostic]) {
+        let startedAt = Date()
+        guard policy == .allAvailable else {
+            return (
+                [],
+                [.skipped(.music, message: "Music context is disabled by capture preference.", startedAt: startedAt)]
+            )
+        }
+
+        let outcome = await withTimeoutOutcome(seconds: musicTimeoutSeconds) {
             await self.musicService.captureNowPlaying(origin: .context, requireActivePlayback: true)
-        }) else {
-            return []
         }
-        return [music]
+        switch outcome {
+        case let .success(draft?):
+            return (
+                [draft],
+                [.success(.music, message: draft.captureSummary, startedAt: startedAt)]
+            )
+        case .success(nil):
+            return (
+                [],
+                [.skipped(.music, message: "No active now-playing music was available.", startedAt: startedAt)]
+            )
+        case .timeout:
+            return (
+                [],
+                [.timeout(.music, message: "Music context request timed out.", startedAt: startedAt)]
+            )
+        case let .failure(error):
+            return (
+                [],
+                [.failed(.music, error: error, startedAt: startedAt)]
+            )
+        }
     }
 }
 
-private func withTimeoutNil<T: Sendable>(seconds: TimeInterval, operation: @escaping @Sendable () async -> T?) async -> T? {
-    await withTimeoutValue(seconds: seconds, fallback: nil, operation: operation)
+private enum TimedOperationOutcome<T: Sendable>: Sendable {
+    case success(T)
+    case timeout
+    case failure(Error)
 }
 
-private func withTimeoutValue<T: Sendable>(
+private func withTimeoutOutcome<T: Sendable>(
     seconds: TimeInterval,
-    fallback: T,
-    operation: @escaping @Sendable () async -> T
-) async -> T {
-    await withTaskGroup(of: T?.self) { group in
+    operation: @escaping @Sendable () async throws -> T
+) async -> TimedOperationOutcome<T> {
+    await withTaskGroup(of: TimedOperationOutcome<T>.self) { group in
         group.addTask {
-            await operation()
+            do {
+                return .success(try await operation())
+            } catch {
+                return .failure(error)
+            }
         }
         group.addTask {
             try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
-            return fallback
+            return .timeout
         }
-        for await result in group {
+
+        guard let result = await group.next() else {
             group.cancelAll()
-            return result ?? fallback
+            return .timeout
         }
-        return fallback
+        group.cancelAll()
+        return result
     }
 }

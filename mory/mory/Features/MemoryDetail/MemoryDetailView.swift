@@ -13,9 +13,6 @@ struct MemoryDetailView: View {
     @State private var isReloading = false
     @State private var isEditing = false
     @State private var draftRawText = ""
-    @State private var draftMood = ""
-    @State private var draftInputContext = ""
-    @State private var draftArtifactText = ""
     @State private var draftArtifactOrder: [UUID] = []
     @State private var draftDeletedArtifactIDs: Set<UUID> = []
     @State private var isSavingEdits = false
@@ -38,11 +35,7 @@ struct MemoryDetailView: View {
                 if isEditing {
                     MemoryDetailEditingView(
                         rawText: $draftRawText,
-                        mood: $draftMood,
-                        inputContext: $draftInputContext,
-                        addedText: $draftArtifactText,
                         artifacts: draftEditableArtifacts,
-                        deletedArtifactCount: draftDeletedArtifactIDs.count,
                         errorMessage: errorMessage,
                         onDeleteArtifact: { artifactID in
                             withAnimation(.snappy(duration: 0.2)) {
@@ -212,9 +205,6 @@ struct MemoryDetailView: View {
     private func resetEditDraft(from snapshot: MemoryDetailSnapshot) {
         let record = snapshot.record
         draftRawText = record.rawText
-        draftMood = record.userMood ?? ""
-        draftInputContext = record.inputContext ?? ""
-        draftArtifactText = ""
         draftArtifactOrder = orderedArtifacts(from: snapshot).map(\.id)
         draftDeletedArtifactIDs = []
     }
@@ -225,9 +215,6 @@ struct MemoryDetailView: View {
         }
         let record = snapshot.record
         if draftRawText != record.rawText { return true }
-        if draftMood.trimmedOrNil != record.userMood?.trimmedOrNil { return true }
-        if draftInputContext.trimmedOrNil != record.inputContext?.trimmedOrNil { return true }
-        if draftArtifactText.trimmedOrNil != nil { return true }
         if !draftDeletedArtifactIDs.isEmpty { return true }
         return mutationArtifactOrder != nil
     }
@@ -239,22 +226,13 @@ struct MemoryDetailView: View {
         defer { isSavingEdits = false }
 
         do {
-            let addedArtifacts: [CaptureArtifactDraft]
-            if let appendedArtifactText = draftArtifactText.trimmedOrNil {
-                addedArtifacts = [.text(title: appendedArtifactText.firstMeaningfulLine ?? "Added Note", body: appendedArtifactText)]
-            } else {
-                addedArtifacts = []
-            }
-
             let result = try await memoryRepository.applyMemoryMutation(
                 recordID: recordID,
                 mutation: MemoryMutationDraft(
                     recordPatch: MemoryMutationRecordPatch(
-                        rawText: .set(draftRawText),
-                        userMood: .set(draftMood.trimmedOrNil),
-                        inputContext: .set(draftInputContext.trimmedOrNil)
+                        rawText: .set(draftRawText)
                     ),
-                    addedArtifacts: addedArtifacts,
+                    updatedArtifacts: updatedTextArtifactsForEditedBody(),
                     deletedArtifactIDs: Array(draftDeletedArtifactIDs),
                     artifactOrder: mutationArtifactOrder
                 ),
@@ -278,6 +256,7 @@ struct MemoryDetailView: View {
         return draftArtifactOrder
             .filter { !draftDeletedArtifactIDs.contains($0) }
             .compactMap { artifactByID[$0] }
+            .filter(\.isVisibleMemoryDetailAttachment)
     }
 
     private var mutationArtifactOrder: [UUID]? {
@@ -289,54 +268,20 @@ struct MemoryDetailView: View {
         return remainingDraftOrder == originalRemainingOrder ? nil : remainingDraftOrder
     }
 
-    private func editableArtifactRow(_ artifact: Artifact) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: artifact.kind.memoryDetailEditSystemImage)
-                .font(.body.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .frame(width: 28, height: 28)
-                .background(Color.secondary.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(artifact.memoryDetailEditTitle)
-                    .font(.subheadline)
-                    .lineLimit(1)
-                Text(artifact.memoryDetailEditSubtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
-
-            Spacer(minLength: 0)
-
-            HStack(spacing: 6) {
-                Button {
-                    moveDraftArtifact(artifact.id, by: -1)
-                } label: {
-                    Image(systemName: "chevron.up")
-                }
-                .disabled(!canMoveDraftArtifact(artifact.id, by: -1))
-                .accessibilityLabel("memory.edit.moveAttachmentUp")
-
-                Button {
-                    moveDraftArtifact(artifact.id, by: 1)
-                } label: {
-                    Image(systemName: "chevron.down")
-                }
-                .disabled(!canMoveDraftArtifact(artifact.id, by: 1))
-                .accessibilityLabel("memory.edit.moveAttachmentDown")
-
-                Button(role: .destructive) {
-                    draftDeletedArtifactIDs.insert(artifact.id)
-                } label: {
-                    Image(systemName: "trash")
-                }
-                .accessibilityLabel("common.delete")
-            }
-            .buttonStyle(.borderless)
-            .font(.caption.weight(.semibold))
+    private func updatedTextArtifactsForEditedBody() -> [Artifact] {
+        guard let snapshot, draftRawText != snapshot.record.rawText else {
+            return []
         }
-        .padding(.vertical, 4)
+        guard var artifact = orderedArtifacts(from: snapshot).first(where: { $0.kind == .text }) else {
+            return []
+        }
+
+        let body = draftRawText.trimmedOrNil ?? ""
+        artifact.title = body.generatedMemoryTitle() ?? artifact.title
+        artifact.summary = body
+        artifact.textContent = body
+        artifact.payload = .text(body)
+        return [artifact]
     }
 
     private func orderedArtifacts(from snapshot: MemoryDetailSnapshot) -> [Artifact] {
@@ -350,14 +295,14 @@ struct MemoryDetailView: View {
     }
 
     private func canMoveDraftArtifact(_ id: UUID, by offset: Int) -> Bool {
-        let visibleOrder = draftArtifactOrder.filter { !draftDeletedArtifactIDs.contains($0) }
+        let visibleOrder = visibleDraftAttachmentIDs
         guard let visibleIndex = visibleOrder.firstIndex(of: id) else { return false }
         let targetIndex = visibleIndex + offset
         return visibleOrder.indices.contains(targetIndex)
     }
 
     private func moveDraftArtifact(_ id: UUID, by offset: Int) {
-        let visibleOrder = draftArtifactOrder.filter { !draftDeletedArtifactIDs.contains($0) }
+        let visibleOrder = visibleDraftAttachmentIDs
         guard let visibleIndex = visibleOrder.firstIndex(of: id) else { return }
         let targetVisibleIndex = visibleIndex + offset
         guard visibleOrder.indices.contains(targetVisibleIndex) else { return }
@@ -375,7 +320,7 @@ struct MemoryDetailView: View {
 
     private func reorderDraftArtifact(_ sourceID: UUID, near targetID: UUID) {
         guard sourceID != targetID else { return }
-        let visibleOrder = draftArtifactOrder.filter { !draftDeletedArtifactIDs.contains($0) }
+        let visibleOrder = visibleDraftAttachmentIDs
         guard let sourceVisibleIndex = visibleOrder.firstIndex(of: sourceID),
               let targetVisibleIndex = visibleOrder.firstIndex(of: targetID),
               let sourceIndex = draftArtifactOrder.firstIndex(of: sourceID),
@@ -391,6 +336,14 @@ struct MemoryDetailView: View {
                 : adjustedTargetIndex
             draftArtifactOrder.insert(movedID, at: insertionIndex)
         }
+    }
+
+    private var visibleDraftAttachmentIDs: [UUID] {
+        guard let snapshot else { return [] }
+        let artifactByID = Dictionary(uniqueKeysWithValues: snapshot.artifacts.map { ($0.id, $0) })
+        return draftArtifactOrder
+            .filter { !draftDeletedArtifactIDs.contains($0) }
+            .filter { artifactByID[$0]?.isVisibleMemoryDetailAttachment == true }
     }
 
     private func savePresentationMode(_ mode: MemoryDetailPresentationMode) {
@@ -417,95 +370,43 @@ struct MemoryDetailView: View {
 
 private struct MemoryDetailEditingView: View {
     @Binding var rawText: String
-    @Binding var mood: String
-    @Binding var inputContext: String
-    @Binding var addedText: String
 
     let artifacts: [Artifact]
-    let deletedArtifactCount: Int
     let errorMessage: String?
     var onDeleteArtifact: (UUID) -> Void
     var onMoveArtifact: (UUID, Int) -> Void
     var onReorderArtifact: (UUID, UUID) -> Void
 
-    @State private var showsDetails = false
+    @FocusState private var isBodyFocused: Bool
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
-                bodyEditor
-                detailDisclosure
-                addedTextEditor
-                artifactSection
-                statusSection
+        GeometryReader { proxy in
+            ScrollView {
+                VStack(spacing: 0) {
+                    artifactCarousel
+
+                    CaptureBodyEditorView(
+                        text: $rawText,
+                        focus: $isBodyFocused,
+                        minHeight: max(proxy.size.height - (artifacts.isEmpty ? 0 : 132), 360)
+                    )
+
+                    statusSection
+                        .padding(.horizontal, 20)
+                        .padding(.top, 8)
+                }
+                .frame(maxWidth: .infinity, minHeight: proxy.size.height, alignment: .top)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 18)
+            .scrollDismissesKeyboard(.interactively)
         }
         .background(Color(.systemBackground))
     }
 
-    private var bodyEditor: some View {
-        ZStack(alignment: .topLeading) {
-            TextEditor(text: $rawText)
-                .font(.body)
-                .scrollContentBackground(.hidden)
-                .frame(minHeight: 240)
-                .padding(.horizontal, -5)
-
-            if rawText.isEmpty {
-                Text("memory.edit.body.placeholder")
-                    .foregroundStyle(.tertiary)
-                    .padding(.top, 8)
-                    .allowsHitTesting(false)
-            }
-        }
-        .accessibilityLabel("memory.label.rawCapture")
-    }
-
-    private var detailDisclosure: some View {
-        DisclosureGroup(isExpanded: $showsDetails) {
-            VStack(alignment: .leading, spacing: 14) {
-                TextField("memory.label.mood", text: $mood)
-                    .textFieldStyle(.roundedBorder)
-                TextField("memory.label.context", text: $inputContext, axis: .vertical)
-                    .lineLimit(2...5)
-                    .textFieldStyle(.roundedBorder)
-            }
-            .padding(.top, 10)
-        } label: {
-            Text("memory.edit.details")
-                .font(.headline)
-        }
-    }
-
-    private var addedTextEditor: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("memory.edit.addAttachment")
-                .font(.headline)
-            TextField("memory.edit.addAttachment.placeholder", text: $addedText, axis: .vertical)
-                .lineLimit(2...6)
-                .textFieldStyle(.roundedBorder)
-        }
-    }
-
     @ViewBuilder
-    private var artifactSection: some View {
-        if !artifacts.isEmpty || deletedArtifactCount > 0 {
-            VStack(alignment: .leading, spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("memory.edit.existingAttachments")
-                        .font(.headline)
-                    Text("memory.edit.attachments.footer")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-
-                LazyVGrid(
-                    columns: [GridItem(.adaptive(minimum: 190, maximum: 220), spacing: 12, alignment: .top)],
-                    alignment: .leading,
-                    spacing: 12
-                ) {
+    private var artifactCarousel: some View {
+        if !artifacts.isEmpty {
+            ScrollView(.horizontal) {
+                LazyHStack(spacing: 10) {
                     ForEach(Array(artifacts.enumerated()), id: \.element.id) { index, artifact in
                         MemoryDetailEditingArtifactCard(
                             artifact: artifact,
@@ -526,13 +427,13 @@ private struct MemoryDetailEditingView: View {
                         }
                     }
                 }
-
-                if deletedArtifactCount > 0 {
-                    Text(String(format: String(localized: "memory.edit.deletedAttachments.format"), Int64(deletedArtifactCount)))
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
+                .scrollTargetLayout()
             }
+            .scrollIndicators(.hidden)
+            .scrollTargetBehavior(.viewAligned)
+            .contentMargins(.horizontal, 20, for: .scrollContent)
+            .frame(height: 148)
+            .padding(.top, 4)
         }
     }
 
@@ -598,77 +499,7 @@ private struct MemoryDetailEditingArtifactCard: View {
 }
 
 private extension Artifact {
-    var memoryDetailEditTitle: String {
-        title.trimmedOrNil
-            ?? metadata["trackName"]?.trimmedOrNil
-            ?? metadata["condition"]?.trimmedOrNil
-            ?? kind.memoryDetailEditLabel
-    }
-
-    var memoryDetailEditSubtitle: String {
-        switch kind {
-        case .music:
-            return [metadata["artistName"], metadata["albumName"]]
-                .compactMap { $0?.trimmedOrNil }
-                .joined(separator: " · ")
-                .trimmedOrNil
-                ?? summaryOrFallback
-        case .weather:
-            if let condition = metadata["condition"]?.trimmedOrNil,
-               let temperature = metadata["temperatureCelsius"]?.trimmedOrNil {
-                return "\(condition) · \(temperature)°C"
-            }
-            return summaryOrFallback
-        case .location:
-            return summary.trimmedOrNil ?? title.trimmedOrNil ?? kind.memoryDetailEditLabel
-        case .audio:
-            return metadata["transcriptionText"]?.trimmedOrNil
-                ?? summary.trimmedOrNil
-                ?? mediaRef?.filename
-                ?? kind.memoryDetailEditLabel
-        case .link:
-            return metadata["url"]?.trimmedOrNil
-                ?? summary.trimmedOrNil
-                ?? kind.memoryDetailEditLabel
-        default:
-            return summaryOrFallback
-        }
-    }
-
-    private var summaryOrFallback: String {
-        summary.trimmedOrNil
-            ?? textContent.trimmedOrNil
-            ?? mediaRef?.filename
-            ?? kind.memoryDetailEditLabel
-    }
-}
-
-private extension ArtifactKind {
-    var memoryDetailEditLabel: String {
-        switch self {
-        case .text: return String(localized: "capture.card.kind.text")
-        case .photo: return String(localized: "capture.card.kind.photo")
-        case .audio: return String(localized: "capture.card.kind.audio")
-        case .music: return String(localized: "capture.card.kind.music")
-        case .link: return String(localized: "capture.card.kind.link")
-        case .location: return String(localized: "capture.card.kind.place")
-        case .weather: return String(localized: "capture.card.kind.weather")
-        case .todo: return String(localized: "capture.card.kind.todo")
-        case .document: return String(localized: "capture.card.kind.status")
-        }
-    }
-
-    var memoryDetailEditSystemImage: String {
-        switch self {
-        case .text: return "text.alignleft"
-        case .photo: return "photo"
-        case .audio: return "waveform"
-        case .music: return "music.note"
-        case .link: return "link"
-        case .location: return "mappin.and.ellipse"
-        case .weather: return "cloud.sun"
-        case .todo: return "checklist"
-        case .document: return "doc.text"
-        }
+    var isVisibleMemoryDetailAttachment: Bool {
+        kind != .text
     }
 }

@@ -57,6 +57,7 @@ enum SettingsPermissionStatus: String, Sendable {
     case restricted
     case limited
     case unavailable
+    case diagnosticRequired
 
     var titleKey: LocalizedStringKey {
         switch self {
@@ -66,6 +67,7 @@ enum SettingsPermissionStatus: String, Sendable {
         case .restricted: "settings.permission.status.restricted"
         case .limited: "settings.permission.status.limited"
         case .unavailable: "settings.permission.status.unavailable"
+        case .diagnosticRequired: "settings.permission.status.diagnosticRequired"
         }
     }
 
@@ -145,10 +147,10 @@ enum SettingsPermissionSnapshotBuilder {
 
     private static func weatherStatus(locationStatus: SettingsPermissionStatus) -> SettingsPermissionStatus {
         switch locationStatus {
-        case .authorized, .limited: .authorized
+        case .authorized, .limited: .diagnosticRequired
         case .denied, .restricted: .unavailable
         case .notDetermined: .notDetermined
-        case .unavailable: .unavailable
+        case .unavailable, .diagnosticRequired: .unavailable
         }
     }
 }
