@@ -1,5 +1,7 @@
 # 01. Personalization, Background, And Notification System (v7)
 
+> Status: retained as the v7 current-state gap overview. The canonical implementation specs are now split across `01_identity_and_self_profile.md` through `11_phase_implementation_backlog.md`.
+
 ## 1. Goal
 
 v7 goal is to fix one product problem:
@@ -15,6 +17,8 @@ This document defines architecture changes for backend, AI, and notification loo
 - Record analysis request only contains current `record_shell`, current artifacts, and known entities.
 - There is no explicit history bundle (no week/month timeline package) in analyze payload.
 - Known entities are capped by pipeline-side recent nodes (`prefix(20)`).
+- Artifact text is compacted aggressively before cloud analysis; long body/attachment content can be reduced before the model sees it.
+- Existing `EntityProfile` fields such as `relationshipToUser`, `mentionCount`, `commonContextLabels`, and user descriptions are not packaged as Profile-level context for Analyze.
 
 Code:
 
@@ -26,6 +30,7 @@ Code:
 
 - Daily question suggestion uses `fetchRecentMemories(limit: 6)`.
 - Evidence snippet is compacted text only.
+- The current question payload does not consistently carry a real `knownProfile` brief.
 - Trigger is mainly app-launch/home-refresh path.
 
 Code:
@@ -72,6 +77,7 @@ Code:
 - Capture mood is free text (`userMood`) + optional integer (`userIntensity`).
 - Analysis emotion mainly maps to one label/intensity/confidence.
 - No multi-axis affect model for robust longitudinal reasoning.
+- Tone ambiguity is not represented as first-class data, so joking, venting, sarcasm, serious irritation, and exhaustion can collapse into the same label.
 
 Code:
 
@@ -82,10 +88,46 @@ Code:
 
 - Most question types only provide fixed candidate options.
 - Freeform text input is only implemented for `entityAlias`.
+- Non-alias questions can become effectively unanswerable when candidate answers are empty.
 
 Code:
 
 - `/Users/z14/Documents/sprout/mory/mory/Features/Intelligence/ClarificationQuestionCard.swift`
+
+### 2.8 Multimodal Evidence Is Useful But Thin
+
+- Photo processing produces compact tags/OCR summaries, not full visual scene understanding.
+- Speech transcription failure can leave no text evidence for analysis.
+- Weather/music/place context improves capture but does not replace identity-aware retrieval.
+- Journaling Suggestions is not integrated yet and the entitlement is not present in current app capabilities.
+
+Code:
+
+- `/Users/z14/Documents/sprout/mory/mory/Infrastructure/Analysis/Artifacts/PhotoArtifactProcessor.swift`
+- `/Users/z14/Documents/sprout/mory/mory/Infrastructure/Analysis/Artifacts/AudioTranscriptionService.swift`
+- `/Users/z14/Documents/sprout/mory/mory/Infrastructure/Context/ContextAutoCollector.swift`
+- `/Users/z14/Documents/sprout/mory/mory/mory.entitlements`
+
+### 2.9 Prompt And Quality Gates Are Conservative
+
+- Server prompts intentionally avoid overclaiming from one weak record.
+- Local quality gates reduce false reflections but can also weaken first-day perceived value.
+- v7 should keep conservatism, but surface evidence-backed possibilities and ask lightweight corrections earlier.
+
+Code:
+
+- `/Users/z14/Documents/sprout/server/internal/ai/prompt.go`
+- `/Users/z14/Documents/sprout/mory/mory/Infrastructure/Analysis/Quality/ContentQualityPolicies.swift`
+
+### 2.10 v6 Contracts Are Ahead Of Legacy Analyze
+
+- Some v6 flows already model evidence snippets and profile summaries.
+- Legacy Analyze has not yet adopted the same context-aware contract.
+
+Code:
+
+- `/Users/z14/Documents/sprout/server/internal/ai/v6_types.go`
+- `/Users/z14/Documents/sprout/server/internal/ai/types.go`
 
 ## 3. Why Personalization Feels Weak
 
@@ -273,4 +315,3 @@ Required metrics:
 - full server-side memory warehousing,
 - replacing local-first storage boundary,
 - cosmetic UI redesign before architecture stabilization.
-

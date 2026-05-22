@@ -1,0 +1,139 @@
+# 12. Current v6 Gap Matrix
+
+## 1. Purpose
+
+This document maps the current v6 code and docs into v7 implementation gaps. It exists so v7 work does not drift into vague “smarter AI” language.
+
+## 2. AI Analyze Context
+
+| Current | Impact | v7 fix |
+| --- | --- | --- |
+| Analyze request is centered on `record_shell`, artifacts, and known entities | model sees the current memory more than the user's life history | `AnalysisContextPack` |
+| known entities are capped and lightweight | people are names, not relationship profiles | `KnownProfileBrief` and `PersonProfile` |
+| artifacts can be compacted before Analyze | weak evidence makes prompt conservative | source-aware snippets and budget report |
+| profile answers are persisted locally but not sent next time | user correction does not strongly personalize future analysis | correction signals in context pack |
+| Arc/Reflection are post-processing | model cannot reason from prior arcs while analyzing new record | related arc/reflection briefs |
+| semantic search is user-facing | similar memories are not automatically recalled for analysis | pre-Analyze retrieval |
+
+Relevant code:
+
+- `mory/mory/Infrastructure/Analysis/Pipeline/AnalyzeRequestBuilder.swift`
+- `mory/mory/Infrastructure/Analysis/Pipeline/ArchitecturePipelineExecutor.swift`
+- `mory/mory/Persistence/Repositories/MoryMemoryRepository.swift`
+- `server/internal/ai/types.go`
+
+## 3. Identity And Entity Lifecycle
+
+| Current | Impact | v7 fix |
+| --- | --- | --- |
+| graph entity reuse is mostly name/alias equality | same-name and alias ambiguity persist | `EntityResolutionService` |
+| person merge/split is not first-class | wrong people cannot be repaired cleanly | GraphDelta v2 merge/split |
+| place has more management than people | relationship memory is weaker than place memory | person profile management path |
+| no dedicated self profile | “我/自己/我的...” does not anchor analysis | `SelfProfile` |
+| role labels can become entities | “舍友” can be wrong as one person | role label + ambiguous bucket |
+| no negative merge evidence | rejected mistakes can recur | `CorrectionEvent.notSameEntity` |
+
+Relevant code:
+
+- `mory/mory/Infrastructure/Analysis/Graph/GraphUpdater.swift`
+- `mory/mory/Domain/Intelligence/IntelligenceModels.swift`
+- `mory/mory/Infrastructure/Intelligence/GraphDeltaApplier.swift`
+- `mory/mory/Features/Settings/PlaceProfileManagementView.swift`
+
+## 4. Person Profile
+
+| Current | Impact | v7 fix |
+| --- | --- | --- |
+| `EntityProfile` has basic aliases/relationship/counts | not enough for long-term relationship insight | `PersonProfile` |
+| enrichment is deterministic aggregation | no profile portrait or relationship trajectory | portrait refresh job |
+| no field-level evidence UI | hard to trust or correct AI profile | profile field evidence |
+| user edits can be overwritten by derived updates | correction trust is weak | freeze/revoke/edit policy |
+
+Relevant code:
+
+- `mory/mory/Domain/Intelligence/IntelligenceModels.swift`
+- `mory/mory/Infrastructure/Intelligence/EntityEnrichmentService.swift`
+
+## 5. Mood And Tone
+
+| Current | Impact | v7 fix |
+| --- | --- | --- |
+| capture mood is free text | cannot trend reliably | `AffectSnapshot.valence/arousal/dominance` |
+| AI emotion is label/intensity/confidence | cannot represent multiple simultaneous feelings | labels + vector |
+| tone is not first-class | joking vs real irritation is fragile | tone hints + appraisal |
+| no affect correction event | mistakes do not train local personalization | `AffectCorrectionEvent` |
+| no Journaling Suggestions mood source | missing user-recorded system mood evidence | `journalSuggestionStateOfMind` |
+
+Relevant code:
+
+- `mory/mory/Domain/Capture/RecordShell.swift`
+- `mory/mory/Infrastructure/Analysis/Pipeline/AnalyzeResponseMapper.swift`
+
+## 6. Questions And Feedback
+
+| Current | Impact | v7 fix |
+| --- | --- | --- |
+| question enum is broader than writeback effects | product promise exceeds current mutation logic | `QuestionAnswerEffects` |
+| freeform mainly for alias | many questions cannot capture real user answer | freeform all question types |
+| no complete lifecycle/cooldown model | stale or repeated questions possible | `QuestionLifecycle` |
+| answers do not strongly shape Analyze context | feedback loop remains shallow | correction signals and profile briefs |
+
+Relevant code:
+
+- `mory/mory/Infrastructure/Intelligence/ClarificationQuestionBuilder.swift`
+- `mory/mory/Features/Intelligence/ClarificationQuestionCard.swift`
+- `mory/mory/Infrastructure/Intelligence/GraphDeltaApplier.swift`
+
+## 7. Background And Notifications
+
+| Current | Impact | v7 fix |
+| --- | --- | --- |
+| launch/home recovery is primary | app must open before many jobs run | BGTask + launch fallback |
+| no background URLSession pipeline | deferred network is less durable | background upload/download |
+| APNs foundation exists | not fully connected to proactive intent production | remote intent orchestrator |
+| local notifications exist | need unified local/remote policy and writeback | notification router |
+| daily one question appears mostly in app lifecycle | weak retention outside foreground | BGAppRefresh + APNs ready events |
+
+Relevant code:
+
+- `mory/mory/Infrastructure/Intelligence/AppIntelligenceRecoveryService.swift`
+- `mory/mory/Infrastructure/Notifications/NotificationIntentPreparationService.swift`
+- `mory/mory/Infrastructure/Notifications/LocalNotificationScheduler.swift`
+- `mory/mory/Infrastructure/Notifications/RemotePushSyncService.swift`
+- `server/internal/notification/push_delivery_worker.go`
+
+## 8. Multimodal Context
+
+| Current | Impact | v7 fix |
+| --- | --- | --- |
+| location/weather/music capture exists | useful but not enough for long-term reasoning | context evidence source registry |
+| photo analysis is compact | visual evidence may be too thin | richer evidence + provenance |
+| speech failure can remove voice evidence | mood/tone quality drops | explicit uncertainty/failure evidence |
+| Journaling Suggestions absent | missing system-curated context | `JournalingSuggestionContextService` |
+| App Intents/Share not unified into draft model | app-external capture incomplete | shared capture draft pipeline |
+
+Relevant code:
+
+- `mory/mory/Infrastructure/Context/ContextAutoCollector.swift`
+- `mory/mory/Infrastructure/Analysis/Artifacts/PhotoArtifactProcessor.swift`
+- `mory/mory/Infrastructure/Analysis/Artifacts/AudioTranscriptionService.swift`
+
+## 9. Evaluation
+
+| Current | Impact | v7 fix |
+| --- | --- | --- |
+| prompt tuning can become subjective | hard to know if personalization improved | golden fixtures |
+| no identity quality metrics | wrong merges can hide | merge precision/error rate |
+| no context pack hit/noise metrics | retrieval may add irrelevant context | context pack eval |
+| notification feedback is not enough | retention tuning can become spammy | interaction writeback metrics |
+
+## 10. v7 Priority Order
+
+1. `SelfProfile` and `AnalysisContextPack`.
+2. `EntityResolutionService` and `CorrectionEvent`.
+3. Person merge/split and GraphDelta v2.
+4. `PersonProfile` + portrait job.
+5. `AffectSnapshot` and tone correction.
+6. Analyze v7 cloud contract.
+7. BGTask/background URLSession/APNs orchestration.
+8. Eval/debug/privacy audit.
