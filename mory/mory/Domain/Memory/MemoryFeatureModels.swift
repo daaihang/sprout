@@ -1067,6 +1067,12 @@ protocol MoryMemoryRepositorying: AnyObject {
     func fetchEntityProfile(entityID: UUID) throws -> EntityProfile?
     func fetchEntityProfiles(kind: EntityKind?, limit: Int?) throws -> [EntityProfile]
     func upsertEntityProfile(_ profile: EntityProfile) throws
+    func fetchPersonProfile(entityID: UUID) throws -> PersonProfile?
+    func fetchPersonProfiles(limit: Int?) throws -> [PersonProfile]
+    func upsertPersonProfile(_ profile: PersonProfile) throws
+    func refreshPersonProfile(entityID: UUID, now: Date) throws -> PersonProfile?
+    func applyPersonProfileMutation(_ mutation: PersonProfileMutation) throws -> PersonProfile
+    func deletePersonProfilePortrait(entityID: UUID) throws -> PersonProfile
     func fetchPlaceProfile(id: UUID) throws -> PlaceProfile?
     func fetchPlaceProfiles(limit: Int?) throws -> [PlaceProfile]
     func upsertPlaceProfile(_ profile: PlaceProfile) throws

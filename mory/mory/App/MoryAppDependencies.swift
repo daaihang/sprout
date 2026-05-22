@@ -109,6 +109,12 @@ private final class MissingMemoryRepository: MoryMemoryRepositorying {
     func fetchEntityProfile(entityID: UUID) throws -> EntityProfile? { fail() }
     func fetchEntityProfiles(kind: EntityKind?, limit: Int?) throws -> [EntityProfile] { fail() }
     func upsertEntityProfile(_ profile: EntityProfile) throws { let _: Void = fail() }
+    func fetchPersonProfile(entityID: UUID) throws -> PersonProfile? { fail() }
+    func fetchPersonProfiles(limit: Int?) throws -> [PersonProfile] { fail() }
+    func upsertPersonProfile(_ profile: PersonProfile) throws { let _: Void = fail() }
+    func refreshPersonProfile(entityID: UUID, now: Date) throws -> PersonProfile? { fail() }
+    func applyPersonProfileMutation(_ mutation: PersonProfileMutation) throws -> PersonProfile { fail() }
+    func deletePersonProfilePortrait(entityID: UUID) throws -> PersonProfile { fail() }
     func fetchPlaceProfile(id: UUID) throws -> PlaceProfile? { fail() }
     func fetchPlaceProfiles(limit: Int?) throws -> [PlaceProfile] { fail() }
     func upsertPlaceProfile(_ profile: PlaceProfile) throws { let _: Void = fail() }

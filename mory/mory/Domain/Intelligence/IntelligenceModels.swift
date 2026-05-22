@@ -273,6 +273,7 @@ enum IntelligenceJobKind: String, Codable, CaseIterable, Identifiable, Sendable 
     case postAnalysis
     case entityEnrichment
     case clarificationQuestionGeneration
+    case personProfileRefresh
     case graphDeltaApplication
     case dailyQuestion
     case semanticIndex

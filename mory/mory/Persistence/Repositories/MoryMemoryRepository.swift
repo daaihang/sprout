@@ -1406,6 +1406,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         try deleteAll(ClarificationQuestionStore.self)
         try deleteAll(PlaceProfileStore.self)
         try deleteAll(SelfProfileStore.self)
+        try deleteAll(PersonProfileStore.self)
         try deleteAll(EntityProfileStore.self)
         try deleteAll(HomeBoardPreferenceStore.self)
         try deleteAll(CompositionItemStore.self)
@@ -1551,6 +1552,128 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     func upsertEntityProfile(_ profile: EntityProfile) throws {
         try upsert(entityProfile: profile)
         try save()
+    }
+
+    func fetchPersonProfile(entityID: UUID) throws -> PersonProfile? {
+        let descriptor = FetchDescriptor<PersonProfileStore>(
+            predicate: #Predicate { $0.entityID == entityID }
+        )
+        return try modelContext.fetch(descriptor).first?.domainModel
+    }
+
+    func fetchPersonProfiles(limit: Int?) throws -> [PersonProfile] {
+        let profiles = try modelContext.fetch(
+            FetchDescriptor<PersonProfileStore>(
+                sortBy: [SortDescriptor(\.updatedAt, order: .reverse)]
+            )
+        )
+        .map(\.domainModel)
+        return applyLimit(limit, to: profiles)
+    }
+
+    func upsertPersonProfile(_ profile: PersonProfile) throws {
+        try upsert(personProfile: profile)
+        try save()
+    }
+
+    func refreshPersonProfile(entityID: UUID, now: Date = .now) throws -> PersonProfile? {
+        guard let detail = try fetchEntityDetail(entityID: entityID), detail.entity.kind == .person else {
+            return nil
+        }
+        let entityProfile = try fetchEntityProfile(entityID: entityID)
+        let existing = try fetchPersonProfile(entityID: entityID)
+        let refreshed = try buildPersonProfile(
+            detail: detail,
+            entityProfile: entityProfile,
+            existing: existing,
+            now: now
+        )
+        try upsert(personProfile: refreshed)
+        try save()
+        return refreshed
+    }
+
+    func applyPersonProfileMutation(_ mutation: PersonProfileMutation) throws -> PersonProfile {
+        let now = mutation.createdAt
+        let existing = try fetchPersonProfile(entityID: mutation.entityID)
+        let profile = if let existing {
+            existing
+        } else if let refreshed = try refreshPersonProfile(entityID: mutation.entityID, now: now) {
+            refreshed
+        } else {
+            throw PersonEntityMutationError.entityNotFound
+        }
+
+        var updated = profile
+        switch mutation.field {
+        case .displayName:
+            guard let value = mutation.stringValue?.trimmedOrNil else {
+                throw PersonEntityMutationError.emptyDisplayName
+            }
+            updated.displayName = value
+            updated.canonicalName = value
+        case .aliases:
+            updated.aliases = normalizedPersonAliases(mutation.stringListValue ?? [])
+        case .relationshipToUser:
+            updated.relationshipToUser = mutation.relationshipValue
+            updated.relationshipHistory.append(RelationshipChange(
+                relationship: mutation.relationshipValue,
+                note: mutation.note,
+                status: .userConfirmed,
+                changedAt: now
+            ))
+        case .roleLabels:
+            updated.roleLabels = mergeStrings([], mutation.stringListValue ?? [])
+        case .userNotes:
+            updated.userNotes = mutation.stringValue?.trimmedOrNil
+        case .sensitivity:
+            updated.sensitivity = mutation.sensitivityValue ?? updated.sensitivity
+        case .automationPolicy:
+            updated.automationPolicy = mutation.automationPolicyValue ?? updated.automationPolicy
+        case .aiPortrait:
+            updated.aiPortrait = nil
+        }
+
+        updated.fieldEvidence.removeAll {
+            $0.fieldKey == mutation.field.rawValue && $0.source == .userEdit
+        }
+        updated.fieldEvidence.append(ProfileFieldEvidence(
+            fieldKey: mutation.field.rawValue,
+            source: .userEdit,
+            status: .userConfirmed,
+            snippet: mutation.note?.trimmedOrNil ?? "User edited \(mutation.field.rawValue).",
+            confidence: 1,
+            createdAt: now,
+            refreshedAt: now
+        ))
+        updated.fieldConfidence[mutation.field.rawValue] = 1
+        updated.lastReviewedAt = now
+        updated.updatedAt = now
+
+        try upsert(personProfile: updated)
+        try upsert(correctionEvent: CorrectionEvent(
+            kind: .profileFieldUpdated,
+            actor: mutation.actor,
+            targetEntityIDs: [mutation.entityID],
+            note: mutation.note ?? "Person profile field edited: \(mutation.field.rawValue)",
+            metadata: [
+                "field": mutation.field.rawValue,
+            ],
+            isReversible: true,
+            createdAt: now
+        ))
+        try save()
+        return updated
+    }
+
+    func deletePersonProfilePortrait(entityID: UUID) throws -> PersonProfile {
+        try applyPersonProfileMutation(
+            PersonProfileMutation(
+                entityID: entityID,
+                field: .aiPortrait,
+                note: "AI portrait deleted by user."
+            )
+        )
     }
 
     func fetchPlaceProfiles(limit: Int?) throws -> [PlaceProfile] {
@@ -1786,9 +1909,16 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
 
         primaryStore.apply(domainModel: primaryNode)
         try upsert(entityProfile: mergedProfile)
+        try mergePersonProfiles(
+            primaryID: primaryID,
+            mergingIDs: mergingIDSet,
+            mergedEntityProfile: mergedProfile,
+            now: now
+        )
         try rewriteEntityLinksAndEdges(replacing: replacementMap, linkSource: "personProfile")
         try rewriteEntityReferencesForMerge(replacing: replacementMap)
         try deleteEntityProfiles(entityIDs: mergingIDSet)
+        try deletePersonProfiles(entityIDs: mergingIDSet)
         try deleteEntityNodes(entityIDs: mergingIDSet)
 
         let affectedRecordIDs = Set(primaryNode.provenanceRecordIDs + mergingNodes.flatMap(\.provenanceRecordIDs))
@@ -1904,6 +2034,13 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             updatedAt: now
         )
         try upsert(entityProfile: newProfile)
+        try splitPersonProfiles(
+            fromEntityID: id,
+            toEntityID: newEntityID,
+            newEntityProfile: newProfile,
+            movingRecordIDs: movingRecordIDSet,
+            now: now
+        )
 
         let movedArtifactIDs = try movePersonArtifactLinks(
             fromEntityID: id,
@@ -2552,6 +2689,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         if flags.intelligenceJobs {
             try upsert(intelligenceJob: updateJob(scheduled.postAnalysisJob, status: .running, at: now))
             try scheduled.entityEnrichmentJobs.forEach { try upsert(intelligenceJob: $0) }
+            try scheduled.personProfileRefreshJobs.forEach { try upsert(intelligenceJob: $0) }
             try scheduled.questionGenerationJobs.forEach { try upsert(intelligenceJob: $0) }
         }
 
@@ -2566,12 +2704,17 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         if flags.entityProfiles {
             for profile in enrichedProfiles {
                 try upsert(entityProfile: profile)
+                _ = try refreshPersonProfile(entityID: profile.entityID, now: now)
             }
         }
 
         if flags.intelligenceJobs {
             for job in scheduled.entityEnrichmentJobs {
                 try upsert(intelligenceJob: updateJob(job, status: .completed, at: now))
+            }
+            let personProfileJobStatus: IntelligenceJobStatus = flags.entityProfiles ? .completed : .cancelled
+            for job in scheduled.personProfileRefreshJobs {
+                try upsert(intelligenceJob: updateJob(job, status: personProfileJobStatus, at: now))
             }
         }
 
@@ -2727,6 +2870,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             artifactIDs: artifactIDs
         )
         try purgePlaceProfiles(removingRecordIDs: recordIDs, artifactIDs: artifactIDs)
+        try purgePersonProfiles(removingRecordIDs: recordIDs, artifactIDs: artifactIDs)
         try purgeEntityProfiles(removing: recordIDs)
         try purgeEntityProvenance(removing: recordIDs, remainingLinkedEntityIDs: remainingLinkedEntityIDs)
     }
@@ -2911,6 +3055,66 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             || !profile.aliases.isEmpty
     }
 
+    private func purgePersonProfiles(
+        removingRecordIDs recordIDs: Set<UUID>,
+        artifactIDs: Set<UUID>
+    ) throws {
+        let stores = try modelContext.fetch(FetchDescriptor<PersonProfileStore>())
+        let now = Date.now
+
+        for store in stores {
+            var profile = store.domainModel
+            let originalSourceRecordIDs = profile.sourceRecordIDs
+            let originalEvidence = profile.fieldEvidence
+            profile.sourceRecordIDs.removeAll { recordIDs.contains($0) }
+            profile.fieldEvidence = profile.fieldEvidence.map { evidence in
+                var updated = evidence
+                let touched = !Set(updated.sourceRecordIDs).isDisjoint(with: recordIDs)
+                    || !Set(updated.sourceArtifactIDs).isDisjoint(with: artifactIDs)
+                guard touched else { return updated }
+                updated.sourceRecordIDs.removeAll { recordIDs.contains($0) }
+                updated.sourceArtifactIDs.removeAll { artifactIDs.contains($0) }
+                updated.status = .stale
+                updated.refreshedAt = now
+                return updated
+            }
+
+            if let portrait = profile.aiPortrait {
+                let remainingEvidence = portrait.evidenceRecordIDs.filter { !recordIDs.contains($0) }
+                if remainingEvidence.count != portrait.evidenceRecordIDs.count {
+                    if remainingEvidence.isEmpty {
+                        profile.aiPortrait = nil
+                    } else {
+                        var updatedPortrait = portrait
+                        updatedPortrait.evidenceRecordIDs = remainingEvidence
+                        updatedPortrait.status = .stale
+                        updatedPortrait.updatedAt = now
+                        profile.aiPortrait = updatedPortrait
+                    }
+                }
+            }
+
+            let changed = profile.sourceRecordIDs != originalSourceRecordIDs
+                || profile.fieldEvidence != originalEvidence
+            guard changed else { continue }
+
+            if profile.sourceRecordIDs.isEmpty && !shouldRetainPersonProfileWithoutSource(profile) {
+                modelContext.delete(store)
+                continue
+            }
+
+            profile.updatedAt = now
+            store.apply(domainModel: profile)
+        }
+    }
+
+    private func shouldRetainPersonProfileWithoutSource(_ profile: PersonProfile) -> Bool {
+        profile.relationshipHistory.contains { $0.status == .userConfirmed }
+            || !(profile.userNotes?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+            || profile.fieldEvidence.contains { $0.status == .userConfirmed && $0.source == .userEdit }
+            || profile.automationPolicy == .frozen
+    }
+
     private func purgePlaceProfiles(
         removingRecordIDs recordIDs: Set<UUID>,
         artifactIDs: Set<UUID>
@@ -2938,6 +3142,315 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             store.apply(domainModel: profile)
             try upsertPlaceEntityNode(for: profile, updatedAt: profile.updatedAt)
         }
+    }
+
+    private func buildPersonProfile(
+        detail: EntityDetailSnapshot,
+        entityProfile: EntityProfile?,
+        existing: PersonProfile?,
+        now: Date
+    ) throws -> PersonProfile {
+        if let existing, existing.isFrozen {
+            var frozen = existing
+            frozen.sourceRecordIDs = mergeUniqueIDs(frozen.sourceRecordIDs, detail.relatedMemories.map(\.id))
+            frozen.updatedAt = now
+            return frozen
+        }
+
+        let sourceRecordIDs = mergeUniqueIDs(
+            existing?.sourceRecordIDs ?? [],
+            mergeUniqueIDs(entityProfile?.sourceRecordIDs ?? [], detail.relatedMemories.map(\.id))
+        )
+        let aliases = normalizedPersonAliases(
+            [detail.entity.displayName, detail.entity.canonicalName]
+                + detail.entity.aliases
+                + (entityProfile?.aliases ?? [])
+                + (existing?.aliases ?? [])
+        )
+        let relationship = preservedUserConfirmedRelationship(existing)
+            ?? existing?.relationshipToUser
+            ?? entityProfile?.relationshipToUser
+        let relationshipHistory = updatedRelationshipHistory(
+            existing?.relationshipHistory ?? [],
+            relationship: relationship,
+            sourceRecordIDs: sourceRecordIDs,
+            now: now
+        )
+        let roleLabels = mergeStrings(
+            existing?.roleLabels ?? [],
+            relationship.map { [$0.rawValue] } ?? []
+        )
+        let contextLabels = mergeStrings(
+            existing?.commonContextLabels ?? [],
+            mergeStrings(entityProfile?.commonContextLabels ?? [], detail.relatedThemes)
+        )
+        let relatedEntityIDs = try relatedEntityIDsByKind(edges: detail.edges)
+        let evidence = refreshedPersonProfileEvidence(
+            detail: detail,
+            entityProfile: entityProfile,
+            existing: existing,
+            sourceRecordIDs: sourceRecordIDs,
+            relationship: relationship,
+            contextLabels: contextLabels,
+            now: now
+        )
+
+        let portrait = buildPersonPortrait(
+            displayName: detail.entity.displayName,
+            relationship: relationship,
+            relatedMemories: detail.relatedMemories,
+            contextLabels: contextLabels,
+            existing: existing?.aiPortrait,
+            now: now
+        )
+        let affectPattern = buildPersonAffectPattern(
+            recordIDs: sourceRecordIDs,
+            now: now
+        )
+
+        return PersonProfile(
+            id: existing?.id ?? UUID(),
+            entityID: detail.entity.id,
+            displayName: detail.entity.displayName,
+            canonicalName: detail.entity.canonicalName,
+            aliases: aliases,
+            roleLabels: roleLabels,
+            relationshipToUser: relationship,
+            relationshipHistory: relationshipHistory,
+            relationshipStrength: relationshipStrength(for: relationship, mentionCount: sourceRecordIDs.count),
+            importanceScore: importanceScore(
+                relationship: relationship,
+                mentionCount: sourceRecordIDs.count,
+                reflectionCount: detail.relatedReflections.count,
+                arcCount: detail.relatedArcs.count
+            ),
+            interactionFrequency: interactionFrequency(for: detail.relatedMemories),
+            commonPlaceIDs: relatedEntityIDs[.place] ?? existing?.commonPlaceIDs ?? [],
+            commonThemeIDs: relatedEntityIDs[.theme] ?? existing?.commonThemeIDs ?? [],
+            commonDecisionIDs: relatedEntityIDs[.decision] ?? existing?.commonDecisionIDs ?? [],
+            commonContextLabels: contextLabels,
+            emotionalPattern: affectPattern ?? existing?.emotionalPattern,
+            recentChangeSummary: recentChangeSummary(
+                displayName: detail.entity.displayName,
+                relatedMemories: detail.relatedMemories,
+                relationship: relationship
+            ),
+            userNotes: existing?.userNotes,
+            aiPortrait: portrait,
+            fieldEvidence: evidence,
+            fieldConfidence: fieldConfidence(from: evidence),
+            sensitivity: existing?.sensitivity ?? .normal,
+            automationPolicy: existing?.automationPolicy ?? .automatic,
+            sourceRecordIDs: sourceRecordIDs,
+            lastReviewedAt: existing?.lastReviewedAt,
+            createdAt: existing?.createdAt ?? detail.entity.createdAt,
+            updatedAt: now
+        )
+    }
+
+    private func preservedUserConfirmedRelationship(_ existing: PersonProfile?) -> EntityRelationshipToUser? {
+        guard let existing else { return nil }
+        guard existing.relationshipHistory.contains(where: { $0.status == .userConfirmed }) else {
+            return nil
+        }
+        return existing.relationshipToUser
+    }
+
+    private func updatedRelationshipHistory(
+        _ existing: [RelationshipChange],
+        relationship: EntityRelationshipToUser?,
+        sourceRecordIDs: [UUID],
+        now: Date
+    ) -> [RelationshipChange] {
+        guard let relationship else { return existing }
+        if existing.contains(where: { $0.relationship == relationship }) {
+            return existing
+        }
+        return existing + [
+            RelationshipChange(
+                relationship: relationship,
+                note: "Inferred from person profile refresh.",
+                sourceRecordIDs: sourceRecordIDs,
+                status: .inferred,
+                changedAt: now
+            )
+        ]
+    }
+
+    private func relatedEntityIDsByKind(edges: [EntityEdge]) throws -> [EntityKind: [UUID]] {
+        var result: [EntityKind: [UUID]] = [:]
+        for edge in edges {
+            for entityID in [edge.fromEntityID, edge.toEntityID] {
+                guard let node = try fetchEntityNode(id: entityID) else { continue }
+                guard node.kind == .place || node.kind == .theme || node.kind == .decision else { continue }
+                result[node.kind, default: []].append(node.id)
+            }
+        }
+        return result.mapValues { Array(NSOrderedSet(array: $0)) as? [UUID] ?? $0 }
+    }
+
+    private func refreshedPersonProfileEvidence(
+        detail: EntityDetailSnapshot,
+        entityProfile: EntityProfile?,
+        existing: PersonProfile?,
+        sourceRecordIDs: [UUID],
+        relationship: EntityRelationshipToUser?,
+        contextLabels: [String],
+        now: Date
+    ) -> [ProfileFieldEvidence] {
+        let userEvidence = existing?.fieldEvidence.filter { $0.source == .userEdit && $0.status == .userConfirmed } ?? []
+        var evidence = userEvidence
+        let latestMemories = Array(detail.relatedMemories.prefix(4))
+        for memory in latestMemories {
+            evidence.append(ProfileFieldEvidence(
+                fieldKey: "sourceRecordIDs",
+                source: .memory,
+                sourceRecordIDs: [memory.id],
+                sourceArtifactIDs: memory.primaryArtifact.map { [$0.id] } ?? [],
+                snippet: String(memory.summaryText.prefix(260)),
+                confidence: entityProfile?.confidence ?? detail.entity.confidence,
+                createdAt: now,
+                refreshedAt: now
+            ))
+        }
+        if let relationship {
+            evidence.append(ProfileFieldEvidence(
+                fieldKey: "relationshipToUser",
+                source: .profileRefresh,
+                sourceRecordIDs: sourceRecordIDs,
+                snippet: "Relationship currently reads as \(relationship.rawValue).",
+                confidence: entityProfile?.confidence,
+                createdAt: now,
+                refreshedAt: now
+            ))
+        }
+        if !contextLabels.isEmpty {
+            evidence.append(ProfileFieldEvidence(
+                fieldKey: "commonContextLabels",
+                source: .profileRefresh,
+                sourceRecordIDs: sourceRecordIDs,
+                snippet: contextLabels.prefix(6).joined(separator: ", "),
+                confidence: 0.72,
+                createdAt: now,
+                refreshedAt: now
+            ))
+        }
+        return evidence
+    }
+
+    private func fieldConfidence(from evidence: [ProfileFieldEvidence]) -> [String: Double] {
+        var result: [String: Double] = [:]
+        for item in evidence {
+            result[item.fieldKey] = max(result[item.fieldKey] ?? 0, item.confidence ?? 0.5)
+        }
+        return result
+    }
+
+    private func buildPersonPortrait(
+        displayName: String,
+        relationship: EntityRelationshipToUser?,
+        relatedMemories: [MemorySummary],
+        contextLabels: [String],
+        existing: PersonPortrait?,
+        now: Date
+    ) -> PersonPortrait? {
+        guard !relatedMemories.isEmpty else {
+            return existing
+        }
+        let memoryCount = relatedMemories.count
+        let contexts = Array(contextLabels.prefix(5))
+        let relationshipText = relationship?.rawValue ?? "unknown relationship"
+        let latest = relatedMemories.max { $0.record.updatedAt < $1.record.updatedAt }
+        let summary = "\(displayName) appears in \(memoryCount) \(memoryCount == 1 ? "memory" : "memories"), with relationship marked as \(relationshipText)."
+        let recentPattern = latest.map { "Latest related memory: \($0.summaryText)" }
+        return PersonPortrait(
+            id: existing?.id ?? UUID(),
+            summary: summary,
+            relationshipTrajectory: relationship == nil ? nil : "Current relationship label is \(relationshipText).",
+            recentInteractionPattern: recentPattern.map { String($0.prefix(320)) },
+            recurringContexts: contexts,
+            affectSummary: nil,
+            openUncertainties: relationship == nil ? ["Confirm who \(displayName) is to you."] : [],
+            suggestedQuestions: relationship == nil ? ["Who is \(displayName) to you?"] : [],
+            evidenceRecordIDs: relatedMemories.map(\.id),
+            confidence: min(0.95, 0.45 + Double(memoryCount) * 0.08),
+            status: .inferred,
+            generatedAt: existing?.generatedAt ?? now,
+            updatedAt: now
+        )
+    }
+
+    private func buildPersonAffectPattern(
+        recordIDs: [UUID],
+        now: Date
+    ) -> PersonAffectPattern? {
+        let analyses = recordIDs.compactMap { try? fetchRecordAnalysis(recordID: $0) }
+        let notes = analyses
+            .map(\.emotionInterpretation)
+            .compactMap { $0.trimmedOrNil }
+        guard !notes.isEmpty else { return nil }
+        return PersonAffectPattern(
+            dominantLabels: [],
+            summary: String(notes.prefix(3).joined(separator: " / ").prefix(360)),
+            sourceRecordIDs: analyses.map(\.recordID),
+            confidence: 0.58,
+            updatedAt: now
+        )
+    }
+
+    private func relationshipStrength(
+        for relationship: EntityRelationshipToUser?,
+        mentionCount: Int
+    ) -> Double? {
+        guard let relationship else { return nil }
+        let base: Double = switch relationship {
+        case .partner: 0.9
+        case .family: 0.82
+        case .friend: 0.72
+        case .manager, .directReport, .coworker, .classmate, .client: 0.56
+        case .acquaintance, .creator, .publicFigure, .other, .unknown: 0.35
+        }
+        return min(1, base + min(0.18, Double(mentionCount) * 0.025))
+    }
+
+    private func importanceScore(
+        relationship: EntityRelationshipToUser?,
+        mentionCount: Int,
+        reflectionCount: Int,
+        arcCount: Int
+    ) -> Double {
+        var score = min(0.45, Double(mentionCount) * 0.08)
+        if relationship != nil {
+            score += 0.2
+        }
+        score += min(0.18, Double(reflectionCount) * 0.06)
+        score += min(0.17, Double(arcCount) * 0.08)
+        return min(1, score)
+    }
+
+    private func interactionFrequency(for memories: [MemorySummary]) -> InteractionFrequency {
+        guard !memories.isEmpty else { return .unknown }
+        guard memories.count >= 2 else { return .rare }
+        let dates = memories.map(\.record.updatedAt)
+        guard let earliest = dates.min(), let latest = dates.max() else { return .unknown }
+        let days = max(1, latest.timeIntervalSince(earliest) / 86_400)
+        let rate = Double(memories.count) / days
+        if rate >= 1 { return .daily }
+        if rate >= 1.0 / 7.0 { return .weekly }
+        if rate >= 1.0 / 30.0 { return .monthly }
+        return .rare
+    }
+
+    private func recentChangeSummary(
+        displayName: String,
+        relatedMemories: [MemorySummary],
+        relationship: EntityRelationshipToUser?
+    ) -> String? {
+        guard let latest = relatedMemories.max(by: { $0.record.updatedAt < $1.record.updatedAt }) else {
+            return nil
+        }
+        let relationshipText = relationship?.rawValue ?? "unconfirmed"
+        return "\(displayName)'s latest related memory is from \(latest.record.updatedAt.formatted(.iso8601)); relationship is \(relationshipText)."
     }
 
     private func fetchPersonEntityNodes(recordID: UUID, artifactIDs: [UUID]) throws -> [EntityNode] {
@@ -3529,6 +4042,132 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         }
     }
 
+    private func deletePersonProfiles(entityIDs: Set<UUID>) throws {
+        guard !entityIDs.isEmpty else { return }
+        let profileStores = try modelContext.fetch(FetchDescriptor<PersonProfileStore>())
+        for store in profileStores where entityIDs.contains(store.entityID) {
+            modelContext.delete(store)
+        }
+    }
+
+    private func mergePersonProfiles(
+        primaryID: UUID,
+        mergingIDs: Set<UUID>,
+        mergedEntityProfile: EntityProfile,
+        now: Date
+    ) throws {
+        let primaryPersonProfile = try fetchPersonProfile(entityID: primaryID)
+        let mergingPersonProfiles = try mergingIDs.compactMap { try fetchPersonProfile(entityID: $0) }
+        guard primaryPersonProfile != nil || !mergingPersonProfiles.isEmpty else {
+            try upsert(personProfile: makePersonProfile(from: mergedEntityProfile, now: now))
+            return
+        }
+
+        var merged = primaryPersonProfile ?? makePersonProfile(from: mergedEntityProfile, now: now)
+        merged.displayName = mergedEntityProfile.displayName
+        merged.canonicalName = mergedEntityProfile.canonicalName
+        merged.aliases = normalizedPersonAliases(
+            [merged.displayName, merged.canonicalName]
+                + merged.aliases
+                + mergingPersonProfiles.flatMap { [$0.displayName, $0.canonicalName] + $0.aliases }
+        )
+        merged.roleLabels = mergeStrings(merged.roleLabels, mergingPersonProfiles.flatMap(\.roleLabels))
+        merged.relationshipHistory = mergeRelationshipHistory(
+            merged.relationshipHistory,
+            mergingPersonProfiles.flatMap(\.relationshipHistory)
+        )
+        if merged.relationshipToUser == nil {
+            merged.relationshipToUser = mergingPersonProfiles.compactMap(\.relationshipToUser).first
+        }
+        merged.commonPlaceIDs = mergeUniqueIDs(merged.commonPlaceIDs, mergingPersonProfiles.flatMap(\.commonPlaceIDs))
+        merged.commonThemeIDs = mergeUniqueIDs(merged.commonThemeIDs, mergingPersonProfiles.flatMap(\.commonThemeIDs))
+        merged.commonDecisionIDs = mergeUniqueIDs(merged.commonDecisionIDs, mergingPersonProfiles.flatMap(\.commonDecisionIDs))
+        merged.commonContextLabels = mergeStrings(merged.commonContextLabels, mergingPersonProfiles.flatMap(\.commonContextLabels))
+        merged.sourceRecordIDs = mergeUniqueIDs(mergedEntityProfile.sourceRecordIDs, mergingPersonProfiles.flatMap(\.sourceRecordIDs))
+        merged.fieldEvidence = merged.fieldEvidence + mergingPersonProfiles.flatMap(\.fieldEvidence)
+        merged.fieldConfidence = fieldConfidence(from: merged.fieldEvidence)
+        merged.importanceScore = max(merged.importanceScore ?? 0, mergingPersonProfiles.compactMap(\.importanceScore).max() ?? 0)
+        merged.relationshipStrength = max(merged.relationshipStrength ?? 0, mergingPersonProfiles.compactMap(\.relationshipStrength).max() ?? 0)
+        merged.updatedAt = now
+        try upsert(personProfile: merged)
+    }
+
+    private func splitPersonProfiles(
+        fromEntityID: UUID,
+        toEntityID: UUID,
+        newEntityProfile: EntityProfile,
+        movingRecordIDs: Set<UUID>,
+        now: Date
+    ) throws {
+        guard var original = try fetchPersonProfile(entityID: fromEntityID) else {
+            try upsert(personProfile: makePersonProfile(from: newEntityProfile, now: now))
+            return
+        }
+
+        let movedEvidence = original.fieldEvidence.filter {
+            !Set($0.sourceRecordIDs).isDisjoint(with: movingRecordIDs)
+        }
+        original.sourceRecordIDs.removeAll { movingRecordIDs.contains($0) }
+        original.fieldEvidence.removeAll {
+            !$0.sourceRecordIDs.isEmpty && Set($0.sourceRecordIDs).isSubset(of: movingRecordIDs)
+        }
+        original.updatedAt = now
+        try upsert(personProfile: original)
+
+        var newProfile = makePersonProfile(from: newEntityProfile, now: now)
+        newProfile.relationshipToUser = original.relationshipToUser
+        newProfile.relationshipHistory = original.relationshipHistory
+        newProfile.sensitivity = original.sensitivity
+        newProfile.fieldEvidence = movedEvidence
+        newProfile.fieldConfidence = fieldConfidence(from: movedEvidence)
+        newProfile.updatedAt = now
+        try upsert(personProfile: newProfile)
+    }
+
+    private func makePersonProfile(from entityProfile: EntityProfile, now: Date) -> PersonProfile {
+        PersonProfile(
+            entityID: entityProfile.entityID,
+            displayName: entityProfile.displayName,
+            canonicalName: entityProfile.canonicalName,
+            aliases: entityProfile.aliases,
+            roleLabels: entityProfile.relationshipToUser.map { [$0.rawValue] } ?? [],
+            relationshipToUser: entityProfile.relationshipToUser,
+            relationshipHistory: entityProfile.relationshipToUser.map {
+                [
+                    RelationshipChange(
+                        relationship: $0,
+                        sourceRecordIDs: entityProfile.sourceRecordIDs,
+                        status: entityProfile.confirmationState == .userConfirmed ? .userConfirmed : .inferred,
+                        changedAt: now
+                    )
+                ]
+            } ?? [],
+            interactionFrequency: .unknown,
+            commonContextLabels: entityProfile.commonContextLabels,
+            sourceRecordIDs: entityProfile.sourceRecordIDs,
+            createdAt: entityProfile.createdAt,
+            updatedAt: now
+        )
+    }
+
+    private func mergeRelationshipHistory(
+        _ lhs: [RelationshipChange],
+        _ rhs: [RelationshipChange]
+    ) -> [RelationshipChange] {
+        var seen = Set<String>()
+        var result: [RelationshipChange] = []
+        for change in lhs + rhs {
+            let key = [
+                change.relationship?.rawValue ?? "nil",
+                change.note ?? "",
+                change.changedAt.timeIntervalSince1970.description,
+            ].joined(separator: "|")
+            guard seen.insert(key).inserted else { continue }
+            result.append(change)
+        }
+        return result.sorted { $0.changedAt < $1.changedAt }
+    }
+
     private func deleteEntityNodes(entityIDs: Set<UUID>) throws {
         guard !entityIDs.isEmpty else { return }
         let nodeStores = try modelContext.fetch(FetchDescriptor<EntityNodeStore>())
@@ -3549,6 +4188,16 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
                 targetID: entityID,
                 status: .pending,
                 priority: 0.76,
+                scheduledAt: now,
+                updatedAt: now,
+                requiresCloudAI: false
+            ))
+            try upsert(intelligenceJob: IntelligenceJob(
+                kind: .personProfileRefresh,
+                targetType: .entity,
+                targetID: entityID,
+                status: .pending,
+                priority: 0.73,
                 scheduledAt: now,
                 updatedAt: now,
                 requiresCloudAI: false
@@ -3791,6 +4440,19 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             existingByEntity.apply(domainModel: entityProfile)
         } else {
             modelContext.insert(EntityProfileStore(domainModel: entityProfile))
+        }
+    }
+
+    func upsert(personProfile: PersonProfile) throws {
+        let descriptor = FetchDescriptor<PersonProfileStore>(predicate: #Predicate { $0.id == personProfile.id })
+        if let existing = try modelContext.fetch(descriptor).first {
+            existing.apply(domainModel: personProfile)
+        } else if let existingByEntity = try modelContext.fetch(
+            FetchDescriptor<PersonProfileStore>(predicate: #Predicate { $0.entityID == personProfile.entityID })
+        ).first {
+            existingByEntity.apply(domainModel: personProfile)
+        } else {
+            modelContext.insert(PersonProfileStore(domainModel: personProfile))
         }
     }
 

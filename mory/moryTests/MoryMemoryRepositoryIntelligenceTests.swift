@@ -840,6 +840,147 @@ final class MoryMemoryRepositoryIntelligenceTests: XCTestCase {
         XCTAssertTrue(jobs.contains { $0.kind == .chapterCandidate && $0.targetID == recordB })
     }
 
+    func testPersonProfileRefreshBuildsEvidenceBackedPortraitAfterNewMemories() async throws {
+        let fixture = makeRepositoryFixture()
+        let repository = fixture.repository
+        try enablePhase2Loop(on: repository)
+
+        let first = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Planning with Alex",
+                rawText: "Met Alex to talk through product planning.",
+                captureSource: .composer,
+                artifacts: [.text(title: "Planning with Alex", body: "Met Alex to talk through product planning.")]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: first.id)
+
+        let initialProfile = try XCTUnwrap(try repository.fetchPersonProfiles(limit: nil).first)
+        XCTAssertEqual(initialProfile.displayName, "Alex")
+        XCTAssertNotNil(initialProfile.aiPortrait)
+        XCTAssertTrue(initialProfile.sourceRecordIDs.contains(first.id))
+        XCTAssertFalse(initialProfile.fieldEvidence.isEmpty)
+
+        let second = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Alex follow-up",
+                rawText: "Alex and I revisited launch planning after the first sync.",
+                captureSource: .composer,
+                artifacts: [.text(title: "Alex follow-up", body: "Alex and I revisited launch planning after the first sync.")]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: second.id)
+
+        let refreshed = try XCTUnwrap(try repository.fetchPersonProfile(entityID: initialProfile.entityID))
+        XCTAssertTrue(refreshed.sourceRecordIDs.contains(first.id))
+        XCTAssertTrue(refreshed.sourceRecordIDs.contains(second.id))
+        XCTAssertTrue(refreshed.aiPortrait?.summary.contains("memories") == true)
+        XCTAssertGreaterThan(refreshed.importanceScore ?? 0, initialProfile.importanceScore ?? 0)
+    }
+
+    func testPersonProfileUserConfirmedRelationshipSurvivesRefresh() async throws {
+        let fixture = makeRepositoryFixture()
+        let repository = fixture.repository
+        try enablePhase2Loop(on: repository)
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Alex sync",
+                rawText: "Met Alex for planning.",
+                captureSource: .composer,
+                artifacts: [.text(title: "Alex sync", body: "Met Alex for planning.")]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: memory.id)
+
+        let profile = try XCTUnwrap(try repository.fetchPersonProfiles(limit: nil).first)
+        _ = try repository.applyPersonProfileMutation(
+            PersonProfileMutation(
+                entityID: profile.entityID,
+                field: .relationshipToUser,
+                relationshipValue: .friend,
+                note: "Alex is a friend."
+            )
+        )
+
+        var entityProfile = try XCTUnwrap(try repository.fetchEntityProfile(entityID: profile.entityID))
+        entityProfile.relationshipToUser = .coworker
+        entityProfile.updatedAt = .now
+        try repository.upsertEntityProfile(entityProfile)
+
+        let refreshed = try XCTUnwrap(try repository.refreshPersonProfile(entityID: profile.entityID, now: .now))
+        XCTAssertEqual(refreshed.relationshipToUser, .friend)
+        XCTAssertTrue(refreshed.relationshipHistory.contains { $0.status == .userConfirmed && $0.relationship == .friend })
+        XCTAssertTrue(refreshed.fieldEvidence.contains { $0.source == .userEdit && $0.status == .userConfirmed })
+    }
+
+    func testDeleteMemoryInvalidatesPersonProfileFieldEvidence() async throws {
+        let fixture = makeRepositoryFixture()
+        let repository = fixture.repository
+        try enablePhase2Loop(on: repository)
+
+        let first = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Alex first",
+                rawText: "Alex helped with planning.",
+                captureSource: .composer,
+                artifacts: [.text(title: "Alex first", body: "Alex helped with planning.")]
+            )
+        )
+        let second = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Alex second",
+                rawText: "Alex discussed planning again.",
+                captureSource: .composer,
+                artifacts: [.text(title: "Alex second", body: "Alex discussed planning again.")]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: first.id)
+        try await repository.refreshMemoryPipeline(recordID: second.id)
+
+        let profile = try XCTUnwrap(try repository.fetchPersonProfiles(limit: nil).first)
+        XCTAssertTrue(profile.fieldEvidence.contains { $0.sourceRecordIDs.contains(first.id) })
+
+        try repository.deleteMemory(recordID: first.id)
+
+        let retained = try XCTUnwrap(try repository.fetchPersonProfile(entityID: profile.entityID))
+        XCTAssertFalse(retained.sourceRecordIDs.contains(first.id))
+        XCTAssertFalse(retained.fieldEvidence.contains { $0.sourceRecordIDs.contains(first.id) })
+        XCTAssertTrue(retained.fieldEvidence.contains { $0.status == .stale })
+    }
+
+    func testSensitivePersonProfileContextBriefRedactsCloudFields() throws {
+        let entityID = UUID()
+        let profile = PersonProfile(
+            entityID: entityID,
+            displayName: "Alex",
+            aliases: ["A"],
+            roleLabels: ["friend"],
+            relationshipToUser: .friend,
+            importanceScore: 0.8,
+            interactionFrequency: .weekly,
+            commonContextLabels: ["planning"],
+            userNotes: "Private note",
+            aiPortrait: PersonPortrait(summary: "Sensitive portrait summary.", evidenceRecordIDs: [UUID()]),
+            sensitivity: .sensitive,
+            sourceRecordIDs: [UUID()]
+        )
+
+        let redacted = PersonProfileContextBrief(profile: profile, includeSensitive: false)
+        XCTAssertEqual(redacted.cloudAction, .redact)
+        XCTAssertNil(redacted.portraitSummary)
+        XCTAssertNil(redacted.userNotes)
+        XCTAssertEqual(redacted.relationshipToUser, .friend)
+
+        var hidden = profile
+        hidden.sensitivity = .hiddenFromCloud
+        let idOnly = PersonProfileContextBrief(profile: hidden, includeSensitive: false)
+        XCTAssertEqual(idOnly.cloudAction, .idOnly)
+        XCTAssertTrue(idOnly.aliases.isEmpty)
+        XCTAssertNil(idOnly.relationshipToUser)
+        XCTAssertNil(idOnly.portraitSummary)
+    }
+
     private func makeRepositoryFixture() -> RepositoryFixture {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(

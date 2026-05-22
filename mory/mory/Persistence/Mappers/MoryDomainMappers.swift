@@ -529,6 +529,103 @@ extension EntityProfileStore {
 }
 
 @MainActor
+extension PersonProfileStore {
+    convenience init(domainModel: PersonProfile) {
+        self.init(
+            id: domainModel.id,
+            entityID: domainModel.entityID,
+            displayName: domainModel.displayName,
+            canonicalName: domainModel.canonicalName,
+            aliases: domainModel.aliases,
+            roleLabels: domainModel.roleLabels,
+            relationshipToUserRawValue: domainModel.relationshipToUser?.rawValue,
+            relationshipHistoryData: PersistenceCoding.encode(domainModel.relationshipHistory),
+            relationshipStrength: domainModel.relationshipStrength,
+            importanceScore: domainModel.importanceScore,
+            interactionFrequencyRawValue: domainModel.interactionFrequency.rawValue,
+            commonPlaceIDs: domainModel.commonPlaceIDs,
+            commonThemeIDs: domainModel.commonThemeIDs,
+            commonDecisionIDs: domainModel.commonDecisionIDs,
+            commonContextLabels: domainModel.commonContextLabels,
+            emotionalPatternData: PersistenceCoding.encode(domainModel.emotionalPattern),
+            recentChangeSummary: domainModel.recentChangeSummary,
+            userNotes: domainModel.userNotes,
+            aiPortraitData: PersistenceCoding.encode(domainModel.aiPortrait),
+            fieldEvidenceData: PersistenceCoding.encode(domainModel.fieldEvidence),
+            fieldConfidenceData: PersistenceCoding.encode(domainModel.fieldConfidence),
+            sensitivityRawValue: domainModel.sensitivity.rawValue,
+            automationPolicyRawValue: domainModel.automationPolicy.rawValue,
+            sourceRecordIDs: domainModel.sourceRecordIDs,
+            lastReviewedAt: domainModel.lastReviewedAt,
+            createdAt: domainModel.createdAt,
+            updatedAt: domainModel.updatedAt
+        )
+    }
+
+    var domainModel: PersonProfile {
+        PersonProfile(
+            id: id,
+            entityID: entityID,
+            displayName: displayName,
+            canonicalName: canonicalName,
+            aliases: aliases,
+            roleLabels: roleLabels,
+            relationshipToUser: relationshipToUserRawValue.flatMap(EntityRelationshipToUser.init(rawValue:)),
+            relationshipHistory: PersistenceCoding.decode([RelationshipChange].self, from: relationshipHistoryData) ?? [],
+            relationshipStrength: relationshipStrength,
+            importanceScore: importanceScore,
+            interactionFrequency: InteractionFrequency(rawValue: interactionFrequencyRawValue) ?? .unknown,
+            commonPlaceIDs: commonPlaceIDs,
+            commonThemeIDs: commonThemeIDs,
+            commonDecisionIDs: commonDecisionIDs,
+            commonContextLabels: commonContextLabels,
+            emotionalPattern: PersistenceCoding.decode(PersonAffectPattern.self, from: emotionalPatternData),
+            recentChangeSummary: recentChangeSummary,
+            userNotes: userNotes,
+            aiPortrait: PersistenceCoding.decode(PersonPortrait.self, from: aiPortraitData),
+            fieldEvidence: PersistenceCoding.decode([ProfileFieldEvidence].self, from: fieldEvidenceData) ?? [],
+            fieldConfidence: PersistenceCoding.decode([String: Double].self, from: fieldConfidenceData) ?? [:],
+            sensitivity: ProfileSensitivity(rawValue: sensitivityRawValue) ?? .normal,
+            automationPolicy: PersonProfileAutomationPolicy(rawValue: automationPolicyRawValue) ?? .automatic,
+            sourceRecordIDs: sourceRecordIDs,
+            lastReviewedAt: lastReviewedAt,
+            createdAt: createdAt,
+            updatedAt: updatedAt
+        )
+    }
+
+    func apply(domainModel: PersonProfile) {
+        id = domainModel.id
+        entityID = domainModel.entityID
+        displayName = domainModel.displayName
+        canonicalName = domainModel.canonicalName
+        aliases = domainModel.aliases
+        roleLabels = domainModel.roleLabels
+        relationshipToUserRawValue = domainModel.relationshipToUser?.rawValue
+        relationshipHistoryData = PersistenceCoding.encode(domainModel.relationshipHistory)
+        relationshipStrength = domainModel.relationshipStrength
+        importanceScore = domainModel.importanceScore
+        interactionFrequencyRawValue = domainModel.interactionFrequency.rawValue
+        commonPlaceIDs = domainModel.commonPlaceIDs
+        commonThemeIDs = domainModel.commonThemeIDs
+        commonDecisionIDs = domainModel.commonDecisionIDs
+        commonContextLabels = domainModel.commonContextLabels
+        emotionalPatternData = PersistenceCoding.encode(domainModel.emotionalPattern)
+        recentChangeSummary = domainModel.recentChangeSummary
+        userNotes = domainModel.userNotes
+        aiPortraitData = PersistenceCoding.encode(domainModel.aiPortrait)
+        fieldEvidenceData = PersistenceCoding.encode(domainModel.fieldEvidence)
+        fieldConfidenceData = PersistenceCoding.encode(domainModel.fieldConfidence)
+        sensitivityRawValue = domainModel.sensitivity.rawValue
+        automationPolicyRawValue = domainModel.automationPolicy.rawValue
+        sourceRecordIDs = domainModel.sourceRecordIDs
+        lastReviewedAt = domainModel.lastReviewedAt
+        createdAt = domainModel.createdAt
+        updatedAt = domainModel.updatedAt
+    }
+}
+
+@MainActor
 extension PlaceProfileStore {
     convenience init(domainModel: PlaceProfile) {
         self.init(

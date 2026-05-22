@@ -377,6 +377,95 @@ final class EntityProfileStore {
 }
 
 @Model
+final class PersonProfileStore {
+    @Attribute(.unique) var entityID: UUID
+    var id: UUID
+    var displayName: String
+    var canonicalName: String
+    var aliases: [String]
+    var roleLabels: [String]
+    var relationshipToUserRawValue: String?
+    var relationshipHistoryData: Data?
+    var relationshipStrength: Double?
+    var importanceScore: Double?
+    var interactionFrequencyRawValue: String
+    var commonPlaceIDs: [UUID]
+    var commonThemeIDs: [UUID]
+    var commonDecisionIDs: [UUID]
+    var commonContextLabels: [String]
+    var emotionalPatternData: Data?
+    var recentChangeSummary: String?
+    var userNotes: String?
+    var aiPortraitData: Data?
+    var fieldEvidenceData: Data?
+    var fieldConfidenceData: Data?
+    var sensitivityRawValue: String
+    var automationPolicyRawValue: String
+    var sourceRecordIDs: [UUID]
+    var lastReviewedAt: Date?
+    var createdAt: Date
+    var updatedAt: Date
+
+    init(
+        id: UUID,
+        entityID: UUID,
+        displayName: String,
+        canonicalName: String,
+        aliases: [String],
+        roleLabels: [String],
+        relationshipToUserRawValue: String?,
+        relationshipHistoryData: Data?,
+        relationshipStrength: Double?,
+        importanceScore: Double?,
+        interactionFrequencyRawValue: String,
+        commonPlaceIDs: [UUID],
+        commonThemeIDs: [UUID],
+        commonDecisionIDs: [UUID],
+        commonContextLabels: [String],
+        emotionalPatternData: Data?,
+        recentChangeSummary: String?,
+        userNotes: String?,
+        aiPortraitData: Data?,
+        fieldEvidenceData: Data?,
+        fieldConfidenceData: Data?,
+        sensitivityRawValue: String,
+        automationPolicyRawValue: String,
+        sourceRecordIDs: [UUID],
+        lastReviewedAt: Date?,
+        createdAt: Date,
+        updatedAt: Date
+    ) {
+        self.id = id
+        self.entityID = entityID
+        self.displayName = displayName
+        self.canonicalName = canonicalName
+        self.aliases = aliases
+        self.roleLabels = roleLabels
+        self.relationshipToUserRawValue = relationshipToUserRawValue
+        self.relationshipHistoryData = relationshipHistoryData
+        self.relationshipStrength = relationshipStrength
+        self.importanceScore = importanceScore
+        self.interactionFrequencyRawValue = interactionFrequencyRawValue
+        self.commonPlaceIDs = commonPlaceIDs
+        self.commonThemeIDs = commonThemeIDs
+        self.commonDecisionIDs = commonDecisionIDs
+        self.commonContextLabels = commonContextLabels
+        self.emotionalPatternData = emotionalPatternData
+        self.recentChangeSummary = recentChangeSummary
+        self.userNotes = userNotes
+        self.aiPortraitData = aiPortraitData
+        self.fieldEvidenceData = fieldEvidenceData
+        self.fieldConfidenceData = fieldConfidenceData
+        self.sensitivityRawValue = sensitivityRawValue
+        self.automationPolicyRawValue = automationPolicyRawValue
+        self.sourceRecordIDs = sourceRecordIDs
+        self.lastReviewedAt = lastReviewedAt
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+}
+
+@Model
 final class PlaceProfileStore {
     @Attribute(.unique) var id: UUID
     var entityID: UUID

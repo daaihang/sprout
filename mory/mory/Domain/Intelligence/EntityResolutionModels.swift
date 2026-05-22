@@ -17,6 +17,7 @@ enum CorrectionEventKind: String, Codable, CaseIterable, Identifiable, Sendable 
     case roleLabel
     case roleLabelMapsToPerson
     case relationshipChanged
+    case profileFieldUpdated
     case profileFieldIncorrect
     case doNotTrackTopic
     case affectCorrection

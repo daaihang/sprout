@@ -112,11 +112,21 @@ final class IntelligenceJobWorkerTests: XCTestCase {
             updatedAt: now.addingTimeInterval(-45),
             requiresCloudAI: true
         )
+        let personProfileJob = IntelligenceJob(
+            kind: .personProfileRefresh,
+            targetType: .entity,
+            targetID: alexID,
+            status: .pending,
+            priority: 0.65,
+            scheduledAt: now.addingTimeInterval(-40),
+            updatedAt: now.addingTimeInterval(-40)
+        )
 
         try repository.upsertIntelligenceJob(entityJob)
         try repository.upsertIntelligenceJob(questionJob)
         try repository.upsertIntelligenceJob(graphDeltaJob)
         try repository.upsertIntelligenceJob(chapterJob)
+        try repository.upsertIntelligenceJob(personProfileJob)
 
         let worker = IntelligenceJobWorker()
         let report = await worker.processDueJobs(
@@ -126,7 +136,13 @@ final class IntelligenceJobWorkerTests: XCTestCase {
             limit: 8
         )
 
-        XCTAssertEqual(Set(report.completedJobIDs), Set([entityJob.id, questionJob.id, graphDeltaJob.id, chapterJob.id]))
+        XCTAssertEqual(Set(report.completedJobIDs), Set([
+            entityJob.id,
+            questionJob.id,
+            graphDeltaJob.id,
+            chapterJob.id,
+            personProfileJob.id
+        ]))
         XCTAssertTrue(report.failedJobIDs.isEmpty)
         XCTAssertTrue(report.unsupportedJobIDs.isEmpty)
 
@@ -135,6 +151,12 @@ final class IntelligenceJobWorkerTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(updatedProfile.mentionCount, 2)
         XCTAssertTrue(updatedProfile.sourceRecordIDs.contains(first.id))
         XCTAssertTrue(updatedProfile.sourceRecordIDs.contains(third.id))
+
+        let personProfile = try XCTUnwrap(try repository.fetchPersonProfile(entityID: alexID))
+        XCTAssertEqual(personProfile.displayName, "Alex")
+        XCTAssertNotNil(personProfile.aiPortrait)
+        XCTAssertTrue(personProfile.sourceRecordIDs.contains(first.id))
+        XCTAssertTrue(personProfile.sourceRecordIDs.contains(third.id))
 
         let questions = try repository.fetchClarificationQuestions(status: .pending, limit: nil)
         XCTAssertTrue(questions.contains(where: {

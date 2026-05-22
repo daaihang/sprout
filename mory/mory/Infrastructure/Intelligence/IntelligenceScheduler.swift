@@ -3,6 +3,7 @@ import Foundation
 struct IntelligenceSchedulingResult: Sendable {
     let postAnalysisJob: IntelligenceJob
     let entityEnrichmentJobs: [IntelligenceJob]
+    let personProfileRefreshJobs: [IntelligenceJob]
     let questionGenerationJobs: [IntelligenceJob]
 }
 
@@ -31,6 +32,18 @@ struct IntelligenceScheduler: Sendable {
                     targetID: entityID,
                     status: .pending,
                     priority: 0.72,
+                    scheduledAt: now,
+                    updatedAt: now,
+                    requiresCloudAI: false
+                )
+            },
+            personProfileRefreshJobs: orderedEntityIDs.map { entityID in
+                IntelligenceJob(
+                    kind: .personProfileRefresh,
+                    targetType: .entity,
+                    targetID: entityID,
+                    status: .pending,
+                    priority: 0.69,
                     scheduledAt: now,
                     updatedAt: now,
                     requiresCloudAI: false

@@ -105,6 +105,16 @@ struct DebugDiagnosticsView: View {
                 }
 
                 NavigationLink {
+                    DebugPersonProfileView()
+                } label: {
+                    DebugMenuRow(
+                        icon: "person.crop.rectangle.stack",
+                        title: "Person Profiles",
+                        subtitle: "Inspect v7 PersonProfile, portrait evidence, refresh behavior, and cloud-safe brief redaction"
+                    )
+                }
+
+                NavigationLink {
                     DebugHomeBoardDiagnosticsView()
                 } label: {
                     DebugMenuRow(

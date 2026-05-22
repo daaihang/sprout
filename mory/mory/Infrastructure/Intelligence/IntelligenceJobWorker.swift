@@ -125,6 +125,13 @@ struct IntelligenceJobWorker {
                 now: now
             )
 
+        case .personProfileRefresh:
+            try executePersonProfileRefresh(
+                runningJob,
+                repository: repository,
+                now: now
+            )
+
         case .clarificationQuestionGeneration:
             try executeClarificationQuestionGeneration(
                 runningJob,
@@ -203,6 +210,17 @@ struct IntelligenceJobWorker {
         profile.updatedAt = now
 
         try repository.upsertEntityProfile(profile)
+    }
+
+    private func executePersonProfileRefresh(
+        _ job: IntelligenceJob,
+        repository: any MoryMemoryRepositorying,
+        now: Date
+    ) throws {
+        guard job.targetType == .entity else {
+            throw IntelligenceJobWorkerError.unsupportedTargetType
+        }
+        _ = try repository.refreshPersonProfile(entityID: job.targetID, now: now)
     }
 
     private func executeClarificationQuestionGeneration(

@@ -117,6 +117,18 @@ Tests:
 - source deletion invalidates field,
 - sensitive field excluded from cloud.
 
+Completion evidence:
+
+- `PersonProfile`, `PersonPortrait`, `RelationshipChange`, `PersonAffectPattern`, and `ProfileFieldEvidence` are implemented as local v7 domain models.
+- `PersonProfileStore` is registered in the SwiftData schema with mapper support and repository APIs for fetch/upsert/refresh/mutation/delete portrait.
+- `.personProfileRefresh` jobs are scheduled after analysis, executed by `IntelligenceJobWorker`, and enqueued after person merge/split recompute events.
+- repository refresh builds deterministic, evidence-backed local portraits from entity profiles, related records, common context labels, related places/themes/decisions, and existing user-confirmed fields.
+- user-confirmed relationship edits survive later refreshes; profile field updates write `CorrectionEvent.kind.profileFieldUpdated`.
+- deleting source memories invalidates stale person profile evidence and removes profiles that no longer have sources unless the user has explicitly retained or edited them.
+- Debug Center includes a data-only `Person Profiles` inspector with refresh and cloud-safe brief inspection.
+- sensitive and cloud-hidden profiles are redacted by `PersonProfileContextBrief` before future cloud context usage.
+- Cloud AI portrait proposals, Analyze v7 payload consumption, and formal polished profile UI remain out of scope for Phase 3 and start in Phase 5 / later UI passes.
+
 ## Phase 4: Structured Mood + Context Sources
 
 Goal:
@@ -216,7 +228,7 @@ Exit criteria:
 | Phase 0 | completed | docs/gap matrix completed; implementation starts at Phase 1 |
 | Phase 1 | completed | local SelfProfile persistence and inspectable context pack skeleton are implemented; Analyze v7 integration starts at Phase 5 |
 | Phase 2 | completed | entity resolution foundation, correction ledger, and person merge/split mutation are implemented; proposal consumption and cloud-context integration continue in Phase 5 |
-| Phase 3 | not started | current EntityProfile too thin |
+| Phase 3 | completed | local PersonProfile persistence, deterministic portrait refresh jobs, mutation actions, evidence invalidation, and debug inspection are implemented; cloud AI portrait proposals remain Phase 5 |
 | Phase 4 | not started | mood is free text; Journaling Suggestions absent |
 | Phase 5 | not started | legacy Analyze still current-record centered |
 | Phase 6 | not started | no BGTask/background URLSession production loop |
