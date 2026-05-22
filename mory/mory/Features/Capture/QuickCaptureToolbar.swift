@@ -17,7 +17,6 @@ struct QuickCaptureToolbar: View {
     let onPhotoCapture: () -> Void
 
     @Environment(\.tabViewBottomAccessoryPlacement) private var accessoryPlacement
-    @State private var capsulePressTask: Task<Void, Never>?
 
     var body: some View {
         HStack(spacing: 0) {
@@ -43,46 +42,38 @@ struct QuickCaptureToolbar: View {
     }
 
     private var captureCapsule: some View {
-        Group {
-            Text(capsulePrimaryText)
-                .font(capsuleFont)
-                .foregroundStyle(capsulePrimaryColor)
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity, minHeight: controlSize, maxHeight: controlSize)
-        .contentShape(Rectangle())
-        .gesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in
-                    guard capsulePressTask == nil, !isHoldToTalkMode else { return }
-                    capsulePressTask = Task { @MainActor in
-                        try? await Task.sleep(for: .seconds(0.5))
-                        guard !Task.isCancelled, !audioRecorder.isBusy else { return }
+        Text(capsulePrimaryText)
+            .font(capsuleFont)
+            .foregroundStyle(capsulePrimaryColor)
+            .lineLimit(1)
+            .truncationMode(.tail)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity, minHeight: controlSize, maxHeight: controlSize)
+            .overlay {
+                HoldDetector(
+                    minimumPressDuration: 0.5,
+                    onLongPressStart: {
+                        guard !audioRecorder.isBusy else { return }
                         isHoldToTalkMode = true
-                        capsulePressTask = nil
                         startVoiceCapture()
-                    }
-                }
-                .onEnded { _ in
-                    if let task = capsulePressTask {
-                        task.cancel()
-                        capsulePressTask = nil
+                    },
+                    onLongPressEnd: {
+                        guard isHoldToTalkMode else { return }
+                        isHoldToTalkMode = false
+                        onStopVoiceCapture()
+                    },
+                    onTap: {
                         if let recoveryAction = audioRecorder.recoveryAction {
                             handleRecoveryAction(recoveryAction)
                         } else if !isVoiceSessionActive {
                             onTextCapture()
                         }
-                    } else if isHoldToTalkMode {
-                        isHoldToTalkMode = false
-                        onStopVoiceCapture()
                     }
-                }
-        )
-        .accessibilityLabel(Text(capsuleAccessibilityLabel))
-        .accessibilityHint(Text("quickCapture.unified.hint"))
-        .accessibilityAddTraits(.isButton)
+                )
+            }
+            .accessibilityLabel(Text(capsuleAccessibilityLabel))
+            .accessibilityHint(Text("quickCapture.unified.hint"))
+            .accessibilityAddTraits(.isButton)
     }
 
     private var isInlineAccessory: Bool {
@@ -198,7 +189,6 @@ struct QuickCaptureToolbar: View {
             handleRecoveryAction(recoveryAction)
             return
         }
-
         if audioRecorder.isRecording {
             onStopVoiceCapture()
         } else {
@@ -233,5 +223,76 @@ struct QuickCaptureToolbar: View {
     private func formatDuration(_ duration: TimeInterval) -> String {
         let totalSeconds = max(0, Int(duration.rounded(.down)))
         return String(format: "%02d:%02d", totalSeconds / 60, totalSeconds % 60)
+    }
+}
+
+// MARK: - HoldDetector
+
+private struct HoldDetector: UIViewRepresentable {
+    let minimumPressDuration: TimeInterval
+    let onLongPressStart: () -> Void
+    let onLongPressEnd: () -> Void
+    let onTap: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(minimumPressDuration: minimumPressDuration)
+    }
+
+    func makeUIView(context: Context) -> UIButton {
+        let button = UIButton(type: .custom)
+        button.backgroundColor = .clear
+        let c = context.coordinator
+        button.addTarget(c, action: #selector(Coordinator.touchDown), for: .touchDown)
+        button.addTarget(c, action: #selector(Coordinator.touchUp), for: [.touchUpInside, .touchUpOutside])
+        button.addTarget(c, action: #selector(Coordinator.touchCancel), for: .touchCancel)
+        return button
+    }
+
+    func updateUIView(_ button: UIButton, context: Context) {
+        let c = context.coordinator
+        c.onLongPressStart = onLongPressStart
+        c.onLongPressEnd = onLongPressEnd
+        c.onTap = onTap
+    }
+
+    final class Coordinator: NSObject {
+        let minimumPressDuration: TimeInterval
+        var onLongPressStart: (() -> Void)?
+        var onLongPressEnd: (() -> Void)?
+        var onTap: (() -> Void)?
+
+        private var timer: Timer?
+        private var isLongPressing = false
+
+        init(minimumPressDuration: TimeInterval) {
+            self.minimumPressDuration = minimumPressDuration
+        }
+
+        @objc func touchDown() {
+            isLongPressing = false
+            timer = Timer.scheduledTimer(withTimeInterval: minimumPressDuration, repeats: false) { [weak self] _ in
+                guard let self else { return }
+                isLongPressing = true
+                timer = nil
+                DispatchQueue.main.async { self.onLongPressStart?() }
+            }
+        }
+
+        @objc func touchUp() {
+            if let t = timer {
+                t.invalidate()
+                timer = nil
+                DispatchQueue.main.async { self.onTap?() }
+            } else if isLongPressing {
+                isLongPressing = false
+                DispatchQueue.main.async { self.onLongPressEnd?() }
+            }
+        }
+
+        @objc func touchCancel() {
+            timer?.invalidate()
+            timer = nil
+            isLongPressing = false
+        }
     }
 }
