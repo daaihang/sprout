@@ -116,6 +116,11 @@ private final class MissingMemoryRepository: MoryMemoryRepositorying {
     func mergePlaceProfiles(primaryID: UUID, mergingIDs: [UUID], displayName: String?) throws -> PlaceProfile { fail() }
     func splitPlaceProfile(id: UUID, movingArtifactIDs: [UUID], displayName: String) throws -> PlaceProfile { fail() }
     func fetchPlaceProfileArtifacts(id: UUID) throws -> [Artifact] { fail() }
+    func mergePersonEntities(primaryID: UUID, mergingIDs: [UUID], displayName: String?) throws -> EntityProfile { fail() }
+    func splitPersonEntity(id: UUID, movingRecordIDs: [UUID], displayName: String, aliases: [String]) throws -> EntityProfile { fail() }
+    func fetchCorrectionEvents(kind: CorrectionEventKind?, limit: Int?) throws -> [CorrectionEvent] { fail() }
+    func upsertCorrectionEvent(_ event: CorrectionEvent) throws { let _: Void = fail() }
+    func fetchEntityTombstones(limit: Int?) throws -> [EntityTombstone] { fail() }
     func fetchClarificationQuestions(status: ClarificationQuestionStatus?, limit: Int?) throws -> [ClarificationQuestion] { fail() }
     func upsertClarificationQuestion(_ question: ClarificationQuestion) throws { let _: Void = fail() }
     func answerClarificationQuestion(_ id: UUID, answer: ClarificationAnswer) throws { let _: Void = fail() }

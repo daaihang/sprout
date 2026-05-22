@@ -1401,6 +1401,8 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         try deleteAll(HomeBoardSignalStore.self)
         try deleteAll(GraphDeltaStore.self)
         try deleteAll(IntelligenceJobStore.self)
+        try deleteAll(CorrectionEventStore.self)
+        try deleteAll(EntityTombstoneStore.self)
         try deleteAll(ClarificationQuestionStore.self)
         try deleteAll(PlaceProfileStore.self)
         try deleteAll(SelfProfileStore.self)
@@ -1697,7 +1699,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             toProfile: newProfile,
             updatedAt: now
         )
-        try splitPlaceEntityEdges(
+        try splitEntityEdges(
             fromEntityID: originalProfile.entityID,
             toEntityID: newProfile.entityID,
             movingArtifactIDs: movingIDSet,
@@ -1707,6 +1709,265 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         try upsertPlaceEntityNode(for: newProfile, updatedAt: now)
         try save()
         return newProfile
+    }
+
+    func mergePersonEntities(primaryID: UUID, mergingIDs: [UUID], displayName: String?) throws -> EntityProfile {
+        let now = Date.now
+        let mergingIDSet = Set(mergingIDs)
+        guard !mergingIDSet.isEmpty else {
+            throw PersonEntityMutationError.mergeRequiresAtLeastOneOtherEntity
+        }
+        guard !mergingIDSet.contains(primaryID) else {
+            throw PersonEntityMutationError.mergeCannotIncludePrimary
+        }
+
+        let primaryStore = try requirePersonEntityNodeStore(id: primaryID)
+        let mergingStores = try mergingIDSet.map { try requirePersonEntityNodeStore(id: $0) }
+        let mergingNodes = mergingStores.map(\.domainModel)
+        let replacementMap = Dictionary(uniqueKeysWithValues: mergingNodes.map { ($0.id, primaryID) })
+
+        var primaryNode = primaryStore.domainModel
+        if let displayName, let normalized = displayName.trimmedOrNil {
+            primaryNode.displayName = normalized
+            primaryNode.canonicalName = normalized
+        }
+        primaryNode.aliases = normalizedPersonAliases(
+            [primaryNode.displayName, primaryNode.canonicalName]
+                + primaryNode.aliases
+                + mergingNodes.flatMap { [$0.displayName, $0.canonicalName] + $0.aliases }
+        )
+        primaryNode.provenanceRecordIDs = mergeUniqueIDs(
+            primaryNode.provenanceRecordIDs,
+            mergingNodes.flatMap(\.provenanceRecordIDs)
+        )
+        primaryNode.updatedAt = now
+        let nodeConfidences = [primaryNode.confidence].compactMap { $0 } + mergingNodes.compactMap(\.confidence)
+        primaryNode.confidence = nodeConfidences.max()
+
+        let primaryProfile = try fetchEntityProfile(entityID: primaryID)
+            ?? makePersonProfile(from: primaryNode, updatedAt: now)
+        let mergingProfiles = try mergingIDSet.compactMap { entityID in
+            try fetchEntityProfile(entityID: entityID)
+        }
+
+        var mergedProfile = primaryProfile
+        mergedProfile.displayName = primaryNode.displayName
+        mergedProfile.canonicalName = primaryNode.canonicalName
+        mergedProfile.aliases = normalizedPersonAliases(
+            [primaryNode.displayName, primaryNode.canonicalName]
+                + primaryProfile.aliases
+                + mergingProfiles.flatMap { [$0.displayName, $0.canonicalName] + $0.aliases }
+        )
+        mergedProfile.sourceRecordIDs = mergeUniqueIDs(
+            primaryProfile.sourceRecordIDs,
+            mergingProfiles.flatMap(\.sourceRecordIDs) + primaryNode.provenanceRecordIDs
+        )
+        mergedProfile.mentionCount = max(
+            mergedProfile.sourceRecordIDs.count,
+            primaryProfile.mentionCount + mergingProfiles.map(\.mentionCount).reduce(0, +)
+        )
+        mergedProfile.commonContextLabels = mergeStrings(
+            primaryProfile.commonContextLabels,
+            mergingProfiles.flatMap(\.commonContextLabels)
+        )
+        if mergedProfile.relationshipToUser == nil {
+            mergedProfile.relationshipToUser = mergingProfiles.compactMap(\.relationshipToUser).first
+        }
+        mergedProfile.userDescription = mergedProfile.userDescription?.trimmedOrNil
+            ?? mergingProfiles.compactMap(\.userDescription).map { $0.trimmedOrNil }.compactMap { $0 }.first
+        mergedProfile.confirmationState = .userConfirmed
+        let profileConfidences = [primaryProfile.confidence].compactMap { $0 } + mergingProfiles.compactMap(\.confidence)
+        mergedProfile.confidence = profileConfidences.max()
+        mergedProfile.updatedAt = now
+        if mergedProfile.firstMentionedAt == nil {
+            mergedProfile.firstMentionedAt = now
+        }
+        mergedProfile.lastMentionedAt = now
+
+        primaryStore.apply(domainModel: primaryNode)
+        try upsert(entityProfile: mergedProfile)
+        try rewriteEntityLinksAndEdges(replacing: replacementMap, linkSource: "personProfile")
+        try rewriteEntityReferencesForMerge(replacing: replacementMap)
+        try deleteEntityProfiles(entityIDs: mergingIDSet)
+        try deleteEntityNodes(entityIDs: mergingIDSet)
+
+        let affectedRecordIDs = Set(primaryNode.provenanceRecordIDs + mergingNodes.flatMap(\.provenanceRecordIDs))
+        for mergingID in mergingIDSet {
+            try upsert(entityTombstone: EntityTombstone(
+                oldEntityID: mergingID,
+                replacementEntityID: primaryID,
+                kind: .person,
+                reason: .merged,
+                note: "Merged into \(primaryNode.displayName)",
+                createdAt: now
+            ))
+            try upsert(correctionEvent: CorrectionEvent(
+                kind: .sameEntity,
+                actor: .user,
+                targetEntityIDs: [primaryID, mergingID],
+                targetRecordIDs: [],
+                sourceRecordIDs: Array(affectedRecordIDs),
+                note: "Person merge",
+                metadata: [
+                    "primaryEntityID": primaryID.uuidString,
+                    "mergedEntityID": mergingID.uuidString,
+                ],
+                isReversible: true,
+                createdAt: now
+            ))
+        }
+
+        try enqueueEntityMutationRecomputeJobs(
+            affectedRecordIDs: affectedRecordIDs,
+            affectedEntityIDs: Set([primaryID] + Array(mergingIDSet))
+        )
+        try save()
+        return mergedProfile
+    }
+
+    func splitPersonEntity(
+        id: UUID,
+        movingRecordIDs: [UUID],
+        displayName: String,
+        aliases: [String]
+    ) throws -> EntityProfile {
+        let now = Date.now
+        guard let normalizedName = displayName.trimmedOrNil else {
+            throw PersonEntityMutationError.emptyDisplayName
+        }
+        let movingRecordIDSet = Set(movingRecordIDs)
+        guard !movingRecordIDSet.isEmpty else {
+            throw PersonEntityMutationError.splitRequiresMovingRecords
+        }
+
+        let originalStore = try requirePersonEntityNodeStore(id: id)
+        var originalNode = originalStore.domainModel
+        let originalProfile = try fetchEntityProfile(entityID: id) ?? makePersonProfile(from: originalNode, updatedAt: now)
+
+        let originalRecordIDSet = Set(mergeUniqueIDs(originalNode.provenanceRecordIDs, originalProfile.sourceRecordIDs))
+        guard movingRecordIDSet.isSubset(of: originalRecordIDSet) else {
+            throw PersonEntityMutationError.splitRecordsNotInEntity
+        }
+        guard movingRecordIDSet.count < originalRecordIDSet.count else {
+            throw PersonEntityMutationError.splitCannotMoveAllRecords
+        }
+
+        let newEntityID = UUID()
+        let movedAliases = normalizedPersonAliases([normalizedName] + aliases)
+        let movingRecordIDArray = originalProfile.sourceRecordIDs.filter { movingRecordIDSet.contains($0) }
+        let remainingRecordIDArray = originalProfile.sourceRecordIDs.filter { !movingRecordIDSet.contains($0) }
+
+        var newNode = EntityNode(
+            id: newEntityID,
+            kind: .person,
+            displayName: normalizedName,
+            canonicalName: normalizedName,
+            aliases: movedAliases,
+            summary: originalNode.summary,
+            provenanceRecordIDs: originalNode.provenanceRecordIDs.filter { movingRecordIDSet.contains($0) },
+            createdAt: now,
+            updatedAt: now,
+            confidence: originalNode.confidence
+        )
+        if newNode.provenanceRecordIDs.isEmpty {
+            newNode.provenanceRecordIDs = Array(movingRecordIDSet)
+        }
+
+        originalNode.provenanceRecordIDs.removeAll { movingRecordIDSet.contains($0) }
+        originalNode.updatedAt = now
+        originalStore.apply(domainModel: originalNode)
+        try upsert(entityNode: newNode)
+
+        var updatedOriginalProfile = originalProfile
+        updatedOriginalProfile.sourceRecordIDs = remainingRecordIDArray
+        updatedOriginalProfile.mentionCount = max(1, remainingRecordIDArray.count)
+        updatedOriginalProfile.updatedAt = now
+        updatedOriginalProfile.lastMentionedAt = now
+        try upsert(entityProfile: updatedOriginalProfile)
+
+        let newProfile = EntityProfile(
+            entityID: newEntityID,
+            kind: .person,
+            displayName: normalizedName,
+            canonicalName: normalizedName,
+            aliases: movedAliases,
+            relationshipToUser: originalProfile.relationshipToUser,
+            userDescription: originalProfile.userDescription,
+            mentionCount: max(1, movingRecordIDArray.count),
+            firstMentionedAt: originalProfile.firstMentionedAt,
+            lastMentionedAt: now,
+            commonContextLabels: originalProfile.commonContextLabels,
+            sourceRecordIDs: movingRecordIDArray,
+            confirmationState: .suggested,
+            confidence: originalProfile.confidence,
+            createdAt: now,
+            updatedAt: now
+        )
+        try upsert(entityProfile: newProfile)
+
+        let movedArtifactIDs = try movePersonArtifactLinks(
+            fromEntityID: id,
+            toEntityID: newEntityID,
+            movingRecordIDs: movingRecordIDSet,
+            updatedAt: now
+        )
+        try splitEntityEdges(
+            fromEntityID: id,
+            toEntityID: newEntityID,
+            movingArtifactIDs: movedArtifactIDs,
+            movingRecordIDs: movingRecordIDSet
+        )
+        try rewriteEntityReferencesForSplit(
+            fromEntityID: id,
+            toEntityID: newEntityID,
+            movingRecordIDs: movingRecordIDSet
+        )
+        try upsert(correctionEvent: CorrectionEvent(
+            kind: .splitEntity,
+            actor: .user,
+            targetEntityIDs: [id, newEntityID],
+            sourceRecordIDs: Array(movingRecordIDSet),
+            note: "Person split",
+            metadata: [
+                "fromEntityID": id.uuidString,
+                "toEntityID": newEntityID.uuidString,
+            ],
+            isReversible: true,
+            createdAt: now
+        ))
+        try enqueueEntityMutationRecomputeJobs(
+            affectedRecordIDs: Set(mergeUniqueIDs(Array(originalRecordIDSet), Array(movingRecordIDSet))),
+            affectedEntityIDs: Set([id, newEntityID])
+        )
+        try save()
+        return newProfile
+    }
+
+    func fetchCorrectionEvents(kind: CorrectionEventKind?, limit: Int?) throws -> [CorrectionEvent] {
+        let stores = try modelContext.fetch(
+            FetchDescriptor<CorrectionEventStore>(
+                sortBy: [SortDescriptor(\.createdAt, order: .reverse)]
+            )
+        )
+        let events = stores.map(\.domainModel).filter { event in
+            guard let kind else { return true }
+            return event.kind == kind
+        }
+        return applyLimit(limit, to: events)
+    }
+
+    func upsertCorrectionEvent(_ event: CorrectionEvent) throws {
+        try upsert(correctionEvent: event)
+        try save()
+    }
+
+    func fetchEntityTombstones(limit: Int?) throws -> [EntityTombstone] {
+        let tombstones = try modelContext.fetch(
+            FetchDescriptor<EntityTombstoneStore>(
+                sortBy: [SortDescriptor(\.createdAt, order: .reverse)]
+            )
+        ).map(\.domainModel)
+        return applyLimit(limit, to: tombstones)
     }
 
     func fetchClarificationQuestions(status: ClarificationQuestionStatus?, limit: Int?) throws -> [ClarificationQuestion] {
@@ -1760,6 +2021,15 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             }
             if let updatedEntityNode = application.entityNode {
                 try upsert(entityNode: updatedEntityNode)
+            }
+            for operation in delta.operations where operation.kind == .mergeEntity {
+                guard operation.targetType == .entity else { continue }
+                guard let relatedID = operation.relatedID else { continue }
+                _ = try mergePersonEntities(
+                    primaryID: operation.targetID,
+                    mergingIDs: [relatedID],
+                    displayName: nil
+                )
             }
             if let existingDelta = try modelContext.fetch(
                 FetchDescriptor<GraphDeltaStore>(predicate: #Predicate { $0.id == delta.id })
@@ -2700,6 +2970,22 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         ).first?.domainModel
     }
 
+    private func fetchEntityNodeStore(id: UUID) throws -> EntityNodeStore? {
+        try modelContext.fetch(
+            FetchDescriptor<EntityNodeStore>(predicate: #Predicate { $0.id == id })
+        ).first
+    }
+
+    private func requirePersonEntityNodeStore(id: UUID) throws -> EntityNodeStore {
+        guard let store = try fetchEntityNodeStore(id: id) else {
+            throw PersonEntityMutationError.entityNotFound
+        }
+        guard store.kindRawValue == EntityKind.person.rawValue else {
+            throw PersonEntityMutationError.entityIsNotPerson
+        }
+        return store
+    }
+
     private func fetchPlaceProfileStore(id: UUID) throws -> PlaceProfileStore? {
         try modelContext.fetch(
             FetchDescriptor<PlaceProfileStore>(predicate: #Predicate { $0.id == id })
@@ -2741,6 +3027,38 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             aliases.append(trimmed)
         }
         return aliases
+    }
+
+    private func normalizedPersonAliases(_ values: [String?]) -> [String] {
+        var seen = Set<String>()
+        var aliases: [String] = []
+        for value in values {
+            guard let trimmed = value?.trimmedOrNil else { continue }
+            let key = PlaceContextResolver.normalizedName(trimmed)
+            guard !key.isEmpty, !seen.contains(key) else { continue }
+            seen.insert(key)
+            aliases.append(trimmed)
+        }
+        return aliases
+    }
+
+    private func makePersonProfile(from entity: EntityNode, updatedAt: Date) -> EntityProfile {
+        EntityProfile(
+            entityID: entity.id,
+            kind: .person,
+            displayName: entity.displayName,
+            canonicalName: entity.canonicalName,
+            aliases: entity.aliases,
+            mentionCount: max(1, entity.provenanceRecordIDs.count),
+            firstMentionedAt: entity.createdAt,
+            lastMentionedAt: updatedAt,
+            commonContextLabels: [],
+            sourceRecordIDs: entity.provenanceRecordIDs,
+            confirmationState: .inferred,
+            confidence: entity.confidence,
+            createdAt: entity.createdAt,
+            updatedAt: updatedAt
+        )
     }
 
     private func recalculatedPlaceProfile(_ profile: PlaceProfile, from artifacts: [Artifact], updatedAt: Date) -> PlaceProfile {
@@ -2830,47 +3148,16 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     }
 
     private func rewritePlaceGraphReferences(replacing replacements: [UUID: UUID]) throws {
-        guard !replacements.isEmpty else { return }
-
-        let linkStores = try modelContext.fetch(FetchDescriptor<ArtifactEntityLinkStore>())
-        for store in linkStores {
-            guard let replacementID = replacements[store.entityID] else { continue }
-            var link = store.domainModel
-            link.entityID = replacementID
-            link.source = "placeProfile"
-            store.apply(domainModel: link)
-        }
-
-        let edgeStores = try modelContext.fetch(FetchDescriptor<EntityEdgeStore>())
-        for store in edgeStores {
-            var edge = store.domainModel
-            var changed = false
-            if let replacementID = replacements[edge.fromEntityID] {
-                edge.fromEntityID = replacementID
-                changed = true
-            }
-            if let replacementID = replacements[edge.toEntityID] {
-                edge.toEntityID = replacementID
-                changed = true
-            }
-            guard changed else { continue }
-            if edge.fromEntityID == edge.toEntityID {
-                modelContext.delete(store)
-            } else {
-                store.apply(domainModel: edge)
-            }
-        }
-
-        try deduplicateEntityEdges()
+        try rewriteEntityLinksAndEdges(replacing: replacements, linkSource: "placeProfile")
     }
 
-    private func splitPlaceEntityEdges(
+    private func splitEntityEdges(
         fromEntityID: UUID,
         toEntityID: UUID,
         movingArtifactIDs: Set<UUID>,
         movingRecordIDs: Set<UUID>
     ) throws {
-        guard !movingArtifactIDs.isEmpty else { return }
+        guard !(movingArtifactIDs.isEmpty && movingRecordIDs.isEmpty) else { return }
         let edgeStores = try modelContext.fetch(FetchDescriptor<EntityEdgeStore>())
 
         for store in edgeStores {
@@ -2925,6 +3212,245 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         try deduplicateEntityEdges()
     }
 
+    private func rewriteEntityLinksAndEdges(
+        replacing replacements: [UUID: UUID],
+        linkSource: String?
+    ) throws {
+        guard !replacements.isEmpty else { return }
+
+        let linkStores = try modelContext.fetch(FetchDescriptor<ArtifactEntityLinkStore>())
+        for store in linkStores {
+            guard let replacementID = replacements[store.entityID] else { continue }
+            var link = store.domainModel
+            link.entityID = replacementID
+            if let linkSource {
+                link.source = linkSource
+            }
+            store.apply(domainModel: link)
+        }
+
+        let edgeStores = try modelContext.fetch(FetchDescriptor<EntityEdgeStore>())
+        for store in edgeStores {
+            var edge = store.domainModel
+            var changed = false
+            if let replacementID = replacements[edge.fromEntityID] {
+                edge.fromEntityID = replacementID
+                changed = true
+            }
+            if let replacementID = replacements[edge.toEntityID] {
+                edge.toEntityID = replacementID
+                changed = true
+            }
+            guard changed else { continue }
+            if edge.fromEntityID == edge.toEntityID {
+                modelContext.delete(store)
+            } else {
+                store.apply(domainModel: edge)
+            }
+        }
+
+        try deduplicateEntityEdges()
+    }
+
+    private func rewriteEntityReferencesForMerge(replacing replacements: [UUID: UUID]) throws {
+        guard !replacements.isEmpty else { return }
+
+        let arcStores = try modelContext.fetch(FetchDescriptor<TemporalArcStore>())
+        for store in arcStores {
+            var arc = store.domainModel
+            let remap = remappedUniqueIDs(arc.sourceEntityIDs, replacements: replacements)
+            guard remap.changed else { continue }
+            arc.sourceEntityIDs = remap.values
+            arc.updatedAt = Date.now
+            store.apply(domainModel: arc)
+        }
+
+        let reflectionStores = try modelContext.fetch(FetchDescriptor<ReflectionSnapshotStore>())
+        for store in reflectionStores {
+            var reflection = store.domainModel
+            let remap = remappedUniqueIDs(reflection.sourceEntityIDs, replacements: replacements)
+            guard remap.changed else { continue }
+            reflection.sourceEntityIDs = remap.values
+            store.apply(domainModel: reflection)
+        }
+
+        let questionStores = try modelContext.fetch(FetchDescriptor<ClarificationQuestionStore>())
+        for store in questionStores where store.targetTypeRawValue == ClarificationTargetType.entity.rawValue {
+            guard let replacementID = replacements[store.targetID] else { continue }
+            var question = store.domainModel
+            question.targetID = replacementID
+            store.apply(domainModel: question)
+        }
+
+        let signalStores = try modelContext.fetch(FetchDescriptor<HomeBoardSignalStore>())
+        for store in signalStores where store.targetTypeRawValue == ClarificationTargetType.entity.rawValue {
+            guard let replacementID = replacements[store.targetID] else { continue }
+            var signal = store.domainModel
+            signal.targetID = replacementID
+            store.apply(domainModel: signal)
+        }
+
+        let intentStores = try modelContext.fetch(FetchDescriptor<NotificationIntentStore>())
+        for store in intentStores where store.targetTypeRawValue == ClarificationTargetType.entity.rawValue {
+            guard let replacementID = replacements[store.targetID] else { continue }
+            var intent = store.domainModel
+            intent.targetID = replacementID
+            store.apply(domainModel: intent)
+        }
+
+        let graphDeltaStores = try modelContext.fetch(FetchDescriptor<GraphDeltaStore>())
+        for store in graphDeltaStores {
+            var delta = store.domainModel
+            var changed = false
+            delta.operations = delta.operations.map { operation in
+                var operation = operation
+                if operation.targetType == .entity, let replacementID = replacements[operation.targetID] {
+                    operation.targetID = replacementID
+                    changed = true
+                }
+                if let relatedID = operation.relatedID, let replacementID = replacements[relatedID] {
+                    operation.relatedID = replacementID
+                    changed = true
+                }
+                return operation
+            }
+            if changed {
+                store.apply(domainModel: delta)
+            }
+        }
+
+        if let selfProfileStore = try fetchSelfProfileStore() {
+            let profile = selfProfileStore.domainModel
+            let remap = remappedUniqueIDs(profile.importantRelationshipIDs, replacements: replacements)
+            if remap.changed {
+                var updated = profile
+                updated.importantRelationshipIDs = remap.values
+                updated.updatedAt = Date.now
+                selfProfileStore.apply(domainModel: updated)
+            }
+        }
+
+        let correctionStores = try modelContext.fetch(FetchDescriptor<CorrectionEventStore>())
+        for store in correctionStores {
+            var event = store.domainModel
+            let remap = remappedUniqueIDs(event.targetEntityIDs, replacements: replacements)
+            guard remap.changed else { continue }
+            event.targetEntityIDs = remap.values
+            store.apply(domainModel: event)
+        }
+    }
+
+    private func rewriteEntityReferencesForSplit(
+        fromEntityID: UUID,
+        toEntityID: UUID,
+        movingRecordIDs: Set<UUID>
+    ) throws {
+        guard !movingRecordIDs.isEmpty else { return }
+
+        let arcStores = try modelContext.fetch(FetchDescriptor<TemporalArcStore>())
+        for store in arcStores {
+            var arc = store.domainModel
+            guard arc.sourceEntityIDs.contains(fromEntityID) else { continue }
+            let arcRecordIDs = Set(arc.sourceRecordIDs)
+            guard !arcRecordIDs.isDisjoint(with: movingRecordIDs) else { continue }
+            if arcRecordIDs.isSubset(of: movingRecordIDs) {
+                arc.sourceEntityIDs = remappedUniqueIDs(
+                    arc.sourceEntityIDs,
+                    replacements: [fromEntityID: toEntityID]
+                ).values
+            } else if !arc.sourceEntityIDs.contains(toEntityID) {
+                arc.sourceEntityIDs.append(toEntityID)
+            }
+            arc.updatedAt = Date.now
+            store.apply(domainModel: arc)
+        }
+
+        let reflectionStores = try modelContext.fetch(FetchDescriptor<ReflectionSnapshotStore>())
+        for store in reflectionStores {
+            var reflection = store.domainModel
+            guard reflection.sourceEntityIDs.contains(fromEntityID) else { continue }
+            let reflectionRecordIDs = Set(reflection.sourceRecordIDs)
+            guard !reflectionRecordIDs.isDisjoint(with: movingRecordIDs) else { continue }
+            if reflectionRecordIDs.isSubset(of: movingRecordIDs) {
+                reflection.sourceEntityIDs = remappedUniqueIDs(
+                    reflection.sourceEntityIDs,
+                    replacements: [fromEntityID: toEntityID]
+                ).values
+            } else if !reflection.sourceEntityIDs.contains(toEntityID) {
+                reflection.sourceEntityIDs.append(toEntityID)
+            }
+            store.apply(domainModel: reflection)
+        }
+
+        let questionStores = try modelContext.fetch(FetchDescriptor<ClarificationQuestionStore>())
+        for store in questionStores where store.targetTypeRawValue == ClarificationTargetType.entity.rawValue {
+            guard store.targetID == fromEntityID else { continue }
+            let sourceRecords = Set(store.sourceRecordIDs)
+            guard !sourceRecords.isDisjoint(with: movingRecordIDs) else { continue }
+            guard sourceRecords.isSubset(of: movingRecordIDs) else { continue }
+            var question = store.domainModel
+            question.targetID = toEntityID
+            store.apply(domainModel: question)
+        }
+
+        let signalStores = try modelContext.fetch(FetchDescriptor<HomeBoardSignalStore>())
+        for store in signalStores where store.targetTypeRawValue == ClarificationTargetType.entity.rawValue {
+            guard store.targetID == fromEntityID else { continue }
+            let sourceRecords = Set(store.sourceRecordIDs)
+            guard !sourceRecords.isDisjoint(with: movingRecordIDs) else { continue }
+            guard sourceRecords.isSubset(of: movingRecordIDs) else { continue }
+            var signal = store.domainModel
+            signal.targetID = toEntityID
+            store.apply(domainModel: signal)
+        }
+    }
+
+    private func movePersonArtifactLinks(
+        fromEntityID: UUID,
+        toEntityID: UUID,
+        movingRecordIDs: Set<UUID>,
+        updatedAt: Date
+    ) throws -> Set<UUID> {
+        let linkStores = try modelContext.fetch(FetchDescriptor<ArtifactEntityLinkStore>())
+        var movedArtifactIDs = Set<UUID>()
+        for store in linkStores where store.entityID == fromEntityID {
+            guard let sourceRecordID = store.sourceRecordID, movingRecordIDs.contains(sourceRecordID) else {
+                continue
+            }
+            var link = store.domainModel
+            link.entityID = toEntityID
+            link.source = "personProfile"
+            if link.createdAt > updatedAt {
+                link.createdAt = updatedAt
+            }
+            store.apply(domainModel: link)
+            movedArtifactIDs.insert(link.artifactID)
+        }
+        return movedArtifactIDs
+    }
+
+    private func remappedUniqueIDs(
+        _ values: [UUID],
+        replacements: [UUID: UUID]
+    ) -> (values: [UUID], changed: Bool) {
+        var changed = false
+        var seen = Set<UUID>()
+        var result: [UUID] = []
+        for value in values {
+            let remapped = replacements[value] ?? value
+            if remapped != value {
+                changed = true
+            }
+            if !seen.contains(remapped) {
+                seen.insert(remapped)
+                result.append(remapped)
+            } else if remapped == value {
+                changed = true
+            }
+        }
+        return (result, changed)
+    }
+
     private func deduplicateEntityEdges() throws {
         let edgeStores = try modelContext.fetch(FetchDescriptor<EntityEdgeStore>())
         var storesByKey: [EntityEdgeKey: EntityEdgeStore] = [:]
@@ -2972,6 +3498,19 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         profiles.compactMap(\.confidence).max()
     }
 
+    private func mergeStrings(_ lhs: [String], _ rhs: [String]) -> [String] {
+        var seen = Set<String>()
+        var result: [String] = []
+        for value in lhs + rhs {
+            guard let trimmed = value.trimmedOrNil else { continue }
+            let key = trimmed.lowercased()
+            guard !seen.contains(key) else { continue }
+            seen.insert(key)
+            result.append(trimmed)
+        }
+        return result
+    }
+
     private func mergeUniqueIDs(_ lhs: [UUID], _ rhs: [UUID]) -> [UUID] {
         var seen = Set<UUID>()
         var result: [UUID] = []
@@ -2980,6 +3519,53 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             result.append(id)
         }
         return result
+    }
+
+    private func deleteEntityProfiles(entityIDs: Set<UUID>) throws {
+        guard !entityIDs.isEmpty else { return }
+        let profileStores = try modelContext.fetch(FetchDescriptor<EntityProfileStore>())
+        for store in profileStores where entityIDs.contains(store.entityID) {
+            modelContext.delete(store)
+        }
+    }
+
+    private func deleteEntityNodes(entityIDs: Set<UUID>) throws {
+        guard !entityIDs.isEmpty else { return }
+        let nodeStores = try modelContext.fetch(FetchDescriptor<EntityNodeStore>())
+        for store in nodeStores where entityIDs.contains(store.id) {
+            modelContext.delete(store)
+        }
+    }
+
+    private func enqueueEntityMutationRecomputeJobs(
+        affectedRecordIDs: Set<UUID>,
+        affectedEntityIDs: Set<UUID>
+    ) throws {
+        let now = Date.now
+        for entityID in affectedEntityIDs {
+            try upsert(intelligenceJob: IntelligenceJob(
+                kind: .entityEnrichment,
+                targetType: .entity,
+                targetID: entityID,
+                status: .pending,
+                priority: 0.76,
+                scheduledAt: now,
+                updatedAt: now,
+                requiresCloudAI: false
+            ))
+        }
+        for recordID in affectedRecordIDs {
+            try upsert(intelligenceJob: IntelligenceJob(
+                kind: .chapterCandidate,
+                targetType: .record,
+                targetID: recordID,
+                status: .pending,
+                priority: 0.42,
+                scheduledAt: now,
+                updatedAt: now,
+                requiresCloudAI: false
+            ))
+        }
     }
 
     private func purgeEntityProvenance(
@@ -3173,6 +3759,26 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             sortBy: [SortDescriptor(\.updatedAt, order: .reverse)]
         )
         return try modelContext.fetch(descriptor).first
+    }
+
+    func upsert(correctionEvent: CorrectionEvent) throws {
+        let descriptor = FetchDescriptor<CorrectionEventStore>(predicate: #Predicate { $0.id == correctionEvent.id })
+        if let existing = try modelContext.fetch(descriptor).first {
+            existing.apply(domainModel: correctionEvent)
+        } else {
+            modelContext.insert(CorrectionEventStore(domainModel: correctionEvent))
+        }
+    }
+
+    func upsert(entityTombstone: EntityTombstone) throws {
+        let descriptor = FetchDescriptor<EntityTombstoneStore>(
+            predicate: #Predicate { $0.oldEntityID == entityTombstone.oldEntityID }
+        )
+        if let existing = try modelContext.fetch(descriptor).first {
+            existing.apply(domainModel: entityTombstone)
+        } else {
+            modelContext.insert(EntityTombstoneStore(domainModel: entityTombstone))
+        }
     }
 
     func upsert(entityProfile: EntityProfile) throws {

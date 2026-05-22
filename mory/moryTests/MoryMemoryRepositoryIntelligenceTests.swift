@@ -446,6 +446,400 @@ final class MoryMemoryRepositoryIntelligenceTests: XCTestCase {
         XCTAssertTrue(detail.pendingQuestions.isEmpty)
     }
 
+    func testMergePersonEntitiesRewritesGraphReferencesAndRecordsTombstone() throws {
+        let fixture = makeRepositoryFixture()
+        let repository = fixture.repository
+        let context = fixture.container.mainContext
+
+        let primaryID = UUID()
+        let mergingID = UUID()
+        let relatedID = UUID()
+        let recordA = UUID()
+        let recordB = UUID()
+        let artifactA = UUID()
+        let artifactB = UUID()
+
+        context.insert(
+            EntityNodeStore(
+                domainModel: EntityNode(
+                    id: primaryID,
+                    kind: .person,
+                    displayName: "Alex",
+                    aliases: ["A"],
+                    summary: "",
+                    provenanceRecordIDs: [recordA],
+                    createdAt: .now,
+                    updatedAt: .now
+                )
+            )
+        )
+        context.insert(
+            EntityNodeStore(
+                domainModel: EntityNode(
+                    id: mergingID,
+                    kind: .person,
+                    displayName: "Alexander Chen",
+                    aliases: ["Alex Chen"],
+                    summary: "",
+                    provenanceRecordIDs: [recordB],
+                    createdAt: .now,
+                    updatedAt: .now
+                )
+            )
+        )
+        context.insert(
+            EntityProfileStore(
+                domainModel: EntityProfile(
+                    entityID: primaryID,
+                    kind: .person,
+                    displayName: "Alex",
+                    aliases: ["A"],
+                    mentionCount: 2,
+                    sourceRecordIDs: [recordA],
+                    confirmationState: .userConfirmed
+                )
+            )
+        )
+        context.insert(
+            EntityProfileStore(
+                domainModel: EntityProfile(
+                    entityID: mergingID,
+                    kind: .person,
+                    displayName: "Alexander Chen",
+                    aliases: ["Alex Chen"],
+                    mentionCount: 1,
+                    sourceRecordIDs: [recordB]
+                )
+            )
+        )
+        context.insert(
+            ArtifactEntityLinkStore(
+                domainModel: ArtifactEntityLink(
+                    artifactID: artifactA,
+                    entityID: primaryID,
+                    source: "analysis",
+                    sourceRecordID: recordA,
+                    createdAt: .now
+                )
+            )
+        )
+        context.insert(
+            ArtifactEntityLinkStore(
+                domainModel: ArtifactEntityLink(
+                    artifactID: artifactB,
+                    entityID: mergingID,
+                    source: "analysis",
+                    sourceRecordID: recordB,
+                    createdAt: .now
+                )
+            )
+        )
+        context.insert(
+            EntityEdgeStore(
+                domainModel: EntityEdge(
+                    fromEntityID: mergingID,
+                    toEntityID: relatedID,
+                    relationKind: .mentionedWith,
+                    firstSeenAt: .now,
+                    lastSeenAt: .now,
+                    sourceArtifactIDs: [artifactB],
+                    sourceRecordIDs: [recordB]
+                )
+            )
+        )
+        context.insert(
+            TemporalArcStore(
+                domainModel: TemporalArc(
+                    title: "Alex rollout arc",
+                    summary: "arc",
+                    status: .accepted,
+                    sourceRecordIDs: [recordB],
+                    sourceArtifactIDs: [artifactB],
+                    sourceEntityIDs: [mergingID],
+                    startDate: .now,
+                    endDate: .now,
+                    intensityScore: 0.6,
+                    clusterStrength: 0.6,
+                    createdAt: .now,
+                    updatedAt: .now
+                )
+            )
+        )
+        context.insert(
+            ReflectionSnapshotStore(
+                domainModel: ReflectionSnapshot(
+                    type: .relationship,
+                    title: "People reflection",
+                    body: "body",
+                    evidenceSummary: "evidence",
+                    confidence: 0.7,
+                    status: .suggested,
+                    sourceRecordIDs: [recordB],
+                    sourceArtifactIDs: [artifactB],
+                    sourceEntityIDs: [mergingID],
+                    createdAt: .now
+                )
+            )
+        )
+        context.insert(
+            ClarificationQuestionStore(
+                domainModel: ClarificationQuestion(
+                    kind: .entityRelationship,
+                    prompt: "Who is Alexander Chen?",
+                    targetType: .entity,
+                    targetID: mergingID,
+                    sourceRecordIDs: [recordB],
+                    priority: 0.7,
+                    reason: "Need relation."
+                )
+            )
+        )
+        context.insert(
+            HomeBoardSignalStore(
+                domainModel: HomeBoardSignal(
+                    kind: .clarificationQuestion,
+                    targetType: .entity,
+                    targetID: mergingID,
+                    sourceRecordIDs: [recordB],
+                    title: "Question",
+                    subtitle: "subtitle",
+                    priority: 0.5,
+                    reason: "reason"
+                )
+            )
+        )
+        context.insert(
+            NotificationIntentStore(
+                domainModel: NotificationIntent(
+                    kind: .dailyQuestion,
+                    title: "Question",
+                    body: "Body",
+                    targetType: .entity,
+                    targetID: mergingID,
+                    scheduledAt: .now
+                )
+            )
+        )
+        try context.save()
+
+        let merged = try repository.mergePersonEntities(
+            primaryID: primaryID,
+            mergingIDs: [mergingID],
+            displayName: "Alex Chen"
+        )
+
+        XCTAssertEqual(merged.entityID, primaryID)
+        XCTAssertEqual(merged.displayName, "Alex Chen")
+        XCTAssertTrue(merged.aliases.contains("Alexander Chen"))
+
+        XCTAssertNil(try repository.fetchEntityDetail(entityID: mergingID))
+        let links = try context.fetch(FetchDescriptor<ArtifactEntityLinkStore>())
+        XCTAssertFalse(links.contains { $0.entityID == mergingID })
+
+        let arcs = try context.fetch(FetchDescriptor<TemporalArcStore>())
+        XCTAssertTrue(arcs.allSatisfy { !$0.sourceEntityIDs.contains(mergingID) })
+        XCTAssertTrue(arcs.contains { $0.sourceEntityIDs.contains(primaryID) })
+
+        let reflections = try context.fetch(FetchDescriptor<ReflectionSnapshotStore>())
+        XCTAssertTrue(reflections.allSatisfy { !$0.sourceEntityIDs.contains(mergingID) })
+
+        let questions = try context.fetch(FetchDescriptor<ClarificationQuestionStore>())
+        XCTAssertTrue(questions.allSatisfy { $0.targetID == primaryID })
+
+        let intents = try context.fetch(FetchDescriptor<NotificationIntentStore>())
+        XCTAssertTrue(intents.allSatisfy { $0.targetID == primaryID })
+
+        let tombstones = try repository.fetchEntityTombstones(limit: nil)
+        XCTAssertTrue(tombstones.contains { $0.oldEntityID == mergingID && $0.replacementEntityID == primaryID })
+
+        let corrections = try repository.fetchCorrectionEvents(kind: .sameEntity, limit: nil)
+        XCTAssertTrue(corrections.contains { Set($0.targetEntityIDs) == Set([primaryID, mergingID]) && $0.isReversible })
+
+        let jobs = try repository.fetchIntelligenceJobs(status: .pending, limit: nil)
+        XCTAssertTrue(jobs.contains { $0.kind == .entityEnrichment && $0.targetID == primaryID })
+        XCTAssertTrue(jobs.contains { $0.kind == .chapterCandidate && $0.targetID == recordA })
+        XCTAssertTrue(jobs.contains { $0.kind == .chapterCandidate && $0.targetID == recordB })
+    }
+
+    func testSplitPersonEntityRewritesLinksAndCreatesCorrectionEvent() throws {
+        let fixture = makeRepositoryFixture()
+        let repository = fixture.repository
+        let context = fixture.container.mainContext
+
+        let entityID = UUID()
+        let relatedID = UUID()
+        let recordA = UUID()
+        let recordB = UUID()
+        let artifactA = UUID()
+        let artifactB = UUID()
+
+        context.insert(
+            EntityNodeStore(
+                domainModel: EntityNode(
+                    id: entityID,
+                    kind: .person,
+                    displayName: "舍友",
+                    aliases: [],
+                    summary: "",
+                    provenanceRecordIDs: [recordA, recordB],
+                    createdAt: .now,
+                    updatedAt: .now
+                )
+            )
+        )
+        context.insert(
+            EntityProfileStore(
+                domainModel: EntityProfile(
+                    entityID: entityID,
+                    kind: .person,
+                    displayName: "舍友",
+                    mentionCount: 2,
+                    sourceRecordIDs: [recordA, recordB],
+                    confirmationState: .userConfirmed
+                )
+            )
+        )
+        context.insert(
+            ArtifactEntityLinkStore(
+                domainModel: ArtifactEntityLink(
+                    artifactID: artifactA,
+                    entityID: entityID,
+                    source: "analysis",
+                    sourceRecordID: recordA,
+                    createdAt: .now
+                )
+            )
+        )
+        context.insert(
+            ArtifactEntityLinkStore(
+                domainModel: ArtifactEntityLink(
+                    artifactID: artifactB,
+                    entityID: entityID,
+                    source: "analysis",
+                    sourceRecordID: recordB,
+                    createdAt: .now
+                )
+            )
+        )
+        context.insert(
+            EntityEdgeStore(
+                domainModel: EntityEdge(
+                    fromEntityID: entityID,
+                    toEntityID: relatedID,
+                    relationKind: .mentionedWith,
+                    firstSeenAt: .now,
+                    lastSeenAt: .now,
+                    sourceArtifactIDs: [artifactA, artifactB],
+                    sourceRecordIDs: [recordA, recordB]
+                )
+            )
+        )
+        context.insert(
+            TemporalArcStore(
+                domainModel: TemporalArc(
+                    title: "Roommate arc",
+                    summary: "arc",
+                    status: .accepted,
+                    sourceRecordIDs: [recordA, recordB],
+                    sourceArtifactIDs: [artifactA, artifactB],
+                    sourceEntityIDs: [entityID],
+                    startDate: .now,
+                    endDate: .now,
+                    intensityScore: 0.8,
+                    clusterStrength: 0.7,
+                    createdAt: .now,
+                    updatedAt: .now
+                )
+            )
+        )
+        context.insert(
+            ReflectionSnapshotStore(
+                domainModel: ReflectionSnapshot(
+                    type: .relationship,
+                    title: "Roommate reflection",
+                    body: "body",
+                    evidenceSummary: "evidence",
+                    confidence: 0.6,
+                    status: .suggested,
+                    sourceRecordIDs: [recordA, recordB],
+                    sourceArtifactIDs: [artifactA, artifactB],
+                    sourceEntityIDs: [entityID],
+                    createdAt: .now
+                )
+            )
+        )
+        context.insert(
+            ClarificationQuestionStore(
+                domainModel: ClarificationQuestion(
+                    kind: .entityRelationship,
+                    prompt: "Who is this roommate?",
+                    targetType: .entity,
+                    targetID: entityID,
+                    sourceRecordIDs: [recordA],
+                    priority: 0.6,
+                    reason: "Need clarification."
+                )
+            )
+        )
+        context.insert(
+            HomeBoardSignalStore(
+                domainModel: HomeBoardSignal(
+                    kind: .clarificationQuestion,
+                    targetType: .entity,
+                    targetID: entityID,
+                    sourceRecordIDs: [recordA],
+                    title: "Clarify roommate",
+                    subtitle: "Who is this?",
+                    priority: 0.6,
+                    reason: "role split"
+                )
+            )
+        )
+        try context.save()
+
+        let newProfile = try repository.splitPersonEntity(
+            id: entityID,
+            movingRecordIDs: [recordA],
+            displayName: "Lily",
+            aliases: ["舍友A"]
+        )
+
+        XCTAssertEqual(newProfile.displayName, "Lily")
+        XCTAssertEqual(Set(newProfile.sourceRecordIDs), Set([recordA]))
+
+        let original = try XCTUnwrap(try repository.fetchEntityProfile(entityID: entityID))
+        XCTAssertEqual(Set(original.sourceRecordIDs), Set([recordB]))
+
+        let links = try context.fetch(FetchDescriptor<ArtifactEntityLinkStore>())
+        XCTAssertTrue(links.contains { $0.sourceRecordID == recordA && $0.entityID == newProfile.entityID })
+        XCTAssertTrue(links.contains { $0.sourceRecordID == recordB && $0.entityID == entityID })
+
+        let edges = try context.fetch(FetchDescriptor<EntityEdgeStore>()).map(\.domainModel)
+        XCTAssertTrue(edges.contains { $0.fromEntityID == newProfile.entityID || $0.toEntityID == newProfile.entityID })
+        XCTAssertTrue(edges.contains { $0.fromEntityID == entityID || $0.toEntityID == entityID })
+
+        let questions = try context.fetch(FetchDescriptor<ClarificationQuestionStore>())
+        XCTAssertTrue(questions.contains { $0.sourceRecordIDs == [recordA] && $0.targetID == newProfile.entityID })
+
+        let signals = try context.fetch(FetchDescriptor<HomeBoardSignalStore>())
+        XCTAssertTrue(signals.contains { $0.sourceRecordIDs == [recordA] && $0.targetID == newProfile.entityID })
+
+        let arcs = try context.fetch(FetchDescriptor<TemporalArcStore>())
+        XCTAssertTrue(arcs.allSatisfy { $0.sourceEntityIDs.contains(entityID) && $0.sourceEntityIDs.contains(newProfile.entityID) })
+
+        let reflections = try context.fetch(FetchDescriptor<ReflectionSnapshotStore>())
+        XCTAssertTrue(reflections.allSatisfy { $0.sourceEntityIDs.contains(entityID) && $0.sourceEntityIDs.contains(newProfile.entityID) })
+
+        let corrections = try repository.fetchCorrectionEvents(kind: .splitEntity, limit: nil)
+        XCTAssertTrue(corrections.contains { Set($0.targetEntityIDs) == Set([entityID, newProfile.entityID]) && $0.isReversible })
+
+        let jobs = try repository.fetchIntelligenceJobs(status: .pending, limit: nil)
+        XCTAssertTrue(jobs.contains { $0.kind == .entityEnrichment && $0.targetID == entityID })
+        XCTAssertTrue(jobs.contains { $0.kind == .entityEnrichment && $0.targetID == newProfile.entityID })
+        XCTAssertTrue(jobs.contains { $0.kind == .chapterCandidate && $0.targetID == recordA })
+        XCTAssertTrue(jobs.contains { $0.kind == .chapterCandidate && $0.targetID == recordB })
+    }
+
     private func makeRepositoryFixture() -> RepositoryFixture {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(

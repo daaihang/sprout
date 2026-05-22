@@ -248,6 +248,76 @@ final class SelfProfileStore {
 }
 
 @Model
+final class CorrectionEventStore {
+    @Attribute(.unique) var id: UUID
+    var kindRawValue: String
+    var actorRawValue: String
+    var targetEntityIDs: [UUID]
+    var targetRecordIDs: [UUID]
+    var sourceRecordIDs: [UUID]
+    var note: String?
+    var metadataData: Data?
+    var isReversible: Bool
+    var createdAt: Date
+    var reversedAt: Date?
+
+    init(
+        id: UUID,
+        kindRawValue: String,
+        actorRawValue: String,
+        targetEntityIDs: [UUID],
+        targetRecordIDs: [UUID],
+        sourceRecordIDs: [UUID],
+        note: String?,
+        metadataData: Data?,
+        isReversible: Bool,
+        createdAt: Date,
+        reversedAt: Date?
+    ) {
+        self.id = id
+        self.kindRawValue = kindRawValue
+        self.actorRawValue = actorRawValue
+        self.targetEntityIDs = targetEntityIDs
+        self.targetRecordIDs = targetRecordIDs
+        self.sourceRecordIDs = sourceRecordIDs
+        self.note = note
+        self.metadataData = metadataData
+        self.isReversible = isReversible
+        self.createdAt = createdAt
+        self.reversedAt = reversedAt
+    }
+}
+
+@Model
+final class EntityTombstoneStore {
+    @Attribute(.unique) var oldEntityID: UUID
+    var id: UUID
+    var replacementEntityID: UUID?
+    var kindRawValue: String
+    var reasonRawValue: String
+    var note: String?
+    var createdAt: Date
+
+    init(
+        id: UUID = UUID(),
+        oldEntityID: UUID,
+        replacementEntityID: UUID?,
+        kindRawValue: String,
+        reasonRawValue: String,
+        note: String?,
+        createdAt: Date
+    ) {
+        self.id = id
+        self.oldEntityID = oldEntityID
+        self.replacementEntityID = replacementEntityID
+        self.kindRawValue = kindRawValue
+        self.reasonRawValue = reasonRawValue
+        self.note = note
+        self.createdAt = createdAt
+    }
+}
+
+@Model
 final class EntityProfileStore {
     @Attribute(.unique) var id: UUID
     var entityID: UUID

@@ -376,6 +376,92 @@ extension SelfProfileStore {
 }
 
 @MainActor
+extension CorrectionEventStore {
+    convenience init(domainModel: CorrectionEvent) {
+        self.init(
+            id: domainModel.id,
+            kindRawValue: domainModel.kind.rawValue,
+            actorRawValue: domainModel.actor.rawValue,
+            targetEntityIDs: domainModel.targetEntityIDs,
+            targetRecordIDs: domainModel.targetRecordIDs,
+            sourceRecordIDs: domainModel.sourceRecordIDs,
+            note: domainModel.note,
+            metadataData: PersistenceCoding.encode(domainModel.metadata),
+            isReversible: domainModel.isReversible,
+            createdAt: domainModel.createdAt,
+            reversedAt: domainModel.reversedAt
+        )
+    }
+
+    var domainModel: CorrectionEvent {
+        CorrectionEvent(
+            id: id,
+            kind: CorrectionEventKind(rawValue: kindRawValue) ?? .profileFieldIncorrect,
+            actor: CorrectionActor(rawValue: actorRawValue) ?? .user,
+            targetEntityIDs: targetEntityIDs,
+            targetRecordIDs: targetRecordIDs,
+            sourceRecordIDs: sourceRecordIDs,
+            note: note,
+            metadata: PersistenceCoding.decode([String: String].self, from: metadataData) ?? [:],
+            isReversible: isReversible,
+            createdAt: createdAt,
+            reversedAt: reversedAt
+        )
+    }
+
+    func apply(domainModel: CorrectionEvent) {
+        id = domainModel.id
+        kindRawValue = domainModel.kind.rawValue
+        actorRawValue = domainModel.actor.rawValue
+        targetEntityIDs = domainModel.targetEntityIDs
+        targetRecordIDs = domainModel.targetRecordIDs
+        sourceRecordIDs = domainModel.sourceRecordIDs
+        note = domainModel.note
+        metadataData = PersistenceCoding.encode(domainModel.metadata)
+        isReversible = domainModel.isReversible
+        createdAt = domainModel.createdAt
+        reversedAt = domainModel.reversedAt
+    }
+}
+
+@MainActor
+extension EntityTombstoneStore {
+    convenience init(domainModel: EntityTombstone) {
+        self.init(
+            id: domainModel.id,
+            oldEntityID: domainModel.oldEntityID,
+            replacementEntityID: domainModel.replacementEntityID,
+            kindRawValue: domainModel.kind.rawValue,
+            reasonRawValue: domainModel.reason.rawValue,
+            note: domainModel.note,
+            createdAt: domainModel.createdAt
+        )
+    }
+
+    var domainModel: EntityTombstone {
+        EntityTombstone(
+            id: id,
+            oldEntityID: oldEntityID,
+            replacementEntityID: replacementEntityID,
+            kind: EntityKind(rawValue: kindRawValue) ?? .object,
+            reason: EntityTombstoneReason(rawValue: reasonRawValue) ?? .merged,
+            note: note,
+            createdAt: createdAt
+        )
+    }
+
+    func apply(domainModel: EntityTombstone) {
+        id = domainModel.id
+        oldEntityID = domainModel.oldEntityID
+        replacementEntityID = domainModel.replacementEntityID
+        kindRawValue = domainModel.kind.rawValue
+        reasonRawValue = domainModel.reason.rawValue
+        note = domainModel.note
+        createdAt = domainModel.createdAt
+    }
+}
+
+@MainActor
 extension EntityProfileStore {
     convenience init(domainModel: EntityProfile) {
         self.init(

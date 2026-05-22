@@ -780,6 +780,38 @@ enum PlaceProfileMutationError: LocalizedError, Equatable {
     }
 }
 
+enum PersonEntityMutationError: LocalizedError, Equatable {
+    case entityNotFound
+    case entityIsNotPerson
+    case emptyDisplayName
+    case mergeRequiresAtLeastOneOtherEntity
+    case mergeCannotIncludePrimary
+    case splitRequiresMovingRecords
+    case splitCannotMoveAllRecords
+    case splitRecordsNotInEntity
+
+    var errorDescription: String? {
+        switch self {
+        case .entityNotFound:
+            "Person entity was not found."
+        case .entityIsNotPerson:
+            "Selected entity is not a person."
+        case .emptyDisplayName:
+            "Person name cannot be empty."
+        case .mergeRequiresAtLeastOneOtherEntity:
+            "Choose at least one other person to merge."
+        case .mergeCannotIncludePrimary:
+            "A person cannot be merged into itself."
+        case .splitRequiresMovingRecords:
+            "Choose at least one source memory to split."
+        case .splitCannotMoveAllRecords:
+            "A split must leave at least one memory on the original person."
+        case .splitRecordsNotInEntity:
+            "Selected memories are not linked to this person."
+        }
+    }
+}
+
 struct SearchMemoryResultSnapshot: Identifiable, Hashable, Sendable {
     let memory: MemorySummary
     let explanations: [SearchMatchExplanation]
@@ -1042,6 +1074,11 @@ protocol MoryMemoryRepositorying: AnyObject {
     func mergePlaceProfiles(primaryID: UUID, mergingIDs: [UUID], displayName: String?) throws -> PlaceProfile
     func splitPlaceProfile(id: UUID, movingArtifactIDs: [UUID], displayName: String) throws -> PlaceProfile
     func fetchPlaceProfileArtifacts(id: UUID) throws -> [Artifact]
+    func mergePersonEntities(primaryID: UUID, mergingIDs: [UUID], displayName: String?) throws -> EntityProfile
+    func splitPersonEntity(id: UUID, movingRecordIDs: [UUID], displayName: String, aliases: [String]) throws -> EntityProfile
+    func fetchCorrectionEvents(kind: CorrectionEventKind?, limit: Int?) throws -> [CorrectionEvent]
+    func upsertCorrectionEvent(_ event: CorrectionEvent) throws
+    func fetchEntityTombstones(limit: Int?) throws -> [EntityTombstone]
     func fetchClarificationQuestions(status: ClarificationQuestionStatus?, limit: Int?) throws -> [ClarificationQuestion]
     func upsertClarificationQuestion(_ question: ClarificationQuestion) throws
     func answerClarificationQuestion(_ id: UUID, answer: ClarificationAnswer) throws

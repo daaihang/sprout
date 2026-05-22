@@ -43,6 +43,22 @@ struct GraphDeltaApplier: Sendable {
                 confidence: 1,
                 requiresUserConfirmation: false
             )
+        case .entityMerge:
+            guard let relatedID = resolvedUUID(from: answer) else { return nil }
+            return GraphDelta(
+                source: .userAnswer,
+                operations: [
+                    GraphDeltaOperation(
+                        kind: .mergeEntity,
+                        targetType: .entity,
+                        targetID: question.targetID,
+                        relatedID: relatedID,
+                        metadata: ["questionID": question.id.uuidString]
+                    )
+                ],
+                confidence: 1,
+                requiresUserConfirmation: false
+            )
         default:
             return nil
         }
@@ -101,5 +117,15 @@ struct GraphDeltaApplier: Sendable {
         if profile.lastMentionedAt == nil {
             profile.lastMentionedAt = profile.updatedAt
         }
+    }
+
+    private func resolvedUUID(from answer: ClarificationAnswer) -> UUID? {
+        if let id = UUID(uuidString: answer.value) {
+            return id
+        }
+        if let text = answer.freeformText?.trimmedOrNil, let id = UUID(uuidString: text) {
+            return id
+        }
+        return nil
     }
 }

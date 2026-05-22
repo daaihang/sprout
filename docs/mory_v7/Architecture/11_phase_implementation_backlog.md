@@ -85,6 +85,16 @@ Tests:
 - split rewrite,
 - undo/recompute.
 
+Completion evidence:
+
+- `CorrectionEvent` and `EntityTombstone` are implemented as persisted domain data with SwiftData stores and mappers.
+- `DefaultEntityResolutionService` is implemented with same-person candidate detection, not-same correction blocking, and role-label ambiguous buckets.
+- repository-level person mutations (`mergePersonEntities`, `splitPersonEntity`) are implemented and rewrite links/edges/arcs/reflections/question targets/home signals.
+- merge writes tombstones and reversible correction events; split writes reversible correction events.
+- mutation flow schedules bounded recompute jobs (`entityEnrichment`, `chapterCandidate`) for affected entities/records.
+- `GraphDeltaApplier` supports `.entityMerge` operation generation from clarification answers.
+- tests cover same-person candidate, not-same blocking, role-label buckets, merge rewrite, split rewrite, and recompute job scheduling.
+
 ## Phase 3: PersonProfile + Portrait Jobs
 
 Goal:
@@ -205,7 +215,7 @@ Exit criteria:
 | --- | --- | --- |
 | Phase 0 | completed | docs/gap matrix completed; implementation starts at Phase 1 |
 | Phase 1 | completed | local SelfProfile persistence and inspectable context pack skeleton are implemented; Analyze v7 integration starts at Phase 5 |
-| Phase 2 | not started | place has partial precedent, person missing |
+| Phase 2 | completed | entity resolution foundation, correction ledger, and person merge/split mutation are implemented; proposal consumption and cloud-context integration continue in Phase 5 |
 | Phase 3 | not started | current EntityProfile too thin |
 | Phase 4 | not started | mood is free text; Journaling Suggestions absent |
 | Phase 5 | not started | legacy Analyze still current-record centered |
