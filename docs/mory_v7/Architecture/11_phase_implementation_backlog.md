@@ -152,6 +152,18 @@ Tests:
 - Journaling `StateOfMind` maps as evidence,
 - fallback when entitlement/OS is unavailable.
 
+Completion evidence:
+
+- `AffectSnapshot`, `AffectAppraisal`, `AffectEvidence`, `AffectSnapshotDraft`, and `AffectCorrection` are implemented as local v7 domain models.
+- `AffectSnapshotStore` is registered in the SwiftData schema with mapper support and repository APIs for fetch/upsert/correction.
+- new memories persist structured affect from explicit drafts or from legacy `MemoryCaptureDraft.mood` fallback.
+- mood edits replace the user-freeform affect snapshot so legacy capture and structured affect stay aligned.
+- affect corrections write `CorrectionEvent.kind.affectCorrection`, mark snapshots as user-confirmed, and update the self profile expression-pattern signal.
+- `AnalysisContextPackBuilder` now prefers structured affect history and falls back to legacy mood text when no snapshot exists.
+- `JournalingSuggestionContextService` converts user-selected suggestion drafts into normal memory capture drafts and maps `StateOfMind` as affect evidence.
+- Debug Center includes a data-only `Affect Snapshots` inspector for persisted affect, correction events, and Journaling Suggestions fallback state.
+- Apple Journaling Suggestions entitlement, real system picker UI, App Intents, Share extension, and cloud Analyze consumption remain out of scope for Phase 4 and continue in Phase 5/6 or later UI passes.
+
 ## Phase 5: Analyze v7 Contract + Context-Aware Reflection
 
 Goal:
@@ -229,7 +241,7 @@ Exit criteria:
 | Phase 1 | completed | local SelfProfile persistence and inspectable context pack skeleton are implemented; Analyze v7 integration starts at Phase 5 |
 | Phase 2 | completed | entity resolution foundation, correction ledger, and person merge/split mutation are implemented; proposal consumption and cloud-context integration continue in Phase 5 |
 | Phase 3 | completed | local PersonProfile persistence, deterministic portrait refresh jobs, mutation actions, evidence invalidation, and debug inspection are implemented; cloud AI portrait proposals remain Phase 5 |
-| Phase 4 | not started | mood is free text; Journaling Suggestions absent |
+| Phase 4 | completed | local structured affect persistence, correction events, context-pack affect history, and Journaling suggestion draft mapping are implemented; real Apple picker entitlement/App Intents/Share extension remain later phases |
 | Phase 5 | not started | legacy Analyze still current-record centered |
 | Phase 6 | not started | no BGTask/background URLSession production loop |
 | Phase 7 | not started | eval fixtures and debug surfaces missing |

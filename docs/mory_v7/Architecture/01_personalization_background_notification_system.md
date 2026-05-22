@@ -74,7 +74,7 @@ Code:
 
 ### 2.6 Mood Data Is Not Structured Enough
 
-- Capture mood is free text (`userMood`) + optional integer (`userIntensity`).
+- Legacy capture still keeps `userMood`, but Phase 4 now persists record-linked `AffectSnapshot` rows for structured affect.
 - Analysis emotion mainly maps to one label/intensity/confidence.
 - No multi-axis affect model for robust longitudinal reasoning.
 - Tone ambiguity is not represented as first-class data, so joking, venting, sarcasm, serious irritation, and exhaustion can collapse into the same label.
@@ -99,7 +99,7 @@ Code:
 - Photo processing produces compact tags/OCR summaries, not full visual scene understanding.
 - Speech transcription failure can leave no text evidence for analysis.
 - Weather/music/place context improves capture but does not replace identity-aware retrieval.
-- Journaling Suggestions is not integrated yet and the entitlement is not present in current app capabilities.
+- Phase 4 includes a local `JournalingSuggestionContextService` and fallback diagnostics; the Apple entitlement and real system picker remain pending.
 
 Code:
 

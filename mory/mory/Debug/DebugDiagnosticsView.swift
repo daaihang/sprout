@@ -115,6 +115,16 @@ struct DebugDiagnosticsView: View {
                 }
 
                 NavigationLink {
+                    DebugAffectSnapshotView()
+                } label: {
+                    DebugMenuRow(
+                        icon: "waveform.path.ecg.rectangle",
+                        title: "Affect Snapshots",
+                        subtitle: "Inspect v7 structured mood, correction events, and Journaling Suggestions fallback state"
+                    )
+                }
+
+                NavigationLink {
                     DebugHomeBoardDiagnosticsView()
                 } label: {
                     DebugMenuRow(

@@ -321,6 +321,7 @@ struct MemoryCaptureDraft: Hashable, Sendable {
     var inputContext: String?
     var captureSource: CaptureSource
     var artifacts: [CaptureArtifactDraft]
+    var affectSnapshots: [AffectSnapshotDraft]
 
     init(
         title: String? = nil,
@@ -328,7 +329,8 @@ struct MemoryCaptureDraft: Hashable, Sendable {
         mood: String? = nil,
         inputContext: String? = nil,
         captureSource: CaptureSource = .composer,
-        artifacts: [CaptureArtifactDraft] = []
+        artifacts: [CaptureArtifactDraft] = [],
+        affectSnapshots: [AffectSnapshotDraft] = []
     ) {
         self.title = title
         self.rawText = rawText
@@ -336,6 +338,7 @@ struct MemoryCaptureDraft: Hashable, Sendable {
         self.inputContext = inputContext
         self.captureSource = captureSource
         self.artifacts = artifacts
+        self.affectSnapshots = affectSnapshots
     }
 }
 
@@ -1073,6 +1076,10 @@ protocol MoryMemoryRepositorying: AnyObject {
     func refreshPersonProfile(entityID: UUID, now: Date) throws -> PersonProfile?
     func applyPersonProfileMutation(_ mutation: PersonProfileMutation) throws -> PersonProfile
     func deletePersonProfilePortrait(entityID: UUID) throws -> PersonProfile
+    func fetchAffectSnapshot(id: UUID) throws -> AffectSnapshot?
+    func fetchAffectSnapshots(recordID: UUID?, limit: Int?) throws -> [AffectSnapshot]
+    func upsertAffectSnapshot(_ snapshot: AffectSnapshot) throws
+    func applyAffectCorrection(_ correction: AffectCorrection) throws -> AffectSnapshot
     func fetchPlaceProfile(id: UUID) throws -> PlaceProfile?
     func fetchPlaceProfiles(limit: Int?) throws -> [PlaceProfile]
     func upsertPlaceProfile(_ profile: PlaceProfile) throws

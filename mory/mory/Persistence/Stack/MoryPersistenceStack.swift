@@ -51,6 +51,7 @@ struct MoryPersistenceStack {
         EntityTombstoneStore.self,
         EntityProfileStore.self,
         PersonProfileStore.self,
+        AffectSnapshotStore.self,
         PlaceProfileStore.self,
         ClarificationQuestionStore.self,
         IntelligenceJobStore.self,

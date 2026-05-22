@@ -466,6 +466,65 @@ final class PersonProfileStore {
 }
 
 @Model
+final class AffectSnapshotStore {
+    @Attribute(.unique) var id: UUID
+    var recordID: UUID
+    var valence: Double?
+    var arousal: Double?
+    var dominance: Double?
+    var intensity: Double?
+    var labelRawValues: [String]
+    var toneHintRawValues: [String]
+    var appraisalData: Data?
+    var sourceRawValues: [String]
+    var confidence: Double?
+    var evidenceData: Data?
+    var userConfirmed: Bool
+    var needsUserCheck: Bool
+    var rawInput: String?
+    var createdAt: Date
+    var updatedAt: Date
+
+    init(
+        id: UUID,
+        recordID: UUID,
+        valence: Double?,
+        arousal: Double?,
+        dominance: Double?,
+        intensity: Double?,
+        labelRawValues: [String],
+        toneHintRawValues: [String],
+        appraisalData: Data?,
+        sourceRawValues: [String],
+        confidence: Double?,
+        evidenceData: Data?,
+        userConfirmed: Bool,
+        needsUserCheck: Bool,
+        rawInput: String?,
+        createdAt: Date,
+        updatedAt: Date
+    ) {
+        self.id = id
+        self.recordID = recordID
+        self.valence = valence
+        self.arousal = arousal
+        self.dominance = dominance
+        self.intensity = intensity
+        self.labelRawValues = labelRawValues
+        self.toneHintRawValues = toneHintRawValues
+        self.appraisalData = appraisalData
+        self.sourceRawValues = sourceRawValues
+        self.confidence = confidence
+        self.evidenceData = evidenceData
+        self.userConfirmed = userConfirmed
+        self.needsUserCheck = needsUserCheck
+        self.rawInput = rawInput
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+}
+
+@Model
 final class PlaceProfileStore {
     @Attribute(.unique) var id: UUID
     var entityID: UUID

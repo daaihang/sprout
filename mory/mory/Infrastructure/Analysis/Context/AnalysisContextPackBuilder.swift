@@ -165,11 +165,18 @@ struct ContextPackBuilder {
     private let budgeter: ContextBudgeter
     private let privacyGate: PrivacyGate
 
+    init(repository: any MoryMemoryRepositorying) {
+        self.repository = repository
+        self.ranker = ContextRanker()
+        self.budgeter = ContextBudgeter()
+        self.privacyGate = PrivacyGate()
+    }
+
     init(
         repository: any MoryMemoryRepositorying,
-        ranker: ContextRanker = ContextRanker(),
-        budgeter: ContextBudgeter = ContextBudgeter(),
-        privacyGate: PrivacyGate = PrivacyGate()
+        ranker: ContextRanker,
+        budgeter: ContextBudgeter,
+        privacyGate: PrivacyGate
     ) {
         self.repository = repository
         self.ranker = ranker
@@ -265,7 +272,8 @@ struct ContextPackBuilder {
                     answeredAt: question.answeredAt
                 )
             }
-        let affectHistory = makeAffectHistory(from: recentMemories, excluding: targetRecordID)
+        let affectSnapshots = try repository.fetchAffectSnapshots(recordID: nil, limit: max(48, budgeter.limits.maxAffectHistory * 8))
+        let affectHistory = makeAffectHistory(from: recentMemories, snapshots: affectSnapshots, excluding: targetRecordID)
 
         let budget = budgeter.report(
             profiles: relatedProfiles.count,
@@ -362,7 +370,40 @@ struct ContextPackBuilder {
         }
     }
 
-    private func makeAffectHistory(from memories: [MemorySummary], excluding targetRecordID: UUID) -> [AffectHistoryBrief] {
+    private func makeAffectHistory(
+        from memories: [MemorySummary],
+        snapshots: [AffectSnapshot],
+        excluding targetRecordID: UUID
+    ) -> [AffectHistoryBrief] {
+        let memoryByID = Dictionary(uniqueKeysWithValues: memories.map { ($0.id, $0) })
+        let snapshotGroups = Dictionary(grouping: snapshots.filter { $0.recordID != targetRecordID }, by: { snapshot in
+            snapshot.primaryMoodText.lowercased()
+        })
+
+        if !snapshotGroups.isEmpty {
+            return snapshotGroups.map { key, values in
+                let latest = values.max { $0.updatedAt < $1.updatedAt }
+                return AffectHistoryBrief(
+                    mood: key,
+                    count: values.count,
+                    latestRecordID: latest?.recordID ?? values[0].recordID,
+                    averageValence: average(values.compactMap(\.valence)),
+                    averageArousal: average(values.compactMap(\.arousal)),
+                    averageDominance: average(values.compactMap(\.dominance)),
+                    toneHints: orderedUnique(values.flatMap(\.toneHints)),
+                    sources: orderedUnique(values.flatMap(\.sources))
+                )
+            }
+            .sorted { lhs, rhs in
+                if lhs.count != rhs.count { return lhs.count > rhs.count }
+                let lhsDate = memoryByID[lhs.latestRecordID]?.record.createdAt ?? .distantPast
+                let rhsDate = memoryByID[rhs.latestRecordID]?.record.createdAt ?? .distantPast
+                return lhsDate > rhsDate
+            }
+            .prefix(budgeter.limits.maxAffectHistory)
+            .map { $0 }
+        }
+
         var counts: [String: (count: Int, latest: MemorySummary)] = [:]
         for memory in memories where memory.id != targetRecordID {
             guard let mood = memory.record.userMood?.trimmingCharacters(in: .whitespacesAndNewlines), !mood.isEmpty else { continue }
@@ -380,6 +421,21 @@ struct ContextPackBuilder {
             .sorted { $0.count > $1.count }
             .prefix(budgeter.limits.maxAffectHistory)
             .map { $0 }
+    }
+
+    private func average(_ values: [Double]) -> Double? {
+        guard !values.isEmpty else { return nil }
+        return values.reduce(0, +) / Double(values.count)
+    }
+
+    private func orderedUnique<T: Hashable>(_ values: [T]) -> [T] {
+        var seen = Set<T>()
+        var result: [T] = []
+        for value in values where !seen.contains(value) {
+            seen.insert(value)
+            result.append(value)
+        }
+        return result
     }
 
     private static func queryText(for target: MemoryDetailSnapshot) -> String {

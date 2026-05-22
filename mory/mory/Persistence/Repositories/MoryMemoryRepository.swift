@@ -19,6 +19,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     private let entityEnrichmentService = EntityEnrichmentService()
     private let clarificationQuestionBuilder = ClarificationQuestionBuilder()
     private let graphDeltaApplier = GraphDeltaApplier()
+    private let affectSnapshotMapper = AffectSnapshotMapper()
     private var latestReflectionTrace: DebugPipelineTraceSnapshot?
 
     init(
@@ -54,6 +55,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
 
         try upsert(recordShell: recordShell)
         try captureArtifacts.forEach { try upsert(artifact: $0) }
+        try makeAffectSnapshots(from: draft, recordID: recordID, createdAt: now).forEach { try upsert(affectSnapshot: $0) }
         try upsertPipelineStatus(
             MemoryPipelineStatusSnapshot(
                 recordID: recordID,
@@ -217,6 +219,9 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         updatedRecord.artifactIDs = artifactIDs
         updatedRecord.updatedAt = now
         recordStore.apply(domainModel: updatedRecord)
+        if mutation.recordPatch.userMood.shouldUpdate {
+            try replaceUserAffectSnapshot(recordID: recordID, rawMood: updatedRecord.userMood, now: now)
+        }
 
         try upsertPendingPipelineStatus(recordID: recordID, updatedAt: now)
         try save()
@@ -284,6 +289,8 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         if let record = try modelContext.fetch(FetchDescriptor<RecordShellStore>(predicate: #Predicate { $0.id == recordID })).first {
             modelContext.delete(record)
         }
+        let affectSnapshots = try modelContext.fetch(FetchDescriptor<AffectSnapshotStore>(predicate: #Predicate { $0.recordID == recordID }))
+        affectSnapshots.forEach { modelContext.delete($0) }
         let artifacts = try modelContext.fetch(FetchDescriptor<ArtifactStore>(predicate: #Predicate { $0.recordID == recordID }))
         artifacts.forEach { modelContext.delete($0) }
         try save()
@@ -1407,6 +1414,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         try deleteAll(PlaceProfileStore.self)
         try deleteAll(SelfProfileStore.self)
         try deleteAll(PersonProfileStore.self)
+        try deleteAll(AffectSnapshotStore.self)
         try deleteAll(EntityProfileStore.self)
         try deleteAll(HomeBoardPreferenceStore.self)
         try deleteAll(CompositionItemStore.self)
@@ -1506,7 +1514,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     }
 
     func fetchSelfProfile() throws -> SelfProfile? {
-        try fetchSelfProfileStore()?.domainModel
+        try fetchSelfProfileStore(syncKey: SelfProfile.defaultSyncKey)?.domainModel
     }
 
     func upsertSelfProfile(_ profile: SelfProfile) throws {
@@ -1674,6 +1682,96 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
                 note: "AI portrait deleted by user."
             )
         )
+    }
+
+    func fetchAffectSnapshot(id: UUID) throws -> AffectSnapshot? {
+        let descriptor = FetchDescriptor<AffectSnapshotStore>(
+            predicate: #Predicate { $0.id == id }
+        )
+        return try modelContext.fetch(descriptor).first?.domainModel
+    }
+
+    func fetchAffectSnapshots(recordID: UUID?, limit: Int?) throws -> [AffectSnapshot] {
+        let stores: [AffectSnapshotStore]
+        if let recordID {
+            stores = try modelContext.fetch(
+                FetchDescriptor<AffectSnapshotStore>(
+                    predicate: #Predicate { $0.recordID == recordID },
+                    sortBy: [SortDescriptor(\.updatedAt, order: .reverse)]
+                )
+            )
+        } else {
+            stores = try modelContext.fetch(
+                FetchDescriptor<AffectSnapshotStore>(
+                    sortBy: [SortDescriptor(\.updatedAt, order: .reverse)]
+                )
+            )
+        }
+        return applyLimit(limit, to: stores.map(\.domainModel))
+    }
+
+    func upsertAffectSnapshot(_ snapshot: AffectSnapshot) throws {
+        try upsert(affectSnapshot: snapshot)
+        try save()
+    }
+
+    func applyAffectCorrection(_ correction: AffectCorrection) throws -> AffectSnapshot {
+        let now = correction.createdAt
+        let existing: AffectSnapshot?
+        if let snapshotID = correction.snapshotID {
+            existing = try fetchAffectSnapshot(id: snapshotID)
+        } else {
+            existing = try fetchAffectSnapshots(recordID: correction.recordID, limit: 1).first
+        }
+
+        var updated = existing ?? AffectSnapshot(
+            recordID: correction.recordID,
+            createdAt: now,
+            updatedAt: now
+        )
+        updated.valence = correction.valence ?? updated.valence
+        updated.arousal = correction.arousal ?? updated.arousal
+        updated.dominance = correction.dominance ?? updated.dominance
+        updated.intensity = correction.intensity ?? updated.intensity
+        if !correction.labels.isEmpty {
+            updated.labels = orderedUniqueAffectLabels(correction.labels)
+        }
+        if !correction.toneHints.isEmpty {
+            updated.toneHints = orderedUniqueToneHints(correction.toneHints)
+        }
+        updated.appraisal = correction.appraisal ?? updated.appraisal
+        if !updated.sources.contains(.userCorrected) {
+            updated.sources.append(.userCorrected)
+        }
+        updated.confidence = 1
+        updated.userConfirmed = true
+        updated.needsUserCheck = false
+        updated.evidence.append(AffectEvidence(
+            source: .userCorrected,
+            summary: correction.note?.trimmedOrNil ?? "User corrected affect snapshot.",
+            confidence: 1,
+            createdAt: now
+        ))
+        updated.updatedAt = now
+
+        try upsert(affectSnapshot: updated)
+        try upsert(correctionEvent: CorrectionEvent(
+            kind: .affectCorrection,
+            actor: .user,
+            targetRecordIDs: [correction.recordID],
+            sourceRecordIDs: [correction.recordID],
+            note: correction.note ?? "Affect snapshot corrected by user.",
+            metadata: [
+                "snapshotID": updated.id.uuidString,
+                "labels": updated.labels.map(\.rawValue).joined(separator: ","),
+                "toneHints": updated.toneHints.map(\.rawValue).joined(separator: ",")
+            ],
+            isReversible: true,
+            createdAt: now
+        ))
+        try updateSelfExpressionPattern(from: correction, now: now)
+        try save()
+        return updated
     }
 
     func fetchPlaceProfiles(limit: Int?) throws -> [PlaceProfile] {
@@ -3832,7 +3930,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             }
         }
 
-        if let selfProfileStore = try fetchSelfProfileStore() {
+        if let selfProfileStore = try fetchSelfProfileStore(syncKey: SelfProfile.defaultSyncKey) {
             let profile = selfProfileStore.domainModel
             let remap = remappedUniqueIDs(profile.importantRelationshipIDs, replacements: replacements)
             if remap.changed {
@@ -4236,6 +4334,99 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         }
     }
 
+    private func makeAffectSnapshots(
+        from draft: MemoryCaptureDraft,
+        recordID: UUID,
+        createdAt: Date
+    ) -> [AffectSnapshot] {
+        var snapshots = draft.affectSnapshots.map {
+            affectSnapshotMapper.snapshot(recordID: recordID, draft: $0, now: createdAt)
+        }
+        if snapshots.isEmpty,
+           let snapshot = affectSnapshotMapper.snapshot(
+                recordID: recordID,
+                rawMood: draft.mood,
+                userIntensity: nil,
+                source: .userFreeform,
+                now: createdAt
+           ) {
+            snapshots.append(snapshot)
+        }
+        return snapshots
+    }
+
+    private func replaceUserAffectSnapshot(recordID: UUID, rawMood: String?, now: Date) throws {
+        let stores = try modelContext.fetch(
+            FetchDescriptor<AffectSnapshotStore>(predicate: #Predicate { $0.recordID == recordID })
+        )
+        for store in stores {
+            let snapshot = store.domainModel
+            let onlyUserFreeform = snapshot.sources.allSatisfy { $0 == .userFreeform || $0 == .userSelected }
+            if onlyUserFreeform {
+                modelContext.delete(store)
+            }
+        }
+
+        if let snapshot = affectSnapshotMapper.snapshot(
+            recordID: recordID,
+            rawMood: rawMood,
+            userIntensity: nil,
+            source: .userFreeform,
+            now: now
+        ) {
+            try upsert(affectSnapshot: snapshot)
+        }
+    }
+
+    private func updateSelfExpressionPattern(from correction: AffectCorrection, now: Date) throws {
+        guard let note = correction.note?.trimmedOrNil else { return }
+        var profile = try ensureSelfProfile()
+        let interpretation = (correction.toneHints + correction.labels.map { label in
+            switch label {
+            case .irritated, .stressed, .tense, .overwhelmed:
+                return ToneHint.serious
+            case .playful, .amused, .mockFrustrated:
+                return ToneHint.playful
+            default:
+                return ToneHint.uncertain
+            }
+        })
+        .map(\.rawValue)
+        .joined(separator: ", ")
+        let pattern = ExpressionPattern(
+            phrase: note,
+            interpretation: interpretation.isEmpty ? "affect correction" : interpretation,
+            confidence: 1
+        )
+        profile.expressionPatterns.removeAll {
+            $0.phrase.caseInsensitiveCompare(pattern.phrase) == .orderedSame
+        }
+        profile.expressionPatterns.insert(pattern, at: 0)
+        profile.expressionPatterns = Array(profile.expressionPatterns.prefix(20))
+        profile.updatedAt = now
+        try upsertSelfProfile(profile)
+    }
+
+    private func orderedUniqueAffectLabels(_ labels: [AffectLabel]) -> [AffectLabel] {
+        var seen = Set<AffectLabel>()
+        var result: [AffectLabel] = []
+        for label in labels where !seen.contains(label) {
+            seen.insert(label)
+            result.append(label)
+        }
+        return result
+    }
+
+    private func orderedUniqueToneHints(_ hints: [ToneHint]) -> [ToneHint] {
+        var seen = Set<ToneHint>()
+        var result: [ToneHint] = []
+        for hint in hints where !seen.contains(hint) {
+            seen.insert(hint)
+            result.append(hint)
+        }
+        return result
+    }
+
     func saveReflection(reflectionID: UUID) async throws {
         try updateReflectionStatus(reflectionID: reflectionID, status: .saved)
     }
@@ -4402,7 +4593,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         return try modelContext.fetch(descriptor).first
     }
 
-    private func fetchSelfProfileStore(syncKey: String = SelfProfile.defaultSyncKey) throws -> SelfProfileStore? {
+    private func fetchSelfProfileStore(syncKey: String) throws -> SelfProfileStore? {
         let descriptor = FetchDescriptor<SelfProfileStore>(
             predicate: #Predicate { $0.syncKey == syncKey },
             sortBy: [SortDescriptor(\.updatedAt, order: .reverse)]
@@ -4453,6 +4644,15 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             existingByEntity.apply(domainModel: personProfile)
         } else {
             modelContext.insert(PersonProfileStore(domainModel: personProfile))
+        }
+    }
+
+    func upsert(affectSnapshot: AffectSnapshot) throws {
+        let descriptor = FetchDescriptor<AffectSnapshotStore>(predicate: #Predicate { $0.id == affectSnapshot.id })
+        if let existing = try modelContext.fetch(descriptor).first {
+            existing.apply(domainModel: affectSnapshot)
+        } else {
+            modelContext.insert(AffectSnapshotStore(domainModel: affectSnapshot))
         }
     }
 

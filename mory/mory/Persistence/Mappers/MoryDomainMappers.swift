@@ -626,6 +626,73 @@ extension PersonProfileStore {
 }
 
 @MainActor
+extension AffectSnapshotStore {
+    convenience init(domainModel: AffectSnapshot) {
+        self.init(
+            id: domainModel.id,
+            recordID: domainModel.recordID,
+            valence: domainModel.valence,
+            arousal: domainModel.arousal,
+            dominance: domainModel.dominance,
+            intensity: domainModel.intensity,
+            labelRawValues: domainModel.labels.map(\.rawValue),
+            toneHintRawValues: domainModel.toneHints.map(\.rawValue),
+            appraisalData: PersistenceCoding.encode(domainModel.appraisal),
+            sourceRawValues: domainModel.sources.map(\.rawValue),
+            confidence: domainModel.confidence,
+            evidenceData: PersistenceCoding.encode(domainModel.evidence),
+            userConfirmed: domainModel.userConfirmed,
+            needsUserCheck: domainModel.needsUserCheck,
+            rawInput: domainModel.rawInput,
+            createdAt: domainModel.createdAt,
+            updatedAt: domainModel.updatedAt
+        )
+    }
+
+    var domainModel: AffectSnapshot {
+        AffectSnapshot(
+            id: id,
+            recordID: recordID,
+            valence: valence,
+            arousal: arousal,
+            dominance: dominance,
+            intensity: intensity,
+            labels: labelRawValues.compactMap(AffectLabel.init(rawValue:)),
+            toneHints: toneHintRawValues.compactMap(ToneHint.init(rawValue:)),
+            appraisal: PersistenceCoding.decode(AffectAppraisal.self, from: appraisalData),
+            sources: sourceRawValues.compactMap(AffectEvidenceSource.init(rawValue:)),
+            confidence: confidence,
+            evidence: PersistenceCoding.decode([AffectEvidence].self, from: evidenceData) ?? [],
+            userConfirmed: userConfirmed,
+            needsUserCheck: needsUserCheck,
+            rawInput: rawInput,
+            createdAt: createdAt,
+            updatedAt: updatedAt
+        )
+    }
+
+    func apply(domainModel: AffectSnapshot) {
+        id = domainModel.id
+        recordID = domainModel.recordID
+        valence = domainModel.valence
+        arousal = domainModel.arousal
+        dominance = domainModel.dominance
+        intensity = domainModel.intensity
+        labelRawValues = domainModel.labels.map(\.rawValue)
+        toneHintRawValues = domainModel.toneHints.map(\.rawValue)
+        appraisalData = PersistenceCoding.encode(domainModel.appraisal)
+        sourceRawValues = domainModel.sources.map(\.rawValue)
+        confidence = domainModel.confidence
+        evidenceData = PersistenceCoding.encode(domainModel.evidence)
+        userConfirmed = domainModel.userConfirmed
+        needsUserCheck = domainModel.needsUserCheck
+        rawInput = domainModel.rawInput
+        createdAt = domainModel.createdAt
+        updatedAt = domainModel.updatedAt
+    }
+}
+
+@MainActor
 extension PlaceProfileStore {
     convenience init(domainModel: PlaceProfile) {
         self.init(

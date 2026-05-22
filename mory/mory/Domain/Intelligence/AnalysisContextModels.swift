@@ -307,6 +307,11 @@ struct AffectHistoryBrief: Identifiable, Codable, Hashable, Sendable {
     var mood: String
     var count: Int
     var latestRecordID: UUID
+    var averageValence: Double? = nil
+    var averageArousal: Double? = nil
+    var averageDominance: Double? = nil
+    var toneHints: [ToneHint] = []
+    var sources: [AffectEvidenceSource] = []
 }
 
 struct ContextBudgetLimits: Codable, Hashable, Sendable {
