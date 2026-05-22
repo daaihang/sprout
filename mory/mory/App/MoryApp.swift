@@ -141,13 +141,19 @@ struct MoryApp: App {
                     .task(id: ownerID) {
                         let session = MoryLocalDataSession(
                             ownerID: ownerID,
-                            analysisService: analysisService
+                            analysisService: analysisService,
+                            cloudIntelligenceService: cloudIntelligenceService
                         )
                         await ownerScopedSystemStateCoordinator.prepareActiveOwner(
                             ownerID: ownerID,
                             repository: session.memoryRepository,
                             remotePushSyncService: remotePushSyncService
                         )
+                        appDelegate.backgroundTaskCoordinator.configure(
+                            repository: session.memoryRepository,
+                            cloudService: cloudIntelligenceService
+                        )
+                        appDelegate.backgroundTaskCoordinator.scheduleIfNeeded()
                         localDataSession = session
                     }
             }

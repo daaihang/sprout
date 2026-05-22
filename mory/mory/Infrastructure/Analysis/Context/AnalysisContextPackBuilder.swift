@@ -219,7 +219,7 @@ struct PrivacyGate {
 
 @MainActor
 struct ContextPackBuilder {
-    private let repository: any MoryMemoryRepositorying
+    let repository: any MoryMemoryRepositorying
     private let ranker: ContextRanker
     private let budgeter: ContextBudgeter
     private let privacyGate: PrivacyGate

@@ -71,11 +71,13 @@ final class MoryLocalDataSession {
 
     convenience init(
         ownerID: String,
-        analysisService: any RecordAnalysisServing
+        analysisService: any RecordAnalysisServing,
+        cloudIntelligenceService: (any CloudIntelligenceServing)? = nil
     ) {
         self.init(
             ownerID: ownerID,
             analysisService: analysisService,
+            cloudIntelligenceService: cloudIntelligenceService,
             registry: LocalDataOwnerRegistry()
         )
     }
@@ -83,6 +85,7 @@ final class MoryLocalDataSession {
     init(
         ownerID: String,
         analysisService: any RecordAnalysisServing,
+        cloudIntelligenceService: (any CloudIntelligenceServing)? = nil,
         registry: LocalDataOwnerRegistry
     ) {
         self.ownerID = ownerID
@@ -91,6 +94,7 @@ final class MoryLocalDataSession {
         self.memoryRepository = MoryMemoryRepository(
             modelContext: modelContainer.mainContext,
             analysisService: analysisService,
+            cloudIntelligenceService: cloudIntelligenceService,
             localDataOwnerID: ownerID
         )
         self.diagnostics = Self.makeDiagnostics(
@@ -104,6 +108,7 @@ final class MoryLocalDataSession {
     init(
         ownerID: String,
         analysisService: any RecordAnalysisServing,
+        cloudIntelligenceService: (any CloudIntelligenceServing)? = nil,
         scope: MoryLocalDataScope,
         baseDirectory: URL?
     ) {
@@ -116,6 +121,7 @@ final class MoryLocalDataSession {
         self.memoryRepository = MoryMemoryRepository(
             modelContext: modelContainer.mainContext,
             analysisService: analysisService,
+            cloudIntelligenceService: cloudIntelligenceService,
             localDataOwnerID: ownerID
         )
         self.diagnostics = Self.makeDiagnostics(

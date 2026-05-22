@@ -5,6 +5,7 @@ import SwiftData
 final class MoryMemoryRepository: MoryMemoryRepositorying {
     private let modelContext: ModelContext
     private let analysisService: any RecordAnalysisServing
+    private let cloudIntelligenceService: (any CloudIntelligenceServing)?
     private let architecturePipelineExecutor = ArchitecturePipelineExecutor()
     private let homeBoardRuleEngine = HomeBoardRuleEngine()
     private let graphQueryService = MemoryGraphQueryService()
@@ -25,11 +26,13 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     init(
         modelContext: ModelContext,
         analysisService: any RecordAnalysisServing,
+        cloudIntelligenceService: (any CloudIntelligenceServing)? = nil,
         spotlightIndexService: (any SpotlightIndexServicing)? = nil,
         localDataOwnerID: String? = nil
     ) {
         self.modelContext = modelContext
         self.analysisService = analysisService
+        self.cloudIntelligenceService = cloudIntelligenceService
         self.spotlightIndexService = spotlightIndexService ?? DefaultSpotlightIndexService()
         self.spotlightItemBuilder = SpotlightSearchableItemBuilder(ownerID: localDataOwnerID)
     }
@@ -4755,6 +4758,21 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     }
 
     private func runArchitecturePipeline(record: RecordShell, artifacts: [Artifact]) async throws {
+        let v7: V7DualRunParameters?
+        if let svc = cloudIntelligenceService,
+           (try? fetchV6FeatureFlags().analyzeV7DualRun) == true {
+            v7 = V7DualRunParameters(
+                cloudIntelligenceService: svc,
+                contextPackBuilder: ContextPackBuilder(repository: self),
+                upsertAffectSnapshot: upsert(affectSnapshot:),
+                upsertGraphDelta: upsert(graphDelta:),
+                upsertReflection: upsert(reflection:),
+                upsertClarificationQuestion: upsert(clarificationQuestion:),
+                save: save
+            )
+        } else {
+            v7 = nil
+        }
         try await architecturePipelineExecutor.run(
             record: record,
             artifacts: artifacts,
@@ -4767,7 +4785,8 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             upsertArtifactEntityLink: upsert(artifactEntityLink:),
             upsertTemporalArc: upsert(temporalArc:),
             upsertReflection: upsert(reflection:),
-            save: save
+            save: save,
+            v7DualRun: v7
         )
     }
 

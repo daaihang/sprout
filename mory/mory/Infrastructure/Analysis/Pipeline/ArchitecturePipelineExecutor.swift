@@ -5,6 +5,16 @@ extension Notification.Name {
     static let pipelineDidComplete = Notification.Name("mory.pipelineDidComplete")
 }
 
+struct V7DualRunParameters {
+    var cloudIntelligenceService: any CloudIntelligenceServing
+    var contextPackBuilder: ContextPackBuilder
+    var upsertAffectSnapshot: (AffectSnapshot) throws -> Void
+    var upsertGraphDelta: (GraphDelta) throws -> Void
+    var upsertReflection: (ReflectionSnapshot) throws -> Void
+    var upsertClarificationQuestion: (ClarificationQuestion) throws -> Void
+    var save: () throws -> Void
+}
+
 struct ArchitecturePipelineExecutor {
     private let graphUpdater = GraphUpdater()
     private let placeProfileResolver = PlaceProfileResolver()
@@ -25,7 +35,8 @@ struct ArchitecturePipelineExecutor {
         upsertArtifactEntityLink: @escaping (ArtifactEntityLink) throws -> Void,
         upsertTemporalArc: @escaping (TemporalArc) throws -> Void,
         upsertReflection: @escaping (ReflectionSnapshot) throws -> Void,
-        save: @escaping () throws -> Void
+        save: @escaping () throws -> Void,
+        v7DualRun: V7DualRunParameters? = nil
     ) async throws {
         // Step 1: Fetch known entities for context (limit to 20 most recent)
         let activeRecordScope = QualityTuningRuntime.activeRecordScope
@@ -53,6 +64,16 @@ struct ArchitecturePipelineExecutor {
         // Step 3: Persist the record analysis snapshot
         try upsertRecordAnalysis(analysis)
         try save()
+
+        // Step 3b: V7 dual-run (optional, non-blocking — v6 result already persisted above)
+        if let v7 = v7DualRun {
+            await runV7DualRun(
+                record: record,
+                artifacts: artifacts,
+                knownEntities: Array(knownEntities),
+                params: v7
+            )
+        }
 
         // Step 4: Compute entity graph updates after analysis and before reflection.
         let graphUpdate = graphUpdater.apply(
@@ -167,6 +188,43 @@ struct ArchitecturePipelineExecutor {
 
         // Step 9: Final save
         try save()
+    }
+
+    func runV7DualRun(
+        record: RecordShell,
+        artifacts: [Artifact],
+        knownEntities: [EntityReference],
+        params: V7DualRunParameters
+    ) async {
+        do {
+            let pack = try await params.contextPackBuilder.build(targetRecordID: record.id)
+            let snapshots = (try? params.contextPackBuilder.repository
+                .fetchAffectSnapshots(recordID: record.id, limit: 10)) ?? []
+            let payload = AnalyzeV7RequestBuilder().build(
+                record: record,
+                artifacts: artifacts,
+                knownEntities: knownEntities,
+                contextPack: pack,
+                affectSnapshots: snapshots
+            )
+            let envelope = try await params.cloudIntelligenceService.analyzeV7(payload)
+            let mapped = AnalyzeV7ResponseMapper().map(
+                recordID: record.id,
+                response: envelope,
+                createdAt: .now
+            )
+            for s in mapped.affectProposals { try params.upsertAffectSnapshot(s) }
+            for d in mapped.graphDeltaProposals { try params.upsertGraphDelta(d) }
+            for r in mapped.reflectionProposals { try params.upsertReflection(r) }
+            for q in mapped.questionProposals + mapped.mergeSplitQuestions {
+                try params.upsertClarificationQuestion(q)
+            }
+            try params.save()
+        } catch {
+            #if DEBUG
+            print("[V7DualRun] record \(record.id): \(error)")
+            #endif
+        }
     }
 
     private func fetchExistingRecordShells(modelContext: ModelContext, recordScope: Set<UUID>?) throws -> [RecordShell] {

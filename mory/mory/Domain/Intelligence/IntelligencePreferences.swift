@@ -185,6 +185,7 @@ struct V6FeatureFlags: Identifiable, Codable, Hashable, Sendable {
     var cloudQuestionSuggestions: Bool
     var cloudChapterSuggestions: Bool
     var multimediaViews: Bool
+    var analyzeV7DualRun: Bool
     var updatedAt: Date
 
     init(
@@ -201,6 +202,7 @@ struct V6FeatureFlags: Identifiable, Codable, Hashable, Sendable {
         cloudQuestionSuggestions: Bool = true,
         cloudChapterSuggestions: Bool = true,
         multimediaViews: Bool = true,
+        analyzeV7DualRun: Bool = false,
         updatedAt: Date = .now
     ) {
         self.id = id
@@ -216,6 +218,7 @@ struct V6FeatureFlags: Identifiable, Codable, Hashable, Sendable {
         self.cloudQuestionSuggestions = cloudQuestionSuggestions
         self.cloudChapterSuggestions = cloudChapterSuggestions
         self.multimediaViews = multimediaViews
+        self.analyzeV7DualRun = analyzeV7DualRun
         self.updatedAt = updatedAt
     }
 

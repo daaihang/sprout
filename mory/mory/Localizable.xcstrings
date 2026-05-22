@@ -119,6 +119,12 @@
         }
       }
     },
+    "Affect Corrections" : {
+
+    },
+    "Affect Snapshots" : {
+
+    },
     "AI analysis" : {
       "localizations" : {
         "zh-Hans" : {
@@ -158,6 +164,9 @@
           }
         }
       }
+    },
+    "Analyze v7 response" : {
+
     },
     "APNs" : {
       "localizations" : {
@@ -608,6 +617,12 @@
         }
       }
     },
+    "Budget" : {
+
+    },
+    "Build context pack for latest memory" : {
+
+    },
     "Build Environment" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -624,6 +639,9 @@
           }
         }
       }
+    },
+    "Building context pack" : {
+
     },
     "Bulk controls" : {
 
@@ -4280,6 +4298,9 @@
           }
         }
       }
+    },
+    "Context Pack" : {
+
     },
     "Contrast" : {
       "localizations" : {
@@ -13312,6 +13333,9 @@
         }
       }
     },
+    "Journaling Suggestions" : {
+
+    },
     "Last error" : {
       "localizations" : {
         "zh-Hans" : {
@@ -13570,6 +13594,9 @@
           }
         }
       }
+    },
+    "Mapped local proposals" : {
+
     },
     "memories.empty.description" : {
       "extractionState" : "manual",
@@ -14812,6 +14839,12 @@
         }
       }
     },
+    "No affect correction events." : {
+
+    },
+    "No affect snapshots yet." : {
+
+    },
     "No arc/reflection results" : {
       "localizations" : {
         "zh-Hans" : {
@@ -14889,6 +14922,9 @@
         }
       }
     },
+    "No person profiles" : {
+
+    },
     "No places" : {
       "localizations" : {
         "zh-Hans" : {
@@ -14908,6 +14944,18 @@
           }
         }
       }
+    },
+    "No privacy decisions" : {
+
+    },
+    "No related memories" : {
+
+    },
+    "No related profiles" : {
+
+    },
+    "No self brief" : {
+
     },
     "No suggestion cards" : {
       "localizations" : {
@@ -15270,6 +15318,9 @@
         }
       }
     },
+    "Payload preview" : {
+
+    },
     "Pending intents" : {
       "localizations" : {
         "zh-Hans" : {
@@ -15470,6 +15521,9 @@
         }
       }
     },
+    "Person Profiles" : {
+
+    },
     "person.nav.title" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -15520,6 +15574,12 @@
           }
         }
       }
+    },
+    "Phase 3 uses local deterministic refresh. Cloud portrait proposals are part of the v7 Analyze contract phase." : {
+
+    },
+    "Phase 5 keeps production Analyze unchanged. This debug view builds the v7 request from local context and can send /api/analyze/v7 for side-by-side contract validation." : {
+
     },
     "Photo labels" : {
       "localizations" : {
@@ -15830,6 +15890,9 @@
         }
       }
     },
+    "Privacy decisions" : {
+
+    },
     "Process due jobs now" : {
       "localizations" : {
         "zh-Hans" : {
@@ -15859,6 +15922,9 @@
           }
         }
       }
+    },
+    "Profiles" : {
+
     },
     "Prompt profile" : {
       "localizations" : {
@@ -17520,6 +17586,12 @@
         }
       }
     },
+    "Refresh person profiles" : {
+
+    },
+    "Refresh portraits for all person entities" : {
+
+    },
     "Refresh Preview" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -17604,6 +17676,9 @@
         }
       }
     },
+    "Related memories" : {
+
+    },
     "Relationship" : {
       "localizations" : {
         "zh-Hans" : {
@@ -17613,6 +17688,9 @@
           }
         }
       }
+    },
+    "Reload affect snapshots" : {
+
     },
     "Remote intents" : {
       "localizations" : {
@@ -18322,6 +18400,9 @@
         }
       }
     },
+    "Seed journaling StateOfMind draft" : {
+
+    },
     "Selected" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -18332,6 +18413,9 @@
           }
         }
       }
+    },
+    "Self brief" : {
+
     },
     "Semantic index" : {
       "localizations" : {
@@ -18367,6 +18451,12 @@
       }
     },
     "semanticSearch" : {
+
+    },
+    "Send Analyze v7 for latest memory" : {
+
+    },
+    "Sending Analyze v7" : {
 
     },
     "Sensitive topic policy" : {
@@ -20764,6 +20854,9 @@
     "Snapshot appearance" : {
 
     },
+    "Snapshots" : {
+
+    },
     "Source labels" : {
       "localizations" : {
         "zh-Hans" : {
@@ -20814,6 +20907,9 @@
           }
         }
       }
+    },
+    "Status" : {
+
     },
     "Stop" : {
       "extractionState" : "stale",
@@ -21468,6 +21564,9 @@
           }
         }
       }
+    },
+    "Working on person profiles" : {
+
     },
     "한국어" : {
       "localizations" : {

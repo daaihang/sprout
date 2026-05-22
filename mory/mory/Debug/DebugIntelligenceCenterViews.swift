@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import BackgroundTasks
 
 struct DebugV6ControlsView: View {
     @Environment(\.memoryRepository) private var memoryRepository
@@ -107,6 +108,7 @@ struct DebugV6ControlsView: View {
                     Toggle("cloudQuestionSuggestions", isOn: flagBoolBinding(\.cloudQuestionSuggestions))
                     Toggle("cloudChapterSuggestions", isOn: flagBoolBinding(\.cloudChapterSuggestions))
                     Toggle("multimediaViews", isOn: flagBoolBinding(\.multimediaViews))
+                    Toggle("analyzeV7DualRun", isOn: flagBoolBinding(\.analyzeV7DualRun))
                 } else {
                     DebugCenterProgressRow(text: "Loading V6 flags")
                 }
@@ -658,6 +660,7 @@ struct DebugJobQueueView: View {
     @State private var isWorking = false
     @State private var resultMessage: String?
     @State private var selectedJobKind: DebugEnqueueableJobKind = .dailyQuestion
+    @State private var bgTaskResult: String?
 
     var body: some View {
         List {
@@ -714,6 +717,21 @@ struct DebugJobQueueView: View {
                 Text("Actions")
             } footer: {
                 Text("This page uses the same repository job stores and IntelligenceJobWorker used during launch recovery and background intelligence preparation.")
+            }
+
+            Section("Background Tasks") {
+                Button("Schedule BGProcessingTask") {
+                    submitBGTask(identifier: BackgroundTaskIdentifier.process, isProcessing: true)
+                }
+                Button("Schedule BGAppRefreshTask") {
+                    submitBGTask(identifier: BackgroundTaskIdentifier.refresh, isProcessing: false)
+                }
+                if let bgTaskResult {
+                    Text(bgTaskResult)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
             }
 
             if let snapshot {
@@ -891,6 +909,24 @@ struct DebugJobQueueView: View {
             refresh()
         } catch {
             resultMessage = error.localizedDescription
+        }
+    }
+
+    private func submitBGTask(identifier: String, isProcessing: Bool) {
+        do {
+            if isProcessing {
+                let request = BGProcessingTaskRequest(identifier: identifier)
+                request.requiresNetworkConnectivity = true
+                request.earliestBeginDate = nil
+                try BGTaskScheduler.shared.submit(request)
+            } else {
+                let request = BGAppRefreshTaskRequest(identifier: identifier)
+                request.earliestBeginDate = nil
+                try BGTaskScheduler.shared.submit(request)
+            }
+            bgTaskResult = "Submitted \(identifier)"
+        } catch {
+            bgTaskResult = "Submit failed: \(error.localizedDescription)"
         }
     }
 

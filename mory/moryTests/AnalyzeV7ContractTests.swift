@@ -197,6 +197,118 @@ final class AnalyzeV7ContractTests: XCTestCase {
         XCTAssertEqual(decoded.quality.needsUserCheck, ["tone"])
     }
 
+    func testV7DualRunPersistsProposalsViaUpsertClosures() async throws {
+        let now = Date(timeIntervalSince1970: 1_768_864_000)
+        let recordID = UUID(uuidString: "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA")!
+        let record = RecordShell(
+            id: recordID,
+            createdAt: now,
+            updatedAt: now,
+            captureSource: .composer,
+            rawText: "dual-run test record",
+            userMood: nil,
+            inputContext: nil
+        )
+
+        // Set up an in-memory repository and insert the record so ContextPackBuilder.build succeeds.
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: V7DualRunTestAnalysisService()
+        )
+        try repository.upsert(recordShell: record)
+        try repository.upsert(artifact: Artifact(
+            id: UUID(),
+            recordID: recordID,
+            kind: .text,
+            title: "dual-run",
+            summary: "dual-run test",
+            textContent: "dual-run test record",
+            createdAt: now,
+            updatedAt: now
+        ))
+        try repository.save()
+
+        // Build a fixed v7 response with 1 affect proposal + 1 reflection.
+        let responseEnvelope = AnalyzeV7ResponseEnvelope(
+            analysis: AnalyzeResponseEnvelope(
+                tags: [],
+                retrievalTerms: [],
+                emotion: .init(label: "neutral", intensity: 0.5, confidence: 0.5, interpretation: nil),
+                entities: [],
+                candidateEdges: [],
+                insight: "test insight",
+                summary: "test summary",
+                salienceScore: 0.5,
+                followUp: nil,
+                reflectionHint: nil
+            ),
+            affectProposals: [
+                .init(
+                    proposalID: "11111111-1111-1111-1111-111111111111",
+                    valence: 0.1,
+                    arousal: 0.5,
+                    dominance: 0.5,
+                    intensity: 0.5,
+                    labels: ["neutral"],
+                    toneHints: [],
+                    appraisal: nil,
+                    confidence: 0.6,
+                    evidence: [],
+                    requiresConfirmation: false,
+                    rawInput: nil
+                )
+            ],
+            graphDeltaProposals: [],
+            profileUpdateProposals: [],
+            mergeSplitCandidates: [],
+            reflectionCandidates: [
+                .init(
+                    candidateID: "22222222-2222-2222-2222-222222222222",
+                    title: "Test reflection",
+                    body: "Test body",
+                    evidenceSummary: "Evidence",
+                    confidence: 0.7,
+                    sourceRecordIDs: [recordID.uuidString],
+                    sourceArtifactIDs: [],
+                    sourceEntityIDs: []
+                )
+            ],
+            questionCandidates: [],
+            quality: .init(confidence: 0.6, uncertaintyReasons: [], needsUserCheck: [])
+        )
+
+        var affectUpsertCount = 0
+        var reflectionUpsertCount = 0
+        var saveCount = 0
+        var graphDeltaUpsertCount = 0
+        var questionUpsertCount = 0
+
+        let params = V7DualRunParameters(
+            cloudIntelligenceService: V7DualRunTestCloudService(response: responseEnvelope),
+            contextPackBuilder: ContextPackBuilder(repository: repository),
+            upsertAffectSnapshot: { _ in affectUpsertCount += 1 },
+            upsertGraphDelta: { _ in graphDeltaUpsertCount += 1 },
+            upsertReflection: { _ in reflectionUpsertCount += 1 },
+            upsertClarificationQuestion: { _ in questionUpsertCount += 1 },
+            save: { saveCount += 1 }
+        )
+
+        let executor = ArchitecturePipelineExecutor()
+        await executor.runV7DualRun(
+            record: record,
+            artifacts: [],
+            knownEntities: [],
+            params: params
+        )
+
+        XCTAssertEqual(affectUpsertCount, 1, "Expected 1 affect proposal upsert")
+        XCTAssertEqual(reflectionUpsertCount, 1, "Expected 1 reflection proposal upsert")
+        XCTAssertEqual(graphDeltaUpsertCount, 0, "Expected 0 graph delta upserts")
+        XCTAssertEqual(questionUpsertCount, 0, "Expected 0 question upserts")
+        XCTAssertEqual(saveCount, 1, "Expected 1 save call")
+    }
+
     private func makeContextPack(targetRecordID: UUID, sensitiveID: UUID, builtAt: Date) -> AnalysisContextPack {
         let relatedID = UUID(uuidString: "99999999-9999-9999-9999-999999999999")!
         return AnalysisContextPack(
@@ -302,4 +414,75 @@ final class AnalyzeV7ContractTests: XCTestCase {
             builtAt: builtAt
         )
     }
+}
+
+// MARK: - Test Doubles
+
+private enum V7DualRunTestError: Error {
+    case unsupported
+}
+
+private struct V7DualRunTestCloudService: CloudIntelligenceServing {
+    let response: AnalyzeV7ResponseEnvelope
+
+    func analyzeV7(_ payload: AnalyzeV7RequestPayload) async throws -> AnalyzeV7ResponseEnvelope {
+        response
+    }
+
+    func refineTranscript(_ payload: MoryAPIClient.TranscriptRefinementPayload) async throws -> MoryAPIClient.TranscriptRefinementResponse {
+        throw V7DualRunTestError.unsupported
+    }
+
+    func suggestQuestions(_ payload: MoryAPIClient.QuestionSuggestionPayload) async throws -> MoryAPIClient.QuestionSuggestionResponse {
+        throw V7DualRunTestError.unsupported
+    }
+
+    func suggestChapters(_ payload: MoryAPIClient.ChapterSuggestionPayload) async throws -> MoryAPIClient.ChapterSuggestionResponse {
+        throw V7DualRunTestError.unsupported
+    }
+
+    func analyzePhotoSemantics(_ payload: MoryAPIClient.PhotoSemanticAnalysisPayload) async throws -> MoryAPIClient.PhotoSemanticAnalysisResponse {
+        throw V7DualRunTestError.unsupported
+    }
+
+    func suggestNotificationIntent(_ payload: MoryAPIClient.NotificationIntentSuggestionPayload) async throws -> MoryAPIClient.NotificationIntentSuggestionResponse {
+        throw V7DualRunTestError.unsupported
+    }
+
+    func runProviderEval() async throws -> MoryAPIClient.CloudIntelligenceEvalResponse {
+        throw V7DualRunTestError.unsupported
+    }
+}
+
+private struct V7DualRunTestAnalysisService: RecordAnalysisServing {
+    func analyze(record: RecordShell, artifacts: [Artifact], knownEntities: [EntityReference]) async throws -> RecordAnalysisSnapshot {
+        RecordAnalysisSnapshot(
+            recordID: record.id,
+            summary: record.rawText,
+            createdAt: .now
+        )
+    }
+
+    func generateReflection(
+        record: RecordShell,
+        artifacts: [Artifact],
+        linkedArcID: UUID?,
+        knownEntities: [EntityReference],
+        prompt: String?
+    ) async throws -> ReflectionServiceResult {
+        throw V7DualRunTestError.unsupported
+    }
+
+    func replayReflection(
+        reflection: ReflectionSnapshot,
+        linkedArc: TemporalArc?,
+        record: RecordShell?,
+        artifacts: [Artifact],
+        knownEntities: [EntityReference],
+        prompt: String?
+    ) async throws -> ReflectionServiceResult {
+        throw V7DualRunTestError.unsupported
+    }
+
+    func latestDebugTrace() async -> DebugPipelineTraceSnapshot? { nil }
 }
