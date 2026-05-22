@@ -791,7 +791,21 @@ struct DebugJobQueueView: View {
                         DebugCenterValueRow(title: count.label, value: "\(count.count)")
                     }
                     ForEach(snapshot.graphDeltas.prefix(8)) { delta in
-                        DebugGraphDeltaRow(delta: delta)
+                        VStack(alignment: .leading, spacing: 4) {
+                            DebugGraphDeltaRow(delta: delta)
+                            if delta.appliedAt == nil {
+                                Button("Apply") {
+                                    applyDelta(id: delta.id)
+                                }
+                                .font(.caption)
+                                .foregroundStyle(.blue)
+                            }
+                        }
+                    }
+                    if !snapshot.graphDeltas.filter({ $0.appliedAt == nil }).isEmpty {
+                        Button("Apply all pending") {
+                            applyAllPendingDeltas()
+                        }
                     }
                 }
             }
@@ -910,6 +924,35 @@ struct DebugJobQueueView: View {
         } catch {
             resultMessage = error.localizedDescription
         }
+    }
+
+    @MainActor
+    private func applyDelta(id: UUID) {
+        do {
+            try memoryRepository.applyGraphDelta(id)
+            resultMessage = "Applied delta \(id.uuidString.prefix(8))."
+            refresh()
+        } catch {
+            resultMessage = "Apply failed: \(error.localizedDescription)"
+        }
+    }
+
+    @MainActor
+    private func applyAllPendingDeltas() {
+        guard let snapshot else { return }
+        let pending = snapshot.graphDeltas.filter { $0.appliedAt == nil }
+        var applied = 0
+        var errors: [String] = []
+        for delta in pending {
+            do {
+                try memoryRepository.applyGraphDelta(delta.id)
+                applied += 1
+            } catch {
+                errors.append(error.localizedDescription)
+            }
+        }
+        resultMessage = "Applied \(applied)/\(pending.count). Errors: \(errors.isEmpty ? "none" : errors.joined(separator: ", "))"
+        refresh()
     }
 
     private func submitBGTask(identifier: String, isProcessing: Bool) {
