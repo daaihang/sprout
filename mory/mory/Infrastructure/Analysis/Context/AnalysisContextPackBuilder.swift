@@ -19,6 +19,7 @@ struct ContextRanker {
         semanticMemoryIDs: Set<UUID>,
         profiles: [EntityProfile],
         selfProfile: SelfProfile,
+        correctionEvents: [CorrectionEvent] = [],
         now: Date
     ) -> ContextScoreBreakdown {
         let text = [memory.title, memory.summaryText, memory.record.rawText, memory.record.inputContext ?? ""].joined(separator: " ")
@@ -42,6 +43,12 @@ struct ContextRanker {
                 !keyword.isEmpty && text.localizedCaseInsensitiveContains(keyword)
             }
         } ? 0.6 : 0
+        let repeatedRejectedSignalPenalty = rejectedSignalPenalty(
+            memory: memory,
+            text: text,
+            profiles: profiles,
+            correctionEvents: correctionEvents
+        )
 
         return ContextScoreBreakdown(
             semanticSimilarity: semanticMemoryIDs.contains(memory.id) ? 0.45 : 0,
@@ -53,7 +60,7 @@ struct ContextRanker {
             openDecisionWeight: hasDecisionSignal ? 0.12 : 0,
             affectSimilarityWeight: affectMatch ? 0.08 : 0,
             sensitivityPenalty: sensitivityPenalty,
-            repeatedRejectedSignalPenalty: 0
+            repeatedRejectedSignalPenalty: repeatedRejectedSignalPenalty
         )
     }
 
@@ -76,6 +83,58 @@ struct ContextRanker {
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { $0.count > 2 }
         return Set(parts)
+    }
+
+    private func rejectedSignalPenalty(
+        memory: MemorySummary,
+        text: String,
+        profiles: [EntityProfile],
+        correctionEvents: [CorrectionEvent]
+    ) -> Double {
+        let activeEvents = correctionEvents.filter { $0.reversedAt == nil }
+        var penalty = 0.0
+        for event in activeEvents {
+            switch event.kind {
+            case .doNotTrackTopic, .notMe, .profileFieldIncorrect:
+                if event.targetRecordIDs.contains(memory.id) || event.sourceRecordIDs.contains(memory.id) {
+                    penalty = max(penalty, 0.35)
+                }
+                if rejectedTerms(from: event).contains(where: { text.localizedCaseInsensitiveContains($0) }) {
+                    penalty = max(penalty, 0.22)
+                }
+                if names(for: event.targetEntityIDs, in: profiles).contains(where: { text.localizedCaseInsensitiveContains($0) }) {
+                    penalty = max(penalty, 0.25)
+                }
+            case .notSameEntity:
+                let matchedNames = names(for: event.targetEntityIDs, in: profiles)
+                    .filter { text.localizedCaseInsensitiveContains($0) }
+                if matchedNames.count >= 2 {
+                    penalty = max(penalty, 0.25)
+                }
+            default:
+                continue
+            }
+        }
+        return min(penalty, 0.35)
+    }
+
+    private func names(for entityIDs: [UUID], in profiles: [EntityProfile]) -> [String] {
+        let targetIDs = Set(entityIDs)
+        return profiles
+            .filter { targetIDs.contains($0.entityID) }
+            .flatMap { [$0.displayName, $0.canonicalName] + $0.aliases }
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+    }
+
+    private func rejectedTerms(from event: CorrectionEvent) -> [String] {
+        ([event.note].compactMap { $0 } + Array(event.metadata.values))
+            .flatMap { value in
+                value
+                    .components(separatedBy: CharacterSet.alphanumerics.inverted)
+                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            }
+            .filter { $0.count > 2 }
     }
 }
 
@@ -194,6 +253,7 @@ struct ContextPackBuilder {
         let query = Self.queryText(for: target)
         let semanticResult = await semanticSearchIfAvailable(query: query)
         let semanticMemoryIDs = Set(semanticResult.snapshot?.semanticMemoryIDs ?? [])
+        let correctionEvents = try repository.fetchCorrectionEvents(kind: nil, limit: max(50, budgeter.limits.maxCorrections * 5))
         let recentMemories = try repository.fetchRecentMemories(limit: max(24, budgeter.limits.maxRelatedMemories * 4))
         let memoryCandidates = mergeMemoryCandidates(
             semantic: semanticResult.snapshot?.memories.map(\.memory) ?? [],
@@ -209,6 +269,7 @@ struct ContextPackBuilder {
                     semanticMemoryIDs: semanticMemoryIDs,
                     profiles: profiles,
                     selfProfile: selfProfile,
+                    correctionEvents: correctionEvents,
                     now: builtAt
                 )
                 let decision = privacyGate.decision(for: memory, selfProfile: selfProfile)

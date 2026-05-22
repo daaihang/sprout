@@ -82,6 +82,36 @@ final class AffectSnapshotTests: XCTestCase {
         })
     }
 
+    func testAffectCorrectionWithoutNoteUpdatesSelfExpressionPatternFromRawInput() async throws {
+        let fixture = makeRepositoryFixture()
+        let repository = fixture.repository
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Quick tone chip",
+                rawText: "我真服了。",
+                mood: "我真服了",
+                captureSource: .audio,
+                artifacts: [.text(title: "Quick tone chip", body: "我真服了。")]
+            )
+        )
+        let snapshot = try XCTUnwrap(try repository.fetchAffectSnapshots(recordID: memory.id, limit: nil).first)
+
+        _ = try repository.applyAffectCorrection(
+            AffectCorrection(
+                snapshotID: snapshot.id,
+                recordID: memory.id,
+                labels: [.mockFrustrated],
+                toneHints: [.joking, .playful],
+                note: nil
+            )
+        )
+
+        let selfProfile = try repository.ensureSelfProfile()
+        XCTAssertTrue(selfProfile.expressionPatterns.contains {
+            $0.phrase == "我真服了" && $0.interpretation.contains(ToneHint.joking.rawValue)
+        })
+    }
+
     func testJournalingSuggestionStateOfMindMapsAsAffectEvidence() async throws {
         let service = JournalingSuggestionContextService()
         let draft = service.makeCaptureDraft(

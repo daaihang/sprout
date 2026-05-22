@@ -65,6 +65,56 @@ final class EntityResolutionServiceTests: XCTestCase {
         XCTAssertTrue(result.links.contains { $0.kind == .notSameDecision && $0.resolvedEntityID == alexID })
     }
 
+    func testResolveHonorsNotSameCorrectionEvidenceWithoutHintedEntity() async throws {
+        let alexID = UUID()
+        let alexanderID = UUID()
+        let service = DefaultEntityResolutionService()
+        let context = EntityResolutionContext(
+            selfProfile: SelfProfile(displayName: "Me"),
+            existingProfiles: [
+                EntityProfile(entityID: alexID, kind: .person, displayName: "Alex Johnson"),
+                EntityProfile(entityID: alexanderID, kind: .person, displayName: "Alexander Chen", aliases: ["Alex"]),
+            ],
+            correctionEvents: [
+                CorrectionEvent(
+                    kind: .notSameEntity,
+                    actor: .user,
+                    targetEntityIDs: [alexID, alexanderID],
+                    note: "Different Alex"
+                ),
+            ]
+        )
+        let mentions = [
+            EntityMention(kind: .person, value: "Alex"),
+        ]
+
+        let result = try await service.resolve(mentions: mentions, context: context)
+
+        XCTAssertTrue(result.mergeProposals.isEmpty)
+        XCTAssertTrue(result.links.contains { $0.kind == .notSameDecision && $0.resolvedEntityID == nil })
+        XCTAssertTrue(result.ambiguousBuckets.contains { Set($0.candidateEntityIDs) == Set([alexID, alexanderID]) })
+    }
+
+    func testResolveMatchesChinesePersonNameExactly() async throws {
+        let zhangID = UUID()
+        let service = DefaultEntityResolutionService()
+        let context = EntityResolutionContext(
+            selfProfile: SelfProfile(displayName: "Me"),
+            existingProfiles: [
+                EntityProfile(entityID: zhangID, kind: .person, displayName: "张伟", mentionCount: 1),
+            ]
+        )
+        let mentions = [
+            EntityMention(kind: .person, value: "张伟"),
+        ]
+
+        let result = try await service.resolve(mentions: mentions, context: context)
+
+        XCTAssertTrue(result.links.contains {
+            $0.kind == .resolvedEntity && $0.resolvedEntityID == zhangID && $0.confidence >= 0.98
+        })
+    }
+
     func testResolveBuildsRoleLabelAmbiguousBucket() async throws {
         let service = DefaultEntityResolutionService()
         let context = EntityResolutionContext(

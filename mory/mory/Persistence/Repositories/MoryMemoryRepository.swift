@@ -1769,7 +1769,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             isReversible: true,
             createdAt: now
         ))
-        try updateSelfExpressionPattern(from: correction, now: now)
+        try updateSelfExpressionPattern(from: correction, snapshot: updated, now: now)
         try save()
         return updated
     }
@@ -4274,6 +4274,40 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         }
     }
 
+    private func markEntityDeletedForTombstones(entityID: UUID, kind: EntityKind, now: Date) throws {
+        let tombstoneStores = try modelContext.fetch(FetchDescriptor<EntityTombstoneStore>())
+        var hasDeletedTombstone = false
+
+        for store in tombstoneStores {
+            var tombstone = store.domainModel
+            if tombstone.oldEntityID == entityID {
+                hasDeletedTombstone = true
+            }
+            if tombstone.replacementEntityID == entityID {
+                tombstone.replacementEntityID = nil
+                tombstone.note = appendTombstoneNote(tombstone.note, "Replacement entity was deleted.")
+                store.apply(domainModel: tombstone)
+            }
+        }
+
+        if !hasDeletedTombstone {
+            modelContext.insert(EntityTombstoneStore(domainModel: EntityTombstone(
+                oldEntityID: entityID,
+                replacementEntityID: nil,
+                kind: kind,
+                reason: .deleted,
+                note: "Entity deleted after its source evidence was removed.",
+                createdAt: now
+            )))
+        }
+    }
+
+    private func appendTombstoneNote(_ note: String?, _ suffix: String) -> String {
+        guard let note = note?.trimmedOrNil else { return suffix }
+        guard !note.localizedCaseInsensitiveContains(suffix) else { return note }
+        return "\(note) \(suffix)"
+    }
+
     private func enqueueEntityMutationRecomputeJobs(
         affectedRecordIDs: Set<UUID>,
         affectedEntityIDs: Set<UUID>
@@ -4326,6 +4360,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             entity.provenanceRecordIDs.removeAll { recordIDs.contains($0) }
 
             if entity.provenanceRecordIDs.isEmpty && !remainingLinkedEntityIDs.contains(entity.id) {
+                try markEntityDeletedForTombstones(entityID: entity.id, kind: entity.kind, now: Date.now)
                 modelContext.delete(store)
             } else if entity.provenanceRecordIDs != originalProvenance {
                 entity.updatedAt = Date.now
@@ -4378,8 +4413,12 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         }
     }
 
-    private func updateSelfExpressionPattern(from correction: AffectCorrection, now: Date) throws {
-        guard let note = correction.note?.trimmedOrNil else { return }
+    private func updateSelfExpressionPattern(from correction: AffectCorrection, snapshot: AffectSnapshot, now: Date) throws {
+        let phrase = correction.note?.trimmedOrNil
+            ?? snapshot.rawInput?.trimmedOrNil
+            ?? snapshot.evidence.reversed().compactMap { $0.summary.trimmedOrNil }.first
+            ?? (snapshot.labels + correction.labels).map(\.rawValue).joined(separator: ", ").trimmedOrNil
+        guard let phrase else { return }
         var profile = try ensureSelfProfile()
         let interpretation = (correction.toneHints + correction.labels.map { label in
             switch label {
@@ -4394,7 +4433,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         .map(\.rawValue)
         .joined(separator: ", ")
         let pattern = ExpressionPattern(
-            phrase: note,
+            phrase: phrase,
             interpretation: interpretation.isEmpty ? "affect correction" : interpretation,
             confidence: 1
         )

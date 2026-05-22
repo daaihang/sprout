@@ -136,6 +136,9 @@ struct SelfReferenceResolver {
     private func containsToken(_ token: String, in normalizedText: String) -> Bool {
         let normalizedToken = token.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
         guard !normalizedToken.isEmpty else { return false }
+        if containsCJK(normalizedToken) {
+            return containsCJKToken(normalizedToken, in: normalizedText)
+        }
         if normalizedToken.rangeOfCharacter(from: .letters.inverted) == nil,
            normalizedToken.unicodeScalars.allSatisfy(\.isASCII) {
             return normalizedText
@@ -143,5 +146,38 @@ struct SelfReferenceResolver {
                 .contains { $0 == normalizedToken }
         }
         return normalizedText.contains(normalizedToken)
+    }
+
+    private func containsCJKToken(_ token: String, in text: String) -> Bool {
+        var searchRange = text.startIndex..<text.endIndex
+        while let range = text.range(of: token, range: searchRange) {
+            if token == "我",
+               range.upperBound < text.endIndex,
+               text[range.upperBound] == "们" {
+                searchRange = range.upperBound..<text.endIndex
+                continue
+            }
+            return true
+        }
+        return false
+    }
+
+    private func containsCJK(_ value: String) -> Bool {
+        value.unicodeScalars.contains(where: isCJK)
+    }
+
+    private func isCJK(_ scalar: Unicode.Scalar) -> Bool {
+        switch scalar.value {
+        case 0x3400...0x4DBF,
+             0x4E00...0x9FFF,
+             0xF900...0xFAFF,
+             0x20000...0x2A6DF,
+             0x2A700...0x2B73F,
+             0x2B740...0x2B81F,
+             0x2B820...0x2CEAF:
+            return true
+        default:
+            return false
+        }
     }
 }

@@ -130,6 +130,31 @@ struct DefaultEntityResolutionService: EntityResolutionService {
                 }
             }
 
+            let blockedConflicts = scored.dropFirst().filter {
+                blockedPairs.contains(EntityPairKey(top.profile.entityID, $0.profile.entityID))
+            }
+            if !blockedConflicts.isEmpty {
+                let candidateIDs = ([top] + blockedConflicts).prefix(3).map { $0.profile.entityID }
+                buckets.append(
+                    AmbiguousEntityBucket(
+                        label: mention.value,
+                        candidateEntityIDs: candidateIDs,
+                        reason: "Blocked not-same correction evidence requires user disambiguation."
+                    )
+                )
+                links.append(
+                    EntityResolutionLink(
+                        mentionID: mention.id,
+                        mentionValue: mention.value,
+                        resolvedEntityID: nil,
+                        kind: .notSameDecision,
+                        confidence: min(0.95, top.score),
+                        reason: "Blocked by not-same correction evidence."
+                    )
+                )
+                continue
+            }
+
             if scored.count > 1 && (scored[0].score - scored[1].score) < 0.14 {
                 buckets.append(
                     AmbiguousEntityBucket(
@@ -248,11 +273,12 @@ struct DefaultEntityResolutionService: EntityResolutionService {
     }
 
     private func normalize(_ value: String) -> String {
-        value
+        tokens(
+            value
             .lowercased()
-            .components(separatedBy: CharacterSet.alphanumerics.inverted)
-            .filter { !$0.isEmpty }
-            .joined(separator: " ")
+            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+        )
+        .joined(separator: " ")
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

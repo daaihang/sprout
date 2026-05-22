@@ -59,7 +59,8 @@ Completion evidence:
 - `SelfReferenceResolver`, `AnalysisContextPack`, `ContextPackBuilder`, `ContextRanker`, `ContextBudgeter`, and `PrivacyGate` are implemented as Phase 1 local runtime services.
 - Debug Center includes an `Analysis Context Pack` viewer for latest-memory pack inspection.
 - Phase 1 tests cover self-reference, repository roundtrip, ranking, privacy drop, semantic-disabled fallback, and budget cap behavior.
-- Analyze payload and cloud contracts remain unchanged; v7 cloud consumption starts in Phase 5.
+- Analyze payload and cloud contracts remain unchanged in Phase 1; the context pack is inspectable locally, not part of the production analysis path.
+- v7 cloud consumption starts in Phase 5 through the debug dual-run contract; production replacement of legacy Analyze remains later work.
 
 ## Phase 2: Entity Resolution + GraphDelta v2
 
@@ -246,7 +247,7 @@ Exit criteria:
 | Phase | Current status | Gap |
 | --- | --- | --- |
 | Phase 0 | completed | docs/gap matrix completed; implementation starts at Phase 1 |
-| Phase 1 | completed | local SelfProfile persistence and inspectable context pack skeleton are implemented; Analyze v7 integration starts at Phase 5 |
+| Phase 1 | completed | local SelfProfile persistence and inspectable context pack skeleton are implemented for debug/local inspection; production Analyze does not consume it yet |
 | Phase 2 | completed | entity resolution foundation, correction ledger, and person merge/split mutation are implemented; proposal consumption and cloud-context integration continue in Phase 5 |
 | Phase 3 | completed | local PersonProfile persistence, deterministic portrait refresh jobs, mutation actions, evidence invalidation, and debug inspection are implemented; cloud AI portrait proposals remain Phase 5 |
 | Phase 4 | completed | local structured affect persistence, correction events, context-pack affect history, and Journaling suggestion draft mapping are implemented; real Apple picker entitlement/App Intents/Share extension remain later phases |

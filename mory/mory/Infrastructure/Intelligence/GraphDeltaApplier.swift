@@ -102,6 +102,9 @@ struct GraphDeltaApplier: Sendable {
                     entityValue.updatedAt = appliedAt
                     updatedEntity = entityValue
                 }
+            case .mergeEntity:
+                // Repository-level mutation handles merge transactions and reference rewrites.
+                continue
             default:
                 continue
             }

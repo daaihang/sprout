@@ -15,6 +15,17 @@ final class AnalysisContextPackTests: XCTestCase {
         XCTAssertFalse(resolutions.contains { $0.kind == .ambiguousRoleMention })
     }
 
+    func testSelfReferenceResolverDoesNotMatchChinesePluralWeAsMe() {
+        let profile = SelfProfile(displayName: "User", aliases: ["我"])
+        let resolver = SelfReferenceResolver()
+
+        let plural = resolver.resolve(text: "我们去吃饭", selfProfile: profile)
+        let singular = resolver.resolve(text: "我去吃饭", selfProfile: profile)
+
+        XCTAssertFalse(plural.contains { $0.kind == .selfMention })
+        XCTAssertTrue(singular.contains { $0.kind == .selfMention && $0.targetEntityID == profile.selfEntityID })
+    }
+
     func testContextPackBuildsWithSemanticDisabledFallbackAndBudgetCap() async throws {
         let fixture = makeFixture()
         let repository = fixture.repository
@@ -64,6 +75,7 @@ final class AnalysisContextPackTests: XCTestCase {
         XCTAssertGreaterThan(pack.relatedMemories.count, 0)
         XCTAssertTrue(pack.relatedProfiles.contains { $0.displayName == "Alex" })
         XCTAssertEqual(pack.budget.selectedRelatedMemories, pack.relatedMemories.count)
+        XCTAssertGreaterThanOrEqual(pack.budget.droppedByBudget, 6)
     }
 
     func testContextPackPrivacyGateDropsSensitiveHistory() async throws {
@@ -153,6 +165,46 @@ final class AnalysisContextPackTests: XCTestCase {
         XCTAssertGreaterThan(relatedScore.total, unrelatedScore.total)
         XCTAssertGreaterThan(relatedScore.semanticSimilarity, 0)
         XCTAssertGreaterThan(relatedScore.userConfirmedWeight, 0)
+    }
+
+    func testRankerPenalizesRepeatedRejectedSignals() async throws {
+        let fixture = makeFixture()
+        let repository = fixture.repository
+        let target = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Work planning",
+                rawText: "I need to decide how to handle the launch plan.",
+                captureSource: .manual
+            )
+        )
+        let rejected = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Coffee topic",
+                rawText: "Coffee tasting notes that the user does not want tracked.",
+                captureSource: .manual
+            )
+        )
+        let correction = CorrectionEvent(
+            kind: .doNotTrackTopic,
+            actor: .user,
+            targetRecordIDs: [rejected.id],
+            sourceRecordIDs: [rejected.id],
+            note: "coffee"
+        )
+        let targetDetail = try XCTUnwrap(repository.fetchMemoryDetail(recordID: target.id))
+
+        let score = ContextRanker().score(
+            memory: rejected,
+            target: targetDetail,
+            query: target.record.rawText,
+            semanticMemoryIDs: [],
+            profiles: [],
+            selfProfile: try repository.ensureSelfProfile(),
+            correctionEvents: [correction],
+            now: .now
+        )
+
+        XCTAssertGreaterThan(score.repeatedRejectedSignalPenalty, 0)
     }
 
     private func makeFixture() -> AnalysisContextRepositoryFixture {

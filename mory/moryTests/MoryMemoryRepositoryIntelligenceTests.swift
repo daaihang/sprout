@@ -661,6 +661,83 @@ final class MoryMemoryRepositoryIntelligenceTests: XCTestCase {
         XCTAssertTrue(jobs.contains { $0.kind == .chapterCandidate && $0.targetID == recordB })
     }
 
+    func testDeletingMergedSurvivorClearsTombstoneReplacement() throws {
+        let fixture = makeRepositoryFixture()
+        let repository = fixture.repository
+        let context = fixture.container.mainContext
+
+        let primaryID = UUID()
+        let mergingID = UUID()
+        let recordA = UUID()
+        let recordB = UUID()
+
+        context.insert(
+            EntityNodeStore(
+                domainModel: EntityNode(
+                    id: primaryID,
+                    kind: .person,
+                    displayName: "Alex",
+                    aliases: [],
+                    summary: "",
+                    provenanceRecordIDs: [recordB],
+                    createdAt: .now,
+                    updatedAt: .now
+                )
+            )
+        )
+        context.insert(
+            EntityNodeStore(
+                domainModel: EntityNode(
+                    id: mergingID,
+                    kind: .person,
+                    displayName: "Alexander",
+                    aliases: [],
+                    summary: "",
+                    provenanceRecordIDs: [recordA],
+                    createdAt: .now,
+                    updatedAt: .now
+                )
+            )
+        )
+        context.insert(
+            EntityProfileStore(
+                domainModel: EntityProfile(
+                    entityID: primaryID,
+                    kind: .person,
+                    displayName: "Alex",
+                    sourceRecordIDs: [recordB],
+                    confirmationState: .userConfirmed
+                )
+            )
+        )
+        context.insert(
+            EntityProfileStore(
+                domainModel: EntityProfile(
+                    entityID: mergingID,
+                    kind: .person,
+                    displayName: "Alexander",
+                    sourceRecordIDs: [recordA],
+                    confirmationState: .userConfirmed
+                )
+            )
+        )
+        try context.save()
+
+        _ = try repository.mergePersonEntities(primaryID: primaryID, mergingIDs: [mergingID], displayName: nil)
+        XCTAssertTrue(try repository.fetchEntityTombstones(limit: nil).contains {
+            $0.oldEntityID == mergingID && $0.replacementEntityID == primaryID
+        })
+
+        try repository.deleteMemory(recordID: recordA)
+        try repository.deleteMemory(recordID: recordB)
+
+        let tombstones = try repository.fetchEntityTombstones(limit: nil)
+        let mergedTombstone = try XCTUnwrap(tombstones.first { $0.oldEntityID == mergingID })
+        XCTAssertNil(mergedTombstone.replacementEntityID)
+        XCTAssertTrue(mergedTombstone.note?.contains("Replacement entity was deleted.") == true)
+        XCTAssertTrue(tombstones.contains { $0.oldEntityID == primaryID && $0.reason == .deleted })
+    }
+
     func testSplitPersonEntityRewritesLinksAndCreatesCorrectionEvent() throws {
         let fixture = makeRepositoryFixture()
         let repository = fixture.repository
