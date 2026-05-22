@@ -159,11 +159,12 @@ struct SelfContextBrief: Codable, Hashable, Sendable {
         self.selfEntityID = profile.selfEntityID
         self.displayName = profile.displayName
         self.aliases = Array(profile.aliases.prefix(8))
-        self.roleLabels = SelfContextBrief.bounded(profile.lifeRoles.map(\.label), maxCharacters: maxCharacters / 4)
-        self.goalTitles = SelfContextBrief.bounded(profile.longTermGoals.map(\.title), maxCharacters: maxCharacters / 4)
+        let sectionBudget = max(1, maxCharacters / 3)
+        self.roleLabels = SelfContextBrief.bounded(profile.lifeRoles.map(\.label), maxCharacters: sectionBudget)
+        self.goalTitles = SelfContextBrief.bounded(profile.longTermGoals.map(\.title), maxCharacters: sectionBudget)
         self.expressionHints = SelfContextBrief.bounded(
             profile.expressionPatterns.map { "\($0.phrase): \($0.interpretation)" },
-            maxCharacters: maxCharacters / 4
+            maxCharacters: sectionBudget
         )
         self.privacyMode = profile.privacyMode
     }
@@ -303,7 +304,7 @@ struct CorrectionSignalBrief: Identifiable, Codable, Hashable, Sendable {
 }
 
 struct AffectHistoryBrief: Identifiable, Codable, Hashable, Sendable {
-    var id: String { mood }
+    var id: String { "\(mood)-\(latestRecordID.uuidString)" }
     var mood: String
     var count: Int
     var latestRecordID: UUID
