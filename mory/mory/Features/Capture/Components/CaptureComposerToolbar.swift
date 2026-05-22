@@ -1,9 +1,8 @@
 import PhotosUI
 import SwiftUI
 
-struct CaptureComposerToolbar: ToolbarContent {
+struct CaptureComposerActionStrip: View {
     @Binding var selectedPhotoItems: [PhotosPickerItem]
-    let isTextInputFocused: Bool
     let isProcessingPhoto: Bool
     let isCollectingContext: Bool
     let onCamera: () -> Void
@@ -14,17 +13,7 @@ struct CaptureComposerToolbar: ToolbarContent {
     let onTodo: () -> Void
     let onRefreshContext: () -> Void
 
-    var body: some ToolbarContent {
-        ToolbarItemGroup(placement: toolbarPlacement) {
-            actionStrip
-        }
-    }
-
-    private var toolbarPlacement: ToolbarItemPlacement {
-        isTextInputFocused ? .keyboard : .bottomBar
-    }
-
-    private var actionStrip: some View {
+    var body: some View {
         ScrollView(.horizontal) {
             HStack(spacing: 8) {
                 actionButton(icon: "camera", title: String(localized: "capture.toolbar.camera"), action: onCamera)
@@ -43,9 +32,11 @@ struct CaptureComposerToolbar: ToolbarContent {
                 actionButton(icon: "arrow.clockwise", title: String(localized: "capture.toolbar.context"), action: onRefreshContext)
                     .disabled(isCollectingContext)
             }
+            .padding(.horizontal, 12)
             .padding(.vertical, 4)
         }
         .scrollIndicators(.hidden)
+        .frame(maxWidth: .infinity)
     }
 
     @ViewBuilder

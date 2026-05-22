@@ -72,6 +72,21 @@ struct UnifiedCaptureComposerView: View {
         !isSaving && !isProcessingPhoto && !primaryArtifactDrafts.isEmpty
     }
 
+    private var composerActionStrip: some View {
+        CaptureComposerActionStrip(
+            selectedPhotoItems: $selectedPhotoItems,
+            isProcessingPhoto: isProcessingPhoto,
+            isCollectingContext: isCollectingContext,
+            onCamera: { isPresentingCamera = true },
+            onAudio: { isPresentingAudioCapture = true },
+            onLink: { isPresentingLinkCapture = true },
+            onMusic: { isPresentingMusicCapture = true },
+            onLocation: { isPresentingLocationPicker = true },
+            onTodo: { isPresentingTodoCapture = true },
+            onRefreshContext: { Task { await refreshAutoContext() } }
+        )
+    }
+
     @MainActor
     private var attachmentItems: [CaptureComposerAttachmentItem] {
         var items: [CaptureComposerAttachmentItem] = []
@@ -123,6 +138,16 @@ struct UnifiedCaptureComposerView: View {
                         .background(.regularMaterial)
                 }
             }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if !isBodyFocused {
+                    composerActionStrip
+                        .padding(.vertical, 2)
+                        .background(.bar)
+                        .overlay(alignment: .top) {
+                            Divider()
+                        }
+                }
+            }
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -149,19 +174,11 @@ struct UnifiedCaptureComposerView: View {
                     .accessibilityLabel("common.save")
                 }
 
-                CaptureComposerToolbar(
-                    selectedPhotoItems: $selectedPhotoItems,
-                    isTextInputFocused: isBodyFocused,
-                    isProcessingPhoto: isProcessingPhoto,
-                    isCollectingContext: isCollectingContext,
-                    onCamera: { isPresentingCamera = true },
-                    onAudio: { isPresentingAudioCapture = true },
-                    onLink: { isPresentingLinkCapture = true },
-                    onMusic: { isPresentingMusicCapture = true },
-                    onLocation: { isPresentingLocationPicker = true },
-                    onTodo: { isPresentingTodoCapture = true },
-                    onRefreshContext: { Task { await refreshAutoContext() } }
-                )
+                ToolbarItemGroup(placement: .keyboard) {
+                    if isBodyFocused {
+                        composerActionStrip
+                    }
+                }
             }
             .sheet(isPresented: $isPresentingCamera) {
                 UnifiedCameraCaptureView { image in
