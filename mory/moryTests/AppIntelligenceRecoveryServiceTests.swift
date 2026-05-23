@@ -113,7 +113,8 @@ final class AppIntelligenceRecoveryServiceTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: RecoveryRecordAnalysisService()
+            analysisService: RecoveryRecordAnalysisService(),
+            cloudIntelligenceService: RecoveryMockCloudIntelligenceService()
         )
         return RecoveryRepositoryFixture(container: container, repository: repository)
     }
@@ -177,6 +178,31 @@ private enum RecoveryTestError: Error {
 }
 
 private struct RecoveryMockCloudIntelligenceService: CloudIntelligenceServing {
+    func analyzeV7(_ payload: AnalyzeV7RequestPayload) async throws -> AnalyzeV7ResponseEnvelope {
+        AnalyzeV7ResponseEnvelope(
+            analysis: AnalyzeResponseEnvelope(
+                tags: ["recovery"],
+                retrievalTerms: ["recovery"],
+                emotion: .init(label: "neutral", intensity: 0.2, confidence: 0.6, interpretation: nil),
+                entities: [],
+                candidateEdges: [],
+                insight: payload.recordShell.rawText,
+                summary: payload.recordShell.rawText,
+                salienceScore: 0.5,
+                followUp: nil,
+                reflectionHint: nil
+            ),
+            affectProposals: [],
+            graphDeltaProposals: [],
+            profileUpdateProposals: [],
+            mergeSplitCandidates: [],
+            arcCandidates: [],
+            reflectionCandidates: [],
+            questionCandidates: [],
+            quality: .init(confidence: 0.6, uncertaintyReasons: [], needsUserCheck: [])
+        )
+    }
+
     func refineTranscript(_ payload: MoryAPIClient.TranscriptRefinementPayload) async throws -> MoryAPIClient.TranscriptRefinementResponse {
         throw RecoveryTestError.unsupported
     }

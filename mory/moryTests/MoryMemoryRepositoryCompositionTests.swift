@@ -62,7 +62,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         let defaults = try repository.fetchUserSettingsPreference()
@@ -102,7 +103,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         var preference = try repository.fetchUserSettingsPreference()
@@ -137,7 +139,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         _ = try await repository.createMemory(
@@ -164,7 +167,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         _ = try await repository.createMemory(
@@ -200,7 +204,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         for index in 1...4 {
@@ -237,7 +242,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         _ = try await repository.createMemory(
@@ -272,7 +278,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         let firstMemory = try await repository.createMemory(
@@ -334,7 +341,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         let firstMemory = try await repository.createMemory(
@@ -432,7 +440,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         _ = try await repository.createMemory(
@@ -462,7 +471,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         _ = try await repository.createMemory(
@@ -488,7 +498,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         for index in 1...3 {
@@ -524,7 +535,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         for index in 1...3 {
@@ -565,7 +577,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         for index in 1...3 {
@@ -629,7 +642,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         _ = try await repository.createMemory(
@@ -658,7 +672,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         _ = try await repository.createMemory(
@@ -684,7 +699,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         _ = try await repository.createMemory(
@@ -718,7 +734,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         for index in 1...2 {
@@ -776,7 +793,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         _ = try await repository.createMemory(
@@ -824,7 +842,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         _ = try await repository.createMemory(
@@ -871,7 +890,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         let firstMemory = try await repository.createMemory(
@@ -913,7 +933,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: LowSignalRecordAnalysisService()
+            analysisService: LowSignalRecordAnalysisService(),
+            cloudIntelligenceService: LowSignalCompositionCloudService()
         )
 
         let memory = try await repository.createMemory(
@@ -941,7 +962,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         let first = try await repository.createMemory(
@@ -986,7 +1008,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
         let request = QualityTuningRunRequest(
             scenario: .preset(.ordinaryShortText),
@@ -1008,7 +1031,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         _ = try await repository.createMemory(
@@ -1038,7 +1062,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         let firstMemory = try await repository.createMemory(
@@ -1092,7 +1117,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         let firstMemory = try await repository.createMemory(
@@ -1133,7 +1159,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: AliasRecordAnalysisService()
+            analysisService: AliasRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         let memory = try await repository.createMemory(
@@ -1156,11 +1183,52 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertTrue(detail.entities.contains(where: { $0.aliases.contains("Linh Tran") }))
     }
 
+    func testV7GraphUpdatePersistsAnalysisEntitiesAndLinksWithoutLocationArtifact() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
+        )
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Text-only planning",
+                rawText: "Linh and I clarified planning priorities in a text-only note.",
+                mood: "focused",
+                inputContext: "typed in debug",
+                captureSource: .composer,
+                artifacts: [.text(title: "Text-only planning", body: "Linh and I clarified planning priorities in a text-only note.")]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: memory.record.id)
+
+        let textArtifactID = try XCTUnwrap(repository.fetchArtifacts(recordID: memory.record.id).first(where: { $0.kind == .text })?.id)
+        let context = container.mainContext
+        let nodes = try context.fetch(FetchDescriptor<EntityNodeStore>())
+        let person = try XCTUnwrap(nodes.first { $0.kindRawValue == EntityKind.person.rawValue && $0.displayName == "Linh" })
+        let theme = try XCTUnwrap(nodes.first { $0.kindRawValue == EntityKind.theme.rawValue && $0.displayName == "planning" })
+
+        XCTAssertTrue(person.provenanceRecordIDs.contains(memory.record.id))
+        XCTAssertTrue(theme.provenanceRecordIDs.contains(memory.record.id))
+
+        let links = try context.fetch(FetchDescriptor<ArtifactEntityLinkStore>())
+        XCTAssertTrue(links.contains { $0.artifactID == textArtifactID && $0.entityID == person.id && $0.source == "analysis" })
+        XCTAssertTrue(links.contains { $0.artifactID == textArtifactID && $0.entityID == theme.id && $0.source == "analysis" })
+
+        let edges = try context.fetch(FetchDescriptor<EntityEdgeStore>())
+        XCTAssertTrue(edges.contains {
+            $0.sourceRecordIDs.contains(memory.record.id)
+                && Set([$0.fromEntityID, $0.toEntityID]) == Set([person.id, theme.id])
+        })
+    }
+
     func testSearchReturnsFormalObjectSnapshots() async throws {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         let firstMemory = try await repository.createMemory(
@@ -1205,7 +1273,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         let contextMemory = try await repository.createMemory(
@@ -1302,7 +1371,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         let first = try await repository.createMemory(
@@ -1341,7 +1411,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         let first = try await repository.createMemory(
@@ -1428,7 +1499,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: FailingRecordAnalysisService()
+            analysisService: FailingRecordAnalysisService(),
+            cloudIntelligenceService: FailingCompositionCloudService()
         )
 
         let memory = try await repository.createMemory(
@@ -1460,7 +1532,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         let memory = try await repository.createMemory(
@@ -1496,7 +1569,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         let memory = try await repository.createMemory(
@@ -1539,7 +1613,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         let memory = try await repository.createMemory(
@@ -1576,7 +1651,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         let memory = try await repository.createMemory(
@@ -1649,7 +1725,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         let memory = try await repository.createMemory(
@@ -1678,7 +1755,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         let memory = try await repository.createMemory(
@@ -1704,7 +1782,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         let memory = try await repository.createMemory(
@@ -1732,7 +1811,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         let memory = try await repository.createMemory(
@@ -1768,7 +1848,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
         let transcript = "I keep returning to protecting mornings for writing before meetings."
 
@@ -1808,7 +1889,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         let memory = try await repository.createMemory(
@@ -1842,7 +1924,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         let memory = try await repository.createMemory(
@@ -1876,7 +1959,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         let memory = try await repository.createMemory(
@@ -1905,7 +1989,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         let first = try await repository.createMemory(
@@ -1965,7 +2050,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: TextDrivenRecordAnalysisService()
+            analysisService: TextDrivenRecordAnalysisService(),
+            cloudIntelligenceService: TextDrivenCompositionCloudService()
         )
 
         let memory = try await repository.createMemory(
@@ -2002,7 +2088,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
         let now = Date.now
 
@@ -2094,7 +2181,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
         let preview = Data([0x01, 0x02, 0x03])
 
@@ -2132,7 +2220,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         let first = try await repository.createMemory(
@@ -2188,7 +2277,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         let memory = try await repository.createMemory(
@@ -2219,7 +2309,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         _ = try await repository.createMemory(
@@ -2245,7 +2336,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         let memory = try await repository.createMemory(
@@ -2262,15 +2354,20 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
 
         let diagnostics = try repository.fetchDebugDiagnostics(targetType: .memory, targetID: memory.record.id)
         XCTAssertEqual(diagnostics.pipelineTrace?.statusCode, 200)
-        XCTAssertEqual(diagnostics.analyzePayload?.requestBody, "{\"analysis_reason\":\"capture_ingest\"}")
-        XCTAssertEqual(diagnostics.analyzePayload?.responseBody, "{\"summary\":\"Stub summary\"}")
+        // v7 pipeline: requestBody is the JSON-encoded AnalyzeV7RequestPayload (contains schema_version: 7).
+        XCTAssertNotNil(diagnostics.analyzePayload?.requestBody)
+        XCTAssertTrue(diagnostics.analyzePayload?.requestBody.contains("schema_version") == true)
+        // v7 pipeline: responseBody is the JSON-encoded AnalyzeV7ResponseEnvelope (contains "analysis" key).
+        XCTAssertNotNil(diagnostics.analyzePayload?.responseBody)
+        XCTAssertTrue(diagnostics.analyzePayload?.responseBody.contains("analysis") == true)
     }
 
     func testRerunDebugPipelineModesResolveCorrectTargets() async throws {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         let firstMemory = try await repository.createMemory(
@@ -2309,7 +2406,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: StubRecordAnalysisService()
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
         )
 
         let memory = try await repository.createMemory(
@@ -2338,7 +2436,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: FailingRecordAnalysisService()
+            analysisService: FailingRecordAnalysisService(),
+            cloudIntelligenceService: FailingCompositionCloudService()
         )
 
         let memory = try await repository.createMemory(
@@ -2912,3 +3011,181 @@ private final class AuthURLProtocol: URLProtocol {
 
     override func stopLoading() {}
 }
+
+// MARK: - Composition Cloud Service Stubs
+
+/// Standard stub mirrors the legacy composition analysis fixture through the v7 cloud contract.
+private struct StubCompositionCloudService: CloudIntelligenceServing {
+    func analyzeV7(_ payload: AnalyzeV7RequestPayload) async throws -> AnalyzeV7ResponseEnvelope {
+        AnalyzeV7ResponseEnvelope(
+            analysis: AnalyzeResponseEnvelope(
+                tags: ["planning"],
+                retrievalTerms: ["planning", "rain"],
+                emotion: .init(label: "reflective", intensity: 0.6, confidence: 0.7, interpretation: nil),
+                entities: [
+                    .init(kind: "person", name: "Linh", canonicalName: "Linh", aliases: ["Linh Tran"], confidence: 0.92, sourceArtifactIDs: []),
+                    .init(kind: "theme", name: "planning", canonicalName: "planning", aliases: nil, confidence: 0.81, sourceArtifactIDs: []),
+                    .init(kind: "place", name: "Rain Walk", canonicalName: "Rain Walk", aliases: nil, confidence: 0.7, sourceArtifactIDs: [])
+                ],
+                candidateEdges: [
+                    .init(
+                        fromName: "Linh",
+                        fromKind: "person",
+                        toName: "planning",
+                        toKind: "theme",
+                        relation: "related_to",
+                        confidence: 0.75
+                    )
+                ],
+                insight: "Composition stub summary.",
+                summary: "Composition stub summary.",
+                salienceScore: 0.86,
+                followUp: nil,
+                reflectionHint: "Watch for repeated planning moments."
+            ),
+            affectProposals: [],
+            graphDeltaProposals: [],
+            profileUpdateProposals: [],
+            mergeSplitCandidates: [],
+            arcCandidates: [],
+            reflectionCandidates: [
+                .init(
+                    candidateID: nil,
+                    title: "Stub reflection",
+                    body: "Planning keeps recurring with Linh — worth revisiting.",
+                    evidenceSummary: "Derived from stub analysis.",
+                    confidence: 0.7,
+                    sourceRecordIDs: [payload.recordShell.id],
+                    sourceArtifactIDs: [],
+                    sourceEntityIDs: []
+                )
+            ],
+            questionCandidates: [],
+            quality: .init(confidence: 0.7, uncertaintyReasons: [], needsUserCheck: [])
+        )
+    }
+    func refineTranscript(_ p: MoryAPIClient.TranscriptRefinementPayload) async throws -> MoryAPIClient.TranscriptRefinementResponse { throw CompositionStubError.unsupported }
+    func suggestQuestions(_ p: MoryAPIClient.QuestionSuggestionPayload) async throws -> MoryAPIClient.QuestionSuggestionResponse { throw CompositionStubError.unsupported }
+    func suggestChapters(_ p: MoryAPIClient.ChapterSuggestionPayload) async throws -> MoryAPIClient.ChapterSuggestionResponse { throw CompositionStubError.unsupported }
+    func analyzePhotoSemantics(_ p: MoryAPIClient.PhotoSemanticAnalysisPayload) async throws -> MoryAPIClient.PhotoSemanticAnalysisResponse { throw CompositionStubError.unsupported }
+    func suggestNotificationIntent(_ p: MoryAPIClient.NotificationIntentSuggestionPayload) async throws -> MoryAPIClient.NotificationIntentSuggestionResponse { throw CompositionStubError.unsupported }
+    func runProviderEval() async throws -> MoryAPIClient.CloudIntelligenceEvalResponse { throw CompositionStubError.unsupported }
+}
+
+/// Low-signal stub: returns noisy theme/OCR/photo entities that EntityQualityPolicy filters.
+/// No arcs or reflections.
+private struct LowSignalCompositionCloudService: CloudIntelligenceServing {
+    func analyzeV7(_ payload: AnalyzeV7RequestPayload) async throws -> AnalyzeV7ResponseEnvelope {
+        AnalyzeV7ResponseEnvelope(
+            analysis: AnalyzeResponseEnvelope(
+                tags: ["theme", "OCR"],
+                retrievalTerms: ["OCR", "photo"],
+                emotion: .init(label: "neutral", intensity: 0.2, confidence: 0.3, interpretation: nil),
+                entities: [
+                    .init(kind: "theme", name: "theme", canonicalName: "theme", aliases: nil, confidence: 0.99, sourceArtifactIDs: []),
+                    .init(kind: "theme", name: "OCR", canonicalName: "OCR", aliases: nil, confidence: 0.99, sourceArtifactIDs: []),
+                    .init(kind: "object", name: "photo", canonicalName: "photo", aliases: nil, confidence: 0.99, sourceArtifactIDs: [])
+                ],
+                candidateEdges: [],
+                insight: "Low signal photo.",
+                summary: "Low signal photo.",
+                salienceScore: 0.2,
+                followUp: nil,
+                reflectionHint: nil
+            ),
+            affectProposals: [],
+            graphDeltaProposals: [],
+            profileUpdateProposals: [],
+            mergeSplitCandidates: [],
+            arcCandidates: [],
+            reflectionCandidates: [],
+            questionCandidates: [],
+            quality: .init(confidence: 0.3, uncertaintyReasons: ["thin_context"], needsUserCheck: [])
+        )
+    }
+    func refineTranscript(_ p: MoryAPIClient.TranscriptRefinementPayload) async throws -> MoryAPIClient.TranscriptRefinementResponse { throw CompositionStubError.unsupported }
+    func suggestQuestions(_ p: MoryAPIClient.QuestionSuggestionPayload) async throws -> MoryAPIClient.QuestionSuggestionResponse { throw CompositionStubError.unsupported }
+    func suggestChapters(_ p: MoryAPIClient.ChapterSuggestionPayload) async throws -> MoryAPIClient.ChapterSuggestionResponse { throw CompositionStubError.unsupported }
+    func analyzePhotoSemantics(_ p: MoryAPIClient.PhotoSemanticAnalysisPayload) async throws -> MoryAPIClient.PhotoSemanticAnalysisResponse { throw CompositionStubError.unsupported }
+    func suggestNotificationIntent(_ p: MoryAPIClient.NotificationIntentSuggestionPayload) async throws -> MoryAPIClient.NotificationIntentSuggestionResponse { throw CompositionStubError.unsupported }
+    func runProviderEval() async throws -> MoryAPIClient.CloudIntelligenceEvalResponse { throw CompositionStubError.unsupported }
+}
+
+/// Text-driven stub: returns Ava or Ben based on payload rawText (mirrors TextDrivenRecordAnalysisService).
+/// Returns one reflection candidate so refresh-purge-rerun tests get count == 1.
+private struct TextDrivenCompositionCloudService: CloudIntelligenceServing {
+    func analyzeV7(_ payload: AnalyzeV7RequestPayload) async throws -> AnalyzeV7ResponseEnvelope {
+        let rawText = payload.recordShell.rawText
+        let personName = rawText.localizedCaseInsensitiveContains("Ben") ? "Ben" : "Ava"
+        return AnalyzeV7ResponseEnvelope(
+            analysis: AnalyzeResponseEnvelope(
+                tags: ["planning"],
+                retrievalTerms: ["planning", personName.lowercased()],
+                emotion: .init(label: "focused", intensity: 0.6, confidence: 0.7, interpretation: nil),
+                entities: [
+                    .init(kind: "person", name: personName, canonicalName: personName, aliases: nil, confidence: 0.9, sourceArtifactIDs: [])
+                ],
+                candidateEdges: [],
+                insight: "\(personName) helped with a concrete planning decision.",
+                summary: "\(personName) helped with a concrete planning decision.",
+                salienceScore: 0.8,
+                followUp: nil,
+                reflectionHint: nil
+            ),
+            affectProposals: [],
+            graphDeltaProposals: [],
+            profileUpdateProposals: [],
+            mergeSplitCandidates: [],
+            arcCandidates: [],
+            reflectionCandidates: [
+                .init(
+                    candidateID: nil,
+                    title: "Text-driven reflection",
+                    body: "\(personName) helped shape a decision worth revisiting.",
+                    evidenceSummary: "Derived from text analysis.",
+                    confidence: 0.7,
+                    sourceRecordIDs: [payload.recordShell.id],
+                    sourceArtifactIDs: [],
+                    sourceEntityIDs: []
+                )
+            ],
+            questionCandidates: [],
+            quality: .init(confidence: 0.7, uncertaintyReasons: [], needsUserCheck: [])
+        )
+    }
+    func refineTranscript(_ p: MoryAPIClient.TranscriptRefinementPayload) async throws -> MoryAPIClient.TranscriptRefinementResponse { throw CompositionStubError.unsupported }
+    func suggestQuestions(_ p: MoryAPIClient.QuestionSuggestionPayload) async throws -> MoryAPIClient.QuestionSuggestionResponse { throw CompositionStubError.unsupported }
+    func suggestChapters(_ p: MoryAPIClient.ChapterSuggestionPayload) async throws -> MoryAPIClient.ChapterSuggestionResponse { throw CompositionStubError.unsupported }
+    func analyzePhotoSemantics(_ p: MoryAPIClient.PhotoSemanticAnalysisPayload) async throws -> MoryAPIClient.PhotoSemanticAnalysisResponse { throw CompositionStubError.unsupported }
+    func suggestNotificationIntent(_ p: MoryAPIClient.NotificationIntentSuggestionPayload) async throws -> MoryAPIClient.NotificationIntentSuggestionResponse { throw CompositionStubError.unsupported }
+    func runProviderEval() async throws -> MoryAPIClient.CloudIntelligenceEvalResponse { throw CompositionStubError.unsupported }
+}
+
+/// Failing stub: throws from analyzeV7 and exposes 503/analysis debug info.
+private struct FailingCompositionCloudService: CloudIntelligenceServing, CloudIntelligenceDebugging {
+    struct FailError: LocalizedError {
+        var errorDescription: String? { "Analysis service unavailable." }
+    }
+    func analyzeV7(_ payload: AnalyzeV7RequestPayload) async throws -> AnalyzeV7ResponseEnvelope {
+        throw FailError()
+    }
+    func latestCloudDebugError() async -> MoryAPIClient.DebugErrorSnapshot? {
+        MoryAPIClient.DebugErrorSnapshot(
+            requestID: nil,
+            statusCode: 503,
+            responseBody: nil,
+            rawErrorBody: "{\"error\":\"analysis unavailable\"}",
+            failedStage: "analysis",
+            errorDescription: "Analysis service unavailable."
+        )
+    }
+    func latestCloudDebugRequestID() async -> String? { nil }
+    func refineTranscript(_ p: MoryAPIClient.TranscriptRefinementPayload) async throws -> MoryAPIClient.TranscriptRefinementResponse { throw CompositionStubError.unsupported }
+    func suggestQuestions(_ p: MoryAPIClient.QuestionSuggestionPayload) async throws -> MoryAPIClient.QuestionSuggestionResponse { throw CompositionStubError.unsupported }
+    func suggestChapters(_ p: MoryAPIClient.ChapterSuggestionPayload) async throws -> MoryAPIClient.ChapterSuggestionResponse { throw CompositionStubError.unsupported }
+    func analyzePhotoSemantics(_ p: MoryAPIClient.PhotoSemanticAnalysisPayload) async throws -> MoryAPIClient.PhotoSemanticAnalysisResponse { throw CompositionStubError.unsupported }
+    func suggestNotificationIntent(_ p: MoryAPIClient.NotificationIntentSuggestionPayload) async throws -> MoryAPIClient.NotificationIntentSuggestionResponse { throw CompositionStubError.unsupported }
+    func runProviderEval() async throws -> MoryAPIClient.CloudIntelligenceEvalResponse { throw CompositionStubError.unsupported }
+}
+
+private enum CompositionStubError: Error { case unsupported }

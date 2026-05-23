@@ -135,17 +135,20 @@ struct ArchitecturePipelineExecutor {
             existingArtifactEntityLinks: graphUpdate.artifactEntityLinks,
             timestamp: analysis.createdAt
         )
+        let completeEntityNodes = mergedEntityNodes(graphUpdate.entityNodes, placeResolution.entityNodes)
+        let completeArtifactEntityLinks = mergedArtifactEntityLinks(graphUpdate.artifactEntityLinks, placeResolution.artifactEntityLinks)
+
         // Step 5: Persist graph updates
         for profile in placeResolution.profiles {
             try upsertPlaceProfile(profile)
         }
-        for node in placeResolution.entityNodes {
+        for node in completeEntityNodes {
             try upsertEntityNode(node)
         }
         for edge in graphUpdate.entityEdges {
             try upsertEntityEdge(edge)
         }
-        for link in placeResolution.artifactEntityLinks {
+        for link in completeArtifactEntityLinks {
             try upsertArtifactEntityLink(link)
         }
         try save()
@@ -178,8 +181,8 @@ struct ArchitecturePipelineExecutor {
             records: candidateRecords,
             analyses: candidateAnalyses,
             artifacts: candidateArtifacts,
-            artifactEntityLinks: placeResolution.artifactEntityLinks,
-            entityNodes: placeResolution.entityNodes,
+            artifactEntityLinks: completeArtifactEntityLinks,
+            entityNodes: completeEntityNodes,
             focusRecordID: record.id,
             maxCandidates: 3
         )
@@ -192,8 +195,8 @@ struct ArchitecturePipelineExecutor {
             let promotionResult = temporalArcService.promote(
                 candidate: candidate,
                 analyses: candidateAnalyses,
-                artifactEntityLinks: placeResolution.artifactEntityLinks,
-                entityNodes: placeResolution.entityNodes
+                artifactEntityLinks: completeArtifactEntityLinks,
+                entityNodes: completeEntityNodes
             )
             try upsertTemporalArc(promotionResult.arc)
             try upsertReflection(promotionResult.reflection)
@@ -241,6 +244,54 @@ struct ArchitecturePipelineExecutor {
         return existingArcs.contains {
             $0.status != .archived && Set($0.sourceRecordIDs) == candidateRecordIDs
         }
+    }
+
+    private func mergedEntityNodes(_ primary: [EntityNode], _ secondary: [EntityNode]) -> [EntityNode] {
+        var seen = Set<UUID>()
+        var result: [EntityNode] = []
+        for node in secondary + primary where !seen.contains(node.id) {
+            seen.insert(node.id)
+            result.append(node)
+        }
+        return result
+    }
+
+    private func mergedArtifactEntityLinks(
+        _ primary: [ArtifactEntityLink],
+        _ secondary: [ArtifactEntityLink]
+    ) -> [ArtifactEntityLink] {
+        var result: [ArtifactEntityLink] = []
+        var indexByPair: [ArtifactEntityLinkPair: Int] = [:]
+
+        for link in primary + secondary {
+            let pair = ArtifactEntityLinkPair(artifactID: link.artifactID, entityID: link.entityID)
+            if let index = indexByPair[pair] {
+                result[index] = preferredArtifactEntityLink(existing: result[index], incoming: link)
+            } else {
+                indexByPair[pair] = result.count
+                result.append(link)
+            }
+        }
+
+        return result
+    }
+
+    private func preferredArtifactEntityLink(
+        existing: ArtifactEntityLink,
+        incoming: ArtifactEntityLink
+    ) -> ArtifactEntityLink {
+        var merged = (incoming.confidence ?? 0) >= (existing.confidence ?? 0) ? incoming : existing
+        merged.sourceRecordID = merged.sourceRecordID ?? existing.sourceRecordID ?? incoming.sourceRecordID
+        merged.sourceAnalysisRecordID = merged.sourceAnalysisRecordID ?? existing.sourceAnalysisRecordID ?? incoming.sourceAnalysisRecordID
+        if merged.evidenceSummary.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            merged.evidenceSummary = existing.evidenceSummary.trimmedOrNil ?? incoming.evidenceSummary
+        }
+        return merged
+    }
+
+    private struct ArtifactEntityLinkPair: Hashable {
+        var artifactID: UUID
+        var entityID: UUID
     }
 
     private func fetchExistingEntityNodes(modelContext: ModelContext, recordScope: Set<UUID>?) throws -> [EntityNode] {

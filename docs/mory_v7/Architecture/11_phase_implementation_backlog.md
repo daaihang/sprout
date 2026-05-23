@@ -262,6 +262,20 @@ Completion evidence:
 - External capture now has a durable pending inbox: App Intent, Share, and Journaling-originated drafts can be queued as `ExternalCaptureInboxItem`, inspected from Settings/Debug, and imported through the normal memory creation path.
 - v7 documentation now separates the completed architecture/debug/test baseline from post-v7 production release hardening.
 
+## v7.1 Stabilization
+
+Goal:
+
+- stabilize the production Analyze v7 graph pipeline before adding new platform surfaces.
+
+Completion evidence:
+
+- `ArchitecturePipelineExecutor` now merges `GraphUpdater` analysis output with `PlaceProfileResolver` output before persistence.
+- the production pipeline persists the complete graph view: `EntityNode`, `EntityEdge`, and `ArtifactEntityLink` from both analysis and place resolution.
+- local temporal arc/reflection candidate building and promotion use the same complete graph view, so people/themes/decisions from text-only analysis are not dropped when no location artifact exists.
+- `MoryMemoryRepositoryCompositionTests` now inject v7 cloud stubs by default, preserving hard cutover coverage instead of relying on legacy `RecordAnalysisServing`.
+- regression coverage verifies text-only v7 analysis persists non-place entities, analysis links, and graph edges.
+
 ## Overall Phase Status
 
 | Phase | Current status | Gap |
@@ -274,6 +288,7 @@ Completion evidence:
 | Phase 5 | completed | production new-memory analysis is hard-cut over to Analyze v7 with context pack payloads, native server proposal output, local proposal persistence, and no legacy Analyze fallback |
 | Phase 6 | completed | BGTask (BGProcessingTask + BGAppRefreshTask) + BackgroundURLSession + NotificationDeliveryRouter + silent push handler implemented; tests in BackgroundTaskCoordinatorTests + NotificationDeliveryRouterTests |
 | Phase 7 | completed | eval fixtures, debug surfaces, privacy/budget gates, graph-delta apply inspection, clarification question inspection, BGTask/router tests, affect correction eval, and docs/code status reconciliation are complete; real-user telemetry and public release privacy review are post-v7 production hardening |
+| v7.1 Stabilization | completed | production graph persistence and composition test baseline are stabilized; new platform capabilities remain post-v7 hardening |
 
 ## Post-v7 Production Hardening
 

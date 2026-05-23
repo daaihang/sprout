@@ -5,8 +5,7 @@ import XCTest
 @MainActor
 final class IntelligenceJobWorkerTests: XCTestCase {
     func testWorkerExecutesExpandedJobKinds() async throws {
-        let alexID = UUID()
-        let fixture = makeRepositoryFixture(alexID: alexID)
+        let fixture = makeRepositoryFixture()
         let repository = fixture.repository
         let seedFlagsTime = Date(timeIntervalSince1970: 1_800_600_000)
 
@@ -45,8 +44,9 @@ final class IntelligenceJobWorkerTests: XCTestCase {
         try enableWorkerFeatures(on: repository, now: now)
 
         let personDetail = try XCTUnwrap(
-            repository.fetchEntityDetails(kind: .person, limit: nil).first(where: { $0.entity.id == alexID })
+            repository.fetchEntityDetails(kind: .person, limit: nil).first(where: { $0.entity.displayName == "Alex" })
         )
+        let alexID = personDetail.id
         try repository.upsertEntityProfile(
             EntityProfile(
                 entityID: alexID,
@@ -172,11 +172,12 @@ final class IntelligenceJobWorkerTests: XCTestCase {
         XCTAssertNotNil(appliedDelta)
     }
 
-    private func makeRepositoryFixture(alexID: UUID) -> IntelligenceJobWorkerRepositoryFixture {
+    private func makeRepositoryFixture() -> IntelligenceJobWorkerRepositoryFixture {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: WorkerRecordAnalysisService(alexID: alexID)
+            analysisService: WorkerRecordAnalysisService(alexID: UUID()),
+            cloudIntelligenceService: WorkerMockCloudIntelligenceService()
         )
         return IntelligenceJobWorkerRepositoryFixture(container: container, repository: repository)
     }
@@ -298,6 +299,58 @@ private struct WorkerRecordAnalysisService: RecordAnalysisServing {
 }
 
 private struct WorkerMockCloudIntelligenceService: CloudIntelligenceServing {
+    func analyzeV7(_ payload: AnalyzeV7RequestPayload) async throws -> AnalyzeV7ResponseEnvelope {
+        let rawText = payload.recordShell.rawText
+        let lowercased = rawText.lowercased()
+        let theme = lowercased.contains("career transition") || lowercased.contains("resume") || lowercased.contains("chapter in work")
+            ? "Career Transition"
+            : "Planning"
+        let mentionsAlex = lowercased.contains("alex")
+        let entities: [AnalyzeResponseEnvelope.Entity] = mentionsAlex
+            ? [
+                .init(kind: "person", name: "Alex", canonicalName: "Alex", aliases: nil, confidence: 0.92, sourceArtifactIDs: []),
+                .init(kind: "theme", name: theme, canonicalName: theme, aliases: nil, confidence: 0.8, sourceArtifactIDs: [])
+            ]
+            : [
+                .init(kind: "theme", name: theme, canonicalName: theme, aliases: nil, confidence: 0.8, sourceArtifactIDs: [])
+            ]
+        let candidateEdges: [AnalyzeResponseEnvelope.CandidateEdge] = mentionsAlex
+            ? [
+                .init(
+                    fromName: "Alex",
+                    fromKind: "person",
+                    toName: theme,
+                    toKind: "theme",
+                    relation: "related_to",
+                    confidence: 0.72
+                )
+            ]
+            : []
+
+        return AnalyzeV7ResponseEnvelope(
+            analysis: AnalyzeResponseEnvelope(
+                tags: [theme],
+                retrievalTerms: [theme],
+                emotion: .init(label: "focused", intensity: 0.5, confidence: 0.7, interpretation: nil),
+                entities: entities,
+                candidateEdges: candidateEdges,
+                insight: rawText,
+                summary: rawText,
+                salienceScore: 0.74,
+                followUp: nil,
+                reflectionHint: nil
+            ),
+            affectProposals: [],
+            graphDeltaProposals: [],
+            profileUpdateProposals: [],
+            mergeSplitCandidates: [],
+            arcCandidates: [],
+            reflectionCandidates: [],
+            questionCandidates: [],
+            quality: .init(confidence: 0.7, uncertaintyReasons: [], needsUserCheck: [])
+        )
+    }
+
     func refineTranscript(_ payload: MoryAPIClient.TranscriptRefinementPayload) async throws -> MoryAPIClient.TranscriptRefinementResponse {
         throw WorkerTestError.unsupported
     }

@@ -45,6 +45,7 @@ Completed implementation areas:
 - Analyze v7 production replacement, bounded context payloads, native server proposal output, and debug request/response inspection.
 - BGTask registration, background URLSession infrastructure, silent-push handling, local/APNs notification routing, and notification policy tests.
 - Eval/debug coverage for context packs, affect correction recurrence, graph delta apply, merge recovery, BGTask scheduling, and notification routing.
+- v7.1 stabilization: production Analyze v7 graph persistence now merges analysis graph output with place resolution before persisting nodes, edges, links, and local arc/reflection evidence; composition tests are aligned to the v7 cloud path.
 
 Post-v7 production hardening remains separate from the v7 foundation:
 
