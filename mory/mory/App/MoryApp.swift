@@ -53,8 +53,12 @@ struct MoryApp: App {
         SentrySDK.start { options in
             options.dsn = "https://d624d4d4895392324795af6ca75d417f@o4511207272480768.ingest.us.sentry.io/4511413248524288"
             options.environment = runtimeEnvironment.buildChannel.rawValue
+            options.releaseName = "\(runtimeEnvironment.bundleIdentifier)@\(runtimeEnvironment.version)+\(runtimeEnvironment.buildNumber)"
+            options.dist = runtimeEnvironment.buildNumber
+            options.debug = runtimeEnvironment.distribution == .debug
 
             options.sendDefaultPii = false
+            options.enableAutoSessionTracking = true
 
             switch runtimeEnvironment.distribution {
             case .debug, .development:
@@ -78,6 +82,12 @@ struct MoryApp: App {
             }
 
             options.experimental.enableLogs = true
+        }
+
+        SentrySDK.configureScope { scope in
+            scope.setTag(value: runtimeEnvironment.bundleIdentifier, key: "bundle_identifier")
+            scope.setTag(value: runtimeEnvironment.distribution.rawValue, key: "distribution")
+            scope.setTag(value: runtimeEnvironment.buildChannel.rawValue, key: "build_channel")
         }
     }
 
