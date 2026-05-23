@@ -5,13 +5,15 @@ extension Notification.Name {
     static let pipelineDidComplete = Notification.Name("mory.pipelineDidComplete")
 }
 
-struct V7DualRunParameters {
+struct V7ProductionParameters {
     var cloudIntelligenceService: any CloudIntelligenceServing
     var contextPackBuilder: ContextPackBuilder
     var upsertAffectSnapshot: (AffectSnapshot) throws -> Void
     var upsertGraphDelta: (GraphDelta) throws -> Void
     var upsertReflection: (ReflectionSnapshot) throws -> Void
     var upsertClarificationQuestion: (ClarificationQuestion) throws -> Void
+    var upsertTemporalArc: (TemporalArc) throws -> Void
+    var setDebugTrace: @MainActor (DebugPipelineTraceSnapshot?) -> Void
     var save: () throws -> Void
 }
 
@@ -21,13 +23,12 @@ struct ArchitecturePipelineExecutor {
     private let candidateBuilder = TemporalArcCandidateBuilder()
     private let temporalArcService = TemporalArcService()
     private let arcQualityPolicy = ArcQualityPolicy()
-    private let reflectionQualityPolicy = ReflectionQualityPolicy()
 
     func run(
         record: RecordShell,
         artifacts: [Artifact],
         modelContext: ModelContext,
-        analysisService: any RecordAnalysisServing,
+        v7: V7ProductionParameters,
         upsertRecordAnalysis: @escaping (RecordAnalysisSnapshot) throws -> Void,
         upsertPlaceProfile: @escaping (PlaceProfile) throws -> Void,
         upsertEntityNode: @escaping (EntityNode) throws -> Void,
@@ -35,10 +36,9 @@ struct ArchitecturePipelineExecutor {
         upsertArtifactEntityLink: @escaping (ArtifactEntityLink) throws -> Void,
         upsertTemporalArc: @escaping (TemporalArc) throws -> Void,
         upsertReflection: @escaping (ReflectionSnapshot) throws -> Void,
-        save: @escaping () throws -> Void,
-        v7DualRun: V7DualRunParameters? = nil
+        save: @escaping () throws -> Void
     ) async throws {
-        // Step 1: Fetch known entities for context (limit to 20 most recent)
+        // Step 1: Fetch known entities for compact compatibility context.
         let activeRecordScope = QualityTuningRuntime.activeRecordScope
         let existingEntityNodes = try fetchExistingEntityNodes(modelContext: modelContext, recordScope: activeRecordScope)
         let knownEntities = existingEntityNodes
@@ -54,26 +54,69 @@ struct ArchitecturePipelineExecutor {
                 )
             }
 
-        // Step 2: Analyze the record (API call)
-        let analysis = try await analysisService.analyze(
+        // Step 2: Build a bounded v7 context pack and send the production Analyze v7 request.
+        let contextPack = try await v7.contextPackBuilder.build(targetRecordID: record.id)
+        let affectSnapshots = (try? v7.contextPackBuilder.repository.fetchAffectSnapshots(recordID: record.id, limit: 10)) ?? []
+        let payload = AnalyzeV7RequestBuilder().build(
             record: record,
             artifacts: artifacts,
-            knownEntities: Array(knownEntities)
+            knownEntities: Array(knownEntities),
+            contextPack: contextPack,
+            affectSnapshots: affectSnapshots
         )
+        let requestBody = String(data: (try? JSONEncoder().encode(payload)) ?? Data(), encoding: .utf8)
+        let envelope: AnalyzeV7ResponseEnvelope
+        do {
+            envelope = try await v7.cloudIntelligenceService.analyzeV7(payload)
+            let responseBody = String(data: (try? JSONEncoder().encode(envelope)) ?? Data(), encoding: .utf8)
+            let requestID: String?
+            if let debugging = v7.cloudIntelligenceService as? any CloudIntelligenceDebugging {
+                requestID = await debugging.latestCloudDebugRequestID()
+            } else {
+                requestID = payload.clientRequestID
+            }
+            v7.setDebugTrace(
+                DebugPipelineTraceSnapshot(
+                    requestID: requestID,
+                    requestBody: requestBody,
+                    responseBody: responseBody,
+                    rawErrorBody: nil,
+                    statusCode: 200,
+                    failedStage: nil
+                )
+            )
+        } catch {
+            let debugError: MoryAPIClient.DebugErrorSnapshot?
+            let requestID: String?
+            if let debugging = v7.cloudIntelligenceService as? any CloudIntelligenceDebugging {
+                debugError = await debugging.latestCloudDebugError()
+                requestID = await debugging.latestCloudDebugRequestID()
+            } else {
+                debugError = nil
+                requestID = payload.clientRequestID
+            }
+            v7.setDebugTrace(
+                DebugPipelineTraceSnapshot(
+                    requestID: debugError?.requestID ?? requestID,
+                    requestBody: requestBody,
+                    responseBody: debugError?.responseBody,
+                    rawErrorBody: debugError?.rawErrorBody,
+                    statusCode: debugError?.statusCode,
+                    failedStage: debugError?.failedStage ?? "analysis_v7"
+                )
+            )
+            throw error
+        }
+        let mapped = AnalyzeV7ResponseMapper().map(
+            recordID: record.id,
+            response: envelope,
+            createdAt: Date.now
+        )
+        let analysis = mapped.analysis
 
         // Step 3: Persist the record analysis snapshot
         try upsertRecordAnalysis(analysis)
         try save()
-
-        // Step 3b: V7 dual-run (optional, non-blocking — v6 result already persisted above)
-        if let v7 = v7DualRun {
-            await runV7DualRun(
-                record: record,
-                artifacts: artifacts,
-                knownEntities: Array(knownEntities),
-                params: v7
-            )
-        }
 
         // Step 4: Compute entity graph updates after analysis and before reflection.
         let graphUpdate = graphUpdater.apply(
@@ -92,14 +135,6 @@ struct ArchitecturePipelineExecutor {
             existingArtifactEntityLinks: graphUpdate.artifactEntityLinks,
             timestamp: analysis.createdAt
         )
-        let currentArtifactIDs = Set(artifacts.map(\.id))
-        let resolvedEntityIDs = mergeUniqueIDs(
-            graphUpdate.resolvedEntityIDs,
-            placeResolution.artifactEntityLinks
-                .filter { currentArtifactIDs.contains($0.artifactID) }
-                .map(\.entityID)
-        )
-
         // Step 5: Persist graph updates
         for profile in placeResolution.profiles {
             try upsertPlaceProfile(profile)
@@ -115,7 +150,26 @@ struct ArchitecturePipelineExecutor {
         }
         try save()
 
-        // Step 6: Build TemporalArcCandidates
+        // Step 6: Persist Analyze v7 proposals. Graph deltas remain staged unless
+        // explicitly applied by local policy/debug tooling.
+        for snapshot in mapped.affectProposals {
+            try v7.upsertAffectSnapshot(snapshot)
+        }
+        for delta in mapped.graphDeltaProposals {
+            try v7.upsertGraphDelta(delta)
+        }
+        for arc in mapped.arcProposals {
+            try v7.upsertTemporalArc(arc)
+        }
+        for reflection in mapped.reflectionProposals {
+            try v7.upsertReflection(reflection)
+        }
+        for question in mapped.questionProposals + mapped.mergeSplitQuestions {
+            try v7.upsertClarificationQuestion(question)
+        }
+        try v7.save()
+
+        // Step 7: Build deterministic local TemporalArcCandidates from the v7 analysis.
         let candidateRecords = try fetchExistingRecordShells(modelContext: modelContext, recordScope: activeRecordScope)
         let candidateAnalyses = try fetchExistingAnalyses(modelContext: modelContext, replacingWith: analysis, recordScope: activeRecordScope)
         let candidateArtifacts = try fetchExistingArtifacts(modelContext: modelContext, recordScope: activeRecordScope)
@@ -130,8 +184,7 @@ struct ArchitecturePipelineExecutor {
             maxCandidates: 3
         )
 
-        // Step 7: Accept candidate arcs via promoter
-        var acceptedArcs: [TemporalArc] = []
+        // Step 8: Accept local candidate arcs via promoter.
         for candidate in candidates {
             guard candidate.recordIDs.contains(record.id) else { continue }
             guard arcQualityPolicy.evaluate(candidate).passed else { continue }
@@ -144,87 +197,11 @@ struct ArchitecturePipelineExecutor {
             )
             try upsertTemporalArc(promotionResult.arc)
             try upsertReflection(promotionResult.reflection)
-            acceptedArcs.append(promotionResult.arc)
         }
         try save()
-
-        let reflectionGate = reflectionQualityPolicy.shouldRequestRecordReflection(
-            record: record,
-            artifacts: artifacts,
-            analysis: analysis
-        )
-        if reflectionGate.passed {
-            let reflectionResult = try await analysisService.generateReflection(
-                record: record,
-                artifacts: artifacts,
-                linkedArcID: acceptedArcs.first?.id,
-                knownEntities: Array(knownEntities),
-                prompt: analysis.reflectionHint
-            )
-            if reflectionQualityPolicy.shouldStoreRecordReflection(
-                reflectionResult,
-                record: record,
-                artifacts: artifacts,
-                analysis: analysis
-            ).passed {
-                let reflection = ReflectionSnapshot(
-                    type: .record,
-                    title: reflectionResult.title,
-                    body: reflectionResult.body,
-                    evidenceSummary: reflectionResult.evidenceSummary,
-                    confidence: reflectionResult.confidence,
-                    status: .suggested,
-                    linkedTemporalArcID: acceptedArcs.first?.id,
-                    sourceRecordIDs: [record.id],
-                    sourceArtifactIDs: artifacts.map(\.id),
-                    sourceEntityIDs: resolvedEntityIDs,
-                    createdAt: Date.now,
-                    savedAt: nil,
-                    dismissedAt: nil
-                )
-                try upsertReflection(reflection)
-            }
-        }
 
         // Step 9: Final save
         try save()
-    }
-
-    func runV7DualRun(
-        record: RecordShell,
-        artifacts: [Artifact],
-        knownEntities: [EntityReference],
-        params: V7DualRunParameters
-    ) async {
-        do {
-            let pack = try await params.contextPackBuilder.build(targetRecordID: record.id)
-            let snapshots = (try? params.contextPackBuilder.repository
-                .fetchAffectSnapshots(recordID: record.id, limit: 10)) ?? []
-            let payload = AnalyzeV7RequestBuilder().build(
-                record: record,
-                artifacts: artifacts,
-                knownEntities: knownEntities,
-                contextPack: pack,
-                affectSnapshots: snapshots
-            )
-            let envelope = try await params.cloudIntelligenceService.analyzeV7(payload)
-            let mapped = AnalyzeV7ResponseMapper().map(
-                recordID: record.id,
-                response: envelope,
-                createdAt: .now
-            )
-            for s in mapped.affectProposals { try params.upsertAffectSnapshot(s) }
-            for d in mapped.graphDeltaProposals { try params.upsertGraphDelta(d) }
-            for r in mapped.reflectionProposals { try params.upsertReflection(r) }
-            for q in mapped.questionProposals + mapped.mergeSplitQuestions {
-                try params.upsertClarificationQuestion(q)
-            }
-            try params.save()
-        } catch {
-            #if DEBUG
-            print("[V7DualRun] record \(record.id): \(error)")
-            #endif
-        }
     }
 
     private func fetchExistingRecordShells(modelContext: ModelContext, recordScope: Set<UUID>?) throws -> [RecordShell] {
@@ -302,13 +279,4 @@ struct ArchitecturePipelineExecutor {
         }
     }
 
-    private func mergeUniqueIDs(_ lhs: [UUID], _ rhs: [UUID]) -> [UUID] {
-        var seen = Set<UUID>()
-        var result: [UUID] = []
-        for id in lhs + rhs where !seen.contains(id) {
-            seen.insert(id)
-            result.append(id)
-        }
-        return result
-    }
 }

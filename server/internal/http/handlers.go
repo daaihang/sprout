@@ -434,9 +434,8 @@ func (s *Server) handleAnalyzeV7(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	providerReq := req.ToAnalyzeRequest()
 	start := time.Now()
-	result, err := s.aiProvider.Analyze(r.Context(), providerReq, user)
+	result, err := s.aiProvider.AnalyzeV7(r.Context(), req, user)
 	s.recordAI("analyze_v7", result.Provider, result.Usage, time.Since(start), err)
 	if err != nil {
 		writeAIProviderError(w, r, "analysis v7 request failed", err)
@@ -444,7 +443,7 @@ func (s *Server) handleAnalyzeV7(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, analyzeV7ResponseEnvelope{
-		AnalyzeV7Response: ai.BuildAnalyzeV7Response(req, result.Response),
+		AnalyzeV7Response: result.Response,
 		Meta: analyzeMeta{
 			Provider:      result.Provider,
 			Model:         result.Model,

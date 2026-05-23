@@ -144,10 +144,10 @@ The gaps above were the implementation source of truth for v7. As of v7 foundati
 
 | Area | Status | Boundary |
 | --- | --- | --- |
-| Self profile and context pack | ✅ complete | production Analyze replacement remains post-v7 |
+| Self profile and context pack | ✅ complete | consumed by the production Analyze v7 path for new memories |
 | Entity resolution and correction | ✅ complete | user-facing UI polish remains later |
 | Person merge/split and portrait jobs | ✅ complete | cloud AI portrait proposals remain later |
 | Structured affect and tone correction | ✅ complete | real Journaling Suggestions entitlement/picker remains later |
-| Analyze v7 contract | ✅ complete | debug dual-run and proposal staging implemented; full production rollout remains later |
+| Analyze v7 contract | ✅ complete | production new-memory pipeline uses `/api/analyze/v7`; legacy Analyze is no longer the main path |
 | BGTask/background URLSession/APNs routing | ✅ complete | real-device soak and telemetry remain later |
 | Eval/debug/privacy gate | ✅ complete | real-user notification quality dashboard and public release privacy audit remain post-v7 production hardening |

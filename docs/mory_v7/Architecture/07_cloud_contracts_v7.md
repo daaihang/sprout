@@ -129,13 +129,13 @@ Response quality flags:
 
 ## 8. Migration
 
-Migration path:
+Production path:
 
-1. keep legacy `/api/analyze`,
-2. add `/api/analyze/v7`,
-3. add iOS feature flag,
-4. compare output in debug dual-run,
-5. ship v7 contract for new analyses,
+1. keep legacy `/api/analyze` only for non-production diagnostics until later cleanup,
+2. route new-memory analysis through `/api/analyze/v7`,
+3. build a bounded `AnalysisContextPack` before every production request,
+4. require provider-native v7 output with analysis plus proposal arrays,
+5. persist v7 proposals locally through policy/staging instead of direct trusted graph mutation,
 6. backfill only selected records where useful.
 
 ## 9. Acceptance Criteria
@@ -144,4 +144,4 @@ Migration path:
 - Server never requires full local database.
 - All AI-created durable updates arrive as proposals.
 - v7 response maps cleanly into `GraphDeltaV2`.
-- Legacy Analyze still works while v7 flag is off.
+- New-memory production analysis does not depend on the legacy Analyze flag or legacy request builder.

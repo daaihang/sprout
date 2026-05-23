@@ -21,6 +21,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     private let clarificationQuestionBuilder = ClarificationQuestionBuilder()
     private let graphDeltaApplier = GraphDeltaApplier()
     private let affectSnapshotMapper = AffectSnapshotMapper()
+    private var latestAnalysisTrace: DebugPipelineTraceSnapshot?
     private var latestReflectionTrace: DebugPipelineTraceSnapshot?
 
     init(
@@ -362,7 +363,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             } catch {
                 try markLatestPostAnalysisJobFailed(recordID: recordID, error: error)
             }
-            let trace = await analysisService.latestDebugTrace()
+            let trace = latestAnalysisTrace
             let completedAt = Date.now
             try upsertPipelineStatus(
                 MemoryPipelineStatusSnapshot(
@@ -394,7 +395,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
                 userInfo: ["recordID": recordID]
             )
         } catch {
-            let trace = await analysisService.latestDebugTrace()
+            let trace = latestAnalysisTrace
             let failedAt = Date.now
             try upsertPipelineStatus(
                 MemoryPipelineStatusSnapshot(
@@ -4792,26 +4793,26 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     }
 
     private func runArchitecturePipeline(record: RecordShell, artifacts: [Artifact]) async throws {
-        let v7: V7DualRunParameters?
-        if let svc = cloudIntelligenceService,
-           (try? fetchV6FeatureFlags().analyzeV7DualRun) == true {
-            v7 = V7DualRunParameters(
-                cloudIntelligenceService: svc,
-                contextPackBuilder: ContextPackBuilder(repository: self),
-                upsertAffectSnapshot: upsert(affectSnapshot:),
-                upsertGraphDelta: upsert(graphDelta:),
-                upsertReflection: upsert(reflection:),
-                upsertClarificationQuestion: upsert(clarificationQuestion:),
-                save: save
-            )
-        } else {
-            v7 = nil
+        guard let cloudIntelligenceService else {
+            throw CloudIntelligenceContractError.analyzeV7Unavailable
         }
+        latestAnalysisTrace = nil
+        let v7 = V7ProductionParameters(
+            cloudIntelligenceService: cloudIntelligenceService,
+            contextPackBuilder: ContextPackBuilder(repository: self),
+            upsertAffectSnapshot: upsert(affectSnapshot:),
+            upsertGraphDelta: upsert(graphDelta:),
+            upsertReflection: upsert(reflection:),
+            upsertClarificationQuestion: upsert(clarificationQuestion:),
+            upsertTemporalArc: upsert(temporalArc:),
+            setDebugTrace: { [weak self] trace in self?.latestAnalysisTrace = trace },
+            save: save
+        )
         try await architecturePipelineExecutor.run(
             record: record,
             artifacts: artifacts,
             modelContext: modelContext,
-            analysisService: analysisService,
+            v7: v7,
             upsertRecordAnalysis: upsert(recordAnalysis:),
             upsertPlaceProfile: upsert(placeProfile:),
             upsertEntityNode: upsert(entityNode:),
@@ -4819,8 +4820,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             upsertArtifactEntityLink: upsert(artifactEntityLink:),
             upsertTemporalArc: upsert(temporalArc:),
             upsertReflection: upsert(reflection:),
-            save: save,
-            v7DualRun: v7
+            save: save
         )
     }
 

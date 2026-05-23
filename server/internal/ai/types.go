@@ -12,6 +12,7 @@ var ErrInvalidAnalyzeRequest = errors.New("invalid analyze request")
 type Provider interface {
 	Name() string
 	Analyze(ctx context.Context, req AnalyzeRequest, user UserContext) (AnalyzeResult, error)
+	AnalyzeV7(ctx context.Context, req AnalyzeV7Request, user UserContext) (AnalyzeV7Result, error)
 	GenerateReflection(ctx context.Context, req ReflectionRequest, user UserContext) (ReflectionResult, error)
 	ReplayReflection(ctx context.Context, req ReflectionRequest, user UserContext) (ReflectionResult, error)
 	RefineTranscript(ctx context.Context, req TranscriptRefinementRequest, user UserContext) (TranscriptRefinementResult, error)
@@ -119,6 +120,13 @@ type AnalyzeResult struct {
 	Provider string          `json:"provider"`
 	Model    string          `json:"model"`
 	Usage    Usage           `json:"usage"`
+}
+
+type AnalyzeV7Result struct {
+	Response AnalyzeV7Response `json:"response"`
+	Provider string            `json:"provider"`
+	Model    string            `json:"model"`
+	Usage    Usage             `json:"usage"`
 }
 
 type ReflectionRequest struct {

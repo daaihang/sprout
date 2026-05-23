@@ -165,10 +165,13 @@
         }
       }
     },
-    "Analyze v7 response" : {
+    "Analyze v7 is now the production pipeline; legacy Analyze controls are deprecated." : {
 
     },
-    "analyzeV7DualRun" : {
+    "Analyze v7 is the production memory analysis path. This debug view inspects the context pack, request payload, response proposals, and mapper output used by that path." : {
+
+    },
+    "Analyze v7 response" : {
 
     },
     "Answer: %@" : {
@@ -15616,9 +15619,6 @@
       }
     },
     "Phase 3 uses local deterministic refresh. Cloud portrait proposals are part of the v7 Analyze contract phase." : {
-
-    },
-    "Phase 5 keeps production Analyze unchanged. This debug view builds the v7 request from local context and can send /api/analyze/v7 for side-by-side contract validation." : {
 
     },
     "Photo labels" : {

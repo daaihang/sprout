@@ -77,7 +77,7 @@ Each Phase PR must update:
 | Phase 2 | identity correction and person merge/split work at repository level |
 | Phase 3 | person profile portrait job produces evidence-backed proposals |
 | Phase 4 | affect snapshot and Journaling evidence are persisted |
-| Phase 5 | Analyze v7 dual-run maps proposals safely |
+| Phase 5 | production new-memory pipeline uses Analyze v7 context pack and persists proposals safely |
 | Phase 6 | background/notification loop has policy, writeback, and debug traces |
 | Phase 7 | eval fixtures, debug surfaces, and privacy/budget gates can measure regressions before production rollout |
 

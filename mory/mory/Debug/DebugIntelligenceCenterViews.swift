@@ -108,7 +108,9 @@ struct DebugV6ControlsView: View {
                     Toggle("cloudQuestionSuggestions", isOn: flagBoolBinding(\.cloudQuestionSuggestions))
                     Toggle("cloudChapterSuggestions", isOn: flagBoolBinding(\.cloudChapterSuggestions))
                     Toggle("multimediaViews", isOn: flagBoolBinding(\.multimediaViews))
-                    Toggle("analyzeV7DualRun", isOn: flagBoolBinding(\.analyzeV7DualRun))
+                    Text("Analyze v7 is now the production pipeline; legacy Analyze controls are deprecated.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 } else {
                     DebugCenterProgressRow(text: "Loading V6 flags")
                 }

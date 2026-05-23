@@ -41,16 +41,15 @@ Completed implementation areas:
 - Entity resolution, correction events, not-same blocking, and person merge/split mutation.
 - Person profile persistence, evidence-backed portrait refresh, and profile mutation actions.
 - Structured affect snapshots, affect corrections, tone hints, and Journaling suggestion draft mapping.
-- Analyze v7 request/response contracts, bounded context payloads, and debug dual-run proposal staging.
+- Analyze v7 production replacement, bounded context payloads, native server proposal output, and debug request/response inspection.
 - BGTask registration, background URLSession infrastructure, silent-push handling, local/APNs notification routing, and notification policy tests.
 - Eval/debug coverage for context packs, affect correction recurrence, graph delta apply, merge recovery, BGTask scheduling, and notification routing.
 
 Post-v7 production hardening remains separate from the v7 foundation:
 
-- production replacement of legacy Analyze,
 - real Apple Journaling Suggestions entitlement and picker UX,
 - App Intents / Share extension capture surfaces,
-- real-device APNs telemetry,
+- real-device APNs/background telemetry and soak testing,
 - public release privacy review with real user data handling.
 
 ## 4. Document Map

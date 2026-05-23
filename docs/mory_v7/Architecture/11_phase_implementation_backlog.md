@@ -59,8 +59,7 @@ Completion evidence:
 - `SelfReferenceResolver`, `AnalysisContextPack`, `ContextPackBuilder`, `ContextRanker`, `ContextBudgeter`, and `PrivacyGate` are implemented as Phase 1 local runtime services.
 - Debug Center includes an `Analysis Context Pack` viewer for latest-memory pack inspection.
 - Phase 1 tests cover self-reference, repository roundtrip, ranking, privacy drop, semantic-disabled fallback, and budget cap behavior.
-- Analyze payload and cloud contracts remain unchanged in Phase 1; the context pack is inspectable locally, not part of the production analysis path.
-- v7 cloud consumption starts in Phase 5 through the debug dual-run contract; production replacement of legacy Analyze remains later work.
+- Analyze payload and cloud contracts remained unchanged in Phase 1; the context pack became inspectable locally first and is consumed by production Analyze v7 as of Phase 5 production replacement.
 
 ## Phase 2: Entity Resolution + GraphDelta v2
 
@@ -128,7 +127,7 @@ Completion evidence:
 - deleting source memories invalidates stale person profile evidence and removes profiles that no longer have sources unless the user has explicitly retained or edited them.
 - Debug Center includes a data-only `Person Profiles` inspector with refresh and cloud-safe brief inspection.
 - sensitive and cloud-hidden profiles are redacted by `PersonProfileContextBrief` before future cloud context usage.
-- Cloud AI portrait proposals, Analyze v7 payload consumption, and formal polished profile UI remain out of scope for Phase 3 and start in Phase 5 / later UI passes.
+- Cloud AI portrait proposals and formal polished profile UI remain outside Phase 3; Analyze v7 payload consumption is implemented in Phase 5.
 
 ## Phase 4: Structured Mood + Context Sources
 
@@ -163,7 +162,7 @@ Completion evidence:
 - `AnalysisContextPackBuilder` now prefers structured affect history and falls back to legacy mood text when no snapshot exists.
 - `JournalingSuggestionContextService` converts user-selected suggestion drafts into normal memory capture drafts and maps `StateOfMind` as affect evidence.
 - Debug Center includes a data-only `Affect Snapshots` inspector for persisted affect, correction events, and Journaling Suggestions fallback state.
-- Apple Journaling Suggestions entitlement, real system picker UI, App Intents, Share extension, and cloud Analyze consumption remain out of scope for Phase 4 and continue in Phase 5/6 or later UI passes.
+- Apple Journaling Suggestions entitlement, real system picker UI, App Intents, and Share extension remain outside Phase 4 and continue as post-v7 product/platform work. Cloud Analyze consumption is implemented in Phase 5.
 
 ## Phase 5: Analyze v7 Contract + Context-Aware Reflection
 
@@ -176,12 +175,12 @@ Deliverables:
 - `/api/analyze/v7`,
 - v7 request/response models,
 - proposal-first response mapper,
-- context-aware reflection contract,
-- dual-run debug mode.
+- context-aware reflection/proposal contract,
+- production v7 request/response debug traces.
 
 Tests:
 
-- legacy Analyze compatibility,
+- production cutover away from legacy Analyze,
 - proposal mapping,
 - low-context uncertainty flags,
 - privacy redaction in payload,
@@ -190,8 +189,9 @@ Tests:
 Completion evidence:
 
 - iOS has `AnalyzeV7RequestPayload`, `AnalyzeV7ResponseEnvelope`, and `AnalyzeV7ResponseMapper` for bounded context-pack and structured mood transport.
-- iOS cloud client can call `/api/analyze/v7` through a debug-only dual-run path; production legacy Analyze remains unchanged.
-- Server exposes `/api/analyze/v7`, validates schema version 7, forwards context evidence into the provider prompt, and wraps results as proposal-first v7 output.
+- iOS new-memory analysis builds an `AnalysisContextPack`, sends `/api/analyze/v7`, treats the mapped v7 analysis as authoritative, and no longer calls legacy `analysisService.analyze(...)` in the production pipeline.
+- Server exposes `/api/analyze/v7`, validates schema version 7, forwards context evidence into a provider-native v7 prompt/parser path, and returns analysis plus proposal-first v7 output.
+- v7 proposals are persisted locally through policy/staging boundaries: affect snapshots, graph deltas, arc candidates, reflection candidates, and question candidates.
 - v7 quality flags identify thin context, insufficient longitudinal evidence, privacy redaction, missing structured mood evidence, and tone checks.
 - Contract tests cover request payload privacy/budget contents, proposal mapping, low-context decode behavior, and server route metadata.
 
@@ -265,11 +265,11 @@ Completion evidence:
 | Phase | Current status | Gap |
 | --- | --- | --- |
 | Phase 0 | completed | docs/gap matrix completed; implementation starts at Phase 1 |
-| Phase 1 | completed | local SelfProfile persistence and inspectable context pack skeleton are implemented for debug/local inspection; production Analyze does not consume it yet |
+| Phase 1 | completed | local SelfProfile persistence and inspectable context pack skeleton are implemented; production Analyze v7 consumes the context pack as of Phase 5 |
 | Phase 2 | completed | entity resolution foundation, correction ledger, and person merge/split mutation are implemented; proposal consumption and cloud-context integration continue in Phase 5 |
 | Phase 3 | completed | local PersonProfile persistence, deterministic portrait refresh jobs, mutation actions, evidence invalidation, and debug inspection are implemented; cloud AI portrait proposals remain Phase 5 |
 | Phase 4 | completed | local structured affect persistence, correction events, context-pack affect history, and Journaling suggestion draft mapping are implemented; real Apple picker entitlement/App Intents/Share extension remain later phases |
-| Phase 5 | completed | Analyze v7 contract and debug dual-run are implemented; production proposal consumption and replacement of legacy Analyze remain later work |
+| Phase 5 | completed | production new-memory analysis is hard-cut over to Analyze v7 with context pack payloads, native server proposal output, local proposal persistence, and no legacy Analyze fallback |
 | Phase 6 | completed | BGTask (BGProcessingTask + BGAppRefreshTask) + BackgroundURLSession + NotificationDeliveryRouter + silent push handler implemented; tests in BackgroundTaskCoordinatorTests + NotificationDeliveryRouterTests |
 | Phase 7 | completed | eval fixtures, debug surfaces, privacy/budget gates, graph-delta apply inspection, clarification question inspection, BGTask/router tests, affect correction eval, and docs/code status reconciliation are complete; real-user telemetry and public release privacy review are post-v7 production hardening |
 
@@ -277,7 +277,6 @@ Completion evidence:
 
 These items are intentionally outside the v7 foundation completion gate:
 
-- replace legacy Analyze in production instead of debug dual-run only,
 - run real-device APNs and background execution soak tests,
 - add real-user notification quality telemetry once there are users,
 - complete public release privacy review and App Store capability checks,

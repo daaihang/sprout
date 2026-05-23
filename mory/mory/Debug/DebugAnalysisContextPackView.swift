@@ -42,7 +42,7 @@ struct DebugAnalysisContextPackView: View {
             } header: {
                 Text("Actions")
             } footer: {
-                Text("Phase 5 keeps production Analyze unchanged. This debug view builds the v7 request from local context and can send /api/analyze/v7 for side-by-side contract validation.")
+                Text("Analyze v7 is the production memory analysis path. This debug view inspects the context pack, request payload, response proposals, and mapper output used by that path.")
             }
 
             if let pack {

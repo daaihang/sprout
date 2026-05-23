@@ -136,13 +136,13 @@ func (p *MockProvider) Analyze(_ context.Context, req AnalyzeRequest, user UserC
 	intensity := 2.0
 	confidence := 0.84
 	resp := NormalizeResponse(AnalyzeResponse{
-		Tags:     tags,
-		Emotion:  EmotionResult{Label: emotionLabel, Intensity: &intensity, Confidence: &confidence},
-		Entities: entities,
-		Edges:    edges,
-		Insight:  insight,
-		Summary:  summary,
-		SalienceScore: &salienceScore,
+		Tags:           tags,
+		Emotion:        EmotionResult{Label: emotionLabel, Intensity: &intensity, Confidence: &confidence},
+		Entities:       entities,
+		Edges:          edges,
+		Insight:        insight,
+		Summary:        summary,
+		SalienceScore:  &salienceScore,
 		RetrievalTerms: uniqueStrings(retrievalTerms),
 		ReflectionHint: reflectionHint,
 		FollowUp: &FollowUp{
@@ -159,6 +159,26 @@ func (p *MockProvider) Analyze(_ context.Context, req AnalyzeRequest, user UserC
 	}, nil
 }
 
+func (p *MockProvider) AnalyzeV7(ctx context.Context, req AnalyzeV7Request, user UserContext) (AnalyzeV7Result, error) {
+	if err := req.Validate(); err != nil {
+		return AnalyzeV7Result{}, err
+	}
+	legacy, err := p.Analyze(ctx, req.ToAnalyzeRequest(), user)
+	if err != nil {
+		return AnalyzeV7Result{}, err
+	}
+	response := BuildAnalyzeV7Response(req, legacy.Response)
+	return AnalyzeV7Result{
+		Response: response,
+		Provider: p.Name(),
+		Model:    "mock-analyzer-v7",
+		Usage: Usage{
+			InputTokens:  legacy.Usage.InputTokens + len(req.ContextPack.RelatedMemories)*16,
+			OutputTokens: legacy.Usage.OutputTokens + len(response.AffectProposals)*16 + len(response.ReflectionCandidates)*24,
+		},
+	}, nil
+}
+
 func (p *MockProvider) GenerateReflection(_ context.Context, req ReflectionRequest, user UserContext) (ReflectionResult, error) {
 	body := strings.TrimSpace(req.Prompt)
 	if body == "" {
@@ -168,10 +188,10 @@ func (p *MockProvider) GenerateReflection(_ context.Context, req ReflectionReque
 		body = "A reflection candidate."
 	}
 	resp := ReflectionResponse{
-		Title:          "Reflection Candidate",
-		Body:           body,
+		Title:           "Reflection Candidate",
+		Body:            body,
 		EvidenceSummary: strings.TrimSpace(strings.Join([]string{req.RecordShell.RawText, strings.Join(extractArtifactSummaries(req.Artifacts), " | ")}, " | ")),
-		Confidence:     0.61,
+		Confidence:      0.61,
 		SourceRecordIDs: nonEmptyStrings([]string{req.RecordShell.ID}),
 	}
 	return ReflectionResult{
@@ -191,10 +211,10 @@ func (p *MockProvider) ReplayReflection(_ context.Context, req ReflectionRequest
 		body = "Reflection replay."
 	}
 	resp := ReflectionResponse{
-		Title:          "Reflection Replay",
-		Body:           body,
+		Title:           "Reflection Replay",
+		Body:            body,
 		EvidenceSummary: strings.TrimSpace(strings.Join(extractArtifactSummaries(req.Artifacts), " | ")),
-		Confidence:     0.58,
+		Confidence:      0.58,
 		SourceRecordIDs: nonEmptyStrings([]string{req.RecordShell.ID}),
 	}
 	return ReflectionResult{
@@ -284,7 +304,7 @@ func (p *MockProvider) SuggestQuestions(_ context.Context, req QuestionSuggestio
 			Reason:           reason,
 			CandidateAnswers: answers,
 			Confidence:       0.72,
-			Sensitivity:       "normal",
+			Sensitivity:      "normal",
 		}},
 	}
 	return QuestionSuggestionResult{

@@ -294,7 +294,7 @@ func (r AnalyzeV7Request) ToAnalyzeRequest() AnalyzeRequest {
 func BuildAnalyzeV7Response(req AnalyzeV7Request, analysis AnalyzeResponse) AnalyzeV7Response {
 	analysis = NormalizeResponse(analysis)
 	quality := buildAnalyzeV7Quality(req, analysis)
-	return AnalyzeV7Response{
+	return NormalizeAnalyzeV7Response(AnalyzeV7Response{
 		Analysis:               analysis,
 		AffectProposals:        buildAnalyzeV7AffectProposals(req, analysis, quality),
 		GraphDeltaProposals:    []AnalyzeV7GraphDeltaProposal{},
@@ -304,7 +304,7 @@ func BuildAnalyzeV7Response(req AnalyzeV7Request, analysis AnalyzeResponse) Anal
 		ReflectionCandidates:   buildAnalyzeV7ReflectionCandidates(req, analysis, quality),
 		QuestionCandidates:     buildAnalyzeV7QuestionCandidates(req, analysis, quality),
 		Quality:                quality,
-	}
+	})
 }
 
 func buildAnalyzeV7Quality(req AnalyzeV7Request, analysis AnalyzeResponse) AnalyzeV7Quality {

@@ -761,6 +761,7 @@ struct AnalyzeV7MappedResult: Sendable {
     var analysis: RecordAnalysisSnapshot
     var affectProposals: [AffectSnapshot]
     var graphDeltaProposals: [GraphDelta]
+    var arcProposals: [TemporalArc]
     var reflectionProposals: [ReflectionSnapshot]
     var questionProposals: [ClarificationQuestion]
     var mergeSplitQuestions: [ClarificationQuestion]
@@ -776,6 +777,7 @@ struct AnalyzeV7ResponseMapper {
             affectProposals: mapAffectProposals(recordID: recordID, response.affectProposals, createdAt: createdAt),
             graphDeltaProposals: mapGraphDeltaProposals(response.graphDeltaProposals, createdAt: createdAt)
                 + mapProfileUpdateProposals(response.profileUpdateProposals, createdAt: createdAt),
+            arcProposals: mapArcCandidates(response.arcCandidates, createdAt: createdAt),
             reflectionProposals: mapReflectionCandidates(response.reflectionCandidates, createdAt: createdAt),
             questionProposals: mapQuestionCandidates(recordID: recordID, response.questionCandidates, createdAt: createdAt),
             mergeSplitQuestions: mapMergeSplitCandidates(recordID: recordID, response.mergeSplitCandidates, createdAt: createdAt),
@@ -904,6 +906,31 @@ struct AnalyzeV7ResponseMapper {
                 sourceArtifactIDs: candidate.sourceArtifactIDs.compactMap(UUID.init(uuidString:)),
                 sourceEntityIDs: candidate.sourceEntityIDs.compactMap(UUID.init(uuidString:)),
                 createdAt: createdAt
+            )
+        }
+    }
+
+    private func mapArcCandidates(
+        _ candidates: [AnalyzeV7ResponseEnvelope.ArcCandidate],
+        createdAt: Date
+    ) -> [TemporalArc] {
+        candidates.compactMap { candidate in
+            let sourceRecordIDs = candidate.sourceRecordIDs.compactMap(UUID.init(uuidString:))
+            guard !sourceRecordIDs.isEmpty else { return nil }
+            return TemporalArc(
+                id: candidate.candidateID.flatMap(UUID.init(uuidString:)) ?? UUID(),
+                title: candidate.title,
+                summary: candidate.summary,
+                status: .candidate,
+                sourceRecordIDs: sourceRecordIDs,
+                sourceArtifactIDs: [],
+                sourceEntityIDs: [],
+                startDate: createdAt,
+                endDate: createdAt,
+                intensityScore: candidate.confidence ?? 0,
+                clusterStrength: candidate.confidence ?? 0,
+                createdAt: createdAt,
+                updatedAt: createdAt
             )
         }
     }
