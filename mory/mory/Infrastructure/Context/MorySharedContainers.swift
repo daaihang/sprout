@@ -14,6 +14,20 @@ enum MorySharedContainers {
 }
 
 struct ExternalCaptureAttachmentFileStore: Sendable {
+    func saveData(_ data: Data, preferredFilename: String) throws -> String {
+        guard let directory = Self.attachmentDirectoryURL() else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let sanitized = preferredFilename
+            .replacingOccurrences(of: "/", with: "-")
+            .replacingOccurrences(of: ":", with: "-")
+        let filename = "\(UUID().uuidString)-\(sanitized)"
+        let url = directory.appendingPathComponent(filename, isDirectory: false)
+        try data.write(to: url, options: .atomic)
+        return filename
+    }
+
     func loadData(storedFileName: String) throws -> Data? {
         guard let directory = Self.attachmentDirectoryURL() else { return nil }
         let url = directory.appendingPathComponent(storedFileName, isDirectory: false)

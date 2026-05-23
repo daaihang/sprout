@@ -11,6 +11,7 @@ enum ExternalCaptureSourceKind: String, Codable {
 
 enum ExternalCaptureAttachmentKind: String, Codable {
     case image
+    case video
 }
 
 struct ExternalCaptureAttachmentDraft: Identifiable, Codable {
@@ -28,6 +29,7 @@ struct ExternalCaptureRequest: Codable {
     var text: String
     var url: String?
     var context: String?
+    var errorMessage: String? = nil
     var affectDrafts: [String] = []
     var attachments: [ExternalCaptureAttachmentDraft] = []
 }
@@ -83,12 +85,27 @@ struct ExternalCaptureInboxWriter {
                 : String(request.text.prefix(160)),
             payloadData: payloadData,
             receivedAt: receivedAt,
-            updatedAt: receivedAt
+            updatedAt: receivedAt,
+            errorMessage: request.errorMessage
         )
         var items = try loadItems()
         items.append(item)
         try saveItems(items)
         return item
+    }
+
+    func markLaunchFailed(itemID: UUID, reason: String, updatedAt: Date = .now) throws {
+        var items = try loadItems()
+        guard let index = items.firstIndex(where: { $0.id == itemID }) else { return }
+        items[index].errorMessage = [
+            items[index].errorMessage,
+            reason
+        ]
+        .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+        .filter { !$0.isEmpty }
+        .joined(separator: "\n")
+        items[index].updatedAt = updatedAt
+        try saveItems(items)
     }
 
     private func loadItems() throws -> [ExternalCaptureInboxItem] {
@@ -113,7 +130,7 @@ struct ExternalCaptureInboxWriter {
 }
 
 struct ExternalCaptureAttachmentFileStore {
-    func saveImage(data: Data, preferredFilename: String) throws -> String {
+    func saveData(_ data: Data, preferredFilename: String) throws -> String {
         guard let container = FileManager.default.containerURL(
             forSecurityApplicationGroupIdentifier: MorySharedContainers.appGroupIdentifier
         ) else {
@@ -131,5 +148,9 @@ struct ExternalCaptureAttachmentFileStore {
         let url = directory.appendingPathComponent(filename, isDirectory: false)
         try data.write(to: url, options: .atomic)
         return filename
+    }
+
+    func saveImage(data: Data, preferredFilename: String) throws -> String {
+        try saveData(data, preferredFilename: preferredFilename)
     }
 }

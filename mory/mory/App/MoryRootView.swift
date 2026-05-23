@@ -5,6 +5,7 @@ import UIKit
 struct MoryRootView: View {
     let authManager: AuthSessionManager?
     let runtimeEnvironment: AppRuntimeEnvironment
+    @Binding private var pendingExternalCaptureURL: URL?
 
     @Environment(\.memoryRepository) private var memoryRepository
     @Environment(\.cloudIntelligenceService) private var cloudIntelligenceService
@@ -29,10 +30,12 @@ struct MoryRootView: View {
 
     init(
         authManager: AuthSessionManager? = nil,
-        runtimeEnvironment: AppRuntimeEnvironment = .current
+        runtimeEnvironment: AppRuntimeEnvironment = .current,
+        pendingExternalCaptureURL: Binding<URL?> = .constant(nil)
     ) {
         self.authManager = authManager
         self.runtimeEnvironment = runtimeEnvironment
+        self._pendingExternalCaptureURL = pendingExternalCaptureURL
     }
 
     var body: some View {
@@ -140,11 +143,35 @@ struct MoryRootView: View {
         }
         .task {
             await recoverStartupIntelligenceIfNeeded()
+            await handlePendingExternalCaptureURLIfNeeded()
+        }
+        .onOpenURL { url in
+            pendingExternalCaptureURL = url
+            Task { await handlePendingExternalCaptureURLIfNeeded() }
+        }
+        .onChange(of: pendingExternalCaptureURL) { _, _ in
+            Task { await handlePendingExternalCaptureURLIfNeeded() }
         }
         .onChange(of: selectedTab) { _, tab in
             if tab != .today {
                 isEditingHomeBoard = false
             }
+        }
+    }
+
+    @MainActor
+    private func handlePendingExternalCaptureURLIfNeeded() async {
+        guard let url = pendingExternalCaptureURL, let deepLink = ExternalCaptureDeepLink(url: url) else { return }
+        pendingExternalCaptureURL = nil
+        do {
+            guard let item = try memoryRepository.fetchExternalCaptureInbox(status: nil, limit: nil).first(where: { $0.id == deepLink.itemID }) else {
+                return
+            }
+            let draft = try ExternalCaptureInboxCodec().makeDraft(from: item)
+            unifiedCaptureSeed = .externalDraft(draft, inboxItemID: item.id)
+            selectedTab = .memories
+        } catch {
+            return
         }
     }
 

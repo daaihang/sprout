@@ -251,6 +251,9 @@
         }
       }
     },
+    "Apple Picker" : {
+
+    },
     "applied" : {
       "localizations" : {
         "zh-Hans" : {
@@ -684,6 +687,9 @@
     "Background Tasks" : {
 
     },
+    "Blocked" : {
+
+    },
     "Body" : {
 
     },
@@ -728,6 +734,9 @@
           }
         }
       }
+    },
+    "Capability Checks" : {
+
     },
     "Caption hint" : {
       "localizations" : {
@@ -11522,6 +11531,9 @@
         }
       }
     },
+    "Dismissed" : {
+
+    },
     "Dismissed (%lld)" : {
 
     },
@@ -12388,6 +12400,9 @@
         }
       }
     },
+    "Generated" : {
+
+    },
     "Generating map" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -12969,6 +12984,9 @@
 
     },
     "Importance" : {
+
+    },
+    "Imported" : {
 
     },
     "Input" : {
@@ -13627,6 +13645,9 @@
         }
       }
     },
+    "Load Diagnostics" : {
+
+    },
     "Load server worker metrics" : {
       "localizations" : {
         "zh-Hans" : {
@@ -13759,6 +13780,12 @@
 
     },
     "Manage People Merge/Split" : {
+
+    },
+    "Manual checks" : {
+
+    },
+    "Manual Device Checklist" : {
 
     },
     "Map snapshots are static images. Cards fall back to a lightweight map texture when no snapshot is available." : {
@@ -15160,6 +15187,9 @@
     "No privacy decisions" : {
 
     },
+    "No rejected graph deltas." : {
+
+    },
     "No related memories" : {
 
     },
@@ -15465,6 +15495,9 @@
         }
       }
     },
+    "Open Apple Picker" : {
+
+    },
     "Optional note" : {
 
     },
@@ -15540,6 +15573,9 @@
 
     },
     "pending" : {
+
+    },
+    "Pending" : {
 
     },
     "Pending (%lld)" : {
@@ -16019,6 +16055,12 @@
           }
         }
       }
+    },
+    "Platform Capture" : {
+
+    },
+    "Platform Capture Diagnostics" : {
+
     },
     "Playback" : {
       "localizations" : {
@@ -17463,6 +17505,9 @@
         }
       }
     },
+    "Ready" : {
+
+    },
     "Reason" : {
 
     },
@@ -17923,6 +17968,12 @@
         }
       }
     },
+    "Reject" : {
+
+    },
+    "Rejected" : {
+
+    },
     "Related" : {
       "localizations" : {
         "zh-Hans" : {
@@ -17947,6 +17998,9 @@
       }
     },
     "Reload affect snapshots" : {
+
+    },
+    "Reload platform capture diagnostics" : {
 
     },
     "Remote intents" : {
@@ -18679,6 +18733,9 @@
       }
     },
     "Seed journaling StateOfMind draft" : {
+
+    },
+    "Seed Share-style Test Item" : {
 
     },
     "Select a primary person to choose merge candidates." : {
@@ -21716,6 +21773,9 @@
         }
       }
     },
+    "Undo reject" : {
+
+    },
     "Unpin" : {
       "localizations" : {
         "zh-Hans" : {
@@ -21862,6 +21922,9 @@
     "Voice refinement" : {
 
     },
+    "Warning" : {
+
+    },
     "Weather cards keep kind=weather. Origin remains debug data; production cards hide source labels." : {
       "localizations" : {
         "zh-Hans" : {
@@ -21883,6 +21946,9 @@
       }
     },
     "WeatherKit condition" : {
+
+    },
+    "With errors" : {
 
     },
     "Worker" : {

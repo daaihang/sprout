@@ -134,6 +134,27 @@ struct MemoryCaptureArtifactBuilder {
                 createdAt: createdAt,
                 updatedAt: createdAt
             )
+        case let .video(title, summary, filename, videoData, thumbnailData, videoMetadata, _):
+            let resolvedSummary = summary.trimmedOrNil ?? "Video capture"
+            let mimeType = filename.lowercased().hasSuffix(".mov") ? "video/quicktime" : "video/mp4"
+            var metadata = videoMetadata
+            metadata["filename"] = filename
+            metadata["mimeType"] = mimeType
+            metadata = metadataForOrigin(of: draft, base: metadata)
+            return Artifact(
+                recordID: recordID,
+                kind: .video,
+                title: title?.trimmedOrNil ?? fallbackTitle?.trimmedOrNil ?? "Video",
+                summary: resolvedSummary,
+                textContent: resolvedSummary,
+                payload: .media(ArtifactMediaRef(filename: filename, mimeType: mimeType, byteCount: videoData?.count)),
+                mediaRef: ArtifactMediaRef(filename: filename, mimeType: mimeType, byteCount: videoData?.count),
+                metadata: metadata,
+                binaryPayload: videoData,
+                previewPayload: thumbnailData,
+                createdAt: createdAt,
+                updatedAt: createdAt
+            )
         case let .location(title, summary, latitude, longitude, _):
             let resolvedSummary = summary.trimmedOrNil ?? "Location capture"
             var metadata: [String: String] = [:]

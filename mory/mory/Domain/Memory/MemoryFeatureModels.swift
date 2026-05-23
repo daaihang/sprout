@@ -142,6 +142,7 @@ enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
     case text(title: String?, body: String, origin: CaptureArtifactOrigin = .manual)
     case photo(title: String?, summary: String, filename: String, imageData: Data?, thumbnailData: Data?, ocrText: String = "", photoMetadata: [String: String] = [:], origin: CaptureArtifactOrigin = .manual)
     case audio(title: String?, summary: String, filename: String, audioData: Data?, transcriptionText: String = "", origin: CaptureArtifactOrigin = .manual)
+    case video(title: String?, summary: String, filename: String, videoData: Data?, thumbnailData: Data? = nil, videoMetadata: [String: String] = [:], origin: CaptureArtifactOrigin = .manual)
     case location(title: String?, summary: String, latitude: Double?, longitude: Double?, origin: CaptureArtifactOrigin = .manual)
     case link(title: String?, url: String, note: String?, summary: String? = nil, metadata: [String: String] = [:], thumbnailData: Data? = nil, origin: CaptureArtifactOrigin = .manual)
     case todo(title: String, note: String?, origin: CaptureArtifactOrigin = .manual)
@@ -156,6 +157,8 @@ enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
             return "photo-\(title ?? summary)-\(filename)"
         case let .audio(title, summary, filename, _, _, _):
             return "audio-\(title ?? summary)-\(filename)"
+        case let .video(title, summary, filename, _, _, _, _):
+            return "video-\(title ?? summary)-\(filename)"
         case let .location(title, summary, _, _, _):
             return "location-\(title ?? summary)"
         case let .link(title, url, _, _, _, _, _):
@@ -184,6 +187,12 @@ enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
                 ?? title?.trimmedOrNil
                 ?? filename
         case let .audio(title, summary, filename, _, _, _):
+            return [title?.trimmedOrNil, summary.trimmedOrNil, filename.trimmedOrNil].compactMap { $0 }.joined(separator: " • ")
+                .trimmedOrNil
+                ?? summary.trimmedOrNil
+                ?? title?.trimmedOrNil
+                ?? filename
+        case let .video(title, summary, filename, _, _, _, _):
             return [title?.trimmedOrNil, summary.trimmedOrNil, filename.trimmedOrNil].compactMap { $0 }.joined(separator: " • ")
                 .trimmedOrNil
                 ?? summary.trimmedOrNil
@@ -228,6 +237,8 @@ enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
             return origin
         case let .audio(_, _, _, _, _, origin):
             return origin
+        case let .video(_, _, _, _, _, _, origin):
+            return origin
         case let .location(_, _, _, _, origin):
             return origin
         case let .link(_, _, _, _, _, _, origin):
@@ -263,6 +274,16 @@ enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
                 filename: filename,
                 audioData: audioData,
                 transcriptionText: transcriptionText,
+                origin: origin
+            )
+        case let .video(title, summary, filename, videoData, thumbnailData, videoMetadata, _):
+            return .video(
+                title: title,
+                summary: summary,
+                filename: filename,
+                videoData: videoData,
+                thumbnailData: thumbnailData,
+                videoMetadata: videoMetadata,
                 origin: origin
             )
         case let .location(title, summary, latitude, longitude, _):
@@ -1103,6 +1124,7 @@ protocol MoryMemoryRepositorying: NotificationIntentRepositorying {
     func enqueueJournalingSuggestion(_ suggestion: JournalingSuggestionDraft, receivedAt: Date) throws -> ExternalCaptureInboxItem
     func fetchExternalCaptureInbox(status: ExternalCaptureInboxStatus?, limit: Int?) throws -> [ExternalCaptureInboxItem]
     func dismissExternalCaptureInboxItem(_ id: UUID) throws
+    func markExternalCaptureInboxItemImported(_ id: UUID, recordID: UUID) throws
     func createMemoryFromExternalCaptureInboxItem(_ id: UUID) async throws -> MemorySummary
     func fetchIntelligenceJobs(status: IntelligenceJobStatus?, limit: Int?) throws -> [IntelligenceJob]
     func upsertIntelligenceJob(_ job: IntelligenceJob) throws

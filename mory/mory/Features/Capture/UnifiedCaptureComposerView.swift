@@ -5,6 +5,8 @@ import UIKit
 struct UnifiedCaptureSeed: Identifiable, Equatable {
     let id = UUID()
     var voiceResult: QuickVoiceCaptureResult?
+    var externalDraft: MemoryCaptureDraft?
+    var externalInboxItemID: UUID?
     var opensCameraOnAppear = false
 
     static var empty: UnifiedCaptureSeed {
@@ -17,6 +19,10 @@ struct UnifiedCaptureSeed: Identifiable, Equatable {
 
     static func voice(_ result: QuickVoiceCaptureResult) -> UnifiedCaptureSeed {
         UnifiedCaptureSeed(voiceResult: result)
+    }
+
+    static func externalDraft(_ draft: MemoryCaptureDraft, inboxItemID: UUID) -> UnifiedCaptureSeed {
+        UnifiedCaptureSeed(externalDraft: draft, externalInboxItemID: inboxItemID)
     }
 }
 
@@ -37,6 +43,7 @@ struct UnifiedCaptureComposerView: View {
     @State private var contextCandidates: [ContextCandidate] = []
     @State private var isCollectingContext = false
     @State private var hasLoadedInitialContext = false
+    @State private var didApplySeed = false
 
     @State private var selectedPhotoItems: [PhotosPickerItem] = []
     @State private var isPresentingCamera = false
@@ -253,6 +260,14 @@ struct UnifiedCaptureComposerView: View {
 
     @MainActor
     private func applySeedIfNeeded() {
+        guard !didApplySeed else { return }
+        didApplySeed = true
+
+        if let externalDraft = seed.externalDraft {
+            mergeImportedDraft(externalDraft)
+            return
+        }
+
         guard let voice = seed.voiceResult, stagedArtifactDrafts.isEmpty, bodyText.isEmpty else { return }
         let transcript = voice.transcription.trimmedOrNil
         bodyText = transcript ?? ""
@@ -407,7 +422,10 @@ struct UnifiedCaptureComposerView: View {
                 artifacts: allArtifactDrafts,
                 affectSnapshots: affectDrafts
             )
-            _ = try await CaptureOrchestrator(memoryRepository: memoryRepository).capture(draft: draft)
+            let memory = try await CaptureOrchestrator(memoryRepository: memoryRepository).capture(draft: draft)
+            if let inboxItemID = seed.externalInboxItemID {
+                try memoryRepository.markExternalCaptureInboxItemImported(inboxItemID, recordID: memory.record.id)
+            }
             onSaved()
             dismiss()
         } catch {

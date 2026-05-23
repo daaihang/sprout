@@ -48,6 +48,7 @@ Completed implementation areas:
 - v7.1 stabilization: production Analyze v7 graph persistence now merges analysis graph output with place resolution before persisting nodes, edges, links, and local arc/reflection evidence; composition tests are aligned to the v7 cloud path.
 - v7.2 platform context wiring: Apple Journaling Suggestions entitlement + device picker adapter, Share Extension inbox writing for text/URL/images, App Shortcut phrase expansion, and GraphDelta reject/undo correction ledger are implemented as native data paths.
 - v7.3 device validation baseline: Platform Capture Diagnostics is available from Settings and Debug to inspect Journaling Suggestions, App Group, Share Extension, App Intents metadata, external inbox counts, and manual device-validation steps.
+- v7.4 capture handoff fixes: Share Extension opens the unified composer from the durable inbox, Journaling Suggestions maps media plus official HealthKit StateOfMind evidence into normal artifacts/affect snapshots, and expired refresh tokens clear credentials and return to login automatically.
 
 Post-v7 production hardening remains separate from the v7 foundation:
 

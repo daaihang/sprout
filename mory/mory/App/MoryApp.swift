@@ -17,6 +17,7 @@ struct MoryApp: App {
     @State private var authManager: AuthSessionManager
     @State private var localDataSession: MoryLocalDataSession?
     @State private var isClearingPreviousLocalDataOwner = false
+    @State private var pendingExternalCaptureURL: URL?
 
     init() {
         let credentialStore = KeychainCredentialStore()
@@ -102,6 +103,15 @@ struct MoryApp: App {
             .task {
                 await authManager.checkSession()
             }
+            .onOpenURL { url in
+                pendingExternalCaptureURL = url
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .moryAuthSessionExpired)) { notification in
+                Task {
+                    let reason = notification.userInfo?[MoryAuthSessionExpiredUserInfoKey.reason] as? String
+                    await authManager.handleSessionExpired(reason: reason)
+                }
+            }
             .onChange(of: authManager.localDataOwnerID) { _, ownerID in
                 if localDataSession?.ownerID != ownerID {
                     let previousSession = localDataSession
@@ -129,7 +139,8 @@ struct MoryApp: App {
             if let localDataSession, localDataSession.ownerID == ownerID {
                 MoryRootView(
                     authManager: authManager,
-                    runtimeEnvironment: runtimeEnvironment
+                    runtimeEnvironment: runtimeEnvironment,
+                    pendingExternalCaptureURL: $pendingExternalCaptureURL
                 )
                 .environment(\.memoryRepository, localDataSession.memoryRepository)
                 .environment(\.cloudIntelligenceService, cloudIntelligenceService)

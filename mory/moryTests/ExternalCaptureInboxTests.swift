@@ -119,6 +119,63 @@ final class ExternalCaptureInboxTests: XCTestCase {
         })
     }
 
+    func testShareDeepLinkParsesExternalCaptureComposeAction() throws {
+        let id = UUID()
+        let link = try XCTUnwrap(URL(string: "mory://external-capture?id=\(id.uuidString)&action=compose"))
+        let parsed = try XCTUnwrap(ExternalCaptureDeepLink(url: link))
+        XCTAssertEqual(parsed.itemID, id)
+        XCTAssertEqual(parsed.action, .compose)
+    }
+
+    func testJournalingSuggestionMapsMediaAndOfficialStateOfMindEvidence() throws {
+        let service = JournalingSuggestionContextService()
+        let draft = service.makeCaptureDraft(
+            from: JournalingSuggestionDraft(
+                title: "System suggestion",
+                body: "Selected from Apple Journaling Suggestions.",
+                locationTitle: "Riverside",
+                attachments: [
+                    ExternalCaptureAttachmentDraft(
+                        kind: .image,
+                        filename: "journal-photo.jpg",
+                        contentType: "image/jpeg",
+                        summary: "Journaling photo"
+                    ),
+                    ExternalCaptureAttachmentDraft(
+                        kind: .video,
+                        filename: "journal-video.mov",
+                        contentType: "video/quicktime",
+                        summary: "Journaling video"
+                    )
+                ],
+                stateOfMindLabel: "calm",
+                stateOfMindLabels: ["calm", "peaceful"],
+                stateOfMindAssociations: ["friends", "health"],
+                stateOfMindValence: 0.64,
+                stateOfMindValenceClassification: "pleasant",
+                stateOfMindKind: "daily mood"
+            )
+        )
+
+        XCTAssertTrue(draft.artifacts.contains { artifact in
+            if case .photo = artifact { return true }
+            return false
+        })
+        XCTAssertTrue(draft.artifacts.contains { artifact in
+            if case .video = artifact { return true }
+            return false
+        })
+        let affect = try XCTUnwrap(draft.affectSnapshots.first)
+        XCTAssertEqual(affect.sources, [.journalSuggestionStateOfMind])
+        XCTAssertEqual(affect.valence, 0.64)
+        XCTAssertNil(affect.arousal)
+        XCTAssertNil(affect.dominance)
+        XCTAssertTrue(affect.evidenceSummary?.contains("labels=calm,peaceful") == true)
+        XCTAssertTrue(affect.evidenceSummary?.contains("associations=friends,health") == true)
+        XCTAssertTrue(affect.evidenceSummary?.contains("classification=pleasant") == true)
+        XCTAssertTrue(affect.evidenceSummary?.contains("kind=daily mood") == true)
+    }
+
     func testExternalCaptureInboxWriterUsesActiveOwnerScope() throws {
         let suiteName = "ExternalCaptureInboxTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))

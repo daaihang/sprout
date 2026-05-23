@@ -124,6 +124,7 @@ extension CaptureArtifactDraft {
         case .text: return "text.alignleft"
         case .photo: return "photo"
         case .audio: return "waveform"
+        case .video: return "video"
         case .location: return "mappin.and.ellipse"
         case .link: return "link"
         case .todo: return "checklist"

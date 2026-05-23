@@ -5,6 +5,7 @@ actor MoryAuthTokenProvider {
     private let credentialStore: KeychainCredentialStore
     private var cachedToken: String?
     private var tokenExpiresAt: Date?
+    private var didPostSessionExpired = false
     private let refreshMarginSeconds: TimeInterval = 60
 
     init(apiClient: MoryAPIClient, credentialStore: KeychainCredentialStore) {
@@ -31,7 +32,17 @@ actor MoryAuthTokenProvider {
             }
 
             if !credential.refreshToken.isEmpty {
-                let auth = try await apiClient.refreshToken(refreshToken: credential.refreshToken)
+                let auth: MoryAuthResponse
+                do {
+                    auth = try await apiClient.refreshToken(refreshToken: credential.refreshToken)
+                } catch MoryAPIClient.APIError.unauthorized {
+                    try? await credentialStore.delete()
+                    invalidate()
+                    await postSessionExpired(reason: "Refresh token expired.")
+                    throw MoryAPIClient.APIError.unauthorized
+                } catch {
+                    throw error
+                }
                 let refreshedCredential = AuthCredential(
                     accessToken: auth.accessToken,
                     refreshToken: auth.refreshToken ?? credential.refreshToken,
@@ -50,9 +61,11 @@ actor MoryAuthTokenProvider {
         #if DEBUG
         identityToken = (try? await credentialStore.getIdentityToken()) ?? "dev-user"
         #else
-        identityToken = try await credentialStore.getIdentityToken() ?? {
+        guard let storedIdentityToken = try await credentialStore.getIdentityToken() else {
+            await postSessionExpired(reason: "No identity token available.")
             throw AuthTokenError.noIdentityToken
-        }()
+        }
+        identityToken = storedIdentityToken
         #endif
 
         let auth = try await apiClient.authenticate(identityToken: identityToken)
@@ -72,6 +85,18 @@ actor MoryAuthTokenProvider {
     func invalidate() {
         cachedToken = nil
         tokenExpiresAt = nil
+    }
+
+    private func postSessionExpired(reason: String) async {
+        guard !didPostSessionExpired else { return }
+        didPostSessionExpired = true
+        await MainActor.run {
+            NotificationCenter.default.post(
+                name: .moryAuthSessionExpired,
+                object: nil,
+                userInfo: [MoryAuthSessionExpiredUserInfoKey.reason: reason]
+            )
+        }
     }
 
     private func parseExpiresAt(_ expiresAt: String) -> Date? {

@@ -25,6 +25,17 @@
 	<string>Mory uses your location to enrich memories with place context and current weather.</string>
 	<key>NSAppleMusicUsageDescription</key>
 	<string>Mory reads the currently playing track so memories can capture the music that surrounds them.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.speculolabs.mory.external-capture</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>mory</string>
+			</array>
+		</dict>
+	</array>
 	<key>ITSEncryptionAttributes</key>
 	<dict>
 		<key>ITSEncryptionExportComplianceCode</key>

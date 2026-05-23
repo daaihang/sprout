@@ -1,4 +1,5 @@
 import Foundation
+import UniformTypeIdentifiers
 
 #if os(iOS) && canImport(JournalingSuggestions)
 import HealthKit
@@ -9,24 +10,36 @@ import _LocationEssentials
 struct AppleJournalingSuggestionAdapter: Sendable {
     func makeDraft(from suggestion: JournalingSuggestion) async -> JournalingSuggestionDraft {
         async let locations = suggestion.content(forType: JournalingSuggestion.Location.self)
+        async let locationGroups = suggestion.content(forType: JournalingSuggestion.LocationGroup.self)
         async let songs = suggestion.content(forType: JournalingSuggestion.Song.self)
         async let workouts = suggestion.content(forType: JournalingSuggestion.Workout.self)
         async let workoutGroups = suggestion.content(forType: JournalingSuggestion.WorkoutGroup.self)
         async let contacts = suggestion.content(forType: JournalingSuggestion.Contact.self)
         async let photos = suggestion.content(forType: JournalingSuggestion.Photo.self)
         async let videos = suggestion.content(forType: JournalingSuggestion.Video.self)
+        async let livePhotos = suggestion.content(forType: JournalingSuggestion.LivePhoto.self)
         async let podcasts = suggestion.content(forType: JournalingSuggestion.Podcast.self)
         async let motionActivities = suggestion.content(forType: JournalingSuggestion.MotionActivity.self)
 
         let resolvedLocations = await locations
+        let resolvedLocationGroups = await locationGroups
         let resolvedSongs = await songs
         let resolvedWorkouts = await workouts
         let resolvedWorkoutGroups = await workoutGroups
         let resolvedContacts = await contacts
         let resolvedPhotos = await photos
         let resolvedVideos = await videos
+        let resolvedLivePhotos = await livePhotos
         let resolvedPodcasts = await podcasts
         let resolvedMotionActivities = await motionActivities
+
+        var genericMediaTitle: String?
+        var genericMediaArtist: String?
+        if #available(iOS 18.0, *) {
+            let resolvedGenericMedia = await suggestion.content(forType: JournalingSuggestion.GenericMedia.self)
+            genericMediaTitle = resolvedGenericMedia.first?.title?.trimmedOrNil
+            genericMediaArtist = resolvedGenericMedia.first?.artist?.trimmedOrNil
+        }
 
         var bodyParts: [String] = []
         if !resolvedContacts.isEmpty {
@@ -41,16 +54,49 @@ struct AppleJournalingSuggestionAdapter: Sendable {
         if !resolvedVideos.isEmpty {
             bodyParts.append("Videos: \(resolvedVideos.count)")
         }
+        if !resolvedLivePhotos.isEmpty {
+            bodyParts.append("Live Photos: \(resolvedLivePhotos.count)")
+        }
         if let podcast = resolvedPodcasts.first {
             bodyParts.append([podcast.episode, podcast.show].compactMap { $0?.trimmedOrNil }.joined(separator: " - "))
+        }
+        if let genericMedia = [genericMediaTitle, genericMediaArtist]
+            .compactMap({ $0 })
+            .joined(separator: " - ")
+            .trimmedOrNil {
+            bodyParts.append(genericMedia)
         }
 
         let firstLocation = resolvedLocations.first
         let firstSong = resolvedSongs.first
+        let locationGroupTitles = resolvedLocationGroups
+            .flatMap(\.locations)
+            .compactMap(locationTitle)
+
+        var attachments: [ExternalCaptureAttachmentDraft] = []
+        attachments += resolvedPhotos.compactMap { photo in
+            copyAsset(url: photo.photo, kind: .image, summary: "Journaling photo")
+        }
+        attachments += resolvedVideos.compactMap { video in
+            copyAsset(url: video.url, kind: .video, summary: "Journaling video")
+        }
+        attachments += resolvedLivePhotos.compactMap { livePhoto in
+            copyAsset(url: livePhoto.image, kind: .image, summary: "Journaling Live Photo image")
+        }
+        attachments += resolvedLivePhotos.compactMap { livePhoto in
+            copyAsset(url: livePhoto.video, kind: .video, summary: "Journaling Live Photo video")
+        }
+        if let songArtwork = firstSong?.artwork {
+            attachments.append(contentsOf: [copyAsset(url: songArtwork, kind: .image, summary: "Song artwork")].compactMap { $0 })
+        }
+        if let podcastArtwork = resolvedPodcasts.first?.artwork {
+            attachments.append(contentsOf: [copyAsset(url: podcastArtwork, kind: .image, summary: "Podcast artwork")].compactMap { $0 })
+        }
 
         var reflectionPrompt: String?
         var eventTitle: String?
         var eventPlace: String?
+        var eventPosterAttachment: ExternalCaptureAttachmentDraft?
         if #available(iOS 18.0, *) {
             let reflections = await suggestion.content(forType: JournalingSuggestion.Reflection.self)
             reflectionPrompt = reflections.first?.prompt.trimmedOrNil
@@ -59,15 +105,29 @@ struct AppleJournalingSuggestionAdapter: Sendable {
             let eventPosters = await suggestion.content(forType: JournalingSuggestion.EventPoster.self)
             eventTitle = eventPosters.first.map { String($0.title.characters) }?.trimmedOrNil
             eventPlace = eventPosters.first?.placeName?.trimmedOrNil
+            if let image = eventPosters.first?.image {
+                eventPosterAttachment = copyAsset(url: image, kind: .image, summary: "Journaling event poster")
+            }
+        }
+        if let eventPosterAttachment {
+            attachments.append(eventPosterAttachment)
         }
 
         var stateOfMindLabel: String?
+        var stateOfMindLabels: [String] = []
+        var stateOfMindAssociations: [String] = []
         var stateOfMindValence: Double?
+        var stateOfMindValenceClassification: String?
+        var stateOfMindKind: String?
         if #available(iOS 18.0, *) {
             let statesOfMind = await suggestion.content(forType: JournalingSuggestion.StateOfMind.self)
             if let state = statesOfMind.first?.state {
-                stateOfMindLabel = state.labels.first.map(labelName) ?? valenceClassificationName(state.valenceClassification)
+                stateOfMindLabels = state.labels.map(labelName)
+                stateOfMindAssociations = state.associations.map(associationName)
+                stateOfMindLabel = stateOfMindLabels.first ?? valenceClassificationName(state.valenceClassification)
                 stateOfMindValence = state.valence
+                stateOfMindValenceClassification = valenceClassificationName(state.valenceClassification)
+                stateOfMindKind = stateKindName(state.kind)
             }
         }
 
@@ -76,17 +136,61 @@ struct AppleJournalingSuggestionAdapter: Sendable {
             body: bodyParts.joined(separator: "\n").trimmedOrNil,
             reflectionPrompt: reflectionPrompt,
             locationTitle: firstLocation.flatMap(locationTitle) ?? eventPlace,
+            locationGroupTitles: locationGroupTitles,
             latitude: firstLocation?.location?.coordinate.latitude,
             longitude: firstLocation?.location?.coordinate.longitude,
             songTitle: firstSong?.song?.trimmedOrNil,
             artistName: firstSong?.artist?.trimmedOrNil,
+            albumName: firstSong?.album?.trimmedOrNil,
+            podcastEpisode: resolvedPodcasts.first?.episode?.trimmedOrNil,
+            podcastShow: resolvedPodcasts.first?.show?.trimmedOrNil,
+            genericMediaTitle: genericMediaTitle,
+            genericMediaArtist: genericMediaArtist,
+            contactNames: resolvedContacts.map(\.name),
             workoutSummary: bodyParts.first(where: { $0.localizedCaseInsensitiveContains("workout") }),
+            motionActivitySummary: bodyParts.first(where: { $0.localizedCaseInsensitiveContains("motion activity") }),
+            attachments: attachments,
             stateOfMindLabel: stateOfMindLabel,
+            stateOfMindLabels: stateOfMindLabels,
+            stateOfMindAssociations: stateOfMindAssociations,
             stateOfMindValence: stateOfMindValence,
+            stateOfMindValenceClassification: stateOfMindValenceClassification,
+            stateOfMindKind: stateOfMindKind,
             stateOfMindArousal: nil,
             stateOfMindDominance: nil,
             createdAt: suggestion.date?.start ?? .now
         )
+    }
+
+    private func copyAsset(
+        url: URL,
+        kind: ExternalCaptureAttachmentKind,
+        summary: String
+    ) -> ExternalCaptureAttachmentDraft? {
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        let filename = url.lastPathComponent.trimmedOrNil ?? "\(kind.rawValue)-\(UUID().uuidString)"
+        guard let storedFileName = try? ExternalCaptureAttachmentFileStore().saveData(data, preferredFilename: filename) else {
+            return nil
+        }
+        return ExternalCaptureAttachmentDraft(
+            kind: kind,
+            filename: filename,
+            contentType: contentType(for: url, kind: kind),
+            storedFileName: storedFileName,
+            summary: summary
+        )
+    }
+
+    private func contentType(for url: URL, kind: ExternalCaptureAttachmentKind) -> String {
+        if let type = UTType(filenameExtension: url.pathExtension) {
+            return type.preferredMIMEType ?? type.identifier
+        }
+        switch kind {
+        case .image:
+            return UTType.jpeg.identifier
+        case .video:
+            return "video/quicktime"
+        }
     }
 
     private func locationTitle(_ location: JournalingSuggestion.Location) -> String? {
@@ -186,6 +290,40 @@ struct AppleJournalingSuggestionAdapter: Sendable {
         case .pleasant: "pleasant"
         case .veryPleasant: "very pleasant"
         @unknown default: String(describing: classification)
+        }
+    }
+
+    @available(iOS 18.0, *)
+    private func associationName(_ association: HKStateOfMind.Association) -> String {
+        switch association {
+        case .community: "community"
+        case .currentEvents: "current events"
+        case .dating: "dating"
+        case .education: "education"
+        case .family: "family"
+        case .fitness: "fitness"
+        case .friends: "friends"
+        case .health: "health"
+        case .hobbies: "hobbies"
+        case .identity: "identity"
+        case .money: "money"
+        case .partner: "partner"
+        case .selfCare: "self care"
+        case .spirituality: "spirituality"
+        case .tasks: "tasks"
+        case .travel: "travel"
+        case .work: "work"
+        case .weather: "weather"
+        @unknown default: String(describing: association)
+        }
+    }
+
+    @available(iOS 18.0, *)
+    private func stateKindName(_ kind: HKStateOfMind.Kind) -> String {
+        switch kind {
+        case .momentaryEmotion: "momentary emotion"
+        case .dailyMood: "daily mood"
+        @unknown default: String(describing: kind)
         }
     }
 

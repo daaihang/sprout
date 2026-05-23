@@ -4087,6 +4087,7 @@ private extension CaptureArtifactDraft {
         case .text: String(localized: "capture.type.text")
         case .photo: String(localized: "capture.type.photo")
         case .audio: String(localized: "capture.type.audio")
+        case .video: "Video"
         case .location: String(localized: "capture.type.location")
         case .link: String(localized: "capture.type.link")
         case .todo: String(localized: "capture.type.todo")
@@ -4100,6 +4101,7 @@ private extension CaptureArtifactDraft {
         case .text: "text.alignleft"
         case .photo: "photo"
         case .audio: "waveform"
+        case .video: "video"
         case .location: "mappin.and.ellipse"
         case .link: "link"
         case .todo: "checklist"

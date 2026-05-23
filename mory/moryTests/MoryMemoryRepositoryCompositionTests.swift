@@ -2972,6 +2972,86 @@ final class AuthSessionManagerTests: XCTestCase {
         XCTAssertEqual(credential?.identityToken, "identity-token")
     }
 
+    func testSessionExpiredEventClearsCredentialAndReturnsToLogin() async throws {
+        let store = KeychainCredentialStore(account: "mory-auth-test-\(UUID().uuidString)", inMemory: true)
+        defer { Task { try? await store.delete() } }
+        try await store.saveCredential(
+            AuthCredential(
+                accessToken: "expired-access",
+                refreshToken: "expired-refresh",
+                expiresAt: Date(timeIntervalSince1970: 0),
+                userID: "server-user-123",
+                identityToken: nil
+            )
+        )
+
+        let manager = AuthSessionManager(
+            credentialStore: store,
+            apiClient: makeAuthTestClient()
+        )
+        await manager.checkSession()
+        await manager.handleSessionExpired(reason: "Refresh token expired.")
+
+        XCTAssertEqual(manager.state, .unauthenticated)
+        let credential = await store.loadCredential()
+        XCTAssertNil(credential)
+        let diagnostics = await manager.fetchDiagnostics()
+        XCTAssertEqual(diagnostics.lastEvent, "Session expired")
+        XCTAssertEqual(diagnostics.lastError, "Refresh token expired.")
+    }
+
+    func testTokenProviderRefresh401ClearsCredentialAndPostsSessionExpired() async throws {
+        let store = KeychainCredentialStore(account: "mory-auth-test-\(UUID().uuidString)", inMemory: true)
+        defer { Task { try? await store.delete() } }
+        try await store.saveCredential(
+            AuthCredential(
+                accessToken: "expired-access",
+                refreshToken: "expired-refresh",
+                expiresAt: Date(timeIntervalSince1970: 0),
+                userID: "server-user-123",
+                identityToken: nil
+            )
+        )
+
+        AuthURLProtocol.responseHandler = { request in
+            XCTAssertEqual(request.url?.path, "/api/auth/refresh")
+            let response = HTTPURLResponse(
+                url: try XCTUnwrap(request.url),
+                statusCode: 401,
+                httpVersion: nil,
+                headerFields: ["Content-Type": "application/json"]
+            )!
+            return (response, Data(#"{"error":"refresh expired"}"#.utf8))
+        }
+        defer { AuthURLProtocol.responseHandler = nil }
+
+        let expired = expectation(description: "session expired notification")
+        let token = NotificationCenter.default.addObserver(
+            forName: .moryAuthSessionExpired,
+            object: nil,
+            queue: .main
+        ) { notification in
+            XCTAssertEqual(notification.userInfo?[MoryAuthSessionExpiredUserInfoKey.reason] as? String, "Refresh token expired.")
+            expired.fulfill()
+        }
+        defer { NotificationCenter.default.removeObserver(token) }
+
+        let provider = MoryAuthTokenProvider(
+            apiClient: makeAuthTestClient(),
+            credentialStore: store
+        )
+        do {
+            _ = try await provider.accessToken()
+            XCTFail("Expected unauthorized refresh failure.")
+        } catch MoryAPIClient.APIError.unauthorized {
+            // Expected.
+        }
+
+        await fulfillment(of: [expired], timeout: 1)
+        let credential = await store.loadCredential()
+        XCTAssertNil(credential)
+    }
+
     private func makeAuthTestClient() -> MoryAPIClient {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [AuthURLProtocol.self]

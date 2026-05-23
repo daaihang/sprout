@@ -142,6 +142,7 @@ private final class MissingMemoryRepository: MoryMemoryRepositorying {
     func enqueueJournalingSuggestion(_ suggestion: JournalingSuggestionDraft, receivedAt: Date) throws -> ExternalCaptureInboxItem { fail() }
     func fetchExternalCaptureInbox(status: ExternalCaptureInboxStatus?, limit: Int?) throws -> [ExternalCaptureInboxItem] { fail() }
     func dismissExternalCaptureInboxItem(_ id: UUID) throws { let _: Void = fail() }
+    func markExternalCaptureInboxItemImported(_ id: UUID, recordID: UUID) throws { let _: Void = fail() }
     func createMemoryFromExternalCaptureInboxItem(_ id: UUID) async throws -> MemorySummary { fail() }
     func fetchIntelligenceJobs(status: IntelligenceJobStatus?, limit: Int?) throws -> [IntelligenceJob] { fail() }
     func upsertIntelligenceJob(_ job: IntelligenceJob) throws { let _: Void = fail() }

@@ -21,13 +21,38 @@ final class ShareViewController: UIViewController {
                 text: payload.text,
                 url: payload.url,
                 context: "shareExtension:moryShareExtension",
+                errorMessage: payload.errorMessage,
                 attachments: payload.attachments
             )
-            _ = try ExternalCaptureInboxWriter().enqueue(request)
-            extensionContext?.completeRequest(returningItems: nil)
+            let item = try ExternalCaptureInboxWriter().enqueue(request)
+            await openHostApp(for: item.id)
         } catch {
             extensionContext?.cancelRequest(withError: error)
         }
+    }
+
+    private func openHostApp(for itemID: UUID) async {
+        var components = URLComponents()
+        components.scheme = "mory"
+        components.host = "external-capture"
+        components.queryItems = [
+            URLQueryItem(name: "id", value: itemID.uuidString),
+            URLQueryItem(name: "action", value: "compose")
+        ]
+        guard let url = components.url else {
+            extensionContext?.completeRequest(returningItems: nil)
+            return
+        }
+
+        let didOpen = await withCheckedContinuation { continuation in
+            extensionContext?.open(url) { success in
+                continuation.resume(returning: success)
+            }
+        }
+        if !didOpen {
+            try? ExternalCaptureInboxWriter().markLaunchFailed(itemID: itemID, reason: "Unable to open Mory from share extension.")
+        }
+        extensionContext?.completeRequest(returningItems: nil)
     }
 }
 
@@ -36,6 +61,11 @@ private struct SharedPayload {
     var text: String
     var url: String?
     var attachments: [ExternalCaptureAttachmentDraft]
+    var attachmentErrors: [String]
+
+    var errorMessage: String? {
+        attachmentErrors.isEmpty ? nil : attachmentErrors.joined(separator: "\n")
+    }
 }
 
 private struct SharedPayloadExtractor {
@@ -48,6 +78,7 @@ private struct SharedPayloadExtractor {
         var textParts: [String] = []
         var url: String?
         var attachments: [ExternalCaptureAttachmentDraft] = []
+        var attachmentErrors: [String] = []
 
         for provider in providers {
             if provider.hasItemConformingToTypeIdentifier(UTType.url.identifier),
@@ -69,9 +100,12 @@ private struct SharedPayloadExtractor {
                 }
             }
 
-            if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier),
-               let attachment = try? await imageAttachment(from: provider) {
-                attachments.append(attachment)
+            if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
+                do {
+                    attachments.append(try await imageAttachment(from: provider))
+                } catch {
+                    attachmentErrors.append("Image attachment failed: \(error.localizedDescription)")
+                }
             }
         }
 
@@ -81,31 +115,52 @@ private struct SharedPayloadExtractor {
             title: title,
             text: text.isEmpty ? "Shared to Mory." : text,
             url: url,
-            attachments: attachments
+            attachments: attachments,
+            attachmentErrors: attachmentErrors
         )
     }
 
     private func imageAttachment(from provider: NSItemProvider) async throws -> ExternalCaptureAttachmentDraft {
-        let item = try await provider.loadItem(for: UTType.image.identifier)
         let filename = "shared-image-\(UUID().uuidString).jpg"
 
-        if let url = item as? URL {
-            let data = try Data(contentsOf: url)
-            let storedFileName = try ExternalCaptureAttachmentFileStore().saveImage(data: data, preferredFilename: url.lastPathComponent)
+        if let data = try? await provider.loadDataRepresentation(for: .image) {
+            let storedFileName = try ExternalCaptureAttachmentFileStore().saveImage(data: data, preferredFilename: filename)
             return ExternalCaptureAttachmentDraft(
-                filename: url.lastPathComponent,
+                filename: filename,
                 contentType: UTType.image.identifier,
                 storedFileName: storedFileName,
                 summary: "Shared image"
             )
         }
 
-        if let image = item as? UIImage,
+        if let file = try? await provider.loadFileRepresentationData(for: .image) {
+            let storedFileName = try ExternalCaptureAttachmentFileStore().saveImage(data: file.data, preferredFilename: file.filename)
+            return ExternalCaptureAttachmentDraft(
+                filename: file.filename,
+                contentType: UTType.image.identifier,
+                storedFileName: storedFileName,
+                summary: "Shared image"
+            )
+        }
+
+        if let image = try? await provider.loadUIImage(),
            let data = image.jpegData(compressionQuality: 0.9) {
             let storedFileName = try ExternalCaptureAttachmentFileStore().saveImage(data: data, preferredFilename: filename)
             return ExternalCaptureAttachmentDraft(
                 filename: filename,
                 contentType: UTType.jpeg.identifier,
+                storedFileName: storedFileName,
+                summary: "Shared image"
+            )
+        }
+
+        let item = try await provider.loadItem(for: UTType.image.identifier)
+        if let url = item as? URL {
+            let data = try Data(contentsOf: url)
+            let storedFileName = try ExternalCaptureAttachmentFileStore().saveImage(data: data, preferredFilename: url.lastPathComponent)
+            return ExternalCaptureAttachmentDraft(
+                filename: url.lastPathComponent,
+                contentType: UTType.image.identifier,
                 storedFileName: storedFileName,
                 summary: "Shared image"
             )
@@ -126,15 +181,67 @@ private struct SharedPayloadExtractor {
 }
 
 private extension NSItemProvider {
+    struct LoadedFileData {
+        var data: Data
+        var filename: String
+    }
+
     func loadItem(for typeIdentifier: String) async throws -> NSSecureCoding {
         try await withCheckedThrowingContinuation { continuation in
             loadItem(forTypeIdentifier: typeIdentifier, options: nil) { item, error in
                 if let error {
                     continuation.resume(throwing: error)
-                } else if let item = item as? NSSecureCoding {
+                } else if let item {
                     continuation.resume(returning: item)
                 } else {
                     continuation.resume(throwing: ExternalCaptureInboxError.unsupportedPayload)
+                }
+            }
+        }
+    }
+
+    func loadDataRepresentation(for type: UTType) async throws -> Data {
+        try await withCheckedThrowingContinuation { continuation in
+            loadDataRepresentation(forTypeIdentifier: type.identifier) { data, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else if let data {
+                    continuation.resume(returning: data)
+                } else {
+                    continuation.resume(throwing: ExternalCaptureInboxError.unsupportedPayload)
+                }
+            }
+        }
+    }
+
+    func loadFileRepresentationData(for type: UTType) async throws -> LoadedFileData {
+        try await withCheckedThrowingContinuation { continuation in
+            loadFileRepresentation(forTypeIdentifier: type.identifier) { url, error in
+                do {
+                    if let error {
+                        throw error
+                    }
+                    guard let url else {
+                        throw ExternalCaptureInboxError.unsupportedPayload
+                    }
+                    let data = try Data(contentsOf: url)
+                    continuation.resume(returning: LoadedFileData(data: data, filename: url.lastPathComponent))
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    func loadUIImage() async throws -> UIImage {
+        try await withCheckedThrowingContinuation { continuation in
+            loadObject(ofClass: UIImage.self) { object, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else if let image = object as? UIImage {
+                    continuation.resume(returning: image)
+                } else {
+                    continuation.resume(throwing: ExternalCaptureInboxError.unsupportedImagePayload)
                 }
             }
         }

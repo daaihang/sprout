@@ -57,13 +57,26 @@ struct JournalingSuggestionDraft: Codable, Hashable, Sendable {
     var body: String?
     var reflectionPrompt: String?
     var locationTitle: String?
+    var locationGroupTitles: [String]
     var latitude: Double?
     var longitude: Double?
     var songTitle: String?
     var artistName: String?
+    var albumName: String?
+    var podcastEpisode: String?
+    var podcastShow: String?
+    var genericMediaTitle: String?
+    var genericMediaArtist: String?
+    var contactNames: [String]
     var workoutSummary: String?
+    var motionActivitySummary: String?
+    var attachments: [ExternalCaptureAttachmentDraft]
     var stateOfMindLabel: String?
+    var stateOfMindLabels: [String]
+    var stateOfMindAssociations: [String]
     var stateOfMindValence: Double?
+    var stateOfMindValenceClassification: String?
+    var stateOfMindKind: String?
     var stateOfMindArousal: Double?
     var stateOfMindDominance: Double?
     var createdAt: Date
@@ -73,13 +86,26 @@ struct JournalingSuggestionDraft: Codable, Hashable, Sendable {
         body: String? = nil,
         reflectionPrompt: String? = nil,
         locationTitle: String? = nil,
+        locationGroupTitles: [String] = [],
         latitude: Double? = nil,
         longitude: Double? = nil,
         songTitle: String? = nil,
         artistName: String? = nil,
+        albumName: String? = nil,
+        podcastEpisode: String? = nil,
+        podcastShow: String? = nil,
+        genericMediaTitle: String? = nil,
+        genericMediaArtist: String? = nil,
+        contactNames: [String] = [],
         workoutSummary: String? = nil,
+        motionActivitySummary: String? = nil,
+        attachments: [ExternalCaptureAttachmentDraft] = [],
         stateOfMindLabel: String? = nil,
+        stateOfMindLabels: [String] = [],
+        stateOfMindAssociations: [String] = [],
         stateOfMindValence: Double? = nil,
+        stateOfMindValenceClassification: String? = nil,
+        stateOfMindKind: String? = nil,
         stateOfMindArousal: Double? = nil,
         stateOfMindDominance: Double? = nil,
         createdAt: Date = .now
@@ -88,13 +114,26 @@ struct JournalingSuggestionDraft: Codable, Hashable, Sendable {
         self.body = body
         self.reflectionPrompt = reflectionPrompt
         self.locationTitle = locationTitle
+        self.locationGroupTitles = locationGroupTitles
         self.latitude = latitude
         self.longitude = longitude
         self.songTitle = songTitle
         self.artistName = artistName
+        self.albumName = albumName
+        self.podcastEpisode = podcastEpisode
+        self.podcastShow = podcastShow
+        self.genericMediaTitle = genericMediaTitle
+        self.genericMediaArtist = genericMediaArtist
+        self.contactNames = contactNames
         self.workoutSummary = workoutSummary
+        self.motionActivitySummary = motionActivitySummary
+        self.attachments = attachments
         self.stateOfMindLabel = stateOfMindLabel
+        self.stateOfMindLabels = stateOfMindLabels
+        self.stateOfMindAssociations = stateOfMindAssociations
         self.stateOfMindValence = stateOfMindValence
+        self.stateOfMindValenceClassification = stateOfMindValenceClassification
+        self.stateOfMindKind = stateOfMindKind
         self.stateOfMindArousal = stateOfMindArousal
         self.stateOfMindDominance = stateOfMindDominance
         self.createdAt = createdAt
@@ -112,6 +151,7 @@ enum ExternalCaptureSourceKind: String, Codable, CaseIterable, Identifiable, Sen
 
 enum ExternalCaptureAttachmentKind: String, Codable, CaseIterable, Identifiable, Sendable {
     case image
+    case video
 
     var id: String { rawValue }
 }
@@ -147,6 +187,7 @@ struct ExternalCaptureRequest: Codable, Hashable, Sendable {
     var text: String
     var url: String?
     var context: String?
+    var errorMessage: String?
     var affectDrafts: [AffectSnapshotDraft]
     var attachments: [ExternalCaptureAttachmentDraft]
 
@@ -156,6 +197,7 @@ struct ExternalCaptureRequest: Codable, Hashable, Sendable {
         text: String,
         url: String? = nil,
         context: String? = nil,
+        errorMessage: String? = nil,
         affectDrafts: [AffectSnapshotDraft] = [],
         attachments: [ExternalCaptureAttachmentDraft] = []
     ) {
@@ -164,6 +206,7 @@ struct ExternalCaptureRequest: Codable, Hashable, Sendable {
         self.text = text
         self.url = url
         self.context = context
+        self.errorMessage = errorMessage
         self.affectDrafts = affectDrafts
         self.attachments = attachments
     }
@@ -256,7 +299,8 @@ struct ExternalCaptureInboxCodec: Sendable {
             ),
             payloadData: data,
             receivedAt: now,
-            updatedAt: now
+            updatedAt: now,
+            errorMessage: request.errorMessage?.trimmedOrNil
         )
     }
 
@@ -327,6 +371,23 @@ struct ExternalCaptureDraftFactory: Sendable {
                         origin: .imported
                     )
                 )
+            case .video:
+                let videoData = attachment.storedFileName.flatMap { try? attachmentFileStore.loadData(storedFileName: $0) } ?? nil
+                artifacts.append(
+                    .video(
+                        title: request.title ?? attachment.filename,
+                        summary: attachment.summary ?? "Shared video from \(request.sourceKind.rawValue).",
+                        filename: attachment.filename,
+                        videoData: videoData,
+                        thumbnailData: nil,
+                        videoMetadata: [
+                            "source": request.sourceKind.rawValue,
+                            "contentType": attachment.contentType,
+                            "storedFileName": attachment.storedFileName ?? ""
+                        ],
+                        origin: .imported
+                    )
+                )
             }
         }
         return MemoryCaptureDraft(
@@ -389,12 +450,33 @@ struct JournalingSuggestionContextService: Sendable {
         if let workout = suggestion.workoutSummary?.trimmingCharacters(in: .whitespacesAndNewlines), !workout.isEmpty {
             bodyParts.append(workout)
         }
+        if let motionActivity = suggestion.motionActivitySummary?.trimmingCharacters(in: .whitespacesAndNewlines), !motionActivity.isEmpty {
+            bodyParts.append(motionActivity)
+        }
+        if !suggestion.contactNames.isEmpty {
+            bodyParts.append("Contacts: \(suggestion.contactNames.joined(separator: ", "))")
+        }
         if let song = suggestion.songTitle?.trimmingCharacters(in: .whitespacesAndNewlines), !song.isEmpty {
             let artist = suggestion.artistName?.trimmingCharacters(in: .whitespacesAndNewlines)
             bodyParts.append([song, artist].compactMap { $0 }.joined(separator: " - "))
         }
+        if let podcast = [suggestion.podcastEpisode?.trimmedOrNil, suggestion.podcastShow?.trimmedOrNil]
+            .compactMap({ $0 })
+            .joined(separator: " - ")
+            .trimmedOrNil {
+            bodyParts.append("Podcast: \(podcast)")
+        }
+        if let genericMedia = [suggestion.genericMediaTitle?.trimmedOrNil, suggestion.genericMediaArtist?.trimmedOrNil]
+            .compactMap({ $0 })
+            .joined(separator: " - ")
+            .trimmedOrNil {
+            bodyParts.append("Media: \(genericMedia)")
+        }
         if let place = suggestion.locationTitle?.trimmingCharacters(in: .whitespacesAndNewlines), !place.isEmpty {
             bodyParts.append(place)
+        }
+        if !suggestion.locationGroupTitles.isEmpty {
+            bodyParts.append("Location group: \(suggestion.locationGroupTitles.joined(separator: ", "))")
         }
 
         let body = bodyParts.joined(separator: "\n")
@@ -425,7 +507,7 @@ struct JournalingSuggestionContextService: Sendable {
                 .music(
                     trackName: songTitle,
                     artistName: suggestion.artistName ?? "Unknown Artist",
-                    albumName: "",
+                    albumName: suggestion.albumName ?? "",
                     durationSeconds: 0,
                     artworkURL: nil,
                     origin: .imported
@@ -433,12 +515,58 @@ struct JournalingSuggestionContextService: Sendable {
             )
         }
 
+        for attachment in suggestion.attachments {
+            switch attachment.kind {
+            case .image:
+                let imageData = attachment.storedFileName.flatMap { try? ExternalCaptureAttachmentFileStore().loadData(storedFileName: $0) } ?? nil
+                artifacts.append(
+                    .photo(
+                        title: suggestion.title ?? attachment.filename,
+                        summary: attachment.summary ?? "Journaling suggestion image",
+                        filename: attachment.filename,
+                        imageData: imageData,
+                        thumbnailData: imageData,
+                        ocrText: "",
+                        photoMetadata: [
+                            "source": ExternalCaptureSourceKind.journalingSuggestion.rawValue,
+                            "contentType": attachment.contentType,
+                            "storedFileName": attachment.storedFileName ?? ""
+                        ],
+                        origin: .imported
+                    )
+                )
+            case .video:
+                let videoData = attachment.storedFileName.flatMap { try? ExternalCaptureAttachmentFileStore().loadData(storedFileName: $0) } ?? nil
+                artifacts.append(
+                    .video(
+                        title: suggestion.title ?? attachment.filename,
+                        summary: attachment.summary ?? "Journaling suggestion video",
+                        filename: attachment.filename,
+                        videoData: videoData,
+                        thumbnailData: nil,
+                        videoMetadata: [
+                            "source": ExternalCaptureSourceKind.journalingSuggestion.rawValue,
+                            "contentType": attachment.contentType,
+                            "storedFileName": attachment.storedFileName ?? ""
+                        ],
+                        origin: .imported
+                    )
+                )
+            }
+        }
+
         let affectDrafts: [AffectSnapshotDraft]
-        if let stateOfMind = suggestion.stateOfMindLabel?.trimmingCharacters(in: .whitespacesAndNewlines), !stateOfMind.isEmpty {
+        let stateOfMindLabels = (suggestion.stateOfMindLabels.isEmpty ? [suggestion.stateOfMindLabel].compactMap { $0 } : suggestion.stateOfMindLabels)
+            .compactMap { $0.trimmedOrNil }
+        if let stateOfMind = stateOfMindLabels.first ?? suggestion.stateOfMindLabel?.trimmedOrNil {
             affectDrafts = [
                 affectMapper.draftFromJournalingStateOfMind(
                     label: stateOfMind,
+                    allLabels: stateOfMindLabels,
+                    associations: suggestion.stateOfMindAssociations,
                     valence: suggestion.stateOfMindValence,
+                    valenceClassification: suggestion.stateOfMindValenceClassification,
+                    kind: suggestion.stateOfMindKind,
                     arousal: suggestion.stateOfMindArousal,
                     dominance: suggestion.stateOfMindDominance
                 )

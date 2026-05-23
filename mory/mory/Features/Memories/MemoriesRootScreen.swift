@@ -321,6 +321,7 @@ private struct MemoryLibraryFilterBar: View {
         case .text: return String(localized: "capture.type.text")
         case .photo: return String(localized: "capture.type.photo")
         case .audio: return String(localized: "capture.type.audio")
+        case .video: return "Video"
         case .music: return String(localized: "capture.type.music")
         case .link: return String(localized: "capture.type.link")
         case .location: return String(localized: "capture.type.location")
@@ -403,6 +404,7 @@ private struct MemoryLibraryRowView: View {
         case .text: return "doc.text"
         case .photo: return "photo"
         case .audio: return "waveform"
+        case .video: return "video"
         case .music: return "music.note"
         case .link: return "link"
         case .location: return "mappin.and.ellipse"
@@ -419,6 +421,7 @@ private extension ArtifactKind {
         case .text: return String(localized: "capture.type.text")
         case .photo: return String(localized: "capture.type.photo")
         case .audio: return String(localized: "capture.type.audio")
+        case .video: return "Video"
         case .music: return String(localized: "capture.type.music")
         case .link: return String(localized: "capture.type.link")
         case .location: return String(localized: "capture.type.location")

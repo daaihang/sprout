@@ -149,13 +149,13 @@ extension CaptureCardItem {
                 metadata: nil,
                 isRemovable: false
             )
-        case .document:
+        case .document, .video:
             self.init(
                 id: "artifact-\(artifact.id.uuidString)",
                 payload: .status(CaptureStatusCardPayload()),
                 origin: artifact.captureCardOrigin,
                 state: state,
-                title: artifact.title.trimmedOrNil ?? String(localized: "capture.card.kind.status"),
+                title: artifact.title.trimmedOrNil ?? (artifact.kind == .video ? "Video" : String(localized: "capture.card.kind.status")),
                 detail: captureCardModelSnippet(artifact.summary)
                     ?? captureCardModelSnippet(artifact.textContent)
                     ?? artifact.mediaRef?.filename
@@ -201,6 +201,17 @@ extension CaptureCardItem {
                 state: state,
                 title: title ?? String(localized: "capture.card.kind.audio"),
                 detail: captureCardModelSnippet(transcriptionText) ?? captureCardModelSnippet(summary) ?? String(localized: "capture.card.audio.attached"),
+                metadata: filename.trimmedOrNil,
+                isRemovable: origin == .manual || origin == .context
+            )
+        case let .video(title, summary, filename, _, thumbnailData, _, origin):
+            self.init(
+                id: id ?? "draft-\(draft.id)",
+                payload: thumbnailData == nil ? .status(CaptureStatusCardPayload()) : .photo(CapturePhotoCardPayload(thumbnailData: thumbnailData)),
+                origin: origin,
+                state: state,
+                title: title ?? "Video",
+                detail: captureCardModelSnippet(summary) ?? filename.trimmedOrNil ?? "Video attached",
                 metadata: filename.trimmedOrNil,
                 isRemovable: origin == .manual || origin == .context
             )

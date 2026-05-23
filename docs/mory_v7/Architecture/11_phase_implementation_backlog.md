@@ -291,6 +291,7 @@ Completion evidence:
 | v7.1 Stabilization | completed | production graph persistence and composition test baseline are stabilized; new platform capabilities remain post-v7 hardening |
 | v7.2 Platform Context + Correction UX | completed | Journaling Suggestions entitlement/device picker adapter, Share Extension external inbox writing, App Shortcut phrase expansion, and GraphDelta reject/undo correction ledger are implemented; real-device validation remains production hardening |
 | v7.3 Device Validation + Platform QA | completed | platform capture diagnostics and manual validation checklist are implemented in Settings/Debug; physical-device execution remains release hardening |
+| v7.4 Capture Handoff + Auth + Journaling Fix | completed | Share Extension now hands off into the unified composer, Journaling media/StateOfMind mapping is expanded, and expired auth sessions route back to login automatically; physical-device validation remains release hardening |
 
 ## Post-v7 Production Hardening
 
@@ -327,3 +328,17 @@ Completion evidence:
 - manual device checklist items are explicit for Apple Journaling picker import, Share Sheet handoff, and Siri/Shortcuts phrase validation.
 - unit tests cover capability summaries, blocked/warning statuses, inbox counts, and the manual-device checklist.
 - real-device execution is intentionally not claimed by this phase; it remains release hardening because it depends on a signed device build and enabled developer capabilities.
+
+## v7.4 Capture Handoff + Auth + Journaling Fix
+
+Goal: close the first real-device product loops reported during platform testing without adding a new memory type.
+
+Completion evidence:
+
+- Share Extension still writes a durable `ExternalCaptureInboxItem`, but now opens `mory://external-capture?id=...&action=compose` so the main app presents `UnifiedCaptureComposerView` with a prefilled `MemoryCaptureDraft`.
+- Saving the prefilled composer marks the inbox item imported with `importedRecordID`; canceling leaves it pending for Settings/Debug recovery.
+- Share image extraction now tries data representation, file representation, `UIImage`, and legacy item loading; recoverable attachment/open failures are stored on the inbox item for diagnostics.
+- `JournalingSuggestionDraft` now carries photos, videos, live-photo image/video evidence, event poster images, media/contact/activity fields, location groups, and official HealthKit StateOfMind labels, associations, valence, valence classification, and kind.
+- Journaling imports continue through `JournalingSuggestion -> MemoryCaptureDraft -> artifacts + AffectSnapshot`; no `JournalingMemory` type is introduced.
+- Minimal `.video` artifact support is present for imported media evidence.
+- `MoryAuthTokenProvider` clears stale credentials and posts `moryAuthSessionExpired` when refresh fails with 401; `AuthSessionManager` receives that event and returns the app to the login state instead of leaving users authenticated-but-broken.

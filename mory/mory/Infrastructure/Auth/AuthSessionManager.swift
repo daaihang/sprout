@@ -1,6 +1,14 @@
 import Foundation
 import os
 
+extension Notification.Name {
+    static let moryAuthSessionExpired = Notification.Name("moryAuthSessionExpired")
+}
+
+enum MoryAuthSessionExpiredUserInfoKey {
+    static let reason = "reason"
+}
+
 struct AuthDiagnosticsSnapshot: Hashable, Sendable {
     let state: String
     let apiBaseURL: String
@@ -192,6 +200,18 @@ final class AuthSessionManager {
         state = .unauthenticated
     }
 
+    func handleSessionExpired(reason: String?) async {
+        do {
+            try await credentialStore.delete()
+        } catch {
+            logger.error("Failed to clear expired credential: \(error.localizedDescription)")
+        }
+        lastEvent = "Session expired"
+        lastErrorMessage = reason ?? "Session expired. Please sign in again."
+        localDataOwnerID = nil
+        state = .unauthenticated
+    }
+
     func fetchDiagnostics() async -> AuthDiagnosticsSnapshot {
         let credential = await credentialStore.loadCredential()
         let apiError = await apiClient.latestDebugError()
@@ -296,6 +316,8 @@ final class AuthSessionManager {
             logger.error("Failed to clear keychain on signout: \(error.localizedDescription)")
         }
         localDataOwnerID = nil
+        lastEvent = "Session expired"
+        lastErrorMessage = "Session expired. Please sign in again."
         state = .unauthenticated
     }
 

@@ -2363,6 +2363,16 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         try externalCaptureInboxStore.upsert(item)
     }
 
+    func markExternalCaptureInboxItemImported(_ id: UUID, recordID: UUID) throws {
+        guard var item = try externalCaptureInboxStore.fetch(id: id) else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+        item.status = .imported
+        item.importedRecordID = recordID
+        item.updatedAt = .now
+        try externalCaptureInboxStore.upsert(item)
+    }
+
     func createMemoryFromExternalCaptureInboxItem(_ id: UUID) async throws -> MemorySummary {
         guard let item = try externalCaptureInboxStore.fetch(id: id) else {
             throw CocoaError(.fileNoSuchFile)
@@ -2374,11 +2384,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         let draft = try ExternalCaptureInboxCodec().makeDraft(from: item)
         let memory = try await createMemory(from: draft)
 
-        var imported = item
-        imported.status = .imported
-        imported.importedRecordID = memory.record.id
-        imported.updatedAt = .now
-        try externalCaptureInboxStore.upsert(imported)
+        try markExternalCaptureInboxItemImported(item.id, recordID: memory.record.id)
         return memory
     }
 
