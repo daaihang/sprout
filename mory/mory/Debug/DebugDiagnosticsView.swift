@@ -145,6 +145,16 @@ struct DebugDiagnosticsView: View {
                 }
 
                 NavigationLink {
+                    PlatformCaptureDiagnosticsView()
+                } label: {
+                    DebugMenuRow(
+                        icon: "checklist.checked",
+                        title: "Platform Capture Diagnostics",
+                        subtitle: "Inspect Journaling, Share Extension, App Intents, App Group, and device-validation readiness"
+                    )
+                }
+
+                NavigationLink {
                     DebugHomeBoardDiagnosticsView()
                 } label: {
                     DebugMenuRow(

@@ -284,12 +284,13 @@ Completion evidence:
 | Phase 1 | completed | local SelfProfile persistence and inspectable context pack skeleton are implemented; production Analyze v7 consumes the context pack as of Phase 5 |
 | Phase 2 | completed | entity resolution foundation, correction ledger, and person merge/split mutation are implemented; proposal consumption and cloud-context integration continue in Phase 5 |
 | Phase 3 | completed | local PersonProfile persistence, deterministic portrait refresh jobs, mutation actions, evidence invalidation, and debug inspection are implemented; cloud AI portrait proposals remain Phase 5 |
-| Phase 4 | completed | local structured affect persistence, correction events, context-pack affect history, Journaling draft mapping, and external capture inbox are implemented; real Apple picker entitlement/full Share extension remain later phases |
+| Phase 4 | completed | local structured affect persistence, correction events, context-pack affect history, Journaling draft mapping, and external capture inbox are implemented; real Apple picker entitlement and Share Extension paths are implemented as v7.2 platform work |
 | Phase 5 | completed | production new-memory analysis is hard-cut over to Analyze v7 with context pack payloads, native server proposal output, local proposal persistence, and no legacy Analyze fallback |
 | Phase 6 | completed | BGTask (BGProcessingTask + BGAppRefreshTask) + BackgroundURLSession + NotificationDeliveryRouter + silent push handler implemented; tests in BackgroundTaskCoordinatorTests + NotificationDeliveryRouterTests |
 | Phase 7 | completed | eval fixtures, debug surfaces, privacy/budget gates, graph-delta apply inspection, clarification question inspection, BGTask/router tests, affect correction eval, and docs/code status reconciliation are complete; real-user telemetry and public release privacy review are post-v7 production hardening |
 | v7.1 Stabilization | completed | production graph persistence and composition test baseline are stabilized; new platform capabilities remain post-v7 hardening |
 | v7.2 Platform Context + Correction UX | completed | Journaling Suggestions entitlement/device picker adapter, Share Extension external inbox writing, App Shortcut phrase expansion, and GraphDelta reject/undo correction ledger are implemented; real-device validation remains production hardening |
+| v7.3 Device Validation + Platform QA | completed | platform capture diagnostics and manual validation checklist are implemented in Settings/Debug; physical-device execution remains release hardening |
 
 ## Post-v7 Production Hardening
 
@@ -298,7 +299,7 @@ These items are intentionally outside the v7 foundation completion gate:
 - run real-device APNs and background execution soak tests,
 - add real-user notification quality telemetry once there are users,
 - complete public release privacy review and App Store capability checks,
-- validate Apple Journaling Suggestions picker, App Intent phrases, and Share Extension handoff on a physical device with developer capabilities enabled,
+- execute the in-app Platform Capture Diagnostics checklist for Apple Journaling Suggestions picker, App Intent phrases, and Share Extension handoff on a physical device with developer capabilities enabled,
 - polish user-facing UI for merge/split, correction, mood, notification controls, and external capture review.
 
 ## v7.2 Platform Context + Correction UX
@@ -313,3 +314,16 @@ Completion evidence:
 - Simulator and non-framework builds keep the fallback draft form because the local Simulator SDK does not include `JournalingSuggestions.framework`.
 - `moryShareExtension` writes shared text, URLs, and image attachments into the external capture inbox through the app group, and the main app imports them through the normal memory creation path.
 - `GraphDeltaReviewView` now supports reject and undo-reject through persisted `CorrectionEvent.kind.graphDeltaRejected` instead of view-only state.
+
+## v7.3 Device Validation + Platform QA
+
+Goal: make platform capture capabilities inspectable before real-device validation and product polish.
+
+Completion evidence:
+
+- `PlatformCaptureDiagnosticsService` produces a testable snapshot for Journaling Suggestions availability, App Group defaults/container, external attachment directory, Share Extension bundling, App Intents metadata, external inbox counts, and manual validation items.
+- `PlatformCaptureDiagnosticsView` is reachable from `MemoryIntelligenceSettingsView` and Debug Center.
+- the diagnostics view can seed a Share-style inbox item so external capture import can be validated through the normal pending inbox path.
+- manual device checklist items are explicit for Apple Journaling picker import, Share Sheet handoff, and Siri/Shortcuts phrase validation.
+- unit tests cover capability summaries, blocked/warning statuses, inbox counts, and the manual-device checklist.
+- real-device execution is intentionally not claimed by this phase; it remains release hardening because it depends on a signed device build and enabled developer capabilities.

@@ -47,11 +47,12 @@ Completed implementation areas:
 - Eval/debug coverage for context packs, affect correction recurrence, graph delta apply, merge recovery, BGTask scheduling, and notification routing.
 - v7.1 stabilization: production Analyze v7 graph persistence now merges analysis graph output with place resolution before persisting nodes, edges, links, and local arc/reflection evidence; composition tests are aligned to the v7 cloud path.
 - v7.2 platform context wiring: Apple Journaling Suggestions entitlement + device picker adapter, Share Extension inbox writing for text/URL/images, App Shortcut phrase expansion, and GraphDelta reject/undo correction ledger are implemented as native data paths.
+- v7.3 device validation baseline: Platform Capture Diagnostics is available from Settings and Debug to inspect Journaling Suggestions, App Group, Share Extension, App Intents metadata, external inbox counts, and manual device-validation steps.
 
 Post-v7 production hardening remains separate from the v7 foundation:
 
-- real-device Apple Journaling Suggestions picker validation with the developer capability enabled,
-- App Intent phrase/device validation and Share Extension App Store capability review,
+- execute the in-app Platform Capture Diagnostics checklist on physical devices for Apple Journaling Suggestions picker, App Intent phrases, and Share Extension handoff,
+- Share Extension App Store capability review,
 - real-device APNs/background telemetry and soak testing,
 - public release privacy review with real user data handling.
 

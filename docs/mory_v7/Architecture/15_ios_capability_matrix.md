@@ -126,6 +126,7 @@ Implementation note:
 - On device builds with `JournalingSuggestions.framework`, the app presents the Apple picker and maps selected assets.
 - On Simulator/non-framework builds, the native fallback form remains visible so development and tests do not depend on entitlement-only APIs.
 - No `JournalingMemory` type exists; every suggestion becomes a normal draft with provenance.
+- Platform Capture Diagnostics must expose runtime readiness for Journaling availability, App Group defaults/container, Share Extension bundling, App Intents metadata, external inbox counts, and manual physical-device checks.
 
 ## 9. Acceptance Criteria
 
@@ -134,3 +135,4 @@ Implementation note:
 - Silent push is treated as opportunistic.
 - PushKit is not used for non-VoIP work.
 - External capture produces normal domain data.
+- Settings and Debug include a platform-capture diagnostic surface before physical-device validation starts.

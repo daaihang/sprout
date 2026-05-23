@@ -23,6 +23,12 @@ struct MemoryIntelligenceSettingsView: View {
                 } label: {
                     Label("External Capture Inbox", systemImage: "square.and.arrow.down.on.square")
                 }
+
+                NavigationLink {
+                    PlatformCaptureDiagnosticsView()
+                } label: {
+                    Label("Platform Capture Diagnostics", systemImage: "checklist.checked")
+                }
             }
 
             Section("Journaling Suggestions") {
