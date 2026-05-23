@@ -259,6 +259,7 @@ Completion evidence:
 - `NotificationDeliveryRouterTests`, `LocalNotificationSchedulerTests`, `NotificationIntentPreparationServiceTests`, `NotificationInteractionServiceTests`, and `BackgroundTaskCoordinatorTests` cover local/APNs routing, policy, writeback, and BGTask scheduling boundaries.
 - Privacy gates remain local-first: context packs are budgeted, sensitive records can be redacted/dropped, Analyze v7 is proposal-based, and AI output does not directly mutate trusted graph state.
 - Native product wiring exists (without visual polish): `GraphDeltaReviewView`, `MemoryIntelligenceSettingsView`, `PersonProfileEditView`, `PersonMergeSplitView`, `StructuredMoodPickerSheet`, `JournalingSuggestionImportView`, and `ExternalCaptureDraftReviewView` are connected from Insights, Settings, People, Capture, and Debug entries.
+- External capture now has a durable pending inbox: App Intent, Share, and Journaling-originated drafts can be queued as `ExternalCaptureInboxItem`, inspected from Settings/Debug, and imported through the normal memory creation path.
 - v7 documentation now separates the completed architecture/debug/test baseline from post-v7 production release hardening.
 
 ## Overall Phase Status
@@ -269,7 +270,7 @@ Completion evidence:
 | Phase 1 | completed | local SelfProfile persistence and inspectable context pack skeleton are implemented; production Analyze v7 consumes the context pack as of Phase 5 |
 | Phase 2 | completed | entity resolution foundation, correction ledger, and person merge/split mutation are implemented; proposal consumption and cloud-context integration continue in Phase 5 |
 | Phase 3 | completed | local PersonProfile persistence, deterministic portrait refresh jobs, mutation actions, evidence invalidation, and debug inspection are implemented; cloud AI portrait proposals remain Phase 5 |
-| Phase 4 | completed | local structured affect persistence, correction events, context-pack affect history, and Journaling suggestion draft mapping are implemented; real Apple picker entitlement/App Intents/Share extension remain later phases |
+| Phase 4 | completed | local structured affect persistence, correction events, context-pack affect history, Journaling draft mapping, and external capture inbox are implemented; real Apple picker entitlement/full Share extension remain later phases |
 | Phase 5 | completed | production new-memory analysis is hard-cut over to Analyze v7 with context pack payloads, native server proposal output, local proposal persistence, and no legacy Analyze fallback |
 | Phase 6 | completed | BGTask (BGProcessingTask + BGAppRefreshTask) + BackgroundURLSession + NotificationDeliveryRouter + silent push handler implemented; tests in BackgroundTaskCoordinatorTests + NotificationDeliveryRouterTests |
 | Phase 7 | completed | eval fixtures, debug surfaces, privacy/budget gates, graph-delta apply inspection, clarification question inspection, BGTask/router tests, affect correction eval, and docs/code status reconciliation are complete; real-user telemetry and public release privacy review are post-v7 production hardening |
@@ -281,4 +282,5 @@ These items are intentionally outside the v7 foundation completion gate:
 - run real-device APNs and background execution soak tests,
 - add real-user notification quality telemetry once there are users,
 - complete public release privacy review and App Store capability checks,
+- validate App Intent phrases on device and build the full Share extension target,
 - polish user-facing UI for merge/split, correction, mood, and notification controls.

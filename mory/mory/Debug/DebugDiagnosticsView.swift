@@ -135,6 +135,16 @@ struct DebugDiagnosticsView: View {
                 }
 
                 NavigationLink {
+                    ExternalCaptureDraftReviewView()
+                } label: {
+                    DebugMenuRow(
+                        icon: "square.and.arrow.down.on.square",
+                        title: "External Capture Inbox",
+                        subtitle: "Inspect App Intent, Share, and Journaling pending drafts before importing them as memories"
+                    )
+                }
+
+                NavigationLink {
                     DebugHomeBoardDiagnosticsView()
                 } label: {
                     DebugMenuRow(

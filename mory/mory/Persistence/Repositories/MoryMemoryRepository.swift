@@ -21,6 +21,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     private let clarificationQuestionBuilder = ClarificationQuestionBuilder()
     private let graphDeltaApplier = GraphDeltaApplier()
     private let affectSnapshotMapper = AffectSnapshotMapper()
+    private let externalCaptureInboxStore: any ExternalCaptureInboxStoring
     private var latestAnalysisTrace: DebugPipelineTraceSnapshot?
     private var latestReflectionTrace: DebugPipelineTraceSnapshot?
 
@@ -29,13 +30,17 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         analysisService: any RecordAnalysisServing,
         cloudIntelligenceService: (any CloudIntelligenceServing)? = nil,
         spotlightIndexService: (any SpotlightIndexServicing)? = nil,
-        localDataOwnerID: String? = nil
+        localDataOwnerID: String? = nil,
+        externalCaptureInboxStore: (any ExternalCaptureInboxStoring)? = nil
     ) {
         self.modelContext = modelContext
         self.analysisService = analysisService
         self.cloudIntelligenceService = cloudIntelligenceService
         self.spotlightIndexService = spotlightIndexService ?? DefaultSpotlightIndexService()
         self.spotlightItemBuilder = SpotlightSearchableItemBuilder(ownerID: localDataOwnerID)
+        self.externalCaptureInboxStore = externalCaptureInboxStore ?? ExternalCaptureInboxDefaultsStore(
+            scope: localDataOwnerID.map { .owner($0) } ?? .legacy
+        )
     }
 
     func createMemory(from draft: MemoryCaptureDraft) async throws -> MemorySummary {
@@ -1409,6 +1414,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
 
     func clearAllLocalData() throws {
         try deleteAll(NotificationIntentStore.self)
+        try externalCaptureInboxStore.clear()
         try deleteAll(HomeBoardSignalStore.self)
         try deleteAll(GraphDeltaStore.self)
         try deleteAll(IntelligenceJobStore.self)
@@ -2316,6 +2322,51 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     func upsertNotificationIntent(_ intent: NotificationIntent) throws {
         try upsert(notificationIntent: intent)
         try save()
+    }
+
+    func enqueueExternalCapture(_ request: ExternalCaptureRequest, receivedAt: Date = .now) throws -> ExternalCaptureInboxItem {
+        let item = try ExternalCaptureInboxCodec().makeItem(from: request, now: receivedAt)
+        try externalCaptureInboxStore.upsert(item)
+        return item
+    }
+
+    func enqueueJournalingSuggestion(_ suggestion: JournalingSuggestionDraft, receivedAt: Date = .now) throws -> ExternalCaptureInboxItem {
+        let item = try ExternalCaptureInboxCodec().makeItem(from: suggestion, now: receivedAt)
+        try externalCaptureInboxStore.upsert(item)
+        return item
+    }
+
+    func fetchExternalCaptureInbox(status: ExternalCaptureInboxStatus?, limit: Int?) throws -> [ExternalCaptureInboxItem] {
+        try externalCaptureInboxStore.fetch(status: status, limit: limit)
+    }
+
+    func dismissExternalCaptureInboxItem(_ id: UUID) throws {
+        guard var item = try externalCaptureInboxStore.fetch(id: id) else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+        item.status = .dismissed
+        item.dismissedAt = .now
+        item.updatedAt = .now
+        try externalCaptureInboxStore.upsert(item)
+    }
+
+    func createMemoryFromExternalCaptureInboxItem(_ id: UUID) async throws -> MemorySummary {
+        guard let item = try externalCaptureInboxStore.fetch(id: id) else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+        guard item.status == .pending else {
+            throw ExternalCaptureInboxError.itemIsNotPending
+        }
+
+        let draft = try ExternalCaptureInboxCodec().makeDraft(from: item)
+        let memory = try await createMemory(from: draft)
+
+        var imported = item
+        imported.status = .imported
+        imported.importedRecordID = memory.record.id
+        imported.updatedAt = .now
+        try externalCaptureInboxStore.upsert(imported)
+        return memory
     }
 
     func fetchIntelligenceJobs(status: IntelligenceJobStatus?, limit: Int?) throws -> [IntelligenceJob] {

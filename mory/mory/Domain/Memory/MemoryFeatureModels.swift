@@ -1098,6 +1098,11 @@ protocol MoryMemoryRepositorying: NotificationIntentRepositorying {
     func dismissClarificationQuestion(_ id: UUID) throws
     func fetchNotificationIntents(status: NotificationIntentStatus?, limit: Int?) throws -> [NotificationIntent]
     func upsertNotificationIntent(_ intent: NotificationIntent) throws
+    func enqueueExternalCapture(_ request: ExternalCaptureRequest, receivedAt: Date) throws -> ExternalCaptureInboxItem
+    func enqueueJournalingSuggestion(_ suggestion: JournalingSuggestionDraft, receivedAt: Date) throws -> ExternalCaptureInboxItem
+    func fetchExternalCaptureInbox(status: ExternalCaptureInboxStatus?, limit: Int?) throws -> [ExternalCaptureInboxItem]
+    func dismissExternalCaptureInboxItem(_ id: UUID) throws
+    func createMemoryFromExternalCaptureInboxItem(_ id: UUID) async throws -> MemorySummary
     func fetchIntelligenceJobs(status: IntelligenceJobStatus?, limit: Int?) throws -> [IntelligenceJob]
     func upsertIntelligenceJob(_ job: IntelligenceJob) throws
     func fetchGraphDeltas(applied: Bool?, limit: Int?) throws -> [GraphDelta]

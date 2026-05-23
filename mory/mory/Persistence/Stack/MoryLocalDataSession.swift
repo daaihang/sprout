@@ -4,6 +4,7 @@ import SwiftData
 @MainActor
 final class LocalDataOwnerRegistry {
     private static let legacyOwnerDefaultsKey = "mory.localData.legacyOwnerID.v1"
+    static let activeOwnerDefaultsKey = "mory.localData.lastPreparedOwnerID.v1"
 
     private let defaults: UserDefaults
     private let baseDirectory: URL?
@@ -33,6 +34,15 @@ final class LocalDataOwnerRegistry {
 
     func legacyOwnerID() -> String? {
         defaults.string(forKey: Self.legacyOwnerDefaultsKey)
+    }
+
+    func activeOwnerID() -> String? {
+        defaults.string(forKey: Self.activeOwnerDefaultsKey)
+    }
+
+    func activeScopeForExternalCapture() -> MoryLocalDataScope {
+        guard let ownerID = activeOwnerID() else { return .legacy }
+        return scope(for: ownerID)
     }
 
     func hasLegacyStoreUserData() -> Bool {

@@ -3,8 +3,6 @@ import UserNotifications
 
 @MainActor
 struct MoryOwnerScopedSystemStateCoordinator {
-    private static let lastPreparedOwnerIDKey = "mory.localData.lastPreparedOwnerID.v1"
-
     private let defaults: UserDefaults
     private let notificationCenter: UNUserNotificationCenter
 
@@ -23,7 +21,7 @@ struct MoryOwnerScopedSystemStateCoordinator {
     ) async {
         remotePushSyncService.prepareForLocalDataOwner(ownerID)
 
-        let previousOwnerID = defaults.string(forKey: Self.lastPreparedOwnerIDKey)
+        let previousOwnerID = defaults.string(forKey: LocalDataOwnerRegistry.activeOwnerDefaultsKey)
         guard previousOwnerID != ownerID else {
             return
         }
@@ -31,14 +29,14 @@ struct MoryOwnerScopedSystemStateCoordinator {
         clearSystemNotifications()
         _ = try? await repository.deleteSpotlightIndex()
         _ = try? await repository.rebuildSpotlightIndex()
-        defaults.set(ownerID, forKey: Self.lastPreparedOwnerIDKey)
+        defaults.set(ownerID, forKey: LocalDataOwnerRegistry.activeOwnerDefaultsKey)
     }
 
     func clearActiveOwnerSystemState(repository: any MoryMemoryRepositorying) async {
         _ = try? await LocalNotificationScheduler().cancelPendingAndScheduledLocalIntents(repository: repository)
         clearSystemNotifications()
         _ = try? await repository.deleteSpotlightIndex()
-        defaults.removeObject(forKey: Self.lastPreparedOwnerIDKey)
+        defaults.removeObject(forKey: LocalDataOwnerRegistry.activeOwnerDefaultsKey)
     }
 
     private func clearSystemNotifications() {

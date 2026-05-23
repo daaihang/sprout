@@ -41,6 +41,7 @@ Completed implementation areas:
 - Entity resolution, correction events, not-same blocking, and person merge/split mutation.
 - Person profile persistence, evidence-backed portrait refresh, and profile mutation actions.
 - Structured affect snapshots, affect corrections, tone hints, and Journaling suggestion draft mapping.
+- External capture inbox foundation for App Intent, Share, and Journaling-originated drafts.
 - Analyze v7 production replacement, bounded context payloads, native server proposal output, and debug request/response inspection.
 - BGTask registration, background URLSession infrastructure, silent-push handling, local/APNs notification routing, and notification policy tests.
 - Eval/debug coverage for context packs, affect correction recurrence, graph delta apply, merge recovery, BGTask scheduling, and notification routing.
@@ -48,7 +49,7 @@ Completed implementation areas:
 Post-v7 production hardening remains separate from the v7 foundation:
 
 - real Apple Journaling Suggestions entitlement and picker UX,
-- App Intents / Share extension capture surfaces,
+- full Share extension capture surface and App Intent phrase/device validation,
 - real-device APNs/background telemetry and soak testing,
 - public release privacy review with real user data handling.
 

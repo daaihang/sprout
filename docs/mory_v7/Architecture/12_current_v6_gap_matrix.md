@@ -109,8 +109,8 @@ Relevant code:
 | location/weather/music capture exists | useful but not enough for long-term reasoning | context evidence source registry |
 | photo analysis is compact | visual evidence may be too thin | richer evidence + provenance |
 | speech failure can remove voice evidence | mood/tone quality drops | explicit uncertainty/failure evidence |
-| Journaling Suggestions absent | missing system-curated context | `JournalingSuggestionContextService` |
-| App Intents/Share not unified into draft model | app-external capture incomplete | shared capture draft pipeline |
+| Journaling Suggestions real picker absent | missing system-curated context until entitlement is granted | `JournalingSuggestionContextService` + external capture inbox |
+| Share extension target not built | app-external capture still lacks full system share surface | shared capture draft pipeline + pending inbox |
 
 Relevant code:
 
@@ -148,6 +148,7 @@ The gaps above were the implementation source of truth for v7. As of v7 foundati
 | Entity resolution and correction | ✅ complete | user-facing UI polish remains later |
 | Person merge/split and portrait jobs | ✅ complete | cloud AI portrait proposals remain later |
 | Structured affect and tone correction | ✅ complete | real Journaling Suggestions entitlement/picker remains later |
+| External capture inbox | ✅ complete | App Intent shell writes pending drafts; full Share extension and device phrase validation remain later |
 | Analyze v7 contract | ✅ complete | production new-memory pipeline uses `/api/analyze/v7`; legacy Analyze is no longer the main path |
 | BGTask/background URLSession/APNs routing | ✅ complete | real-device soak and telemetry remain later |
 | Eval/debug/privacy gate | ✅ complete | real-user notification quality dashboard and public release privacy audit remain post-v7 production hardening |

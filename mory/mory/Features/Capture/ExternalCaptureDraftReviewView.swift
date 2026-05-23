@@ -11,13 +11,55 @@ struct ExternalCaptureDraftReviewView: View {
     @State private var affectLabelRaw = ""
     @State private var toneHintRaw = ""
     @State private var previewDraft: MemoryCaptureDraft?
+    @State private var inboxItems: [ExternalCaptureInboxItem] = []
     @State private var message: String?
     @State private var isSaving = false
 
     private let draftFactory = ExternalCaptureDraftFactory()
+    private let inboxCodec = ExternalCaptureInboxCodec()
 
     var body: some View {
         Form {
+            Section("Pending Inbox") {
+                if inboxItems.isEmpty {
+                    Text("No external captures.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(inboxItems) { item in
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(item.title ?? item.sourceKind.rawValue)
+                                        .font(.headline)
+                                    Text(item.summary)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(2)
+                                    Text("\(item.sourceKind.rawValue) • \(item.status.rawValue)")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                            }
+                            HStack {
+                                Button("Preview") {
+                                    previewInboxItem(item)
+                                }
+                                Button("Import") {
+                                    Task { await importInboxItem(item) }
+                                }
+                                .disabled(item.status != .pending || isSaving)
+                                Button("Dismiss") {
+                                    dismissInboxItem(item)
+                                }
+                                .disabled(item.status != .pending || isSaving)
+                            }
+                            .buttonStyle(.borderless)
+                        }
+                    }
+                }
+            }
+
             Section("Input") {
                 Picker("Source", selection: $sourceKind) {
                     ForEach(ExternalCaptureSourceKind.allCases) { kind in
@@ -39,6 +81,9 @@ struct ExternalCaptureDraftReviewView: View {
                 Button("Build Draft Preview") {
                     previewDraft = buildDraft()
                     message = "Draft preview updated."
+                }
+                Button("Queue As Pending Inbox Item") {
+                    queueCurrentRequest()
                 }
                 Button("Create Memory From Preview") {
                     Task { await createMemoryFromPreview() }
@@ -71,10 +116,15 @@ struct ExternalCaptureDraftReviewView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             previewDraft = buildDraft()
+            loadInbox()
         }
     }
 
     private func buildDraft() -> MemoryCaptureDraft {
+        draftFactory.makeDraft(from: buildRequest())
+    }
+
+    private func buildRequest() -> ExternalCaptureRequest {
         let trimmedText = text.trimmedOrNil ?? "Draft imported from external capture shell."
         let label = AffectLabel(rawValue: affectLabelRaw.trimmingCharacters(in: .whitespacesAndNewlines))
         let tone = ToneHint(rawValue: toneHintRaw.trimmingCharacters(in: .whitespacesAndNewlines))
@@ -87,7 +137,7 @@ struct ExternalCaptureDraftReviewView: View {
             userConfirmed: true,
             rawInput: label?.rawValue
         )
-        let request = ExternalCaptureRequest(
+        return ExternalCaptureRequest(
             sourceKind: sourceKind,
             title: title.trimmedOrNil,
             text: trimmedText,
@@ -95,7 +145,56 @@ struct ExternalCaptureDraftReviewView: View {
             context: context.trimmedOrNil,
             affectDrafts: (label == nil && tone == nil) ? [] : [affectDraft]
         )
-        return draftFactory.makeDraft(from: request)
+    }
+
+    private func loadInbox() {
+        do {
+            inboxItems = try memoryRepository.fetchExternalCaptureInbox(status: nil, limit: 20)
+        } catch {
+            message = error.localizedDescription
+        }
+    }
+
+    private func queueCurrentRequest() {
+        do {
+            _ = try memoryRepository.enqueueExternalCapture(buildRequest(), receivedAt: .now)
+            message = "Queued external capture."
+            loadInbox()
+        } catch {
+            message = error.localizedDescription
+        }
+    }
+
+    private func previewInboxItem(_ item: ExternalCaptureInboxItem) {
+        do {
+            previewDraft = try inboxCodec.makeDraft(from: item)
+            message = "Loaded inbox item preview."
+        } catch {
+            message = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func importInboxItem(_ item: ExternalCaptureInboxItem) async {
+        isSaving = true
+        defer { isSaving = false }
+        do {
+            let saved = try await memoryRepository.createMemoryFromExternalCaptureInboxItem(item.id)
+            message = "Imported memory \(saved.id.uuidString.prefix(8))."
+            loadInbox()
+        } catch {
+            message = error.localizedDescription
+        }
+    }
+
+    private func dismissInboxItem(_ item: ExternalCaptureInboxItem) {
+        do {
+            try memoryRepository.dismissExternalCaptureInboxItem(item.id)
+            message = "Dismissed external capture."
+            loadInbox()
+        } catch {
+            message = error.localizedDescription
+        }
     }
 
     @MainActor

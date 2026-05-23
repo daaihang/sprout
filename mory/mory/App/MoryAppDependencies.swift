@@ -137,6 +137,11 @@ private final class MissingMemoryRepository: MoryMemoryRepositorying {
     func dismissClarificationQuestion(_ id: UUID) throws { let _: Void = fail() }
     func fetchNotificationIntents(status: NotificationIntentStatus?, limit: Int?) throws -> [NotificationIntent] { fail() }
     func upsertNotificationIntent(_ intent: NotificationIntent) throws { let _: Void = fail() }
+    func enqueueExternalCapture(_ request: ExternalCaptureRequest, receivedAt: Date) throws -> ExternalCaptureInboxItem { fail() }
+    func enqueueJournalingSuggestion(_ suggestion: JournalingSuggestionDraft, receivedAt: Date) throws -> ExternalCaptureInboxItem { fail() }
+    func fetchExternalCaptureInbox(status: ExternalCaptureInboxStatus?, limit: Int?) throws -> [ExternalCaptureInboxItem] { fail() }
+    func dismissExternalCaptureInboxItem(_ id: UUID) throws { let _: Void = fail() }
+    func createMemoryFromExternalCaptureInboxItem(_ id: UUID) async throws -> MemorySummary { fail() }
     func fetchIntelligenceJobs(status: IntelligenceJobStatus?, limit: Int?) throws -> [IntelligenceJob] { fail() }
     func upsertIntelligenceJob(_ job: IntelligenceJob) throws { let _: Void = fail() }
     func fetchGraphDeltas(applied: Bool?, limit: Int?) throws -> [GraphDelta] { fail() }

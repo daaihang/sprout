@@ -4,6 +4,16 @@
     "" : {
 
     },
+    "%@ • %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ • %2$@"
+          }
+        }
+      }
+    },
     "%lld" : {
       "localizations" : {
         "zh-Hans" : {
@@ -24,6 +34,9 @@
           }
         }
       }
+    },
+    "%lld memories" : {
+
     },
     "%lld mentions" : {
       "localizations" : {
@@ -119,7 +132,22 @@
         }
       }
     },
+    "Added to Mory inbox." : {
+
+    },
+    "Adds text or a link to Mory's external capture inbox." : {
+
+    },
     "Affect Corrections" : {
+
+    },
+    "Affect History" : {
+
+    },
+    "Affect label (optional)" : {
+
+    },
+    "Affect snapshots" : {
 
     },
     "Affect Snapshots" : {
@@ -144,6 +172,9 @@
           }
         }
       }
+    },
+    "Aliases (comma separated)" : {
+
     },
     "Aliases, separated by commas" : {
       "localizations" : {
@@ -229,6 +260,9 @@
           }
         }
       }
+    },
+    "Applied" : {
+
     },
     "Apply" : {
 
@@ -511,6 +545,9 @@
         }
       }
     },
+    "Arousal" : {
+
+    },
     "Artifacts" : {
       "localizations" : {
         "zh-Hans" : {
@@ -520,6 +557,9 @@
           }
         }
       }
+    },
+    "Artist" : {
+
     },
     "Atmosphere" : {
       "localizations" : {
@@ -585,6 +625,12 @@
         }
       }
     },
+    "Automation" : {
+
+    },
+    "Available" : {
+
+    },
     "Backfill as %@" : {
       "localizations" : {
         "zh-Hans" : {
@@ -638,10 +684,16 @@
     "Background Tasks" : {
 
     },
+    "Body" : {
+
+    },
     "Budget" : {
 
     },
     "Build context pack for latest memory" : {
+
+    },
+    "Build Draft Preview" : {
 
     },
     "Build Environment" : {
@@ -696,6 +748,15 @@
           }
         }
       }
+    },
+    "Capture Memory" : {
+
+    },
+    "Capture Memory in Mory" : {
+
+    },
+    "Capture source" : {
+
     },
     "capture.action.add" : {
       "localizations" : {
@@ -4313,6 +4374,9 @@
         }
       }
     },
+    "Confidence: %@" : {
+
+    },
     "Context" : {
       "localizations" : {
         "zh-Hans" : {
@@ -4324,6 +4388,9 @@
       }
     },
     "Context Pack" : {
+
+    },
+    "Contexts: %@" : {
 
     },
     "Contrast" : {
@@ -4439,6 +4506,9 @@
           }
         }
       }
+    },
+    "Create Memory From Preview" : {
+
     },
     "Custom body override" : {
       "localizations" : {
@@ -11455,6 +11525,12 @@
     "Dismissed (%lld)" : {
 
     },
+    "Display name" : {
+
+    },
+    "Dominance" : {
+
+    },
     "Done" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -11466,6 +11542,9 @@
         }
       }
     },
+    "Draft Preview" : {
+
+    },
     "Each run creates real local memories and calls the configured Go API through the normal pipeline." : {
       "localizations" : {
         "zh-Hans" : {
@@ -11475,6 +11554,12 @@
           }
         }
       }
+    },
+    "Edit Person Profile" : {
+
+    },
+    "Editable Fields" : {
+
     },
     "Effective gate status" : {
 
@@ -12155,6 +12240,9 @@
         }
       }
     },
+    "Evidence: %lld" : {
+
+    },
     "Execution" : {
       "localizations" : {
         "zh-Hans" : {
@@ -12174,6 +12262,12 @@
           }
         }
       }
+    },
+    "External Capture" : {
+
+    },
+    "External Capture Inbox" : {
+
     },
     "FAIL" : {
       "localizations" : {
@@ -12212,6 +12306,9 @@
         }
       }
     },
+    "Fallback Draft" : {
+
+    },
     "Feature flags" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -12224,6 +12321,9 @@
       }
     },
     "Feature gates" : {
+
+    },
+    "Field evidence" : {
 
     },
     "Filtered" : {
@@ -12308,6 +12408,9 @@
           }
         }
       }
+    },
+    "GraphDelta Review" : {
+
     },
     "Home Board Debug" : {
       "localizations" : {
@@ -12862,6 +12965,15 @@
     "homeGrid" : {
 
     },
+    "Import" : {
+
+    },
+    "Importance" : {
+
+    },
+    "Input" : {
+
+    },
     "Inputs" : {
       "localizations" : {
         "zh-Hans" : {
@@ -13286,6 +13398,12 @@
     "intelligenceJobs" : {
 
     },
+    "Intensity" : {
+
+    },
+    "Interaction" : {
+
+    },
     "Internal diagnostics are enabled for Debug, development installs, and InternalBeta TestFlight builds only." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13360,7 +13478,13 @@
         }
       }
     },
+    "Journaling Import" : {
+
+    },
     "Journaling Suggestions" : {
+
+    },
+    "Journaling Suggestions Status" : {
 
     },
     "Kind: %@ · Sensitivity: %@" : {
@@ -13372,6 +13496,12 @@
           }
         }
       }
+    },
+    "Label (e.g. calm, relieved)" : {
+
+    },
+    "Labels" : {
+
     },
     "Last error" : {
       "localizations" : {
@@ -13422,6 +13552,9 @@
           }
         }
       }
+    },
+    "Leave pending" : {
+
     },
     "Legacy has user data" : {
       "localizations" : {
@@ -13621,6 +13754,12 @@
           }
         }
       }
+    },
+    "Manage People" : {
+
+    },
+    "Manage People Merge/Split" : {
+
     },
     "Map snapshots are static images. Cards fall back to a lightweight map texture when no snapshot is available." : {
       "localizations" : {
@@ -14086,6 +14225,9 @@
           }
         }
       }
+    },
+    "Memory Intelligence" : {
+
     },
     "Memory results" : {
       "localizations" : {
@@ -14756,6 +14898,12 @@
         }
       }
     },
+    "Merge People" : {
+
+    },
+    "Merge selected" : {
+
+    },
     "Merge selected places" : {
       "localizations" : {
         "zh-Hans" : {
@@ -14775,6 +14923,12 @@
           }
         }
       }
+    },
+    "Mood" : {
+
+    },
+    "Mood Vector" : {
+
     },
     "More" : {
       "localizations" : {
@@ -14846,6 +15000,9 @@
         }
       }
     },
+    "New person name" : {
+
+    },
     "New place name" : {
       "localizations" : {
         "zh-Hans" : {
@@ -14880,6 +15037,12 @@
 
     },
     "No affect snapshots yet." : {
+
+    },
+    "No affect snapshots." : {
+
+    },
+    "No applied graph deltas yet." : {
 
     },
     "No arc/reflection results" : {
@@ -14918,6 +15081,9 @@
           }
         }
       }
+    },
+    "No external captures." : {
+
     },
     "No jobs" : {
       "localizations" : {
@@ -14959,7 +15125,13 @@
         }
       }
     },
+    "No pending graph deltas." : {
+
+    },
     "No pending questions" : {
+
+    },
+    "No person profile yet." : {
 
     },
     "No person profiles" : {
@@ -15026,6 +15198,9 @@
           }
         }
       }
+    },
+    "none" : {
+
     },
     "Not now" : {
       "localizations" : {
@@ -15290,6 +15465,9 @@
         }
       }
     },
+    "Optional note" : {
+
+    },
     "Origin" : {
       "localizations" : {
         "zh-Hans" : {
@@ -15361,7 +15539,13 @@
     "Payload preview" : {
 
     },
+    "pending" : {
+
+    },
     "Pending (%lld)" : {
+
+    },
+    "Pending Inbox" : {
 
     },
     "Pending intents" : {
@@ -15373,6 +15557,9 @@
           }
         }
       }
+    },
+    "Pending Proposals" : {
+
     },
     "Pending writebacks" : {
       "localizations" : {
@@ -15563,6 +15750,12 @@
           }
         }
       }
+    },
+    "Person Profile" : {
+
+    },
+    "Person profile not found" : {
+
     },
     "Person Profiles" : {
 
@@ -15804,6 +15997,9 @@
         }
       }
     },
+    "Place" : {
+
+    },
     "Place Lab" : {
       "localizations" : {
         "zh-Hans" : {
@@ -15910,6 +16106,9 @@
         }
       }
     },
+    "Primary" : {
+
+    },
     "priority %@" : {
       "localizations" : {
         "zh-Hans" : {
@@ -15942,6 +16141,9 @@
           }
         }
       }
+    },
+    "Profile Actions" : {
+
     },
     "Profile ID" : {
       "localizations" : {
@@ -16008,6 +16210,9 @@
           }
         }
       }
+    },
+    "Queue As Pending Inbox Item" : {
+
     },
     "quickCapture.contextCheckIn" : {
       "extractionState" : "manual",
@@ -17232,6 +17437,9 @@
         }
       }
     },
+    "Raw note" : {
+
+    },
     "Raw Response" : {
       "localizations" : {
         "zh-Hans" : {
@@ -17242,6 +17450,9 @@
         }
       }
     },
+    "Raw text" : {
+
+    },
     "Raw transcript" : {
       "localizations" : {
         "zh-Hans" : {
@@ -17251,6 +17462,9 @@
           }
         }
       }
+    },
+    "Reason" : {
+
     },
     "Rebuild Core Spotlight index" : {
       "localizations" : {
@@ -17343,6 +17557,9 @@
           }
         }
       }
+    },
+    "Reflection prompt" : {
+
     },
     "reflection.action.archive" : {
       "extractionState" : "manual",
@@ -17835,6 +18052,9 @@
         }
       }
     },
+    "Requires confirmation: %@" : {
+
+    },
     "Reset defaults" : {
       "localizations" : {
         "zh-Hans" : {
@@ -17895,6 +18115,15 @@
           }
         }
       }
+    },
+    "Review" : {
+
+    },
+    "Review and apply pending graph proposals." : {
+
+    },
+    "Role labels (comma separated)" : {
+
     },
     "Rule inputs" : {
       "localizations" : {
@@ -18452,6 +18681,15 @@
     "Seed journaling StateOfMind draft" : {
 
     },
+    "Select a primary person to choose merge candidates." : {
+
+    },
+    "Select a source person with linked memories." : {
+
+    },
+    "Select person" : {
+
+    },
     "Selected" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -18509,6 +18747,9 @@
 
     },
     "Sensitive topic policy" : {
+
+    },
+    "Sensitivity" : {
 
     },
     "Sent" : {
@@ -20906,6 +21147,12 @@
     "Snapshots" : {
 
     },
+    "Song" : {
+
+    },
+    "Source" : {
+
+    },
     "Source labels" : {
       "localizations" : {
         "zh-Hans" : {
@@ -20915,6 +21162,9 @@
           }
         }
       }
+    },
+    "Source: %@" : {
+
     },
     "Sources" : {
       "localizations" : {
@@ -20926,6 +21176,9 @@
         }
       }
     },
+    "Split Person" : {
+
+    },
     "Split selected artifacts" : {
       "localizations" : {
         "zh-Hans" : {
@@ -20935,6 +21188,9 @@
           }
         }
       }
+    },
+    "Split selected memories" : {
+
     },
     "Start recording and attach voice to this memory." : {
       "extractionState" : "stale",
@@ -20956,6 +21212,9 @@
           }
         }
       }
+    },
+    "State Of Mind" : {
+
     },
     "Status" : {
 
@@ -20990,6 +21249,9 @@
           }
         }
       }
+    },
+    "Structured Mood" : {
+
     },
     "Style" : {
       "localizations" : {
@@ -21222,6 +21484,9 @@
         }
       }
     },
+    "Text" : {
+
+    },
     "These controls are internal gates only. They do not request system permissions such as notifications." : {
 
     },
@@ -21401,7 +21666,6 @@
       }
     },
     "Title" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21410,6 +21674,15 @@
           }
         }
       }
+    },
+    "Tone hint (optional)" : {
+
+    },
+    "Tone Hints" : {
+
+    },
+    "Tone: %@" : {
+
     },
     "Transcribing..." : {
       "extractionState" : "stale",
@@ -21467,7 +21740,6 @@
 
     },
     "URL" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21524,6 +21796,9 @@
         }
       }
     },
+    "User notes" : {
+
+    },
     "UserDefaults scopes" : {
       "localizations" : {
         "zh-Hans" : {
@@ -21555,6 +21830,12 @@
 
     },
     "V6 feature flags" : {
+
+    },
+    "v7 Review" : {
+
+    },
+    "Valence" : {
 
     },
     "Visible cards" : {

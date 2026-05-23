@@ -21,7 +21,7 @@ struct MemoryIntelligenceSettingsView: View {
                 NavigationLink {
                     ExternalCaptureDraftReviewView()
                 } label: {
-                    Label("External Capture Tester", systemImage: "square.and.arrow.down.on.square")
+                    Label("External Capture Inbox", systemImage: "square.and.arrow.down.on.square")
                 }
             }
 

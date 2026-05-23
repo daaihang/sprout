@@ -131,6 +131,129 @@ struct ExternalCaptureRequest: Codable, Hashable, Sendable {
     }
 }
 
+enum ExternalCaptureInboxPayloadKind: String, Codable, CaseIterable, Identifiable, Sendable {
+    case externalCapture
+    case journalingSuggestion
+
+    var id: String { rawValue }
+}
+
+enum ExternalCaptureInboxStatus: String, Codable, CaseIterable, Identifiable, Sendable {
+    case pending
+    case imported
+    case dismissed
+
+    var id: String { rawValue }
+}
+
+struct ExternalCaptureInboxItem: Identifiable, Codable, Hashable, Sendable {
+    var id: UUID
+    var payloadKind: ExternalCaptureInboxPayloadKind
+    var sourceKind: ExternalCaptureSourceKind
+    var title: String?
+    var summary: String
+    var payloadData: Data
+    var status: ExternalCaptureInboxStatus
+    var receivedAt: Date
+    var updatedAt: Date
+    var importedRecordID: UUID?
+    var dismissedAt: Date?
+    var errorMessage: String?
+
+    init(
+        id: UUID = UUID(),
+        payloadKind: ExternalCaptureInboxPayloadKind,
+        sourceKind: ExternalCaptureSourceKind,
+        title: String? = nil,
+        summary: String,
+        payloadData: Data,
+        status: ExternalCaptureInboxStatus = .pending,
+        receivedAt: Date = .now,
+        updatedAt: Date = .now,
+        importedRecordID: UUID? = nil,
+        dismissedAt: Date? = nil,
+        errorMessage: String? = nil
+    ) {
+        self.id = id
+        self.payloadKind = payloadKind
+        self.sourceKind = sourceKind
+        self.title = title
+        self.summary = summary
+        self.payloadData = payloadData
+        self.status = status
+        self.receivedAt = receivedAt
+        self.updatedAt = updatedAt
+        self.importedRecordID = importedRecordID
+        self.dismissedAt = dismissedAt
+        self.errorMessage = errorMessage
+    }
+}
+
+enum ExternalCaptureInboxError: LocalizedError, Equatable {
+    case unsupportedPayloadKind(String)
+    case itemIsNotPending
+
+    var errorDescription: String? {
+        switch self {
+        case let .unsupportedPayloadKind(kind):
+            "Unsupported external capture payload kind: \(kind)."
+        case .itemIsNotPending:
+            "External capture item is not pending."
+        }
+    }
+}
+
+struct ExternalCaptureInboxCodec: Sendable {
+    func makeItem(from request: ExternalCaptureRequest, now: Date = .now) throws -> ExternalCaptureInboxItem {
+        let data = try JSONEncoder().encode(request)
+        return ExternalCaptureInboxItem(
+            payloadKind: .externalCapture,
+            sourceKind: request.sourceKind,
+            title: request.title?.trimmedOrNil,
+            summary: summary(from: request.text, fallback: request.url ?? request.sourceKind.rawValue),
+            payloadData: data,
+            receivedAt: now,
+            updatedAt: now
+        )
+    }
+
+    func makeItem(from suggestion: JournalingSuggestionDraft, now: Date = .now) throws -> ExternalCaptureInboxItem {
+        let data = try JSONEncoder().encode(suggestion)
+        return ExternalCaptureInboxItem(
+            payloadKind: .journalingSuggestion,
+            sourceKind: .journalingSuggestion,
+            title: suggestion.title?.trimmedOrNil,
+            summary: summary(
+                from: [suggestion.body, suggestion.reflectionPrompt, suggestion.locationTitle, suggestion.songTitle]
+                    .compactMap { $0?.trimmedOrNil }
+                    .joined(separator: " "),
+                fallback: "Journaling suggestion"
+            ),
+            payloadData: data,
+            receivedAt: now,
+            updatedAt: now
+        )
+    }
+
+    func makeDraft(from item: ExternalCaptureInboxItem) throws -> MemoryCaptureDraft {
+        switch item.payloadKind {
+        case .externalCapture:
+            let request = try JSONDecoder().decode(ExternalCaptureRequest.self, from: item.payloadData)
+            return ExternalCaptureDraftFactory().makeDraft(from: request)
+        case .journalingSuggestion:
+            let suggestion = try JSONDecoder().decode(JournalingSuggestionDraft.self, from: item.payloadData)
+            return JournalingSuggestionContextService().makeCaptureDraft(from: suggestion)
+        }
+    }
+
+    private func summary(from text: String, fallback: String) -> String {
+        let value = text.trimmedOrNil ?? fallback
+        let maxLength = 160
+        guard value.count > maxLength else { return value }
+        return String(value.prefix(maxLength)).trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
 struct ExternalCaptureDraftFactory: Sendable {
     func makeDraft(from request: ExternalCaptureRequest) -> MemoryCaptureDraft {
         var artifacts: [CaptureArtifactDraft] = [
