@@ -168,6 +168,15 @@
     "Analyze v7 response" : {
 
     },
+    "analyzeV7DualRun" : {
+
+    },
+    "Answer: %@" : {
+
+    },
+    "Answered (%lld)" : {
+
+    },
     "APNs" : {
       "localizations" : {
         "zh-Hans" : {
@@ -217,6 +226,12 @@
           }
         }
       }
+    },
+    "Apply" : {
+
+    },
+    "Apply all pending" : {
+
     },
     "Arc min records: %lld" : {
       "localizations" : {
@@ -616,6 +631,9 @@
           }
         }
       }
+    },
+    "Background Tasks" : {
+
     },
     "Budget" : {
 
@@ -3824,6 +3842,9 @@
           }
         }
       }
+    },
+    "Clarification Questions" : {
+
     },
     "clarificationQuestions" : {
 
@@ -11428,6 +11449,9 @@
         }
       }
     },
+    "Dismissed (%lld)" : {
+
+    },
     "Done" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -13336,6 +13360,16 @@
     "Journaling Suggestions" : {
 
     },
+    "Kind: %@ · Sensitivity: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Kind: %1$@ · Sensitivity: %2$@"
+          }
+        }
+      }
+    },
     "Last error" : {
       "localizations" : {
         "zh-Hans" : {
@@ -14922,6 +14956,9 @@
         }
       }
     },
+    "No pending questions" : {
+
+    },
     "No person profiles" : {
 
     },
@@ -15319,6 +15356,9 @@
       }
     },
     "Payload preview" : {
+
+    },
+    "Pending (%lld)" : {
 
     },
     "Pending intents" : {
@@ -17811,6 +17851,9 @@
     "Reset V6 flags to defaults" : {
 
     },
+    "Result" : {
+
+    },
     "Results" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -18062,6 +18105,12 @@
           }
         }
       }
+    },
+    "Schedule BGAppRefreshTask" : {
+
+    },
+    "Schedule BGProcessingTask" : {
+
     },
     "Scheduled intents" : {
       "localizations" : {

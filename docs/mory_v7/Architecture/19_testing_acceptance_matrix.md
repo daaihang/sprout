@@ -79,9 +79,23 @@ Each Phase PR must update:
 | Phase 4 | affect snapshot and Journaling evidence are persisted |
 | Phase 5 | Analyze v7 dual-run maps proposals safely |
 | Phase 6 | background/notification loop has policy, writeback, and debug traces |
-| Phase 7 | eval fixtures can measure regressions |
+| Phase 7 | eval fixtures, debug surfaces, and privacy/budget gates can measure regressions before production rollout |
 
-## 8. Non-Acceptance
+## 8. Completion Evidence
+
+v7 acceptance coverage is now in place for the architecture baseline:
+
+- targeted eval fixtures: `MoryV7EvalTests`;
+- context/retrieval/privacy tests: `AnalysisContextPackTests`;
+- identity/correction tests: `EntityResolutionServiceTests`;
+- structured mood tests: `AffectSnapshotTests`;
+- background tests: `BackgroundTaskCoordinatorTests`;
+- notification routing/policy/writeback tests: `NotificationDeliveryRouterTests`, `LocalNotificationSchedulerTests`, `NotificationIntentPreparationServiceTests`, `NotificationInteractionServiceTests`;
+- cloud contract tests: `AnalyzeV7ContractTests`.
+
+The remaining production tasks are real-device APNs/background soak, real-user telemetry, App Store capability checks, and polished user-facing UI.
+
+## 9. Non-Acceptance
 
 v7 is not acceptable if:
 

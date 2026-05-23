@@ -183,6 +183,55 @@ final class MoryV7EvalTests: XCTestCase {
         XCTAssertEqual(bobTombstone?.replacementEntityID, aliceID)
     }
 
+    // MARK: - Golden fixture: affect correction shows up in context pack affect history
+
+    func testAffectCorrectionAppearsInContextPackAffectHistory() async throws {
+        let fixture = makeFixture()
+
+        // Create a memory with a default (empty) mood
+        let draft = MemoryCaptureDraft(
+            title: "Long day",
+            rawText: "Today was rough — kept snapping at people, felt like I had no patience.",
+            captureSource: .composer
+        )
+        let summary = try await fixture.repository.createMemory(from: draft)
+        let recordID = summary.record.id
+
+        // Apply an affect correction labelling it .irritated (not joking/venting)
+        let correction = AffectCorrection(
+            recordID: recordID,
+            labels: [.irritated],
+            toneHints: [.serious]
+        )
+        _ = try fixture.repository.applyAffectCorrection(correction)
+
+        // Build context pack for the same record (needs a second memory to make it "related")
+        let draft2 = MemoryCaptureDraft(
+            title: "Next day",
+            rawText: "Slept better. Less irritable.",
+            captureSource: .composer
+        )
+        let summary2 = try await fixture.repository.createMemory(from: draft2)
+
+        // Build context pack for memory2 — affectHistory should carry the corrected snapshot
+        let builder = ContextPackBuilder(repository: fixture.repository)
+        let pack = try await builder.build(targetRecordID: summary2.record.id)
+
+        // The corrected label "irritated" must surface in at least one affectHistory entry
+        let allMoods = pack.affectHistory.map { $0.mood }
+        let allLabels = pack.affectHistory.flatMap { $0.toneHints.map(\.rawValue) } +
+                        pack.affectHistory.map { $0.mood }
+        XCTAssertFalse(
+            pack.affectHistory.isEmpty,
+            "affectHistory should be non-empty after correction; moods: \(allMoods)"
+        )
+        let hasIrritatedSignal = allLabels.contains { $0.localizedCaseInsensitiveContains("irritat") }
+        XCTAssertTrue(
+            hasIrritatedSignal,
+            "Expected 'irritated' label to appear in context pack affect history; got moods=\(allMoods)"
+        )
+    }
+
     // MARK: - Helpers
 
     private struct EvalFixture {

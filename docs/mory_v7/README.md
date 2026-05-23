@@ -31,17 +31,27 @@ new memory
   -> future analysis reads those updates
 ```
 
-## 3. Current v6 Gap Summary
+## 3. Implementation Status
 
-Current verified gaps:
+v7 is complete as a local architecture, debug, and testable foundation.
 
-- Analyze payload is centered on the current record, current artifacts, and up to 20 known entities.
-- Entity profiles, user answers, arcs, reflections, semantic search hits, and similar memories are not fed back into the next Analyze call as structured context.
-- Person entities do not yet have the same merge/split management lifecycle that place profiles have.
-- There is no dedicated local self profile for "me", "I", "my roommate", "my mother", or other first-person relationship language.
-- Mood is too thin: free text plus optional intensity cannot reliably support longitudinal emotion or tone analysis.
-- Daily questions and notification prep are still foreground/launch dominated.
-- Remote push and local notification foundations exist, but v7 needs a unified proactive orchestration loop.
+Completed implementation areas:
+
+- `SelfProfile` and identity-aware local context pack construction.
+- Entity resolution, correction events, not-same blocking, and person merge/split mutation.
+- Person profile persistence, evidence-backed portrait refresh, and profile mutation actions.
+- Structured affect snapshots, affect corrections, tone hints, and Journaling suggestion draft mapping.
+- Analyze v7 request/response contracts, bounded context payloads, and debug dual-run proposal staging.
+- BGTask registration, background URLSession infrastructure, silent-push handling, local/APNs notification routing, and notification policy tests.
+- Eval/debug coverage for context packs, affect correction recurrence, graph delta apply, merge recovery, BGTask scheduling, and notification routing.
+
+Post-v7 production hardening remains separate from the v7 foundation:
+
+- production replacement of legacy Analyze,
+- real Apple Journaling Suggestions entitlement and picker UX,
+- App Intents / Share extension capture surfaces,
+- real-device APNs telemetry,
+- public release privacy review with real user data handling.
 
 ## 4. Document Map
 
@@ -79,12 +89,12 @@ Architecture:
 
 ## 5. Delivery Order
 
-Do not start with polished UI.
-
-Implementation order:
+v7 followed the intended order:
 
 1. Context and identity data contracts.
 2. Persistence and mutation boundaries.
 3. Debug surfaces and deterministic tests.
 4. Background orchestration.
-5. User-facing UI polish.
+5. User-facing UI polish later.
+
+The shipped v7 baseline intentionally prioritizes business logic, repository boundaries, debug inspection, and tests over polished end-user UI.

@@ -251,6 +251,15 @@ Exit criteria:
 - debug surfaces explain AI outputs,
 - docs and code status match.
 
+Completion evidence:
+
+- `MoryV7EvalTests` covers sparse first-day context pack construction, GraphDelta apply/idempotence, person merge recovery, and affect correction appearing in future context pack affect history.
+- `AnalysisContextPackTests`, `EntityResolutionServiceTests`, and `AffectSnapshotTests` cover context ranking/budget/privacy, self-reference CJK edge cases, not-same blocking, Chinese name matching, and note-less affect correction.
+- `DebugAnalysisContextPackView`, `DebugAffectSnapshotView`, `DebugClarificationQuestionsView`, and Debug Center actions expose context payloads, affect snapshots, clarification answers/dismissal, pending GraphDelta application, BGTask scheduling, and notification traces for development inspection.
+- `NotificationDeliveryRouterTests`, `LocalNotificationSchedulerTests`, `NotificationIntentPreparationServiceTests`, `NotificationInteractionServiceTests`, and `BackgroundTaskCoordinatorTests` cover local/APNs routing, policy, writeback, and BGTask scheduling boundaries.
+- Privacy gates remain local-first: context packs are budgeted, sensitive records can be redacted/dropped, Analyze v7 is proposal-based, and AI output does not directly mutate trusted graph state.
+- v7 documentation now separates the completed architecture/debug/test baseline from post-v7 production release hardening.
+
 ## Overall Phase Status
 
 | Phase | Current status | Gap |
@@ -262,4 +271,14 @@ Exit criteria:
 | Phase 4 | completed | local structured affect persistence, correction events, context-pack affect history, and Journaling suggestion draft mapping are implemented; real Apple picker entitlement/App Intents/Share extension remain later phases |
 | Phase 5 | completed | Analyze v7 contract and debug dual-run are implemented; production proposal consumption and replacement of legacy Analyze remain later work |
 | Phase 6 | completed | BGTask (BGProcessingTask + BGAppRefreshTask) + BackgroundURLSession + NotificationDeliveryRouter + silent push handler implemented; tests in BackgroundTaskCoordinatorTests + NotificationDeliveryRouterTests |
-| Phase 7 | in progress | applyGraphDelta + ClarificationQuestions debug view + BGTask/router tests + eval golden fixture tests complete; notification quality dashboard and privacy audit deferred (no real users at dev stage) |
+| Phase 7 | completed | eval fixtures, debug surfaces, privacy/budget gates, graph-delta apply inspection, clarification question inspection, BGTask/router tests, affect correction eval, and docs/code status reconciliation are complete; real-user telemetry and public release privacy review are post-v7 production hardening |
+
+## Post-v7 Production Hardening
+
+These items are intentionally outside the v7 foundation completion gate:
+
+- replace legacy Analyze in production instead of debug dual-run only,
+- run real-device APNs and background execution soak tests,
+- add real-user notification quality telemetry once there are users,
+- complete public release privacy review and App Store capability checks,
+- polish user-facing UI for merge/split, correction, mood, and notification controls.

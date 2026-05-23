@@ -137,3 +137,17 @@ Relevant code:
 6. Analyze v7 cloud contract.
 7. BGTask/background URLSession/APNs orchestration.
 8. Eval/debug/privacy audit.
+
+## 11. v7 Completion Status
+
+The gaps above were the implementation source of truth for v7. As of v7 foundation completion:
+
+| Area | Status | Boundary |
+| --- | --- | --- |
+| Self profile and context pack | ✅ complete | production Analyze replacement remains post-v7 |
+| Entity resolution and correction | ✅ complete | user-facing UI polish remains later |
+| Person merge/split and portrait jobs | ✅ complete | cloud AI portrait proposals remain later |
+| Structured affect and tone correction | ✅ complete | real Journaling Suggestions entitlement/picker remains later |
+| Analyze v7 contract | ✅ complete | debug dual-run and proposal staging implemented; full production rollout remains later |
+| BGTask/background URLSession/APNs routing | ✅ complete | real-device soak and telemetry remain later |
+| Eval/debug/privacy gate | ✅ complete | real-user notification quality dashboard and public release privacy audit remain post-v7 production hardening |
