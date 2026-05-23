@@ -1091,6 +1091,7 @@ protocol MoryMemoryRepositorying: NotificationIntentRepositorying {
     func splitPersonEntity(id: UUID, movingRecordIDs: [UUID], displayName: String, aliases: [String]) throws -> EntityProfile
     func fetchCorrectionEvents(kind: CorrectionEventKind?, limit: Int?) throws -> [CorrectionEvent]
     func upsertCorrectionEvent(_ event: CorrectionEvent) throws
+    func reverseCorrectionEvent(_ id: UUID, reversedAt: Date) throws
     func fetchEntityTombstones(limit: Int?) throws -> [EntityTombstone]
     func fetchClarificationQuestions(status: ClarificationQuestionStatus?, limit: Int?) throws -> [ClarificationQuestion]
     func upsertClarificationQuestion(_ question: ClarificationQuestion) throws
@@ -1108,6 +1109,7 @@ protocol MoryMemoryRepositorying: NotificationIntentRepositorying {
     func fetchGraphDeltas(applied: Bool?, limit: Int?) throws -> [GraphDelta]
     func upsertGraphDelta(_ delta: GraphDelta) throws
     func markGraphDeltaApplied(_ id: UUID, appliedAt: Date) throws
+    func rejectGraphDelta(_ id: UUID, note: String?) throws
     /// Applies a stored GraphDelta's operations to the entity graph (profile + node + optional merge).
     /// Idempotent: does nothing if `delta.appliedAt` is already set.
     func applyGraphDelta(_ id: UUID) throws

@@ -39,7 +39,8 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         self.spotlightIndexService = spotlightIndexService ?? DefaultSpotlightIndexService()
         self.spotlightItemBuilder = SpotlightSearchableItemBuilder(ownerID: localDataOwnerID)
         self.externalCaptureInboxStore = externalCaptureInboxStore ?? ExternalCaptureInboxDefaultsStore(
-            scope: localDataOwnerID.map { .owner($0) } ?? .legacy
+            scope: localDataOwnerID.map { .owner($0) } ?? .legacy,
+            includeSharedLegacyFallback: true
         )
     }
 
@@ -2206,6 +2207,18 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         try save()
     }
 
+    func reverseCorrectionEvent(_ id: UUID, reversedAt: Date = .now) throws {
+        guard let existing = try modelContext.fetch(
+            FetchDescriptor<CorrectionEventStore>(predicate: #Predicate { $0.id == id })
+        ).first else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+        var updated = existing.domainModel
+        updated.reversedAt = reversedAt
+        existing.apply(domainModel: updated)
+        try save()
+    }
+
     func fetchEntityTombstones(limit: Int?) throws -> [EntityTombstone] {
         let tombstones = try modelContext.fetch(
             FetchDescriptor<EntityTombstoneStore>(
@@ -2421,6 +2434,33 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         var updated = existing.domainModel
         updated.appliedAt = appliedAt
         existing.apply(domainModel: updated)
+        try save()
+    }
+
+    func rejectGraphDelta(_ id: UUID, note: String? = nil) throws {
+        guard let existing = try modelContext.fetch(
+            FetchDescriptor<GraphDeltaStore>(predicate: #Predicate { $0.id == id })
+        ).first else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+        let delta = existing.domainModel
+        let targetEntityIDs = delta.operations.flatMap { operation -> [UUID] in
+            [operation.targetID, operation.relatedID].compactMap { $0 }
+        }
+        let sourceRecordIDs = delta.operations.compactMap { $0.metadata["recordID"].flatMap(UUID.init(uuidString:)) }
+        try upsert(correctionEvent: CorrectionEvent(
+            kind: .graphDeltaRejected,
+            actor: .user,
+            targetEntityIDs: Array(Set(targetEntityIDs)),
+            sourceRecordIDs: Array(Set(sourceRecordIDs)),
+            note: note?.trimmedOrNil ?? "Rejected GraphDelta proposal.",
+            metadata: [
+                "graphDeltaID": id.uuidString,
+                "source": delta.source.rawValue,
+                "operations": delta.operations.map(\.kind.rawValue).joined(separator: ",")
+            ],
+            isReversible: true
+        ))
         try save()
     }
 

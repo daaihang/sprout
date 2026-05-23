@@ -177,6 +177,15 @@ final class MoryMemoryRepositoryIntelligenceTests: XCTestCase {
         try repository.upsertGraphDelta(delta)
         XCTAssertEqual(try repository.fetchGraphDeltas(applied: false, limit: nil).count, 1)
 
+        try repository.rejectGraphDelta(delta.id, note: "Not this relationship.")
+        let rejection = try XCTUnwrap(try repository.fetchCorrectionEvents(kind: .graphDeltaRejected, limit: nil).first)
+        XCTAssertEqual(rejection.metadata["graphDeltaID"], delta.id.uuidString)
+        XCTAssertEqual(rejection.note, "Not this relationship.")
+
+        try repository.reverseCorrectionEvent(rejection.id, reversedAt: Date(timeIntervalSince1970: 1_800_000_002))
+        let reversed = try XCTUnwrap(try repository.fetchCorrectionEvents(kind: .graphDeltaRejected, limit: nil).first)
+        XCTAssertNotNil(reversed.reversedAt)
+
         let appliedAt = Date(timeIntervalSince1970: 1_800_000_003)
         try repository.markGraphDeltaApplied(delta.id, appliedAt: appliedAt)
         XCTAssertEqual(try repository.fetchGraphDeltas(applied: true, limit: nil).first?.appliedAt, appliedAt)

@@ -15,6 +15,7 @@ struct JournalingSuggestionImportView: View {
     @State private var stateOfMindValence = 0.0
     @State private var stateOfMindArousal = 0.4
     @State private var stateOfMindDominance = 0.6
+    @State private var message: String?
 
     private let service = JournalingSuggestionContextService()
 
@@ -31,6 +32,19 @@ struct JournalingSuggestionImportView: View {
                     Text(availability.detail)
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                }
+
+                Section("Apple Picker") {
+                    AppleJournalingSuggestionPickerControl { suggestion in
+                        importSuggestion(suggestion)
+                    } onError: { text in
+                        message = text
+                    }
+                    if let message {
+                        Text(message)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 Section("Fallback Draft") {
@@ -81,6 +95,10 @@ struct JournalingSuggestionImportView: View {
             stateOfMindArousal: stateOfMindLabel.trimmedOrNil == nil ? nil : stateOfMindArousal,
             stateOfMindDominance: stateOfMindLabel.trimmedOrNil == nil ? nil : stateOfMindDominance
         )
+        importSuggestion(suggestion)
+    }
+
+    private func importSuggestion(_ suggestion: JournalingSuggestionDraft) {
         onImport(service.makeCaptureDraft(from: suggestion))
         dismiss()
     }

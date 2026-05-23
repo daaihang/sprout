@@ -51,9 +51,9 @@ Preview policy:
 
 | Mechanism | Use in Mory | Output |
 | --- | --- | --- |
-| App Intents | quick text/voice/context capture | `CaptureDraft` |
+| App Intents | quick text/link capture through Shortcuts/Siri phrases | `ExternalCaptureInboxItem` -> `CaptureDraft` |
 | Shortcuts/Siri | user-triggered record flow | `CaptureDraft` |
-| Share Sheet | links, screenshots, selected text | artifacts + context evidence |
+| Share Sheet | links, screenshots, selected text, images | `ExternalCaptureInboxItem` -> artifacts + context evidence |
 | widgets/control surfaces | lightweight capture entry | draft or reminder |
 
 All external capture must reuse the normal repository save path.
@@ -120,6 +120,12 @@ User opens Journaling Suggestions picker
   -> normal CaptureDraft save
   -> AnalyzeContextPack includes provenance
 ```
+
+Implementation note:
+
+- On device builds with `JournalingSuggestions.framework`, the app presents the Apple picker and maps selected assets.
+- On Simulator/non-framework builds, the native fallback form remains visible so development and tests do not depend on entitlement-only APIs.
+- No `JournalingMemory` type exists; every suggestion becomes a normal draft with provenance.
 
 ## 9. Acceptance Criteria
 

@@ -32,15 +32,19 @@ protocol JournalingSuggestionCapabilityProviding: Sendable {
 
 struct DefaultJournalingSuggestionCapabilityProvider: JournalingSuggestionCapabilityProviding {
     var supportsJournalingSuggestions: Bool {
+        #if os(iOS) && canImport(JournalingSuggestions)
         if #available(iOS 17.2, *) {
             true
         } else {
             false
         }
+        #else
+        false
+        #endif
     }
 
     var hasJournalingSuggestionEntitlement: Bool {
-        false
+        true
     }
 
     var userEnabledJournalingSuggestions: Bool {
@@ -106,6 +110,37 @@ enum ExternalCaptureSourceKind: String, Codable, CaseIterable, Identifiable, Sen
     var id: String { rawValue }
 }
 
+enum ExternalCaptureAttachmentKind: String, Codable, CaseIterable, Identifiable, Sendable {
+    case image
+
+    var id: String { rawValue }
+}
+
+struct ExternalCaptureAttachmentDraft: Identifiable, Codable, Hashable, Sendable {
+    var id: UUID
+    var kind: ExternalCaptureAttachmentKind
+    var filename: String
+    var contentType: String
+    var storedFileName: String?
+    var summary: String?
+
+    init(
+        id: UUID = UUID(),
+        kind: ExternalCaptureAttachmentKind,
+        filename: String,
+        contentType: String,
+        storedFileName: String? = nil,
+        summary: String? = nil
+    ) {
+        self.id = id
+        self.kind = kind
+        self.filename = filename
+        self.contentType = contentType
+        self.storedFileName = storedFileName
+        self.summary = summary
+    }
+}
+
 struct ExternalCaptureRequest: Codable, Hashable, Sendable {
     var sourceKind: ExternalCaptureSourceKind
     var title: String?
@@ -113,6 +148,7 @@ struct ExternalCaptureRequest: Codable, Hashable, Sendable {
     var url: String?
     var context: String?
     var affectDrafts: [AffectSnapshotDraft]
+    var attachments: [ExternalCaptureAttachmentDraft]
 
     init(
         sourceKind: ExternalCaptureSourceKind,
@@ -120,7 +156,8 @@ struct ExternalCaptureRequest: Codable, Hashable, Sendable {
         text: String,
         url: String? = nil,
         context: String? = nil,
-        affectDrafts: [AffectSnapshotDraft] = []
+        affectDrafts: [AffectSnapshotDraft] = [],
+        attachments: [ExternalCaptureAttachmentDraft] = []
     ) {
         self.sourceKind = sourceKind
         self.title = title
@@ -128,6 +165,7 @@ struct ExternalCaptureRequest: Codable, Hashable, Sendable {
         self.url = url
         self.context = context
         self.affectDrafts = affectDrafts
+        self.attachments = attachments
     }
 }
 
@@ -210,7 +248,12 @@ struct ExternalCaptureInboxCodec: Sendable {
             payloadKind: .externalCapture,
             sourceKind: request.sourceKind,
             title: request.title?.trimmedOrNil,
-            summary: summary(from: request.text, fallback: request.url ?? request.sourceKind.rawValue),
+            summary: summary(
+                from: [request.text, request.url, request.attachments.first?.summary]
+                    .compactMap { $0?.trimmedOrNil }
+                    .joined(separator: " "),
+                fallback: request.url ?? request.sourceKind.rawValue
+            ),
             payloadData: data,
             receivedAt: now,
             updatedAt: now
@@ -255,12 +298,36 @@ struct ExternalCaptureInboxCodec: Sendable {
 }
 
 struct ExternalCaptureDraftFactory: Sendable {
+    private let attachmentFileStore = ExternalCaptureAttachmentFileStore()
+
     func makeDraft(from request: ExternalCaptureRequest) -> MemoryCaptureDraft {
         var artifacts: [CaptureArtifactDraft] = [
             .text(title: request.title, body: request.text, origin: .imported)
         ]
         if let url = request.url?.trimmingCharacters(in: .whitespacesAndNewlines), !url.isEmpty {
             artifacts.append(.link(title: request.title, url: url, note: request.text, origin: .imported))
+        }
+        for attachment in request.attachments {
+            switch attachment.kind {
+            case .image:
+                let imageData = attachment.storedFileName.flatMap { try? attachmentFileStore.loadData(storedFileName: $0) } ?? nil
+                artifacts.append(
+                    .photo(
+                        title: request.title ?? attachment.filename,
+                        summary: attachment.summary ?? "Shared image from \(request.sourceKind.rawValue).",
+                        filename: attachment.filename,
+                        imageData: imageData,
+                        thumbnailData: imageData,
+                        ocrText: "",
+                        photoMetadata: [
+                            "source": request.sourceKind.rawValue,
+                            "contentType": attachment.contentType,
+                            "storedFileName": attachment.storedFileName ?? ""
+                        ],
+                        origin: .imported
+                    )
+                )
+            }
         }
         return MemoryCaptureDraft(
             title: request.title,

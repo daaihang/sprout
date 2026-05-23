@@ -289,6 +289,7 @@ Completion evidence:
 | Phase 6 | completed | BGTask (BGProcessingTask + BGAppRefreshTask) + BackgroundURLSession + NotificationDeliveryRouter + silent push handler implemented; tests in BackgroundTaskCoordinatorTests + NotificationDeliveryRouterTests |
 | Phase 7 | completed | eval fixtures, debug surfaces, privacy/budget gates, graph-delta apply inspection, clarification question inspection, BGTask/router tests, affect correction eval, and docs/code status reconciliation are complete; real-user telemetry and public release privacy review are post-v7 production hardening |
 | v7.1 Stabilization | completed | production graph persistence and composition test baseline are stabilized; new platform capabilities remain post-v7 hardening |
+| v7.2 Platform Context + Correction UX | completed | Journaling Suggestions entitlement/device picker adapter, Share Extension external inbox writing, App Shortcut phrase expansion, and GraphDelta reject/undo correction ledger are implemented; real-device validation remains production hardening |
 
 ## Post-v7 Production Hardening
 
@@ -297,5 +298,18 @@ These items are intentionally outside the v7 foundation completion gate:
 - run real-device APNs and background execution soak tests,
 - add real-user notification quality telemetry once there are users,
 - complete public release privacy review and App Store capability checks,
-- validate App Intent phrases on device and build the full Share extension target,
-- polish user-facing UI for merge/split, correction, mood, and notification controls.
+- validate Apple Journaling Suggestions picker, App Intent phrases, and Share Extension handoff on a physical device with developer capabilities enabled,
+- polish user-facing UI for merge/split, correction, mood, notification controls, and external capture review.
+
+## v7.2 Platform Context + Correction UX
+
+Goal: move the first post-v7 platform feature into the real app path without creating new memory types.
+
+Completion evidence:
+
+- `com.apple.developer.journal.allow` is present in the app entitlements.
+- The local iPhoneOS SDK symbols were checked before implementation: `JournalingSuggestionsPicker`, `JournalingSuggestion.content(forType:)`, `Location`, `Song`, `Workout`, `StateOfMind`, `Reflection`, and iOS 26 `EventPoster`.
+- `AppleJournalingSuggestionAdapter` maps Apple-selected suggestions into existing `JournalingSuggestionDraft`, then into `MemoryCaptureDraft` with artifacts and `AffectSnapshot` evidence.
+- Simulator and non-framework builds keep the fallback draft form because the local Simulator SDK does not include `JournalingSuggestions.framework`.
+- `moryShareExtension` writes shared text, URLs, and image attachments into the external capture inbox through the app group, and the main app imports them through the normal memory creation path.
+- `GraphDeltaReviewView` now supports reject and undo-reject through persisted `CorrectionEvent.kind.graphDeltaRejected` instead of view-only state.

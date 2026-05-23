@@ -21,6 +21,7 @@ enum CorrectionEventKind: String, Codable, CaseIterable, Identifiable, Sendable 
     case profileFieldIncorrect
     case doNotTrackTopic
     case affectCorrection
+    case graphDeltaRejected
 
     var id: String { rawValue }
 }

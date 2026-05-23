@@ -92,6 +92,33 @@ final class ExternalCaptureInboxTests: XCTestCase {
         XCTAssertNotNil(dismissed.dismissedAt)
     }
 
+    func testShareSheetImageAttachmentBecomesPhotoDraft() throws {
+        let request = ExternalCaptureRequest(
+            sourceKind: .shareSheet,
+            title: "Shared screenshot",
+            text: "Screenshot from share sheet.",
+            context: "shareExtension:test",
+            attachments: [
+                ExternalCaptureAttachmentDraft(
+                    kind: .image,
+                    filename: "screenshot.jpg",
+                    contentType: "public.jpeg",
+                    storedFileName: nil,
+                    summary: "Shared screenshot"
+                )
+            ]
+        )
+
+        let item = try ExternalCaptureInboxCodec().makeItem(from: request)
+        let draft = try ExternalCaptureInboxCodec().makeDraft(from: item)
+
+        XCTAssertEqual(draft.title, "Shared screenshot")
+        XCTAssertTrue(draft.artifacts.contains { artifact in
+            if case .photo = artifact { return true }
+            return false
+        })
+    }
+
     func testExternalCaptureInboxWriterUsesActiveOwnerScope() throws {
         let suiteName = "ExternalCaptureInboxTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))

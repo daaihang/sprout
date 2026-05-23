@@ -130,6 +130,7 @@ private final class MissingMemoryRepository: MoryMemoryRepositorying {
     func splitPersonEntity(id: UUID, movingRecordIDs: [UUID], displayName: String, aliases: [String]) throws -> EntityProfile { fail() }
     func fetchCorrectionEvents(kind: CorrectionEventKind?, limit: Int?) throws -> [CorrectionEvent] { fail() }
     func upsertCorrectionEvent(_ event: CorrectionEvent) throws { let _: Void = fail() }
+    func reverseCorrectionEvent(_ id: UUID, reversedAt: Date) throws { let _: Void = fail() }
     func fetchEntityTombstones(limit: Int?) throws -> [EntityTombstone] { fail() }
     func fetchClarificationQuestions(status: ClarificationQuestionStatus?, limit: Int?) throws -> [ClarificationQuestion] { fail() }
     func upsertClarificationQuestion(_ question: ClarificationQuestion) throws { let _: Void = fail() }
@@ -147,6 +148,7 @@ private final class MissingMemoryRepository: MoryMemoryRepositorying {
     func fetchGraphDeltas(applied: Bool?, limit: Int?) throws -> [GraphDelta] { fail() }
     func upsertGraphDelta(_ delta: GraphDelta) throws { let _: Void = fail() }
     func markGraphDeltaApplied(_ id: UUID, appliedAt: Date) throws { let _: Void = fail() }
+    func rejectGraphDelta(_ id: UUID, note: String?) throws { let _: Void = fail() }
     func applyGraphDelta(_ id: UUID) throws { let _: Void = fail() }
     func fetchQualityTuningPreference() throws -> QualityTuningPreference { fail() }
     func saveQualityTuningPreference(_ preference: QualityTuningPreference) throws { let _: Void = fail() }

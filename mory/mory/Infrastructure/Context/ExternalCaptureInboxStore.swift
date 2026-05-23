@@ -10,14 +10,30 @@ protocol ExternalCaptureInboxStoring {
 
 @MainActor
 final class ExternalCaptureInboxDefaultsStore: ExternalCaptureInboxStoring {
-    private let defaults: UserDefaults
-    private let key: String
+    private struct Backend {
+        var defaults: UserDefaults
+        var key: String
+    }
+
+    private let primary: Backend
+    private let fallbacks: [Backend]
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
 
-    init(defaults: UserDefaults = .standard, scope: MoryLocalDataScope = .legacy) {
-        self.defaults = defaults
-        self.key = Self.storageKey(for: scope)
+    init(
+        defaults: UserDefaults = .standard,
+        scope: MoryLocalDataScope = .legacy,
+        includeSharedLegacyFallback: Bool = false
+    ) {
+        self.primary = Backend(defaults: defaults, key: Self.storageKey(for: scope))
+        if includeSharedLegacyFallback,
+           let sharedDefaults = MorySharedContainers.appGroupDefaults {
+            self.fallbacks = [
+                Backend(defaults: sharedDefaults, key: Self.storageKey(for: .legacy))
+            ]
+        } else {
+            self.fallbacks = []
+        }
         self.encoder = JSONEncoder()
         self.decoder = JSONDecoder()
         encoder.dateEncodingStrategy = .iso8601
@@ -25,13 +41,14 @@ final class ExternalCaptureInboxDefaultsStore: ExternalCaptureInboxStoring {
     }
 
     func upsert(_ item: ExternalCaptureInboxItem) throws {
-        var items = try load()
+        let target = try backendContainingItem(id: item.id) ?? primary
+        var items = try load(from: target)
         if let index = items.firstIndex(where: { $0.id == item.id }) {
             items[index] = item
         } else {
             items.append(item)
         }
-        try save(items)
+        try save(items, to: target)
     }
 
     func fetch(status: ExternalCaptureInboxStatus?, limit: Int?) throws -> [ExternalCaptureInboxItem] {
@@ -50,7 +67,9 @@ final class ExternalCaptureInboxDefaultsStore: ExternalCaptureInboxStoring {
     }
 
     func clear() throws {
-        defaults.removeObject(forKey: key)
+        for backend in allBackends {
+            backend.defaults.removeObject(forKey: backend.key)
+        }
     }
 
     static func storageKey(for scope: MoryLocalDataScope) -> String {
@@ -63,12 +82,35 @@ final class ExternalCaptureInboxDefaultsStore: ExternalCaptureInboxStoring {
     }
 
     private func load() throws -> [ExternalCaptureInboxItem] {
-        guard let data = defaults.data(forKey: key), !data.isEmpty else { return [] }
+        var byID: [UUID: ExternalCaptureInboxItem] = [:]
+        for backend in allBackends {
+            for item in try load(from: backend) where byID[item.id] == nil {
+                byID[item.id] = item
+            }
+        }
+        return Array(byID.values)
+    }
+
+    private var allBackends: [Backend] {
+        [primary] + fallbacks
+    }
+
+    private func backendContainingItem(id: UUID) throws -> Backend? {
+        for backend in allBackends {
+            if try load(from: backend).contains(where: { $0.id == id }) {
+                return backend
+            }
+        }
+        return nil
+    }
+
+    private func load(from backend: Backend) throws -> [ExternalCaptureInboxItem] {
+        guard let data = backend.defaults.data(forKey: backend.key), !data.isEmpty else { return [] }
         return try decoder.decode([ExternalCaptureInboxItem].self, from: data)
     }
 
-    private func save(_ items: [ExternalCaptureInboxItem]) throws {
+    private func save(_ items: [ExternalCaptureInboxItem], to backend: Backend) throws {
         let data = try encoder.encode(items)
-        defaults.set(data, forKey: key)
+        backend.defaults.set(data, forKey: backend.key)
     }
 }

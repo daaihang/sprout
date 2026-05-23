@@ -5,6 +5,7 @@ struct GraphDeltaReviewView: View {
 
     @State private var pending: [GraphDelta] = []
     @State private var applied: [GraphDelta] = []
+    @State private var rejected: [(delta: GraphDelta, event: CorrectionEvent)] = []
     @State private var message: String?
 
     var body: some View {
@@ -35,6 +36,11 @@ struct GraphDeltaReviewView: View {
                                     message = "Left \(delta.id.uuidString.prefix(8)) pending."
                                 }
                                 .buttonStyle(.bordered)
+
+                                Button("Reject") {
+                                    reject(delta.id)
+                                }
+                                .buttonStyle(.bordered)
                             }
                         }
                         .padding(.vertical, 4)
@@ -49,6 +55,29 @@ struct GraphDeltaReviewView: View {
                 } else {
                     ForEach(applied) { delta in
                         GraphDeltaRow(delta: delta)
+                    }
+                }
+            }
+
+            Section("Rejected") {
+                if rejected.isEmpty {
+                    Text("No rejected graph deltas.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(rejected, id: \.event.id) { pair in
+                        VStack(alignment: .leading, spacing: 8) {
+                            GraphDeltaRow(delta: pair.delta, statusOverride: "rejected")
+                            if let note = pair.event.note {
+                                Text(note)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Button("Undo reject") {
+                                undoReject(pair.event.id)
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                        .padding(.vertical, 4)
                     }
                 }
             }
@@ -68,8 +97,22 @@ struct GraphDeltaReviewView: View {
         do {
             let deltas = try memoryRepository.fetchGraphDeltas(applied: nil, limit: 200)
                 .sorted(by: { $0.createdAt > $1.createdAt })
-            pending = deltas.filter { $0.appliedAt == nil }
+            let rejectionEvents = try memoryRepository.fetchCorrectionEvents(kind: .graphDeltaRejected, limit: 500)
+                .filter { $0.reversedAt == nil }
+            let rejectedByDeltaID = Dictionary(
+                rejectionEvents.compactMap { event -> (UUID, CorrectionEvent)? in
+                    guard let value = event.metadata["graphDeltaID"],
+                          let id = UUID(uuidString: value) else { return nil }
+                    return (id, event)
+                },
+                uniquingKeysWith: { first, _ in first }
+            )
+            pending = deltas.filter { $0.appliedAt == nil && rejectedByDeltaID[$0.id] == nil }
             applied = deltas.filter { $0.appliedAt != nil }
+            rejected = deltas.compactMap { delta in
+                guard let event = rejectedByDeltaID[delta.id] else { return nil }
+                return (delta, event)
+            }
             if message == nil {
                 message = "Loaded \(deltas.count) graph delta(s)."
             }
@@ -88,10 +131,33 @@ struct GraphDeltaReviewView: View {
             message = "Apply failed: \(error.localizedDescription)"
         }
     }
+
+    @MainActor
+    private func reject(_ id: UUID) {
+        do {
+            try memoryRepository.rejectGraphDelta(id, note: "User rejected this GraphDelta proposal from review.")
+            message = "Rejected \(id.uuidString.prefix(8))."
+            reload()
+        } catch {
+            message = "Reject failed: \(error.localizedDescription)"
+        }
+    }
+
+    @MainActor
+    private func undoReject(_ eventID: UUID) {
+        do {
+            try memoryRepository.reverseCorrectionEvent(eventID, reversedAt: .now)
+            message = "Undo reject recorded."
+            reload()
+        } catch {
+            message = "Undo reject failed: \(error.localizedDescription)"
+        }
+    }
 }
 
 private struct GraphDeltaRow: View {
     let delta: GraphDelta
+    var statusOverride: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -99,7 +165,7 @@ private struct GraphDeltaRow: View {
                 Text(delta.source.rawValue)
                     .font(.subheadline.weight(.semibold))
                 Spacer()
-                Text(delta.appliedAt == nil ? "pending" : "applied")
+                Text(statusOverride ?? (delta.appliedAt == nil ? "pending" : "applied"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

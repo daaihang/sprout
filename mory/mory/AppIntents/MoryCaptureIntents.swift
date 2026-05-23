@@ -37,7 +37,9 @@ struct MoryCaptureShortcuts: AppShortcutsProvider {
             intent: CaptureMemoryInMoryIntent(),
             phrases: [
                 "Capture in \(.applicationName)",
-                "Add memory to \(.applicationName)"
+                "Add memory to \(.applicationName)",
+                "Record this in \(.applicationName)",
+                "在 \(.applicationName) 记录"
             ],
             shortTitle: "Capture Memory",
             systemImageName: "square.and.pencil"
