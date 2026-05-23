@@ -57,6 +57,8 @@ struct SettingsScreen: View {
             SettingsPermissionsSection()
         case .notifications:
             SettingsNotificationPreferencesSection(memoryRepository: memoryRepository)
+        case .memoryIntelligence:
+            MemoryIntelligenceSettingsView()
         case .places:
             PlaceProfileManagementView(memoryRepository: memoryRepository)
         case .privacy:

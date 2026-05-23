@@ -1062,7 +1062,8 @@ final class MoryMemoryRepositoryIntelligenceTests: XCTestCase {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: IntelligenceTestRecordAnalysisService()
+            analysisService: IntelligenceTestRecordAnalysisService(),
+            cloudIntelligenceService: IntelligenceTestCloudService()
         )
         return RepositoryFixture(container: container, repository: repository)
     }
@@ -1146,5 +1147,77 @@ private struct IntelligenceTestRecordAnalysisService: RecordAnalysisServing {
 
     func latestDebugTrace() async -> DebugPipelineTraceSnapshot? {
         nil
+    }
+}
+
+private enum IntelligenceTestCloudError: Error {
+    case unsupported
+}
+
+private struct IntelligenceTestCloudService: CloudIntelligenceServing {
+    func analyzeV7(_ payload: AnalyzeV7RequestPayload) async throws -> AnalyzeV7ResponseEnvelope {
+        let personName = inferPersonName(from: payload)
+        let insight = "Intelligence test summary"
+        let analysis = AnalyzeResponseEnvelope(
+            tags: ["planning"],
+            retrievalTerms: ["planning"],
+            emotion: .init(label: "steady", intensity: 0.4, confidence: 0.8, interpretation: nil),
+            entities: [
+                .init(
+                    kind: EntityKind.person.rawValue,
+                    name: personName,
+                    canonicalName: personName,
+                    aliases: [],
+                    confidence: 0.85,
+                    sourceArtifactIDs: payload.artifacts.map(\.id)
+                )
+            ],
+            candidateEdges: [],
+            insight: insight,
+            summary: insight,
+            salienceScore: 0.7,
+            followUp: nil,
+            reflectionHint: nil
+        )
+
+        return AnalyzeV7ResponseEnvelope(
+            analysis: analysis,
+            quality: .init(confidence: 0.7, uncertaintyReasons: [], needsUserCheck: [])
+        )
+    }
+
+    func refineTranscript(_ payload: MoryAPIClient.TranscriptRefinementPayload) async throws -> MoryAPIClient.TranscriptRefinementResponse {
+        throw IntelligenceTestCloudError.unsupported
+    }
+
+    func suggestQuestions(_ payload: MoryAPIClient.QuestionSuggestionPayload) async throws -> MoryAPIClient.QuestionSuggestionResponse {
+        throw IntelligenceTestCloudError.unsupported
+    }
+
+    func suggestChapters(_ payload: MoryAPIClient.ChapterSuggestionPayload) async throws -> MoryAPIClient.ChapterSuggestionResponse {
+        throw IntelligenceTestCloudError.unsupported
+    }
+
+    func analyzePhotoSemantics(_ payload: MoryAPIClient.PhotoSemanticAnalysisPayload) async throws -> MoryAPIClient.PhotoSemanticAnalysisResponse {
+        throw IntelligenceTestCloudError.unsupported
+    }
+
+    func suggestNotificationIntent(_ payload: MoryAPIClient.NotificationIntentSuggestionPayload) async throws -> MoryAPIClient.NotificationIntentSuggestionResponse {
+        throw IntelligenceTestCloudError.unsupported
+    }
+
+    func runProviderEval() async throws -> MoryAPIClient.CloudIntelligenceEvalResponse {
+        throw IntelligenceTestCloudError.unsupported
+    }
+
+    private func inferPersonName(from payload: AnalyzeV7RequestPayload) -> String {
+        let textSources = [payload.recordShell.rawText] + payload.artifacts.map(\.textContent)
+        if textSources.contains(where: { $0.localizedCaseInsensitiveContains("alex") }) {
+            return "Alex"
+        }
+        if let known = payload.knownEntities.first(where: { $0.kind == EntityKind.person.rawValue }) {
+            return known.name
+        }
+        return "Alex"
     }
 }

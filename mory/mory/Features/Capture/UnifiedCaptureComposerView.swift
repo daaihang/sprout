@@ -32,6 +32,7 @@ struct UnifiedCaptureComposerView: View {
     @State private var bodyText = ""
     @State private var mood = ""
     @State private var inputContext = ""
+    @State private var affectDrafts: [AffectSnapshotDraft] = []
     @State private var stagedArtifactDrafts: [CaptureArtifactDraft] = []
     @State private var contextCandidates: [ContextCandidate] = []
     @State private var isCollectingContext = false
@@ -44,6 +45,8 @@ struct UnifiedCaptureComposerView: View {
     @State private var isPresentingMusicCapture = false
     @State private var isPresentingLocationPicker = false
     @State private var isPresentingTodoCapture = false
+    @State private var isPresentingMoodPicker = false
+    @State private var isPresentingJournalingImport = false
 
     @State private var isProcessingPhoto = false
     @State private var isRefiningVoiceTranscript = false
@@ -77,6 +80,8 @@ struct UnifiedCaptureComposerView: View {
             selectedPhotoItems: $selectedPhotoItems,
             isProcessingPhoto: isProcessingPhoto,
             isCollectingContext: isCollectingContext,
+            onMood: { isPresentingMoodPicker = true },
+            onJournaling: { isPresentingJournalingImport = true },
             onCamera: { isPresentingCamera = true },
             onAudio: { isPresentingAudioCapture = true },
             onLink: { isPresentingLinkCapture = true },
@@ -212,6 +217,19 @@ struct UnifiedCaptureComposerView: View {
             .sheet(isPresented: $isPresentingTodoCapture) {
                 UnifiedTodoCaptureSheet { draft in
                     stagedArtifactDrafts.append(draft.withOrigin(.manual))
+                }
+            }
+            .sheet(isPresented: $isPresentingMoodPicker) {
+                StructuredMoodPickerSheet(
+                    initialDraft: affectDrafts.first(where: { $0.sources.contains(.userSelected) }),
+                    onSave: { draft in
+                        applyStructuredMoodDraft(draft)
+                    }
+                )
+            }
+            .sheet(isPresented: $isPresentingJournalingImport) {
+                JournalingSuggestionImportView { draft in
+                    mergeImportedDraft(draft)
                 }
             }
             .task {
@@ -386,7 +404,8 @@ struct UnifiedCaptureComposerView: View {
                 mood: mood.trimmedOrNil,
                 inputContext: inputContext.trimmedOrNil,
                 captureSource: resolvedCaptureSource,
-                artifacts: allArtifactDrafts
+                artifacts: allArtifactDrafts,
+                affectSnapshots: affectDrafts
             )
             _ = try await CaptureOrchestrator(memoryRepository: memoryRepository).capture(draft: draft)
             onSaved()
@@ -415,6 +434,54 @@ struct UnifiedCaptureComposerView: View {
             return
         }
         bodyText += "\n" + transcript
+    }
+
+    @MainActor
+    private func applyStructuredMoodDraft(_ draft: AffectSnapshotDraft) {
+        var normalized = draft
+        if !normalized.sources.contains(.userSelected) {
+            normalized.sources.append(.userSelected)
+        }
+        if let index = affectDrafts.firstIndex(where: { $0.sources.contains(.userSelected) }) {
+            affectDrafts[index] = normalized
+        } else {
+            affectDrafts.insert(normalized, at: 0)
+        }
+        mood = normalized.labels.first?.rawValue
+            ?? normalized.rawInput?.trimmedOrNil
+            ?? mood
+    }
+
+    @MainActor
+    private func mergeImportedDraft(_ draft: MemoryCaptureDraft) {
+        if let title = draft.title?.trimmedOrNil, generatedTitle.trimmedOrNil == nil {
+            generatedTitle = title
+        }
+        if let importedRawText = draft.rawText.trimmedOrNil {
+            appendTranscriptToBody(importedRawText)
+        }
+        if let importedContext = draft.inputContext?.trimmedOrNil {
+            if let existing = inputContext.trimmedOrNil {
+                if !existing.contains(importedContext) {
+                    inputContext = existing + "\n" + importedContext
+                }
+            } else {
+                inputContext = importedContext
+            }
+        }
+        let nonTextArtifacts = draft.artifacts.filter { artifact in
+            if case .text = artifact { return false }
+            return true
+        }
+        stagedArtifactDrafts.append(contentsOf: nonTextArtifacts)
+        if !draft.affectSnapshots.isEmpty {
+            affectDrafts.append(contentsOf: draft.affectSnapshots)
+            mood = draft.affectSnapshots.first?.labels.first?.rawValue
+                ?? draft.affectSnapshots.first?.rawInput?.trimmedOrNil
+                ?? mood
+        } else if let importedMood = draft.mood?.trimmedOrNil {
+            mood = importedMood
+        }
     }
 
     private func resolvedInternalTitle(rawText: String) -> String {

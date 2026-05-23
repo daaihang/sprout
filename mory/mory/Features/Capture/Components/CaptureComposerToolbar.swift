@@ -5,6 +5,8 @@ struct CaptureComposerActionStrip: View {
     @Binding var selectedPhotoItems: [PhotosPickerItem]
     let isProcessingPhoto: Bool
     let isCollectingContext: Bool
+    let onMood: () -> Void
+    let onJournaling: () -> Void
     let onCamera: () -> Void
     let onAudio: () -> Void
     let onLink: () -> Void
@@ -16,6 +18,8 @@ struct CaptureComposerActionStrip: View {
     var body: some View {
         ScrollView(.horizontal) {
             HStack(spacing: 8) {
+                actionButton(icon: "face.smiling", title: "Mood", action: onMood)
+                actionButton(icon: "book.pages", title: "Journaling", action: onJournaling)
                 actionButton(icon: "camera", title: String(localized: "capture.toolbar.camera"), action: onCamera)
                     .disabled(isProcessingPhoto)
 

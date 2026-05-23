@@ -125,6 +125,16 @@ struct DebugDiagnosticsView: View {
                 }
 
                 NavigationLink {
+                    GraphDeltaReviewView()
+                } label: {
+                    DebugMenuRow(
+                        icon: "point.3.connected.trianglepath.dotted",
+                        title: "GraphDelta Review",
+                        subtitle: "Product-path review for pending/applied graph deltas and apply actions"
+                    )
+                }
+
+                NavigationLink {
                     DebugHomeBoardDiagnosticsView()
                 } label: {
                     DebugMenuRow(

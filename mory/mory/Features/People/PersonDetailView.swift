@@ -6,6 +6,7 @@ struct PersonDetailView: View {
     let entityID: UUID
 
     @State private var snapshot: PersonDetailSnapshot?
+    @State private var profile: PersonProfile?
     @State private var errorMessage: String?
 
     var body: some View {
@@ -28,6 +29,51 @@ struct PersonDetailView: View {
                     Text("person.stats \(snapshot.summary.artifactCount) \(snapshot.summary.reflectionCount)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                }
+
+                Section("Person Profile") {
+                    if let profile {
+                        LabeledContent("Relationship", value: profile.relationshipToUser?.rawValue ?? "none")
+                        LabeledContent("Automation", value: profile.automationPolicy.rawValue)
+                        LabeledContent("Sensitivity", value: profile.sensitivity.rawValue)
+                        LabeledContent("Importance", value: profile.importanceScore.map { String(format: "%.2f", $0) } ?? "none")
+                        LabeledContent("Interaction", value: profile.interactionFrequency.rawValue)
+                        if !profile.commonContextLabels.isEmpty {
+                            Text("Contexts: \(profile.commonContextLabels.joined(separator: ", "))")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        if let notes = profile.userNotes?.trimmedOrNil {
+                            Text(notes)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        if let portrait = profile.aiPortrait?.summary.trimmedOrNil {
+                            Text(portrait)
+                                .font(.caption)
+                        }
+                        Text("Evidence: \(profile.fieldEvidence.count)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("No person profile yet.")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Section("Profile Actions") {
+                    NavigationLink {
+                        PersonProfileEditView(entityID: entityID) {
+                            Task { await load() }
+                        }
+                    } label: {
+                        Label("Edit Person Profile", systemImage: "slider.horizontal.3")
+                    }
+                    NavigationLink {
+                        PersonMergeSplitView()
+                    } label: {
+                        Label("Manage People Merge/Split", systemImage: "person.2.badge.gearshape")
+                    }
                 }
 
                 Section("common.section.relatedMemories") {
@@ -120,6 +166,7 @@ struct PersonDetailView: View {
     private func load() async {
         do {
             snapshot = try memoryRepository.fetchPersonDetail(entityID: entityID)
+            profile = try memoryRepository.fetchPersonProfile(entityID: entityID)
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription

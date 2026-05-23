@@ -68,6 +68,7 @@ enum SettingsRoute: String, CaseIterable, Hashable, Identifiable, Sendable {
     case account
     case permissions
     case notifications
+    case memoryIntelligence
     case places
     case privacy
     case dataControls
@@ -88,6 +89,7 @@ enum SettingsRoute: String, CaseIterable, Hashable, Identifiable, Sendable {
         case .account: "settings.account.title"
         case .permissions: "settings.permissions.title"
         case .notifications: "settings.notifications.title"
+        case .memoryIntelligence: "Memory Intelligence"
         case .places: "Places"
         case .privacy: "settings.privacy.title"
         case .dataControls: "settings.data.title"
@@ -102,6 +104,7 @@ enum SettingsRoute: String, CaseIterable, Hashable, Identifiable, Sendable {
         case .account: "settings.account.subtitle"
         case .permissions: "settings.permissions.subtitle"
         case .notifications: "settings.notifications.subtitle"
+        case .memoryIntelligence: "Review graph deltas, affect history, journaling status, and external drafts"
         case .places: "Rename, merge, and split saved places"
         case .privacy: "settings.privacy.subtitle"
         case .dataControls: "settings.data.subtitle"
@@ -116,6 +119,7 @@ enum SettingsRoute: String, CaseIterable, Hashable, Identifiable, Sendable {
         case .account: "person.crop.circle"
         case .permissions: "hand.raised"
         case .notifications: "bell.badge"
+        case .memoryIntelligence: "brain.head.profile"
         case .places: "mappin.and.ellipse"
         case .privacy: "lock.shield"
         case .dataControls: "externaldrive"

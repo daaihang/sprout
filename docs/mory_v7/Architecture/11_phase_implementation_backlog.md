@@ -258,6 +258,7 @@ Completion evidence:
 - `DebugAnalysisContextPackView`, `DebugAffectSnapshotView`, `DebugClarificationQuestionsView`, and Debug Center actions expose context payloads, affect snapshots, clarification answers/dismissal, pending GraphDelta application, BGTask scheduling, and notification traces for development inspection.
 - `NotificationDeliveryRouterTests`, `LocalNotificationSchedulerTests`, `NotificationIntentPreparationServiceTests`, `NotificationInteractionServiceTests`, and `BackgroundTaskCoordinatorTests` cover local/APNs routing, policy, writeback, and BGTask scheduling boundaries.
 - Privacy gates remain local-first: context packs are budgeted, sensitive records can be redacted/dropped, Analyze v7 is proposal-based, and AI output does not directly mutate trusted graph state.
+- Native product wiring exists (without visual polish): `GraphDeltaReviewView`, `MemoryIntelligenceSettingsView`, `PersonProfileEditView`, `PersonMergeSplitView`, `StructuredMoodPickerSheet`, `JournalingSuggestionImportView`, and `ExternalCaptureDraftReviewView` are connected from Insights, Settings, People, Capture, and Debug entries.
 - v7 documentation now separates the completed architecture/debug/test baseline from post-v7 production release hardening.
 
 ## Overall Phase Status

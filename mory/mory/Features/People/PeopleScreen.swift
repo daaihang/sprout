@@ -84,6 +84,16 @@ struct PeopleScreen: View {
         }
         .navigationTitle("people.nav.title")
         .moryHidesTabChrome()
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink {
+                    PersonMergeSplitView()
+                        .moryHidesTabChrome()
+                } label: {
+                    Label("Manage People", systemImage: "person.2.badge.gearshape")
+                }
+            }
+        }
         .task {
             await load()
         }
