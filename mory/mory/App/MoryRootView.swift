@@ -161,18 +161,37 @@ struct MoryRootView: View {
 
     @MainActor
     private func handlePendingExternalCaptureURLIfNeeded() async {
-        guard let url = pendingExternalCaptureURL, let deepLink = ExternalCaptureDeepLink(url: url) else { return }
-        pendingExternalCaptureURL = nil
+        guard let url = pendingExternalCaptureURL else { return }
+        guard let deepLink = ExternalCaptureDeepLink(url: url) else {
+            pendingExternalCaptureURL = nil
+            return
+        }
         do {
-            guard let item = try memoryRepository.fetchExternalCaptureInbox(status: nil, limit: nil).first(where: { $0.id == deepLink.itemID }) else {
+            guard let item = try await fetchExternalCaptureInboxItemWithRetry(id: deepLink.itemID) else {
+                pendingExternalCaptureURL = nil
                 return
             }
             let draft = try ExternalCaptureInboxCodec().makeDraft(from: item)
+            pendingExternalCaptureURL = nil
             unifiedCaptureSeed = .externalDraft(draft, inboxItemID: item.id)
             selectedTab = .memories
         } catch {
+            pendingExternalCaptureURL = nil
             return
         }
+    }
+
+    @MainActor
+    private func fetchExternalCaptureInboxItemWithRetry(id: UUID) async throws -> ExternalCaptureInboxItem? {
+        for attempt in 0..<8 {
+            if let item = try memoryRepository.fetchExternalCaptureInbox(status: nil, limit: nil).first(where: { $0.id == id }) {
+                return item
+            }
+            if attempt < 7 {
+                try? await Task.sleep(nanoseconds: 250_000_000)
+            }
+        }
+        return nil
     }
 
     @ViewBuilder

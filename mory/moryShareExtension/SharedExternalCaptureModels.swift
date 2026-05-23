@@ -116,7 +116,9 @@ struct ExternalCaptureInboxWriter {
 
     private func saveItems(_ items: [ExternalCaptureInboxItem]) throws {
         let data = try encoder.encode(items)
-        try appGroupDefaults().set(data, forKey: Self.storageKey)
+        let defaults = try appGroupDefaults()
+        defaults.set(data, forKey: Self.storageKey)
+        defaults.synchronize()
     }
 
     private func appGroupDefaults() throws -> UserDefaults {

@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 
 final class ShareViewController: UIViewController {
     private var didStart = false
+    private var pendingOpenURL: URL?
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
@@ -27,7 +28,7 @@ final class ShareViewController: UIViewController {
             let item = try ExternalCaptureInboxWriter().enqueue(request)
             await openHostApp(for: item.id)
         } catch {
-            extensionContext?.cancelRequest(withError: error)
+            await showFailure(error)
         }
     }
 
@@ -44,15 +45,129 @@ final class ShareViewController: UIViewController {
             return
         }
 
-        let didOpen = await withCheckedContinuation { continuation in
+        pendingOpenURL = url
+        let didOpen = await tryOpenHostApp(url)
+        if !didOpen {
+            try? ExternalCaptureInboxWriter().markLaunchFailed(itemID: itemID, reason: "Unable to open Mory from share extension.")
+            await showOpenFallback(url: url)
+            return
+        }
+        extensionContext?.completeRequest(returningItems: nil)
+    }
+
+    private func tryOpenHostApp(_ url: URL) async -> Bool {
+        let contextOpenSucceeded = await withCheckedContinuation { continuation in
             extensionContext?.open(url) { success in
                 continuation.resume(returning: success)
             }
         }
-        if !didOpen {
-            try? ExternalCaptureInboxWriter().markLaunchFailed(itemID: itemID, reason: "Unable to open Mory from share extension.")
+        if contextOpenSucceeded {
+            return true
         }
-        extensionContext?.completeRequest(returningItems: nil)
+        return await MainActor.run {
+            openHostAppViaResponderChain(url)
+        }
+    }
+
+    @MainActor
+    private func showOpenFallback(url: URL) {
+        renderStatusView(
+            title: "Saved to Mory",
+            message: "Open Mory to finish this memory.",
+            primaryTitle: "Open Mory",
+            primaryAction: { [weak self] in
+                Task {
+                    guard let self else { return }
+                    let didOpen = await self.tryOpenHostApp(url)
+                    if didOpen {
+                        self.extensionContext?.completeRequest(returningItems: nil)
+                    }
+                }
+            },
+            secondaryTitle: "Done",
+            secondaryAction: { [weak self] in
+                self?.extensionContext?.completeRequest(returningItems: nil)
+            }
+        )
+    }
+
+    @MainActor
+    private func showFailure(_ error: Error) {
+        renderStatusView(
+            title: "Mory could not read this share",
+            message: error.localizedDescription,
+            primaryTitle: "Done",
+            primaryAction: { [weak self] in
+                self?.extensionContext?.completeRequest(returningItems: nil)
+            },
+            secondaryTitle: nil,
+            secondaryAction: nil
+        )
+    }
+
+    @MainActor
+    private func renderStatusView(
+        title: String,
+        message: String,
+        primaryTitle: String,
+        primaryAction: @escaping () -> Void,
+        secondaryTitle: String?,
+        secondaryAction: (() -> Void)?
+    ) {
+        view.subviews.forEach { $0.removeFromSuperview() }
+        view.backgroundColor = .systemBackground
+
+        let titleLabel = UILabel()
+        titleLabel.text = title
+        titleLabel.font = .preferredFont(forTextStyle: .headline)
+        titleLabel.textAlignment = .center
+        titleLabel.numberOfLines = 0
+
+        let messageLabel = UILabel()
+        messageLabel.text = message
+        messageLabel.font = .preferredFont(forTextStyle: .subheadline)
+        messageLabel.textColor = .secondaryLabel
+        messageLabel.textAlignment = .center
+        messageLabel.numberOfLines = 0
+
+        let primaryButton = UIButton(type: .system)
+        primaryButton.setTitle(primaryTitle, for: .normal)
+        primaryButton.titleLabel?.font = .preferredFont(forTextStyle: .headline)
+        primaryButton.addAction(UIAction { _ in primaryAction() }, for: .touchUpInside)
+
+        let stack = UIStackView(arrangedSubviews: [titleLabel, messageLabel, primaryButton])
+        stack.axis = .vertical
+        stack.alignment = .fill
+        stack.spacing = 14
+
+        if let secondaryTitle, let secondaryAction {
+            let secondaryButton = UIButton(type: .system)
+            secondaryButton.setTitle(secondaryTitle, for: .normal)
+            secondaryButton.addAction(UIAction { _ in secondaryAction() }, for: .touchUpInside)
+            stack.addArrangedSubview(secondaryButton)
+        }
+
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(equalTo: view.layoutMarginsGuide.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: view.layoutMarginsGuide.trailingAnchor),
+            stack.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+        ])
+    }
+
+    @MainActor
+    private func openHostAppViaResponderChain(_ url: URL) -> Bool {
+        let selector = NSSelectorFromString("openURL:")
+        var responder: UIResponder? = self
+        while let current = responder {
+            if current.responds(to: selector) {
+                current.perform(selector, with: url)
+                return true
+            }
+            responder = current.next
+        }
+        return false
     }
 }
 

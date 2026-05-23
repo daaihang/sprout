@@ -203,6 +203,41 @@ final class ExternalCaptureInboxTests: XCTestCase {
         XCTAssertEqual(stored.first?.sourceKind, .appIntent)
     }
 
+    func testOwnerScopedInboxReadsSharedLegacyFallbackFromShareExtension() throws {
+        let ownerSuiteName = "ExternalCaptureInboxTests.owner.\(UUID().uuidString)"
+        let sharedSuiteName = "ExternalCaptureInboxTests.shared.\(UUID().uuidString)"
+        let ownerDefaults = try XCTUnwrap(UserDefaults(suiteName: ownerSuiteName))
+        let sharedDefaults = try XCTUnwrap(UserDefaults(suiteName: sharedSuiteName))
+        defer {
+            ownerDefaults.removePersistentDomain(forName: ownerSuiteName)
+            sharedDefaults.removePersistentDomain(forName: sharedSuiteName)
+        }
+
+        let item = try ExternalCaptureInboxCodec().makeItem(
+            from: ExternalCaptureRequest(
+                sourceKind: .shareSheet,
+                title: "Shared URL",
+                text: "https://example.com/shared",
+                url: "https://example.com/shared",
+                context: "shareExtension:test"
+            )
+        )
+        try ExternalCaptureInboxDefaultsStore(
+            defaults: sharedDefaults,
+            scope: .legacy
+        ).upsert(item)
+
+        let visibleItems = try ExternalCaptureInboxDefaultsStore(
+            defaults: ownerDefaults,
+            scope: .owner("active-owner"),
+            includeSharedLegacyFallback: true,
+            sharedLegacyDefaults: sharedDefaults
+        ).fetch(status: .pending, limit: nil)
+
+        XCTAssertEqual(visibleItems.map(\.id), [item.id])
+        XCTAssertEqual(try ExternalCaptureInboxCodec().makeDraft(from: visibleItems[0]).rawText, "https://example.com/shared")
+    }
+
     private func makeHarness() -> ExternalCaptureRepositoryHarness {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let suiteName = "ExternalCaptureInboxTests.\(UUID().uuidString)"
