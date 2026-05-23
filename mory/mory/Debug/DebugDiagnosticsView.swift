@@ -139,8 +139,8 @@ struct DebugDiagnosticsView: View {
                 } label: {
                     DebugMenuRow(
                         icon: "square.and.arrow.down.on.square",
-                        title: "External Capture Inbox",
-                        subtitle: "Inspect App Intent, Share, and Journaling pending drafts before importing them as memories"
+                        title: "External Capture Recovery",
+                        subtitle: "Debug failed App Intent, Share, and Journaling handoffs before importing them as memories"
                     )
                 }
 

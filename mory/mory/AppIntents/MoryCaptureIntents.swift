@@ -4,7 +4,7 @@ import Foundation
 @available(iOS 16.0, *)
 struct CaptureMemoryInMoryIntent: AppIntent {
     static var title: LocalizedStringResource = "Capture Memory in Mory"
-    static var description = IntentDescription("Adds text or a link to Mory's external capture inbox.")
+    static var description = IntentDescription("Adds text or a link to Mory's external capture handoff path.")
     static var openAppWhenRun: Bool = false
 
     @Parameter(title: "Text")
@@ -26,7 +26,7 @@ struct CaptureMemoryInMoryIntent: AppIntent {
             context: "appIntent:CaptureMemoryInMoryIntent"
         )
         _ = try ExternalCaptureInboxWriter().enqueue(request)
-        return .result(dialog: "Added to Mory inbox.")
+        return .result(dialog: "Added to Mory.")
     }
 }
 

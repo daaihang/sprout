@@ -29,7 +29,7 @@ final class ShareViewController: UIViewController {
     }
 
     @MainActor
-    private func addToMory() {
+    private func continueInMory() {
         guard let payload = capturedPayload else { return }
         do {
             let request = ExternalCaptureRequest(
@@ -44,7 +44,10 @@ final class ShareViewController: UIViewController {
                 diagnostics: payload.attachmentErrors
             )
             let item = try ExternalCaptureInboxWriter().enqueue(request)
-            renderSaved(itemID: item.id)
+            renderOpening()
+            Task {
+                await openHostApp(for: item.id)
+            }
         } catch {
             showFailure(error)
         }
@@ -73,30 +76,24 @@ final class ShareViewController: UIViewController {
         .compactMap { $0 }
         .joined(separator: "\n")
         renderStatusView(
-            title: "Add to Mory?",
+            title: "Continue in Mory?",
             message: message,
-            primaryTitle: "Add to Mory",
-            primaryAction: { [weak self] in self?.addToMory() },
+            primaryTitle: "Continue in Mory",
+            primaryAction: { [weak self] in self?.continueInMory() },
             secondaryTitle: "Cancel",
             secondaryAction: { [weak self] in self?.extensionContext?.cancelRequest(withError: CancellationError()) }
         )
     }
 
     @MainActor
-    private func renderSaved(itemID: UUID) {
+    private func renderOpening() {
         renderStatusView(
-            title: "Saved to Mory",
-            message: "Open Mory to finish this memory, or import it later from External Capture.",
-            primaryTitle: "Open Mory",
-            primaryAction: { [weak self] in
-                Task {
-                    await self?.openHostApp(for: itemID)
-                }
-            },
-            secondaryTitle: "Done",
-            secondaryAction: { [weak self] in
-                self?.extensionContext?.completeRequest(returningItems: nil)
-            }
+            title: "Opening Mory",
+            message: "This share is ready. Mory will open the memory composer with the content prefilled.",
+            primaryTitle: nil,
+            primaryAction: nil,
+            secondaryTitle: nil,
+            secondaryAction: nil
         )
     }
 
@@ -119,8 +116,8 @@ final class ShareViewController: UIViewController {
                 extensionContext?.completeRequest(returningItems: nil)
             } else {
                 renderStatusView(
-                    title: "Saved to Mory",
-                    message: "iOS did not open Mory from the share extension. Open Mory manually and import this pending capture from External Capture.",
+                    title: "Saved for Mory",
+                    message: "iOS did not open Mory from this share sheet. Open Mory manually and recover this share from Platform Capture Diagnostics.",
                     primaryTitle: "Done",
                     primaryAction: { [weak self] in self?.extensionContext?.completeRequest(returningItems: nil) },
                     secondaryTitle: nil,

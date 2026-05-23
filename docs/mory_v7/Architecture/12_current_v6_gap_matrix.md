@@ -110,7 +110,7 @@ Relevant code:
 | photo analysis is compact | visual evidence may be too thin | richer evidence + provenance |
 | speech failure can remove voice evidence | mood/tone quality drops | explicit uncertainty/failure evidence |
 | Journaling Suggestions real picker absent | missing system-curated context until entitlement is granted | ✅ resolved by entitlement, device picker adapter, and V2 Journaling evidence mapping |
-| Share extension target not built | app-external capture still lacks full system share surface | ✅ resolved by Share Extension confirmation flow + V2 App Group inbox |
+| Share extension target not built | app-external capture still lacks full system share surface | ✅ resolved by Share Extension handoff-first confirmation flow + V2 App Group handoff store |
 
 Relevant code:
 

@@ -20,7 +20,7 @@ struct ExternalCaptureDraftReviewView: View {
 
     var body: some View {
         Form {
-            Section("Pending Inbox") {
+            Section("Handoff Recovery") {
                 if inboxItems.isEmpty {
                     Text("No external captures.")
                         .foregroundStyle(.secondary)
@@ -82,7 +82,7 @@ struct ExternalCaptureDraftReviewView: View {
                     previewDraft = buildDraft()
                     message = "Draft preview updated."
                 }
-                Button("Queue As Pending Inbox Item") {
+                Button("Queue As Handoff Test Item") {
                     queueCurrentRequest()
                 }
                 Button("Create Memory From Preview") {
@@ -112,7 +112,7 @@ struct ExternalCaptureDraftReviewView: View {
                 }
             }
         }
-        .navigationTitle("External Capture")
+        .navigationTitle("External Capture Recovery")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             previewDraft = buildDraft()

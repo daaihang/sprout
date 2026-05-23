@@ -41,15 +41,15 @@ Completed implementation areas:
 - Entity resolution, correction events, not-same blocking, and person merge/split mutation.
 - Person profile persistence, evidence-backed portrait refresh, and profile mutation actions.
 - Structured affect snapshots, affect corrections, tone hints, and Journaling suggestion draft mapping.
-- External capture inbox foundation for App Intent, Share, and Journaling-originated drafts.
+- External capture handoff foundation for App Intent, Share, and Journaling-originated drafts.
 - Analyze v7 production replacement, bounded context payloads, native server proposal output, and debug request/response inspection.
 - BGTask registration, background URLSession infrastructure, silent-push handling, local/APNs notification routing, and notification policy tests.
 - Eval/debug coverage for context packs, affect correction recurrence, graph delta apply, merge recovery, BGTask scheduling, and notification routing.
 - v7.1 stabilization: production Analyze v7 graph persistence now merges analysis graph output with place resolution before persisting nodes, edges, links, and local arc/reflection evidence; composition tests are aligned to the v7 cloud path.
 - v7.2 platform context wiring: Apple Journaling Suggestions entitlement + device picker adapter, Share Extension inbox writing for text/URL/images, App Shortcut phrase expansion, and GraphDelta reject/undo correction ledger are implemented as native data paths.
 - v7.3 device validation baseline: Platform Capture Diagnostics is available from Settings and Debug to inspect Journaling Suggestions, App Group, Share Extension, App Intents metadata, external inbox counts, and manual device-validation steps.
-- v7.4 capture handoff fixes: expired refresh tokens clear credentials and return to login automatically; external capture remains durable through the inbox.
-- v7.5 external capture and Journaling refactor: Share Extension follows the official confirmation/submit model, writes V2-only shared capture envelopes to the App Group inbox, offers a user-initiated best-effort Open Mory action, and maps Journaling media plus official HealthKit StateOfMind evidence into normal artifacts/affect snapshots.
+- v7.4 capture handoff fixes: expired refresh tokens clear credentials and return to login automatically; external capture remains durable through the shared handoff store.
+- v7.5 external capture and Journaling refactor: Share Extension is handoff-first, so the primary action writes a V2-only shared capture envelope and immediately requests `mory://external-capture?...&action=compose` to open the unified memory composer; the recovery list is debug/diagnostics-only. Journaling maps media plus official HealthKit StateOfMind evidence into normal artifacts/affect snapshots.
 
 Post-v7 production hardening remains separate from the v7 foundation:
 

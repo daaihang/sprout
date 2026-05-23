@@ -26,7 +26,7 @@ struct PlatformCaptureDiagnosticsView: View {
                     LabeledContent("Manual checks", value: "\(snapshot.summary.manual)")
                 }
 
-                Section("External Capture Inbox") {
+                Section("External Capture Handoff") {
                     LabeledContent("Pending", value: "\(snapshot.inboxCounts.pending)")
                     LabeledContent("Imported", value: "\(snapshot.inboxCounts.imported)")
                     LabeledContent("Dismissed", value: "\(snapshot.inboxCounts.dismissed)")

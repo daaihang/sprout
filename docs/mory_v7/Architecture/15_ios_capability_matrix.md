@@ -126,7 +126,7 @@ Implementation note:
 - On device builds with `JournalingSuggestions.framework`, the app presents the Apple picker and maps selected assets.
 - On Simulator/non-framework builds, the native fallback form remains visible so development and tests do not depend on entitlement-only APIs.
 - No `JournalingMemory` type exists; every suggestion becomes a normal draft with provenance.
-- Share Extension uses the official extension confirmation flow: the extension previews the payload, the user taps Add to Mory, and a V2-only envelope is written to the App Group inbox. Opening the main app is user-initiated best effort, not an automatic success dependency.
+- Share Extension uses a handoff-first confirmation flow: the extension previews the payload, the user taps Continue in Mory, a V2-only envelope is written to the App Group handoff store, and the extension immediately requests `mory://external-capture?...&action=compose`. The recovery list is debug/diagnostics-only if iOS refuses the open request.
 - Platform Capture Diagnostics must expose runtime readiness for Journaling availability, App Group defaults/container, Share Extension bundling, App Intents metadata, external inbox counts, and manual physical-device checks.
 
 ## 9. Acceptance Criteria

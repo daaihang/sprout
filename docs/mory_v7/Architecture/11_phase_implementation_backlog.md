@@ -284,7 +284,7 @@ Completion evidence:
 | Phase 1 | completed | local SelfProfile persistence and inspectable context pack skeleton are implemented; production Analyze v7 consumes the context pack as of Phase 5 |
 | Phase 2 | completed | entity resolution foundation, correction ledger, and person merge/split mutation are implemented; proposal consumption and cloud-context integration continue in Phase 5 |
 | Phase 3 | completed | local PersonProfile persistence, deterministic portrait refresh jobs, mutation actions, evidence invalidation, and debug inspection are implemented; cloud AI portrait proposals remain Phase 5 |
-| Phase 4 | completed | local structured affect persistence, correction events, context-pack affect history, Journaling draft mapping, and external capture inbox are implemented; real Apple picker entitlement and Share Extension paths are implemented as v7.2 platform work |
+| Phase 4 | completed | local structured affect persistence, correction events, context-pack affect history, Journaling draft mapping, and external capture handoff foundation are implemented; real Apple picker entitlement and Share Extension paths are implemented as v7.2 platform work |
 | Phase 5 | completed | production new-memory analysis is hard-cut over to Analyze v7 with context pack payloads, native server proposal output, local proposal persistence, and no legacy Analyze fallback |
 | Phase 6 | completed | BGTask (BGProcessingTask + BGAppRefreshTask) + BackgroundURLSession + NotificationDeliveryRouter + silent push handler implemented; tests in BackgroundTaskCoordinatorTests + NotificationDeliveryRouterTests |
 | Phase 7 | completed | eval fixtures, debug surfaces, privacy/budget gates, graph-delta apply inspection, clarification question inspection, BGTask/router tests, affect correction eval, and docs/code status reconciliation are complete; real-user telemetry and public release privacy review are post-v7 production hardening |
@@ -292,7 +292,7 @@ Completion evidence:
 | v7.2 Platform Context + Correction UX | completed | Journaling Suggestions entitlement/device picker adapter, Share Extension external inbox writing, App Shortcut phrase expansion, and GraphDelta reject/undo correction ledger are implemented; real-device validation remains production hardening |
 | v7.3 Device Validation + Platform QA | completed | platform capture diagnostics and manual validation checklist are implemented in Settings/Debug; physical-device execution remains release hardening |
 | v7.4 Capture Handoff + Auth + Journaling Fix | completed | initial capture handoff, Journaling media/StateOfMind mapping, and expired auth routing were implemented; Share Extension handoff is superseded by the v7.5 official confirmation/import flow |
-| v7.5 External Capture + Journaling V2 Refactor | completed | External Capture is V2-only with no legacy payload compatibility; Share Extension uses the official confirmation/save flow; Journaling evidence maps all supported SDK asset classes into normal artifacts/affect evidence |
+| v7.5 External Capture + Journaling V2 Refactor | completed | External Capture is V2-only with no legacy payload compatibility; Share Extension is handoff-first into the unified composer; Journaling evidence maps all supported SDK asset classes into normal artifacts/affect evidence |
 
 ## Post-v7 Production Hardening
 
@@ -314,7 +314,7 @@ Completion evidence:
 - The local iPhoneOS SDK symbols were checked before implementation: `JournalingSuggestionsPicker`, `JournalingSuggestion.content(forType:)`, `Location`, `Song`, `Workout`, `StateOfMind`, `Reflection`, and iOS 26 `EventPoster`.
 - `AppleJournalingSuggestionAdapter` maps Apple-selected suggestions into existing `JournalingSuggestionDraft`, then into `MemoryCaptureDraft` with artifacts and `AffectSnapshot` evidence.
 - Simulator and non-framework builds keep the fallback draft form because the local Simulator SDK does not include `JournalingSuggestions.framework`.
-- `moryShareExtension` writes shared text, URLs, and image attachments into the external capture inbox through the app group, and the main app imports them through the normal memory creation path.
+- `moryShareExtension` writes shared text, URLs, and image attachments into the external capture handoff store through the app group, and the main app imports them through the normal memory creation path.
 - `GraphDeltaReviewView` now supports reject and undo-reject through persisted `CorrectionEvent.kind.graphDeltaRejected` instead of view-only state.
 
 ## v7.3 Device Validation + Platform QA
@@ -351,7 +351,8 @@ Goal: align external capture with Apple's Share Extension model and make Journal
 Completion evidence:
 
 - `ExternalCaptureShared/ExternalCaptureWireModels.swift` is the shared V2-only wire contract used by the app and Share Extension; `ExternalCaptureRequest`, `JournalingSuggestionDraft`, and `ExternalCaptureInboxItem` reject non-v2 payloads.
-- Share Extension no longer auto-closes on `viewDidAppear` or relies on a responder-chain `openURL:` hack. It presents a native confirmation page, writes the V2 envelope to the App Group inbox after `Add to Mory`, then offers a user-initiated best-effort `Open Mory`.
+- Share Extension no longer auto-closes on `viewDidAppear` or relies on a responder-chain `openURL:` hack. It presents a native confirmation page whose primary action is `Continue in Mory`: write the V2 envelope to the App Group handoff store, then immediately request `mory://external-capture?id=...&action=compose`.
+- Main app deep-link handling maps the handoff item through `ExternalCaptureDraftFactory` into `UnifiedCaptureComposerView`, so the user lands in the normal memory composer with text, URL, and image/video evidence prefilled. The recovery list is debug/diagnostics-only if iOS refuses to open the app.
 - App import paths map V2 envelopes through `ExternalCaptureDraftFactory` into the normal `MemoryCaptureDraft -> repository save -> Analyze v7` path. Link evidence becomes a link artifact instead of polluting record body text.
 - `AppleJournalingSuggestionAdapter` maps location/location group, song/podcast/generic media, photo/video/live photo, workout/workout group/motion activity, contacts, reflection prompt, StateOfMind, and iOS 26 EventPoster into evidence items, attachments, diagnostics, and affect evidence.
 - Journaling `StateOfMind` stores only official fields (`labels`, `associations`, `valence`, `valenceClassification`, `kind`) as `journalSuggestionStateOfMind` evidence; arousal/dominance are not fabricated.

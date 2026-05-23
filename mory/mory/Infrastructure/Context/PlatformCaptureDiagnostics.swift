@@ -162,7 +162,7 @@ struct PlatformCaptureDiagnosticsService {
                 status: defaultsAvailable ? .ready : .blocked,
                 detail: defaultsAvailable
                     ? "The shared defaults suite is reachable for App Intent and Share handoff."
-                    : "The shared defaults suite is unavailable; external inbox handoff cannot be trusted on this build.",
+                    : "The shared defaults suite is unavailable; external capture handoff cannot be trusted on this build.",
                 evidence: ["suite=\(MorySharedContainers.appGroupIdentifier)"]
             ),
             PlatformCaptureDiagnosticItem(
@@ -216,13 +216,13 @@ struct PlatformCaptureDiagnosticsService {
                 id: "manual.share.extension",
                 title: "Share Sheet Handoff On Device",
                 status: .manual,
-                detail: "Share selected text, a URL, and an image into Mory; confirm all arrive in External Capture Inbox and import through the normal save path."
+                detail: "Share selected text, a URL, and an image into Mory; tap Continue in Mory and confirm the main app opens the unified memory composer with content prefilled."
             ),
             PlatformCaptureDiagnosticItem(
                 id: "manual.app.shortcut",
                 title: "Siri / Shortcuts Phrase Validation",
                 status: .manual,
-                detail: "Run the Mory capture App Shortcut phrase on device and verify the resulting request lands in External Capture Inbox."
+                detail: "Run the Mory capture App Shortcut phrase on device and verify the resulting request enters the external capture handoff path."
             )
         ]
     }
