@@ -450,7 +450,7 @@ nonisolated struct AffectSnapshotMapper: Sendable {
 
     private func evidenceMetadata(from draft: AffectSnapshotDraft) -> [String: String] {
         var metadata: [String: String] = [:]
-        if let rawInput = draft.rawInput?.trimmedOrNil { metadata["rawInput"] = rawInput }
+        if let rawInput = draft.rawInput.flatMap(nonisolatedTrimmedOrNil) { metadata["rawInput"] = rawInput }
         if !draft.labels.isEmpty { metadata["mappedLabels"] = draft.labels.map(\.rawValue).joined(separator: ",") }
         if let valence = draft.valence { metadata["valence"] = String(valence) }
         if let arousal = draft.arousal { metadata["arousal"] = String(arousal) }
