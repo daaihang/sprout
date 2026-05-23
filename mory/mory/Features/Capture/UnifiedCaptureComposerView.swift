@@ -53,6 +53,7 @@ struct UnifiedCaptureComposerView: View {
     @State private var isPresentingLocationPicker = false
     @State private var isPresentingTodoCapture = false
     @State private var isPresentingMoodPicker = false
+    @State private var isPresentingAppleJournalingPicker = false
     @State private var isPresentingJournalingImport = false
 
     @State private var isProcessingPhoto = false
@@ -88,7 +89,7 @@ struct UnifiedCaptureComposerView: View {
             isProcessingPhoto: isProcessingPhoto,
             isCollectingContext: isCollectingContext,
             onMood: { isPresentingMoodPicker = true },
-            onJournaling: { isPresentingJournalingImport = true },
+            onJournaling: { presentJournalingImport() },
             onCamera: { isPresentingCamera = true },
             onAudio: { isPresentingAudioCapture = true },
             onLink: { isPresentingLinkCapture = true },
@@ -114,6 +115,9 @@ struct UnifiedCaptureComposerView: View {
         items.append(contentsOf: stagedArtifactDrafts.indices.map { index in
             .staged(index: index, draft: stagedArtifactDrafts[index])
         })
+        items.append(contentsOf: affectDrafts.indices.map { index in
+            .affect(index: index, draft: affectDrafts[index])
+        })
         items.append(contentsOf: contextCandidates.map(CaptureComposerAttachmentItem.context))
         return items
     }
@@ -123,11 +127,12 @@ struct UnifiedCaptureComposerView: View {
             GeometryReader { proxy in
                 ScrollView {
                     VStack(spacing: 0) {
-                        CaptureAttachmentCarouselView(
-                            items: attachmentItems,
-                            onRemoveStagedArtifact: removeStagedArtifact(at:),
-                            onRemoveContextCandidate: removeContextCandidate(id:)
-                        )
+	                        CaptureAttachmentCarouselView(
+	                            items: attachmentItems,
+	                            onRemoveStagedArtifact: removeStagedArtifact(at:),
+	                            onRemoveContextCandidate: removeContextCandidate(id:),
+	                            onRemoveAffectDraft: removeAffectDraft(at:)
+	                        )
 
                         CaptureBodyEditorView(
                             text: $bodyText,
@@ -238,6 +243,9 @@ struct UnifiedCaptureComposerView: View {
                 JournalingSuggestionImportView { draft in
                     mergeImportedDraft(draft)
                 }
+            }
+            .appleJournalingSuggestionPicker(isPresented: $isPresentingAppleJournalingPicker) { suggestion in
+                mergeImportedJournalingSuggestion(suggestion)
             }
             .task {
                 applySeedIfNeeded()
@@ -440,9 +448,27 @@ struct UnifiedCaptureComposerView: View {
     }
 
     @MainActor
+    private func removeAffectDraft(at index: Int) {
+        guard affectDrafts.indices.contains(index) else { return }
+        affectDrafts.remove(at: index)
+        mood = affectDrafts.first?.labels.first?.rawValue
+            ?? affectDrafts.first?.rawInput?.trimmedOrNil
+            ?? ""
+    }
+
+    @MainActor
     private func removeContextCandidate(id: UUID) {
         guard let index = contextCandidates.firstIndex(where: { $0.id == id }) else { return }
         contextCandidates.remove(at: index)
+    }
+
+    @MainActor
+    private func presentJournalingImport() {
+        if JournalingSuggestionContextService().availability().isAvailable {
+            isPresentingAppleJournalingPicker = true
+        } else {
+            isPresentingJournalingImport = true
+        }
     }
 
     @MainActor
@@ -500,6 +526,12 @@ struct UnifiedCaptureComposerView: View {
         } else if let importedMood = draft.mood?.trimmedOrNil {
             mood = importedMood
         }
+    }
+
+    @MainActor
+    private func mergeImportedJournalingSuggestion(_ suggestion: JournalingSuggestionDraft) {
+        let draft = JournalingSuggestionContextService().makeCaptureDraft(from: suggestion)
+        mergeImportedDraft(draft)
     }
 
     private func resolvedInternalTitle(rawText: String) -> String {

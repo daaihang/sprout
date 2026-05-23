@@ -128,6 +128,8 @@ extension CaptureArtifactDraft {
         case .location: return "mappin.and.ellipse"
         case .link: return "link"
         case .todo: return "checklist"
+        case .promptAnswer: return "questionmark.bubble"
+        case .personContext: return "person.crop.circle"
         case .weather: return "cloud.sun"
         case .music: return "music.note"
         }

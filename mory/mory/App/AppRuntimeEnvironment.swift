@@ -89,18 +89,17 @@ struct AppRuntimeEnvironment: Hashable, Sendable {
         #if DEBUG
         return .debug
         #else
-        guard let receiptURL = bundle.appStoreReceiptURL else {
+        let buildChannel = BuildChannel(rawBundleValue: bundle.object(forInfoDictionaryKey: "MORY_BUILD_CHANNEL") as? String)
+        guard let provisioningURL = bundle.url(forResource: "embedded", withExtension: "mobileprovision") else {
+            return buildChannel == .production ? .appStore : .development
+        }
+        guard let provisioningData = try? Data(contentsOf: provisioningURL),
+              let provisioningText = String(data: provisioningData, encoding: .isoLatin1) ?? String(data: provisioningData, encoding: .utf8) else {
             return .development
         }
-
-        if receiptURL.lastPathComponent == "sandboxReceipt" {
+        if provisioningText.contains("beta-reports-active") {
             return .testFlight
         }
-
-        if FileManager.default.fileExists(atPath: receiptURL.path) {
-            return .appStore
-        }
-
         return .development
         #endif
     }

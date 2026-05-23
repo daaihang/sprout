@@ -22,6 +22,9 @@ enum CaptureCardKind: String, CaseIterable, Hashable, Sendable {
     case music
     case link
     case todo
+    case prompt
+    case person
+    case affect
     case status
 
     var label: String {
@@ -33,6 +36,9 @@ enum CaptureCardKind: String, CaseIterable, Hashable, Sendable {
         case .music: return String(localized: "capture.card.kind.music")
         case .link: return String(localized: "capture.card.kind.link")
         case .todo: return String(localized: "capture.card.kind.todo")
+        case .prompt: return "Prompt"
+        case .person: return "Person"
+        case .affect: return "Mood"
         case .status: return String(localized: "capture.card.kind.status")
         }
     }
@@ -46,6 +52,9 @@ enum CaptureCardKind: String, CaseIterable, Hashable, Sendable {
         case .music: return "music.note"
         case .link: return "link"
         case .todo: return "checklist"
+        case .prompt: return "questionmark.bubble"
+        case .person: return "person.crop.circle"
+        case .affect: return "heart.text.square"
         case .status: return "hourglass"
         }
     }
@@ -479,6 +488,9 @@ enum CaptureCardPayload: Hashable, Sendable {
     case music(CaptureMusicCardPayload)
     case link(CaptureLinkCardPayload)
     case todo(CaptureTodoCardPayload)
+    case prompt(CapturePromptCardPayload)
+    case person(CapturePersonContextCardPayload)
+    case affect(CaptureAffectCardPayload)
     case status(CaptureStatusCardPayload)
 
     var kind: CaptureCardKind {
@@ -497,6 +509,12 @@ enum CaptureCardPayload: Hashable, Sendable {
             return .link
         case .todo:
             return .todo
+        case .prompt:
+            return .prompt
+        case .person:
+            return .person
+        case .affect:
+            return .affect
         case .status:
             return .status
         }
@@ -543,6 +561,21 @@ struct CaptureLinkCardPayload: Hashable, Sendable {
 }
 
 struct CaptureTodoCardPayload: Hashable, Sendable {}
+
+struct CapturePromptCardPayload: Hashable, Sendable {
+    var prompt: String
+    var answer: String?
+}
+
+struct CapturePersonContextCardPayload: Hashable, Sendable {
+    var name: String
+    var photoData: Data? = nil
+}
+
+struct CaptureAffectCardPayload: Hashable, Sendable {
+    var valence: Double? = nil
+    var sourceDescription: String? = nil
+}
 
 struct CaptureStatusCardPayload: Hashable, Sendable {}
 
@@ -601,6 +634,28 @@ struct CaptureCardCommonDisplay: Hashable, Sendable {
     let isSelected: Bool
     let isRemovable: Bool
 
+    init(
+        id: String,
+        kind: CaptureCardKind,
+        origin: CaptureArtifactOrigin?,
+        state: CaptureCardState,
+        title: String?,
+        detail: String,
+        metadata: String?,
+        isSelected: Bool,
+        isRemovable: Bool
+    ) {
+        self.id = id
+        self.kind = kind
+        self.origin = origin
+        self.state = state
+        self.title = title
+        self.detail = detail
+        self.metadata = metadata
+        self.isSelected = isSelected
+        self.isRemovable = isRemovable
+    }
+
     init(item: CaptureCardItem) {
         id = item.id
         kind = item.kind
@@ -611,6 +666,20 @@ struct CaptureCardCommonDisplay: Hashable, Sendable {
         metadata = item.metadata
         isSelected = item.isSelected
         isRemovable = item.isRemovable
+    }
+
+    func replacingDetail(_ detail: String) -> CaptureCardCommonDisplay {
+        CaptureCardCommonDisplay(
+            id: id,
+            kind: kind,
+            origin: origin,
+            state: state,
+            title: title,
+            detail: detail,
+            metadata: metadata,
+            isSelected: isSelected,
+            isRemovable: isRemovable
+        )
     }
 }
 

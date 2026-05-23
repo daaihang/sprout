@@ -4,6 +4,7 @@ struct CaptureComposerAttachmentItem: Identifiable {
     enum Source: Equatable {
         case stagedArtifact(index: Int)
         case contextCandidate(id: UUID)
+        case affect(index: Int)
         case processing(id: String)
     }
 
@@ -41,6 +42,39 @@ struct CaptureComposerAttachmentItem: Identifiable {
         )
     }
 
+    static func affect(index: Int, draft: AffectSnapshotDraft) -> CaptureComposerAttachmentItem {
+        let title = draft.labels.first?.rawValue
+            ?? draft.rawInput?.trimmedOrNil
+            ?? "Mood"
+        let detail = draft.evidenceSummary?.trimmedOrNil
+            ?? draft.rawInput?.trimmedOrNil
+            ?? draft.labels.map(\.rawValue).joined(separator: ", ")
+            .trimmedOrNil
+            ?? "Affect evidence"
+        let metadata = [
+            draft.valence.map { "valence \(String(format: "%.2f", $0))" },
+            draft.sources.first?.rawValue
+        ]
+        .compactMap { $0 }
+        .joined(separator: " · ")
+        .trimmedOrNil
+        let itemID = "affect-\(index)-\(title)"
+        return CaptureComposerAttachmentItem(
+            id: itemID,
+            source: .affect(index: index),
+            card: CaptureCardItem(
+                id: itemID,
+                payload: .affect(CaptureAffectCardPayload(valence: draft.valence, sourceDescription: draft.sources.first?.rawValue)),
+                origin: .imported,
+                state: .normal,
+                title: title,
+                detail: detail,
+                metadata: metadata,
+                isRemovable: true
+            )
+        )
+    }
+
     static func processing(id: String, kind: CaptureCardKind = .status, detail: String) -> CaptureComposerAttachmentItem {
         let itemID = "processing-\(id)"
         return CaptureComposerAttachmentItem(
@@ -74,6 +108,12 @@ struct CaptureComposerAttachmentItem: Identifiable {
             return .link(CaptureLinkCardPayload())
         case .todo:
             return .todo(CaptureTodoCardPayload())
+        case .prompt:
+            return .prompt(CapturePromptCardPayload(prompt: ""))
+        case .person:
+            return .person(CapturePersonContextCardPayload(name: ""))
+        case .affect:
+            return .affect(CaptureAffectCardPayload())
         case .status:
             return .status(CaptureStatusCardPayload())
         }

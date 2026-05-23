@@ -50,11 +50,13 @@ Completed implementation areas:
 - v7.3 device validation baseline: Platform Capture Diagnostics is available from Settings and Debug to inspect Journaling Suggestions, App Group, Share Extension, App Intents metadata, external inbox counts, and manual device-validation steps.
 - v7.4 capture handoff fixes: expired refresh tokens clear credentials and return to login automatically; external capture remains durable through the shared handoff store.
 - v7.5 external capture and Journaling refactor: Share Extension is handoff-first, so the primary action writes a V2-only shared capture envelope and immediately requests `mory://external-capture?...&action=compose` to open the unified memory composer; the recovery list is debug/diagnostics-only. Journaling maps media plus official HealthKit StateOfMind evidence into normal artifacts/affect snapshots.
+- v7.6 Journaling evidence bundle stabilization: Apple-selected suggestions remain typed as `JournalingEvidenceBundle` until app-side draft mapping, the composer toolbar opens the Apple picker directly on capable devices, multiple songs keep their own artwork inside music cards, official StateOfMind raw fields remain durable affect evidence, reflection prompts become prompt-answer cards, and contacts become person-context cards without trusted graph merges.
 
 Post-v7 production hardening remains separate from the v7 foundation:
 
-- execute the in-app Platform Capture Diagnostics checklist on physical devices for Apple Journaling Suggestions picker, App Intent phrases, and Share Extension confirmation/import,
+- execute the in-app Platform Capture Diagnostics checklist on physical devices for Apple Journaling Suggestions picker stability, App Intent phrases, and Share Extension confirmation/import,
 - Share Extension App Store capability review,
+- future Health/Fitness affect source mapping and contact-to-person entity resolution,
 - real-device APNs/background telemetry and soak testing,
 - public release privacy review with real user data handling.
 

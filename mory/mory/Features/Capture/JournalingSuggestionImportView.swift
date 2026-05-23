@@ -81,53 +81,43 @@ struct JournalingSuggestionImportView: View {
     }
 
     private func importDraft() {
-        var evidenceItems: [ExternalCaptureEvidenceItem] = []
+        var bundle = JournalingEvidenceBundle()
         if let prompt = reflectionPrompt.trimmedOrNil {
-            evidenceItems.append(ExternalCaptureEvidenceItem(kind: .reflection, title: "Reflection prompt", value: prompt))
+            bundle.reflections.append(JournalingReflectionEvidence(prompt: prompt))
         }
         if let place = locationTitle.trimmedOrNil {
-            evidenceItems.append(ExternalCaptureEvidenceItem(kind: .location, title: place))
+            bundle.locations.append(JournalingLocationEvidence(title: place, place: place))
         }
         if let song = songTitle.trimmedOrNil {
-            evidenceItems.append(ExternalCaptureEvidenceItem(
+            bundle.media.append(JournalingMediaEvidence(
                 kind: .song,
                 title: song,
+                artist: artistName.trimmedOrNil,
                 metadata: ["artist": artistName.trimmedOrNil ?? ""].filter { !$0.value.isEmpty }
             ))
         }
-        let affectEvidence: [ExternalCaptureAffectEvidence]
         if let label = stateOfMindLabel.trimmedOrNil {
-            affectEvidence = [
-                ExternalCaptureAffectEvidence(
-                    source: .journalSuggestionStateOfMind,
-                    label: label,
-                    labels: [label],
-                    valence: stateOfMindValence,
-                    valenceClassification: stateOfMindClassification.trimmedOrNil,
-                    kind: stateOfMindKind.trimmedOrNil,
-                    rawInput: label,
-                    confidence: 0.9,
-                    userConfirmed: true
-                )
-            ]
-            evidenceItems.append(ExternalCaptureEvidenceItem(
-                kind: .stateOfMind,
-                title: label,
-                value: stateOfMindClassification.trimmedOrNil,
+            bundle.stateOfMind.append(ExternalCaptureAffectEvidence(
+                source: .journalSuggestionStateOfMind,
+                label: label,
+                labels: [label],
+                valence: stateOfMindValence,
+                valenceClassification: stateOfMindClassification.trimmedOrNil,
+                kind: stateOfMindKind.trimmedOrNil,
+                rawInput: label,
+                confidence: 0.9,
+                userConfirmed: true,
                 metadata: [
                     "valence": String(stateOfMindValence),
-                    "classification": stateOfMindClassification.trimmedOrNil ?? "",
+                    "valenceClassification": stateOfMindClassification.trimmedOrNil ?? "",
                     "kind": stateOfMindKind.trimmedOrNil ?? ""
                 ].filter { !$0.value.isEmpty }
             ))
-        } else {
-            affectEvidence = []
         }
         let suggestion = JournalingSuggestionDraft(
             title: title.trimmedOrNil,
             body: bodyText.trimmedOrNil,
-            evidenceItems: evidenceItems,
-            affectEvidence: affectEvidence
+            bundle: bundle
         )
         importSuggestion(suggestion)
     }

@@ -63,9 +63,14 @@ All external capture must reuse the normal repository save path.
 | Capability | Mory use |
 | --- | --- |
 | user-selected suggestion | create context-rich draft |
-| location/media/workout/contact assets | context evidence |
-| reflection prompt | prompt evidence |
-| StateOfMind | affect evidence |
+| location/location group assets | typed context evidence -> location card |
+| song/podcast/generic media assets | typed media evidence -> music/media card; artwork stays attached to the media card |
+| photo/video/live-photo assets | primary media evidence -> photo/video card |
+| workout/workout group/motion activity assets | typed activity evidence -> context/document card |
+| contact assets | person-context evidence card; no direct trusted entity merge |
+| reflection prompt | prompt-answer card with optional user answer |
+| StateOfMind | visible affect card + durable affect evidence with official raw fields |
+| event poster | event context evidence with image as poster role |
 
 Limits:
 
@@ -116,15 +121,17 @@ System suggestion capture:
 ```text
 User opens Journaling Suggestions picker
   -> selects suggestion
-  -> Mory maps assets to evidence
+  -> Mory keeps assets grouped as JournalingEvidenceBundle
+  -> app-side mapper converts bundle to normal draft cards
   -> normal CaptureDraft save
   -> AnalyzeContextPack includes provenance
 ```
 
 Implementation note:
 
-- On device builds with `JournalingSuggestions.framework`, the app presents the Apple picker and maps selected assets.
+- On device builds with `JournalingSuggestions.framework`, the capture composer toolbar opens the Apple picker directly and maps selected assets into the current composer.
 - On Simulator/non-framework builds, the native fallback form remains visible so development and tests do not depend on entitlement-only APIs.
+- `JournalingEvidenceBundle` preserves typed groups until app-side mapping. It avoids flattening artwork, icons, contact photos, or event poster images into standalone photo cards.
 - No `JournalingMemory` type exists; every suggestion becomes a normal draft with provenance.
 - Share Extension uses a handoff-first confirmation flow: the extension previews the payload, the user taps Continue in Mory, a V2-only envelope is written to the App Group handoff store, and the extension immediately requests `mory://external-capture?...&action=compose`. The recovery list is debug/diagnostics-only if iOS refuses the open request.
 - Platform Capture Diagnostics must expose runtime readiness for Journaling availability, App Group defaults/container, Share Extension bundling, App Intents metadata, external inbox counts, and manual physical-device checks.

@@ -55,23 +55,24 @@ final class ExternalCaptureInboxTests: XCTestCase {
         let suggestion = JournalingSuggestionDraft(
             title: "Evening walk",
             body: "Walked after dinner and felt settled.",
-            evidenceItems: [
-                ExternalCaptureEvidenceItem(kind: .reflection, title: "Reflection prompt", value: "What made this feel calm?"),
-                ExternalCaptureEvidenceItem(kind: .location, title: "Riverside", metadata: ["latitude": "31.23", "longitude": "121.47"]),
-                ExternalCaptureEvidenceItem(kind: .song, title: "Night Drive", metadata: ["artist": "Mory Test"])
-            ],
-            affectEvidence: [
-                ExternalCaptureAffectEvidence(
-                    source: .journalSuggestionStateOfMind,
-                    label: "calm",
-                    labels: ["calm"],
-                    valence: 0.7,
-                    valenceClassification: "pleasant",
-                    kind: "daily mood",
-                    rawInput: "calm",
-                    confidence: 0.9
-                )
-            ],
+            bundle: JournalingEvidenceBundle(
+                locations: [JournalingLocationEvidence(title: "Riverside", place: "Riverside", latitude: 31.23, longitude: 121.47)],
+                media: [JournalingMediaEvidence(kind: .song, title: "Night Drive", artist: "Mory Test")],
+                reflections: [JournalingReflectionEvidence(prompt: "What made this feel calm?")],
+                stateOfMind: [
+                    ExternalCaptureAffectEvidence(
+                        source: .journalSuggestionStateOfMind,
+                        label: "calm",
+                        labels: ["calm"],
+                        valence: 0.7,
+                        valenceClassification: "pleasant",
+                        kind: "daily mood",
+                        rawInput: "calm",
+                        confidence: 0.9,
+                        metadata: ["labels": "calm", "valence": "0.7", "valenceClassification": "pleasant", "kind": "daily mood"]
+                    )
+                ]
+            ),
             createdAt: Date(timeIntervalSince1970: 1_800_000_001)
         )
 
@@ -83,7 +84,11 @@ final class ExternalCaptureInboxTests: XCTestCase {
         XCTAssertTrue(draft.inputContext?.contains("journalingSuggestion") == true)
         XCTAssertEqual(draft.affectSnapshots.first?.sources, [.journalSuggestionStateOfMind])
         XCTAssertEqual(draft.affectSnapshots.first?.valence, 0.7)
-        XCTAssertEqual(draft.artifacts.count, 3)
+        XCTAssertEqual(draft.artifacts.count, 4)
+        XCTAssertTrue(draft.artifacts.contains { artifact in
+            guard case .promptAnswer = artifact else { return false }
+            return true
+        })
     }
 
     func testDismissExternalCaptureInboxItemRemovesItFromPending() throws {
@@ -168,43 +173,56 @@ final class ExternalCaptureInboxTests: XCTestCase {
             from: JournalingSuggestionDraft(
                 title: "System suggestion",
                 body: "Selected from Apple Journaling Suggestions.",
-                evidenceItems: [
-                    ExternalCaptureEvidenceItem(kind: .location, title: "Riverside"),
-                    ExternalCaptureEvidenceItem(kind: .stateOfMind, title: "calm", metadata: [
-                        "labels": "calm,peaceful",
-                        "associations": "friends,health",
-                        "valence": "0.64",
-                        "classification": "pleasant",
-                        "kind": "daily mood"
-                    ])
-                ],
-                affectEvidence: [
-                    ExternalCaptureAffectEvidence(
-                        source: .journalSuggestionStateOfMind,
-                        label: "calm",
-                        labels: ["calm", "peaceful"],
-                        associations: ["friends", "health"],
-                        valence: 0.64,
-                        valenceClassification: "pleasant",
-                        kind: "daily mood",
-                        rawInput: "calm",
-                        confidence: 0.9
-                    )
-                ],
-                attachments: [
-                    ExternalCaptureAttachmentDraft(
+                bundle: {
+                    let photoID = UUID()
+                    let videoID = UUID()
+                    let photoAttachment = ExternalCaptureAttachmentDraft(
+                        id: UUID(),
                         kind: .image,
+                        role: .primaryMedia,
+                        referenceID: photoID,
                         filename: "journal-photo.jpg",
                         contentType: "image/jpeg",
                         summary: "Journaling photo"
-                    ),
-                    ExternalCaptureAttachmentDraft(
+                    )
+                    let videoAttachment = ExternalCaptureAttachmentDraft(
+                        id: UUID(),
                         kind: .video,
+                        role: .primaryMedia,
+                        referenceID: videoID,
                         filename: "journal-video.mov",
                         contentType: "video/quicktime",
                         summary: "Journaling video"
                     )
-                ]
+                    return JournalingEvidenceBundle(
+                        locations: [JournalingLocationEvidence(title: "Riverside", place: "Riverside")],
+                        photoVideos: [
+                            JournalingPhotoVideoEvidence(id: photoID, kind: .photo, attachmentID: photoAttachment.id),
+                            JournalingPhotoVideoEvidence(id: videoID, kind: .video, attachmentID: videoAttachment.id)
+                        ],
+                        stateOfMind: [
+                            ExternalCaptureAffectEvidence(
+                                source: .journalSuggestionStateOfMind,
+                                label: "calm",
+                                labels: ["calm", "peaceful"],
+                                associations: ["friends", "health"],
+                                valence: 0.64,
+                                valenceClassification: "pleasant",
+                                kind: "daily mood",
+                                rawInput: "calm",
+                                confidence: 0.9,
+                                metadata: [
+                                    "labels": "calm,peaceful",
+                                    "associations": "friends,health",
+                                    "valence": "0.64",
+                                    "valenceClassification": "pleasant",
+                                    "kind": "daily mood"
+                                ]
+                            )
+                        ],
+                        attachments: [photoAttachment, videoAttachment]
+                    )
+                }()
             )
         )
 

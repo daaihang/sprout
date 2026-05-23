@@ -118,29 +118,35 @@ final class AffectSnapshotTests: XCTestCase {
             from: JournalingSuggestionDraft(
                 title: "Evening walk",
                 body: "Walked home after dinner.",
-                evidenceItems: [
-                    ExternalCaptureEvidenceItem(kind: .reflection, title: "Reflection prompt", value: "What felt meaningful?"),
-                    ExternalCaptureEvidenceItem(kind: .location, title: "Riverside"),
-                    ExternalCaptureEvidenceItem(kind: .song, title: "Quiet Track", metadata: ["artist": "Mory"])
-                ],
-                affectEvidence: [
-                    ExternalCaptureAffectEvidence(
-                        source: .journalSuggestionStateOfMind,
-                        label: "calm",
-                        labels: ["calm"],
-                        valence: 0.6,
-                        valenceClassification: "pleasant",
-                        kind: "daily mood",
-                        rawInput: "calm",
-                        confidence: 0.9
-                    )
-                ]
+                bundle: JournalingEvidenceBundle(
+                    locations: [JournalingLocationEvidence(title: "Riverside", place: "Riverside")],
+                    media: [JournalingMediaEvidence(kind: .song, title: "Quiet Track", artist: "Mory")],
+                    reflections: [JournalingReflectionEvidence(prompt: "What felt meaningful?")],
+                    stateOfMind: [
+                        ExternalCaptureAffectEvidence(
+                            source: .journalSuggestionStateOfMind,
+                            label: "calm",
+                            labels: ["calm"],
+                            valence: 0.6,
+                            valenceClassification: "pleasant",
+                            kind: "daily mood",
+                            rawInput: "calm",
+                            confidence: 0.9,
+                            metadata: [
+                                "labels": "calm",
+                                "valence": "0.6",
+                                "valenceClassification": "pleasant",
+                                "kind": "daily mood"
+                            ]
+                        )
+                    ]
+                )
             )
         )
 
         XCTAssertEqual(draft.mood, "calm")
         XCTAssertEqual(draft.affectSnapshots.first?.sources, [.journalSuggestionStateOfMind])
-        XCTAssertEqual(draft.artifacts.count, 3)
+        XCTAssertEqual(draft.artifacts.count, 4)
 
         let fixture = makeRepositoryFixture()
         let memory = try await fixture.repository.createMemory(from: draft)

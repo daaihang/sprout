@@ -4,6 +4,50 @@ struct ExternalCaptureDraftFactory: Sendable {
     private let attachmentFileStore = ExternalCaptureAttachmentFileStore()
     private let affectMapper = AffectSnapshotMapper()
 
+    func makeDraft(from suggestion: JournalingSuggestionDraft) -> MemoryCaptureDraft {
+        var diagnostics = suggestion.bundle.diagnostics
+        let bodyText = journalingBodyText(from: suggestion, diagnostics: diagnostics)
+        var artifacts: [CaptureArtifactDraft] = [
+            .text(title: suggestion.title, body: bodyText, origin: .imported)
+        ]
+
+        let attachmentsByID = Dictionary(uniqueKeysWithValues: suggestion.bundle.attachments.map { ($0.id, $0) })
+        artifacts.append(contentsOf: suggestion.bundle.locations.map(locationDraft))
+        artifacts.append(contentsOf: suggestion.bundle.locationGroups.flatMap { group in
+            group.map(locationDraft)
+        })
+        artifacts.append(contentsOf: suggestion.bundle.media.map { media in
+            mediaDraft(from: media, attachmentsByID: attachmentsByID, diagnostics: &diagnostics)
+        })
+        artifacts.append(contentsOf: suggestion.bundle.photoVideos.compactMap { media in
+            photoVideoDraft(from: media, attachmentsByID: attachmentsByID, diagnostics: &diagnostics)
+        })
+        artifacts.append(contentsOf: suggestion.bundle.reflections.map { reflection in
+            .promptAnswer(prompt: reflection.prompt, answer: nil, source: "Journaling Suggestions", origin: .imported)
+        })
+        artifacts.append(contentsOf: suggestion.bundle.contacts.map { contact in
+            let photoData = contact.photoAttachmentID.flatMap { attachmentData(id: $0, attachmentsByID: attachmentsByID, diagnostics: &diagnostics) }
+            return .personContext(
+                name: contact.name,
+                note: "Suggested by Apple Journaling Suggestions",
+                photoData: photoData,
+                metadata: contact.metadata.merging(["source": "journalSuggestion"]) { _, new in new },
+                origin: .imported
+            )
+        })
+
+        let affectDrafts = suggestion.bundle.stateOfMind.compactMap(makeAffectDraft)
+        return MemoryCaptureDraft(
+            title: suggestion.title,
+            rawText: bodyText,
+            mood: affectDrafts.first?.rawInput ?? affectDrafts.first?.labels.first?.rawValue,
+            inputContext: journalingInputContext(from: suggestion, diagnostics: diagnostics),
+            captureSource: .composer,
+            artifacts: artifacts,
+            affectSnapshots: affectDrafts
+        )
+    }
+
     func makeDraft(from request: ExternalCaptureRequest) -> MemoryCaptureDraft {
         var diagnostics = request.diagnostics
         if let errorMessage = request.errorMessage?.trimmedOrNil {
@@ -27,7 +71,7 @@ struct ExternalCaptureDraftFactory: Sendable {
             artifacts.append(contentsOf: artifactDrafts(from: evidence, request: request))
         }
 
-        for attachment in request.attachments {
+        for attachment in request.attachments where attachment.role == .primaryMedia || attachment.role == .unknown {
             artifacts.append(attachmentArtifactDraft(from: attachment, request: request, diagnostics: &diagnostics))
         }
 
@@ -41,6 +85,96 @@ struct ExternalCaptureDraftFactory: Sendable {
             artifacts: artifacts,
             affectSnapshots: affectDrafts
         )
+    }
+
+    private func journalingBodyText(from suggestion: JournalingSuggestionDraft, diagnostics: [String]) -> String {
+        var parts = [suggestion.body?.trimmedOrNil].compactMap { $0 }
+        for activity in suggestion.bundle.activities {
+            if let summary = activity.summary?.trimmedOrNil, !parts.contains(summary) {
+                parts.append(summary)
+            }
+        }
+        for poster in suggestion.bundle.eventPosters {
+            let text = [poster.title?.trimmedOrNil, poster.placeName?.trimmedOrNil].compactMap { $0 }.joined(separator: " - ").trimmedOrNil
+            if let text, !parts.contains(text) {
+                parts.append(text)
+            }
+        }
+        if !diagnostics.isEmpty {
+            parts.append("Diagnostics: \(diagnostics.joined(separator: " | "))")
+        }
+        return parts.joined(separator: "\n").trimmedOrNil ?? "Journaling suggestion"
+    }
+
+    private func journalingInputContext(from suggestion: JournalingSuggestionDraft, diagnostics: [String]) -> String {
+        var parts = [
+            "journalingSuggestion:v\(suggestion.version)",
+            "selectedAt=\(suggestion.createdAt.formatted(.iso8601))"
+        ]
+        if !diagnostics.isEmpty {
+            parts.append("diagnostics=\(diagnostics.joined(separator: " | "))")
+        }
+        return parts.joined(separator: "\n")
+    }
+
+    private func locationDraft(from location: JournalingLocationEvidence) -> CaptureArtifactDraft {
+        .location(
+            title: location.title ?? location.place ?? location.city ?? "Location",
+            summary: [location.place, location.city].compactMap { $0?.trimmedOrNil }.joined(separator: ", ").trimmedOrNil ?? "Imported location context",
+            latitude: location.latitude,
+            longitude: location.longitude,
+            origin: .imported
+        )
+    }
+
+    private func mediaDraft(
+        from media: JournalingMediaEvidence,
+        attachmentsByID: [UUID: ExternalCaptureAttachmentDraft],
+        diagnostics: inout [String]
+    ) -> CaptureArtifactDraft {
+        let title = media.title?.trimmedOrNil ?? media.kind.rawValue
+        let artist = media.artist?.trimmedOrNil ?? (media.kind == .podcast ? media.albumOrShow?.trimmedOrNil : nil) ?? "Unknown Artist"
+        let album = media.albumOrShow?.trimmedOrNil ?? ""
+        let artworkData = media.artworkAttachmentID.flatMap { attachmentData(id: $0, attachmentsByID: attachmentsByID, diagnostics: &diagnostics) }
+        return .music(
+            trackName: title,
+            artistName: artist,
+            albumName: album,
+            durationSeconds: media.metadata["durationSeconds"].flatMap(Int.init) ?? 0,
+            artworkURL: nil,
+            artworkData: artworkData,
+            origin: .imported
+        )
+    }
+
+    private func photoVideoDraft(
+        from media: JournalingPhotoVideoEvidence,
+        attachmentsByID: [UUID: ExternalCaptureAttachmentDraft],
+        diagnostics: inout [String]
+    ) -> CaptureArtifactDraft? {
+        guard let attachmentID = media.attachmentID,
+              let attachment = attachmentsByID[attachmentID] else {
+            diagnostics.append("Journaling \(media.kind.rawValue) missing attachment.")
+            return nil
+        }
+        switch media.kind {
+        case .photo, .livePhotoImage:
+            return attachmentArtifactDraft(from: attachment, sourceKind: .journalingSuggestion, title: "Journaling photo", diagnostics: &diagnostics)
+        case .video, .livePhotoVideo:
+            return attachmentArtifactDraft(from: attachment, sourceKind: .journalingSuggestion, title: "Journaling video", diagnostics: &diagnostics)
+        }
+    }
+
+    private func attachmentData(
+        id: UUID,
+        attachmentsByID: [UUID: ExternalCaptureAttachmentDraft],
+        diagnostics: inout [String]
+    ) -> Data? {
+        guard let attachment = attachmentsByID[id] else {
+            diagnostics.append("Attachment \(id.uuidString) is missing from Journaling bundle.")
+            return nil
+        }
+        return loadAttachmentData(attachment, diagnostics: &diagnostics)
     }
 
     private func bodyText(from request: ExternalCaptureRequest, diagnostics: [String]) -> String {
@@ -108,6 +242,53 @@ struct ExternalCaptureDraftFactory: Sendable {
         request: ExternalCaptureRequest,
         diagnostics: inout [String]
     ) -> CaptureArtifactDraft {
+        attachmentArtifactDraft(from: attachment, sourceKind: request.sourceKind, title: request.title, diagnostics: &diagnostics)
+    }
+
+    private func attachmentArtifactDraft(
+        from attachment: ExternalCaptureAttachmentDraft,
+        sourceKind: ExternalCaptureSourceKind,
+        title: String?,
+        diagnostics: inout [String]
+    ) -> CaptureArtifactDraft {
+        let data = loadAttachmentData(attachment, diagnostics: &diagnostics)
+
+        switch attachment.kind {
+        case .image:
+            return .photo(
+                title: title ?? attachment.filename,
+                summary: attachment.summary ?? "Imported image from \(sourceKind.rawValue).",
+                filename: attachment.filename,
+                imageData: data,
+                thumbnailData: data,
+                ocrText: "",
+                photoMetadata: [
+                    "source": sourceKind.rawValue,
+                    "contentType": attachment.contentType,
+                    "storedFileName": attachment.storedFileName ?? "",
+                    "attachmentRole": attachment.role.rawValue
+                ],
+                origin: .imported
+            )
+        case .video, .file:
+            return .video(
+                title: title ?? attachment.filename,
+                summary: attachment.summary ?? "Imported video/file from \(sourceKind.rawValue).",
+                filename: attachment.filename,
+                videoData: data,
+                thumbnailData: nil,
+                videoMetadata: [
+                    "source": sourceKind.rawValue,
+                    "contentType": attachment.contentType,
+                    "storedFileName": attachment.storedFileName ?? "",
+                    "attachmentRole": attachment.role.rawValue
+                ],
+                origin: .imported
+            )
+        }
+    }
+
+    private func loadAttachmentData(_ attachment: ExternalCaptureAttachmentDraft, diagnostics: inout [String]) -> Data? {
         let data: Data?
         do {
             data = try attachment.storedFileName.flatMap { try attachmentFileStore.loadData(storedFileName: $0) }
@@ -121,38 +302,7 @@ struct ExternalCaptureDraftFactory: Sendable {
         for diagnostic in attachment.diagnostics where !diagnostic.isEmpty {
             diagnostics.append("Attachment \(attachment.filename): \(diagnostic)")
         }
-
-        switch attachment.kind {
-        case .image:
-            return .photo(
-                title: request.title ?? attachment.filename,
-                summary: attachment.summary ?? "Imported image from \(request.sourceKind.rawValue).",
-                filename: attachment.filename,
-                imageData: data,
-                thumbnailData: data,
-                ocrText: "",
-                photoMetadata: [
-                    "source": request.sourceKind.rawValue,
-                    "contentType": attachment.contentType,
-                    "storedFileName": attachment.storedFileName ?? ""
-                ],
-                origin: .imported
-            )
-        case .video, .file:
-            return .video(
-                title: request.title ?? attachment.filename,
-                summary: attachment.summary ?? "Imported video/file from \(request.sourceKind.rawValue).",
-                filename: attachment.filename,
-                videoData: data,
-                thumbnailData: nil,
-                videoMetadata: [
-                    "source": request.sourceKind.rawValue,
-                    "contentType": attachment.contentType,
-                    "storedFileName": attachment.storedFileName ?? ""
-                ],
-                origin: .imported
-            )
-        }
+        return data
     }
 
     private func makeAffectDraft(from evidence: ExternalCaptureAffectEvidence) -> AffectSnapshotDraft? {

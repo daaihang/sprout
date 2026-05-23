@@ -146,6 +146,8 @@ enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
     case location(title: String?, summary: String, latitude: Double?, longitude: Double?, origin: CaptureArtifactOrigin = .manual)
     case link(title: String?, url: String, note: String?, summary: String? = nil, metadata: [String: String] = [:], thumbnailData: Data? = nil, origin: CaptureArtifactOrigin = .manual)
     case todo(title: String, note: String?, origin: CaptureArtifactOrigin = .manual)
+    case promptAnswer(prompt: String, answer: String?, source: String, origin: CaptureArtifactOrigin = .manual)
+    case personContext(name: String, note: String?, photoData: Data? = nil, metadata: [String: String] = [:], origin: CaptureArtifactOrigin = .manual)
     case weather(condition: String, temperatureCelsius: Double, humidity: Double, windSpeedKmh: Double, uvIndex: Int, latitude: Double? = nil, longitude: Double? = nil, conditionCode: String? = nil, symbolName: String? = nil, isDaylight: Bool? = nil, origin: CaptureArtifactOrigin = .manual)
     case music(trackName: String, artistName: String, albumName: String, durationSeconds: Int, artworkURL: String?, artworkData: Data? = nil, artworkPalette: MusicArtworkPalette? = nil, origin: CaptureArtifactOrigin = .manual)
 
@@ -165,6 +167,10 @@ enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
             return "link-\(title ?? url)"
         case let .todo(title, note, _):
             return "todo-\(title)-\(note ?? "")"
+        case let .promptAnswer(prompt, answer, source, _):
+            return "prompt-\(source)-\(prompt)-\(answer ?? "")"
+        case let .personContext(name, note, _, _, _):
+            return "person-\(name)-\(note ?? "")"
         case let .weather(condition, temp, _, _, _, _, _, _, _, _, _):
             return "weather-\(condition)-\(temp)"
         case let .music(trackName, artistName, _, _, _, _, _, _):
@@ -222,6 +228,14 @@ enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
                 .trimmedOrNil
                 ?? note?.trimmedOrNil
                 ?? title
+        case let .promptAnswer(prompt, answer, source, _):
+            return [source.trimmedOrNil, prompt.trimmedOrNil, answer?.trimmedOrNil].compactMap { $0 }.joined(separator: " • ")
+                .trimmedOrNil
+                ?? prompt
+        case let .personContext(name, note, _, _, _):
+            return [name.trimmedOrNil, note?.trimmedOrNil].compactMap { $0 }.joined(separator: " • ")
+                .trimmedOrNil
+                ?? name
         case let .weather(condition, temp, humidity, _, _, _, _, _, _, _, _):
             return "\(condition) \(String(format: "%.0f", temp))°C · Humidity \(String(format: "%.0f", humidity * 100))%"
         case let .music(trackName, artistName, albumName, _, _, _, _, _):
@@ -244,6 +258,10 @@ enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
         case let .link(_, _, _, _, _, _, origin):
             return origin
         case let .todo(_, _, origin):
+            return origin
+        case let .promptAnswer(_, _, _, origin):
+            return origin
+        case let .personContext(_, _, _, _, origin):
             return origin
         case let .weather(_, _, _, _, _, _, _, _, _, _, origin):
             return origin
@@ -306,6 +324,10 @@ enum CaptureArtifactDraft: Hashable, Sendable, Identifiable {
             )
         case let .todo(title, note, _):
             return .todo(title: title, note: note, origin: origin)
+        case let .promptAnswer(prompt, answer, source, _):
+            return .promptAnswer(prompt: prompt, answer: answer, source: source, origin: origin)
+        case let .personContext(name, note, photoData, metadata, _):
+            return .personContext(name: name, note: note, photoData: photoData, metadata: metadata, origin: origin)
         case let .weather(condition, temperatureCelsius, humidity, windSpeedKmh, uvIndex, latitude, longitude, conditionCode, symbolName, isDaylight, _):
             return .weather(
                 condition: condition,

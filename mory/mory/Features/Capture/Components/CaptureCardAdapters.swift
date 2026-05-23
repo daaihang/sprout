@@ -149,7 +149,49 @@ extension CaptureCardItem {
                 metadata: nil,
                 isRemovable: false
             )
-        case .document, .video:
+        case .document:
+            if artifact.metadata["documentType"] == "promptAnswer" {
+                let prompt = artifact.metadata["prompt"]?.trimmedOrNil ?? artifact.title
+                self.init(
+                    id: "artifact-\(artifact.id.uuidString)",
+                    payload: .prompt(CapturePromptCardPayload(prompt: prompt, answer: artifact.metadata["answer"]?.trimmedOrNil)),
+                    origin: artifact.captureCardOrigin,
+                    state: state,
+                    title: "Reflection prompt",
+                    detail: captureCardModelSnippet(artifact.summary) ?? prompt,
+                    metadata: artifact.metadata["source"]?.trimmedOrNil,
+                    isRemovable: false
+                )
+                return
+            }
+            if artifact.metadata["documentType"] == "personContext" {
+                let name = artifact.metadata["personName"]?.trimmedOrNil ?? artifact.title
+                self.init(
+                    id: "artifact-\(artifact.id.uuidString)",
+                    payload: .person(CapturePersonContextCardPayload(name: name, photoData: artifact.previewPayload ?? artifact.binaryPayload)),
+                    origin: artifact.captureCardOrigin,
+                    state: state,
+                    title: name,
+                    detail: captureCardModelSnippet(artifact.summary) ?? "Person context",
+                    metadata: "Person context",
+                    isRemovable: false
+                )
+                return
+            }
+            self.init(
+                id: "artifact-\(artifact.id.uuidString)",
+                payload: .status(CaptureStatusCardPayload()),
+                origin: artifact.captureCardOrigin,
+                state: state,
+                title: artifact.title.trimmedOrNil ?? String(localized: "capture.card.kind.status"),
+                detail: captureCardModelSnippet(artifact.summary)
+                    ?? captureCardModelSnippet(artifact.textContent)
+                    ?? artifact.mediaRef?.filename
+                    ?? String(localized: "capture.card.kind.status"),
+                metadata: artifact.mediaRef?.filename.trimmedOrNil,
+                isRemovable: false
+            )
+        case .video:
             self.init(
                 id: "artifact-\(artifact.id.uuidString)",
                 payload: .status(CaptureStatusCardPayload()),
@@ -247,6 +289,28 @@ extension CaptureCardItem {
                 title: title,
                 detail: note.flatMap(captureCardModelSnippet) ?? String(localized: "capture.card.kind.todo"),
                 metadata: String(localized: "capture.card.kind.todo"),
+                isRemovable: origin == .manual || origin == .context
+            )
+        case let .promptAnswer(prompt, answer, source, origin):
+            self.init(
+                id: id ?? "draft-\(draft.id)",
+                payload: .prompt(CapturePromptCardPayload(prompt: prompt, answer: answer)),
+                origin: origin,
+                state: state,
+                title: "Reflection prompt",
+                detail: answer?.trimmedOrNil ?? prompt,
+                metadata: source,
+                isRemovable: origin == .manual || origin == .context
+            )
+        case let .personContext(name, note, photoData, _, origin):
+            self.init(
+                id: id ?? "draft-\(draft.id)",
+                payload: .person(CapturePersonContextCardPayload(name: name, photoData: photoData)),
+                origin: origin,
+                state: state,
+                title: name,
+                detail: note?.trimmedOrNil ?? "Person context",
+                metadata: "Person context",
                 isRemovable: origin == .manual || origin == .context
             )
         case let .weather(condition, temp, humidity, windSpeed, uvIndex, latitude, longitude, conditionCode, symbolName, isDaylight, origin):

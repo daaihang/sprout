@@ -61,7 +61,7 @@ struct CaptureCardPalette {
                 )
             }
             return fallback(kind: item.kind, highContrast: highContrast)
-        case .audio, .link, .todo, .status:
+        case .audio, .link, .todo, .prompt, .person, .affect, .status:
             return fallback(kind: item.kind, highContrast: highContrast)
         }
     }
@@ -213,6 +213,9 @@ struct CaptureCardPalette {
         case .music: return .indigo
         case .link: return .blue
         case .todo: return .orange
+        case .prompt: return .purple
+        case .person: return .teal
+        case .affect: return .pink
         case .status: return .secondary
         }
     }

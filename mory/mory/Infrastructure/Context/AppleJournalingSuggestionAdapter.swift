@@ -33,16 +33,13 @@ struct AppleJournalingSuggestionAdapter: Sendable {
         let resolvedPodcasts = await podcasts
         let resolvedMotionActivities = await motionActivities
 
-        var genericMediaTitle: String?
-        var genericMediaArtist: String?
+        var resolvedGenericMedia: [JournalingSuggestion.GenericMedia] = []
         if #available(iOS 18.0, *) {
-            let resolvedGenericMedia = await suggestion.content(forType: JournalingSuggestion.GenericMedia.self)
-            genericMediaTitle = resolvedGenericMedia.first?.title?.trimmedOrNil
-            genericMediaArtist = resolvedGenericMedia.first?.artist?.trimmedOrNil
+            resolvedGenericMedia = await suggestion.content(forType: JournalingSuggestion.GenericMedia.self)
         }
 
         var bodyParts: [String] = []
-        var evidenceItems: [ExternalCaptureEvidenceItem] = []
+        var bundle = JournalingEvidenceBundle()
         var diagnostics: [String] = []
         if !resolvedContacts.isEmpty {
             bodyParts.append("Contacts: \(resolvedContacts.map(\.name).joined(separator: ", "))")
@@ -59,87 +56,60 @@ struct AppleJournalingSuggestionAdapter: Sendable {
         if !resolvedLivePhotos.isEmpty {
             bodyParts.append("Live Photos: \(resolvedLivePhotos.count)")
         }
-        if let podcast = resolvedPodcasts.first {
-            bodyParts.append([podcast.episode, podcast.show].compactMap { $0?.trimmedOrNil }.joined(separator: " - "))
-        }
-        if let genericMedia = [genericMediaTitle, genericMediaArtist]
-            .compactMap({ $0 })
-            .joined(separator: " - ")
-            .trimmedOrNil {
-            bodyParts.append(genericMedia)
-        }
-
-        let firstLocation = resolvedLocations.first
-        let firstSong = resolvedSongs.first
-        let locationGroupTitles = resolvedLocationGroups
-            .flatMap(\.locations)
-            .compactMap(locationTitle)
-
-        var attachments: [ExternalCaptureAttachmentDraft] = []
-        attachments += resolvedPhotos.compactMap { photo in
-            evidenceItems.append(ExternalCaptureEvidenceItem(kind: .photo, title: "Photo", startedAt: photo.date))
-            return copyAsset(url: photo.photo, kind: .image, summary: "Journaling photo", diagnostics: &diagnostics)
-        }
-        attachments += resolvedVideos.compactMap { video in
-            evidenceItems.append(ExternalCaptureEvidenceItem(kind: .video, title: "Video", startedAt: video.date))
-            return copyAsset(url: video.url, kind: .video, summary: "Journaling video", diagnostics: &diagnostics)
-        }
-        attachments += resolvedLivePhotos.compactMap { livePhoto in
-            evidenceItems.append(ExternalCaptureEvidenceItem(kind: .livePhoto, title: "Live Photo", startedAt: livePhoto.date))
-            return copyAsset(url: livePhoto.image, kind: .image, summary: "Journaling Live Photo image", diagnostics: &diagnostics)
-        }
-        attachments += resolvedLivePhotos.compactMap { livePhoto in
-            copyAsset(url: livePhoto.video, kind: .video, summary: "Journaling Live Photo video", diagnostics: &diagnostics)
-        }
-        if let songArtwork = firstSong?.artwork {
-            attachments.append(contentsOf: [copyAsset(url: songArtwork, kind: .image, summary: "Song artwork", diagnostics: &diagnostics)].compactMap { $0 })
-        }
-        if let podcastArtwork = resolvedPodcasts.first?.artwork {
-            attachments.append(contentsOf: [copyAsset(url: podcastArtwork, kind: .image, summary: "Podcast artwork", diagnostics: &diagnostics)].compactMap { $0 })
-        }
-        if #available(iOS 18.0, *) {
-            let genericMedia = await suggestion.content(forType: JournalingSuggestion.GenericMedia.self)
-            if let appIcon = genericMedia.first?.appIcon {
-                attachments.append(contentsOf: [copyAsset(url: appIcon, kind: .image, summary: "Media app icon", diagnostics: &diagnostics)].compactMap { $0 })
+        for podcast in resolvedPodcasts {
+            if let text = [podcast.episode, podcast.show].compactMap({ $0?.trimmedOrNil }).joined(separator: " - ").trimmedOrNil {
+                bodyParts.append(text)
             }
         }
-        for contact in resolvedContacts {
-            evidenceItems.append(ExternalCaptureEvidenceItem(kind: .contact, title: contact.name))
-            if let photo = contact.photo {
-                attachments.append(contentsOf: [copyAsset(url: photo, kind: .image, summary: "Contact photo: \(contact.name)", diagnostics: &diagnostics)].compactMap { $0 })
+        for media in resolvedGenericMedia {
+            if let text = [media.title, media.artist].compactMap({ $0?.trimmedOrNil }).joined(separator: " - ").trimmedOrNil {
+                bodyParts.append(text)
             }
         }
-        for location in resolvedLocations {
-            evidenceItems.append(ExternalCaptureEvidenceItem(
-                kind: .location,
-                title: locationTitle(location),
-                startedAt: location.date,
-                metadata: [
-                    "latitude": location.location.map { String($0.coordinate.latitude) } ?? "",
-                    "longitude": location.location.map { String($0.coordinate.longitude) } ?? "",
-                    "city": location.city ?? "",
-                    "place": location.place ?? "",
-                    "isWorkLocation": {
-                        if #available(iOS 26.0, *) {
-                            return location.isWorkLocation.map(String.init) ?? ""
-                        }
-                        return ""
-                    }()
-                ].filter { !$0.value.isEmpty }
-            ))
+
+        bundle.locations = resolvedLocations.map(locationEvidence)
+        bundle.locationGroups = resolvedLocationGroups.map { group in
+            group.locations.map(locationEvidence)
         }
-        if !locationGroupTitles.isEmpty {
-            evidenceItems.append(ExternalCaptureEvidenceItem(
-                kind: .locationGroup,
-                title: "Location group",
-                value: locationGroupTitles.joined(separator: ", ")
-            ))
+
+        for photo in resolvedPhotos {
+            let id = UUID()
+            let attachment = copyAsset(url: photo.photo, kind: .image, role: .primaryMedia, referenceID: id, summary: "Journaling photo", diagnostics: &diagnostics)
+            bundle.attachments.append(contentsOf: [attachment].compactMap { $0 })
+            bundle.photoVideos.append(JournalingPhotoVideoEvidence(id: id, kind: .photo, startedAt: photo.date, attachmentID: attachment?.id))
         }
+        for video in resolvedVideos {
+            let id = UUID()
+            let attachment = copyAsset(url: video.url, kind: .video, role: .primaryMedia, referenceID: id, summary: "Journaling video", diagnostics: &diagnostics)
+            bundle.attachments.append(contentsOf: [attachment].compactMap { $0 })
+            bundle.photoVideos.append(JournalingPhotoVideoEvidence(id: id, kind: .video, startedAt: video.date, attachmentID: attachment?.id))
+        }
+        for livePhoto in resolvedLivePhotos {
+            let imageID = UUID()
+            let imageAttachment = copyAsset(url: livePhoto.image, kind: .image, role: .primaryMedia, referenceID: imageID, summary: "Journaling Live Photo image", diagnostics: &diagnostics)
+            bundle.attachments.append(contentsOf: [imageAttachment].compactMap { $0 })
+            bundle.photoVideos.append(JournalingPhotoVideoEvidence(id: imageID, kind: .livePhotoImage, startedAt: livePhoto.date, attachmentID: imageAttachment?.id))
+
+            let videoID = UUID()
+            let videoAttachment = copyAsset(url: livePhoto.video, kind: .video, role: .primaryMedia, referenceID: videoID, summary: "Journaling Live Photo video", diagnostics: &diagnostics)
+            bundle.attachments.append(contentsOf: [videoAttachment].compactMap { $0 })
+            bundle.photoVideos.append(JournalingPhotoVideoEvidence(id: videoID, kind: .livePhotoVideo, startedAt: livePhoto.date, attachmentID: videoAttachment?.id))
+        }
+
         for song in resolvedSongs {
-            evidenceItems.append(ExternalCaptureEvidenceItem(
+            let id = UUID()
+            let artwork = song.artwork.flatMap {
+                copyAsset(url: $0, kind: .image, role: .artwork, referenceID: id, summary: "Song artwork", diagnostics: &diagnostics)
+            }
+            bundle.attachments.append(contentsOf: [artwork].compactMap { $0 })
+            bundle.media.append(JournalingMediaEvidence(
+                id: id,
                 kind: .song,
                 title: song.song,
+                artist: song.artist,
+                albumOrShow: song.album,
                 startedAt: song.date,
+                artworkAttachmentID: artwork?.id,
                 metadata: [
                     "song": song.song ?? "",
                     "artist": song.artist ?? "",
@@ -147,139 +117,150 @@ struct AppleJournalingSuggestionAdapter: Sendable {
                 ].filter { !$0.value.isEmpty }
             ))
         }
+
         for podcast in resolvedPodcasts {
-            evidenceItems.append(ExternalCaptureEvidenceItem(
+            let id = UUID()
+            let artwork = podcast.artwork.flatMap {
+                copyAsset(url: $0, kind: .image, role: .artwork, referenceID: id, summary: "Podcast artwork", diagnostics: &diagnostics)
+            }
+            bundle.attachments.append(contentsOf: [artwork].compactMap { $0 })
+            bundle.media.append(JournalingMediaEvidence(
+                id: id,
                 kind: .podcast,
                 title: podcast.episode,
+                artist: podcast.show,
+                albumOrShow: podcast.show,
                 startedAt: podcast.date,
+                artworkAttachmentID: artwork?.id,
+                metadata: ["show": podcast.show ?? ""].filter { !$0.value.isEmpty }
+            ))
+        }
+
+        for media in resolvedGenericMedia {
+            let id = UUID()
+            let icon = media.appIcon.flatMap {
+                copyAsset(url: $0, kind: .image, role: .icon, referenceID: id, summary: "Media app icon", diagnostics: &diagnostics)
+            }
+            bundle.attachments.append(contentsOf: [icon].compactMap { $0 })
+            bundle.media.append(JournalingMediaEvidence(
+                id: id,
+                kind: .genericMedia,
+                title: media.title,
+                artist: media.artist,
+                albumOrShow: media.album,
+                startedAt: media.date,
+                artworkAttachmentID: icon?.id,
                 metadata: [
-                    "show": podcast.show ?? ""
+                    "artist": media.artist ?? "",
+                    "album": media.album ?? ""
                 ].filter { !$0.value.isEmpty }
             ))
         }
-        if #available(iOS 18.0, *) {
-            let genericMedia = await suggestion.content(forType: JournalingSuggestion.GenericMedia.self)
-            for media in genericMedia {
-                evidenceItems.append(ExternalCaptureEvidenceItem(
-                    kind: .genericMedia,
-                    title: media.title,
-                    startedAt: media.date,
-                    metadata: [
-                        "artist": media.artist ?? "",
-                        "album": media.album ?? ""
-                    ].filter { !$0.value.isEmpty }
-                ))
+
+        for contact in resolvedContacts {
+            let id = UUID()
+            let photo = contact.photo.flatMap {
+                copyAsset(url: $0, kind: .image, role: .contactPhoto, referenceID: id, summary: "Contact photo: \(contact.name)", diagnostics: &diagnostics)
             }
+            bundle.attachments.append(contentsOf: [photo].compactMap { $0 })
+            bundle.contacts.append(JournalingContactEvidence(id: id, name: contact.name, photoAttachmentID: photo?.id))
         }
+
         for workout in resolvedWorkouts {
             if let summary = workoutSummary(workout) {
-                evidenceItems.append(ExternalCaptureEvidenceItem(
+                let id = UUID()
+                let icon = workout.icon.flatMap {
+                    copyAsset(url: $0, kind: .image, role: .icon, referenceID: id, summary: "Workout icon", diagnostics: &diagnostics)
+                }
+                bundle.attachments.append(contentsOf: [icon].compactMap { $0 })
+                bundle.activities.append(JournalingActivityEvidence(
+                    id: id,
                     kind: .workout,
                     title: "Workout",
                     summary: summary,
                     startedAt: workout.details?.date?.start,
                     endedAt: workout.details?.date?.end,
+                    iconAttachmentID: icon?.id,
                     metadata: workoutMetadata(workout)
                 ))
-            }
-            if let icon = workout.icon {
-                attachments.append(contentsOf: [copyAsset(url: icon, kind: .image, summary: "Workout icon", diagnostics: &diagnostics)].compactMap { $0 })
             }
         }
         for group in resolvedWorkoutGroups {
             if let summary = workoutGroupSummary(group) {
-                evidenceItems.append(ExternalCaptureEvidenceItem(
+                let id = UUID()
+                let icon = group.icon.flatMap {
+                    copyAsset(url: $0, kind: .image, role: .icon, referenceID: id, summary: "Workout group icon", diagnostics: &diagnostics)
+                }
+                bundle.attachments.append(contentsOf: [icon].compactMap { $0 })
+                bundle.activities.append(JournalingActivityEvidence(
+                    id: id,
                     kind: .workoutGroup,
                     title: "Workout group",
                     summary: summary,
+                    iconAttachmentID: icon?.id,
                     metadata: [
-                        "duration": group.duration.map(String.init) ?? "",
+                        "durationSeconds": group.duration.map { String($0) } ?? "",
                         "workoutCount": String(group.workouts.count)
                     ].filter { !$0.value.isEmpty }
                 ))
             }
-            if let icon = group.icon {
-                attachments.append(contentsOf: [copyAsset(url: icon, kind: .image, summary: "Workout group icon", diagnostics: &diagnostics)].compactMap { $0 })
-            }
         }
         for activity in resolvedMotionActivities {
             if let summary = motionActivitySummary(activity) {
-                evidenceItems.append(ExternalCaptureEvidenceItem(
+                let id = UUID()
+                let icon = activity.icon.flatMap {
+                    copyAsset(url: $0, kind: .image, role: .icon, referenceID: id, summary: "Motion activity icon", diagnostics: &diagnostics)
+                }
+                bundle.attachments.append(contentsOf: [icon].compactMap { $0 })
+                bundle.activities.append(JournalingActivityEvidence(
+                    id: id,
                     kind: .motionActivity,
                     title: "Motion activity",
                     summary: summary,
                     startedAt: activity.date?.start,
                     endedAt: activity.date?.end,
+                    iconAttachmentID: icon?.id,
                     metadata: motionActivityMetadata(activity)
                 ))
             }
-            if let icon = activity.icon {
-                attachments.append(contentsOf: [copyAsset(url: icon, kind: .image, summary: "Motion activity icon", diagnostics: &diagnostics)].compactMap { $0 })
-            }
         }
 
-        var reflectionPrompt: String?
         var eventTitle: String?
-        var eventPlace: String?
-        var eventPosterAttachment: ExternalCaptureAttachmentDraft?
         if #available(iOS 18.0, *) {
             let reflections = await suggestion.content(forType: JournalingSuggestion.Reflection.self)
-            reflectionPrompt = reflections.first?.prompt.trimmedOrNil
             for reflection in reflections {
-                evidenceItems.append(ExternalCaptureEvidenceItem(
-                    kind: .reflection,
-                    title: "Reflection prompt",
-                    value: reflection.prompt
-                ))
+                bundle.reflections.append(JournalingReflectionEvidence(prompt: reflection.prompt, colorDescription: reflection.color.map { String(describing: $0) }))
             }
         }
         if #available(iOS 26.0, *) {
             let eventPosters = await suggestion.content(forType: JournalingSuggestion.EventPoster.self)
             eventTitle = eventPosters.first.map { String($0.title.characters) }?.trimmedOrNil
-            eventPlace = eventPosters.first?.placeName?.trimmedOrNil
-            if let image = eventPosters.first?.image {
-                eventPosterAttachment = copyAsset(url: image, kind: .image, summary: "Journaling event poster", diagnostics: &diagnostics)
-            }
             for poster in eventPosters {
-                evidenceItems.append(ExternalCaptureEvidenceItem(
-                    kind: .eventPoster,
+                let id = UUID()
+                let image = poster.image.flatMap {
+                    copyAsset(url: $0, kind: .image, role: .eventPosterImage, referenceID: id, summary: "Journaling event poster", diagnostics: &diagnostics)
+                }
+                bundle.attachments.append(contentsOf: [image].compactMap { $0 })
+                bundle.eventPosters.append(JournalingEventPosterEvidence(
+                    id: id,
                     title: String(poster.title.characters).trimmedOrNil,
                     startedAt: poster.eventStart,
                     endedAt: poster.eventEnd,
-                    metadata: [
-                        "placeName": poster.placeName ?? "",
-                        "isHost": poster.isHost.map(String.init) ?? ""
-                    ].filter { !$0.value.isEmpty }
+                    isHost: poster.isHost,
+                    placeName: poster.placeName,
+                    imageAttachmentID: image?.id
                 ))
             }
         }
-        if let eventPosterAttachment {
-            attachments.append(eventPosterAttachment)
-        }
 
-        var stateOfMindLabel: String?
-        var stateOfMindLabels: [String] = []
-        var stateOfMindAssociations: [String] = []
-        var stateOfMindValence: Double?
-        var stateOfMindValenceClassification: String?
-        var stateOfMindKind: String?
-        var affectEvidence: [ExternalCaptureAffectEvidence] = []
         if #available(iOS 18.0, *) {
             let statesOfMind = await suggestion.content(forType: JournalingSuggestion.StateOfMind.self)
-            if let state = statesOfMind.first?.state {
-                stateOfMindLabels = state.labels.map(labelName)
-                stateOfMindAssociations = state.associations.map(associationName)
-                stateOfMindLabel = stateOfMindLabels.first ?? valenceClassificationName(state.valenceClassification)
-                stateOfMindValence = state.valence
-                stateOfMindValenceClassification = valenceClassificationName(state.valenceClassification)
-                stateOfMindKind = stateKindName(state.kind)
-            }
             for stateOfMind in statesOfMind {
                 let labels = stateOfMind.state.labels.map(labelName)
                 let associations = stateOfMind.state.associations.map(associationName)
                 let classification = valenceClassificationName(stateOfMind.state.valenceClassification)
                 let kind = stateKindName(stateOfMind.state.kind)
-                affectEvidence.append(ExternalCaptureAffectEvidence(
+                bundle.stateOfMind.append(ExternalCaptureAffectEvidence(
                     source: .journalSuggestionStateOfMind,
                     label: labels.first ?? classification,
                     labels: labels,
@@ -289,37 +270,33 @@ struct AppleJournalingSuggestionAdapter: Sendable {
                     kind: kind,
                     rawInput: labels.first ?? classification,
                     confidence: 0.9,
-                    userConfirmed: true
-                ))
-                evidenceItems.append(ExternalCaptureEvidenceItem(
-                    kind: .stateOfMind,
-                    title: labels.first ?? classification,
-                    value: classification,
+                    userConfirmed: true,
                     metadata: [
                         "labels": labels.joined(separator: ","),
                         "associations": associations.joined(separator: ","),
                         "valence": String(stateOfMind.state.valence),
-                        "classification": classification,
+                        "valenceClassification": classification,
                         "kind": kind
                     ].filter { !$0.value.isEmpty }
                 ))
             }
         }
+        bundle.diagnostics = diagnostics
 
         return JournalingSuggestionDraft(
             title: eventTitle ?? suggestion.title.trimmedOrNil,
             body: bodyParts.joined(separator: "\n").trimmedOrNil,
-            evidenceItems: evidenceItems,
-            affectEvidence: affectEvidence,
-            attachments: attachments,
+            bundle: bundle,
             createdAt: suggestion.date?.start ?? .now,
-            diagnostics: diagnostics
+            diagnostics: []
         )
     }
 
     private func copyAsset(
         url: URL,
         kind: ExternalCaptureAttachmentKind,
+        role: ExternalCaptureAttachmentRole = .primaryMedia,
+        referenceID: UUID? = nil,
         summary: String,
         diagnostics: inout [String]
     ) -> ExternalCaptureAttachmentDraft? {
@@ -340,6 +317,8 @@ struct AppleJournalingSuggestionAdapter: Sendable {
         }
         return ExternalCaptureAttachmentDraft(
             kind: kind,
+            role: role,
+            referenceID: referenceID,
             filename: filename,
             contentType: contentType(for: url, kind: kind),
             storedFileName: storedFileName,
@@ -387,6 +366,8 @@ struct AppleJournalingSuggestionAdapter: Sendable {
             return UTType.jpeg.identifier
         case .video:
             return "video/quicktime"
+        case .file:
+            return "application/octet-stream"
         }
     }
 
@@ -395,6 +376,22 @@ struct AppleJournalingSuggestionAdapter: Sendable {
             .compactMap { $0 }
             .joined(separator: ", ")
             .trimmedOrNil
+    }
+
+    private func locationEvidence(_ location: JournalingSuggestion.Location) -> JournalingLocationEvidence {
+        var isWorkLocation: Bool?
+        if #available(iOS 26.0, *) {
+            isWorkLocation = location.isWorkLocation
+        }
+        return JournalingLocationEvidence(
+            title: locationTitle(location),
+            place: location.place,
+            city: location.city,
+            latitude: location.location?.coordinate.latitude,
+            longitude: location.location?.coordinate.longitude,
+            isWorkLocation: isWorkLocation,
+            startedAt: location.date
+        )
     }
 
     private func workoutSummary(_ workout: JournalingSuggestion.Workout) -> String? {

@@ -293,6 +293,7 @@ Completion evidence:
 | v7.3 Device Validation + Platform QA | completed | platform capture diagnostics and manual validation checklist are implemented in Settings/Debug; physical-device execution remains release hardening |
 | v7.4 Capture Handoff + Auth + Journaling Fix | completed | initial capture handoff, Journaling media/StateOfMind mapping, and expired auth routing were implemented; Share Extension handoff is superseded by the v7.5 official confirmation/import flow |
 | v7.5 External Capture + Journaling V2 Refactor | completed | External Capture is V2-only with no legacy payload compatibility; Share Extension is handoff-first into the unified composer; Journaling evidence maps all supported SDK asset classes into normal artifacts/affect evidence |
+| v7.6 Journaling Evidence Bundle + Capture Card Stabilization | completed | Journaling imports preserve typed bundles until draft mapping; composer opens the Apple picker directly; songs, artwork, StateOfMind, prompts, and contacts render as native capture cards/evidence |
 
 ## Post-v7 Production Hardening
 
@@ -357,3 +358,25 @@ Completion evidence:
 - `AppleJournalingSuggestionAdapter` maps location/location group, song/podcast/generic media, photo/video/live photo, workout/workout group/motion activity, contacts, reflection prompt, StateOfMind, and iOS 26 EventPoster into evidence items, attachments, diagnostics, and affect evidence.
 - Journaling `StateOfMind` stores only official fields (`labels`, `associations`, `valence`, `valenceClassification`, `kind`) as `journalSuggestionStateOfMind` evidence; arousal/dominance are not fabricated.
 - Focused tests cover V2-only rejection, external inbox import/mark-imported, Share image attachment import, Journaling media/StateOfMind mapping, affect snapshots, and platform diagnostics.
+
+## v7.6 Journaling Evidence Bundle + Capture Card Stabilization
+
+Goal: keep Apple Journaling Suggestions typed until app-side draft mapping, then render the imported context as normal capture cards without creating a special memory type.
+
+Completion evidence:
+
+- `JournalingSuggestionDraft` now owns `JournalingEvidenceBundle` with grouped locations, media, photos/videos/live-photo parts, activities, contacts, reflection prompts, StateOfMind, event posters, attachments, and diagnostics.
+- The capture composer toolbar opens the Apple Journaling picker directly when the device capability is available; the fallback/debug import form remains for unavailable entitlement/framework states.
+- Multiple songs are preserved as multiple music cards. Song/podcast/generic media artwork is carried as card artwork, not as standalone photo artifacts.
+- Primary photos/videos/live-photo parts become media artifacts. Artwork, icons, contact photos, and event poster images keep attachment roles and do not create unrelated photo cards.
+- Reflection prompts become prompt-answer cards so users can answer structured questions before saving.
+- Contacts become person-context cards and evidence only; they do not directly merge into trusted person entities.
+- StateOfMind always creates visible affect evidence. Official raw labels, associations, valence, valence classification, and kind are retained even when a raw label does not map to a Mory affect label.
+- `AppRuntimeEnvironment` no longer depends on deprecated `appStoreReceiptURL` for build-channel detection; it uses embedded provisioning data and explicit build-channel override.
+
+Remaining after v7.6:
+
+- physical-device stability pass for the Apple picker with real Journaling entitlement and real suggestions,
+- contact-to-person resolution UI/policy,
+- future Health/Fitness StateOfMind or workout affect-source import,
+- polished capture-card visual design.

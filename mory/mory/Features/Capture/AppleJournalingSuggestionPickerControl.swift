@@ -4,6 +4,22 @@ import SwiftUI
 import JournalingSuggestions
 
 @available(iOS 17.2, *)
+private struct DeviceAppleJournalingSuggestionPickerModifier: ViewModifier {
+    @Binding var isPresented: Bool
+    let onDraft: (JournalingSuggestionDraft) -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .journalingSuggestionsPicker(isPresented: $isPresented) { suggestion in
+                let draft = await AppleJournalingSuggestionAdapter().makeDraft(from: suggestion)
+                await MainActor.run {
+                    onDraft(draft)
+                }
+            }
+    }
+}
+
+@available(iOS 17.2, *)
 private struct DeviceAppleJournalingSuggestionPickerControl: View {
     let onDraft: (JournalingSuggestionDraft) -> Void
     let onError: (String) -> Void
@@ -23,6 +39,24 @@ private struct DeviceAppleJournalingSuggestionPickerControl: View {
     }
 }
 #endif
+
+extension View {
+    @ViewBuilder
+    func appleJournalingSuggestionPicker(
+        isPresented: Binding<Bool>,
+        onDraft: @escaping (JournalingSuggestionDraft) -> Void
+    ) -> some View {
+        #if os(iOS) && canImport(JournalingSuggestions)
+        if #available(iOS 17.2, *) {
+            modifier(DeviceAppleJournalingSuggestionPickerModifier(isPresented: isPresented, onDraft: onDraft))
+        } else {
+            self
+        }
+        #else
+        self
+        #endif
+    }
+}
 
 struct AppleJournalingSuggestionPickerControl: View {
     let onDraft: (JournalingSuggestionDraft) -> Void

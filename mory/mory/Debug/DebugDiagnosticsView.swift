@@ -4091,6 +4091,8 @@ private extension CaptureArtifactDraft {
         case .location: String(localized: "capture.type.location")
         case .link: String(localized: "capture.type.link")
         case .todo: String(localized: "capture.type.todo")
+        case .promptAnswer: "Prompt"
+        case .personContext: "Person"
         case .weather: String(localized: "capture.type.weather")
         case .music: String(localized: "capture.type.music")
         }
@@ -4105,6 +4107,8 @@ private extension CaptureArtifactDraft {
         case .location: "mappin.and.ellipse"
         case .link: "link"
         case .todo: "checklist"
+        case .promptAnswer: "questionmark.bubble"
+        case .personContext: "person.crop.circle"
         case .weather: "cloud.sun"
         case .music: "music.note"
         }

@@ -208,6 +208,49 @@ struct MemoryCaptureArtifactBuilder {
                 createdAt: createdAt,
                 updatedAt: createdAt
             )
+        case let .promptAnswer(prompt, answer, source, _):
+            let resolvedAnswer = answer?.trimmedOrNil
+            let textContent = [
+                "Prompt: \(prompt)",
+                resolvedAnswer.map { "Answer: \($0)" }
+            ]
+            .compactMap { $0 }
+            .joined(separator: "\n")
+            let metadata = metadataForOrigin(of: draft, base: [
+                "documentType": "promptAnswer",
+                "prompt": prompt,
+                "source": source
+            ].merging(resolvedAnswer.map { ["answer": $0] } ?? [:]) { _, new in new })
+            return Artifact(
+                recordID: recordID,
+                kind: .document,
+                title: prompt.generatedMemoryTitle() ?? "Reflection prompt",
+                summary: resolvedAnswer ?? prompt,
+                textContent: textContent,
+                payload: .metadata(metadata),
+                metadata: metadata,
+                createdAt: createdAt,
+                updatedAt: createdAt
+            )
+        case let .personContext(name, note, photoData, metadata, _):
+            let resolvedSummary = note?.trimmedOrNil ?? "Person context from capture"
+            var resolvedMetadata = metadata
+            resolvedMetadata["documentType"] = "personContext"
+            resolvedMetadata["personName"] = name
+            resolvedMetadata = metadataForOrigin(of: draft, base: resolvedMetadata)
+            return Artifact(
+                recordID: recordID,
+                kind: .document,
+                title: name,
+                summary: resolvedSummary,
+                textContent: [name, note?.trimmedOrNil].compactMap { $0 }.joined(separator: "\n"),
+                payload: .metadata(resolvedMetadata),
+                metadata: resolvedMetadata,
+                binaryPayload: photoData,
+                previewPayload: photoData,
+                createdAt: createdAt,
+                updatedAt: createdAt
+            )
         case let .weather(condition, temp, humidity, windSpeed, uvIndex, latitude, longitude, conditionCode, symbolName, isDaylight, _):
             let title = "\(condition) \(String(format: "%.0f", temp))°C"
             let summary = "\(condition) · \(String(format: "%.0f", temp))°C · Humidity \(String(format: "%.0f", humidity * 100))%"

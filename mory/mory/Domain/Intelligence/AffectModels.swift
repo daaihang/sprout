@@ -138,6 +138,7 @@ nonisolated struct AffectEvidence: Identifiable, Codable, Hashable, Sendable {
     var source: AffectEvidenceSource
     var summary: String
     var confidence: Double?
+    var metadata: [String: String]
     var createdAt: Date
 
     init(
@@ -145,12 +146,14 @@ nonisolated struct AffectEvidence: Identifiable, Codable, Hashable, Sendable {
         source: AffectEvidenceSource,
         summary: String,
         confidence: Double? = nil,
+        metadata: [String: String] = [:],
         createdAt: Date = .now
     ) {
         self.id = id
         self.source = source
         self.summary = summary
         self.confidence = confidence.map { min(1, max(0, $0)) }
+        self.metadata = metadata
         self.createdAt = createdAt
     }
 }
@@ -348,6 +351,7 @@ nonisolated struct AffectSnapshotMapper: Sendable {
                     source: source,
                     summary: evidenceSummary,
                     confidence: draft.confidence,
+                    metadata: evidenceMetadata(from: draft),
                     createdAt: now
                 )
             }
@@ -439,8 +443,26 @@ nonisolated struct AffectSnapshotMapper: Sendable {
         ]
         .compactMap { $0 }
         .joined(separator: "; ")
+        base.rawInput = rawMood
         base.userConfirmed = true
         return base
+    }
+
+    private func evidenceMetadata(from draft: AffectSnapshotDraft) -> [String: String] {
+        var metadata: [String: String] = [:]
+        if let rawInput = draft.rawInput?.trimmedOrNil { metadata["rawInput"] = rawInput }
+        if !draft.labels.isEmpty { metadata["mappedLabels"] = draft.labels.map(\.rawValue).joined(separator: ",") }
+        if let valence = draft.valence { metadata["valence"] = String(valence) }
+        if let arousal = draft.arousal { metadata["arousal"] = String(arousal) }
+        if let dominance = draft.dominance { metadata["dominance"] = String(dominance) }
+        if let intensity = draft.intensity { metadata["intensity"] = String(intensity) }
+        for component in (draft.evidenceSummary ?? "").split(separator: ";") {
+            let pair = component.split(separator: "=", maxSplits: 1).map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
+            if pair.count == 2 {
+                metadata[pair[0]] = pair[1]
+            }
+        }
+        return metadata
     }
 
     private func labels(for normalized: String) -> [AffectLabel] {

@@ -127,6 +127,16 @@ struct CaptureCardView: View {
             LinkCaptureCardContent(common: common, payload: payload, accent: accent)
         case let .todo(payload):
             TodoCaptureCardContent(common: common, payload: payload, accent: accent, isSelected: presentation.displaysSelection)
+        case let .prompt(payload):
+            StatusCaptureCardContent(
+                common: common.replacingDetail(payload.answer?.trimmedOrNil ?? payload.prompt),
+                payload: CaptureStatusCardPayload(),
+                accent: accent
+            )
+        case .person:
+            StatusCaptureCardContent(common: common, payload: CaptureStatusCardPayload(), accent: accent)
+        case .affect:
+            StatusCaptureCardContent(common: common, payload: CaptureStatusCardPayload(), accent: accent)
         case let .status(payload):
             StatusCaptureCardContent(common: common, payload: payload, accent: accent)
         }

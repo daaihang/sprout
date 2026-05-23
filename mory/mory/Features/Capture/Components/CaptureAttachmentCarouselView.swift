@@ -4,6 +4,7 @@ struct CaptureAttachmentCarouselView: View {
     let items: [CaptureComposerAttachmentItem]
     let onRemoveStagedArtifact: (Int) -> Void
     let onRemoveContextCandidate: (UUID) -> Void
+    let onRemoveAffectDraft: (Int) -> Void
 
     var body: some View {
         if !items.isEmpty {
@@ -37,6 +38,8 @@ struct CaptureAttachmentCarouselView: View {
             onRemoveStagedArtifact(index)
         case let .contextCandidate(id):
             onRemoveContextCandidate(id)
+        case let .affect(index):
+            onRemoveAffectDraft(index)
         case .processing:
             return
         }
