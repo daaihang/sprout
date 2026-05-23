@@ -118,14 +118,23 @@ final class AffectSnapshotTests: XCTestCase {
             from: JournalingSuggestionDraft(
                 title: "Evening walk",
                 body: "Walked home after dinner.",
-                reflectionPrompt: "What felt meaningful?",
-                locationTitle: "Riverside",
-                songTitle: "Quiet Track",
-                artistName: "Mory",
-                stateOfMindLabel: "calm",
-                stateOfMindValence: 0.6,
-                stateOfMindArousal: 0.2,
-                stateOfMindDominance: 0.75
+                evidenceItems: [
+                    ExternalCaptureEvidenceItem(kind: .reflection, title: "Reflection prompt", value: "What felt meaningful?"),
+                    ExternalCaptureEvidenceItem(kind: .location, title: "Riverside"),
+                    ExternalCaptureEvidenceItem(kind: .song, title: "Quiet Track", metadata: ["artist": "Mory"])
+                ],
+                affectEvidence: [
+                    ExternalCaptureAffectEvidence(
+                        source: .journalSuggestionStateOfMind,
+                        label: "calm",
+                        labels: ["calm"],
+                        valence: 0.6,
+                        valenceClassification: "pleasant",
+                        kind: "daily mood",
+                        rawInput: "calm",
+                        confidence: 0.9
+                    )
+                ]
             )
         )
 

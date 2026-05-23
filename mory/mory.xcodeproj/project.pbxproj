@@ -83,6 +83,11 @@
 			path = moryShareExtension;
 			sourceTree = "<group>";
 		};
+		B71000012FC1000000000001 /* ExternalCaptureShared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ExternalCaptureShared;
+			sourceTree = "<group>";
+		};
 		FE1B59B8A14E41E8B2108F47 /* moryTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = moryTests;
@@ -119,12 +124,13 @@
 /* Begin PBXGroup section */
 		0299B2FC2FB67EFD00A1072C = {
 			isa = PBXGroup;
-			children = (
-				0299B3072FB67EFD00A1072C /* mory */,
-				A10000052FC0000000000005 /* moryShareExtension */,
-				FE1B59B8A14E41E8B2108F47 /* moryTests */,
-				0299B3062FB67EFD00A1072C /* Products */,
-			);
+				children = (
+					0299B3072FB67EFD00A1072C /* mory */,
+					A10000052FC0000000000005 /* moryShareExtension */,
+					B71000012FC1000000000001 /* ExternalCaptureShared */,
+					FE1B59B8A14E41E8B2108F47 /* moryTests */,
+					0299B3062FB67EFD00A1072C /* Products */,
+				);
 			sourceTree = "<group>";
 		};
 		0299B3062FB67EFD00A1072C /* Products */ = {
@@ -155,9 +161,10 @@
 			dependencies = (
 				A100000B2FC000000000000B /* PBXTargetDependency */,
 			);
-			fileSystemSynchronizedGroups = (
-				0299B3072FB67EFD00A1072C /* mory */,
-			);
+				fileSystemSynchronizedGroups = (
+					0299B3072FB67EFD00A1072C /* mory */,
+					B71000012FC1000000000001 /* ExternalCaptureShared */,
+				);
 			name = mory;
 			packageProductDependencies = (
 				70DEA5DE83974CCDAF9FD748 /* Sentry */,
@@ -178,9 +185,10 @@
 			);
 			dependencies = (
 			);
-			fileSystemSynchronizedGroups = (
-				A10000052FC0000000000005 /* moryShareExtension */,
-			);
+				fileSystemSynchronizedGroups = (
+					A10000052FC0000000000005 /* moryShareExtension */,
+					B71000012FC1000000000001 /* ExternalCaptureShared */,
+				);
 			name = moryShareExtension;
 			packageProductDependencies = (
 			);

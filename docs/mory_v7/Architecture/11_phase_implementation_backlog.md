@@ -291,7 +291,8 @@ Completion evidence:
 | v7.1 Stabilization | completed | production graph persistence and composition test baseline are stabilized; new platform capabilities remain post-v7 hardening |
 | v7.2 Platform Context + Correction UX | completed | Journaling Suggestions entitlement/device picker adapter, Share Extension external inbox writing, App Shortcut phrase expansion, and GraphDelta reject/undo correction ledger are implemented; real-device validation remains production hardening |
 | v7.3 Device Validation + Platform QA | completed | platform capture diagnostics and manual validation checklist are implemented in Settings/Debug; physical-device execution remains release hardening |
-| v7.4 Capture Handoff + Auth + Journaling Fix | completed | Share Extension now hands off into the unified composer, Journaling media/StateOfMind mapping is expanded, and expired auth sessions route back to login automatically; physical-device validation remains release hardening |
+| v7.4 Capture Handoff + Auth + Journaling Fix | completed | initial capture handoff, Journaling media/StateOfMind mapping, and expired auth routing were implemented; Share Extension handoff is superseded by the v7.5 official confirmation/import flow |
+| v7.5 External Capture + Journaling V2 Refactor | completed | External Capture is V2-only with no legacy payload compatibility; Share Extension uses the official confirmation/save flow; Journaling evidence maps all supported SDK asset classes into normal artifacts/affect evidence |
 
 ## Post-v7 Production Hardening
 
@@ -300,7 +301,7 @@ These items are intentionally outside the v7 foundation completion gate:
 - run real-device APNs and background execution soak tests,
 - add real-user notification quality telemetry once there are users,
 - complete public release privacy review and App Store capability checks,
-- execute the in-app Platform Capture Diagnostics checklist for Apple Journaling Suggestions picker, App Intent phrases, and Share Extension handoff on a physical device with developer capabilities enabled,
+- execute the in-app Platform Capture Diagnostics checklist for Apple Journaling Suggestions picker, App Intent phrases, and Share Extension confirmation/import on a physical device with developer capabilities enabled,
 - polish user-facing UI for merge/split, correction, mood, notification controls, and external capture review.
 
 ## v7.2 Platform Context + Correction UX
@@ -335,10 +336,23 @@ Goal: close the first real-device product loops reported during platform testing
 
 Completion evidence:
 
-- Share Extension still writes a durable `ExternalCaptureInboxItem`, but now opens `mory://external-capture?id=...&action=compose` so the main app presents `UnifiedCaptureComposerView` with a prefilled `MemoryCaptureDraft`.
-- Saving the prefilled composer marks the inbox item imported with `importedRecordID`; canceling leaves it pending for Settings/Debug recovery.
+- Share Extension writes durable `ExternalCaptureInboxItem` values that can be imported through Settings/Debug and the app's normal capture path.
+- Saving imported capture drafts marks the inbox item imported with `importedRecordID`; canceling leaves it pending for Settings/Debug recovery.
 - Share image extraction now tries data representation, file representation, `UIImage`, and legacy item loading; recoverable attachment/open failures are stored on the inbox item for diagnostics.
 - `JournalingSuggestionDraft` now carries photos, videos, live-photo image/video evidence, event poster images, media/contact/activity fields, location groups, and official HealthKit StateOfMind labels, associations, valence, valence classification, and kind.
 - Journaling imports continue through `JournalingSuggestion -> MemoryCaptureDraft -> artifacts + AffectSnapshot`; no `JournalingMemory` type is introduced.
 - Minimal `.video` artifact support is present for imported media evidence.
 - `MoryAuthTokenProvider` clears stale credentials and posts `moryAuthSessionExpired` when refresh fails with 401; `AuthSessionManager` receives that event and returns the app to the login state instead of leaving users authenticated-but-broken.
+
+## v7.5 External Capture + Journaling V2 Refactor
+
+Goal: align external capture with Apple's Share Extension model and make Journaling Suggestions a multi-type context evidence source, not a special memory type.
+
+Completion evidence:
+
+- `ExternalCaptureShared/ExternalCaptureWireModels.swift` is the shared V2-only wire contract used by the app and Share Extension; `ExternalCaptureRequest`, `JournalingSuggestionDraft`, and `ExternalCaptureInboxItem` reject non-v2 payloads.
+- Share Extension no longer auto-closes on `viewDidAppear` or relies on a responder-chain `openURL:` hack. It presents a native confirmation page, writes the V2 envelope to the App Group inbox after `Add to Mory`, then offers a user-initiated best-effort `Open Mory`.
+- App import paths map V2 envelopes through `ExternalCaptureDraftFactory` into the normal `MemoryCaptureDraft -> repository save -> Analyze v7` path. Link evidence becomes a link artifact instead of polluting record body text.
+- `AppleJournalingSuggestionAdapter` maps location/location group, song/podcast/generic media, photo/video/live photo, workout/workout group/motion activity, contacts, reflection prompt, StateOfMind, and iOS 26 EventPoster into evidence items, attachments, diagnostics, and affect evidence.
+- Journaling `StateOfMind` stores only official fields (`labels`, `associations`, `valence`, `valenceClassification`, `kind`) as `journalSuggestionStateOfMind` evidence; arousal/dominance are not fabricated.
+- Focused tests cover V2-only rejection, external inbox import/mark-imported, Share image attachment import, Journaling media/StateOfMind mapping, affect snapshots, and platform diagnostics.

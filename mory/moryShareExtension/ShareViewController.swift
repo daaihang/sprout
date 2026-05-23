@@ -4,18 +4,34 @@ import UniformTypeIdentifiers
 
 final class ShareViewController: UIViewController {
     private var didStart = false
-    private var pendingOpenURL: URL?
+    private var capturedPayload: SharedPayload?
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         guard !didStart else { return }
         didStart = true
-        Task { await captureSharedItems() }
+        renderLoading()
+        Task { await loadSharedItems() }
     }
 
-    private func captureSharedItems() async {
+    private func loadSharedItems() async {
         do {
             let payload = try await SharedPayloadExtractor().extract(from: extensionContext)
+            await MainActor.run {
+                capturedPayload = payload
+                renderPreview(payload)
+            }
+        } catch {
+            await MainActor.run {
+                showFailure(error)
+            }
+        }
+    }
+
+    @MainActor
+    private func addToMory() {
+        guard let payload = capturedPayload else { return }
+        do {
             let request = ExternalCaptureRequest(
                 sourceKind: .shareSheet,
                 title: payload.title,
@@ -23,13 +39,65 @@ final class ShareViewController: UIViewController {
                 url: payload.url,
                 context: "shareExtension:moryShareExtension",
                 errorMessage: payload.errorMessage,
-                attachments: payload.attachments
+                evidenceItems: payload.evidenceItems,
+                attachments: payload.attachments,
+                diagnostics: payload.attachmentErrors
             )
             let item = try ExternalCaptureInboxWriter().enqueue(request)
-            await openHostApp(for: item.id)
+            renderSaved(itemID: item.id)
         } catch {
-            await showFailure(error)
+            showFailure(error)
         }
+    }
+
+    @MainActor
+    private func renderLoading() {
+        renderStatusView(
+            title: "Reading Share",
+            message: "Preparing this item for Mory.",
+            primaryTitle: nil,
+            primaryAction: nil,
+            secondaryTitle: nil,
+            secondaryAction: nil
+        )
+    }
+
+    @MainActor
+    private func renderPreview(_ payload: SharedPayload) {
+        let message = [
+            payload.previewText,
+            payload.url.map { "URL: \($0)" },
+            payload.attachments.isEmpty ? nil : "Attachments: \(payload.attachments.count)",
+            payload.attachmentErrors.isEmpty ? nil : "Warnings: \(payload.attachmentErrors.joined(separator: " | "))"
+        ]
+        .compactMap { $0 }
+        .joined(separator: "\n")
+        renderStatusView(
+            title: "Add to Mory?",
+            message: message,
+            primaryTitle: "Add to Mory",
+            primaryAction: { [weak self] in self?.addToMory() },
+            secondaryTitle: "Cancel",
+            secondaryAction: { [weak self] in self?.extensionContext?.cancelRequest(withError: CancellationError()) }
+        )
+    }
+
+    @MainActor
+    private func renderSaved(itemID: UUID) {
+        renderStatusView(
+            title: "Saved to Mory",
+            message: "Open Mory to finish this memory, or import it later from External Capture.",
+            primaryTitle: "Open Mory",
+            primaryAction: { [weak self] in
+                Task {
+                    await self?.openHostApp(for: itemID)
+                }
+            },
+            secondaryTitle: "Done",
+            secondaryAction: { [weak self] in
+                self?.extensionContext?.completeRequest(returningItems: nil)
+            }
+        )
     }
 
     private func openHostApp(for itemID: UUID) async {
@@ -40,55 +108,26 @@ final class ShareViewController: UIViewController {
             URLQueryItem(name: "id", value: itemID.uuidString),
             URLQueryItem(name: "action", value: "compose")
         ]
-        guard let url = components.url else {
-            extensionContext?.completeRequest(returningItems: nil)
-            return
-        }
-
-        pendingOpenURL = url
-        let didOpen = await tryOpenHostApp(url)
-        if !didOpen {
-            try? ExternalCaptureInboxWriter().markLaunchFailed(itemID: itemID, reason: "Unable to open Mory from share extension.")
-            await showOpenFallback(url: url)
-            return
-        }
-        extensionContext?.completeRequest(returningItems: nil)
-    }
-
-    private func tryOpenHostApp(_ url: URL) async -> Bool {
-        let contextOpenSucceeded = await withCheckedContinuation { continuation in
+        guard let url = components.url else { return }
+        let didOpen = await withCheckedContinuation { continuation in
             extensionContext?.open(url) { success in
                 continuation.resume(returning: success)
             }
         }
-        if contextOpenSucceeded {
-            return true
-        }
-        return await MainActor.run {
-            openHostAppViaResponderChain(url)
-        }
-    }
-
-    @MainActor
-    private func showOpenFallback(url: URL) {
-        renderStatusView(
-            title: "Saved to Mory",
-            message: "Open Mory to finish this memory.",
-            primaryTitle: "Open Mory",
-            primaryAction: { [weak self] in
-                Task {
-                    guard let self else { return }
-                    let didOpen = await self.tryOpenHostApp(url)
-                    if didOpen {
-                        self.extensionContext?.completeRequest(returningItems: nil)
-                    }
-                }
-            },
-            secondaryTitle: "Done",
-            secondaryAction: { [weak self] in
-                self?.extensionContext?.completeRequest(returningItems: nil)
+        await MainActor.run {
+            if didOpen {
+                extensionContext?.completeRequest(returningItems: nil)
+            } else {
+                renderStatusView(
+                    title: "Saved to Mory",
+                    message: "iOS did not open Mory from the share extension. Open Mory manually and import this pending capture from External Capture.",
+                    primaryTitle: "Done",
+                    primaryAction: { [weak self] in self?.extensionContext?.completeRequest(returningItems: nil) },
+                    secondaryTitle: nil,
+                    secondaryAction: nil
+                )
             }
-        )
+        }
     }
 
     @MainActor
@@ -109,8 +148,8 @@ final class ShareViewController: UIViewController {
     private func renderStatusView(
         title: String,
         message: String,
-        primaryTitle: String,
-        primaryAction: @escaping () -> Void,
+        primaryTitle: String?,
+        primaryAction: (() -> Void)?,
         secondaryTitle: String?,
         secondaryAction: (() -> Void)?
     ) {
@@ -130,15 +169,18 @@ final class ShareViewController: UIViewController {
         messageLabel.textAlignment = .center
         messageLabel.numberOfLines = 0
 
-        let primaryButton = UIButton(type: .system)
-        primaryButton.setTitle(primaryTitle, for: .normal)
-        primaryButton.titleLabel?.font = .preferredFont(forTextStyle: .headline)
-        primaryButton.addAction(UIAction { _ in primaryAction() }, for: .touchUpInside)
-
-        let stack = UIStackView(arrangedSubviews: [titleLabel, messageLabel, primaryButton])
+        let stack = UIStackView(arrangedSubviews: [titleLabel, messageLabel])
         stack.axis = .vertical
         stack.alignment = .fill
         stack.spacing = 14
+
+        if let primaryTitle, let primaryAction {
+            let primaryButton = UIButton(type: .system)
+            primaryButton.setTitle(primaryTitle, for: .normal)
+            primaryButton.titleLabel?.font = .preferredFont(forTextStyle: .headline)
+            primaryButton.addAction(UIAction { _ in primaryAction() }, for: .touchUpInside)
+            stack.addArrangedSubview(primaryButton)
+        }
 
         if let secondaryTitle, let secondaryAction {
             let secondaryButton = UIButton(type: .system)
@@ -155,20 +197,6 @@ final class ShareViewController: UIViewController {
             stack.centerYAnchor.constraint(equalTo: view.centerYAnchor)
         ])
     }
-
-    @MainActor
-    private func openHostAppViaResponderChain(_ url: URL) -> Bool {
-        let selector = NSSelectorFromString("openURL:")
-        var responder: UIResponder? = self
-        while let current = responder {
-            if current.responds(to: selector) {
-                current.perform(selector, with: url)
-                return true
-            }
-            responder = current.next
-        }
-        return false
-    }
 }
 
 private struct SharedPayload {
@@ -178,8 +206,23 @@ private struct SharedPayload {
     var attachments: [ExternalCaptureAttachmentDraft]
     var attachmentErrors: [String]
 
+    var previewText: String {
+        text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Shared to Mory." : text
+    }
+
     var errorMessage: String? {
         attachmentErrors.isEmpty ? nil : attachmentErrors.joined(separator: "\n")
+    }
+
+    var evidenceItems: [ExternalCaptureEvidenceItem] {
+        var items: [ExternalCaptureEvidenceItem] = []
+        if let url {
+            items.append(ExternalCaptureEvidenceItem(kind: .link, title: title, value: url, metadata: ["url": url]))
+        }
+        if !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            items.append(ExternalCaptureEvidenceItem(kind: .text, title: title, value: text))
+        }
+        return items
     }
 }
 
@@ -241,6 +284,7 @@ private struct SharedPayloadExtractor {
         if let data = try? await provider.loadDataRepresentation(for: .image) {
             let storedFileName = try ExternalCaptureAttachmentFileStore().saveImage(data: data, preferredFilename: filename)
             return ExternalCaptureAttachmentDraft(
+                kind: .image,
                 filename: filename,
                 contentType: UTType.image.identifier,
                 storedFileName: storedFileName,
@@ -251,6 +295,7 @@ private struct SharedPayloadExtractor {
         if let file = try? await provider.loadFileRepresentationData(for: .image) {
             let storedFileName = try ExternalCaptureAttachmentFileStore().saveImage(data: file.data, preferredFilename: file.filename)
             return ExternalCaptureAttachmentDraft(
+                kind: .image,
                 filename: file.filename,
                 contentType: UTType.image.identifier,
                 storedFileName: storedFileName,
@@ -262,6 +307,7 @@ private struct SharedPayloadExtractor {
            let data = image.jpegData(compressionQuality: 0.9) {
             let storedFileName = try ExternalCaptureAttachmentFileStore().saveImage(data: data, preferredFilename: filename)
             return ExternalCaptureAttachmentDraft(
+                kind: .image,
                 filename: filename,
                 contentType: UTType.jpeg.identifier,
                 storedFileName: storedFileName,
@@ -274,6 +320,7 @@ private struct SharedPayloadExtractor {
             let data = try Data(contentsOf: url)
             let storedFileName = try ExternalCaptureAttachmentFileStore().saveImage(data: data, preferredFilename: url.lastPathComponent)
             return ExternalCaptureAttachmentDraft(
+                kind: .image,
                 filename: url.lastPathComponent,
                 contentType: UTType.image.identifier,
                 storedFileName: storedFileName,
@@ -284,6 +331,7 @@ private struct SharedPayloadExtractor {
         if let data = item as? Data {
             let storedFileName = try ExternalCaptureAttachmentFileStore().saveImage(data: data, preferredFilename: filename)
             return ExternalCaptureAttachmentDraft(
+                kind: .image,
                 filename: filename,
                 contentType: UTType.image.identifier,
                 storedFileName: storedFileName,

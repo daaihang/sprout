@@ -13,15 +13,18 @@ final class ExternalCaptureInboxTests: XCTestCase {
             text: "Remember the dinner idea from the train.",
             url: "https://example.com/dinner",
             context: "appIntent:test",
-            affectDrafts: [
-                AffectSnapshotDraft(
-                    labels: [.curious],
-                    toneHints: [.serious],
-                    sources: [.userSelected],
+            evidenceItems: [
+                ExternalCaptureEvidenceItem(kind: .link, title: "Shortcut note", value: "https://example.com/dinner", metadata: ["url": "https://example.com/dinner"])
+            ],
+            affectEvidence: [
+                ExternalCaptureAffectEvidence(
+                    source: .userSelected,
+                    label: "curious",
+                    labels: ["curious"],
+                    toneHints: ["serious"],
+                    rawInput: "interested",
                     confidence: 1,
-                    evidenceSummary: "shortcut chip",
-                    userConfirmed: true,
-                    rawInput: "interested"
+                    userConfirmed: true
                 )
             ]
         )
@@ -52,16 +55,23 @@ final class ExternalCaptureInboxTests: XCTestCase {
         let suggestion = JournalingSuggestionDraft(
             title: "Evening walk",
             body: "Walked after dinner and felt settled.",
-            reflectionPrompt: "What made this feel calm?",
-            locationTitle: "Riverside",
-            latitude: 31.23,
-            longitude: 121.47,
-            songTitle: "Night Drive",
-            artistName: "Mory Test",
-            stateOfMindLabel: "calm",
-            stateOfMindValence: 0.7,
-            stateOfMindArousal: 0.2,
-            stateOfMindDominance: 0.8,
+            evidenceItems: [
+                ExternalCaptureEvidenceItem(kind: .reflection, title: "Reflection prompt", value: "What made this feel calm?"),
+                ExternalCaptureEvidenceItem(kind: .location, title: "Riverside", metadata: ["latitude": "31.23", "longitude": "121.47"]),
+                ExternalCaptureEvidenceItem(kind: .song, title: "Night Drive", metadata: ["artist": "Mory Test"])
+            ],
+            affectEvidence: [
+                ExternalCaptureAffectEvidence(
+                    source: .journalSuggestionStateOfMind,
+                    label: "calm",
+                    labels: ["calm"],
+                    valence: 0.7,
+                    valenceClassification: "pleasant",
+                    kind: "daily mood",
+                    rawInput: "calm",
+                    confidence: 0.9
+                )
+            ],
             createdAt: Date(timeIntervalSince1970: 1_800_000_001)
         )
 
@@ -127,13 +137,60 @@ final class ExternalCaptureInboxTests: XCTestCase {
         XCTAssertEqual(parsed.action, .compose)
     }
 
+    func testExternalCaptureWireContractsRejectNonV2Payloads() throws {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        let v1Request = Data("""
+        {"version":1,"sourceKind":"shareSheet","text":"old payload"}
+        """.utf8)
+        XCTAssertThrowsError(try decoder.decode(ExternalCaptureRequest.self, from: v1Request))
+
+        let missingVersionRequest = Data("""
+        {"sourceKind":"shareSheet","text":"old payload"}
+        """.utf8)
+        XCTAssertThrowsError(try decoder.decode(ExternalCaptureRequest.self, from: missingVersionRequest))
+
+        let v1Suggestion = Data("""
+        {"version":1,"title":"old journaling","createdAt":"2026-05-24T00:00:00Z"}
+        """.utf8)
+        XCTAssertThrowsError(try decoder.decode(JournalingSuggestionDraft.self, from: v1Suggestion))
+
+        let v1InboxItem = Data("""
+        {"version":1,"id":"00000000-0000-0000-0000-000000000001","payloadKind":"externalCapture","sourceKind":"shareSheet","summary":"old","payloadData":"","status":"pending","receivedAt":"2026-05-24T00:00:00Z","updatedAt":"2026-05-24T00:00:00Z"}
+        """.utf8)
+        XCTAssertThrowsError(try decoder.decode(ExternalCaptureInboxItem.self, from: v1InboxItem))
+    }
+
     func testJournalingSuggestionMapsMediaAndOfficialStateOfMindEvidence() throws {
         let service = JournalingSuggestionContextService()
         let draft = service.makeCaptureDraft(
             from: JournalingSuggestionDraft(
                 title: "System suggestion",
                 body: "Selected from Apple Journaling Suggestions.",
-                locationTitle: "Riverside",
+                evidenceItems: [
+                    ExternalCaptureEvidenceItem(kind: .location, title: "Riverside"),
+                    ExternalCaptureEvidenceItem(kind: .stateOfMind, title: "calm", metadata: [
+                        "labels": "calm,peaceful",
+                        "associations": "friends,health",
+                        "valence": "0.64",
+                        "classification": "pleasant",
+                        "kind": "daily mood"
+                    ])
+                ],
+                affectEvidence: [
+                    ExternalCaptureAffectEvidence(
+                        source: .journalSuggestionStateOfMind,
+                        label: "calm",
+                        labels: ["calm", "peaceful"],
+                        associations: ["friends", "health"],
+                        valence: 0.64,
+                        valenceClassification: "pleasant",
+                        kind: "daily mood",
+                        rawInput: "calm",
+                        confidence: 0.9
+                    )
+                ],
                 attachments: [
                     ExternalCaptureAttachmentDraft(
                         kind: .image,
@@ -147,13 +204,7 @@ final class ExternalCaptureInboxTests: XCTestCase {
                         contentType: "video/quicktime",
                         summary: "Journaling video"
                     )
-                ],
-                stateOfMindLabel: "calm",
-                stateOfMindLabels: ["calm", "peaceful"],
-                stateOfMindAssociations: ["friends", "health"],
-                stateOfMindValence: 0.64,
-                stateOfMindValenceClassification: "pleasant",
-                stateOfMindKind: "daily mood"
+                ]
             )
         )
 
@@ -203,7 +254,7 @@ final class ExternalCaptureInboxTests: XCTestCase {
         XCTAssertEqual(stored.first?.sourceKind, .appIntent)
     }
 
-    func testOwnerScopedInboxReadsSharedLegacyFallbackFromShareExtension() throws {
+    func testOwnerScopedInboxReadsSharedInboxFromShareExtension() throws {
         let ownerSuiteName = "ExternalCaptureInboxTests.owner.\(UUID().uuidString)"
         let sharedSuiteName = "ExternalCaptureInboxTests.shared.\(UUID().uuidString)"
         let ownerDefaults = try XCTUnwrap(UserDefaults(suiteName: ownerSuiteName))
@@ -230,8 +281,8 @@ final class ExternalCaptureInboxTests: XCTestCase {
         let visibleItems = try ExternalCaptureInboxDefaultsStore(
             defaults: ownerDefaults,
             scope: .owner("active-owner"),
-            includeSharedLegacyFallback: true,
-            sharedLegacyDefaults: sharedDefaults
+            includeSharedInboxFallback: true,
+            sharedInboxDefaults: sharedDefaults
         ).fetch(status: .pending, limit: nil)
 
         XCTAssertEqual(visibleItems.map(\.id), [item.id])

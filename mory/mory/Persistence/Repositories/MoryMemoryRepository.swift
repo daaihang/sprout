@@ -40,7 +40,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         self.spotlightItemBuilder = SpotlightSearchableItemBuilder(ownerID: localDataOwnerID)
         self.externalCaptureInboxStore = externalCaptureInboxStore ?? ExternalCaptureInboxDefaultsStore(
             scope: localDataOwnerID.map { .owner($0) } ?? .legacy,
-            includeSharedLegacyFallback: true
+            includeSharedInboxFallback: true
         )
     }
 

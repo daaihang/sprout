@@ -86,14 +86,23 @@ struct DebugAffectSnapshotView: View {
                 from: JournalingSuggestionDraft(
                     title: "System suggestion mood evidence",
                     body: "Imported system suggestion for Phase 4 debug.",
-                    reflectionPrompt: "What made this moment feel different?",
-                    locationTitle: "Debug Location",
-                    songTitle: "Debug Track",
-                    artistName: "Mory",
-                    stateOfMindLabel: "relieved",
-                    stateOfMindValence: 0.65,
-                    stateOfMindArousal: 0.25,
-                    stateOfMindDominance: 0.7
+                    evidenceItems: [
+                        ExternalCaptureEvidenceItem(kind: .reflection, title: "Reflection prompt", value: "What made this moment feel different?"),
+                        ExternalCaptureEvidenceItem(kind: .location, title: "Debug Location"),
+                        ExternalCaptureEvidenceItem(kind: .song, title: "Debug Track", metadata: ["artist": "Mory"])
+                    ],
+                    affectEvidence: [
+                        ExternalCaptureAffectEvidence(
+                            source: .journalSuggestionStateOfMind,
+                            label: "relieved",
+                            labels: ["relieved"],
+                            valence: 0.65,
+                            valenceClassification: "pleasant",
+                            kind: "daily mood",
+                            rawInput: "relieved",
+                            confidence: 0.9
+                        )
+                    ]
                 )
             )
             _ = try await memoryRepository.createMemory(from: draft)

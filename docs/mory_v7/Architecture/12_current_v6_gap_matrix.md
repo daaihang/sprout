@@ -109,8 +109,8 @@ Relevant code:
 | location/weather/music capture exists | useful but not enough for long-term reasoning | context evidence source registry |
 | photo analysis is compact | visual evidence may be too thin | richer evidence + provenance |
 | speech failure can remove voice evidence | mood/tone quality drops | explicit uncertainty/failure evidence |
-| Journaling Suggestions real picker absent | missing system-curated context until entitlement is granted | `JournalingSuggestionContextService` + external capture inbox |
-| Share extension target not built | app-external capture still lacks full system share surface | shared capture draft pipeline + pending inbox |
+| Journaling Suggestions real picker absent | missing system-curated context until entitlement is granted | ✅ resolved by entitlement, device picker adapter, and V2 Journaling evidence mapping |
+| Share extension target not built | app-external capture still lacks full system share surface | ✅ resolved by Share Extension confirmation flow + V2 App Group inbox |
 
 Relevant code:
 
@@ -147,8 +147,8 @@ The gaps above were the implementation source of truth for v7. As of v7 foundati
 | Self profile and context pack | ✅ complete | consumed by the production Analyze v7 path for new memories |
 | Entity resolution and correction | ✅ complete | user-facing UI polish remains later |
 | Person merge/split and portrait jobs | ✅ complete | cloud AI portrait proposals remain later |
-| Structured affect and tone correction | ✅ complete | real Journaling Suggestions entitlement/picker remains later |
-| External capture inbox | ✅ complete | App Intent shell writes pending drafts; full Share extension and device phrase validation remain later |
+| Structured affect and tone correction | ✅ complete | Journaling `StateOfMind` is mapped as affect evidence; real-device validation remains later |
+| External capture inbox | ✅ complete | Share Extension writes V2-only pending drafts; App Intent phrase validation remains later |
 | Analyze v7 contract | ✅ complete | production new-memory pipeline uses `/api/analyze/v7`; legacy Analyze is no longer the main path |
 | BGTask/background URLSession/APNs routing | ✅ complete | real-device soak and telemetry remain later |
 | Eval/debug/privacy gate | ✅ complete | real-user notification quality dashboard and public release privacy audit remain post-v7 production hardening |

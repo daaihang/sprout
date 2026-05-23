@@ -13,8 +13,8 @@ struct JournalingSuggestionImportView: View {
     @State private var artistName = ""
     @State private var stateOfMindLabel = ""
     @State private var stateOfMindValence = 0.0
-    @State private var stateOfMindArousal = 0.4
-    @State private var stateOfMindDominance = 0.6
+    @State private var stateOfMindClassification = ""
+    @State private var stateOfMindKind = "daily mood"
     @State private var message: String?
 
     private let service = JournalingSuggestionContextService()
@@ -61,10 +61,8 @@ struct JournalingSuggestionImportView: View {
                     TextField("Label (e.g. calm, relieved)", text: $stateOfMindLabel)
                     LabeledContent("Valence", value: String(format: "%.2f", stateOfMindValence))
                     Slider(value: $stateOfMindValence, in: -1...1, step: 0.05)
-                    LabeledContent("Arousal", value: String(format: "%.2f", stateOfMindArousal))
-                    Slider(value: $stateOfMindArousal, in: 0...1, step: 0.05)
-                    LabeledContent("Dominance", value: String(format: "%.2f", stateOfMindDominance))
-                    Slider(value: $stateOfMindDominance, in: 0...1, step: 0.05)
+                    TextField("Classification (e.g. pleasant)", text: $stateOfMindClassification)
+                    TextField("Kind (daily mood / momentary emotion)", text: $stateOfMindKind)
                 }
             }
             .navigationTitle("Journaling Import")
@@ -83,17 +81,53 @@ struct JournalingSuggestionImportView: View {
     }
 
     private func importDraft() {
+        var evidenceItems: [ExternalCaptureEvidenceItem] = []
+        if let prompt = reflectionPrompt.trimmedOrNil {
+            evidenceItems.append(ExternalCaptureEvidenceItem(kind: .reflection, title: "Reflection prompt", value: prompt))
+        }
+        if let place = locationTitle.trimmedOrNil {
+            evidenceItems.append(ExternalCaptureEvidenceItem(kind: .location, title: place))
+        }
+        if let song = songTitle.trimmedOrNil {
+            evidenceItems.append(ExternalCaptureEvidenceItem(
+                kind: .song,
+                title: song,
+                metadata: ["artist": artistName.trimmedOrNil ?? ""].filter { !$0.value.isEmpty }
+            ))
+        }
+        let affectEvidence: [ExternalCaptureAffectEvidence]
+        if let label = stateOfMindLabel.trimmedOrNil {
+            affectEvidence = [
+                ExternalCaptureAffectEvidence(
+                    source: .journalSuggestionStateOfMind,
+                    label: label,
+                    labels: [label],
+                    valence: stateOfMindValence,
+                    valenceClassification: stateOfMindClassification.trimmedOrNil,
+                    kind: stateOfMindKind.trimmedOrNil,
+                    rawInput: label,
+                    confidence: 0.9,
+                    userConfirmed: true
+                )
+            ]
+            evidenceItems.append(ExternalCaptureEvidenceItem(
+                kind: .stateOfMind,
+                title: label,
+                value: stateOfMindClassification.trimmedOrNil,
+                metadata: [
+                    "valence": String(stateOfMindValence),
+                    "classification": stateOfMindClassification.trimmedOrNil ?? "",
+                    "kind": stateOfMindKind.trimmedOrNil ?? ""
+                ].filter { !$0.value.isEmpty }
+            ))
+        } else {
+            affectEvidence = []
+        }
         let suggestion = JournalingSuggestionDraft(
             title: title.trimmedOrNil,
             body: bodyText.trimmedOrNil,
-            reflectionPrompt: reflectionPrompt.trimmedOrNil,
-            locationTitle: locationTitle.trimmedOrNil,
-            songTitle: songTitle.trimmedOrNil,
-            artistName: artistName.trimmedOrNil,
-            stateOfMindLabel: stateOfMindLabel.trimmedOrNil,
-            stateOfMindValence: stateOfMindLabel.trimmedOrNil == nil ? nil : stateOfMindValence,
-            stateOfMindArousal: stateOfMindLabel.trimmedOrNil == nil ? nil : stateOfMindArousal,
-            stateOfMindDominance: stateOfMindLabel.trimmedOrNil == nil ? nil : stateOfMindDominance
+            evidenceItems: evidenceItems,
+            affectEvidence: affectEvidence
         )
         importSuggestion(suggestion)
     }

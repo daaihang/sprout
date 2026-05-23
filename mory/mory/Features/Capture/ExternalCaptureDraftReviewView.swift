@@ -128,14 +128,14 @@ struct ExternalCaptureDraftReviewView: View {
         let trimmedText = text.trimmedOrNil ?? "Draft imported from external capture shell."
         let label = AffectLabel(rawValue: affectLabelRaw.trimmingCharacters(in: .whitespacesAndNewlines))
         let tone = ToneHint(rawValue: toneHintRaw.trimmingCharacters(in: .whitespacesAndNewlines))
-        let affectDraft = AffectSnapshotDraft(
-            labels: label.map { [$0] } ?? [],
-            toneHints: tone.map { [$0] } ?? [],
-            sources: [.userSelected],
+        let affectEvidence = ExternalCaptureAffectEvidence(
+            source: .userSelected,
+            label: label?.rawValue,
+            labels: label.map { [$0.rawValue] } ?? [],
+            toneHints: tone.map { [$0.rawValue] } ?? [],
+            rawInput: label?.rawValue,
             confidence: 1,
-            evidenceSummary: "External capture local shell input",
-            userConfirmed: true,
-            rawInput: label?.rawValue
+            userConfirmed: true
         )
         return ExternalCaptureRequest(
             sourceKind: sourceKind,
@@ -143,7 +143,10 @@ struct ExternalCaptureDraftReviewView: View {
             text: trimmedText,
             url: url.trimmedOrNil,
             context: context.trimmedOrNil,
-            affectDrafts: (label == nil && tone == nil) ? [] : [affectDraft]
+            evidenceItems: url.trimmedOrNil.map {
+                [ExternalCaptureEvidenceItem(kind: .link, title: title.trimmedOrNil, value: $0, metadata: ["url": $0])]
+            } ?? [],
+            affectEvidence: (label == nil && tone == nil) ? [] : [affectEvidence]
         )
     }
 

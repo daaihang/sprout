@@ -23,12 +23,12 @@ final class ExternalCaptureInboxDefaultsStore: ExternalCaptureInboxStoring {
     init(
         defaults: UserDefaults = .standard,
         scope: MoryLocalDataScope = .legacy,
-        includeSharedLegacyFallback: Bool = false,
-        sharedLegacyDefaults: UserDefaults? = nil
+        includeSharedInboxFallback: Bool = false,
+        sharedInboxDefaults: UserDefaults? = nil
     ) {
         self.primary = Backend(defaults: defaults, key: Self.storageKey(for: scope))
-        let resolvedSharedDefaults = sharedLegacyDefaults ?? MorySharedContainers.appGroupDefaults
-        if includeSharedLegacyFallback,
+        let resolvedSharedDefaults = sharedInboxDefaults ?? MorySharedContainers.appGroupDefaults
+        if includeSharedInboxFallback,
            let sharedDefaults = resolvedSharedDefaults {
             self.fallbacks = [
                 Backend(defaults: sharedDefaults, key: Self.storageKey(for: .legacy))
@@ -77,9 +77,9 @@ final class ExternalCaptureInboxDefaultsStore: ExternalCaptureInboxStoring {
     static func storageKey(for scope: MoryLocalDataScope) -> String {
         switch scope {
         case .legacy:
-            return "mory.externalCaptureInbox.legacy.v1"
+            return "mory.externalCaptureInbox.v2"
         case let .owner(ownerID):
-            return "mory.externalCaptureInbox.owner.\(ownerID).v1"
+            return "mory.externalCaptureInbox.owner.\(ownerID).v2"
         }
     }
 
