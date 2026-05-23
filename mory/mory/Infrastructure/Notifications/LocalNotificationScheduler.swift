@@ -26,12 +26,22 @@ struct LocalNotificationScheduleRequest: Hashable, Sendable {
     var userInfo: [String: String]
 }
 
-@MainActor
+// Not @MainActor so schedulePendingIntents can call authorizationState() without an
+// actor hop back to the main actor; SystemLocalNotificationCenter stays @MainActor
+// because UNUserNotificationCenter requires it, but test mocks don't need actor isolation.
 protocol LocalNotificationSchedulingCenter: AnyObject {
     func authorizationState() async -> LocalNotificationAuthorizationState
     func requestAuthorization() async throws -> Bool
     func add(_ request: LocalNotificationScheduleRequest) async throws
     func removePendingRequests(withIdentifiers identifiers: [String]) async
+}
+
+@MainActor
+protocol NotificationIntentRepositorying: AnyObject {
+    func fetchNotificationIntents(status: NotificationIntentStatus?, limit: Int?) throws -> [NotificationIntent]
+    func upsertNotificationIntent(_ intent: NotificationIntent) throws
+    func fetchIntelligencePreferences() throws -> IntelligencePreferences
+    func fetchV6FeatureFlags() throws -> V6FeatureFlags
 }
 
 @MainActor
@@ -156,7 +166,7 @@ struct LocalNotificationScheduler {
     }
 
     func schedulePendingIntents(
-        repository: any MoryMemoryRepositorying,
+        repository: any NotificationIntentRepositorying,
         now: Date = .now,
         limit: Int? = 20,
         requestAuthorizationIfNeeded: Bool = false
@@ -227,7 +237,7 @@ struct LocalNotificationScheduler {
     }
 
     func cancelPendingAndScheduledLocalIntents(
-        repository: any MoryMemoryRepositorying,
+        repository: any NotificationIntentRepositorying,
         now: Date = .now
     ) async throws -> LocalNotificationCancellationReport {
         let cancellableIntents = try repository.fetchNotificationIntents(status: nil, limit: nil)

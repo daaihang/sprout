@@ -7,7 +7,7 @@ struct NotificationDeliveryRouter {
 
     func route(
         intent: NotificationIntent,
-        repository: any MoryMemoryRepositorying,
+        repository: any NotificationIntentRepositorying,
         now: Date = .now
     ) async throws {
         var routed = intent

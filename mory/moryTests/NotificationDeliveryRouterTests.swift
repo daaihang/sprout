@@ -48,17 +48,17 @@ final class NotificationDeliveryRouterTests: XCTestCase {
 
     private struct RouterFixture {
         var router: NotificationDeliveryRouter
-        var repository: MoryMemoryRepository
+        var repository: RouterTestNotificationIntentRepository
     }
 
     private func makeRouterFixture() -> RouterFixture {
-        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
-        let repository = MoryMemoryRepository(
-            modelContext: container.mainContext,
-            analysisService: RouterTestAnalysisService()
-        )
+        let repository = RouterTestNotificationIntentRepository()
         let remotePushService = RouterTestRemotePushService()
-        let router = NotificationDeliveryRouter(remotePushSyncService: remotePushService)
+        var router = NotificationDeliveryRouter(remotePushSyncService: remotePushService)
+        // Inject a stub notification center so no real UNUserNotificationCenter calls happen.
+        router.localScheduler = LocalNotificationScheduler(
+            notificationCenter: RouterTestLocalNotificationCenter()
+        )
         return RouterFixture(router: router, repository: repository)
     }
 
@@ -79,6 +79,59 @@ final class NotificationDeliveryRouterTests: XCTestCase {
 
 private enum RouterTestError: Error { case unsupported }
 
+@MainActor
+private final class RouterTestNotificationIntentRepository: NotificationIntentRepositorying {
+    private var intents: [UUID: NotificationIntent] = [:]
+    private var preferences: IntelligencePreferences
+    private var flags: V6FeatureFlags
+
+    init(now: Date = .now) {
+        var preferences = IntelligencePreferences.defaults
+        preferences.dailyQuestionsEnabled = true
+        preferences.notificationPreferences = NotificationPreferences(
+            enabled: true,
+            dailyQuestionEnabled: true,
+            maxPerDay: 4,
+            quietHoursStartHour: nil,
+            quietHoursEndHour: nil,
+            richPreviewsEnabled: false
+        )
+        preferences.updatedAt = now
+        self.preferences = preferences
+
+        var flags = V6FeatureFlags.defaults
+        flags.dailyQuestions = true
+        flags.localNotifications = true
+        flags.updatedAt = now
+        self.flags = flags
+    }
+
+    func fetchNotificationIntents(status: NotificationIntentStatus?, limit: Int?) throws -> [NotificationIntent] {
+        var results = intents.values
+            .filter { intent in
+                guard let status else { return true }
+                return intent.status == status
+            }
+            .sorted { $0.createdAt > $1.createdAt }
+        if let limit {
+            results = Array(results.prefix(limit))
+        }
+        return results
+    }
+
+    func upsertNotificationIntent(_ intent: NotificationIntent) throws {
+        intents[intent.id] = intent
+    }
+
+    func fetchIntelligencePreferences() throws -> IntelligencePreferences {
+        preferences
+    }
+
+    func fetchV6FeatureFlags() throws -> V6FeatureFlags {
+        flags
+    }
+}
+
 private final class RouterTestRemotePushService: RemotePushSyncing {
     func prepareForLocalDataOwner(_ ownerID: String) {}
     func registerSystemRemoteNotificationsIfNeeded(repository: any MoryMemoryRepositorying) {}
@@ -98,35 +151,10 @@ private final class RouterTestRemotePushService: RemotePushSyncing {
     func fetchServerMetricsText() async throws -> String { "" }
 }
 
-private struct RouterTestAnalysisService: RecordAnalysisServing {
-    func analyze(
-        record: RecordShell,
-        artifacts: [Artifact],
-        knownEntities: [EntityReference]
-    ) async throws -> RecordAnalysisSnapshot {
-        RecordAnalysisSnapshot(recordID: record.id, summary: record.rawText, createdAt: .now)
-    }
-
-    func generateReflection(
-        record: RecordShell,
-        artifacts: [Artifact],
-        linkedArcID: UUID?,
-        knownEntities: [EntityReference],
-        prompt: String?
-    ) async throws -> ReflectionServiceResult {
-        throw RouterTestError.unsupported
-    }
-
-    func replayReflection(
-        reflection: ReflectionSnapshot,
-        linkedArc: TemporalArc?,
-        record: RecordShell?,
-        artifacts: [Artifact],
-        knownEntities: [EntityReference],
-        prompt: String?
-    ) async throws -> ReflectionServiceResult {
-        throw RouterTestError.unsupported
-    }
-
-    func latestDebugTrace() async -> DebugPipelineTraceSnapshot? { nil }
+@MainActor
+private final class RouterTestLocalNotificationCenter: LocalNotificationSchedulingCenter {
+    func authorizationState() async -> LocalNotificationAuthorizationState { .authorized }
+    func requestAuthorization() async throws -> Bool { true }
+    func add(_ request: LocalNotificationScheduleRequest) async throws {}
+    func removePendingRequests(withIdentifiers identifiers: [String]) async {}
 }

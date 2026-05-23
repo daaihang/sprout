@@ -1006,7 +1006,7 @@ struct InsightsPresentationSnapshot: Hashable, Sendable {
 }
 
 @MainActor
-protocol MoryMemoryRepositorying: AnyObject {
+protocol MoryMemoryRepositorying: NotificationIntentRepositorying {
     func createMemory(from draft: MemoryCaptureDraft) async throws -> MemorySummary
     func applyMemoryMutation(recordID: UUID, mutation: MemoryMutationDraft, refreshPolicy: MemoryMutationRefreshPolicy) async throws -> MemoryMutationResult
     func appendArtifacts(recordID: UUID, drafts: [CaptureArtifactDraft]) async throws -> MemorySummary?
