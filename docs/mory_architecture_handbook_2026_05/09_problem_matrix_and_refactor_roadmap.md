@@ -10,6 +10,7 @@
 | Batch 2: Analysis Pipeline Ports | completed | `ArchitecturePipelineExecutor` 已移除 SwiftData/`ModelContext` 依赖，改为 `AnalysisPipelineQuerying/Persisting/Tracing/RuntimeScoping/ContextPacking` ports；repository 作为 SwiftData-backed adapter；新增纯 mock pipeline tests | `MoryMemoryRepository` 仍承担 use case 编排和 SwiftData adapter；C2 use case service extraction 仍未开始 |
 | Batch 3: Domain Model Split | completed | `MemoryFeatureModels.swift` 已按 settings、capture、library、search、graph presentation、timeline、string helpers 和 repository contracts 拆分；类型名和行为保持不变 | C2 use case extraction、Batch 4 capture UI split、Batch 5 shared/API/server split 仍未开始 |
 | Batch 4: Capture UI Split | completed | `CaptureCardView` 已拆成 dispatch/chrome/typed card content files；composer sheet views 已移出主 composer，sheet presentation 由 `CaptureComposerSheetCoordinator` 管理 | Composer 正文/draft/save 状态仍在 view 内；完整 composer view model 抽取留到后续 |
+| Batch 5: ExternalCaptureShared Pure Contract | completed | `ExternalCaptureWireModels.swift` 已拆成 shared container、attachment models/store、evidence models、Journaling bundle、request 和 inbox models；类型名和 Codable 形状保持不变 | I4 `MoryAPIClient` endpoint split、Batch 6 Go server split、C2 use case extraction 仍未开始 |
 
 ## 1. Critical
 
@@ -26,7 +27,7 @@
 | --- | --- | --- | --- | --- |
 | I1 | `CaptureCardView.swift` 聚合所有卡片内容 | 新卡片冲突多，UI 维护成本高 | 已按 card type 拆 view，保留 shared chrome | CaptureCardModelsTests + UI build |
 | I2 | `UnifiedCaptureComposerView` 状态过多 | 输入扩展继续增加复杂度 | partially completed：已抽 sheet coordinator 和 sheet views；完整 composer state view model 留到后续 | create/save focused tests |
-| I3 | `ExternalCaptureWireModels.swift` 混合 wire model、Journaling bundle、attachment IO | shared contract 不纯，extension 编译负担变大 | 拆 wire、attachment store、inbox、bundle 文件 | ExternalCaptureInboxTests |
+| I3 | `ExternalCaptureWireModels.swift` 混合 wire model、Journaling bundle、attachment IO | shared contract 不纯，extension 编译负担变大 | completed：已拆 wire、attachment models/store、inbox、bundle 文件 | ExternalCaptureInboxTests + app build |
 | I4 | `MoryAPIClient.swift` 聚合所有 endpoint | 网络层增长不可控 | 按 endpoint family 拆 extension | CloudIntelligenceClientTests + build |
 | I5 | Debug 大文件 report/action/view 混合 | Debug 继续膨胀，难测 | 拆 formatter、view model、view | DebugCenterModelsTests |
 | I6 | Go `handlers.go` / `sqlite.go` 过大 | server v8 扩展成本高 | 按 route/store concern 拆 | `go test ./...` |
@@ -129,6 +130,7 @@
 目标：
 
 - shared 模块职责清楚，App/Extension 共享更安全。
+- 当前状态：completed。`ExternalCaptureWireModels.swift` 已删除，shared 合同和附件 IO 已按职责拆分；App/Share Extension 行为不变。
 
 步骤：
 
