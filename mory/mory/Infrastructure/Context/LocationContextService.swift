@@ -1,6 +1,9 @@
 import Foundation
 import CoreLocation
 
+// @MainActor isolation protects all mutable state (continuations, tokens).
+// @unchecked Sendable is required because NSObject does not automatically conform to Sendable;
+// the @MainActor annotation is the actual thread-safety guarantee here.
 @MainActor
 final class LocationContextService: NSObject, CLLocationManagerDelegate, @unchecked Sendable, ContextLocationProviding {
     private let manager = CLLocationManager()

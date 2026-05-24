@@ -1,5 +1,8 @@
 import Foundation
+import OSLog
 import SwiftData
+
+private let log = Logger(subsystem: "com.mory", category: "persistence")
 
 @MainActor
 final class MoryMemoryRepository: MoryMemoryRepositorying {
@@ -150,10 +153,12 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     }
 
     func rawQualityTuningEntities(from responseBody: String?) -> [EntityReference]? {
-        guard
-            let data = responseBody?.data(using: .utf8),
-            let envelope = try? JSONDecoder().decode(AnalyzeResponseEnvelope.self, from: data)
-        else {
+        guard let data = responseBody?.data(using: .utf8) else { return nil }
+        let envelope: AnalyzeResponseEnvelope
+        do {
+            envelope = try JSONDecoder().decode(AnalyzeResponseEnvelope.self, from: data)
+        } catch {
+            log.warning("rawQualityTuningEntities: Failed to decode AnalyzeResponseEnvelope: \(error)")
             return nil
         }
         return envelope.entities.compactMap { entity in
@@ -163,9 +168,17 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     }
 
     func makeQualityTuningPreference(from store: QualityTuningPreferenceStore) -> QualityTuningPreference {
-        let thresholds = store.thresholdsData
-            .flatMap { try? JSONDecoder().decode(QualityTuningThresholds.self, from: $0) }
-            ?? .defaults
+        let thresholds: QualityTuningThresholds
+        if let data = store.thresholdsData {
+            do {
+                thresholds = try JSONDecoder().decode(QualityTuningThresholds.self, from: data)
+            } catch {
+                log.warning("makeQualityTuningPreference: Failed to decode thresholds, using defaults: \(error)")
+                thresholds = .defaults
+            }
+        } else {
+            thresholds = .defaults
+        }
         return QualityTuningPreference(
             id: store.id,
             schemaVersion: store.schemaVersion,

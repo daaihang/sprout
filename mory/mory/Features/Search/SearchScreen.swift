@@ -136,11 +136,18 @@ struct SearchScreen: View {
     }
 
     private func load() async {
+        // Debounce: let the user finish typing before hitting the network.
+        // .task(id: query) auto-cancels this Task on each new keystroke,
+        // so the sleep is cancelled too — giving us debounce with no extra state.
+        try? await Task.sleep(nanoseconds: 300_000_000)
+        guard !Task.isCancelled else { return }
         do {
             result = try await memoryRepository.searchSemanticFirst(query: query, limit: 12)
             errorMessage = nil
         } catch {
-            errorMessage = error.localizedDescription
+            if !Task.isCancelled {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 

@@ -5,6 +5,8 @@ protocol ContextAutoCollecting: Sendable {
     func collectContextDrafts(policy: UserSettingsContextSelection) async -> [CaptureArtifactDraft]
 }
 
+// @unchecked Sendable is safe here: all stored properties are `let` constants.
+// The injected service protocols are themselves responsible for their own Sendable conformance.
 final class ContextAutoCollector: ContextAutoCollecting, @unchecked Sendable {
     private let locationService: any ContextLocationProviding
     private let placeService: any ContextPlaceDraftProviding

@@ -43,6 +43,12 @@ nonisolated struct AuthCredential: Codable, Sendable {
 
 // MARK: - Keychain Store
 
+// NOTE: saveCredential / loadCredential / delete perform blocking Keychain I/O
+// (SecItemAdd, SecItemCopyMatching, SecItemDelete) on the actor's cooperative executor thread.
+// For a mobile app with infrequent auth operations this is acceptable — typical Keychain latency
+// is <5 ms on device. Callers await the actor method and are properly suspended (not blocked).
+// If high-frequency concurrent access ever becomes a concern, wrap Keychain calls in a detached
+// Task backed by a dedicated serial DispatchQueue.
 actor KeychainCredentialStore {
     private let service: String
     private let account: String
