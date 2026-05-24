@@ -12278,9 +12278,6 @@
         }
       }
     },
-    "External Capture" : {
-
-    },
     "External Capture Handoff" : {
 
     },
@@ -12431,6 +12428,9 @@
       }
     },
     "GraphDelta Review" : {
+
+    },
+    "Handoff Recovery" : {
 
     },
     "Home Board Debug" : {
@@ -15590,12 +15590,6 @@
     "Pending (%lld)" : {
 
     },
-    "Handoff Recovery" : {
-
-    },
-    "Queue As Handoff Test Item" : {
-
-    },
     "Pending intents" : {
       "localizations" : {
         "zh-Hans" : {
@@ -16264,6 +16258,9 @@
           }
         }
       }
+    },
+    "Queue As Handoff Test Item" : {
+
     },
     "quickCapture.contextCheckIn" : {
       "extractionState" : "manual",
