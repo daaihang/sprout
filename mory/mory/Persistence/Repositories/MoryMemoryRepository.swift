@@ -9,21 +9,21 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     let modelContext: ModelContext
     let analysisService: any RecordAnalysisServing
     let cloudIntelligenceService: (any CloudIntelligenceServing)?
-    let architecturePipelineExecutor = ArchitecturePipelineExecutor()
-    let homeBoardRuleEngine = HomeBoardRuleEngine()
-    let graphQueryService = MemoryGraphQueryService()
-    let memorySearchService = MemorySearchService()
-    let searchResultMerger = SearchResultMerger()
+    let architecturePipelineExecutor: ArchitecturePipelineExecutor
+    let homeBoardRuleEngine: HomeBoardRuleEngine
+    let graphQueryService: MemoryGraphQueryService
+    let memorySearchService: MemorySearchService
+    let searchResultMerger: SearchResultMerger
     let spotlightIndexService: any SpotlightIndexServicing
     let spotlightItemBuilder: SpotlightSearchableItemBuilder
-    let captureArtifactBuilder = MemoryCaptureArtifactBuilder()
-    let temporalArcService = TemporalArcService()
-    let debugDiagnosticsService = DebugDiagnosticsService()
-    let intelligenceScheduler = IntelligenceScheduler()
-    let entityEnrichmentService = EntityEnrichmentService()
-    let clarificationQuestionBuilder = ClarificationQuestionBuilder()
-    let graphDeltaApplier = GraphDeltaApplier()
-    let affectSnapshotMapper = AffectSnapshotMapper()
+    let captureArtifactBuilder: MemoryCaptureArtifactBuilder
+    let temporalArcService: TemporalArcService
+    let debugDiagnosticsService: DebugDiagnosticsService
+    let intelligenceScheduler: IntelligenceScheduler
+    let entityEnrichmentService: EntityEnrichmentService
+    let clarificationQuestionBuilder: ClarificationQuestionBuilder
+    let graphDeltaApplier: GraphDeltaApplier
+    let affectSnapshotMapper: AffectSnapshotMapper
     let externalCaptureInboxStore: any ExternalCaptureInboxStoring
     var latestAnalysisTrace: DebugPipelineTraceSnapshot?
     var latestReflectionTrace: DebugPipelineTraceSnapshot?
@@ -34,7 +34,21 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         cloudIntelligenceService: (any CloudIntelligenceServing)? = nil,
         spotlightIndexService: (any SpotlightIndexServicing)? = nil,
         localDataOwnerID: String? = nil,
-        externalCaptureInboxStore: (any ExternalCaptureInboxStoring)? = nil
+        externalCaptureInboxStore: (any ExternalCaptureInboxStoring)? = nil,
+        // Injected services with production defaults — override in tests to supply mocks.
+        architecturePipelineExecutor: ArchitecturePipelineExecutor = ArchitecturePipelineExecutor(),
+        homeBoardRuleEngine: HomeBoardRuleEngine = HomeBoardRuleEngine(),
+        graphQueryService: MemoryGraphQueryService = MemoryGraphQueryService(),
+        memorySearchService: MemorySearchService = MemorySearchService(),
+        searchResultMerger: SearchResultMerger = SearchResultMerger(),
+        captureArtifactBuilder: MemoryCaptureArtifactBuilder = MemoryCaptureArtifactBuilder(),
+        temporalArcService: TemporalArcService = TemporalArcService(),
+        debugDiagnosticsService: DebugDiagnosticsService = DebugDiagnosticsService(),
+        intelligenceScheduler: IntelligenceScheduler = IntelligenceScheduler(),
+        entityEnrichmentService: EntityEnrichmentService = EntityEnrichmentService(),
+        clarificationQuestionBuilder: ClarificationQuestionBuilder = ClarificationQuestionBuilder(),
+        graphDeltaApplier: GraphDeltaApplier = GraphDeltaApplier(),
+        affectSnapshotMapper: AffectSnapshotMapper = AffectSnapshotMapper()
     ) {
         self.modelContext = modelContext
         self.analysisService = analysisService
@@ -45,6 +59,19 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             scope: localDataOwnerID.map { .owner($0) } ?? .legacy,
             includeSharedInboxFallback: true
         )
+        self.architecturePipelineExecutor = architecturePipelineExecutor
+        self.homeBoardRuleEngine = homeBoardRuleEngine
+        self.graphQueryService = graphQueryService
+        self.memorySearchService = memorySearchService
+        self.searchResultMerger = searchResultMerger
+        self.captureArtifactBuilder = captureArtifactBuilder
+        self.temporalArcService = temporalArcService
+        self.debugDiagnosticsService = debugDiagnosticsService
+        self.intelligenceScheduler = intelligenceScheduler
+        self.entityEnrichmentService = entityEnrichmentService
+        self.clarificationQuestionBuilder = clarificationQuestionBuilder
+        self.graphDeltaApplier = graphDeltaApplier
+        self.affectSnapshotMapper = affectSnapshotMapper
     }
 
     func evaluateQualityTuningExpectation(
