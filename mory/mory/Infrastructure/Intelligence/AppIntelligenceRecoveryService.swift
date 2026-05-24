@@ -38,7 +38,7 @@ struct AppIntelligenceRecoveryService {
     }
 
     func recoverAfterLaunch(
-        repository: any MoryMemoryRepositorying,
+        repository: any AppIntelligenceRecoveryRepositorying,
         cloudIntelligenceService: any CloudIntelligenceServing,
         now: Date = .now
     ) async -> AppIntelligenceRecoveryReport {
@@ -90,7 +90,7 @@ struct AppIntelligenceRecoveryService {
     }
 
     private func recoverUnfinishedJobs(
-        repository: any MoryMemoryRepositorying,
+        repository: any IntelligenceRecoveryRepositorying,
         now: Date,
         report initialReport: AppIntelligenceRecoveryReport
     ) throws -> AppIntelligenceRecoveryReport {

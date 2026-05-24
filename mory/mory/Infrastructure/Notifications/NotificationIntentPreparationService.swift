@@ -21,7 +21,7 @@ struct NotificationIntentPreparationService {
 
     @discardableResult
     func prepareNextIntentIfNeeded(
-        repository: any MoryMemoryRepositorying,
+        repository: any NotificationPreparationRepositorying,
         now: Date = .now
     ) throws -> NotificationIntent? {
         let preferences = try repository.fetchIntelligencePreferences()
@@ -46,7 +46,7 @@ struct NotificationIntentPreparationService {
 
     @discardableResult
     func prepareDailyQuestionIntentIfNeeded(
-        repository: any MoryMemoryRepositorying,
+        repository: any NotificationPreparationRepositorying,
         now: Date = .now
     ) throws -> NotificationIntent? {
         let preferences = try repository.fetchIntelligencePreferences()
@@ -71,7 +71,7 @@ struct NotificationIntentPreparationService {
     }
 
     private func buildCandidates(
-        repository: any MoryMemoryRepositorying,
+        repository: any NotificationPreparationRepositorying,
         preferences: IntelligencePreferences,
         flags: V6FeatureFlags,
         existingIntents: [NotificationIntent],
@@ -126,7 +126,7 @@ struct NotificationIntentPreparationService {
 
     private func persistFirstApprovedIntent(
         from candidates: [PreparedNotificationCandidate],
-        repository: any MoryMemoryRepositorying,
+        repository: any NotificationPreparationRepositorying,
         preferences: IntelligencePreferences,
         flags: V6FeatureFlags,
         existingIntents: [NotificationIntent],
@@ -154,7 +154,7 @@ struct NotificationIntentPreparationService {
     }
 
     private func dailyQuestionCandidate(
-        repository: any MoryMemoryRepositorying,
+        repository: any NotificationPreparationRepositorying,
         preferences: IntelligencePreferences,
         flags: V6FeatureFlags,
         existingIntents: [NotificationIntent],
@@ -197,7 +197,7 @@ struct NotificationIntentPreparationService {
     }
 
     private func backgroundDoneCandidate(
-        repository: any MoryMemoryRepositorying,
+        repository: any NotificationPreparationRepositorying,
         existingIntents: [NotificationIntent],
         now: Date
     ) throws -> PreparedNotificationCandidate? {
@@ -243,7 +243,7 @@ struct NotificationIntentPreparationService {
     }
 
     private func stageFormingCandidate(
-        repository: any MoryMemoryRepositorying,
+        repository: any NotificationPreparationRepositorying,
         existingIntents: [NotificationIntent],
         now: Date
     ) throws -> PreparedNotificationCandidate? {
@@ -323,7 +323,7 @@ struct NotificationIntentPreparationService {
     }
 
     private func repeatedThemeCandidate(
-        repository: any MoryMemoryRepositorying,
+        repository: any NotificationPreparationRepositorying,
         existingIntents: [NotificationIntent],
         now: Date
     ) throws -> PreparedNotificationCandidate? {
@@ -375,7 +375,7 @@ struct NotificationIntentPreparationService {
     }
 
     private func revisitCandidate(
-        repository: any MoryMemoryRepositorying,
+        repository: any NotificationPreparationRepositorying,
         existingIntents: [NotificationIntent],
         now: Date
     ) throws -> PreparedNotificationCandidate? {

@@ -219,12 +219,12 @@ struct PrivacyGate {
 
 @MainActor
 struct ContextPackBuilder {
-    let repository: any MoryMemoryRepositorying
+    let repository: any AnalysisContextPackRepositorying
     private let ranker: ContextRanker
     private let budgeter: ContextBudgeter
     private let privacyGate: PrivacyGate
 
-    init(repository: any MoryMemoryRepositorying) {
+    init(repository: any AnalysisContextPackRepositorying) {
         self.repository = repository
         self.ranker = ContextRanker()
         self.budgeter = ContextBudgeter()
@@ -232,7 +232,7 @@ struct ContextPackBuilder {
     }
 
     init(
-        repository: any MoryMemoryRepositorying,
+        repository: any AnalysisContextPackRepositorying,
         ranker: ContextRanker,
         budgeter: ContextBudgeter,
         privacyGate: PrivacyGate

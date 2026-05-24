@@ -2,11 +2,17 @@
 
 本文把架构问题按严重程度、影响面和建议修复顺序整理成实施路线。这里的目标不是马上重构全部，而是让后续每次代码改动都能沿着清晰方向前进。
 
+## 0. 当前执行状态
+
+| Batch | 状态 | 结果 | 剩余差口 |
+| --- | --- | --- | --- |
+| Batch 1: Repository Port Split | completed | `MoryMemoryRepositorying` 已拆成 capture、library、profile/graph、intelligence、settings、external capture、debug 等小端口；核心 intelligence/notification/capture services 已改为接收更窄依赖 | App environment、Settings、Debug 仍保留 composite repository；use case service extraction 属于 Batch 2/C2 后续工作 |
+
 ## 1. Critical
 
 | ID | 问题 | 影响 | 解决方案 | 验证 |
 | --- | --- | --- | --- | --- |
-| C1 | `MoryMemoryRepositorying` 超大协议 | 测试难、UI/Debug 误用、service 依赖面过宽 | 拆小 repository ports；App environment 可提供 composite | focused compile + mock tests 变小 |
+| C1 | `MoryMemoryRepositorying` 超大协议 | 测试难、UI/Debug 误用、service 依赖面过宽 | 已完成第一轮 port split；继续逐步迁移 broad consumers | focused compile + service tests 通过 |
 | C2 | `MoryMemoryRepository` 仍是 God object | 多事务、多 helper、多 service 聚合，长期难维护 | 抽 use case service：memory creation、mutation、entity mutation、external import | repository tests 不减少，新增 service tests |
 | C3 | `MemoryFeatureModels.swift` 承担过多 domain/presentation/protocol | Domain 层成为杂物间，后续 v8 模型难定位 | 拆 Capture/Library/Search/GraphPresentation/RepositoryPorts | 全量 build + model tests |
 | C4 | Analyze pipeline 直接依赖 `ModelContext` | Analysis 逻辑被 SwiftData 绑定，后台/测试/替换困难 | 引入 `AnalysisPipelineQuerying/Persisting/Tracing` | pipeline unit tests 不启动 SwiftData |
@@ -42,6 +48,7 @@
 - 不改变行为。
 - 只拆协议和注入类型。
 - 让 service 和 UI 依赖更小端口。
+- 当前状态：completed。Composite `MoryMemoryRepositorying` 暂时保留，用于 App environment、Settings、Debug 和全量能力入口。
 
 步骤：
 

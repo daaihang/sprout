@@ -3,10 +3,10 @@ import Foundation
 /// Orchestrates the capture flow: persists the final snapshot and triggers pipeline.
 @MainActor
 struct CaptureOrchestrator {
-    private let memoryRepository: any MoryMemoryRepositorying
+    private let memoryRepository: any MemoryCaptureRepositorying
 
     init(
-        memoryRepository: any MoryMemoryRepositorying
+        memoryRepository: any MemoryCaptureRepositorying
     ) {
         self.memoryRepository = memoryRepository
     }

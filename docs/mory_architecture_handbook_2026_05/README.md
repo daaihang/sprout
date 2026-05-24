@@ -21,6 +21,8 @@
 
 审计时工作树状态：mory 主工程无未提交修改，仅有上述无关未跟踪项。文档以当前磁盘代码为事实；当现有 v7 文档与当前代码存在表达差异时，以代码为准，并在问题矩阵中记录。
 
+Batch 1 更新状态：Repository port split 已完成第一轮实现，`MoryMemoryRepositorying` 已从单体方法清单收敛为 composite protocol，核心 capture、context pack、notification preparation、daily question、recovery 和 job worker 服务已改为依赖更小端口。后续仍需要继续处理 `MoryMemoryRepository` 的 use case service extraction。
+
 ## 总体结论
 
 Mory 当前已经形成了较清晰的分层方向：
@@ -45,7 +47,7 @@ Mory 当前已经形成了较清晰的分层方向：
 
 | 严重度 | 问题 | 影响 | 建议 |
 | --- | --- | --- | --- |
-| Critical | `MoryMemoryRepositorying` 是超大协议，`MoryMemoryRepository` 仍是中心 God object | UI、Debug、Notification、Search、Graph、Capture 全部耦合到同一个仓库接口，测试和并行开发成本高 | 拆成 `RecordRepositorying`、`ProfileRepositorying`、`GraphRepositorying`、`ExternalCaptureRepositorying`、`DebugRepositorying` 等小端口 |
+| Critical | `MoryMemoryRepository` 仍是中心 God object | UI、Debug、Notification、Search、Graph、Capture 仍由同一个实现类型承接事务和 helper，长期维护成本高 | 第一轮 repository ports 已完成；下一步抽 use case service 和 pipeline ports |
 | Critical | `MemoryFeatureModels.swift` 聚合过多领域 | Capture、Library、Search、Graph、Timeline、Debug、Repository protocol 混在一个 Domain 文件 | 拆成业务模型包：Capture、Library、Search、GraphPresentation、RepositoryPorts |
 | Important | `ArchitecturePipelineExecutor` 直接依赖 `ModelContext` | Analysis pipeline 和 SwiftData 查询绑定，难以独立测试、替换持久层或后台执行 | 引入 pipeline query/persistence port，由 repository 或 data session 注入 |
 | Important | Capture card 与 Debug view 文件仍过大 | 新卡片类型和新诊断面板会持续制造冲突 | 按 card type 和 debug feature 拆 view + formatter |

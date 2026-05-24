@@ -28,7 +28,7 @@ struct IntelligenceJobWorker {
     }
 
     func processDueJobs(
-        repository: any MoryMemoryRepositorying,
+        repository: any IntelligenceJobRepositorying,
         cloudIntelligenceService: any CloudIntelligenceServing,
         now: Date = .now,
         limit: Int = 24
@@ -84,7 +84,7 @@ struct IntelligenceJobWorker {
 
     private func execute(
         _ runningJob: IntelligenceJob,
-        repository: any MoryMemoryRepositorying,
+        repository: any IntelligenceJobRepositorying,
         cloudIntelligenceService: any CloudIntelligenceServing,
         now: Date,
         report: inout IntelligenceJobWorkerReport
@@ -166,7 +166,7 @@ struct IntelligenceJobWorker {
 
     private func executeEntityEnrichment(
         _ job: IntelligenceJob,
-        repository: any MoryMemoryRepositorying,
+        repository: any IntelligenceJobRepositorying,
         now: Date
     ) throws {
         guard job.targetType == .entity else {
@@ -214,7 +214,7 @@ struct IntelligenceJobWorker {
 
     private func executePersonProfileRefresh(
         _ job: IntelligenceJob,
-        repository: any MoryMemoryRepositorying,
+        repository: any IntelligenceJobRepositorying,
         now: Date
     ) throws {
         guard job.targetType == .entity else {
@@ -225,7 +225,7 @@ struct IntelligenceJobWorker {
 
     private func executeClarificationQuestionGeneration(
         _ job: IntelligenceJob,
-        repository: any MoryMemoryRepositorying,
+        repository: any IntelligenceJobRepositorying,
         now: Date
     ) throws {
         guard job.targetType == .entity else {
@@ -258,7 +258,7 @@ struct IntelligenceJobWorker {
 
     private func executeGraphDeltaApplication(
         _ job: IntelligenceJob,
-        repository: any MoryMemoryRepositorying,
+        repository: any IntelligenceJobRepositorying,
         now: Date
     ) throws {
         guard job.targetType == .graphDelta else {
@@ -302,7 +302,7 @@ struct IntelligenceJobWorker {
 
     private func executeChapterCandidate(
         _ job: IntelligenceJob,
-        repository: any MoryMemoryRepositorying,
+        repository: any IntelligenceJobRepositorying,
         cloudIntelligenceService: any CloudIntelligenceServing,
         now: Date
     ) async throws {
@@ -344,7 +344,7 @@ struct IntelligenceJobWorker {
 
     private func buildChapterCandidateQuestion(
         anchorJob: IntelligenceJob,
-        repository: any MoryMemoryRepositorying,
+        repository: any IntelligenceJobRepositorying,
         cloudIntelligenceService: any CloudIntelligenceServing,
         existingQuestions: [ClarificationQuestion],
         recentMemories: [MemorySummary],
@@ -375,7 +375,7 @@ struct IntelligenceJobWorker {
 
     private func buildCloudChapterCandidateQuestion(
         anchorJob: IntelligenceJob,
-        repository: any MoryMemoryRepositorying,
+        repository: any IntelligenceJobRepositorying,
         cloudIntelligenceService: any CloudIntelligenceServing,
         recentMemories: [MemorySummary],
         now: Date
@@ -459,7 +459,7 @@ struct IntelligenceJobWorker {
 
     private func buildLocalChapterCandidateQuestion(
         anchorJob: IntelligenceJob,
-        repository: any MoryMemoryRepositorying,
+        repository: any IntelligenceJobRepositorying,
         existingQuestions: [ClarificationQuestion],
         recentMemories: [MemorySummary],
         now: Date

@@ -14,7 +14,7 @@ struct DailyQuestionSuggestionService {
     }
 
     func prepareIfNeeded(
-        repository: any MoryMemoryRepositorying,
+        repository: any DailyQuestionRepositorying,
         now: Date = .now,
         localeIdentifier: String = Locale.autoupdatingCurrent.identifier,
         evidenceLimit: Int = 6
