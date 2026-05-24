@@ -28,510 +28,15 @@ struct DebugFullDiagnosticsView: View {
 
     var body: some View {
         List {
-            // MARK: - Auth Session
-
-            if let authDiagnostics {
-                Section {
-                    authRow(String(localized: "debug.auth.state"), authDiagnostics.state)
-                    authRow(String(localized: "debug.auth.apiBaseURL"), authDiagnostics.apiBaseURL)
-                    authRow(String(localized: "debug.auth.storedCredential"), yesNo(authDiagnostics.hasStoredCredential))
-                    authRow(String(localized: "debug.auth.userID"), authDiagnostics.userID ?? String(localized: "debug.value.none"))
-                    authRow(String(localized: "debug.auth.guest"), yesNo(authDiagnostics.isGuest))
-                    authRow(String(localized: "debug.auth.accessToken"), presentMissing(authDiagnostics.hasAccessToken))
-                    authRow(String(localized: "debug.auth.refreshToken"), presentMissing(authDiagnostics.hasRefreshToken))
-                    authRow(String(localized: "debug.auth.appleIdentityToken"), presentMissing(authDiagnostics.hasIdentityToken))
-                    authRow(String(localized: "debug.auth.expired"), yesNo(authDiagnostics.isExpired))
-                    if let expiresAt = authDiagnostics.expiresAt {
-                        authRow(String(localized: "debug.auth.expires"), expiresAt.formatted(date: .abbreviated, time: .standard))
-                    }
-                    if let lastEvent = authDiagnostics.lastEvent?.trimmedOrNil {
-                        authRow(String(localized: "debug.auth.lastEvent"), lastEvent)
-                    }
-                    if let lastError = authDiagnostics.lastError?.trimmedOrNil {
-                        errorRow(String(localized: "debug.auth.error"), lastError)
-                    }
-                    if let status = authDiagnostics.lastHTTPStatusCode {
-                        authRow(String(localized: "debug.auth.lastHTTP"), "\(status)")
-                    }
-                    if let failedStage = authDiagnostics.lastFailedStage?.trimmedOrNil {
-                        authRow(String(localized: "debug.auth.failedStage"), failedStage)
-                    }
-                    if let response = authDiagnostics.lastResponseBody?.trimmedOrNil {
-                        payloadRow(title: String(localized: "debug.auth.responseBody"), content: response, recordID: nil)
-                    }
-                    Button {
-                        let report = buildAuthReport(authDiagnostics)
-                        UIPasteboard.general.string = report
-                        showCopiedToast(String(localized: "debug.toast.authReportCopied"))
-                    } label: {
-                        Label("debug.auth.copyReport", systemImage: "doc.on.doc")
-                            .font(.caption)
-                    }
-                } header: {
-                    Text("debug.menu.auth")
-                } footer: {
-                    Text("debug.auth.footer")
-                }
-            }
-
-            // MARK: - Custom Diagnostic Memory
-
-            Section {
-                TextField("debug.custom.title", text: $customTitle)
-                TextField("debug.custom.body", text: $customBody, axis: .vertical)
-                    .lineLimit(3...8)
-                TextField("debug.custom.mood", text: $customMood)
-                TextField("debug.custom.context", text: $customContext, axis: .vertical)
-                    .lineLimit(2...4)
-                Toggle("debug.custom.includeContext", isOn: $customIncludeAutoContext)
-
-                if !customContextDrafts.isEmpty {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("debug.custom.contextAdded")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        ForEach(customContextDrafts.indices, id: \.self) { index in
-                            Label(customContextDrafts[index].captureSummary, systemImage: customContextDrafts[index].debugIconName)
-                                .font(.caption)
-                                .lineLimit(2)
-                        }
-                    }
-                }
-
-                Button {
-                    Task { await createCustomDiagnosticMemory() }
-                } label: {
-                    Label(isCreatingCustomMemory ? String(localized: "debug.custom.creating") : String(localized: "debug.custom.create"), systemImage: "plus.square.on.square")
-                }
-                .disabled(isCreatingCustomMemory || (customTitle.trimmedOrNil == nil && customBody.trimmedOrNil == nil))
-            } header: {
-                Text("debug.section.customDiagnostic")
-            } footer: {
-                Text("debug.custom.footer")
-            }
-
-            // MARK: - Target Picker
-
-            Section {
-                Picker("debug.target.type", selection: $targetType) {
-                    ForEach(DebugAnalysisTarget.allCases) { item in
-                        Text(item.rawValue.capitalized).tag(item)
-                    }
-                }
-                .pickerStyle(.segmented)
-
-                Picker("debug.target.picker", selection: Binding(
-                    get: { selectedTargetID?.uuidString ?? "__latest__" },
-                    set: { value in
-                        selectedTargetID = value == "__latest__" ? nil : UUID(uuidString: value)
-                    }
-                )) {
-                    Text("debug.target.latest").tag("__latest__")
-                    ForEach(recentTargets) { item in
-                        Text(item.title).tag(item.id.uuidString)
-                    }
-                }
-
-                if let target = diagnostics?.target {
-                    HStack {
-                        Image(systemName: "scope")
-                            .foregroundStyle(.blue)
-                        Text(targetLabel(for: target))
-                            .font(.subheadline.weight(.medium))
-                        Spacer()
-                        copyButton(targetIDText(for: target), label: "ID")
-                    }
-                }
-            } header: {
-                Text("debug.section.target")
-            }
-
-            // MARK: - Actions
-
-            Section {
-                Button {
-                    Task { await refreshDiagnostics() }
-                } label: {
-                    Label(isReloading ? String(localized: "debug.action.loading") : String(localized: "debug.action.refresh"), systemImage: "arrow.clockwise")
-                }
-                .disabled(isReloading)
-
-                HStack(spacing: 12) {
-                    actionButton(String(localized: "debug.action.analysis"), icon: "wand.and.stars", isActive: isRebuilding) {
-                        Task { await rebuild(mode: .analysisOnly) }
-                    }
-                    actionButton(String(localized: "debug.action.graphArcRef"), icon: "point.3.connected.trianglepath.dotted", isActive: isRebuilding) {
-                        Task { await rebuild(mode: .graphArcReflection) }
-                    }
-                    actionButton(String(localized: "debug.action.replay"), icon: "arrow.counterclockwise", isActive: isRebuilding) {
-                        Task { await rebuild(mode: .reflectionReplay) }
-                    }
-                }
-                .buttonStyle(.bordered)
-
-                HStack(spacing: 12) {
-                    Button {
-                        Task { await seedFixtures(count: 1) }
-                    } label: {
-                        Label(isSeeding ? "..." : String(localized: "debug.action.seed1"), systemImage: "plus.circle")
-                    }
-                    .disabled(isSeeding)
-
-                    Button {
-                        Task { await seedFixtures(count: 3) }
-                    } label: {
-                        Label(isSeeding ? "..." : String(localized: "debug.action.seed3"), systemImage: "plus.circle.fill")
-                    }
-                    .disabled(isSeeding)
-
-                    Spacer()
-
-                    Button(role: .destructive) {
-                        Task { await clearFixtures() }
-                    } label: {
-                        Label("debug.action.clear", systemImage: "trash")
-                    }
-                }
-                .buttonStyle(.bordered)
-                .font(.caption)
-            } header: {
-                Text("debug.section.actions")
-            } footer: {
-                Text("debug.action.clear.footer")
-            }
-
-            // MARK: - Copy All (for current target)
-
-            if let diagnostics {
-                Section {
-                    Button {
-                        let report = buildFullDebugReport(diagnostics)
-                        UIPasteboard.general.string = report
-                        showCopiedToast(String(format: String(localized: "debug.toast.fullReportCopied"), report.count))
-                    } label: {
-                        Label("debug.export.copyReport", systemImage: "doc.on.doc.fill")
-                            .font(.headline)
-                    }
-                    .tint(.blue)
-                } header: {
-                    Text("debug.section.export")
-                } footer: {
-                    Text("debug.export.footer")
-                }
-            }
-
-            // MARK: - Error Banner
-
-            if let errorMessage {
-                Section {
-                    HStack(alignment: .top) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.red)
-                        Text(errorMessage)
-                            .font(.callout)
-                            .foregroundStyle(.red)
-                            .textSelection(.enabled)
-                        Spacer()
-                        copyButton(errorMessage, label: String(localized: "debug.detail.copy"))
-                    }
-                } header: {
-                    Label("debug.section.error", systemImage: "xmark.octagon")
-                }
-            }
-
-            // MARK: - Action Log
-
-            if !actionLog.isEmpty {
-                Section {
-                    ForEach(actionLog) { entry in
-                        HStack(alignment: .top, spacing: 8) {
-                            Image(systemName: entry.isError ? "xmark.circle.fill" : "checkmark.circle.fill")
-                                .foregroundStyle(entry.isError ? .red : .green)
-                                .font(.caption)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(entry.message)
-                                    .font(.caption.monospaced())
-                                    .lineLimit(3)
-                                Text(entry.timestamp.formatted(date: .omitted, time: .standard))
-                                    .font(.caption2)
-                                    .foregroundStyle(.tertiary)
-                            }
-                        }
-                    }
-                    Button("debug.action.clearLog", role: .destructive) {
-                        actionLog.removeAll()
-                    }
-                    .font(.caption)
-                } header: {
-                    Text(String(format: String(localized: "debug.actionLog.count"), actionLog.count))
-                }
-            }
-
-            // MARK: - Diagnostics Detail
-
-            if let diagnostics {
-
-                // Chain Status
-                Section {
-                    if let fixture = diagnostics.fixture {
-                        DebugChainRow(title: String(localized: "debug.chain.record"), isComplete: true,
-                                      detail: fixture.recordTitle,
-                                      subdetail: "ID: \(fixture.recordID.uuidString)")
-                        DebugChainRow(title: String(localized: "debug.chain.artifacts"), isComplete: !fixture.chain.artifacts.isEmpty,
-                                      detail: "\(fixture.chain.artifacts.count) item(s)",
-                                      subdetail: fixture.chain.artifacts.map { "\($0.kind.rawValue): \($0.title)" }.joined(separator: ", "))
-                        DebugChainRow(title: String(localized: "debug.chain.analysis"), isComplete: fixture.chain.analysis != nil,
-                                      detail: fixture.chain.pipelineStatus?.userLabel ?? String(localized: "debug.chain.missing"),
-                                      subdetail: analysisSubdetail(fixture.chain))
-                        DebugChainRow(title: String(localized: "debug.chain.graph"), isComplete: !fixture.chain.entities.isEmpty,
-                                      detail: "\(fixture.chain.entities.count) entities / \(fixture.chain.edges.count) edges / \(fixture.chain.links.count) links",
-                                      subdetail: fixture.chain.entities.map(\.displayName).joined(separator: ", "))
-                        DebugChainRow(title: String(localized: "debug.chain.arc"), isComplete: !fixture.chain.arcs.isEmpty,
-                                      detail: fixture.chain.arcs.map(\.title).joined(separator: ", ").ifEmpty(String(localized: "debug.chain.missing")),
-                                      subdetail: fixture.chain.arcs.map { "[\($0.status.rawValue)] \($0.id.uuidString.prefix(8))" }.joined(separator: ", "))
-                        DebugChainRow(title: String(localized: "debug.chain.reflection"), isComplete: !fixture.chain.reflections.isEmpty,
-                                      detail: fixture.chain.reflections.map(\.title).joined(separator: ", ").ifEmpty(String(localized: "debug.chain.missing")),
-                                      subdetail: fixture.chain.reflections.map { "[\($0.status.rawValue)] \($0.id.uuidString.prefix(8))" }.joined(separator: ", "))
-                    } else {
-                        Text("debug.chain.noFixture")
-                            .foregroundStyle(.secondary)
-                    }
-                } header: {
-                    Text("debug.section.chainStatus")
-                }
-
-                Section {
-                    ForEach(qualityGateRows(for: diagnostics)) { row in
-                        DebugChainRow(
-                            title: row.title,
-                            isComplete: row.passed,
-                            detail: row.result,
-                            subdetail: row.detail
-                        )
-                    }
-                } header: {
-                    Text("debug.section.qualityGates")
-                } footer: {
-                    Text("debug.quality.footer")
-                }
-
-                Section {
-                    if let fixture = diagnostics.fixture {
-                        let contextArtifacts = contextArtifacts(from: fixture.chain)
-                        if contextArtifacts.isEmpty {
-                            Text("debug.context.empty")
-                                .foregroundStyle(.secondary)
-                        } else {
-                            ForEach(contextArtifacts) { artifact in
-                                VStack(alignment: .leading, spacing: 4) {
-                                    HStack {
-                                        Label(artifact.kind.rawValue, systemImage: contextIconName(for: artifact.kind))
-                                            .font(.caption.weight(.medium))
-                                            .foregroundStyle(.secondary)
-                                        Spacer()
-                                        copyButton(artifact.id.uuidString, label: "ID")
-                                    }
-                                    Text(artifact.title)
-                                        .font(.subheadline.weight(.medium))
-                                    Text(artifact.summary)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                    if !artifact.metadata.isEmpty {
-                                        Text(artifact.metadata.map { "\($0.key)=\($0.value)" }.sorted().joined(separator: "\n"))
-                                            .font(.caption2.monospaced())
-                                            .foregroundStyle(.tertiary)
-                                            .textSelection(.enabled)
-                                    }
-                                }
-                                .padding(.vertical, 2)
-                            }
-                        }
-                    } else {
-                        Text("debug.chain.noFixture")
-                            .foregroundStyle(.secondary)
-                    }
-                } header: {
-                    Text("debug.section.contextArtifacts")
-                }
-
-                // Analyze Payload
-                Section {
-                    if let analyzePayload = diagnostics.analyzePayload {
-                        payloadRow(title: String(localized: "debug.payload.request"), content: analyzePayload.requestBody, recordID: analyzePayload.recordID)
-                        payloadRow(title: String(localized: "debug.payload.response"), content: analyzePayload.responseBody.ifEmpty(String(localized: "debug.payload.empty")), recordID: analyzePayload.recordID)
-                        if let lastError = analyzePayload.lastError?.trimmedOrNil {
-                            errorRow(String(localized: "debug.payload.error"), lastError)
-                        }
-                        if let rawErrorBody = analyzePayload.rawErrorBody?.trimmedOrNil {
-                            payloadRow(title: String(localized: "debug.payload.rawErrorBody"), content: rawErrorBody, recordID: analyzePayload.recordID)
-                        }
-                        copyAllPayloadButton("Analyze", analyzePayload: analyzePayload)
-                    } else {
-                        Text("debug.payload.noAnalysis")
-                            .foregroundStyle(.secondary)
-                    }
-                } header: {
-                    Text("debug.section.analyzePayload")
-                }
-
-                // Reflection Payload
-                Section {
-                    if let reflectionPayload = diagnostics.reflectionPayload {
-                        payloadRow(title: String(localized: "debug.payload.request"), content: reflectionPayload.requestBody, recordID: reflectionPayload.recordID)
-                        payloadRow(title: String(localized: "debug.payload.response"), content: reflectionPayload.responseBody.ifEmpty(String(localized: "debug.payload.empty")), recordID: reflectionPayload.recordID)
-                        if let lastError = reflectionPayload.lastError?.trimmedOrNil {
-                            errorRow(String(localized: "debug.payload.error"), lastError)
-                        }
-                        if let rawErrorBody = reflectionPayload.rawErrorBody?.trimmedOrNil {
-                            payloadRow(title: String(localized: "debug.payload.rawErrorBody"), content: rawErrorBody, recordID: reflectionPayload.recordID)
-                        }
-                        copyAllPayloadButton("Reflection", reflectionPayload: reflectionPayload)
-                    } else {
-                        Text("debug.payload.noReflection")
-                            .foregroundStyle(.secondary)
-                    }
-                } header: {
-                    Text("debug.section.reflectionPayload")
-                }
-
-                // Pipeline Trace
-                Section {
-                    if let pipelineTrace = diagnostics.pipelineTrace {
-                        if let failedStage = pipelineTrace.failedStage?.trimmedOrNil {
-                            HStack {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundStyle(.orange)
-                                Text(String(format: String(localized: "debug.pipeline.failedStage"), failedStage))
-                                    .font(.subheadline.weight(.medium))
-                            }
-                        }
-                        if let statusCode = pipelineTrace.statusCode {
-                            HStack {
-                                Text("debug.pipeline.httpStatus")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                Spacer()
-                                Text("\(statusCode)")
-                                    .font(.caption.monospaced())
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 2)
-                                    .background(statusCode >= 400 ? Color.red.opacity(0.15) : Color.green.opacity(0.15))
-                                    .clipShape(Capsule())
-                            }
-                        }
-                        if let requestBody = pipelineTrace.requestBody?.trimmedOrNil {
-                            payloadRow(title: String(localized: "debug.pipeline.pipelineRequest"), content: requestBody, recordID: nil)
-                        }
-                        if let responseBody = pipelineTrace.responseBody?.trimmedOrNil {
-                            payloadRow(title: String(localized: "debug.pipeline.pipelineResponse"), content: responseBody, recordID: nil)
-                        }
-                        if let rawErrorBody = pipelineTrace.rawErrorBody?.trimmedOrNil {
-                            payloadRow(title: String(localized: "debug.pipeline.pipelineError"), content: rawErrorBody, recordID: nil)
-                        }
-                        Button {
-                            let text = buildPipelineTraceReport(pipelineTrace)
-                            UIPasteboard.general.string = text
-                            showCopiedToast(String(localized: "debug.toast.pipelineTraceCopied"))
-                        } label: {
-                            Label("debug.pipeline.copyTrace", systemImage: "doc.on.doc")
-                                .font(.caption)
-                        }
-                    } else {
-                        Text("debug.pipeline.noTrace")
-                            .foregroundStyle(.secondary)
-                    }
-                } header: {
-                    Text("debug.section.pipelineTrace")
-                }
-
-                // Provenance
-                Section {
-                    if diagnostics.provenance.isEmpty {
-                        Text("debug.provenance.empty")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(diagnostics.provenance, id: \.entityID) { item in
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack {
-                                    Text(item.entityID.uuidString.prefix(8) + "...")
-                                        .font(.caption.monospaced())
-                                        .foregroundStyle(.secondary)
-                                    Spacer()
-                                    copyButton(item.entityID.uuidString, label: "ID")
-                                }
-                                HStack(spacing: 8) {
-                                    badge("aliases", count: item.aliasCount)
-                                    badge("records", count: item.provenanceRecordIDs.count)
-                                    badge("artifacts", count: item.linkedArtifactIDs.count)
-                                    badge("analyses", count: item.linkedAnalysisRecordIDs.count)
-                                }
-                                if !item.evidenceSummary.isEmpty {
-                                    Text(item.evidenceSummary)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                        .lineLimit(2)
-                                }
-                            }
-                            .padding(.vertical, 2)
-                        }
-                    }
-                } header: {
-                    Text(verbatim: "\(String(localized: "debug.section.provenance")) (\(diagnostics.provenance.count))")
-                }
-
-                // Pipeline Status List
-                Section {
-                    if pipelineStatuses.isEmpty {
-                        Text("debug.pipeline.noPipelines")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(pipelineStatuses) { item in
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack {
-                                    Text(item.title)
-                                        .font(.subheadline.weight(.medium))
-                                        .lineLimit(1)
-                                    Spacer()
-                                    pipelineStageBadge(item.status.stage)
-                                }
-                                HStack(spacing: 8) {
-                                    Text(item.recordID.uuidString.prefix(8) + "...")
-                                        .font(.caption2.monospaced())
-                                        .foregroundStyle(.tertiary)
-                                    if let lastAttempt = item.status.lastAttemptAt {
-                                        Text(lastAttempt.formatted(date: .omitted, time: .standard))
-                                            .font(.caption2)
-                                            .foregroundStyle(.tertiary)
-                                    }
-                                }
-                                if let lastError = item.status.lastError?.trimmedOrNil {
-                                    Text(lastError)
-                                        .font(.caption)
-                                        .foregroundStyle(.orange)
-                                        .lineLimit(2)
-                                }
-                            }
-                            .padding(.vertical, 2)
-                        }
-                    }
-                } header: {
-                    Text(verbatim: "\(String(localized: "debug.section.allPipelines")) (\(pipelineStatuses.count))")
-                }
-            }
-
-            // MARK: - Language Settings
-
-            Section {
-                Button {
-                    if let url = URL(string: UIApplication.openSettingsURLString) {
-                        UIApplication.shared.open(url)
-                    }
-                } label: {
-                    Label("debug.settings.language", systemImage: "globe")
-                }
-            } footer: {
-                Text("debug.settings.languageFooter")
-            }
+            authSessionSection
+            customDiagnosticMemorySection
+            targetPickerSection
+            actionsSection
+            exportSection
+            errorBannerSection
+            actionLogSection
+            diagnosticsDetailSection
+            languageSettingsSection
         }
         .navigationTitle("debug.title")
         .overlay(alignment: .bottom) {
@@ -555,6 +60,548 @@ struct DebugFullDiagnosticsView: View {
         }
         .onChange(of: selectedTargetID) { _, _ in
             Task { await refreshDiagnostics() }
+        }
+    }
+
+    // MARK: - Body Sections
+
+    @ViewBuilder
+    private var authSessionSection: some View {
+        // MARK: - Auth Session
+
+        if let authDiagnostics {
+            Section {
+                authRow(String(localized: "debug.auth.state"), authDiagnostics.state)
+                authRow(String(localized: "debug.auth.apiBaseURL"), authDiagnostics.apiBaseURL)
+                authRow(String(localized: "debug.auth.storedCredential"), yesNo(authDiagnostics.hasStoredCredential))
+                authRow(String(localized: "debug.auth.userID"), authDiagnostics.userID ?? String(localized: "debug.value.none"))
+                authRow(String(localized: "debug.auth.guest"), yesNo(authDiagnostics.isGuest))
+                authRow(String(localized: "debug.auth.accessToken"), presentMissing(authDiagnostics.hasAccessToken))
+                authRow(String(localized: "debug.auth.refreshToken"), presentMissing(authDiagnostics.hasRefreshToken))
+                authRow(String(localized: "debug.auth.appleIdentityToken"), presentMissing(authDiagnostics.hasIdentityToken))
+                authRow(String(localized: "debug.auth.expired"), yesNo(authDiagnostics.isExpired))
+                if let expiresAt = authDiagnostics.expiresAt {
+                    authRow(String(localized: "debug.auth.expires"), expiresAt.formatted(date: .abbreviated, time: .standard))
+                }
+                if let lastEvent = authDiagnostics.lastEvent?.trimmedOrNil {
+                    authRow(String(localized: "debug.auth.lastEvent"), lastEvent)
+                }
+                if let lastError = authDiagnostics.lastError?.trimmedOrNil {
+                    errorRow(String(localized: "debug.auth.error"), lastError)
+                }
+                if let status = authDiagnostics.lastHTTPStatusCode {
+                    authRow(String(localized: "debug.auth.lastHTTP"), "\(status)")
+                }
+                if let failedStage = authDiagnostics.lastFailedStage?.trimmedOrNil {
+                    authRow(String(localized: "debug.auth.failedStage"), failedStage)
+                }
+                if let response = authDiagnostics.lastResponseBody?.trimmedOrNil {
+                    payloadRow(title: String(localized: "debug.auth.responseBody"), content: response, recordID: nil)
+                }
+                Button {
+                    let report = buildAuthReport(authDiagnostics)
+                    UIPasteboard.general.string = report
+                    showCopiedToast(String(localized: "debug.toast.authReportCopied"))
+                } label: {
+                    Label("debug.auth.copyReport", systemImage: "doc.on.doc")
+                        .font(.caption)
+                }
+            } header: {
+                Text("debug.menu.auth")
+            } footer: {
+                Text("debug.auth.footer")
+            }
+        }
+
+    }
+
+    @ViewBuilder
+    private var customDiagnosticMemorySection: some View {
+        // MARK: - Custom Diagnostic Memory
+
+        Section {
+            TextField("debug.custom.title", text: $customTitle)
+            TextField("debug.custom.body", text: $customBody, axis: .vertical)
+                .lineLimit(3...8)
+            TextField("debug.custom.mood", text: $customMood)
+            TextField("debug.custom.context", text: $customContext, axis: .vertical)
+                .lineLimit(2...4)
+            Toggle("debug.custom.includeContext", isOn: $customIncludeAutoContext)
+
+            if !customContextDrafts.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("debug.custom.contextAdded")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    ForEach(customContextDrafts.indices, id: \.self) { index in
+                        Label(customContextDrafts[index].captureSummary, systemImage: customContextDrafts[index].debugIconName)
+                            .font(.caption)
+                            .lineLimit(2)
+                    }
+                }
+            }
+
+            Button {
+                Task { await createCustomDiagnosticMemory() }
+            } label: {
+                Label(isCreatingCustomMemory ? String(localized: "debug.custom.creating") : String(localized: "debug.custom.create"), systemImage: "plus.square.on.square")
+            }
+            .disabled(isCreatingCustomMemory || (customTitle.trimmedOrNil == nil && customBody.trimmedOrNil == nil))
+        } header: {
+            Text("debug.section.customDiagnostic")
+        } footer: {
+            Text("debug.custom.footer")
+        }
+
+    }
+
+    @ViewBuilder
+    private var targetPickerSection: some View {
+        // MARK: - Target Picker
+
+        Section {
+            Picker("debug.target.type", selection: $targetType) {
+                ForEach(DebugAnalysisTarget.allCases) { item in
+                    Text(item.rawValue.capitalized).tag(item)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            Picker("debug.target.picker", selection: Binding(
+                get: { selectedTargetID?.uuidString ?? "__latest__" },
+                set: { value in
+                    selectedTargetID = value == "__latest__" ? nil : UUID(uuidString: value)
+                }
+            )) {
+                Text("debug.target.latest").tag("__latest__")
+                ForEach(recentTargets) { item in
+                    Text(item.title).tag(item.id.uuidString)
+                }
+            }
+
+            if let target = diagnostics?.target {
+                HStack {
+                    Image(systemName: "scope")
+                        .foregroundStyle(.blue)
+                    Text(targetLabel(for: target))
+                        .font(.subheadline.weight(.medium))
+                    Spacer()
+                    copyButton(targetIDText(for: target), label: "ID")
+                }
+            }
+        } header: {
+            Text("debug.section.target")
+        }
+
+    }
+
+    @ViewBuilder
+    private var actionsSection: some View {
+        // MARK: - Actions
+
+        Section {
+            Button {
+                Task { await refreshDiagnostics() }
+            } label: {
+                Label(isReloading ? String(localized: "debug.action.loading") : String(localized: "debug.action.refresh"), systemImage: "arrow.clockwise")
+            }
+            .disabled(isReloading)
+
+            HStack(spacing: 12) {
+                actionButton(String(localized: "debug.action.analysis"), icon: "wand.and.stars", isActive: isRebuilding) {
+                    Task { await rebuild(mode: .analysisOnly) }
+                }
+                actionButton(String(localized: "debug.action.graphArcRef"), icon: "point.3.connected.trianglepath.dotted", isActive: isRebuilding) {
+                    Task { await rebuild(mode: .graphArcReflection) }
+                }
+                actionButton(String(localized: "debug.action.replay"), icon: "arrow.counterclockwise", isActive: isRebuilding) {
+                    Task { await rebuild(mode: .reflectionReplay) }
+                }
+            }
+            .buttonStyle(.bordered)
+
+            HStack(spacing: 12) {
+                Button {
+                    Task { await seedFixtures(count: 1) }
+                } label: {
+                    Label(isSeeding ? "..." : String(localized: "debug.action.seed1"), systemImage: "plus.circle")
+                }
+                .disabled(isSeeding)
+
+                Button {
+                    Task { await seedFixtures(count: 3) }
+                } label: {
+                    Label(isSeeding ? "..." : String(localized: "debug.action.seed3"), systemImage: "plus.circle.fill")
+                }
+                .disabled(isSeeding)
+
+                Spacer()
+
+                Button(role: .destructive) {
+                    Task { await clearFixtures() }
+                } label: {
+                    Label("debug.action.clear", systemImage: "trash")
+                }
+            }
+            .buttonStyle(.bordered)
+            .font(.caption)
+        } header: {
+            Text("debug.section.actions")
+        } footer: {
+            Text("debug.action.clear.footer")
+        }
+
+    }
+
+    @ViewBuilder
+    private var exportSection: some View {
+        // MARK: - Copy All (for current target)
+
+        if let diagnostics {
+            Section {
+                Button {
+                    let report = buildFullDebugReport(diagnostics)
+                    UIPasteboard.general.string = report
+                    showCopiedToast(String(format: String(localized: "debug.toast.fullReportCopied"), report.count))
+                } label: {
+                    Label("debug.export.copyReport", systemImage: "doc.on.doc.fill")
+                        .font(.headline)
+                }
+                .tint(.blue)
+            } header: {
+                Text("debug.section.export")
+            } footer: {
+                Text("debug.export.footer")
+            }
+        }
+
+    }
+
+    @ViewBuilder
+    private var errorBannerSection: some View {
+        // MARK: - Error Banner
+
+        if let errorMessage {
+            Section {
+                HStack(alignment: .top) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.red)
+                    Text(errorMessage)
+                        .font(.callout)
+                        .foregroundStyle(.red)
+                        .textSelection(.enabled)
+                    Spacer()
+                    copyButton(errorMessage, label: String(localized: "debug.detail.copy"))
+                }
+            } header: {
+                Label("debug.section.error", systemImage: "xmark.octagon")
+            }
+        }
+
+    }
+
+    @ViewBuilder
+    private var actionLogSection: some View {
+        // MARK: - Action Log
+
+        if !actionLog.isEmpty {
+            Section {
+                ForEach(actionLog) { entry in
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: entry.isError ? "xmark.circle.fill" : "checkmark.circle.fill")
+                            .foregroundStyle(entry.isError ? .red : .green)
+                            .font(.caption)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(entry.message)
+                                .font(.caption.monospaced())
+                                .lineLimit(3)
+                            Text(entry.timestamp.formatted(date: .omitted, time: .standard))
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                }
+                Button("debug.action.clearLog", role: .destructive) {
+                    actionLog.removeAll()
+                }
+                .font(.caption)
+            } header: {
+                Text(String(format: String(localized: "debug.actionLog.count"), actionLog.count))
+            }
+        }
+
+    }
+
+    @ViewBuilder
+    private var diagnosticsDetailSection: some View {
+        // MARK: - Diagnostics Detail
+
+        if let diagnostics {
+
+            // Chain Status
+            Section {
+                if let fixture = diagnostics.fixture {
+                    DebugChainRow(title: String(localized: "debug.chain.record"), isComplete: true,
+                                  detail: fixture.recordTitle,
+                                  subdetail: "ID: \(fixture.recordID.uuidString)")
+                    DebugChainRow(title: String(localized: "debug.chain.artifacts"), isComplete: !fixture.chain.artifacts.isEmpty,
+                                  detail: "\(fixture.chain.artifacts.count) item(s)",
+                                  subdetail: fixture.chain.artifacts.map { "\($0.kind.rawValue): \($0.title)" }.joined(separator: ", "))
+                    DebugChainRow(title: String(localized: "debug.chain.analysis"), isComplete: fixture.chain.analysis != nil,
+                                  detail: fixture.chain.pipelineStatus?.userLabel ?? String(localized: "debug.chain.missing"),
+                                  subdetail: analysisSubdetail(fixture.chain))
+                    DebugChainRow(title: String(localized: "debug.chain.graph"), isComplete: !fixture.chain.entities.isEmpty,
+                                  detail: "\(fixture.chain.entities.count) entities / \(fixture.chain.edges.count) edges / \(fixture.chain.links.count) links",
+                                  subdetail: fixture.chain.entities.map(\.displayName).joined(separator: ", "))
+                    DebugChainRow(title: String(localized: "debug.chain.arc"), isComplete: !fixture.chain.arcs.isEmpty,
+                                  detail: fixture.chain.arcs.map(\.title).joined(separator: ", ").ifEmpty(String(localized: "debug.chain.missing")),
+                                  subdetail: fixture.chain.arcs.map { "[\($0.status.rawValue)] \($0.id.uuidString.prefix(8))" }.joined(separator: ", "))
+                    DebugChainRow(title: String(localized: "debug.chain.reflection"), isComplete: !fixture.chain.reflections.isEmpty,
+                                  detail: fixture.chain.reflections.map(\.title).joined(separator: ", ").ifEmpty(String(localized: "debug.chain.missing")),
+                                  subdetail: fixture.chain.reflections.map { "[\($0.status.rawValue)] \($0.id.uuidString.prefix(8))" }.joined(separator: ", "))
+                } else {
+                    Text("debug.chain.noFixture")
+                        .foregroundStyle(.secondary)
+                }
+            } header: {
+                Text("debug.section.chainStatus")
+            }
+
+            Section {
+                ForEach(qualityGateRows(for: diagnostics)) { row in
+                    DebugChainRow(
+                        title: row.title,
+                        isComplete: row.passed,
+                        detail: row.result,
+                        subdetail: row.detail
+                    )
+                }
+            } header: {
+                Text("debug.section.qualityGates")
+            } footer: {
+                Text("debug.quality.footer")
+            }
+
+            Section {
+                if let fixture = diagnostics.fixture {
+                    let contextArtifacts = contextArtifacts(from: fixture.chain)
+                    if contextArtifacts.isEmpty {
+                        Text("debug.context.empty")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(contextArtifacts) { artifact in
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Label(artifact.kind.rawValue, systemImage: contextIconName(for: artifact.kind))
+                                        .font(.caption.weight(.medium))
+                                        .foregroundStyle(.secondary)
+                                    Spacer()
+                                    copyButton(artifact.id.uuidString, label: "ID")
+                                }
+                                Text(artifact.title)
+                                    .font(.subheadline.weight(.medium))
+                                Text(artifact.summary)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                if !artifact.metadata.isEmpty {
+                                    Text(artifact.metadata.map { "\($0.key)=\($0.value)" }.sorted().joined(separator: "\n"))
+                                        .font(.caption2.monospaced())
+                                        .foregroundStyle(.tertiary)
+                                        .textSelection(.enabled)
+                                }
+                            }
+                            .padding(.vertical, 2)
+                        }
+                    }
+                } else {
+                    Text("debug.chain.noFixture")
+                        .foregroundStyle(.secondary)
+                }
+            } header: {
+                Text("debug.section.contextArtifacts")
+            }
+
+            // Analyze Payload
+            Section {
+                if let analyzePayload = diagnostics.analyzePayload {
+                    payloadRow(title: String(localized: "debug.payload.request"), content: analyzePayload.requestBody, recordID: analyzePayload.recordID)
+                    payloadRow(title: String(localized: "debug.payload.response"), content: analyzePayload.responseBody.ifEmpty(String(localized: "debug.payload.empty")), recordID: analyzePayload.recordID)
+                    if let lastError = analyzePayload.lastError?.trimmedOrNil {
+                        errorRow(String(localized: "debug.payload.error"), lastError)
+                    }
+                    if let rawErrorBody = analyzePayload.rawErrorBody?.trimmedOrNil {
+                        payloadRow(title: String(localized: "debug.payload.rawErrorBody"), content: rawErrorBody, recordID: analyzePayload.recordID)
+                    }
+                    copyAllPayloadButton("Analyze", analyzePayload: analyzePayload)
+                } else {
+                    Text("debug.payload.noAnalysis")
+                        .foregroundStyle(.secondary)
+                }
+            } header: {
+                Text("debug.section.analyzePayload")
+            }
+
+            // Reflection Payload
+            Section {
+                if let reflectionPayload = diagnostics.reflectionPayload {
+                    payloadRow(title: String(localized: "debug.payload.request"), content: reflectionPayload.requestBody, recordID: reflectionPayload.recordID)
+                    payloadRow(title: String(localized: "debug.payload.response"), content: reflectionPayload.responseBody.ifEmpty(String(localized: "debug.payload.empty")), recordID: reflectionPayload.recordID)
+                    if let lastError = reflectionPayload.lastError?.trimmedOrNil {
+                        errorRow(String(localized: "debug.payload.error"), lastError)
+                    }
+                    if let rawErrorBody = reflectionPayload.rawErrorBody?.trimmedOrNil {
+                        payloadRow(title: String(localized: "debug.payload.rawErrorBody"), content: rawErrorBody, recordID: reflectionPayload.recordID)
+                    }
+                    copyAllPayloadButton("Reflection", reflectionPayload: reflectionPayload)
+                } else {
+                    Text("debug.payload.noReflection")
+                        .foregroundStyle(.secondary)
+                }
+            } header: {
+                Text("debug.section.reflectionPayload")
+            }
+
+            // Pipeline Trace
+            Section {
+                if let pipelineTrace = diagnostics.pipelineTrace {
+                    if let failedStage = pipelineTrace.failedStage?.trimmedOrNil {
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.orange)
+                            Text(String(format: String(localized: "debug.pipeline.failedStage"), failedStage))
+                                .font(.subheadline.weight(.medium))
+                        }
+                    }
+                    if let statusCode = pipelineTrace.statusCode {
+                        HStack {
+                            Text("debug.pipeline.httpStatus")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Text("\(statusCode)")
+                                .font(.caption.monospaced())
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 2)
+                                .background(statusCode >= 400 ? Color.red.opacity(0.15) : Color.green.opacity(0.15))
+                                .clipShape(Capsule())
+                        }
+                    }
+                    if let requestBody = pipelineTrace.requestBody?.trimmedOrNil {
+                        payloadRow(title: String(localized: "debug.pipeline.pipelineRequest"), content: requestBody, recordID: nil)
+                    }
+                    if let responseBody = pipelineTrace.responseBody?.trimmedOrNil {
+                        payloadRow(title: String(localized: "debug.pipeline.pipelineResponse"), content: responseBody, recordID: nil)
+                    }
+                    if let rawErrorBody = pipelineTrace.rawErrorBody?.trimmedOrNil {
+                        payloadRow(title: String(localized: "debug.pipeline.pipelineError"), content: rawErrorBody, recordID: nil)
+                    }
+                    Button {
+                        let text = buildPipelineTraceReport(pipelineTrace)
+                        UIPasteboard.general.string = text
+                        showCopiedToast(String(localized: "debug.toast.pipelineTraceCopied"))
+                    } label: {
+                        Label("debug.pipeline.copyTrace", systemImage: "doc.on.doc")
+                            .font(.caption)
+                    }
+                } else {
+                    Text("debug.pipeline.noTrace")
+                        .foregroundStyle(.secondary)
+                }
+            } header: {
+                Text("debug.section.pipelineTrace")
+            }
+
+            // Provenance
+            Section {
+                if diagnostics.provenance.isEmpty {
+                    Text("debug.provenance.empty")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(diagnostics.provenance, id: \.entityID) { item in
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text(item.entityID.uuidString.prefix(8) + "...")
+                                    .font(.caption.monospaced())
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                copyButton(item.entityID.uuidString, label: "ID")
+                            }
+                            HStack(spacing: 8) {
+                                badge("aliases", count: item.aliasCount)
+                                badge("records", count: item.provenanceRecordIDs.count)
+                                badge("artifacts", count: item.linkedArtifactIDs.count)
+                                badge("analyses", count: item.linkedAnalysisRecordIDs.count)
+                            }
+                            if !item.evidenceSummary.isEmpty {
+                                Text(item.evidenceSummary)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(2)
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+            } header: {
+                Text(verbatim: "\(String(localized: "debug.section.provenance")) (\(diagnostics.provenance.count))")
+            }
+
+            // Pipeline Status List
+            Section {
+                if pipelineStatuses.isEmpty {
+                    Text("debug.pipeline.noPipelines")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(pipelineStatuses) { item in
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text(item.title)
+                                    .font(.subheadline.weight(.medium))
+                                    .lineLimit(1)
+                                Spacer()
+                                pipelineStageBadge(item.status.stage)
+                            }
+                            HStack(spacing: 8) {
+                                Text(item.recordID.uuidString.prefix(8) + "...")
+                                    .font(.caption2.monospaced())
+                                    .foregroundStyle(.tertiary)
+                                if let lastAttempt = item.status.lastAttemptAt {
+                                    Text(lastAttempt.formatted(date: .omitted, time: .standard))
+                                        .font(.caption2)
+                                        .foregroundStyle(.tertiary)
+                                }
+                            }
+                            if let lastError = item.status.lastError?.trimmedOrNil {
+                                Text(lastError)
+                                    .font(.caption)
+                                    .foregroundStyle(.orange)
+                                    .lineLimit(2)
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+            } header: {
+                Text(verbatim: "\(String(localized: "debug.section.allPipelines")) (\(pipelineStatuses.count))")
+            }
+        }
+
+    }
+
+    @ViewBuilder
+    private var languageSettingsSection: some View {
+        // MARK: - Language Settings
+
+        Section {
+            Button {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            } label: {
+                Label("debug.settings.language", systemImage: "globe")
+            }
+        } footer: {
+            Text("debug.settings.languageFooter")
         }
     }
 
