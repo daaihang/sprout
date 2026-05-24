@@ -1,4 +1,7 @@
 import Foundation
+import OSLog
+
+private let log = Logger(subsystem: "com.mory", category: "intelligence")
 
 struct IntelligenceJobWorkerReport: Hashable, Sendable {
     var completedJobIDs: [UUID] = []
@@ -35,11 +38,20 @@ struct IntelligenceJobWorker {
     ) async -> IntelligenceJobWorkerReport {
         var report = IntelligenceJobWorkerReport()
 
-        guard let flags = try? repository.fetchV6FeatureFlags(), flags.intelligenceJobs else {
+        let flags: V6FeatureFlags
+        do {
+            flags = try repository.fetchV6FeatureFlags()
+        } catch {
+            log.error("fetchV6FeatureFlags failed, skipping job processing: \(error)")
             return report
         }
+        guard flags.intelligenceJobs else { return report }
 
-        guard let allJobs = try? repository.fetchIntelligenceJobs(status: .pending, limit: nil) else {
+        let allJobs: [IntelligenceJob]
+        do {
+            allJobs = try repository.fetchIntelligenceJobs(status: .pending, limit: nil)
+        } catch {
+            log.error("fetchIntelligenceJobs failed, skipping job processing: \(error)")
             return report
         }
 
@@ -74,7 +86,11 @@ struct IntelligenceJobWorker {
                 failed.lastError = error.localizedDescription
                 failed.completedAt = now
                 failed.updatedAt = now
-                try? repository.upsertIntelligenceJob(failed)
+                do {
+                    try repository.upsertIntelligenceJob(failed)
+                } catch let persistError {
+                    log.error("Failed to persist failed state for job \(job.id): \(persistError)")
+                }
                 report.failedJobIDs.append(job.id)
             }
         }

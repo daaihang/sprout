@@ -382,6 +382,7 @@
 				MORY_API_BASE_URL = "https://sprout-god7g.fly.dev";
 				"MORY_API_BASE_URL[sdk=iphonesimulator*]" = "http://127.0.0.1:8080";
 				MORY_BUILD_CHANNEL = InternalBeta;
+				SENTRY_DSN = "https://d624d4d4895392324795af6ca75d417f@o4511207272480768.ingest.us.sentry.io/4511413248524288";
 				PRODUCT_BUNDLE_IDENTIFIER = com.speculolabs.mory;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -436,6 +437,7 @@
 				MORY_API_BASE_URL = "https://sprout-god7g.fly.dev";
 				"MORY_API_BASE_URL[sdk=iphonesimulator*]" = "http://127.0.0.1:8080";
 				MORY_BUILD_CHANNEL = InternalBeta;
+				SENTRY_DSN = "https://d624d4d4895392324795af6ca75d417f@o4511207272480768.ingest.us.sentry.io/4511413248524288";
 				PRODUCT_BUNDLE_IDENTIFIER = com.speculolabs.mory;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;

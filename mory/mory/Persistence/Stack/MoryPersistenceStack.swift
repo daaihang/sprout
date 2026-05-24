@@ -1,5 +1,9 @@
 import Foundation
+import OSLog
+import Sentry
 import SwiftData
+
+private let log = Logger(subsystem: "com.mory", category: "persistence")
 
 enum MoryLocalDataScope: Hashable, Sendable {
     case legacy
@@ -80,7 +84,10 @@ struct MoryPersistenceStack {
         do {
             return try makeModelContainer(inMemory: inMemory, scope: scope, baseDirectory: baseDirectory)
         } catch {
-            fatalError("Failed to create Mory model container: \(error)")
+            let msg = "Failed to create Mory model container: \(error)"
+            log.critical("\(msg)")
+            SentrySDK.capture(error: error)
+            fatalError(msg)
         }
     }
 

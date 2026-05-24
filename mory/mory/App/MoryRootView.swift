@@ -1,6 +1,10 @@
 import Combine
+import OSLog
+import Sentry
 import SwiftUI
 import UIKit
+
+private let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.mory", category: "app")
 
 struct MoryRootView: View {
     let authManager: AuthSessionManager?
@@ -25,6 +29,9 @@ struct MoryRootView: View {
     @State private var isEditingHomeBoard = false
     @State private var isPresentingMemoriesFilters = false
     @State private var searchQuery = ""
+    @State private var notificationTask: Task<Void, Never>?
+    @State private var pushSyncTask: Task<Void, Never>?
+    @State private var externalCaptureTask: Task<Void, Never>?
     private let notificationInteractionService = NotificationInteractionService()
     private let startupRecoveryService = AppIntelligenceRecoveryService()
 
@@ -124,12 +131,12 @@ struct MoryRootView: View {
             )
         }
         .onReceive(notificationInbox.$latestEvent.compactMap { $0 }) { event in
-            Task {
-                await handleNotificationInteraction(event)
-            }
+            notificationTask?.cancel()
+            notificationTask = Task { await handleNotificationInteraction(event) }
         }
         .onReceive(NotificationCenter.default.publisher(for: .moryAPNSTokenDidUpdate)) { _ in
-            Task {
+            pushSyncTask?.cancel()
+            pushSyncTask = Task {
                 await remotePushSyncService.syncRegistrationIfPossible(
                     repository: memoryRepository,
                     force: true
@@ -137,9 +144,8 @@ struct MoryRootView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .moryNotificationPreferencesDidChange)) { _ in
-            Task {
-                await syncRemotePushRegistration(force: true)
-            }
+            pushSyncTask?.cancel()
+            pushSyncTask = Task { await syncRemotePushRegistration(force: true) }
         }
         .task {
             await recoverStartupIntelligenceIfNeeded()
@@ -147,10 +153,12 @@ struct MoryRootView: View {
         }
         .onOpenURL { url in
             pendingExternalCaptureURL = url
-            Task { await handlePendingExternalCaptureURLIfNeeded() }
+            externalCaptureTask?.cancel()
+            externalCaptureTask = Task { await handlePendingExternalCaptureURLIfNeeded() }
         }
         .onChange(of: pendingExternalCaptureURL) { _, _ in
-            Task { await handlePendingExternalCaptureURLIfNeeded() }
+            externalCaptureTask?.cancel()
+            externalCaptureTask = Task { await handlePendingExternalCaptureURLIfNeeded() }
         }
         .onChange(of: selectedTab) { _, tab in
             if tab != .today {
@@ -380,7 +388,8 @@ struct MoryRootView: View {
             guard let route = result.route else { return }
             apply(route)
         } catch {
-            assertionFailure("Failed to handle notification interaction: \(error)")
+            log.error("Failed to handle notification interaction: \(error)")
+            SentrySDK.capture(error: error)
         }
     }
 

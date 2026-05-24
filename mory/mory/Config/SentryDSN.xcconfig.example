@@ -1,0 +1,5 @@
+// SentryDSN.xcconfig.example
+// 复制此文件为 SentryDSN.xcconfig（同目录），填入真实 DSN。
+// SentryDSN.xcconfig 已加入 .gitignore，不会被提交。
+
+SENTRY_DSN =

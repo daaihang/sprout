@@ -1,5 +1,8 @@
 import Foundation
+import OSLog
 import UserNotifications
+
+private let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.mory", category: "app")
 
 @MainActor
 struct MoryOwnerScopedSystemStateCoordinator {
@@ -27,15 +30,31 @@ struct MoryOwnerScopedSystemStateCoordinator {
         }
 
         clearSystemNotifications()
-        _ = try? await repository.deleteSpotlightIndex()
-        _ = try? await repository.rebuildSpotlightIndex()
+        do {
+            try await repository.deleteSpotlightIndex()
+        } catch {
+            log.warning("Spotlight delete failed on owner switch: \(error)")
+        }
+        do {
+            try await repository.rebuildSpotlightIndex()
+        } catch {
+            log.warning("Spotlight rebuild failed on owner switch: \(error)")
+        }
         defaults.set(ownerID, forKey: LocalDataOwnerRegistry.activeOwnerDefaultsKey)
     }
 
     func clearActiveOwnerSystemState(repository: any MoryMemoryRepositorying) async {
-        _ = try? await LocalNotificationScheduler().cancelPendingAndScheduledLocalIntents(repository: repository)
+        do {
+            try await LocalNotificationScheduler().cancelPendingAndScheduledLocalIntents(repository: repository)
+        } catch {
+            log.warning("Cancel pending notifications failed on owner clear: \(error)")
+        }
         clearSystemNotifications()
-        _ = try? await repository.deleteSpotlightIndex()
+        do {
+            try await repository.deleteSpotlightIndex()
+        } catch {
+            log.warning("Spotlight delete failed on owner clear: \(error)")
+        }
         defaults.removeObject(forKey: LocalDataOwnerRegistry.activeOwnerDefaultsKey)
     }
 

@@ -1,5 +1,9 @@
+import OSLog
+import Sentry
 import UIKit
 import UserNotifications
+
+private let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.mory", category: "app")
 
 final class MoryAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     let backgroundTaskCoordinator = BackgroundTaskCoordinator()
@@ -43,11 +47,16 @@ final class MoryAppDelegate: NSObject, UIApplicationDelegate, UNUserNotification
                 completionHandler(.noData)
                 return
             }
-            _ = try? NotificationIntentPreparationService().prepareNextIntentIfNeeded(repository: repo)
-            _ = try? await LocalNotificationScheduler().schedulePendingIntents(
-                repository: repo,
-                requestAuthorizationIfNeeded: false
-            )
+            do {
+                _ = try NotificationIntentPreparationService().prepareNextIntentIfNeeded(repository: repo)
+                _ = try await LocalNotificationScheduler().schedulePendingIntents(
+                    repository: repo,
+                    requestAuthorizationIfNeeded: false
+                )
+            } catch {
+                log.error("Background notification prep failed: \(error)")
+                SentrySDK.capture(error: error)
+            }
             completionHandler(.newData)
         }
     }

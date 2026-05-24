@@ -1,4 +1,8 @@
+import OSLog
+import Sentry
 import SwiftUI
+
+private let diLog = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.mory", category: "di")
 
 private struct MemoryRepositoryKey: EnvironmentKey {
     @MainActor
@@ -43,7 +47,10 @@ extension EnvironmentValues {
 @MainActor
 private final class MissingMemoryRepository: MoryMemoryRepositorying {
     private func fail<T>() -> T {
-        fatalError("Memory repository dependency was not injected.")
+        let msg = "Memory repository dependency was not injected."
+        diLog.critical("\(msg)")
+        SentrySDK.capture(error: NSError(domain: "MoryDI", code: -1, userInfo: [NSLocalizedDescriptionKey: msg]))
+        fatalError(msg)
     }
 
     func createMemory(from draft: MemoryCaptureDraft) async throws -> MemorySummary { fail() }
@@ -160,7 +167,10 @@ private final class MissingMemoryRepository: MoryMemoryRepositorying {
 
 private struct MissingCloudIntelligenceService: CloudIntelligenceServing {
     private func fail<T>() -> T {
-        fatalError("Cloud intelligence dependency was not injected.")
+        let msg = "Cloud intelligence dependency was not injected."
+        diLog.critical("\(msg)")
+        SentrySDK.capture(error: NSError(domain: "MoryDI", code: -2, userInfo: [NSLocalizedDescriptionKey: msg]))
+        fatalError(msg)
     }
 
     func refineTranscript(_ payload: MoryAPIClient.TranscriptRefinementPayload) async throws -> MoryAPIClient.TranscriptRefinementResponse { fail() }
@@ -176,7 +186,10 @@ private final class MissingRemotePushSyncService: RemotePushSyncing {
     func registerSystemRemoteNotificationsIfNeeded(repository: any MoryMemoryRepositorying) {}
     func syncRegistrationIfPossible(repository: any MoryMemoryRepositorying, force: Bool) async {}
     func enqueueRemoteNotificationIntent(_ intent: NotificationIntent) async throws -> MoryAPIClient.PushEnqueueResponse {
-        fatalError("Remote push sync dependency was not injected.")
+        let msg = "Remote push sync dependency was not injected."
+        diLog.critical("\(msg)")
+        SentrySDK.capture(error: NSError(domain: "MoryDI", code: -3, userInfo: [NSLocalizedDescriptionKey: msg]))
+        fatalError(msg)
     }
     func writeBackInteraction(_ event: NotificationInteractionEvent) async {}
     func fetchDebugSnapshot(repository: any MoryMemoryRepositorying) async -> RemotePushDebugSnapshot {
@@ -194,7 +207,10 @@ private final class MissingRemotePushSyncService: RemotePushSyncing {
         )
     }
     func fetchServerMetricsText() async throws -> String {
-        fatalError("Remote push sync dependency was not injected.")
+        let msg = "Remote push sync dependency was not injected."
+        diLog.critical("\(msg)")
+        SentrySDK.capture(error: NSError(domain: "MoryDI", code: -3, userInfo: [NSLocalizedDescriptionKey: msg]))
+        fatalError(msg)
     }
     func prepareForLocalDataOwner(_ ownerID: String) {}
 }

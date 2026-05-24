@@ -4,6 +4,8 @@
 <dict>
 	<key>MORY_BUILD_CHANNEL</key>
 	<string>$(MORY_BUILD_CHANNEL)</string>
+	<key>SentryDSN</key>
+	<string>$(SENTRY_DSN)</string>
 	<key>MORY_API_BASE_URL</key>
 	<string>$(MORY_API_BASE_URL)</string>
 	<key>MORY_DEV_AUTH_IDENTITY_TOKEN</key>

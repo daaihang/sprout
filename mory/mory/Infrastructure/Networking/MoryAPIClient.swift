@@ -181,11 +181,20 @@ struct MoryAPIClient: Sendable {
         failedStage: String,
         errorDescription: String
     ) {
+        // Truncate body in all builds to prevent accidental credential exposure via memory/crash dumps.
+        // In non-debug builds, body is fully redacted since it may contain user data or auth tokens.
+        #if DEBUG
+        let safeBody = responseBody.map { String($0.prefix(2000)) }
+        let safeRawBody = rawErrorBody.map { String($0.prefix(500)) }
+        #else
+        let safeBody = responseBody.map { _ in "[body redacted]" }
+        let safeRawBody = rawErrorBody.map { _ in "[body redacted]" }
+        #endif
         let snapshot = DebugErrorSnapshot(
             requestID: requestID,
             statusCode: statusCode,
-            responseBody: responseBody,
-            rawErrorBody: rawErrorBody,
+            responseBody: safeBody,
+            rawErrorBody: safeRawBody,
             failedStage: failedStage,
             errorDescription: errorDescription
         )

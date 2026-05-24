@@ -51,7 +51,7 @@ struct MoryApp: App {
 
     private static func configureSentry(runtimeEnvironment: AppRuntimeEnvironment) {
         SentrySDK.start { options in
-            options.dsn = "https://d624d4d4895392324795af6ca75d417f@o4511207272480768.ingest.us.sentry.io/4511413248524288"
+            options.dsn = Bundle.main.infoDictionary?["SentryDSN"] as? String ?? ""
             options.environment = runtimeEnvironment.buildChannel.rawValue
             options.releaseName = "\(runtimeEnvironment.bundleIdentifier)@\(runtimeEnvironment.version)+\(runtimeEnvironment.buildNumber)"
             options.dist = runtimeEnvironment.buildNumber
