@@ -182,3 +182,47 @@ protocol IntelligenceJobRepositorying:
 protocol AppIntelligenceRecoveryRepositorying:
     IntelligenceRecoveryRepositorying,
     IntelligenceJobRepositorying {}
+
+@MainActor
+protocol MoryMemoryRepositorying:
+    MemoryCaptureRepositorying,
+    MemoryLibraryRepositorying,
+    MemoryProfileGraphRepositorying,
+    MemoryIntelligenceRepositorying,
+    MemorySettingsRepositorying,
+    ExternalCaptureRepositorying,
+    MemoryDebugRepositorying,
+    AnalysisContextPackRepositorying,
+    NotificationPreparationRepositorying,
+    DailyQuestionRepositorying,
+    IntelligenceRecoveryRepositorying,
+    IntelligenceJobRepositorying,
+    AppIntelligenceRecoveryRepositorying,
+    NotificationIntentRepositorying {}
+
+protocol RecordAnalysisServing: Sendable {
+    func analyze(
+        record: RecordShell,
+        artifacts: [Artifact],
+        knownEntities: [EntityReference]
+    ) async throws -> RecordAnalysisSnapshot
+
+    func generateReflection(
+        record: RecordShell,
+        artifacts: [Artifact],
+        linkedArcID: UUID?,
+        knownEntities: [EntityReference],
+        prompt: String?
+    ) async throws -> ReflectionServiceResult
+
+    func replayReflection(
+        reflection: ReflectionSnapshot,
+        linkedArc: TemporalArc?,
+        record: RecordShell?,
+        artifacts: [Artifact],
+        knownEntities: [EntityReference],
+        prompt: String?
+    ) async throws -> ReflectionServiceResult
+
+    func latestDebugTrace() async -> DebugPipelineTraceSnapshot?
+}

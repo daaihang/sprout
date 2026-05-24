@@ -8,6 +8,7 @@
 | --- | --- | --- | --- |
 | Batch 1: Repository Port Split | completed | `MoryMemoryRepositorying` 已拆成 capture、library、profile/graph、intelligence、settings、external capture、debug 等小端口；核心 intelligence/notification/capture services 已改为接收更窄依赖 | App environment、Settings、Debug 仍保留 composite repository；use case service extraction 属于 Batch 2/C2 后续工作 |
 | Batch 2: Analysis Pipeline Ports | completed | `ArchitecturePipelineExecutor` 已移除 SwiftData/`ModelContext` 依赖，改为 `AnalysisPipelineQuerying/Persisting/Tracing/RuntimeScoping/ContextPacking` ports；repository 作为 SwiftData-backed adapter；新增纯 mock pipeline tests | `MoryMemoryRepository` 仍承担 use case 编排和 SwiftData adapter；C2 use case service extraction 仍未开始 |
+| Batch 3: Domain Model Split | completed | `MemoryFeatureModels.swift` 已按 settings、capture、library、search、graph presentation、timeline、string helpers 和 repository contracts 拆分；类型名和行为保持不变 | C2 use case extraction、Batch 4 capture UI split、Batch 5 shared/API/server split 仍未开始 |
 
 ## 1. Critical
 
@@ -15,7 +16,7 @@
 | --- | --- | --- | --- | --- |
 | C1 | `MoryMemoryRepositorying` 超大协议 | 测试难、UI/Debug 误用、service 依赖面过宽 | 已完成第一轮 port split；继续逐步迁移 broad consumers | focused compile + service tests 通过 |
 | C2 | `MoryMemoryRepository` 仍是 God object | 多事务、多 helper、多 service 聚合，长期难维护 | 抽 use case service：memory creation、mutation、entity mutation、external import | repository tests 不减少，新增 service tests |
-| C3 | `MemoryFeatureModels.swift` 承担过多 domain/presentation/protocol | Domain 层成为杂物间，后续 v8 模型难定位 | 拆 Capture/Library/Search/GraphPresentation/RepositoryPorts | 全量 build + model tests |
+| C3 | `MemoryFeatureModels.swift` 承担过多 domain/presentation/protocol | Domain 层成为杂物间，后续 v8 模型难定位 | 已拆成 Settings/Capture/Library/Search/GraphPresentation/Timeline/StringHelpers/RepositoryPorts | 全量 build + model tests |
 | C4 | Analyze pipeline 直接依赖 `ModelContext` | Analysis 逻辑被 SwiftData 绑定，后台/测试/替换困难 | 已引入 `AnalysisPipelineQuerying/Persisting/Tracing/RuntimeScoping/ContextPacking`，executor 不再 import SwiftData | pipeline unit tests 不启动 SwiftData；v7 production repository tests 继续覆盖真实 SwiftData adapter |
 
 ## 2. Important
@@ -90,6 +91,7 @@
 目标：
 
 - `MemoryFeatureModels.swift` 拆成稳定领域文件。
+- 当前状态：completed。原大文件已删除，模型按领域拆分到 `Domain/Memory` 多个文件，repository composite 和 `RecordAnalysisServing` 已移动到 `MemoryRepositoryPorts.swift`。
 
 步骤：
 
