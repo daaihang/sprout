@@ -156,103 +156,15 @@ extension MoryMemoryRepository {
     }
 
     func refreshPersonProfile(entityID: UUID, now: Date = .now) throws -> PersonProfile? {
-        guard let detail = try fetchEntityDetail(entityID: entityID), detail.entity.kind == .person else {
-            return nil
-        }
-        let entityProfile = try fetchEntityProfile(entityID: entityID)
-        let existing = try fetchPersonProfile(entityID: entityID)
-        let refreshed = try buildPersonProfile(
-            detail: detail,
-            entityProfile: entityProfile,
-            existing: existing,
-            now: now
-        )
-        try upsert(personProfile: refreshed)
-        try save()
-        return refreshed
+        try EntityMutationUseCase(repository: self).refreshPersonProfile(entityID: entityID, now: now)
     }
 
     func applyPersonProfileMutation(_ mutation: PersonProfileMutation) throws -> PersonProfile {
-        let now = mutation.createdAt
-        let existing = try fetchPersonProfile(entityID: mutation.entityID)
-        let profile = if let existing {
-            existing
-        } else if let refreshed = try refreshPersonProfile(entityID: mutation.entityID, now: now) {
-            refreshed
-        } else {
-            throw PersonEntityMutationError.entityNotFound
-        }
-
-        var updated = profile
-        switch mutation.field {
-        case .displayName:
-            guard let value = mutation.stringValue?.trimmedOrNil else {
-                throw PersonEntityMutationError.emptyDisplayName
-            }
-            updated.displayName = value
-            updated.canonicalName = value
-        case .aliases:
-            updated.aliases = normalizedPersonAliases(mutation.stringListValue ?? [])
-        case .relationshipToUser:
-            updated.relationshipToUser = mutation.relationshipValue
-            updated.relationshipHistory.append(RelationshipChange(
-                relationship: mutation.relationshipValue,
-                note: mutation.note,
-                status: .userConfirmed,
-                changedAt: now
-            ))
-        case .roleLabels:
-            updated.roleLabels = mergeStrings([], mutation.stringListValue ?? [])
-        case .userNotes:
-            updated.userNotes = mutation.stringValue?.trimmedOrNil
-        case .sensitivity:
-            updated.sensitivity = mutation.sensitivityValue ?? updated.sensitivity
-        case .automationPolicy:
-            updated.automationPolicy = mutation.automationPolicyValue ?? updated.automationPolicy
-        case .aiPortrait:
-            updated.aiPortrait = nil
-        }
-
-        updated.fieldEvidence.removeAll {
-            $0.fieldKey == mutation.field.rawValue && $0.source == .userEdit
-        }
-        updated.fieldEvidence.append(ProfileFieldEvidence(
-            fieldKey: mutation.field.rawValue,
-            source: .userEdit,
-            status: .userConfirmed,
-            snippet: mutation.note?.trimmedOrNil ?? "User edited \(mutation.field.rawValue).",
-            confidence: 1,
-            createdAt: now,
-            refreshedAt: now
-        ))
-        updated.fieldConfidence[mutation.field.rawValue] = 1
-        updated.lastReviewedAt = now
-        updated.updatedAt = now
-
-        try upsert(personProfile: updated)
-        try upsert(correctionEvent: CorrectionEvent(
-            kind: .profileFieldUpdated,
-            actor: mutation.actor,
-            targetEntityIDs: [mutation.entityID],
-            note: mutation.note ?? "Person profile field edited: \(mutation.field.rawValue)",
-            metadata: [
-                "field": mutation.field.rawValue,
-            ],
-            isReversible: true,
-            createdAt: now
-        ))
-        try save()
-        return updated
+        try EntityMutationUseCase(repository: self).applyPersonProfileMutation(mutation)
     }
 
     func deletePersonProfilePortrait(entityID: UUID) throws -> PersonProfile {
-        try applyPersonProfileMutation(
-            PersonProfileMutation(
-                entityID: entityID,
-                field: .aiPortrait,
-                note: "AI portrait deleted by user."
-            )
-        )
+        try EntityMutationUseCase(repository: self).deletePersonProfilePortrait(entityID: entityID)
     }
 
     // MARK: - People: Affect & Place Profiles
@@ -375,257 +287,33 @@ extension MoryMemoryRepository {
     }
 
     func renamePlaceProfile(id: UUID, displayName: String, aliases: [String]) throws -> PlaceProfile {
-        let now = Date.now
-        let resolvedName = try normalizedPlaceDisplayName(displayName)
-        let store = try requirePlaceProfileStore(id: id)
-        var profile = store.domainModel
-        profile.displayName = resolvedName
-        profile.canonicalName = resolvedName
-        profile.aliases = normalizedPlaceAliases([resolvedName] + aliases)
-        profile.confirmationState = .userConfirmed
-        profile.updatedAt = now
-        store.apply(domainModel: profile)
-        try upsertPlaceEntityNode(for: profile, updatedAt: now)
-        try save()
-        return profile
+        try EntityMutationUseCase(repository: self).renamePlaceProfile(id: id, displayName: displayName, aliases: aliases)
     }
 
     func mergePlaceProfiles(primaryID: UUID, mergingIDs: [UUID], displayName: String?) throws -> PlaceProfile {
-        let now = Date.now
-        let mergingIDSet = Set(mergingIDs)
-        guard !mergingIDSet.isEmpty else {
-            throw PlaceProfileMutationError.mergeRequiresAtLeastOneOtherProfile
-        }
-        guard !mergingIDSet.contains(primaryID) else {
-            throw PlaceProfileMutationError.mergeCannotIncludePrimary
-        }
-
-        let primaryStore = try requirePlaceProfileStore(id: primaryID)
-        let mergingStores = try mergingIDSet.map { try requirePlaceProfileStore(id: $0) }
-        let mergingProfiles = mergingStores.map(\.domainModel)
-        let mergingEntityIDs = Set(mergingProfiles.map(\.entityID))
-        let replacementMap = Dictionary(uniqueKeysWithValues: mergingEntityIDs.map { ($0, primaryStore.entityID) })
-
-        var primaryProfile = primaryStore.domainModel
-        if let displayName, let trimmedName = displayName.trimmedOrNil {
-            primaryProfile.displayName = trimmedName
-            primaryProfile.canonicalName = trimmedName
-        }
-        primaryProfile.aliases = normalizedPlaceAliases(
-            [primaryProfile.displayName, primaryProfile.canonicalName]
-                + primaryProfile.aliases
-                + mergingProfiles.flatMap { [$0.displayName, $0.canonicalName] + $0.aliases }
+        try EntityMutationUseCase(repository: self).mergePlaceProfiles(
+            primaryID: primaryID,
+            mergingIDs: mergingIDs,
+            displayName: displayName
         )
-        primaryProfile.sourceArtifactIDs = mergeUniqueIDs(
-            primaryProfile.sourceArtifactIDs,
-            mergingProfiles.flatMap(\.sourceArtifactIDs)
-        )
-        primaryProfile.sourceRecordIDs = mergeUniqueIDs(
-            primaryProfile.sourceRecordIDs,
-            mergingProfiles.flatMap(\.sourceRecordIDs)
-        )
-        primaryProfile.confirmationState = .userConfirmed
-        primaryProfile.confidence = maxConfidence([primaryProfile] + mergingProfiles)
-        primaryProfile.updatedAt = now
-
-        let mergedArtifacts = try fetchArtifacts(ids: primaryProfile.sourceArtifactIDs)
-        primaryProfile = recalculatedPlaceProfile(primaryProfile, from: mergedArtifacts, updatedAt: now)
-        primaryStore.apply(domainModel: primaryProfile)
-
-        try rewritePlaceGraphReferences(replacing: replacementMap)
-        try upsertPlaceEntityNode(for: primaryProfile, updatedAt: now)
-        try deletePlaceProfilesAndNodes(stores: mergingStores)
-        try save()
-        return primaryProfile
     }
 
     func splitPlaceProfile(id: UUID, movingArtifactIDs: [UUID], displayName: String) throws -> PlaceProfile {
-        let now = Date.now
-        let resolvedName = try normalizedPlaceDisplayName(displayName)
-        let movingIDSet = Set(movingArtifactIDs)
-        guard !movingIDSet.isEmpty else {
-            throw PlaceProfileMutationError.splitRequiresMovingArtifacts
-        }
-
-        let originalStore = try requirePlaceProfileStore(id: id)
-        var originalProfile = originalStore.domainModel
-        let originalArtifactIDSet = Set(originalProfile.sourceArtifactIDs)
-        guard movingIDSet.isSubset(of: originalArtifactIDSet) else {
-            throw PlaceProfileMutationError.splitArtifactsNotInProfile
-        }
-        guard movingIDSet.count < originalArtifactIDSet.count else {
-            throw PlaceProfileMutationError.splitCannotMoveAllArtifacts
-        }
-
-        let allArtifacts = try fetchArtifacts(ids: originalProfile.sourceArtifactIDs)
-        let movingArtifacts = allArtifacts.filter { movingIDSet.contains($0.id) }
-        guard movingArtifacts.allSatisfy({ $0.kind == .location }) else {
-            throw PlaceProfileMutationError.splitArtifactsMustBeLocations
-        }
-        let remainingArtifacts = allArtifacts.filter { !movingIDSet.contains($0.id) }
-
-        let newProfile = recalculatedPlaceProfile(
-            PlaceProfile(
-                entityID: UUID(),
-                displayName: resolvedName,
-                aliases: [resolvedName],
-                sourceArtifactIDs: movingArtifacts.map(\.id),
-                sourceRecordIDs: movingArtifacts.map(\.recordID),
-                confirmationState: .userConfirmed,
-                confidence: originalProfile.confidence,
-                createdAt: now,
-                updatedAt: now
-            ),
-            from: movingArtifacts,
-            updatedAt: now
+        try EntityMutationUseCase(repository: self).splitPlaceProfile(
+            id: id,
+            movingArtifactIDs: movingArtifactIDs,
+            displayName: displayName
         )
-        originalProfile.sourceArtifactIDs = remainingArtifacts.map(\.id)
-        originalProfile.sourceRecordIDs = mergeUniqueIDs([], remainingArtifacts.map(\.recordID))
-        originalProfile.confirmationState = .userConfirmed
-        originalProfile.updatedAt = now
-        originalProfile = recalculatedPlaceProfile(originalProfile, from: remainingArtifacts, updatedAt: now)
-
-        originalStore.apply(domainModel: originalProfile)
-        modelContext.insert(PlaceProfileStore(domainModel: newProfile))
-        try movePlaceArtifactLinks(
-            artifactIDs: movingIDSet,
-            fromEntityID: originalProfile.entityID,
-            toProfile: newProfile,
-            updatedAt: now
-        )
-        try splitEntityEdges(
-            fromEntityID: originalProfile.entityID,
-            toEntityID: newProfile.entityID,
-            movingArtifactIDs: movingIDSet,
-            movingRecordIDs: Set(movingArtifacts.map(\.recordID))
-        )
-        try upsertPlaceEntityNode(for: originalProfile, updatedAt: now)
-        try upsertPlaceEntityNode(for: newProfile, updatedAt: now)
-        try save()
-        return newProfile
     }
 
     // MARK: - People: Entity Merge & Split
 
     func mergePersonEntities(primaryID: UUID, mergingIDs: [UUID], displayName: String?) throws -> EntityProfile {
-        let now = Date.now
-        let mergingIDSet = Set(mergingIDs)
-        guard !mergingIDSet.isEmpty else {
-            throw PersonEntityMutationError.mergeRequiresAtLeastOneOtherEntity
-        }
-        guard !mergingIDSet.contains(primaryID) else {
-            throw PersonEntityMutationError.mergeCannotIncludePrimary
-        }
-
-        let primaryStore = try requirePersonEntityNodeStore(id: primaryID)
-        let mergingStores = try mergingIDSet.map { try requirePersonEntityNodeStore(id: $0) }
-        let mergingNodes = mergingStores.map(\.domainModel)
-        let replacementMap = Dictionary(uniqueKeysWithValues: mergingNodes.map { ($0.id, primaryID) })
-
-        var primaryNode = primaryStore.domainModel
-        if let displayName, let normalized = displayName.trimmedOrNil {
-            primaryNode.displayName = normalized
-            primaryNode.canonicalName = normalized
-        }
-        primaryNode.aliases = normalizedPersonAliases(
-            [primaryNode.displayName, primaryNode.canonicalName]
-                + primaryNode.aliases
-                + mergingNodes.flatMap { [$0.displayName, $0.canonicalName] + $0.aliases }
-        )
-        primaryNode.provenanceRecordIDs = mergeUniqueIDs(
-            primaryNode.provenanceRecordIDs,
-            mergingNodes.flatMap(\.provenanceRecordIDs)
-        )
-        primaryNode.updatedAt = now
-        let nodeConfidences = [primaryNode.confidence].compactMap { $0 } + mergingNodes.compactMap(\.confidence)
-        primaryNode.confidence = nodeConfidences.max()
-
-        let primaryProfile = try fetchEntityProfile(entityID: primaryID)
-            ?? makePersonProfile(from: primaryNode, updatedAt: now)
-        let mergingProfiles = try mergingIDSet.compactMap { entityID in
-            try fetchEntityProfile(entityID: entityID)
-        }
-
-        var mergedProfile = primaryProfile
-        mergedProfile.displayName = primaryNode.displayName
-        mergedProfile.canonicalName = primaryNode.canonicalName
-        mergedProfile.aliases = normalizedPersonAliases(
-            [primaryNode.displayName, primaryNode.canonicalName]
-                + primaryProfile.aliases
-                + mergingProfiles.flatMap { [$0.displayName, $0.canonicalName] + $0.aliases }
-        )
-        mergedProfile.sourceRecordIDs = mergeUniqueIDs(
-            primaryProfile.sourceRecordIDs,
-            mergingProfiles.flatMap(\.sourceRecordIDs) + primaryNode.provenanceRecordIDs
-        )
-        mergedProfile.mentionCount = max(
-            mergedProfile.sourceRecordIDs.count,
-            primaryProfile.mentionCount + mergingProfiles.map(\.mentionCount).reduce(0, +)
-        )
-        mergedProfile.commonContextLabels = mergeStrings(
-            primaryProfile.commonContextLabels,
-            mergingProfiles.flatMap(\.commonContextLabels)
-        )
-        if mergedProfile.relationshipToUser == nil {
-            mergedProfile.relationshipToUser = mergingProfiles.compactMap(\.relationshipToUser).first
-        }
-        mergedProfile.userDescription = mergedProfile.userDescription?.trimmedOrNil
-            ?? mergingProfiles.compactMap(\.userDescription).map { $0.trimmedOrNil }.compactMap { $0 }.first
-        mergedProfile.confirmationState = .userConfirmed
-        let profileConfidences = [primaryProfile.confidence].compactMap { $0 } + mergingProfiles.compactMap(\.confidence)
-        mergedProfile.confidence = profileConfidences.max()
-        mergedProfile.updatedAt = now
-        if mergedProfile.firstMentionedAt == nil {
-            mergedProfile.firstMentionedAt = now
-        }
-        mergedProfile.lastMentionedAt = now
-
-        primaryStore.apply(domainModel: primaryNode)
-        try upsert(entityProfile: mergedProfile)
-        try mergePersonProfiles(
+        try EntityMutationUseCase(repository: self).mergePersonEntities(
             primaryID: primaryID,
-            mergingIDs: mergingIDSet,
-            mergedEntityProfile: mergedProfile,
-            now: now
+            mergingIDs: mergingIDs,
+            displayName: displayName
         )
-        try rewriteEntityLinksAndEdges(replacing: replacementMap, linkSource: "personProfile")
-        try rewriteEntityReferencesForMerge(replacing: replacementMap)
-        try deleteEntityProfiles(entityIDs: mergingIDSet)
-        try deletePersonProfiles(entityIDs: mergingIDSet)
-        try deleteEntityNodes(entityIDs: mergingIDSet)
-
-        let affectedRecordIDs = Set(primaryNode.provenanceRecordIDs + mergingNodes.flatMap(\.provenanceRecordIDs))
-        for mergingID in mergingIDSet {
-            try upsert(entityTombstone: EntityTombstone(
-                oldEntityID: mergingID,
-                replacementEntityID: primaryID,
-                kind: .person,
-                reason: .merged,
-                note: "Merged into \(primaryNode.displayName)",
-                createdAt: now
-            ))
-            try upsert(correctionEvent: CorrectionEvent(
-                kind: .sameEntity,
-                actor: .user,
-                targetEntityIDs: [primaryID, mergingID],
-                targetRecordIDs: [],
-                sourceRecordIDs: Array(affectedRecordIDs),
-                note: "Person merge",
-                metadata: [
-                    "primaryEntityID": primaryID.uuidString,
-                    "mergedEntityID": mergingID.uuidString,
-                ],
-                isReversible: true,
-                createdAt: now
-            ))
-        }
-
-        try enqueueEntityMutationRecomputeJobs(
-            affectedRecordIDs: affectedRecordIDs,
-            affectedEntityIDs: Set([primaryID] + Array(mergingIDSet))
-        )
-        try save()
-        return mergedProfile
     }
 
     func splitPersonEntity(
@@ -634,123 +322,12 @@ extension MoryMemoryRepository {
         displayName: String,
         aliases: [String]
     ) throws -> EntityProfile {
-        let now = Date.now
-        guard let normalizedName = displayName.trimmedOrNil else {
-            throw PersonEntityMutationError.emptyDisplayName
-        }
-        let movingRecordIDSet = Set(movingRecordIDs)
-        guard !movingRecordIDSet.isEmpty else {
-            throw PersonEntityMutationError.splitRequiresMovingRecords
-        }
-
-        let originalStore = try requirePersonEntityNodeStore(id: id)
-        var originalNode = originalStore.domainModel
-        let originalProfile = try fetchEntityProfile(entityID: id) ?? makePersonProfile(from: originalNode, updatedAt: now)
-
-        let originalRecordIDSet = Set(mergeUniqueIDs(originalNode.provenanceRecordIDs, originalProfile.sourceRecordIDs))
-        guard movingRecordIDSet.isSubset(of: originalRecordIDSet) else {
-            throw PersonEntityMutationError.splitRecordsNotInEntity
-        }
-        guard movingRecordIDSet.count < originalRecordIDSet.count else {
-            throw PersonEntityMutationError.splitCannotMoveAllRecords
-        }
-
-        let newEntityID = UUID()
-        let movedAliases = normalizedPersonAliases([normalizedName] + aliases)
-        let movingRecordIDArray = originalProfile.sourceRecordIDs.filter { movingRecordIDSet.contains($0) }
-        let remainingRecordIDArray = originalProfile.sourceRecordIDs.filter { !movingRecordIDSet.contains($0) }
-
-        var newNode = EntityNode(
-            id: newEntityID,
-            kind: .person,
-            displayName: normalizedName,
-            canonicalName: normalizedName,
-            aliases: movedAliases,
-            summary: originalNode.summary,
-            provenanceRecordIDs: originalNode.provenanceRecordIDs.filter { movingRecordIDSet.contains($0) },
-            createdAt: now,
-            updatedAt: now,
-            confidence: originalNode.confidence
+        try EntityMutationUseCase(repository: self).splitPersonEntity(
+            id: id,
+            movingRecordIDs: movingRecordIDs,
+            displayName: displayName,
+            aliases: aliases
         )
-        if newNode.provenanceRecordIDs.isEmpty {
-            newNode.provenanceRecordIDs = Array(movingRecordIDSet)
-        }
-
-        originalNode.provenanceRecordIDs.removeAll { movingRecordIDSet.contains($0) }
-        originalNode.updatedAt = now
-        originalStore.apply(domainModel: originalNode)
-        try upsert(entityNode: newNode)
-
-        var updatedOriginalProfile = originalProfile
-        updatedOriginalProfile.sourceRecordIDs = remainingRecordIDArray
-        updatedOriginalProfile.mentionCount = max(1, remainingRecordIDArray.count)
-        updatedOriginalProfile.updatedAt = now
-        updatedOriginalProfile.lastMentionedAt = now
-        try upsert(entityProfile: updatedOriginalProfile)
-
-        let newProfile = EntityProfile(
-            entityID: newEntityID,
-            kind: .person,
-            displayName: normalizedName,
-            canonicalName: normalizedName,
-            aliases: movedAliases,
-            relationshipToUser: originalProfile.relationshipToUser,
-            userDescription: originalProfile.userDescription,
-            mentionCount: max(1, movingRecordIDArray.count),
-            firstMentionedAt: originalProfile.firstMentionedAt,
-            lastMentionedAt: now,
-            commonContextLabels: originalProfile.commonContextLabels,
-            sourceRecordIDs: movingRecordIDArray,
-            confirmationState: .suggested,
-            confidence: originalProfile.confidence,
-            createdAt: now,
-            updatedAt: now
-        )
-        try upsert(entityProfile: newProfile)
-        try splitPersonProfiles(
-            fromEntityID: id,
-            toEntityID: newEntityID,
-            newEntityProfile: newProfile,
-            movingRecordIDs: movingRecordIDSet,
-            now: now
-        )
-
-        let movedArtifactIDs = try movePersonArtifactLinks(
-            fromEntityID: id,
-            toEntityID: newEntityID,
-            movingRecordIDs: movingRecordIDSet,
-            updatedAt: now
-        )
-        try splitEntityEdges(
-            fromEntityID: id,
-            toEntityID: newEntityID,
-            movingArtifactIDs: movedArtifactIDs,
-            movingRecordIDs: movingRecordIDSet
-        )
-        try rewriteEntityReferencesForSplit(
-            fromEntityID: id,
-            toEntityID: newEntityID,
-            movingRecordIDs: movingRecordIDSet
-        )
-        try upsert(correctionEvent: CorrectionEvent(
-            kind: .splitEntity,
-            actor: .user,
-            targetEntityIDs: [id, newEntityID],
-            sourceRecordIDs: Array(movingRecordIDSet),
-            note: "Person split",
-            metadata: [
-                "fromEntityID": id.uuidString,
-                "toEntityID": newEntityID.uuidString,
-            ],
-            isReversible: true,
-            createdAt: now
-        ))
-        try enqueueEntityMutationRecomputeJobs(
-            affectedRecordIDs: Set(mergeUniqueIDs(Array(originalRecordIDSet), Array(movingRecordIDSet))),
-            affectedEntityIDs: Set([id, newEntityID])
-        )
-        try save()
-        return newProfile
     }
 
     // MARK: - Correction Events & Entity Tombstones

@@ -11,13 +11,14 @@
 | Batch 3: Domain Model Split | completed | `MemoryFeatureModels.swift` 已按 settings、capture、library、search、graph presentation、timeline、string helpers 和 repository contracts 拆分；类型名和行为保持不变 | C2 use case extraction、Batch 4 capture UI split、Batch 5 shared/API/server split 仍未开始 |
 | Batch 4: Capture UI Split | completed | `CaptureCardView` 已拆成 dispatch/chrome/typed card content files；composer sheet views 已移出主 composer，sheet presentation 由 `CaptureComposerSheetCoordinator` 管理 | Composer 正文/draft/save 状态仍在 view 内；完整 composer view model 抽取留到后续 |
 | Batch 5: ExternalCaptureShared Pure Contract | completed | `ExternalCaptureWireModels.swift` 已拆成 shared container、attachment models/store、evidence models、Journaling bundle、request 和 inbox models；类型名和 Codable 形状保持不变 | I4 `MoryAPIClient` endpoint split、Batch 6 Go server split、C2 use case extraction 仍未开始 |
+| Batch 6 + I4 + C2: Server/API/Use Case Split | completed | Go server handlers/db/provider operation 文件已按 route/store/operation family 拆分；`MoryAPIClient` 已拆成 Auth/Analyze/Notifications/Push/Eval endpoint extensions；memory creation/mutation/entity mutation/external import 已抽成 SwiftData-backed use case services，repository 对外保持 facade | Debug 大文件拆分、proposal review UX、contact-to-person review flow、完整 composer view model 仍未开始 |
 
 ## 1. Critical
 
 | ID | 问题 | 影响 | 解决方案 | 验证 |
 | --- | --- | --- | --- | --- |
 | C1 | `MoryMemoryRepositorying` 超大协议 | 测试难、UI/Debug 误用、service 依赖面过宽 | 已完成第一轮 port split；继续逐步迁移 broad consumers | focused compile + service tests 通过 |
-| C2 | `MoryMemoryRepository` 仍是 God object | 多事务、多 helper、多 service 聚合，长期难维护 | 抽 use case service：memory creation、mutation、entity mutation、external import | repository tests 不减少，新增 service tests |
+| C2 | `MoryMemoryRepository` 仍是 God object | 多事务、多 helper、多 service 聚合，长期难维护 | completed：已抽 `MemoryCreationUseCase`、`MemoryMutationUseCase`、`EntityMutationUseCase`、`ExternalCaptureImportUseCase`；repository 对外方法保留 facade 语义 | repository focused tests + build |
 | C3 | `MemoryFeatureModels.swift` 承担过多 domain/presentation/protocol | Domain 层成为杂物间，后续 v8 模型难定位 | 已拆成 Settings/Capture/Library/Search/GraphPresentation/Timeline/StringHelpers/RepositoryPorts | 全量 build + model tests |
 | C4 | Analyze pipeline 直接依赖 `ModelContext` | Analysis 逻辑被 SwiftData 绑定，后台/测试/替换困难 | 已引入 `AnalysisPipelineQuerying/Persisting/Tracing/RuntimeScoping/ContextPacking`，executor 不再 import SwiftData | pipeline unit tests 不启动 SwiftData；v7 production repository tests 继续覆盖真实 SwiftData adapter |
 
@@ -28,9 +29,9 @@
 | I1 | `CaptureCardView.swift` 聚合所有卡片内容 | 新卡片冲突多，UI 维护成本高 | 已按 card type 拆 view，保留 shared chrome | CaptureCardModelsTests + UI build |
 | I2 | `UnifiedCaptureComposerView` 状态过多 | 输入扩展继续增加复杂度 | partially completed：已抽 sheet coordinator 和 sheet views；完整 composer state view model 留到后续 | create/save focused tests |
 | I3 | `ExternalCaptureWireModels.swift` 混合 wire model、Journaling bundle、attachment IO | shared contract 不纯，extension 编译负担变大 | completed：已拆 wire、attachment models/store、inbox、bundle 文件 | ExternalCaptureInboxTests + app build |
-| I4 | `MoryAPIClient.swift` 聚合所有 endpoint | 网络层增长不可控 | 按 endpoint family 拆 extension | CloudIntelligenceClientTests + build |
+| I4 | `MoryAPIClient.swift` 聚合所有 endpoint | 网络层增长不可控 | completed：core client 保留 init/request/decode/debug helpers，Auth/Analyze/Notifications/Push/Eval endpoint family 拆到 extension 文件 | CloudIntelligenceClientTests + build |
 | I5 | Debug 大文件 report/action/view 混合 | Debug 继续膨胀，难测 | 拆 formatter、view model、view | DebugCenterModelsTests |
-| I6 | Go `handlers.go` / `sqlite.go` 过大 | server v8 扩展成本高 | 按 route/store concern 拆 | `go test ./...` |
+| I6 | Go `handlers.go` / `sqlite.go` 过大 | server v8 扩展成本高 | completed：HTTP handlers、SQLite store、OpenAI/Anthropic/Mock provider operations 已按职责拆分，route/interface/contract 不变 | `go test ./...` |
 | I7 | Proposal review 体验不足 | 用户不理解 AI 为什么建议 | evidence/impact preview +统一 ProposalReviewService | GraphDelta review tests |
 | I8 | contact-to-person resolution 未产品化 | Journaling contacts 只能做 context，不能稳定进入人物关系 | 独立 identity review flow | EntityResolutionServiceTests + UI path |
 
@@ -148,6 +149,7 @@
 目标：
 
 - Go server 为 v8 API 做准备。
+- 当前状态：completed。`handlers.go`、`sqlite.go` 和 provider operation 大文件已拆成小文件，route path、store method、provider interface 和 response shape 保持不变。
 
 步骤：
 
@@ -158,6 +160,20 @@
 验收：
 
 - `GOCACHE=/tmp/mory-go-cache go test ./...` 通过。
+
+### Batch 6 同轮附加：I4 API Client Split + C2 Use Case Extraction
+
+目标：
+
+- iOS 网络层按 endpoint family 分文件。
+- Repository 对外继续作为 facade，但 create/update/delete/refresh、entity mutation、external import 的事务编排不再堆在 repository extension 中。
+- 当前状态：completed。`MoryAPIClient.swift` 只保留 core helpers；endpoint methods 已拆到 `MoryAPIClient+Auth/Analyze/Notifications/Push/Eval.swift`。`Persistence/UseCases` 已承接 memory creation、memory mutation、entity mutation、external capture import。
+
+验收：
+
+- Focused iOS tests 通过。
+- iOS build 通过。
+- Codable payload、SwiftData schema、UI entry 和 Analyze v7 production path 不变。
 
 ## 5. 不建议马上做的事
 
