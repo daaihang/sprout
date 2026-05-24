@@ -7,6 +7,7 @@
 | Batch | 状态 | 结果 | 剩余差口 |
 | --- | --- | --- | --- |
 | Batch 1: Repository Port Split | completed | `MoryMemoryRepositorying` 已拆成 capture、library、profile/graph、intelligence、settings、external capture、debug 等小端口；核心 intelligence/notification/capture services 已改为接收更窄依赖 | App environment、Settings、Debug 仍保留 composite repository；use case service extraction 属于 Batch 2/C2 后续工作 |
+| Batch 2: Analysis Pipeline Ports | completed | `ArchitecturePipelineExecutor` 已移除 SwiftData/`ModelContext` 依赖，改为 `AnalysisPipelineQuerying/Persisting/Tracing/RuntimeScoping/ContextPacking` ports；repository 作为 SwiftData-backed adapter；新增纯 mock pipeline tests | `MoryMemoryRepository` 仍承担 use case 编排和 SwiftData adapter；C2 use case service extraction 仍未开始 |
 
 ## 1. Critical
 
@@ -15,7 +16,7 @@
 | C1 | `MoryMemoryRepositorying` 超大协议 | 测试难、UI/Debug 误用、service 依赖面过宽 | 已完成第一轮 port split；继续逐步迁移 broad consumers | focused compile + service tests 通过 |
 | C2 | `MoryMemoryRepository` 仍是 God object | 多事务、多 helper、多 service 聚合，长期难维护 | 抽 use case service：memory creation、mutation、entity mutation、external import | repository tests 不减少，新增 service tests |
 | C3 | `MemoryFeatureModels.swift` 承担过多 domain/presentation/protocol | Domain 层成为杂物间，后续 v8 模型难定位 | 拆 Capture/Library/Search/GraphPresentation/RepositoryPorts | 全量 build + model tests |
-| C4 | Analyze pipeline 直接依赖 `ModelContext` | Analysis 逻辑被 SwiftData 绑定，后台/测试/替换困难 | 引入 `AnalysisPipelineQuerying/Persisting/Tracing` | pipeline unit tests 不启动 SwiftData |
+| C4 | Analyze pipeline 直接依赖 `ModelContext` | Analysis 逻辑被 SwiftData 绑定，后台/测试/替换困难 | 已引入 `AnalysisPipelineQuerying/Persisting/Tracing/RuntimeScoping/ContextPacking`，executor 不再 import SwiftData | pipeline unit tests 不启动 SwiftData；v7 production repository tests 继续覆盖真实 SwiftData adapter |
 
 ## 2. Important
 
@@ -69,6 +70,7 @@
 目标：
 
 - `ArchitecturePipelineExecutor` 不再直接 import SwiftData。
+- 当前状态：completed。Pipeline 已通过 ports 查询历史、保存结果、写 trace，并可用纯 mock ports 单测；repository 仍负责生产 SwiftData-backed adapter。
 
 步骤：
 
@@ -81,6 +83,7 @@
 
 - Pipeline unit tests 不需要 ModelContainer。
 - v7 production create memory tests 仍通过。
+- `ArchitecturePipelineExecutor.swift` 不出现 `SwiftData` / `ModelContext` / `FetchDescriptor`。
 
 ### Batch 3: Domain Model Split
 

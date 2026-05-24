@@ -1,20 +1,7 @@
 import Foundation
-import SwiftData
 
 extension Notification.Name {
     static let pipelineDidComplete = Notification.Name("mory.pipelineDidComplete")
-}
-
-struct V7ProductionParameters {
-    var cloudIntelligenceService: any CloudIntelligenceServing
-    var contextPackBuilder: ContextPackBuilder
-    var upsertAffectSnapshot: (AffectSnapshot) throws -> Void
-    var upsertGraphDelta: (GraphDelta) throws -> Void
-    var upsertReflection: (ReflectionSnapshot) throws -> Void
-    var upsertClarificationQuestion: (ClarificationQuestion) throws -> Void
-    var upsertTemporalArc: (TemporalArc) throws -> Void
-    var setDebugTrace: @MainActor (DebugPipelineTraceSnapshot?) -> Void
-    var save: () throws -> Void
 }
 
 struct ArchitecturePipelineExecutor {
@@ -24,23 +11,16 @@ struct ArchitecturePipelineExecutor {
     private let temporalArcService = TemporalArcService()
     private let arcQualityPolicy = ArcQualityPolicy()
 
+    @MainActor
     func run(
         record: RecordShell,
         artifacts: [Artifact],
-        modelContext: ModelContext,
-        v7: V7ProductionParameters,
-        upsertRecordAnalysis: @escaping (RecordAnalysisSnapshot) throws -> Void,
-        upsertPlaceProfile: @escaping (PlaceProfile) throws -> Void,
-        upsertEntityNode: @escaping (EntityNode) throws -> Void,
-        upsertEntityEdge: @escaping (EntityEdge) throws -> Void,
-        upsertArtifactEntityLink: @escaping (ArtifactEntityLink) throws -> Void,
-        upsertTemporalArc: @escaping (TemporalArc) throws -> Void,
-        upsertReflection: @escaping (ReflectionSnapshot) throws -> Void,
-        save: @escaping () throws -> Void
+        dependencies: AnalysisPipelineDependencies
     ) async throws {
         // Step 1: Fetch known entities for compact compatibility context.
-        let activeRecordScope = QualityTuningRuntime.activeRecordScope
-        let existingEntityNodes = try fetchExistingEntityNodes(modelContext: modelContext, recordScope: activeRecordScope)
+        let activeRecordScope = dependencies.runtimeScope.activeRecordScope
+        let preContext = try dependencies.query.loadPreAnalysisContext(recordScope: activeRecordScope)
+        let existingEntityNodes = preContext.entityNodes
         let knownEntities = existingEntityNodes
             .sorted { $0.updatedAt > $1.updatedAt }
             .prefix(20)
@@ -55,8 +35,8 @@ struct ArchitecturePipelineExecutor {
             }
 
         // Step 2: Build a bounded v7 context pack and send the production Analyze v7 request.
-        let contextPack = try await v7.contextPackBuilder.build(targetRecordID: record.id)
-        let affectSnapshots = (try? v7.contextPackBuilder.repository.fetchAffectSnapshots(recordID: record.id, limit: 10)) ?? []
+        let contextPack = try await dependencies.contextProvider.buildContextPack(targetRecordID: record.id)
+        let affectSnapshots = (try? dependencies.contextProvider.fetchAffectSnapshots(recordID: record.id, limit: 10)) ?? []
         let payload = AnalyzeV7RequestBuilder().build(
             record: record,
             artifacts: artifacts,
@@ -67,15 +47,15 @@ struct ArchitecturePipelineExecutor {
         let requestBody = String(data: (try? JSONEncoder().encode(payload)) ?? Data(), encoding: .utf8)
         let envelope: AnalyzeV7ResponseEnvelope
         do {
-            envelope = try await v7.cloudIntelligenceService.analyzeV7(payload)
+            envelope = try await dependencies.cloudIntelligenceService.analyzeV7(payload)
             let responseBody = String(data: (try? JSONEncoder().encode(envelope)) ?? Data(), encoding: .utf8)
             let requestID: String?
-            if let debugging = v7.cloudIntelligenceService as? any CloudIntelligenceDebugging {
+            if let debugging = dependencies.cloudIntelligenceService as? any CloudIntelligenceDebugging {
                 requestID = await debugging.latestCloudDebugRequestID()
             } else {
                 requestID = payload.clientRequestID
             }
-            v7.setDebugTrace(
+            dependencies.tracing.setDebugTrace(
                 DebugPipelineTraceSnapshot(
                     requestID: requestID,
                     requestBody: requestBody,
@@ -88,14 +68,14 @@ struct ArchitecturePipelineExecutor {
         } catch {
             let debugError: MoryAPIClient.DebugErrorSnapshot?
             let requestID: String?
-            if let debugging = v7.cloudIntelligenceService as? any CloudIntelligenceDebugging {
+            if let debugging = dependencies.cloudIntelligenceService as? any CloudIntelligenceDebugging {
                 debugError = await debugging.latestCloudDebugError()
                 requestID = await debugging.latestCloudDebugRequestID()
             } else {
                 debugError = nil
                 requestID = payload.clientRequestID
             }
-            v7.setDebugTrace(
+            dependencies.tracing.setDebugTrace(
                 DebugPipelineTraceSnapshot(
                     requestID: debugError?.requestID ?? requestID,
                     requestBody: requestBody,
@@ -115,8 +95,8 @@ struct ArchitecturePipelineExecutor {
         let analysis = mapped.analysis
 
         // Step 3: Persist the record analysis snapshot
-        try upsertRecordAnalysis(analysis)
-        try save()
+        try dependencies.persist.persistRecordAnalysis(analysis)
+        try dependencies.persist.saveAnalysisPipelineChanges()
 
         // Step 4: Compute entity graph updates after analysis and before reflection.
         let graphUpdate = graphUpdater.apply(
@@ -124,13 +104,13 @@ struct ArchitecturePipelineExecutor {
             linkedArtifactIDs: record.artifactIDs,
             linkedRecordIDs: [record.id],
             existingEntityNodes: existingEntityNodes,
-            existingEntityEdges: try fetchExistingEntityEdges(modelContext: modelContext, recordScope: activeRecordScope),
-            existingArtifactEntityLinks: try fetchExistingArtifactEntityLinks(modelContext: modelContext, recordScope: activeRecordScope)
+            existingEntityEdges: preContext.entityEdges,
+            existingArtifactEntityLinks: preContext.artifactEntityLinks
         )
         let placeResolution = placeProfileResolver.resolve(
             locationArtifacts: artifacts.filter { $0.kind == .location },
             recordID: record.id,
-            existingProfiles: try fetchExistingPlaceProfiles(modelContext: modelContext, recordScope: activeRecordScope),
+            existingProfiles: preContext.placeProfiles,
             existingEntityNodes: graphUpdate.entityNodes,
             existingArtifactEntityLinks: graphUpdate.artifactEntityLinks,
             timestamp: analysis.createdAt
@@ -140,43 +120,47 @@ struct ArchitecturePipelineExecutor {
 
         // Step 5: Persist graph updates
         for profile in placeResolution.profiles {
-            try upsertPlaceProfile(profile)
+            try dependencies.persist.persistPlaceProfile(profile)
         }
         for node in completeEntityNodes {
-            try upsertEntityNode(node)
+            try dependencies.persist.persistEntityNode(node)
         }
         for edge in graphUpdate.entityEdges {
-            try upsertEntityEdge(edge)
+            try dependencies.persist.persistEntityEdge(edge)
         }
         for link in completeArtifactEntityLinks {
-            try upsertArtifactEntityLink(link)
+            try dependencies.persist.persistArtifactEntityLink(link)
         }
-        try save()
+        try dependencies.persist.saveAnalysisPipelineChanges()
 
         // Step 6: Persist Analyze v7 proposals. Graph deltas remain staged unless
         // explicitly applied by local policy/debug tooling.
         for snapshot in mapped.affectProposals {
-            try v7.upsertAffectSnapshot(snapshot)
+            try dependencies.persist.persistAffectSnapshot(snapshot)
         }
         for delta in mapped.graphDeltaProposals {
-            try v7.upsertGraphDelta(delta)
+            try dependencies.persist.persistGraphDelta(delta)
         }
         for arc in mapped.arcProposals {
-            try v7.upsertTemporalArc(arc)
+            try dependencies.persist.persistTemporalArc(arc)
         }
         for reflection in mapped.reflectionProposals {
-            try v7.upsertReflection(reflection)
+            try dependencies.persist.persistReflection(reflection)
         }
         for question in mapped.questionProposals + mapped.mergeSplitQuestions {
-            try v7.upsertClarificationQuestion(question)
+            try dependencies.persist.persistClarificationQuestion(question)
         }
-        try v7.save()
+        try dependencies.persist.saveAnalysisPipelineChanges()
 
         // Step 7: Build deterministic local TemporalArcCandidates from the v7 analysis.
-        let candidateRecords = try fetchExistingRecordShells(modelContext: modelContext, recordScope: activeRecordScope)
-        let candidateAnalyses = try fetchExistingAnalyses(modelContext: modelContext, replacingWith: analysis, recordScope: activeRecordScope)
-        let candidateArtifacts = try fetchExistingArtifacts(modelContext: modelContext, recordScope: activeRecordScope)
-        let existingArcs = try fetchExistingTemporalArcs(modelContext: modelContext, recordScope: activeRecordScope)
+        let postContext = try dependencies.query.loadPostAnalysisContext(
+            replacingWith: analysis,
+            recordScope: activeRecordScope
+        )
+        let candidateRecords = postContext.records
+        let candidateAnalyses = postContext.analyses
+        let candidateArtifacts = postContext.artifacts
+        let existingArcs = postContext.temporalArcs
         let candidates = candidateBuilder.buildCandidates(
             records: candidateRecords,
             analyses: candidateAnalyses,
@@ -198,45 +182,13 @@ struct ArchitecturePipelineExecutor {
                 artifactEntityLinks: completeArtifactEntityLinks,
                 entityNodes: completeEntityNodes
             )
-            try upsertTemporalArc(promotionResult.arc)
-            try upsertReflection(promotionResult.reflection)
+            try dependencies.persist.persistTemporalArc(promotionResult.arc)
+            try dependencies.persist.persistReflection(promotionResult.reflection)
         }
-        try save()
+        try dependencies.persist.saveAnalysisPipelineChanges()
 
         // Step 9: Final save
-        try save()
-    }
-
-    private func fetchExistingRecordShells(modelContext: ModelContext, recordScope: Set<UUID>?) throws -> [RecordShell] {
-        let records = try modelContext.fetch(FetchDescriptor<RecordShellStore>()).map(\.domainModel)
-        guard let recordScope else { return records }
-        return records.filter { recordScope.contains($0.id) }
-    }
-
-    private func fetchExistingAnalyses(
-        modelContext: ModelContext,
-        replacingWith current: RecordAnalysisSnapshot,
-        recordScope: Set<UUID>?
-    ) throws -> [RecordAnalysisSnapshot] {
-        var analyses = try modelContext.fetch(FetchDescriptor<RecordAnalysisSnapshotStore>()).map(\.domainModel)
-        analyses.removeAll { $0.recordID == current.recordID }
-        analyses.append(current)
-        if let recordScope {
-            analyses.removeAll { !recordScope.contains($0.recordID) }
-        }
-        return analyses
-    }
-
-    private func fetchExistingArtifacts(modelContext: ModelContext, recordScope: Set<UUID>?) throws -> [Artifact] {
-        let artifacts = try modelContext.fetch(FetchDescriptor<ArtifactStore>()).map(\.domainModel)
-        guard let recordScope else { return artifacts }
-        return artifacts.filter { recordScope.contains($0.recordID) }
-    }
-
-    private func fetchExistingTemporalArcs(modelContext: ModelContext, recordScope: Set<UUID>?) throws -> [TemporalArc] {
-        let arcs = try modelContext.fetch(FetchDescriptor<TemporalArcStore>()).map(\.domainModel)
-        guard let recordScope else { return arcs }
-        return arcs.filter { !$0.sourceRecordIDs.isEmpty && $0.sourceRecordIDs.allSatisfy { recordScope.contains($0) } }
+        try dependencies.persist.saveAnalysisPipelineChanges()
     }
 
     private func hasExistingArc(for candidate: TemporalArcCandidate, existingArcs: [TemporalArc]) -> Bool {
@@ -292,42 +244,6 @@ struct ArchitecturePipelineExecutor {
     private struct ArtifactEntityLinkPair: Hashable {
         var artifactID: UUID
         var entityID: UUID
-    }
-
-    private func fetchExistingEntityNodes(modelContext: ModelContext, recordScope: Set<UUID>?) throws -> [EntityNode] {
-        let stores = try modelContext.fetch(FetchDescriptor<EntityNodeStore>())
-        let nodes = stores.map(\.domainModel)
-        guard let recordScope else { return nodes }
-        return nodes.filter { node in
-            !node.provenanceRecordIDs.isEmpty && node.provenanceRecordIDs.contains { recordScope.contains($0) }
-        }
-    }
-
-    private func fetchExistingPlaceProfiles(modelContext: ModelContext, recordScope: Set<UUID>?) throws -> [PlaceProfile] {
-        let stores = try modelContext.fetch(FetchDescriptor<PlaceProfileStore>())
-        let profiles = stores.map(\.domainModel)
-        guard let recordScope else { return profiles }
-        return profiles.filter { profile in
-            !profile.sourceRecordIDs.isEmpty && profile.sourceRecordIDs.contains { recordScope.contains($0) }
-        }
-    }
-
-    private func fetchExistingEntityEdges(modelContext: ModelContext, recordScope: Set<UUID>?) throws -> [EntityEdge] {
-        let stores = try modelContext.fetch(FetchDescriptor<EntityEdgeStore>())
-        let edges = stores.map(\.domainModel)
-        guard let recordScope else { return edges }
-        return edges.filter { edge in
-            !edge.sourceRecordIDs.isEmpty && edge.sourceRecordIDs.contains { recordScope.contains($0) }
-        }
-    }
-
-    private func fetchExistingArtifactEntityLinks(modelContext: ModelContext, recordScope: Set<UUID>?) throws -> [ArtifactEntityLink] {
-        let stores = try modelContext.fetch(FetchDescriptor<ArtifactEntityLinkStore>())
-        let links = stores.map(\.domainModel)
-        guard let recordScope else { return links }
-        return links.filter { link in
-            link.sourceRecordID.map { recordScope.contains($0) } ?? false
-        }
     }
 
 }

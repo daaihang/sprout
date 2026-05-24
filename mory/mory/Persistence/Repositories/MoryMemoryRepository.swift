@@ -2221,30 +2221,18 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             throw CloudIntelligenceContractError.analyzeV7Unavailable
         }
         latestAnalysisTrace = nil
-        let v7 = V7ProductionParameters(
+        let dependencies = AnalysisPipelineDependencies(
             cloudIntelligenceService: cloudIntelligenceService,
-            contextPackBuilder: ContextPackBuilder(repository: self),
-            upsertAffectSnapshot: upsert(affectSnapshot:),
-            upsertGraphDelta: upsert(graphDelta:),
-            upsertReflection: upsert(reflection:),
-            upsertClarificationQuestion: upsert(clarificationQuestion:),
-            upsertTemporalArc: upsert(temporalArc:),
-            setDebugTrace: { [weak self] trace in self?.latestAnalysisTrace = trace },
-            save: save
+            contextProvider: ContextPackBuilder(repository: self),
+            query: self,
+            persist: self,
+            tracing: self,
+            runtimeScope: QualityTuningAnalysisPipelineRuntimeScope()
         )
         try await architecturePipelineExecutor.run(
             record: record,
             artifacts: artifacts,
-            modelContext: modelContext,
-            v7: v7,
-            upsertRecordAnalysis: upsert(recordAnalysis:),
-            upsertPlaceProfile: upsert(placeProfile:),
-            upsertEntityNode: upsert(entityNode:),
-            upsertEntityEdge: upsert(entityEdge:),
-            upsertArtifactEntityLink: upsert(artifactEntityLink:),
-            upsertTemporalArc: upsert(temporalArc:),
-            upsertReflection: upsert(reflection:),
-            save: save
+            dependencies: dependencies
         )
     }
 
