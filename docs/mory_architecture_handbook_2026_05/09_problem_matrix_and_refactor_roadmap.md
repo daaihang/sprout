@@ -9,6 +9,7 @@
 | Batch 1: Repository Port Split | completed | `MoryMemoryRepositorying` 已拆成 capture、library、profile/graph、intelligence、settings、external capture、debug 等小端口；核心 intelligence/notification/capture services 已改为接收更窄依赖 | App environment、Settings、Debug 仍保留 composite repository；use case service extraction 属于 Batch 2/C2 后续工作 |
 | Batch 2: Analysis Pipeline Ports | completed | `ArchitecturePipelineExecutor` 已移除 SwiftData/`ModelContext` 依赖，改为 `AnalysisPipelineQuerying/Persisting/Tracing/RuntimeScoping/ContextPacking` ports；repository 作为 SwiftData-backed adapter；新增纯 mock pipeline tests | `MoryMemoryRepository` 仍承担 use case 编排和 SwiftData adapter；C2 use case service extraction 仍未开始 |
 | Batch 3: Domain Model Split | completed | `MemoryFeatureModels.swift` 已按 settings、capture、library、search、graph presentation、timeline、string helpers 和 repository contracts 拆分；类型名和行为保持不变 | C2 use case extraction、Batch 4 capture UI split、Batch 5 shared/API/server split 仍未开始 |
+| Batch 4: Capture UI Split | completed | `CaptureCardView` 已拆成 dispatch/chrome/typed card content files；composer sheet views 已移出主 composer，sheet presentation 由 `CaptureComposerSheetCoordinator` 管理 | Composer 正文/draft/save 状态仍在 view 内；完整 composer view model 抽取留到后续 |
 
 ## 1. Critical
 
@@ -23,8 +24,8 @@
 
 | ID | 问题 | 影响 | 解决方案 | 验证 |
 | --- | --- | --- | --- | --- |
-| I1 | `CaptureCardView.swift` 聚合所有卡片内容 | 新卡片冲突多，UI 维护成本高 | 按 card type 拆 view，保留 shared chrome | CaptureCardModelsTests + UI build |
-| I2 | `UnifiedCaptureComposerView` 状态过多 | 输入扩展继续增加复杂度 | 抽 composer state view model 和 sheet coordinator | create/save focused tests |
+| I1 | `CaptureCardView.swift` 聚合所有卡片内容 | 新卡片冲突多，UI 维护成本高 | 已按 card type 拆 view，保留 shared chrome | CaptureCardModelsTests + UI build |
+| I2 | `UnifiedCaptureComposerView` 状态过多 | 输入扩展继续增加复杂度 | partially completed：已抽 sheet coordinator 和 sheet views；完整 composer state view model 留到后续 | create/save focused tests |
 | I3 | `ExternalCaptureWireModels.swift` 混合 wire model、Journaling bundle、attachment IO | shared contract 不纯，extension 编译负担变大 | 拆 wire、attachment store、inbox、bundle 文件 | ExternalCaptureInboxTests |
 | I4 | `MoryAPIClient.swift` 聚合所有 endpoint | 网络层增长不可控 | 按 endpoint family 拆 extension | CloudIntelligenceClientTests + build |
 | I5 | Debug 大文件 report/action/view 混合 | Debug 继续膨胀，难测 | 拆 formatter、view model、view | DebugCenterModelsTests |
@@ -110,6 +111,7 @@
 目标：
 
 - 降低 composer/card 冲突。
+- 当前状态：completed。Card content 已按类型拆分，composer sheet state 已收敛到 coordinator；保存路径不变。
 
 步骤：
 
