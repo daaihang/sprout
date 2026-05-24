@@ -1,4 +1,7 @@
 import Foundation
+import OSLog
+
+private let log = Logger(subsystem: "com.mory", category: "intelligence")
 
 protocol CloudIntelligenceServing: Sendable {
     func analyzeV7(_ payload: AnalyzeV7RequestPayload) async throws -> AnalyzeV7ResponseEnvelope
@@ -90,9 +93,14 @@ struct RemoteCloudIntelligenceClient: CloudIntelligenceServing {
             let token = try await tokenProvider.accessToken()
             return try await request(token)
         } catch MoryAPIClient.APIError.unauthorized {
+            // Token was rejected by the server. Invalidate the cached token and retry once.
+            // If multiple concurrent requests fail with 401 simultaneously, they each call
+            // invalidate() (idempotent) then accessToken(). The tokenProvider is responsible
+            // for deduplicating concurrent refresh attempts at its own actor boundary.
+            log.warning("CloudIntelligence: 401 received — invalidating token and retrying once")
             await tokenProvider.invalidate()
-            let token = try await tokenProvider.accessToken()
-            return try await request(token)
+            let freshToken = try await tokenProvider.accessToken()
+            return try await request(freshToken)
         }
     }
 }
