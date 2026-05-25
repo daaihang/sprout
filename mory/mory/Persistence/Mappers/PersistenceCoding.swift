@@ -15,4 +15,3 @@ enum PersistenceCoding {
         return try? decoder.decode(type, from: data)
     }
 }
-

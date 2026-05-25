@@ -207,4 +207,3 @@ private func renderTitle(for item: HomeBoardItemSnapshot) -> String {
         return title
     }
 }
-

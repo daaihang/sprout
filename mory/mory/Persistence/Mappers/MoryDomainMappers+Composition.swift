@@ -192,4 +192,3 @@ extension CompositionItemStore {
         updatedAt = domainModel.updatedAt
     }
 }
-

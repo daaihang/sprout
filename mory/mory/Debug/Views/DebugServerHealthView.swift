@@ -95,4 +95,3 @@ struct DebugServerHealthView: View {
         }
     }
 }
-

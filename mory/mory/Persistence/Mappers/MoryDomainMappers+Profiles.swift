@@ -294,4 +294,3 @@ extension PlaceProfileStore {
         updatedAt = domainModel.updatedAt
     }
 }
-

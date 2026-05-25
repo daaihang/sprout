@@ -397,4 +397,3 @@ struct DebugCloudIntelligenceView: View {
         ([summary.headline] + summary.metaLines + ["", summary.result]).joined(separator: "\n")
     }
 }
-

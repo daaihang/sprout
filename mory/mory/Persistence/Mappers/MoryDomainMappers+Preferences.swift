@@ -187,4 +187,3 @@ extension IntelligencePreferenceStore {
         updatedAt = featureFlags.updatedAt
     }
 }
-

@@ -143,4 +143,3 @@ struct SettingsPermissionsSection: View {
         }
     }
 }
-

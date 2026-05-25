@@ -505,4 +505,3 @@ struct DebugQualityTuningReportBody: View {
         .padding(.vertical, 4)
     }
 }
-

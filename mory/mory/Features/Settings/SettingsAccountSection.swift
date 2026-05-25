@@ -84,4 +84,3 @@ struct SettingsAccountSection: View {
         errorMessage = nil
     }
 }
-

@@ -287,4 +287,3 @@ extension ArtifactEntityLinkStore {
         createdAt = domainModel.createdAt
     }
 }
-

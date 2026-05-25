@@ -54,4 +54,3 @@ extension NotificationIntentStore {
         dismissedAt = domainModel.dismissedAt
     }
 }
-

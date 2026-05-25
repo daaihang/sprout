@@ -421,4 +421,3 @@ private struct DebugGraphDeltaRow: View {
         .padding(.vertical, 4)
     }
 }
-

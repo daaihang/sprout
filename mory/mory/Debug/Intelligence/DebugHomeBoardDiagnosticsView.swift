@@ -211,4 +211,3 @@ private struct DebugHomeBoardItemDiagnosticsRow: View {
         .padding(.vertical, 4)
     }
 }
-

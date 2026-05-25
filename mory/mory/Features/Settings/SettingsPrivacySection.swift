@@ -27,4 +27,3 @@ struct SettingsPrivacySection: View {
         .navigationTitle("settings.privacy.title")
     }
 }
-

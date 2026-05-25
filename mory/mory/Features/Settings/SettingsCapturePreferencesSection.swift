@@ -97,4 +97,3 @@ struct SettingsCapturePreferencesSection: View {
         }
     }
 }
-

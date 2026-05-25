@@ -432,4 +432,3 @@ struct SettingsNotificationPreferencesSection: View {
         }
     }
 }
-

@@ -164,4 +164,3 @@ extension GraphDeltaStore {
         createdAt = domainModel.createdAt
     }
 }
-

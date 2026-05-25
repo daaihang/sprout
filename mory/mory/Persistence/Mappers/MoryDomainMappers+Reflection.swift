@@ -136,4 +136,3 @@ extension TemporalArcStore {
         updatedAt = domainModel.updatedAt
     }
 }
-

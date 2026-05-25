@@ -199,4 +199,3 @@ struct DebugPermissionMatrixView: View {
         }
     }
 }
-

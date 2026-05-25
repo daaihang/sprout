@@ -597,4 +597,3 @@ struct DebugLinkTestView: View {
         }
     }
 }
-
