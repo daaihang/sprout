@@ -857,6 +857,57 @@ final class CaptureCardModelsTests: XCTestCase {
         XCTAssertFalse(legibility.scrimColors.isEmpty)
     }
 
+    func testSurfaceModeEnumHasExpectedCases() {
+        XCTAssertEqual(CaptureCardSurfaceMode.standard.rawValue, "standard")
+        XCTAssertEqual(CaptureCardSurfaceMode.skeuomorphic.rawValue, "skeuomorphic")
+        XCTAssertEqual(CaptureCardSurfaceMode.allCases.count, 2)
+    }
+
+    func testPresentationDefaultsToStandardSurfaceMode() {
+        let presentation = CaptureCardPresentation(
+            item: CaptureCardItem(payload: .photo(CapturePhotoCardPayload()), detail: "Test"),
+            role: .composerEditing,
+            provenanceDisplayMode: .production
+        )
+        XCTAssertEqual(presentation.surfaceMode, .standard)
+    }
+
+    func testDebugFactoryAcceptsSkeuomorphicSurfaceMode() {
+        let item = CaptureCardItem(payload: .photo(CapturePhotoCardPayload()), detail: "Test")
+        let presentation = CaptureCardPresentation.debug(item, surfaceMode: .skeuomorphic)
+        XCTAssertEqual(presentation.surfaceMode, .skeuomorphic)
+    }
+
+    func testDebugFactoryDefaultsToStandardSurfaceMode() {
+        let item = CaptureCardItem(payload: .photo(CapturePhotoCardPayload()), detail: "Test")
+        let presentation = CaptureCardPresentation.debug(item)
+        XCTAssertEqual(presentation.surfaceMode, .standard)
+    }
+
+    func testComposerAndDetailFactoriesUseStandardSurfaceMode() {
+        let candidate = ContextCandidate(
+            draft: .location(title: "Cafe", summary: "Near station", latitude: 31.2, longitude: 121.4, origin: .context),
+            capturedAt: Date(timeIntervalSince1970: 1_800_000_000),
+            isSelected: false
+        )
+        let composer = CaptureCardPresentation.composerAttachment(.context(candidate))
+        XCTAssertEqual(composer.surfaceMode, .standard)
+
+        let artifact = Artifact(
+            recordID: UUID(),
+            kind: .photo,
+            title: "Photo",
+            summary: "A photo",
+            createdAt: .now,
+            updatedAt: .now
+        )
+        let detail = CaptureCardPresentation.detailArtifact(artifact)
+        XCTAssertEqual(detail.surfaceMode, .standard)
+
+        let editing = CaptureCardPresentation.detailEditing(artifact)
+        XCTAssertEqual(editing.surfaceMode, .standard)
+    }
+
     private func makeImageData(color: UIColor) -> Data {
         let image = UIGraphicsImageRenderer(size: CGSize(width: 64, height: 64)).image { context in
             color.setFill()

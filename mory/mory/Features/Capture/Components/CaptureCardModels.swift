@@ -67,6 +67,13 @@ enum CaptureCardState: String, CaseIterable, Hashable, Sendable {
     case disabled
 }
 
+enum CaptureCardSurfaceMode: String, CaseIterable, Hashable, Sendable, Identifiable {
+    case standard
+    case skeuomorphic
+
+    var id: String { rawValue }
+}
+
 enum CaptureWeatherVisualStyle: String, CaseIterable, Hashable, Sendable, Identifiable {
     case sunny
     case clearNight

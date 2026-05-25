@@ -75,7 +75,16 @@ struct CaptureCardView: View {
         item.commonDisplay
     }
 
+    @ViewBuilder
     private var cardBody: some View {
+        if presentation.surfaceMode == .skeuomorphic {
+            skeuomorphicCardBody
+        } else {
+            standardCardBody
+        }
+    }
+
+    private var standardCardBody: some View {
         CaptureCardChrome(
             item: item,
             containerBackground: containerBackground,
@@ -86,6 +95,22 @@ struct CaptureCardView: View {
             fieldAuditText: showsFieldAudit ? fieldAuditText : nil
         ) {
             content
+        }
+    }
+
+    @ViewBuilder
+    private var skeuomorphicCardBody: some View {
+        switch item.payload {
+        case let .photo(payload):
+            PolaroidCaptureCardContent(common: common, payload: payload)
+        case let .audio(payload):
+            CassetteCaptureCardContent(common: common, payload: payload)
+        case let .music(payload):
+            VinylRecordCaptureCardContent(common: common, payload: payload, accent: accent)
+        case .todo, .link, .prompt:
+            NotebookCaptureCardContent(common: common, item: item, accent: accent)
+        default:
+            standardCardBody
         }
     }
 
