@@ -220,7 +220,7 @@ Tasks:
 - Add notification policy.
   - Current implementation status: iOS has `NotificationPolicy` checks for master switch, local-notification flag, notification type switch, max-per-day, quiet hours, sensitive-topic suppression, and rich-preview downgrade to generic copy.
 - Add notification intent preparation.
-  - Current implementation status: iOS has `NotificationIntentPreparationService` that can turn eligible daily questions, recent pipeline completions, stage-forming chapter/reflection candidates, repeated entity/theme/place/decision signals, and revisit memories into local pending notification intents without requiring polished UI first.
+  - Current implementation status: superseded by the unified `NotificationOrchestrator`. System notifications are now limited to daily question, analysis ready, reflection ready, and debug test; long-term pattern signals stay inside Home/Insights and do not become push intents.
 - Add local scheduler.
   - Current implementation status: iOS has a mockable `LocalNotificationScheduler` plus `UNUserNotificationCenter` adapter. The Home foreground refresh path attempts to schedule pending intents only when notification permission is already available; it does not prompt yet.
 - Add settings UI.
@@ -232,7 +232,7 @@ Tasks:
 - Add notification interaction handling.
   - Current implementation status: local notification payload metadata is centralized; app-level `UNUserNotificationCenterDelegate` handling records foreground delivery, open, and dismiss events; open events can deep-link to a specific daily question card, memory detail, artifact-parent memory detail, chapter candidate, reflection detail, or supported Insights entity target when the payload target supports it.
 - Add retry/resume on app launch.
-  - Current implementation status: `AppIntelligenceRecoveryService` resets interrupted running jobs to pending, reschedules retryable failed jobs with bounded backoff, attempts unified notification-intent preparation, and schedules pending local notification intents without passive permission prompts.
+  - Current implementation status: `AppIntelligenceRecoveryService` resets interrupted running jobs to pending, reschedules retryable failed jobs with bounded backoff, and submits a trigger to the unified notification orchestrator without passive permission prompts.
 - Add push delivery writeback and APNs preference sync.
   - Current implementation status: iOS now syncs APNs token, notification preferences, AI/search/home toggles, quiet hours, delivery pace, max-per-day, and minimum spacing to Go `/api/push/register`.
   - Current implementation status: iOS writes delivered/opened/dismissed interactions to `/api/push/delivery-writeback`, stores failed writebacks locally, and flushes them after the next successful push registration sync.
@@ -280,7 +280,7 @@ Tasks:
 - Add question candidate endpoint.
 - Add chapter candidate endpoint.
 - Add photo semantic analysis placeholder endpoint.
-- Add notification intent suggestion endpoint.
+- Keep notification intent generation local to the iOS orchestrator; server only delivers queued push payloads.
 - Add notification preference endpoint.
 - Add rate limit middleware.
 - Update OpenAPI.
@@ -289,7 +289,7 @@ Tasks:
 
 Current implementation status:
 
-- Go V6 endpoints and OpenAPI contracts exist for transcript refinement, question suggestions, chapter suggestions, photo semantic placeholders, and notification intent suggestions.
+- Go V6 endpoints and OpenAPI contracts exist for transcript refinement, question suggestions, chapter suggestions, and photo semantic placeholders. Notification intent suggestion was removed from the server contract; iOS owns notification candidate generation through `NotificationOrchestrator`.
 - Go push endpoints now include `/api/push/register` preference payload expansion, `/api/push/enqueue` lightweight delivery queuing/due-delivery attempt, and `/api/push/delivery-writeback` interaction writeback.
 - Go has an initial `internal/notification/PushDeliveryWorker` that enforces stored device preferences, quiet hours, daily caps, and minimum spacing before sending through an APNs client.
 - Go now has a real token-auth APNs client behind `APNS_ENABLED=true`, plus credential config for key ID, team ID, topic, environment, and `.p8` auth key path/content.

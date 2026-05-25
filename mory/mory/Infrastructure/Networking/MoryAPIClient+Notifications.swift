@@ -241,70 +241,6 @@ extension MoryAPIClient {
         }
     }
 
-    struct NotificationIntentPreferencesPayload: Codable, Sendable, Equatable {
-        var maxPerDay: Int?
-        var quietHoursStart: String?
-        var quietHoursEnd: String?
-        var richPreviewsEnabled: Bool
-
-        enum CodingKeys: String, CodingKey {
-            case maxPerDay = "max_per_day"
-            case quietHoursStart = "quiet_hours_start"
-            case quietHoursEnd = "quiet_hours_end"
-            case richPreviewsEnabled = "rich_previews_enabled"
-        }
-    }
-
-    struct NotificationIntentSuggestionPayload: Encodable, Sendable, Equatable {
-        var schemaVersion: Int = 1
-        var locale: String?
-        var timeZone: String?
-        var trigger: String
-        var recentEvidence: [EvidenceSnippetPayload]
-        var question: QuestionCandidateResponse?
-        var preferences: NotificationIntentPreferencesPayload?
-
-        enum CodingKeys: String, CodingKey {
-            case schemaVersion = "schema_version"
-            case locale
-            case timeZone = "time_zone"
-            case trigger
-            case recentEvidence = "recent_evidence"
-            case question
-            case preferences
-        }
-    }
-
-    struct NotificationIntentCandidateResponse: Decodable, Sendable, Equatable {
-        let kind: String
-        let privacyLevel: String
-        let title: String
-        let body: String
-        let deepLink: String?
-        let scheduledAt: String?
-
-        enum CodingKeys: String, CodingKey {
-            case kind
-            case privacyLevel = "privacy_level"
-            case title
-            case body
-            case deepLink = "deep_link"
-            case scheduledAt = "scheduled_at"
-        }
-    }
-
-    struct NotificationIntentSuggestionResponse: Decodable, Sendable, Equatable {
-        let schemaVersion: Int
-        let intent: NotificationIntentCandidateResponse
-        let meta: CloudIntelligenceMeta?
-
-        enum CodingKeys: String, CodingKey {
-            case schemaVersion = "schema_version"
-            case intent
-            case meta
-        }
-    }
-
     func refineTranscript(
         payload: TranscriptRefinementPayload,
         bearerToken: String
@@ -358,20 +294,6 @@ extension MoryAPIClient {
             requestIDPrefix: "v6-analyze-photo",
             failedStage: "v6_analyze_photo",
             responseType: PhotoSemanticAnalysisResponse.self
-        )
-    }
-
-    func suggestNotificationIntent(
-        payload: NotificationIntentSuggestionPayload,
-        bearerToken: String
-    ) async throws -> NotificationIntentSuggestionResponse {
-        try await postAuthenticated(
-            path: "/api/intelligence/suggest-notification-intent",
-            payload: payload,
-            bearerToken: bearerToken,
-            requestIDPrefix: "v6-suggest-notification",
-            failedStage: "v6_suggest_notification",
-            responseType: NotificationIntentSuggestionResponse.self
         )
     }
 

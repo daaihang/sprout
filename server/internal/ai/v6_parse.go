@@ -93,21 +93,3 @@ func normalizePhotoSemanticAnalysisResponse(resp *PhotoSemanticAnalysisResponse)
 		resp.Safety = "normal"
 	}
 }
-
-func normalizeNotificationIntentSuggestionResponse(resp *NotificationIntentSuggestionResponse) {
-	if resp.SchemaVersion == 0 {
-		resp.SchemaVersion = 1
-	}
-	if strings.TrimSpace(resp.Intent.Kind) == "" {
-		resp.Intent.Kind = "dailyQuestion"
-	}
-	if strings.TrimSpace(resp.Intent.PrivacyLevel) == "" {
-		resp.Intent.PrivacyLevel = "generic"
-	}
-	if strings.TrimSpace(resp.Intent.Title) == "" {
-		resp.Intent.Title = "Mory"
-	}
-	if strings.TrimSpace(resp.Intent.Body) == "" {
-		resp.Intent.Body = "A memory prompt is ready."
-	}
-}

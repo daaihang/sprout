@@ -379,10 +379,6 @@ private struct WorkerMockCloudIntelligenceService: CloudIntelligenceServing {
         throw WorkerTestError.unsupported
     }
 
-    func suggestNotificationIntent(_ payload: MoryAPIClient.NotificationIntentSuggestionPayload) async throws -> MoryAPIClient.NotificationIntentSuggestionResponse {
-        throw WorkerTestError.unsupported
-    }
-
     func runProviderEval() async throws -> MoryAPIClient.CloudIntelligenceEvalResponse {
         throw WorkerTestError.unsupported
     }

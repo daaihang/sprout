@@ -8,17 +8,16 @@ They must be helpful, controlled, and explainable.
 
 ## 2. Notification Types
 
-V6 should support:
+Current system notification types are intentionally narrow:
 
 | Type | Example | Default |
 | --- | --- | --- |
-| processingComplete | "Yesterday's memories are organized." | Enabled if notifications allowed |
-| processingFailed | "One memory needs analysis retry." | Enabled |
+| analysisReady | "Your memories are ready to review." | Enabled if notifications allowed |
 | dailyQuestion | "A question is ready for today's reflection." | Smart, conservative |
-| repeatedPersonTheme | "You have mentioned Alex and launch planning several times." | Low frequency |
-| stageForming | "A new chapter may be forming." | Low frequency |
-| revisit | "A meaningful place/person has not appeared recently." | Low frequency |
-| permissionRecovery | "Location context is off. Memories still save normally." | In-app first |
+| reflectionReady | "A reflection is ready to review." | Conservative |
+| debugTest | "A debug notification is ready." | Debug only |
+
+Long-term pattern and revisit signals are Home/Insights surfaces only. They are not system notification intents.
 
 ## 3. Cadence Controls
 

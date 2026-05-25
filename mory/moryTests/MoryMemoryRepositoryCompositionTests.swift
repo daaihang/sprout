@@ -3148,7 +3148,6 @@ private struct StubCompositionCloudService: CloudIntelligenceServing {
     func suggestQuestions(_ p: MoryAPIClient.QuestionSuggestionPayload) async throws -> MoryAPIClient.QuestionSuggestionResponse { throw CompositionStubError.unsupported }
     func suggestChapters(_ p: MoryAPIClient.ChapterSuggestionPayload) async throws -> MoryAPIClient.ChapterSuggestionResponse { throw CompositionStubError.unsupported }
     func analyzePhotoSemantics(_ p: MoryAPIClient.PhotoSemanticAnalysisPayload) async throws -> MoryAPIClient.PhotoSemanticAnalysisResponse { throw CompositionStubError.unsupported }
-    func suggestNotificationIntent(_ p: MoryAPIClient.NotificationIntentSuggestionPayload) async throws -> MoryAPIClient.NotificationIntentSuggestionResponse { throw CompositionStubError.unsupported }
     func runProviderEval() async throws -> MoryAPIClient.CloudIntelligenceEvalResponse { throw CompositionStubError.unsupported }
 }
 
@@ -3187,7 +3186,6 @@ private struct LowSignalCompositionCloudService: CloudIntelligenceServing {
     func suggestQuestions(_ p: MoryAPIClient.QuestionSuggestionPayload) async throws -> MoryAPIClient.QuestionSuggestionResponse { throw CompositionStubError.unsupported }
     func suggestChapters(_ p: MoryAPIClient.ChapterSuggestionPayload) async throws -> MoryAPIClient.ChapterSuggestionResponse { throw CompositionStubError.unsupported }
     func analyzePhotoSemantics(_ p: MoryAPIClient.PhotoSemanticAnalysisPayload) async throws -> MoryAPIClient.PhotoSemanticAnalysisResponse { throw CompositionStubError.unsupported }
-    func suggestNotificationIntent(_ p: MoryAPIClient.NotificationIntentSuggestionPayload) async throws -> MoryAPIClient.NotificationIntentSuggestionResponse { throw CompositionStubError.unsupported }
     func runProviderEval() async throws -> MoryAPIClient.CloudIntelligenceEvalResponse { throw CompositionStubError.unsupported }
 }
 
@@ -3237,7 +3235,6 @@ private struct TextDrivenCompositionCloudService: CloudIntelligenceServing {
     func suggestQuestions(_ p: MoryAPIClient.QuestionSuggestionPayload) async throws -> MoryAPIClient.QuestionSuggestionResponse { throw CompositionStubError.unsupported }
     func suggestChapters(_ p: MoryAPIClient.ChapterSuggestionPayload) async throws -> MoryAPIClient.ChapterSuggestionResponse { throw CompositionStubError.unsupported }
     func analyzePhotoSemantics(_ p: MoryAPIClient.PhotoSemanticAnalysisPayload) async throws -> MoryAPIClient.PhotoSemanticAnalysisResponse { throw CompositionStubError.unsupported }
-    func suggestNotificationIntent(_ p: MoryAPIClient.NotificationIntentSuggestionPayload) async throws -> MoryAPIClient.NotificationIntentSuggestionResponse { throw CompositionStubError.unsupported }
     func runProviderEval() async throws -> MoryAPIClient.CloudIntelligenceEvalResponse { throw CompositionStubError.unsupported }
 }
 
@@ -3264,7 +3261,6 @@ private struct FailingCompositionCloudService: CloudIntelligenceServing, CloudIn
     func suggestQuestions(_ p: MoryAPIClient.QuestionSuggestionPayload) async throws -> MoryAPIClient.QuestionSuggestionResponse { throw CompositionStubError.unsupported }
     func suggestChapters(_ p: MoryAPIClient.ChapterSuggestionPayload) async throws -> MoryAPIClient.ChapterSuggestionResponse { throw CompositionStubError.unsupported }
     func analyzePhotoSemantics(_ p: MoryAPIClient.PhotoSemanticAnalysisPayload) async throws -> MoryAPIClient.PhotoSemanticAnalysisResponse { throw CompositionStubError.unsupported }
-    func suggestNotificationIntent(_ p: MoryAPIClient.NotificationIntentSuggestionPayload) async throws -> MoryAPIClient.NotificationIntentSuggestionResponse { throw CompositionStubError.unsupported }
     func runProviderEval() async throws -> MoryAPIClient.CloudIntelligenceEvalResponse { throw CompositionStubError.unsupported }
 }
 

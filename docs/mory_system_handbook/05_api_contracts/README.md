@@ -20,7 +20,6 @@ This catalog lists the active server endpoints and the iOS client families that 
 | POST | `/api/intelligence/suggest-questions` | Daily/clarification questions | Bearer |
 | POST | `/api/intelligence/suggest-chapters` | Chapter/story suggestions | Bearer |
 | POST | `/api/intelligence/analyze-photo` | Photo semantic analysis endpoint | Bearer |
-| POST | `/api/intelligence/suggest-notification-intent` | Notification intent suggestion | Bearer |
 | POST | `/api/intelligence/eval` | Provider eval/debug | Bearer |
 | POST | `/api/me/onboarding/complete` | Onboarding completion | Bearer |
 | GET | `/api/subscription/verify` | Subscription status | Bearer |
@@ -34,7 +33,7 @@ This catalog lists the active server endpoints and the iOS client families that 
 | --- | --- |
 | `MoryAPIClient+Auth` | Apple auth, refresh |
 | `MoryAPIClient+Analyze` | legacy analyze, v7 analyze, reflection generate/replay |
-| `MoryAPIClient+Notifications` | transcript refine, questions, chapters, photo analysis, notification suggestion |
+| `MoryAPIClient+Notifications` | transcript refine, questions, chapters, photo analysis |
 | `MoryAPIClient+Push` | push register/enqueue/writeback |
 | `MoryAPIClient+Eval` | provider eval, server metrics |
 

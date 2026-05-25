@@ -97,9 +97,6 @@ private struct BGCoordinatorTestCloudService: CloudIntelligenceServing {
     func analyzePhotoSemantics(_ payload: MoryAPIClient.PhotoSemanticAnalysisPayload) async throws -> MoryAPIClient.PhotoSemanticAnalysisResponse {
         throw BGCoordinatorTestError.unsupported
     }
-    func suggestNotificationIntent(_ payload: MoryAPIClient.NotificationIntentSuggestionPayload) async throws -> MoryAPIClient.NotificationIntentSuggestionResponse {
-        throw BGCoordinatorTestError.unsupported
-    }
     func runProviderEval() async throws -> MoryAPIClient.CloudIntelligenceEvalResponse {
         throw BGCoordinatorTestError.unsupported
     }

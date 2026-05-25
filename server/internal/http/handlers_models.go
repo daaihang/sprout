@@ -138,11 +138,6 @@ type photoSemanticAnalysisResponseEnvelope struct {
 	Meta analyzeMeta `json:"meta"`
 }
 
-type notificationIntentSuggestionResponseEnvelope struct {
-	ai.NotificationIntentSuggestionResponse
-	Meta analyzeMeta `json:"meta"`
-}
-
 type cloudIntelligenceEvalCase struct {
 	Operation  string `json:"operation"`
 	Success    bool   `json:"success"`

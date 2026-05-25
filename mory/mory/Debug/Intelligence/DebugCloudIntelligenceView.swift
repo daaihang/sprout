@@ -41,7 +41,7 @@ struct DebugCloudIntelligenceView: View {
             } header: {
                 Text("Inputs")
             } footer: {
-                Text("These requests call the same cloud intelligence client used by capture, daily questions, chapter suggestions, photo semantics, and notification intent generation.")
+                Text("These requests call the same cloud intelligence client used by capture, daily questions, chapter suggestions, and photo semantics. Notifications are generated only by the local NotificationOrchestrator.")
             }
 
             Section("Actions") {
@@ -62,11 +62,6 @@ struct DebugCloudIntelligenceView: View {
 
                 Button("Run photo semantic placeholder") {
                     Task { await runPhotoSemanticAnalysis() }
-                }
-                .disabled(isRunning)
-
-                Button("Run notification intent suggest") {
-                    Task { await runNotificationIntentSuggest() }
                 }
                 .disabled(isRunning)
 
@@ -234,47 +229,6 @@ struct DebugCloudIntelligenceView: View {
                     "text_highlights: \(response.textHighlights.joined(separator: " | "))",
                     "safety: \(response.safety)",
                     "confidence: \(response.confidence)",
-                ]
-            )
-        }
-    }
-
-    @MainActor
-    private func runNotificationIntentSuggest() async {
-        await run("notification_intent_suggest") {
-            let question = MoryAPIClient.QuestionCandidateResponse(
-                kind: "daily_reflection",
-                prompt: "最近你反复提到项目节奏，要不要补一句最卡的点？",
-                reason: "Debug evidence repeats a work planning theme.",
-                candidateAnswers: ["补一句", "暂时不用"],
-                confidence: 0.76,
-                sensitivity: "normal"
-            )
-            let response = try await cloudIntelligenceService.suggestNotificationIntent(
-                MoryAPIClient.NotificationIntentSuggestionPayload(
-                    locale: Locale.autoupdatingCurrent.identifier,
-                    timeZone: TimeZone.autoupdatingCurrent.identifier,
-                    trigger: "debug_manual",
-                    recentEvidence: try evidenceSnippets(limit: 4),
-                    question: question,
-                    preferences: .init(
-                        maxPerDay: 3,
-                        quietHoursStart: "22:00",
-                        quietHoursEnd: "08:00",
-                        richPreviewsEnabled: true
-                    )
-                )
-            )
-            return await makeSummary(
-                operation: "notification_intent_suggest",
-                meta: response.meta,
-                lines: [
-                    "kind: \(response.intent.kind)",
-                    "privacy: \(response.intent.privacyLevel)",
-                    "title: \(response.intent.title)",
-                    "body: \(response.intent.body)",
-                    "deep_link: \(response.intent.deepLink ?? "none")",
-                    "scheduled_at: \(response.intent.scheduledAt ?? "none")",
                 ]
             )
         }

@@ -434,20 +434,6 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 					}
 				},
 			},
-			{
-				name: "suggest notification intent",
-				path: "/api/intelligence/suggest-notification-intent",
-				body: `{"schema_version":1,"locale":"zh-Hans","time_zone":"Asia/Shanghai","trigger":"dailyQuestion","question":{"kind":"dailyReflection","prompt":"What should Mory remember about today?","reason":"Daily cadence.","candidate_answers":[],"confidence":0.7,"sensitivity":"normal"},"preferences":{"max_per_day":2,"rich_previews_enabled":false}}`,
-				assert: func(t *testing.T, body []byte) {
-					var resp notificationIntentSuggestionResponseEnvelope
-					if err := json.Unmarshal(body, &resp); err != nil {
-						t.Fatalf("decode notification response: %v", err)
-					}
-					if resp.Intent.Title != "Mory" || resp.Intent.Body == "" {
-						t.Fatalf("unexpected notification response: %+v", resp)
-					}
-				},
-			},
 		}
 
 		for _, tc := range cases {

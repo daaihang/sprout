@@ -70,21 +70,6 @@ func (p *OpenAICompatibleProvider) AnalyzePhotoSemantics(ctx context.Context, re
 	return PhotoSemanticAnalysisResult{Response: resp, Provider: p.Name(), Model: model, Usage: usage}, nil
 }
 
-func (p *OpenAICompatibleProvider) SuggestNotificationIntent(ctx context.Context, req NotificationIntentSuggestionRequest, user UserContext) (NotificationIntentSuggestionResult, error) {
-	if err := req.Validate(); err != nil {
-		return NotificationIntentSuggestionResult{}, err
-	}
-	raw, model, usage, err := p.runV6JSON(ctx, "suggest_notification_intent", req, user)
-	if err != nil {
-		return NotificationIntentSuggestionResult{}, err
-	}
-	resp, err := parseV6JSONResponse(raw, normalizeNotificationIntentSuggestionResponse)
-	if err != nil {
-		return NotificationIntentSuggestionResult{}, err
-	}
-	return NotificationIntentSuggestionResult{Response: resp, Provider: p.Name(), Model: model, Usage: usage}, nil
-}
-
 func (p *OpenAICompatibleProvider) runV6JSON(ctx context.Context, operation string, req any, user UserContext) (string, string, Usage, error) {
 	userPrompt, err := buildV6UserPrompt(operation, req, user)
 	if err != nil {

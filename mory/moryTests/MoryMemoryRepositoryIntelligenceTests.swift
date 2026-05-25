@@ -1211,10 +1211,6 @@ private struct IntelligenceTestCloudService: CloudIntelligenceServing {
         throw IntelligenceTestCloudError.unsupported
     }
 
-    func suggestNotificationIntent(_ payload: MoryAPIClient.NotificationIntentSuggestionPayload) async throws -> MoryAPIClient.NotificationIntentSuggestionResponse {
-        throw IntelligenceTestCloudError.unsupported
-    }
-
     func runProviderEval() async throws -> MoryAPIClient.CloudIntelligenceEvalResponse {
         throw IntelligenceTestCloudError.unsupported
     }

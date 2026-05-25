@@ -327,58 +327,6 @@ func TestOpenAICompatibleProviderV6RefineTranscript(t *testing.T) {
 	}
 }
 
-func TestAnthropicProviderV6SuggestNotificationIntent(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var req anthropicRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			t.Fatalf("decode anthropic request: %v", err)
-		}
-		if !strings.Contains(req.System, `"privacy_level"`) {
-			t.Fatalf("expected notification schema in system prompt")
-		}
-
-		writeTestJSON(w, map[string]any{
-			"model": "claude-test",
-			"content": []map[string]any{
-				{
-					"type": "text",
-					"text": `{"schema_version":1,"intent":{"kind":"dailyQuestion","privacy_level":"contextual","title":"Mory","body":"你最近多次提到搬家，要不要补一句今天最在意的点？","deep_link":"mory://home/question/question-1","scheduled_at":"2026-05-19T10:00:00Z"}}`,
-				},
-			},
-			"usage": map[string]any{
-				"input_tokens":  15,
-				"output_tokens": 21,
-			},
-		})
-	}))
-	defer server.Close()
-
-	provider := NewAnthropicProvider(
-		&http.Client{Timeout: 2 * time.Second},
-		slog.New(slog.NewTextHandler(io.Discard, nil)),
-		config.Config{
-			AIAPIKey:         "anthropic-key",
-			AIBaseURL:        server.URL,
-			AIModel:          "claude-test",
-			AnthropicVersion: "2023-06-01",
-		},
-	)
-
-	result, err := provider.SuggestNotificationIntent(context.Background(), NotificationIntentSuggestionRequest{
-		Trigger: "daily_question",
-		RecentEvidence: []EvidenceSnippet{{
-			RecordID: "r1",
-			Snippet:  "最近第三次提到搬家。",
-		}},
-	}, UserContext{UserID: "user-1", Tier: "grow"})
-	if err != nil {
-		t.Fatalf("suggest notification intent: %v", err)
-	}
-	if result.Response.Intent.Kind != "dailyQuestion" || result.Response.Intent.PrivacyLevel != "contextual" {
-		t.Fatalf("unexpected notification result: %+v", result)
-	}
-}
-
 func TestResolveOpenAICompatibleEndpoint(t *testing.T) {
 	tests := []struct {
 		name string

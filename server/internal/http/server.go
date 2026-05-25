@@ -113,7 +113,6 @@ func (s *Server) registerRoutes() {
 	s.mux.Handle("POST /api/intelligence/suggest-questions", s.withAuth(http.HandlerFunc(s.handleQuestionSuggestions)))
 	s.mux.Handle("POST /api/intelligence/suggest-chapters", s.withAuth(http.HandlerFunc(s.handleChapterSuggestions)))
 	s.mux.Handle("POST /api/intelligence/analyze-photo", s.withAuth(http.HandlerFunc(s.handlePhotoSemanticAnalysis)))
-	s.mux.Handle("POST /api/intelligence/suggest-notification-intent", s.withAuth(http.HandlerFunc(s.handleNotificationIntentSuggestion)))
 	s.mux.Handle("POST /api/intelligence/eval", s.withAuth(http.HandlerFunc(s.handleCloudIntelligenceEval)))
 	s.mux.Handle("POST /api/me/onboarding/complete", s.withAuth(http.HandlerFunc(s.handleOnboardingComplete)))
 	s.mux.Handle("GET /api/subscription/verify", s.withAuth(http.HandlerFunc(s.handleSubscriptionVerify)))

@@ -437,10 +437,6 @@ private actor PipelineTestCloudService: CloudIntelligenceServing {
         throw PipelineTestError.unsupported
     }
 
-    func suggestNotificationIntent(_ payload: MoryAPIClient.NotificationIntentSuggestionPayload) async throws -> MoryAPIClient.NotificationIntentSuggestionResponse {
-        throw PipelineTestError.unsupported
-    }
-
     func runProviderEval() async throws -> MoryAPIClient.CloudIntelligenceEvalResponse {
         throw PipelineTestError.unsupported
     }

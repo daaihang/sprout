@@ -19,7 +19,6 @@ type Provider interface {
 	SuggestQuestions(ctx context.Context, req QuestionSuggestionRequest, user UserContext) (QuestionSuggestionResult, error)
 	SuggestChapters(ctx context.Context, req ChapterSuggestionRequest, user UserContext) (ChapterSuggestionResult, error)
 	AnalyzePhotoSemantics(ctx context.Context, req PhotoSemanticAnalysisRequest, user UserContext) (PhotoSemanticAnalysisResult, error)
-	SuggestNotificationIntent(ctx context.Context, req NotificationIntentSuggestionRequest, user UserContext) (NotificationIntentSuggestionResult, error)
 }
 
 type UserContext struct {

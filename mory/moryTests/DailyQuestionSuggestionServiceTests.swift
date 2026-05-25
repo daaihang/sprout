@@ -222,10 +222,6 @@ private actor MockDailyQuestionCloudService: CloudIntelligenceServing {
         throw DailyQuestionTestError.unsupported
     }
 
-    func suggestNotificationIntent(_ payload: MoryAPIClient.NotificationIntentSuggestionPayload) async throws -> MoryAPIClient.NotificationIntentSuggestionResponse {
-        throw DailyQuestionTestError.unsupported
-    }
-
     func runProviderEval() async throws -> MoryAPIClient.CloudIntelligenceEvalResponse {
         throw DailyQuestionTestError.unsupported
     }

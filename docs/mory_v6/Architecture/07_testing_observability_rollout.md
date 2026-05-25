@@ -70,7 +70,7 @@ Do not require Debug for normal use, but Debug should help explain behavior.
 Current implementation status:
 
 - The in-app Diagnostics route now includes a V6 Debug Center spine:
-  - Cloud Intelligence Debug can manually run transcript refinement, question suggestion, chapter/stage suggestion, photo semantic placeholder analysis, and notification intent suggestion. It shows decoded results, provider/model metadata, token usage where returned, request IDs, and the latest transport error trace where available.
+  - Cloud Intelligence Debug can manually run transcript refinement, question suggestion, chapter/stage suggestion, and photo semantic placeholder analysis. It shows decoded results, provider/model metadata, token usage where returned, request IDs, and the latest transport error trace where available. Notification generation is inspected in Notification Management instead of Cloud Intelligence Debug.
   - Job Queue Debug shows intelligence jobs, notification intents, graph deltas, status/kind counts, due pending jobs, cloud-required jobs, and manual worker/recovery actions.
   - Semantic Search Debug runs exact local search, semantic-first Core Spotlight search, Spotlight rebuild, and Spotlight delete while showing retrieval sources and semantic status.
   - Home Board Debug exposes memory desktop rule inputs, card layers, spans, reasons, source records, and preference actions before the formal UI polish pass.

@@ -119,10 +119,6 @@ private actor MockVoiceRefinementCloudService: CloudIntelligenceServing {
         throw VoiceRefinementTestError.offline
     }
 
-    func suggestNotificationIntent(_ payload: MoryAPIClient.NotificationIntentSuggestionPayload) async throws -> MoryAPIClient.NotificationIntentSuggestionResponse {
-        throw VoiceRefinementTestError.offline
-    }
-
     func runProviderEval() async throws -> MoryAPIClient.CloudIntelligenceEvalResponse {
         throw VoiceRefinementTestError.offline
     }

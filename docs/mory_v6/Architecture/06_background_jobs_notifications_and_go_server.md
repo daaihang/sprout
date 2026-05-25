@@ -33,7 +33,7 @@ Current iOS data-flow status:
 
 - Transcript refinement uses cloud deep intelligence after local/system transcription and falls back to raw transcript if unavailable.
 - Daily question preparation now has a gated foreground Home refresh hook: when daily questions and cloud question suggestions are enabled, Mory sends bounded recent-memory evidence to the Go V6 question endpoint and persists returned candidates locally as `ClarificationQuestion`.
-- Notification intent preparation now has a local policy path: a unified iOS preparation service can promote daily questions, recent pipeline completions, stage-forming arc/reflection candidates, repeated entity/theme/place/decision signals, and revisit memories into pending `NotificationIntent` rows when user preferences, V6 flags, quiet hours, daily limits, and sensitivity rules allow it.
+- Notification generation now has a single iOS orchestrator path: only daily question, analysis ready, reflection ready, and debug test candidates can become `NotificationIntent` rows. Long-term pattern/revisit signals remain Home/Insights surfaces and do not enter system notifications.
 - Local notification scheduling now has a mockable iOS scheduler and `UNUserNotificationCenter` adapter. Foreground Home refresh can schedule pending intents when permission already exists, without prompting.
 - Notification opt-in now has a basic settings path: user preferences can request system authorization, enable daily-question notification defaults, update per-type switches, and cancel pending/scheduled local intents when disabled.
 - Local notification interactions now support concrete deep-link routes for the first V6 surfaces: daily question opens can push a specific question card, record targets can push memory detail, artifact targets can resolve back to the parent memory detail, and chapter/reflection/entity-family targets can push the corresponding Insights detail screen.
@@ -120,7 +120,6 @@ POST /api/intelligence/refine-transcript
 POST /api/intelligence/suggest-questions
 POST /api/intelligence/suggest-chapters
 POST /api/intelligence/analyze-photo
-POST /api/intelligence/suggest-notification-intent
 POST /api/push/register
 POST /api/push/enqueue
 POST /api/push/delivery-writeback
@@ -199,7 +198,7 @@ Current server AI status:
 
 - `AI_MODE=mock` remains the deterministic default for local/dev.
 - `AI_MODE=live` supports `AI_PROVIDER=openai_compatible` and `AI_PROVIDER=anthropic`.
-- V6 endpoints now use provider-backed operations for transcript refinement, question suggestions, chapter/stage suggestions, photo semantic analysis, and notification intent suggestion.
+- V6 endpoints now use provider-backed operations for transcript refinement, question suggestions, chapter/stage suggestions, and photo semantic analysis. Notification intent generation is local-only through the iOS orchestrator.
 - Each V6 operation now has an explicit JSON shape embedded in the system prompt, and all responses are parsed, normalized, metered, and returned with provider/model/token metadata.
 - `/metrics` exposes `ai_operation_requests_total`, `ai_operation_errors_total`, `ai_operation_average_latency_ms`, `ai_operation_input_tokens_total`, and `ai_operation_output_tokens_total` by operation/provider.
 

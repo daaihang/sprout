@@ -154,44 +154,6 @@ type PhotoSemanticAnalysisResult struct {
 	Usage    Usage                         `json:"usage"`
 }
 
-type NotificationIntentPreferences struct {
-	MaxPerDay           int    `json:"max_per_day,omitempty"`
-	QuietHoursStart    string `json:"quiet_hours_start,omitempty"`
-	QuietHoursEnd      string `json:"quiet_hours_end,omitempty"`
-	RichPreviewsEnabled bool   `json:"rich_previews_enabled"`
-}
-
-type NotificationIntentSuggestionRequest struct {
-	SchemaVersion   int                           `json:"schema_version"`
-	Locale          string                        `json:"locale,omitempty"`
-	TimeZone        string                        `json:"time_zone,omitempty"`
-	Trigger         string                        `json:"trigger"`
-	RecentEvidence  []EvidenceSnippet             `json:"recent_evidence,omitempty"`
-	Question        *QuestionCandidate             `json:"question,omitempty"`
-	Preferences     NotificationIntentPreferences `json:"preferences,omitempty"`
-}
-
-type NotificationIntentCandidate struct {
-	Kind         string `json:"kind"`
-	PrivacyLevel string `json:"privacy_level"`
-	Title        string `json:"title"`
-	Body         string `json:"body"`
-	DeepLink     string `json:"deep_link,omitempty"`
-	ScheduledAt  string `json:"scheduled_at,omitempty"`
-}
-
-type NotificationIntentSuggestionResponse struct {
-	SchemaVersion int                         `json:"schema_version"`
-	Intent        NotificationIntentCandidate `json:"intent"`
-}
-
-type NotificationIntentSuggestionResult struct {
-	Response NotificationIntentSuggestionResponse `json:"response"`
-	Provider string                               `json:"provider"`
-	Model    string                               `json:"model"`
-	Usage    Usage                                `json:"usage"`
-}
-
 func (r TranscriptRefinementRequest) Validate() error {
 	if strings.TrimSpace(r.RawTranscript) == "" {
 		return ErrInvalidAnalyzeRequest
@@ -221,13 +183,6 @@ func (r ChapterSuggestionRequest) Validate() error {
 
 func (r PhotoSemanticAnalysisRequest) Validate() error {
 	if len(r.LocalLabels) == 0 && strings.TrimSpace(r.OCRText) == "" && strings.TrimSpace(r.CaptionHint) == "" {
-		return ErrInvalidAnalyzeRequest
-	}
-	return nil
-}
-
-func (r NotificationIntentSuggestionRequest) Validate() error {
-	if strings.TrimSpace(r.Trigger) == "" {
 		return ErrInvalidAnalyzeRequest
 	}
 	return nil

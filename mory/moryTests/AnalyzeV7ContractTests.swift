@@ -470,10 +470,6 @@ private actor V7ProductionTestCloudService: CloudIntelligenceServing {
         throw V7ProductionTestError.unsupported
     }
 
-    func suggestNotificationIntent(_ payload: MoryAPIClient.NotificationIntentSuggestionPayload) async throws -> MoryAPIClient.NotificationIntentSuggestionResponse {
-        throw V7ProductionTestError.unsupported
-    }
-
     func runProviderEval() async throws -> MoryAPIClient.CloudIntelligenceEvalResponse {
         throw V7ProductionTestError.unsupported
     }

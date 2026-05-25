@@ -40,11 +40,9 @@ struct IntelligencePreferences: Codable, Hashable, Sendable {
 ```swift
 struct NotificationPreferences: Codable, Hashable, Sendable {
     var enabled: Bool
-    var backgroundDoneEnabled: Bool
+    var analysisReadyEnabled: Bool
     var dailyQuestionEnabled: Bool
-    var repeatedThemeEnabled: Bool
-    var stageFormingEnabled: Bool
-    var revisitEnabled: Bool
+    var reflectionReadyEnabled: Bool
     var maxPerDay: Int
     var quietHoursStart: DateComponents?
     var quietHoursEnd: DateComponents?

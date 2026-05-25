@@ -189,7 +189,6 @@ private struct MissingCloudIntelligenceService: CloudIntelligenceServing {
     func suggestQuestions(_ payload: MoryAPIClient.QuestionSuggestionPayload) async throws -> MoryAPIClient.QuestionSuggestionResponse { fail() }
     func suggestChapters(_ payload: MoryAPIClient.ChapterSuggestionPayload) async throws -> MoryAPIClient.ChapterSuggestionResponse { fail() }
     func analyzePhotoSemantics(_ payload: MoryAPIClient.PhotoSemanticAnalysisPayload) async throws -> MoryAPIClient.PhotoSemanticAnalysisResponse { fail() }
-    func suggestNotificationIntent(_ payload: MoryAPIClient.NotificationIntentSuggestionPayload) async throws -> MoryAPIClient.NotificationIntentSuggestionResponse { fail() }
     func runProviderEval() async throws -> MoryAPIClient.CloudIntelligenceEvalResponse { fail() }
 }
 

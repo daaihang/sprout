@@ -195,24 +195,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PhotoSemanticAnalysisResponse"
-  /api/intelligence/suggest-notification-intent:
-    post:
-      summary: Suggest a notification intent candidate without sending a push
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/NotificationIntentSuggestionRequest"
-      responses:
-        "200":
-          description: Notification intent candidate
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/NotificationIntentSuggestionResponse"
   /api/subscription/verify:
     get:
       summary: Verify subscription tier for current user
@@ -866,58 +848,6 @@ components:
           type: string
         confidence:
           type: number
-        meta:
-          $ref: "#/components/schemas/CloudMeta"
-    NotificationIntentSuggestionRequest:
-      type: object
-      required: [schema_version, trigger]
-      properties:
-        schema_version:
-          type: integer
-        locale:
-          type: string
-        time_zone:
-          type: string
-        trigger:
-          type: string
-        recent_evidence:
-          type: array
-          items:
-            $ref: "#/components/schemas/EvidenceSnippet"
-        question:
-          $ref: "#/components/schemas/QuestionCandidate"
-        preferences:
-          type: object
-          properties:
-            max_per_day:
-              type: integer
-            quiet_hours_start:
-              type: string
-            quiet_hours_end:
-              type: string
-            rich_previews_enabled:
-              type: boolean
-    NotificationIntentSuggestionResponse:
-      type: object
-      properties:
-        schema_version:
-          type: integer
-        intent:
-          type: object
-          properties:
-            kind:
-              type: string
-            privacy_level:
-              type: string
-            title:
-              type: string
-            body:
-              type: string
-            deep_link:
-              type: string
-            scheduled_at:
-              type: string
-              format: date-time
         meta:
           $ref: "#/components/schemas/CloudMeta"
     PushDeliveryTarget:

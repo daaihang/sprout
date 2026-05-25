@@ -51,14 +51,6 @@ final class CloudIntelligenceClientTests: XCTestCase {
                   "meta": {"provider":"mock","model":"mock-v6-photo-v1","usage":{"input_tokens":12,"output_tokens":8},"request_id":"req-test"}
                 }
                 """
-            case "/api/intelligence/suggest-notification-intent":
-                body = """
-                {
-                  "schema_version": 1,
-                  "intent": {"kind":"dailyQuestion","privacy_level":"generic","title":"Mory","body":"A question is ready for today.","deep_link":"mory://questions"},
-                  "meta": {"provider":"mock","model":"mock-v6-notification-v1","usage":{"input_tokens":12,"output_tokens":8},"request_id":"req-test"}
-                }
-                """
             case "/api/analyze/v7":
                 body = """
                 {
@@ -132,17 +124,6 @@ final class CloudIntelligenceClientTests: XCTestCase {
             bearerToken: "token"
         )
         XCTAssertEqual(photo.tags.first, "photo")
-
-        let notification = try await client.suggestNotificationIntent(
-            payload: .init(
-                trigger: "dailyQuestion",
-                recentEvidence: [],
-                question: .init(kind: "dailyReflection", prompt: "What should Mory remember?", reason: "Daily cadence.", candidateAnswers: [], confidence: 0.7, sensitivity: "normal"),
-                preferences: .init(maxPerDay: 2, quietHoursStart: nil, quietHoursEnd: nil, richPreviewsEnabled: false)
-            ),
-            bearerToken: "token"
-        )
-        XCTAssertEqual(notification.intent.title, "Mory")
 
         let v7 = try await client.analyzeRecordsV7(
             payload: .init(

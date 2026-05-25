@@ -139,36 +139,3 @@ func (s *Server) handlePhotoSemanticAnalysis(w http.ResponseWriter, r *http.Requ
 		Meta:                          s.metaForResult(r, result.Provider, result.Model, result.Usage),
 	})
 }
-
-func (s *Server) handleNotificationIntentSuggestion(w http.ResponseWriter, r *http.Request) {
-	user, ok := userContextFromRequest(w, r)
-	if !ok {
-		return
-	}
-
-	var req ai.NotificationIntentSuggestionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid JSON body")
-		return
-	}
-	if err := req.Validate(); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid notification intent suggestion request")
-		return
-	}
-	if !s.allowAIRequest(w, r, user.UserID, "suggest_notification_intent") {
-		return
-	}
-
-	start := time.Now()
-	result, err := s.aiProvider.SuggestNotificationIntent(r.Context(), req, user)
-	s.recordAI("suggest_notification_intent", result.Provider, result.Usage, time.Since(start), err)
-	if err != nil {
-		writeAIProviderError(w, r, "notification intent suggestion failed", err)
-		return
-	}
-
-	writeJSON(w, http.StatusOK, notificationIntentSuggestionResponseEnvelope{
-		NotificationIntentSuggestionResponse: result.Response,
-		Meta:                                 s.metaForResult(r, result.Provider, result.Model, result.Usage),
-	})
-}

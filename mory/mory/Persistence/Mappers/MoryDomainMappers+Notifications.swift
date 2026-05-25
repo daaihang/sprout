@@ -31,7 +31,7 @@ extension NotificationIntentStore {
     var domainModel: NotificationIntent {
         NotificationIntent(
             id: id,
-            kind: NotificationIntentKind(rawValue: kindRawValue) ?? .dailyQuestion,
+            kind: Self.requireNotificationIntentKind(kindRawValue),
             title: title,
             body: body,
             privacyLevel: NotificationPrivacyLevel(rawValue: privacyLevelRawValue) ?? .generic,
@@ -52,6 +52,13 @@ extension NotificationIntentStore {
             openedAt: openedAt,
             dismissedAt: dismissedAt
         )
+    }
+
+    private static func requireNotificationIntentKind(_ rawValue: String) -> NotificationIntentKind {
+        guard let kind = NotificationIntentKind(rawValue: rawValue) else {
+            preconditionFailure("Unsupported NotificationIntentKind raw value: \(rawValue)")
+        }
+        return kind
     }
 
     func apply(domainModel: NotificationIntent) {
@@ -103,11 +110,19 @@ extension NotificationManagementEventStore {
             intentID: intentID,
             dedupeKey: dedupeKey,
             trigger: triggerRawValue.flatMap(NotificationTriggerSource.init(rawValue:)),
-            kind: kindRawValue.flatMap(NotificationIntentKind.init(rawValue:)),
+            kind: Self.notificationIntentKind(kindRawValue),
             targetType: targetTypeRawValue.flatMap(ClarificationTargetType.init(rawValue:)),
             targetID: targetID,
             message: message,
             createdAt: createdAt
         )
+    }
+
+    private static func notificationIntentKind(_ rawValue: String?) -> NotificationIntentKind? {
+        guard let rawValue else { return nil }
+        guard let kind = NotificationIntentKind(rawValue: rawValue) else {
+            preconditionFailure("Unsupported NotificationIntentKind raw value: \(rawValue)")
+        }
+        return kind
     }
 }
