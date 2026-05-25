@@ -44,8 +44,8 @@ struct DebugRemotePushDiagnosticsView: View {
                 }
                 .disabled(isWorking)
 
-                Button("Enqueue first pending intent") {
-                    Task { await enqueueFirstPendingIntent() }
+                Button("Route next notification candidate") {
+                    Task { await routeNextNotificationCandidate() }
                 }
                 .disabled(isWorking)
 
@@ -114,19 +114,19 @@ struct DebugRemotePushDiagnosticsView: View {
         isWorking = false
     }
 
-    private func enqueueFirstPendingIntent() async {
+    private func routeNextNotificationCandidate() async {
         isWorking = true
         resultMessage = nil
         defer { isWorking = false }
 
         do {
-            guard let intent = try memoryRepository.fetchNotificationIntents(status: .pending, limit: 1).first else {
-                resultMessage = "No pending notification intent."
-                snapshot = await remotePushSyncService.fetchDebugSnapshot(repository: memoryRepository)
-                return
-            }
-            let response = try await remotePushSyncService.enqueueRemoteNotificationIntent(intent)
-            resultMessage = "Queued \(response.queuedCount), sent \(response.sentCount), failed \(response.failedCount), retried \(response.retriedCount ?? 0), permanent \(response.permanentFailedCount ?? 0)."
+            let report = try await NotificationOrchestrator(
+                deliveryRouter: NotificationDeliveryRouter(remotePushSyncService: remotePushSyncService)
+            ).orchestrate(
+                trigger: .backgroundRefresh,
+                repository: memoryRepository
+            )
+            resultMessage = "generated \(report.generatedIntentIDs.count), scheduled \(report.scheduledIntentIDs.count), remote \(report.remoteEnqueuedIntentIDs.count), blocked \(report.blockedIntentIDs.count)"
             snapshot = await remotePushSyncService.fetchDebugSnapshot(repository: memoryRepository)
         } catch {
             resultMessage = error.localizedDescription
@@ -140,20 +140,29 @@ struct DebugRemotePushDiagnosticsView: View {
 
         do {
             let timestamp = Date.now.formatted(date: .omitted, time: .standard)
+            let targetID = UUID()
             let intent = NotificationIntent(
                 kind: .debugTest,
                 title: "Mory Debug",
                 body: "Remote push test from Debug at \(timestamp).",
                 privacyLevel: .generic,
                 targetType: .question,
-                targetID: UUID(),
+                targetID: targetID,
                 scheduledAt: .now,
                 status: .pending,
-                deliveryChannel: .remote
+                deliveryChannel: .remote,
+                deepLink: "mory://home/question/\(targetID.uuidString)",
+                reason: "Debug manual push.",
+                sourceTrigger: .debugManual,
+                createdBy: .debug
             )
-            try memoryRepository.upsertNotificationIntent(intent)
-            let response = try await remotePushSyncService.enqueueRemoteNotificationIntent(intent)
-            resultMessage = "Test queued \(response.queuedCount), sent \(response.sentCount), failed \(response.failedCount), retried \(response.retriedCount ?? 0), permanent \(response.permanentFailedCount ?? 0)."
+            let report = try await NotificationOrchestrator(
+                deliveryRouter: NotificationDeliveryRouter(remotePushSyncService: remotePushSyncService)
+            ).orchestrate(
+                trigger: .debugManual(intent: intent),
+                repository: memoryRepository
+            )
+            resultMessage = "Test generated \(report.generatedIntentIDs.count), scheduled \(report.scheduledIntentIDs.count), remote \(report.remoteEnqueuedIntentIDs.count), blocked \(report.blockedIntentIDs.count)."
             snapshot = await remotePushSyncService.fetchDebugSnapshot(repository: memoryRepository)
         } catch {
             resultMessage = error.localizedDescription

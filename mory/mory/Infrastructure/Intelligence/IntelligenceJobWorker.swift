@@ -13,19 +13,13 @@ struct IntelligenceJobWorkerReport: Hashable, Sendable {
 
 @MainActor
 struct IntelligenceJobWorker {
-    private let notificationIntentPreparationService: NotificationIntentPreparationService
-    private let notificationScheduler: LocalNotificationScheduler
     private let clarificationQuestionBuilder: ClarificationQuestionBuilder
     private let graphDeltaApplier: GraphDeltaApplier
 
     init(
-        notificationIntentPreparationService: NotificationIntentPreparationService? = nil,
-        notificationScheduler: LocalNotificationScheduler? = nil,
         clarificationQuestionBuilder: ClarificationQuestionBuilder? = nil,
         graphDeltaApplier: GraphDeltaApplier? = nil
     ) {
-        self.notificationIntentPreparationService = notificationIntentPreparationService ?? NotificationIntentPreparationService()
-        self.notificationScheduler = notificationScheduler ?? LocalNotificationScheduler()
         self.clarificationQuestionBuilder = clarificationQuestionBuilder ?? ClarificationQuestionBuilder()
         self.graphDeltaApplier = graphDeltaApplier ?? GraphDeltaApplier()
     }
@@ -33,6 +27,7 @@ struct IntelligenceJobWorker {
     func processDueJobs(
         repository: any IntelligenceJobRepositorying,
         cloudIntelligenceService: any CloudIntelligenceServing,
+        remotePushSyncService: (any RemotePushSyncing)? = nil,
         now: Date = .now,
         limit: Int = 24
     ) async -> IntelligenceJobWorkerReport {
@@ -76,6 +71,7 @@ struct IntelligenceJobWorker {
                     running,
                     repository: repository,
                     cloudIntelligenceService: cloudIntelligenceService,
+                    remotePushSyncService: remotePushSyncService,
                     now: now,
                     report: &report
                 )
@@ -102,6 +98,7 @@ struct IntelligenceJobWorker {
         _ runningJob: IntelligenceJob,
         repository: any IntelligenceJobRepositorying,
         cloudIntelligenceService: any CloudIntelligenceServing,
+        remotePushSyncService: (any RemotePushSyncing)?,
         now: Date,
         report: inout IntelligenceJobWorkerReport
     ) async throws {
@@ -120,16 +117,15 @@ struct IntelligenceJobWorker {
             report.preparedQuestionCount += prepared.count
 
         case .notificationIntent:
-            _ = try notificationIntentPreparationService.prepareNextIntentIfNeeded(
-                repository: repository,
-                now: now
-            )
-            let scheduleReport = try await notificationScheduler.schedulePendingIntents(
+            let router = remotePushSyncService.map { NotificationDeliveryRouter(remotePushSyncService: $0) }
+            let notificationReport = try await NotificationOrchestrator(
+                deliveryRouter: router
+            ).orchestrate(
+                trigger: .backgroundRefresh,
                 repository: repository,
                 now: now,
-                requestAuthorizationIfNeeded: false
             )
-            report.scheduledNotificationCount += scheduleReport.scheduledCount
+            report.scheduledNotificationCount += notificationReport.scheduledIntentIDs.count
 
         case .semanticIndex:
             _ = try await repository.rebuildSpotlightIndex()

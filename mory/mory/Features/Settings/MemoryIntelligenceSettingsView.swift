@@ -19,6 +19,12 @@ struct MemoryIntelligenceSettingsView: View {
                 }
 
                 NavigationLink {
+                    NotificationHistoryView()
+                } label: {
+                    Label("Notification History", systemImage: "bell.badge")
+                }
+
+                NavigationLink {
                     PlatformCaptureDiagnosticsView()
                 } label: {
                     Label("Platform Capture Diagnostics", systemImage: "checklist.checked")
@@ -36,6 +42,81 @@ struct MemoryIntelligenceSettingsView: View {
         }
         .navigationTitle("Memory Intelligence")
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct NotificationHistoryView: View {
+    @Environment(\.memoryRepository) private var memoryRepository
+    @State private var intents: [NotificationIntent] = []
+    @State private var message: String?
+
+    var body: some View {
+        List {
+            if let message {
+                Section("Status") {
+                    Text(message)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Section("Notification Intents") {
+                if intents.isEmpty {
+                    Text("No notification history.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(intents) { intent in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(intent.kind.rawValue)
+                                .font(.subheadline.weight(.semibold))
+                            Text(intent.body)
+                                .font(.subheadline)
+                            Text(metaSummary(intent))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            if let deepLink = intent.deepLink?.trimmedOrNil {
+                                Text(deepLink)
+                                    .font(.caption2.monospaced())
+                                    .foregroundStyle(.secondary)
+                            }
+                            if !intent.blockedReasons.isEmpty {
+                                Text("Blocked: \(intent.blockedReasons.joined(separator: ", "))")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+            }
+        }
+        .navigationTitle("Notification History")
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            reload()
+        }
+        .refreshable {
+            reload()
+        }
+    }
+
+    @MainActor
+    private func reload() {
+        do {
+            intents = try memoryRepository.fetchNotificationIntents(status: nil, limit: 80)
+            message = "Loaded \(intents.count) notification intent(s)."
+        } catch {
+            message = error.localizedDescription
+        }
+    }
+
+    private func metaSummary(_ intent: NotificationIntent) -> String {
+        [
+            "status=\(intent.status.rawValue)",
+            "trigger=\(intent.sourceTrigger.rawValue)",
+            "channel=\(intent.deliveryChannel.rawValue)",
+            "reason=\(intent.reason.ifEmpty("none"))",
+        ].joined(separator: " · ")
     }
 }
 

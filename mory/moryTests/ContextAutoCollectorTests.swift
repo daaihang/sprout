@@ -22,11 +22,11 @@ final class ContextAutoCollectorTests: XCTestCase {
         XCTAssertEqual(locationProvider.requestCount, 1)
         XCTAssertEqual(result.drafts.count, 3)
         XCTAssertTrue(result.drafts.contains { draft in
-            guard case let .location(_, _, latitude, longitude, _) = draft else { return false }
+            guard case let .location(_, _, latitude, longitude, _, _) = draft else { return false }
             return latitude == location.latitude && longitude == location.longitude
         })
         XCTAssertTrue(result.drafts.contains { draft in
-            guard case let .weather(_, _, _, _, _, latitude, longitude, _, _, _, _) = draft else { return false }
+            guard case let .weather(_, _, _, _, _, latitude, longitude, _, _, _, _, _) = draft else { return false }
             return latitude == location.latitude && longitude == location.longitude
         })
         XCTAssertEqual(result.diagnostics.first(where: { $0.component == .location })?.status, .success)

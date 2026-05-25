@@ -85,10 +85,12 @@ struct NotificationPolicy: Sendable {
         preferences: NotificationPreferences
     ) -> Bool {
         switch kind {
-        case .backgroundDone:
+        case .analysisReady:
             return preferences.backgroundDoneEnabled
         case .dailyQuestion:
             return preferences.dailyQuestionEnabled
+        case .reflectionReady:
+            return preferences.stageFormingEnabled
         case .repeatedTheme:
             return preferences.repeatedThemeEnabled
         case .stageForming:
@@ -191,10 +193,12 @@ struct NotificationPolicy: Sendable {
 
     private func genericBody(for kind: NotificationIntentKind) -> String {
         switch kind {
-        case .backgroundDone:
+        case .analysisReady:
             return "Your memories are ready to review."
         case .dailyQuestion:
             return "A question is ready for today."
+        case .reflectionReady:
+            return "A reflection is ready to review."
         case .repeatedTheme:
             return "A recurring pattern is ready to review."
         case .stageForming:

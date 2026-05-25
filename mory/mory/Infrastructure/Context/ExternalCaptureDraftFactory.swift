@@ -6,24 +6,31 @@ struct ExternalCaptureDraftFactory: Sendable {
 
     func makeDraft(from suggestion: JournalingSuggestionDraft) -> MemoryCaptureDraft {
         var diagnostics = suggestion.bundle.diagnostics
+        let importSessionID = UUID()
+        let baseProvenance = CaptureProvenance.external(
+            sourceKind: .journalingSuggestion,
+            importSessionID: importSessionID,
+            sourceDisplayName: "Apple Journaling",
+            createdAt: suggestion.createdAt
+        )
         let bodyText = journalingBodyText(from: suggestion, diagnostics: diagnostics)
         var artifacts: [CaptureArtifactDraft] = [
-            .text(title: suggestion.title, body: bodyText, origin: .imported)
+            .text(title: suggestion.title, body: bodyText, origin: .imported, provenance: baseProvenance)
         ]
 
         let attachmentsByID = Dictionary(uniqueKeysWithValues: suggestion.bundle.attachments.map { ($0.id, $0) })
-        artifacts.append(contentsOf: suggestion.bundle.locations.map(locationDraft))
+        artifacts.append(contentsOf: suggestion.bundle.locations.map { locationDraft(from: $0, provenance: baseProvenance.withJournalingEvidenceID($0.id)) })
         artifacts.append(contentsOf: suggestion.bundle.locationGroups.flatMap { group in
-            group.map(locationDraft)
+            group.map { locationDraft(from: $0, provenance: baseProvenance.withJournalingEvidenceID($0.id)) }
         })
         artifacts.append(contentsOf: suggestion.bundle.media.map { media in
-            mediaDraft(from: media, attachmentsByID: attachmentsByID, diagnostics: &diagnostics)
+            mediaDraft(from: media, provenance: baseProvenance.withJournalingEvidenceID(media.id), attachmentsByID: attachmentsByID, diagnostics: &diagnostics)
         })
         artifacts.append(contentsOf: suggestion.bundle.photoVideos.compactMap { media in
-            photoVideoDraft(from: media, attachmentsByID: attachmentsByID, diagnostics: &diagnostics)
+            photoVideoDraft(from: media, provenance: baseProvenance.withJournalingEvidenceID(media.id), attachmentsByID: attachmentsByID, diagnostics: &diagnostics)
         })
         artifacts.append(contentsOf: suggestion.bundle.reflections.map { reflection in
-            .promptAnswer(prompt: reflection.prompt, answer: nil, source: "Journaling Suggestions", origin: .imported)
+            .promptAnswer(prompt: reflection.prompt, answer: nil, source: "Journaling Suggestions", origin: .imported, provenance: baseProvenance.withJournalingEvidenceID(reflection.id))
         })
         artifacts.append(contentsOf: suggestion.bundle.contacts.map { contact in
             let photoData = contact.photoAttachmentID.flatMap { attachmentData(id: $0, attachmentsByID: attachmentsByID, diagnostics: &diagnostics) }
@@ -32,17 +39,21 @@ struct ExternalCaptureDraftFactory: Sendable {
                 note: "Suggested by Apple Journaling Suggestions",
                 photoData: photoData,
                 metadata: contact.metadata.merging(["source": "journalSuggestion"]) { _, new in new },
-                origin: .imported
+                origin: .imported,
+                provenance: baseProvenance.withJournalingEvidenceID(contact.id)
             )
         })
 
-        let affectDrafts = suggestion.bundle.stateOfMind.compactMap(makeAffectDraft)
+        let affectDrafts = suggestion.bundle.stateOfMind.compactMap {
+            makeAffectDraft(from: $0, provenance: baseProvenance.withJournalingEvidenceID($0.id))
+        }
         return MemoryCaptureDraft(
             title: suggestion.title,
             rawText: bodyText,
             mood: affectDrafts.first?.rawInput ?? affectDrafts.first?.labels.first?.rawValue,
-            inputContext: journalingInputContext(from: suggestion, diagnostics: diagnostics),
+            inputContext: diagnostics.joined(separator: "\n").trimmedOrNil,
             captureSource: .composer,
+            provenance: baseProvenance,
             artifacts: artifacts,
             affectSnapshots: affectDrafts
         )
@@ -54,9 +65,16 @@ struct ExternalCaptureDraftFactory: Sendable {
             diagnostics.append(errorMessage)
         }
 
+        let importSessionID = UUID()
+        let baseProvenance = CaptureProvenance.external(
+            sourceKind: request.sourceKind.captureProvenanceSourceKind,
+            importSessionID: importSessionID,
+            sourceDisplayName: request.sourceKind.displayLabel,
+            createdAt: request.receivedAt ?? .now
+        )
         let bodyText = bodyText(from: request, diagnostics: diagnostics)
         var artifacts: [CaptureArtifactDraft] = [
-            .text(title: request.title, body: bodyText, origin: .imported)
+            .text(title: request.title, body: bodyText, origin: .imported, provenance: baseProvenance)
         ]
 
         let evidenceLinkURLs = Set<String>(request.evidenceItems.compactMap { evidence in
@@ -64,24 +82,27 @@ struct ExternalCaptureDraftFactory: Sendable {
             return evidence.value?.trimmedOrNil ?? evidence.metadata["url"]?.trimmedOrNil
         })
         if let url = request.url?.trimmedOrNil, !evidenceLinkURLs.contains(url) {
-            artifacts.append(.link(title: request.title, url: url, note: request.text, origin: .imported))
+            artifacts.append(.link(title: request.title, url: url, note: request.text, origin: .imported, provenance: baseProvenance))
         }
 
         for evidence in request.evidenceItems {
-            artifacts.append(contentsOf: artifactDrafts(from: evidence, request: request))
+            artifacts.append(contentsOf: artifactDrafts(from: evidence, request: request, provenance: baseProvenance.withJournalingEvidenceID(evidence.id)))
         }
 
         for attachment in request.attachments where attachment.role == .primaryMedia || attachment.role == .unknown {
-            artifacts.append(attachmentArtifactDraft(from: attachment, request: request, diagnostics: &diagnostics))
+            artifacts.append(attachmentArtifactDraft(from: attachment, request: request, provenance: baseProvenance.withAttachmentRole(attachment.role.rawValue), diagnostics: &diagnostics))
         }
 
-        let affectDrafts = request.affectEvidence.compactMap(makeAffectDraft)
+        let affectDrafts = request.affectEvidence.compactMap {
+            makeAffectDraft(from: $0, provenance: baseProvenance.withJournalingEvidenceID($0.id))
+        }
         return MemoryCaptureDraft(
             title: request.title,
             rawText: bodyText,
             mood: affectDrafts.first?.rawInput ?? affectDrafts.first?.labels.first?.rawValue,
-            inputContext: inputContext(from: request, diagnostics: diagnostics),
+            inputContext: [request.context?.trimmedOrNil, diagnostics.joined(separator: "\n").trimmedOrNil].compactMap { $0 }.joined(separator: "\n").trimmedOrNil,
             captureSource: request.sourceKind == .shareSheet ? .importFile : .composer,
+            provenance: baseProvenance,
             artifacts: artifacts,
             affectSnapshots: affectDrafts
         )
@@ -106,29 +127,20 @@ struct ExternalCaptureDraftFactory: Sendable {
         return parts.joined(separator: "\n").trimmedOrNil ?? "Journaling suggestion"
     }
 
-    private func journalingInputContext(from suggestion: JournalingSuggestionDraft, diagnostics: [String]) -> String {
-        var parts = [
-            "journalingSuggestion:v\(suggestion.version)",
-            "selectedAt=\(suggestion.createdAt.formatted(.iso8601))"
-        ]
-        if !diagnostics.isEmpty {
-            parts.append("diagnostics=\(diagnostics.joined(separator: " | "))")
-        }
-        return parts.joined(separator: "\n")
-    }
-
-    private func locationDraft(from location: JournalingLocationEvidence) -> CaptureArtifactDraft {
+    private func locationDraft(from location: JournalingLocationEvidence, provenance: CaptureProvenance) -> CaptureArtifactDraft {
         .location(
             title: location.title ?? location.place ?? location.city ?? "Location",
             summary: [location.place, location.city].compactMap { $0?.trimmedOrNil }.joined(separator: ", ").trimmedOrNil ?? "Imported location context",
             latitude: location.latitude,
             longitude: location.longitude,
-            origin: .imported
+            origin: .imported,
+            provenance: provenance
         )
     }
 
     private func mediaDraft(
         from media: JournalingMediaEvidence,
+        provenance: CaptureProvenance,
         attachmentsByID: [UUID: ExternalCaptureAttachmentDraft],
         diagnostics: inout [String]
     ) -> CaptureArtifactDraft {
@@ -143,12 +155,14 @@ struct ExternalCaptureDraftFactory: Sendable {
             durationSeconds: media.metadata["durationSeconds"].flatMap(Int.init) ?? 0,
             artworkURL: nil,
             artworkData: artworkData,
-            origin: .imported
+            origin: .imported,
+            provenance: provenance
         )
     }
 
     private func photoVideoDraft(
         from media: JournalingPhotoVideoEvidence,
+        provenance: CaptureProvenance,
         attachmentsByID: [UUID: ExternalCaptureAttachmentDraft],
         diagnostics: inout [String]
     ) -> CaptureArtifactDraft? {
@@ -159,9 +173,9 @@ struct ExternalCaptureDraftFactory: Sendable {
         }
         switch media.kind {
         case .photo, .livePhotoImage:
-            return attachmentArtifactDraft(from: attachment, sourceKind: .journalingSuggestion, title: "Journaling photo", diagnostics: &diagnostics)
+            return attachmentArtifactDraft(from: attachment, sourceKind: .journalingSuggestion, title: "Journaling photo", provenance: provenance.withAttachmentRole(attachment.role.rawValue), diagnostics: &diagnostics)
         case .video, .livePhotoVideo:
-            return attachmentArtifactDraft(from: attachment, sourceKind: .journalingSuggestion, title: "Journaling video", diagnostics: &diagnostics)
+            return attachmentArtifactDraft(from: attachment, sourceKind: .journalingSuggestion, title: "Journaling video", provenance: provenance.withAttachmentRole(attachment.role.rawValue), diagnostics: &diagnostics)
         }
     }
 
@@ -195,23 +209,11 @@ struct ExternalCaptureDraftFactory: Sendable {
         return parts.joined(separator: "\n").trimmedOrNil ?? "Shared to Mory."
     }
 
-    private func inputContext(from request: ExternalCaptureRequest, diagnostics: [String]) -> String {
-        var parts = [
-            request.context?.trimmedOrNil,
-            "externalCapture:v\(request.version)",
-            "source=\(request.sourceKind.rawValue)"
-        ]
-        if !diagnostics.isEmpty {
-            parts.append("diagnostics=\(diagnostics.joined(separator: " | "))")
-        }
-        return parts.compactMap { $0 }.joined(separator: "\n")
-    }
-
-    private func artifactDrafts(from evidence: ExternalCaptureEvidenceItem, request: ExternalCaptureRequest) -> [CaptureArtifactDraft] {
+    private func artifactDrafts(from evidence: ExternalCaptureEvidenceItem, request: ExternalCaptureRequest, provenance: CaptureProvenance) -> [CaptureArtifactDraft] {
         switch evidence.kind {
         case .link:
             guard let url = evidence.value?.trimmedOrNil ?? evidence.metadata["url"]?.trimmedOrNil else { return [] }
-            return [.link(title: evidence.title ?? request.title, url: url, note: evidence.summary, origin: .imported)]
+            return [.link(title: evidence.title ?? request.title, url: url, note: evidence.summary, origin: .imported, provenance: provenance)]
         case .location:
             let latitude = evidence.metadata["latitude"].flatMap(Double.init)
             let longitude = evidence.metadata["longitude"].flatMap(Double.init)
@@ -220,7 +222,8 @@ struct ExternalCaptureDraftFactory: Sendable {
                 summary: evidence.summary ?? "Imported location context",
                 latitude: latitude,
                 longitude: longitude,
-                origin: .imported
+                origin: .imported,
+                provenance: provenance
             )]
         case .song:
             guard let title = evidence.title?.trimmedOrNil ?? evidence.metadata["song"]?.trimmedOrNil else { return [] }
@@ -230,7 +233,8 @@ struct ExternalCaptureDraftFactory: Sendable {
                 albumName: evidence.metadata["album"]?.trimmedOrNil ?? "",
                 durationSeconds: 0,
                 artworkURL: nil,
-                origin: .imported
+                origin: .imported,
+                provenance: provenance
             )]
         default:
             return []
@@ -240,15 +244,17 @@ struct ExternalCaptureDraftFactory: Sendable {
     private func attachmentArtifactDraft(
         from attachment: ExternalCaptureAttachmentDraft,
         request: ExternalCaptureRequest,
+        provenance: CaptureProvenance,
         diagnostics: inout [String]
     ) -> CaptureArtifactDraft {
-        attachmentArtifactDraft(from: attachment, sourceKind: request.sourceKind, title: request.title, diagnostics: &diagnostics)
+        attachmentArtifactDraft(from: attachment, sourceKind: request.sourceKind, title: request.title, provenance: provenance, diagnostics: &diagnostics)
     }
 
     private func attachmentArtifactDraft(
         from attachment: ExternalCaptureAttachmentDraft,
         sourceKind: ExternalCaptureSourceKind,
         title: String?,
+        provenance: CaptureProvenance,
         diagnostics: inout [String]
     ) -> CaptureArtifactDraft {
         let data = loadAttachmentData(attachment, diagnostics: &diagnostics)
@@ -268,7 +274,8 @@ struct ExternalCaptureDraftFactory: Sendable {
                     "storedFileName": attachment.storedFileName ?? "",
                     "attachmentRole": attachment.role.rawValue
                 ],
-                origin: .imported
+                origin: .imported,
+                provenance: provenance
             )
         case .video, .file:
             return .video(
@@ -283,7 +290,8 @@ struct ExternalCaptureDraftFactory: Sendable {
                     "storedFileName": attachment.storedFileName ?? "",
                     "attachmentRole": attachment.role.rawValue
                 ],
-                origin: .imported
+                origin: .imported,
+                provenance: provenance
             )
         }
     }
@@ -305,12 +313,12 @@ struct ExternalCaptureDraftFactory: Sendable {
         return data
     }
 
-    private func makeAffectDraft(from evidence: ExternalCaptureAffectEvidence) -> AffectSnapshotDraft? {
+    private func makeAffectDraft(from evidence: ExternalCaptureAffectEvidence, provenance: CaptureProvenance) -> AffectSnapshotDraft? {
         let labels = evidence.labels.isEmpty ? [evidence.label].compactMap { $0 } : evidence.labels
         switch evidence.source {
         case .journalSuggestionStateOfMind, .healthStateOfMind:
             guard let label = labels.first ?? evidence.rawInput?.trimmedOrNil else { return nil }
-            return affectMapper.draftFromJournalingStateOfMind(
+            var draft = affectMapper.draftFromJournalingStateOfMind(
                 label: label,
                 allLabels: labels,
                 associations: evidence.associations,
@@ -318,6 +326,9 @@ struct ExternalCaptureDraftFactory: Sendable {
                 valenceClassification: evidence.valenceClassification,
                 kind: evidence.kind
             )
+            draft.provenance = provenance
+            draft.evidenceMetadata.merge(evidence.metadata) { _, new in new }
+            return draft
         case .userSelected:
             var draft = AffectSnapshotDraft(
                 labels: labels.compactMap(AffectLabel.init(rawValue:)),
@@ -325,6 +336,8 @@ struct ExternalCaptureDraftFactory: Sendable {
                 sources: [.userSelected],
                 confidence: evidence.confidence ?? 1,
                 evidenceSummary: evidence.rawInput ?? labels.joined(separator: ", "),
+                evidenceMetadata: evidence.metadata,
+                provenance: provenance,
                 userConfirmed: evidence.userConfirmed,
                 rawInput: evidence.rawInput ?? labels.first
             )
@@ -337,9 +350,32 @@ struct ExternalCaptureDraftFactory: Sendable {
             draft.valence = evidence.valence ?? draft.valence
             draft.confidence = evidence.confidence ?? draft.confidence
             draft.userConfirmed = evidence.userConfirmed
+            draft.evidenceMetadata.merge(evidence.metadata) { _, new in new }
+            draft.provenance = provenance
             return draft
         case .unknown:
             return nil
+        }
+    }
+}
+
+private extension ExternalCaptureSourceKind {
+    var captureProvenanceSourceKind: CaptureProvenanceSourceKind {
+        switch self {
+        case .appIntent:
+            return .appIntent
+        case .shortcut:
+            return .shortcut
+        case .shareSheet:
+            return .shareSheet
+        case .journalingSuggestion:
+            return .journalingSuggestion
+        case .health:
+            return .health
+        case .fitness:
+            return .fitness
+        case .unknown:
+            return .unknown
         }
     }
 }

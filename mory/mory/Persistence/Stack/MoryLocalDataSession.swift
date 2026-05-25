@@ -84,11 +84,14 @@ final class MoryLocalDataSession {
         analysisService: any RecordAnalysisServing,
         cloudIntelligenceService: (any CloudIntelligenceServing)? = nil
     ) {
+        let baseDirectory = Self.testingBaseDirectoryIfNeeded()
+        let registry = LocalDataOwnerRegistry(baseDirectory: baseDirectory)
         self.init(
             ownerID: ownerID,
             analysisService: analysisService,
             cloudIntelligenceService: cloudIntelligenceService,
-            registry: LocalDataOwnerRegistry()
+            scope: registry.scope(for: ownerID),
+            baseDirectory: baseDirectory
         )
     }
 
@@ -205,5 +208,13 @@ final class MoryLocalDataSession {
                 note: "Device-level marker used to clear Spotlight and notifications when active owner changes."
             ),
         ]
+    }
+
+    private static func testingBaseDirectoryIfNeeded() -> URL? {
+        guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil else {
+            return nil
+        }
+        return URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+            .appendingPathComponent("mory-xctest-local-data", isDirectory: true)
     }
 }

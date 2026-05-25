@@ -172,7 +172,8 @@ struct MoryApp: App {
                         )
                         appDelegate.backgroundTaskCoordinator.configure(
                             repository: session.memoryRepository,
-                            cloudService: cloudIntelligenceService
+                            cloudService: cloudIntelligenceService,
+                            remotePushSyncService: remotePushSyncService
                         )
                         appDelegate.backgroundTaskCoordinator.scheduleIfNeeded()
                         localDataSession = session

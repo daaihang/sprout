@@ -12,6 +12,7 @@ final class RecordShellStore {
     var userIntensity: Int?
     var inputContext: String?
     var artifactIDs: [UUID]
+    var captureProvenanceData: Data?
     var debugFixtureSeededAt: Date?
 
     init(
@@ -24,6 +25,7 @@ final class RecordShellStore {
         userIntensity: Int? = nil,
         inputContext: String? = nil,
         artifactIDs: [UUID] = [],
+        captureProvenanceData: Data? = nil,
         debugFixtureSeededAt: Date? = nil
     ) {
         self.id = id
@@ -35,6 +37,7 @@ final class RecordShellStore {
         self.userIntensity = userIntensity
         self.inputContext = inputContext
         self.artifactIDs = artifactIDs
+        self.captureProvenanceData = captureProvenanceData
         self.debugFixtureSeededAt = debugFixtureSeededAt
     }
 }
@@ -52,6 +55,7 @@ final class ArtifactStore {
     var metadataData: Data?
     @Attribute(.externalStorage) var binaryPayload: Data?
     @Attribute(.externalStorage) var previewPayload: Data?
+    var captureProvenanceData: Data?
     var createdAt: Date
     var updatedAt: Date
 
@@ -67,6 +71,7 @@ final class ArtifactStore {
         metadataData: Data? = nil,
         binaryPayload: Data? = nil,
         previewPayload: Data? = nil,
+        captureProvenanceData: Data? = nil,
         createdAt: Date,
         updatedAt: Date
     ) {
@@ -81,6 +86,7 @@ final class ArtifactStore {
         self.metadataData = metadataData
         self.binaryPayload = binaryPayload
         self.previewPayload = previewPayload
+        self.captureProvenanceData = captureProvenanceData
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }

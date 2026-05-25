@@ -58,8 +58,9 @@ struct HomeBoardSignal: Identifiable, Codable, Hashable, Sendable {
 }
 
 enum NotificationIntentKind: String, Codable, CaseIterable, Identifiable, Sendable {
-    case backgroundDone
+    case analysisReady
     case dailyQuestion
+    case reflectionReady
     case repeatedTheme
     case stageForming
     case revisit
@@ -82,6 +83,7 @@ enum NotificationIntentStatus: String, Codable, CaseIterable, Identifiable, Send
     case delivered
     case dismissed
     case blocked
+    case inAppOnly
 
     var id: String { rawValue }
 }
@@ -93,8 +95,27 @@ enum NotificationDeliveryChannel: String, Codable, CaseIterable, Identifiable, S
     var id: String { rawValue }
 }
 
+enum NotificationTriggerSource: String, Codable, CaseIterable, Identifiable, Sendable {
+    case appLaunchRecovery
+    case homeForegroundRefresh
+    case backgroundRefresh
+    case silentPush
+    case pipelineCompleted
+    case settingsChanged
+    case debugManual
+
+    var id: String { rawValue }
+}
+
+enum NotificationIntentCreator: String, Codable, CaseIterable, Identifiable, Sendable {
+    case orchestrator
+    case debug
+
+    var id: String { rawValue }
+}
+
 struct NotificationIntent: Identifiable, Codable, Hashable, Sendable {
-    let id: UUID
+    var id: UUID
     var kind: NotificationIntentKind
     var title: String
     var body: String
@@ -104,6 +125,13 @@ struct NotificationIntent: Identifiable, Codable, Hashable, Sendable {
     var scheduledAt: Date
     var status: NotificationIntentStatus
     var deliveryChannel: NotificationDeliveryChannel
+    var dedupeKey: String
+    var deepLink: String?
+    var reason: String
+    var sourceTrigger: NotificationTriggerSource
+    var createdBy: NotificationIntentCreator
+    var lastEvaluatedAt: Date
+    var blockedReasons: [String]
     var createdAt: Date
     var deliveredAt: Date?
     var dismissedAt: Date?
@@ -119,6 +147,13 @@ struct NotificationIntent: Identifiable, Codable, Hashable, Sendable {
         scheduledAt: Date,
         status: NotificationIntentStatus = .pending,
         deliveryChannel: NotificationDeliveryChannel = .local,
+        dedupeKey: String? = nil,
+        deepLink: String? = nil,
+        reason: String = "",
+        sourceTrigger: NotificationTriggerSource = .debugManual,
+        createdBy: NotificationIntentCreator = .orchestrator,
+        lastEvaluatedAt: Date? = nil,
+        blockedReasons: [String] = [],
         createdAt: Date = .now,
         deliveredAt: Date? = nil,
         dismissedAt: Date? = nil
@@ -133,8 +168,27 @@ struct NotificationIntent: Identifiable, Codable, Hashable, Sendable {
         self.scheduledAt = scheduledAt
         self.status = status
         self.deliveryChannel = deliveryChannel
+        self.dedupeKey = dedupeKey ?? NotificationIntent.makeDedupeKey(
+            kind: kind,
+            targetType: targetType,
+            targetID: targetID
+        )
+        self.deepLink = deepLink
+        self.reason = reason
+        self.sourceTrigger = sourceTrigger
+        self.createdBy = createdBy
+        self.lastEvaluatedAt = lastEvaluatedAt ?? createdAt
+        self.blockedReasons = blockedReasons
         self.createdAt = createdAt
         self.deliveredAt = deliveredAt
         self.dismissedAt = dismissedAt
+    }
+
+    static func makeDedupeKey(
+        kind: NotificationIntentKind,
+        targetType: ClarificationTargetType,
+        targetID: UUID
+    ) -> String {
+        "\(kind.rawValue)|\(targetType.rawValue)|\(targetID.uuidString)"
     }
 }

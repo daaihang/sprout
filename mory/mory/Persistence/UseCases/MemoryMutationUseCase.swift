@@ -318,6 +318,11 @@ struct MemoryMutationUseCase {
             ) {
                 await repository.indexMemoryIfPossible(summary)
             }
+            _ = try? await NotificationOrchestrator().orchestrate(
+                trigger: .pipelineCompleted(recordID: recordID),
+                repository: repository,
+                now: completedAt
+            )
             NotificationCenter.default.post(
                 name: .pipelineDidComplete,
                 object: nil,

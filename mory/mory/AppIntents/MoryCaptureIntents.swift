@@ -5,7 +5,7 @@ import Foundation
 struct CaptureMemoryInMoryIntent: AppIntent {
     static var title: LocalizedStringResource = "Capture Memory in Mory"
     static var description = IntentDescription("Adds text or a link to Mory's external capture handoff path.")
-    static var openAppWhenRun: Bool = false
+    static var openAppWhenRun: Bool = true
 
     @Parameter(title: "Text")
     var text: String
@@ -25,8 +25,9 @@ struct CaptureMemoryInMoryIntent: AppIntent {
             url: url?.trimmedOrNil,
             context: "appIntent:CaptureMemoryInMoryIntent"
         )
-        _ = try ExternalCaptureInboxWriter().enqueue(request)
-        return .result(dialog: "Added to Mory.")
+        let item = try ExternalCaptureInboxWriter().enqueue(request)
+        ExternalCaptureComposeHandoffStore().save(.init(itemID: item.id))
+        return .result(dialog: "Opening Mory.")
     }
 }
 

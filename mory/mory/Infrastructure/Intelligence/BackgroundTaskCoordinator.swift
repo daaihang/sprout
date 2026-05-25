@@ -10,12 +10,9 @@ enum BackgroundTaskIdentifier {
 final class BackgroundTaskCoordinator {
     private(set) var repository: (any MoryMemoryRepositorying)?
     private var cloudService: (any CloudIntelligenceServing)?
+    private var remotePushSyncService: (any RemotePushSyncing)?
 
-    // Stored service instances — created once and reused across background task invocations.
-    // Storing avoids repeated allocation overhead and allows injection in tests via configure().
     private let jobWorker = IntelligenceJobWorker()
-    private let notificationPrep = NotificationIntentPreparationService()
-    private let notificationScheduler = LocalNotificationScheduler()
 
     // MARK: - Registration (must be called before first runloop in AppDelegate)
 
@@ -49,9 +46,14 @@ final class BackgroundTaskCoordinator {
 
     // MARK: - Configuration
 
-    func configure(repository: any MoryMemoryRepositorying, cloudService: (any CloudIntelligenceServing)?) {
+    func configure(
+        repository: any MoryMemoryRepositorying,
+        cloudService: (any CloudIntelligenceServing)?,
+        remotePushSyncService: (any RemotePushSyncing)? = nil
+    ) {
         self.repository = repository
         self.cloudService = cloudService
+        self.remotePushSyncService = remotePushSyncService
     }
 
     // MARK: - Schedule
@@ -59,6 +61,23 @@ final class BackgroundTaskCoordinator {
     func scheduleIfNeeded() {
         scheduleProcess()
         scheduleRefresh()
+    }
+
+    func orchestrateNotifications(
+        trigger: NotificationTrigger,
+        now: Date = .now
+    ) async throws -> NotificationOrchestrationReport {
+        guard let repository else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+        let router = remotePushSyncService.map { NotificationDeliveryRouter(remotePushSyncService: $0) }
+        return try await NotificationOrchestrator(
+            deliveryRouter: router
+        ).orchestrate(
+            trigger: trigger,
+            repository: repository,
+            now: now
+        )
     }
 
     // MARK: - Handlers
@@ -72,7 +91,8 @@ final class BackgroundTaskCoordinator {
         let t = Task { @MainActor in
             _ = await self.jobWorker.processDueJobs(
                 repository: repo,
-                cloudIntelligenceService: svc
+                cloudIntelligenceService: svc,
+                remotePushSyncService: self.remotePushSyncService
             )
             task.setTaskCompleted(success: true)
         }
@@ -86,10 +106,12 @@ final class BackgroundTaskCoordinator {
             return
         }
         let t = Task { @MainActor in
-            _ = try? self.notificationPrep.prepareNextIntentIfNeeded(repository: repo)
-            _ = try? await self.notificationScheduler.schedulePendingIntents(
-                repository: repo,
-                requestAuthorizationIfNeeded: false
+            let router = self.remotePushSyncService.map { NotificationDeliveryRouter(remotePushSyncService: $0) }
+            _ = try? await NotificationOrchestrator(
+                deliveryRouter: router
+            ).orchestrate(
+                trigger: .backgroundRefresh,
+                repository: repo
             )
             task.setTaskCompleted(success: true)
         }

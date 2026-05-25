@@ -61,17 +61,26 @@ struct NotificationInteractionResult: Hashable, Sendable {
 final class NotificationInteractionInbox: ObservableObject {
     static let shared = NotificationInteractionInbox()
 
-    @Published private(set) var latestEvent: NotificationInteractionEvent?
+    @Published private(set) var currentEvent: NotificationInteractionEvent?
+    @Published private(set) var queuedCount = 0
+
+    private var queue: [NotificationInteractionEvent] = []
 
     private init() {}
 
     func enqueue(_ event: NotificationInteractionEvent) {
-        latestEvent = event
+        queue.append(event)
+        queuedCount = queue.count
+        if currentEvent == nil {
+            currentEvent = queue.first
+        }
     }
 
     func consume(eventID: UUID) {
-        guard latestEvent?.id == eventID else { return }
-        latestEvent = nil
+        guard queue.first?.id == eventID else { return }
+        queue.removeFirst()
+        queuedCount = queue.count
+        currentEvent = queue.first
     }
 }
 
@@ -107,7 +116,7 @@ struct NotificationInteractionService {
         repository: any MoryMemoryRepositorying
     ) throws -> NotificationInteractionRoute {
         NotificationInteractionRoute(
-            destination: destination(for: payload),
+            destination: try destination(for: payload, repository: repository),
             deepLink: try deepLink(for: payload, repository: repository),
             kind: payload.kind,
             targetType: payload.targetType,
@@ -152,13 +161,29 @@ struct NotificationInteractionService {
         return intent
     }
 
-    private func destination(for payload: LocalNotificationPayload) -> NotificationInteractionDestination {
+    private func destination(
+        for payload: LocalNotificationPayload,
+        repository: any MoryMemoryRepositorying
+    ) throws -> NotificationInteractionDestination {
+        if let deepLink = try deepLink(for: payload, repository: repository) {
+            switch deepLink {
+            case .home:
+                return .home
+            case .memories:
+                return .memories
+            case .insights:
+                return .insights
+            case .search:
+                return .search
+            }
+        }
+
         switch payload.kind {
         case .debugTest:
             return .home
         case .dailyQuestion:
             return .home
-        case .backgroundDone:
+        case .analysisReady:
             switch payload.targetType {
             case .record, .artifact:
                 return .memories
@@ -167,31 +192,8 @@ struct NotificationInteractionService {
             case .entity, .place, .theme, .decision, .chapter, .reflection:
                 return .insights
             }
-        case .revisit:
-            switch payload.targetType {
-            case .record, .artifact:
-                return .memories
-            case .question, .entity, .place, .theme, .decision, .chapter, .reflection:
-                return .home
-            }
-        case .repeatedTheme:
-            switch payload.targetType {
-            case .record, .artifact:
-                return .memories
-            case .question:
-                return .home
-            case .entity, .place, .theme, .decision, .chapter, .reflection:
-                return .insights
-            }
-        case .stageForming:
-            switch payload.targetType {
-            case .chapter, .reflection, .theme, .entity, .place, .decision:
-                return .insights
-            case .record, .artifact:
-                return .memories
-            case .question:
-                return .home
-            }
+        case .reflectionReady, .repeatedTheme, .stageForming, .revisit:
+            return .insights
         }
     }
 
@@ -199,6 +201,11 @@ struct NotificationInteractionService {
         for payload: LocalNotificationPayload,
         repository: any MoryMemoryRepositorying
     ) throws -> MoryDeepLinkRoute? {
+        if let string = payload.deepLink?.trimmedOrNil,
+           let parsed = parseDeepLink(string) {
+            return parsed
+        }
+
         switch payload.targetType {
         case .question:
             return .home(.question(payload.targetID))
@@ -215,6 +222,60 @@ struct NotificationInteractionService {
                 return nil
             }
             return .memories(.memory(artifact.recordID))
+        }
+    }
+
+    private func parseDeepLink(_ string: String) -> MoryDeepLinkRoute? {
+        guard let url = URL(string: string),
+              url.scheme?.lowercased() == "mory" else {
+            return nil
+        }
+
+        let pathSegments = url.path
+            .split(separator: "/")
+            .map(String.init)
+        guard let host = url.host?.lowercased() else {
+            return nil
+        }
+
+        switch host {
+        case "home":
+            guard pathSegments.count == 2,
+                  pathSegments[0] == "question",
+                  let id = UUID(uuidString: pathSegments[1]) else {
+                return nil
+            }
+            return .home(.question(id))
+        case "memories":
+            guard pathSegments.count == 2 else { return nil }
+            switch pathSegments[0] {
+            case "record":
+                guard let id = UUID(uuidString: pathSegments[1]) else { return nil }
+                return .memories(.memory(id))
+            case "artifact":
+                return nil
+            default:
+                return nil
+            }
+        case "insights":
+            guard pathSegments.count == 2,
+                  let id = UUID(uuidString: pathSegments[1]) else {
+                return nil
+            }
+            switch pathSegments[0] {
+            case "chapter":
+                return .insights(.arc(id))
+            case "reflection":
+                return .insights(.reflection(id))
+            case "entity", "place", "theme", "decision":
+                return .insights(.entity(id))
+            default:
+                return nil
+            }
+        case "search":
+            return .search
+        default:
+            return nil
         }
     }
 }

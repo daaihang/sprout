@@ -14,6 +14,7 @@ struct MoryRootView: View {
     @Environment(\.memoryRepository) private var memoryRepository
     @Environment(\.cloudIntelligenceService) private var cloudIntelligenceService
     @Environment(\.remotePushSyncService) private var remotePushSyncService
+    @Environment(\.scenePhase) private var scenePhase
     @AppStorage(MoryOnboardingStep.completionStorageKey) private var hasCompletedOnboarding = false
     @StateObject private var notificationInbox = NotificationInteractionInbox.shared
     @StateObject private var audioRecorder = AudioRecorderModel()
@@ -130,7 +131,7 @@ struct MoryRootView: View {
                 onStartFirstMemory: startFirstMemoryFromOnboarding
             )
         }
-        .onReceive(notificationInbox.$latestEvent.compactMap { $0 }) { event in
+        .onReceive(notificationInbox.$currentEvent.compactMap { $0 }) { event in
             notificationTask?.cancel()
             notificationTask = Task { await handleNotificationInteraction(event) }
         }
@@ -150,6 +151,7 @@ struct MoryRootView: View {
         .task {
             await recoverStartupIntelligenceIfNeeded()
             await handlePendingExternalCaptureURLIfNeeded()
+            await handlePendingExternalCaptureHandoffIfNeeded()
         }
         .onOpenURL { url in
             pendingExternalCaptureURL = url
@@ -164,6 +166,11 @@ struct MoryRootView: View {
             if tab != .today {
                 isEditingHomeBoard = false
             }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else { return }
+            externalCaptureTask?.cancel()
+            externalCaptureTask = Task { await handlePendingExternalCaptureHandoffIfNeeded() }
         }
     }
 
@@ -185,6 +192,22 @@ struct MoryRootView: View {
             selectedTab = .memories
         } catch {
             pendingExternalCaptureURL = nil
+            return
+        }
+    }
+
+    @MainActor
+    private func handlePendingExternalCaptureHandoffIfNeeded() async {
+        guard pendingExternalCaptureURL == nil else { return }
+        guard let handoff = ExternalCaptureComposeHandoffStore().consume() else { return }
+        do {
+            guard let item = try await fetchExternalCaptureInboxItemWithRetry(id: handoff.itemID) else {
+                return
+            }
+            let draft = try ExternalCaptureInboxCodec().makeDraft(from: item)
+            unifiedCaptureSeed = .externalDraft(draft, inboxItemID: item.id)
+            selectedTab = .memories
+        } catch {
             return
         }
     }
@@ -433,7 +456,8 @@ struct MoryRootView: View {
 
         _ = await startupRecoveryService.recoverAfterLaunch(
             repository: memoryRepository,
-            cloudIntelligenceService: cloudIntelligenceService
+            cloudIntelligenceService: cloudIntelligenceService,
+            remotePushSyncService: remotePushSyncService
         )
         remotePushSyncService.registerSystemRemoteNotificationsIfNeeded(repository: memoryRepository)
         await syncRemotePushRegistration(force: true)

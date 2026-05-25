@@ -18,7 +18,7 @@ struct NotificationSettingsSnapshot: Hashable, Sendable {
 
 struct NotificationSettingsUpdateResult: Hashable, Sendable {
     var snapshot: NotificationSettingsSnapshot
-    var scheduleReport: LocalNotificationSchedulerReport
+    var notificationReport: NotificationOrchestrationReport
     var cancellationReport: LocalNotificationCancellationReport
     var systemAuthorizationRequested: Bool
     var systemAuthorizationGranted: Bool
@@ -28,13 +28,11 @@ struct NotificationSettingsUpdateResult: Hashable, Sendable {
 struct NotificationSettingsService {
     private let notificationCenter: any LocalNotificationSchedulingCenter
     private let scheduler: LocalNotificationScheduler
-    private let intentPreparationService: NotificationIntentPreparationService
 
     init(policy: NotificationPolicy = NotificationPolicy()) {
         let center = SystemLocalNotificationCenter()
         self.notificationCenter = center
         self.scheduler = LocalNotificationScheduler(notificationCenter: center, policy: policy)
-        self.intentPreparationService = NotificationIntentPreparationService(policy: policy)
     }
 
     init(
@@ -43,7 +41,6 @@ struct NotificationSettingsService {
     ) {
         self.notificationCenter = notificationCenter
         self.scheduler = LocalNotificationScheduler(notificationCenter: notificationCenter, policy: policy)
-        self.intentPreparationService = NotificationIntentPreparationService(policy: policy)
     }
 
     func loadSnapshot(
@@ -92,29 +89,27 @@ struct NotificationSettingsService {
         }
 
         let cancellationReport: LocalNotificationCancellationReport
-        let scheduleReport: LocalNotificationSchedulerReport
+        let notificationReport: NotificationOrchestrationReport
         if preferences.notificationPreferences.enabled {
-            _ = try intentPreparationService.prepareNextIntentIfNeeded(
+            cancellationReport = .empty
+            notificationReport = try await NotificationOrchestrator(
+                localScheduler: scheduler
+            ).orchestrate(
+                trigger: .settingsChanged,
                 repository: repository,
                 now: now
-            )
-            cancellationReport = .empty
-            scheduleReport = try await scheduler.schedulePendingIntents(
-                repository: repository,
-                now: now,
-                requestAuthorizationIfNeeded: false
             )
         } else {
             cancellationReport = try await scheduler.cancelPendingAndScheduledLocalIntents(
                 repository: repository,
                 now: now
             )
-            scheduleReport = .empty
+            notificationReport = .empty
         }
 
         return NotificationSettingsUpdateResult(
             snapshot: try await makeSnapshot(repository: repository),
-            scheduleReport: scheduleReport,
+            notificationReport: notificationReport,
             cancellationReport: cancellationReport,
             systemAuthorizationRequested: authorizationRequested,
             systemAuthorizationGranted: authorizationGranted

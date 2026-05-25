@@ -6,6 +6,7 @@ enum LocalNotificationMetadata {
     static let kindKey = "mory_notification_kind"
     static let targetTypeKey = "mory_notification_target_type"
     static let targetIDKey = "mory_notification_target_id"
+    static let deepLinkKey = "mory_notification_deep_link"
 
     static func requestIdentifier(for intentID: UUID) -> String {
         "mory.notification.\(intentID.uuidString)"
@@ -16,12 +17,16 @@ enum LocalNotificationMetadata {
     }
 
     static func userInfo(for intent: NotificationIntent) -> [String: String] {
-        [
+        var userInfo = [
             intentIDKey: intent.id.uuidString,
             kindKey: intent.kind.rawValue,
             targetTypeKey: intent.targetType.rawValue,
             targetIDKey: intent.targetID.uuidString,
         ]
+        if let deepLink = intent.deepLink?.trimmedOrNil {
+            userInfo[deepLinkKey] = deepLink
+        }
+        return userInfo
     }
 }
 
@@ -30,17 +35,20 @@ struct LocalNotificationPayload: Hashable, Sendable {
     var kind: NotificationIntentKind
     var targetType: ClarificationTargetType
     var targetID: UUID
+    var deepLink: String?
 
     init(
         intentID: UUID,
         kind: NotificationIntentKind,
         targetType: ClarificationTargetType,
-        targetID: UUID
+        targetID: UUID,
+        deepLink: String? = nil
     ) {
         self.intentID = intentID
         self.kind = kind
         self.targetType = targetType
         self.targetID = targetID
+        self.deepLink = deepLink
     }
 
     init?(userInfo: [AnyHashable: Any]) {
@@ -61,7 +69,19 @@ struct LocalNotificationPayload: Hashable, Sendable {
             intentID: intentID,
             kind: kind,
             targetType: targetType,
-            targetID: targetID
+            targetID: targetID,
+            deepLink: Self.resolvedDeepLink(from: userInfo)
         )
+    }
+
+    private static func resolvedDeepLink(from userInfo: [AnyHashable: Any]) -> String? {
+        if let deepLink = (userInfo[LocalNotificationMetadata.deepLinkKey] as? String)?.trimmedOrNil {
+            return deepLink
+        }
+        if let nested = userInfo["mory"] as? [String: Any],
+           let deepLink = (nested["deep_link"] as? String)?.trimmedOrNil {
+            return deepLink
+        }
+        return nil
     }
 }

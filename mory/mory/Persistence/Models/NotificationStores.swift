@@ -13,6 +13,13 @@ final class NotificationIntentStore {
     var scheduledAt: Date
     var statusRawValue: String
     var deliveryChannelRawValue: String
+    var dedupeKey: String?
+    var deepLink: String?
+    var reason: String?
+    var sourceTriggerRawValue: String?
+    var createdByRawValue: String?
+    var lastEvaluatedAt: Date?
+    var blockedReasons: [String]?
     var createdAt: Date
     var deliveredAt: Date?
     var dismissedAt: Date?
@@ -28,6 +35,13 @@ final class NotificationIntentStore {
         scheduledAt: Date,
         statusRawValue: String,
         deliveryChannelRawValue: String,
+        dedupeKey: String,
+        deepLink: String? = nil,
+        reason: String,
+        sourceTriggerRawValue: String,
+        createdByRawValue: String,
+        lastEvaluatedAt: Date,
+        blockedReasons: [String] = [],
         createdAt: Date,
         deliveredAt: Date? = nil,
         dismissedAt: Date? = nil
@@ -42,6 +56,13 @@ final class NotificationIntentStore {
         self.scheduledAt = scheduledAt
         self.statusRawValue = statusRawValue
         self.deliveryChannelRawValue = deliveryChannelRawValue
+        self.dedupeKey = dedupeKey
+        self.deepLink = deepLink
+        self.reason = reason
+        self.sourceTriggerRawValue = sourceTriggerRawValue
+        self.createdByRawValue = createdByRawValue
+        self.lastEvaluatedAt = lastEvaluatedAt
+        self.blockedReasons = blockedReasons
         self.createdAt = createdAt
         self.deliveredAt = deliveredAt
         self.dismissedAt = dismissedAt

@@ -41,16 +41,12 @@ final class MoryAppDelegate: NSObject, UIApplicationDelegate, UNUserNotification
         fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
     ) {
         Task { @MainActor in
-            guard let repo = backgroundTaskCoordinator.repository else {
+            guard backgroundTaskCoordinator.repository != nil else {
                 completionHandler(.noData)
                 return
             }
             do {
-                _ = try NotificationIntentPreparationService().prepareNextIntentIfNeeded(repository: repo)
-                _ = try await LocalNotificationScheduler().schedulePendingIntents(
-                    repository: repo,
-                    requestAuthorizationIfNeeded: false
-                )
+                _ = try await backgroundTaskCoordinator.orchestrateNotifications(trigger: .silentPush)
             } catch {
                 log.error("Background notification prep failed: \(error)")
                 SentrySDK.capture(error: error)

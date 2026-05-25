@@ -13,6 +13,7 @@ extension RecordShellStore {
             userIntensity: domainModel.userIntensity,
             inputContext: domainModel.inputContext,
             artifactIDs: domainModel.artifactIDs,
+            captureProvenanceData: PersistenceCoding.encode(domainModel.captureProvenance),
             debugFixtureSeededAt: domainModel.debugFixtureSeededAt
         )
     }
@@ -28,6 +29,7 @@ extension RecordShellStore {
             userIntensity: userIntensity,
             inputContext: inputContext,
             artifactIDs: artifactIDs,
+            captureProvenance: PersistenceCoding.decode(CaptureProvenance.self, from: captureProvenanceData),
             debugFixtureSeededAt: debugFixtureSeededAt
         )
     }
@@ -42,6 +44,7 @@ extension RecordShellStore {
         userIntensity = domainModel.userIntensity
         inputContext = domainModel.inputContext
         artifactIDs = domainModel.artifactIDs
+        captureProvenanceData = PersistenceCoding.encode(domainModel.captureProvenance)
         debugFixtureSeededAt = domainModel.debugFixtureSeededAt
     }
 }
@@ -61,6 +64,7 @@ extension ArtifactStore {
             metadataData: PersistenceCoding.encode(domainModel.metadata),
             binaryPayload: domainModel.binaryPayload,
             previewPayload: domainModel.previewPayload,
+            captureProvenanceData: PersistenceCoding.encode(domainModel.captureProvenance),
             createdAt: domainModel.createdAt,
             updatedAt: domainModel.updatedAt
         )
@@ -79,6 +83,7 @@ extension ArtifactStore {
             metadata: PersistenceCoding.decode([String: String].self, from: metadataData) ?? [:],
             binaryPayload: binaryPayload,
             previewPayload: previewPayload,
+            captureProvenance: PersistenceCoding.decode(CaptureProvenance.self, from: captureProvenanceData),
             createdAt: createdAt,
             updatedAt: updatedAt
         )
@@ -96,6 +101,7 @@ extension ArtifactStore {
         metadataData = PersistenceCoding.encode(domainModel.metadata)
         binaryPayload = domainModel.binaryPayload
         previewPayload = domainModel.previewPayload
+        captureProvenanceData = PersistenceCoding.encode(domainModel.captureProvenance)
         createdAt = domainModel.createdAt
         updatedAt = domainModel.updatedAt
     }

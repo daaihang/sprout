@@ -21,6 +21,7 @@ struct RecordShell: Identifiable, Codable, Hashable, Sendable {
     var userIntensity: Int?
     var inputContext: String?
     var artifactIDs: [UUID]
+    var captureProvenance: CaptureProvenance?
     var debugFixtureSeededAt: Date?
 
     init(
@@ -33,6 +34,7 @@ struct RecordShell: Identifiable, Codable, Hashable, Sendable {
         userIntensity: Int? = nil,
         inputContext: String? = nil,
         artifactIDs: [UUID] = [],
+        captureProvenance: CaptureProvenance? = nil,
         debugFixtureSeededAt: Date? = nil
     ) {
         self.id = id
@@ -44,6 +46,7 @@ struct RecordShell: Identifiable, Codable, Hashable, Sendable {
         self.userIntensity = userIntensity
         self.inputContext = inputContext
         self.artifactIDs = artifactIDs
+        self.captureProvenance = captureProvenance
         self.debugFixtureSeededAt = debugFixtureSeededAt
     }
 }

@@ -38,7 +38,7 @@ final class NotificationInteractionServiceTests: XCTestCase {
     func testOpenedInteractionReturnsRouteAndMarksIntentDelivered() throws {
         let fixture = makeRepositoryFixture()
         let now = Date(timeIntervalSince1970: 1_800_000_000)
-        let intent = makeIntent(kind: .revisit, targetType: .record, status: .scheduled)
+        let intent = makeIntent(kind: .analysisReady, targetType: .record, status: .scheduled)
         try fixture.repository.upsertNotificationIntent(intent)
         let service = NotificationInteractionService()
         let event = try XCTUnwrap(NotificationInteractionEvent(
@@ -151,7 +151,7 @@ final class NotificationInteractionServiceTests: XCTestCase {
             createdAt: Date(timeIntervalSince1970: 1_800_000_000)
         )
         let intent = NotificationIntent(
-            kind: .backgroundDone,
+            kind: .analysisReady,
             title: "Mory",
             body: "Your memory is ready.",
             targetType: .artifact,
@@ -190,6 +190,34 @@ final class NotificationInteractionServiceTests: XCTestCase {
 
         XCTAssertEqual(result.route?.destination, .insights)
         XCTAssertEqual(result.route?.deepLink, .insights(.entity(intent.targetID)))
+    }
+
+    func testOpenedInteractionPrefersExplicitDeepLinkWhenPresent() throws {
+        let fixture = makeRepositoryFixture()
+        let reflectionID = UUID()
+        let intent = NotificationIntent(
+            kind: .analysisReady,
+            title: "Mory",
+            body: "A routed notification is ready.",
+            targetType: .record,
+            targetID: UUID(),
+            scheduledAt: Date(timeIntervalSince1970: 1_800_000_000),
+            status: .scheduled,
+            deliveryChannel: .local,
+            deepLink: "mory://insights/reflection/\(reflectionID.uuidString)",
+            createdAt: Date(timeIntervalSince1970: 1_800_000_000)
+        )
+        try fixture.repository.upsertNotificationIntent(intent)
+        let service = NotificationInteractionService()
+        let event = try XCTUnwrap(NotificationInteractionEvent(
+            action: .opened,
+            userInfo: anyUserInfo(for: intent)
+        ))
+
+        let result = try service.handle(event: event, repository: fixture.repository)
+
+        XCTAssertEqual(result.route?.destination, .insights)
+        XCTAssertEqual(result.route?.deepLink, .insights(.reflection(reflectionID)))
     }
 
     private func makeRepositoryFixture() -> NotificationInteractionRepositoryFixture {

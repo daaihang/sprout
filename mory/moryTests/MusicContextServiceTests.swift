@@ -24,7 +24,7 @@ final class MusicContextServiceTests: XCTestCase {
 
         let draft = MusicContextService.makeDraft(from: snapshot, origin: .context)
 
-        guard case let .music(trackName, artistName, albumName, durationSeconds, artworkURL, artworkData, artworkPalette, origin) = draft else {
+        guard case let .music(trackName, artistName, albumName, durationSeconds, artworkURL, artworkData, artworkPalette, origin, _) = draft else {
             return XCTFail("Expected music draft.")
         }
         XCTAssertEqual(trackName, "A song without identifiers")
@@ -55,7 +55,7 @@ final class MusicContextServiceTests: XCTestCase {
 
         let draft = MusicContextService.makeDraft(from: snapshot, origin: .manual)
 
-        guard case let .music(_, _, _, _, _, draftArtworkData, artworkPalette, origin) = draft else {
+        guard case let .music(_, _, _, _, _, draftArtworkData, artworkPalette, origin, _) = draft else {
             return XCTFail("Expected music draft.")
         }
         XCTAssertEqual(draftArtworkData, artworkData)

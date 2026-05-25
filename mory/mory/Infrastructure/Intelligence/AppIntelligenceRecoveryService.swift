@@ -5,8 +5,7 @@ struct AppIntelligenceRecoveryReport: Hashable, Sendable {
     var retriedFailedJobIDs: [UUID] = []
     var abandonedFailedJobIDs: [UUID] = []
     var preparedQuestionCount: Int = 0
-    var preparedNotificationIntentID: UUID?
-    var notificationScheduleReport: LocalNotificationSchedulerReport = .empty
+    var notificationReport: NotificationOrchestrationReport = .empty
     var workerReport: IntelligenceJobWorkerReport = .init()
     var errors: [String] = []
 
@@ -19,27 +18,22 @@ struct AppIntelligenceRecoveryReport: Hashable, Sendable {
 struct AppIntelligenceRecoveryService {
     private let maxRetryAttempts: Int
     private let baseRetryDelay: TimeInterval
-    private let notificationIntentPreparationService: NotificationIntentPreparationService
-    private let notificationScheduler: LocalNotificationScheduler
     private let intelligenceJobWorker: IntelligenceJobWorker
 
     init(
         maxRetryAttempts: Int = 3,
         baseRetryDelay: TimeInterval = 15 * 60,
-        notificationIntentPreparationService: NotificationIntentPreparationService? = nil,
-        notificationScheduler: LocalNotificationScheduler? = nil,
         intelligenceJobWorker: IntelligenceJobWorker? = nil
     ) {
         self.maxRetryAttempts = max(1, maxRetryAttempts)
         self.baseRetryDelay = max(60, baseRetryDelay)
-        self.notificationIntentPreparationService = notificationIntentPreparationService ?? NotificationIntentPreparationService()
-        self.notificationScheduler = notificationScheduler ?? LocalNotificationScheduler()
         self.intelligenceJobWorker = intelligenceJobWorker ?? IntelligenceJobWorker()
     }
 
     func recoverAfterLaunch(
         repository: any AppIntelligenceRecoveryRepositorying,
         cloudIntelligenceService: any CloudIntelligenceServing,
+        remotePushSyncService: (any RemotePushSyncing)? = nil,
         now: Date = .now
     ) async -> AppIntelligenceRecoveryReport {
         var report = AppIntelligenceRecoveryReport()
@@ -57,6 +51,7 @@ struct AppIntelligenceRecoveryService {
         report.workerReport = await intelligenceJobWorker.processDueJobs(
             repository: repository,
             cloudIntelligenceService: cloudIntelligenceService,
+            remotePushSyncService: remotePushSyncService,
             now: now
         )
 
@@ -71,17 +66,14 @@ struct AppIntelligenceRecoveryService {
         }
 
         do {
-            report.preparedNotificationIntentID = try notificationIntentPreparationService
-                .prepareNextIntentIfNeeded(
-                    repository: repository,
-                    now: now
-                )?.id
-            report.notificationScheduleReport = try await notificationScheduler
-                .schedulePendingIntents(
-                    repository: repository,
-                    now: now,
-                    requestAuthorizationIfNeeded: false
-                )
+            let router = remotePushSyncService.map { NotificationDeliveryRouter(remotePushSyncService: $0) }
+            report.notificationReport = try await NotificationOrchestrator(
+                deliveryRouter: router
+            ).orchestrate(
+                trigger: .appLaunchRecovery,
+                repository: repository,
+                now: now
+            )
         } catch {
             report.errors.append(error.localizedDescription)
         }

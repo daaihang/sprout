@@ -25,6 +25,7 @@ final class NotificationSettingsServiceTests: XCTestCase {
         XCTAssertTrue(result.systemAuthorizationRequested)
         XCTAssertTrue(result.systemAuthorizationGranted)
         XCTAssertEqual(result.snapshot.authorizationState, .authorized)
+        XCTAssertTrue(result.notificationReport.generatedIntentIDs.isEmpty)
     }
 
     func testUpdatingNotificationPreferencesDoesNotRequestSystemAuthorizationByDefault() async throws {
@@ -75,6 +76,7 @@ final class NotificationSettingsServiceTests: XCTestCase {
         XCTAssertEqual(storedIntents.first { $0.id == pendingIntent.id }?.status, .dismissed)
         XCTAssertEqual(storedIntents.first { $0.id == scheduledIntent.id }?.status, .dismissed)
         XCTAssertEqual(storedIntents.first { $0.id == scheduledIntent.id }?.dismissedAt, now)
+        XCTAssertTrue(result.notificationReport.generatedIntentIDs.isEmpty)
     }
 
     func testLoadSnapshotReportsFeatureFlagsAndAuthorizationState() async throws {

@@ -58,10 +58,10 @@ struct ExternalCaptureInboxCodec: Sendable {
         switch item.payloadKind {
         case .externalCapture:
             let request = try decoder.decode(ExternalCaptureRequest.self, from: item.payloadData)
-            return ExternalCaptureDraftFactory().makeDraft(from: request)
+            return ExternalCaptureDraftFactory().makeDraft(from: request).withExternalInboxItemID(item.id)
         case .journalingSuggestion:
             let suggestion = try decoder.decode(JournalingSuggestionDraft.self, from: item.payloadData)
-            return JournalingSuggestionContextService().makeCaptureDraft(from: suggestion)
+            return JournalingSuggestionContextService().makeCaptureDraft(from: suggestion).withExternalInboxItemID(item.id)
         }
     }
 

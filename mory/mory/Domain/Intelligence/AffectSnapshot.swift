@@ -95,6 +95,8 @@ nonisolated struct AffectSnapshotDraft: Codable, Hashable, Sendable {
     var sources: [AffectEvidenceSource]
     var confidence: Double?
     var evidenceSummary: String?
+    var evidenceMetadata: [String: String]
+    var provenance: CaptureProvenance?
     var userConfirmed: Bool
     var rawInput: String?
 
@@ -109,6 +111,8 @@ nonisolated struct AffectSnapshotDraft: Codable, Hashable, Sendable {
         sources: [AffectEvidenceSource] = [],
         confidence: Double? = nil,
         evidenceSummary: String? = nil,
+        evidenceMetadata: [String: String] = [:],
+        provenance: CaptureProvenance? = nil,
         userConfirmed: Bool = false,
         rawInput: String? = nil
     ) {
@@ -122,6 +126,8 @@ nonisolated struct AffectSnapshotDraft: Codable, Hashable, Sendable {
         self.sources = sources
         self.confidence = confidence
         self.evidenceSummary = evidenceSummary
+        self.evidenceMetadata = evidenceMetadata
+        self.provenance = provenance
         self.userConfirmed = userConfirmed
         self.rawInput = rawInput
     }
@@ -298,6 +304,10 @@ nonisolated struct AffectSnapshotMapper: Sendable {
         if let arousal = draft.arousal { metadata["arousal"] = String(arousal) }
         if let dominance = draft.dominance { metadata["dominance"] = String(dominance) }
         if let intensity = draft.intensity { metadata["intensity"] = String(intensity) }
+        metadata.merge(draft.evidenceMetadata) { _, new in new }
+        if let provenance = draft.provenance {
+            metadata.merge(provenance.metadata) { _, new in new }
+        }
         for component in (draft.evidenceSummary ?? "").split(separator: ";") {
             let pair = component.split(separator: "=", maxSplits: 1).map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
             if pair.count == 2 {

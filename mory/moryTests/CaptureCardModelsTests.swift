@@ -556,22 +556,39 @@ final class CaptureCardModelsTests: XCTestCase {
         XCTAssertLessThanOrEqual(reduced.intensity, 0.42)
     }
 
-    func testProductionProvenanceDisplayHidesAllSourceLabels() {
-        XCTAssertNil(CaptureCardProvenanceDisplayMode.production.visual(for: .manual))
-        XCTAssertNil(CaptureCardProvenanceDisplayMode.production.visual(for: .context))
-        XCTAssertNil(CaptureCardProvenanceDisplayMode.production.visual(for: .imported))
-        XCTAssertNil(CaptureCardProvenanceDisplayMode.production.visual(for: .inferred))
+    func testProductionProvenanceDisplayShowsOnlyNonManualCompactSourceLabels() {
+        XCTAssertNil(CaptureCardProvenanceDisplayMode.production.visual(for: .manual, provenance: nil))
+        XCTAssertNil(CaptureCardProvenanceDisplayMode.production.visual(for: .manual, provenance: .manualComposer))
+
+        let journaling = CaptureProvenance.external(
+            sourceKind: .journalingSuggestion,
+            sourceDisplayName: "Apple Journaling"
+        )
+        let journalingVisual = CaptureCardProvenanceDisplayMode.production.visual(for: .imported, provenance: journaling)
+        XCTAssertEqual(journalingVisual?.label, "Apple Journaling")
+        XCTAssertEqual(journalingVisual?.symbolName, CaptureProvenanceSourceKind.journalingSuggestion.symbolName)
+        XCTAssertEqual(journalingVisual?.isCompact, true)
     }
 
     func testDebugProvenanceDisplayShowsFullLabels() {
         for origin in CaptureArtifactOrigin.allCases {
-            let visual = CaptureCardProvenanceDisplayMode.debug.visual(for: origin)
+            let visual = CaptureCardProvenanceDisplayMode.debug.visual(for: origin, provenance: nil)
             XCTAssertEqual(visual?.label, origin.captureBadgeLabel)
             XCTAssertNil(visual?.symbolName)
             XCTAssertEqual(visual?.isCompact, false)
         }
 
-        XCTAssertNil(CaptureCardProvenanceDisplayMode.hidden.visual(for: .context))
+        let provenance = CaptureProvenance.external(
+            sourceKind: .shareSheet,
+            importSessionID: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
+            sourceDisplayName: "Share"
+        )
+        let provenanceVisual = CaptureCardProvenanceDisplayMode.debug.visual(for: .imported, provenance: provenance)
+        XCTAssertEqual(provenanceVisual?.label, provenance.compactDebugLabel)
+        XCTAssertEqual(provenanceVisual?.symbolName, CaptureProvenanceSourceKind.shareSheet.symbolName)
+        XCTAssertEqual(provenanceVisual?.isCompact, false)
+
+        XCTAssertNil(CaptureCardProvenanceDisplayMode.hidden.visual(for: .context, provenance: provenance))
     }
 
     func testDraftMappingPreservesWeatherMusicAndPlaceKinds() {

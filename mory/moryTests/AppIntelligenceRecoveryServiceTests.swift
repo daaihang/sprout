@@ -4,7 +4,7 @@ import XCTest
 
 @MainActor
 final class AppIntelligenceRecoveryServiceTests: XCTestCase {
-    func testRecoveryResumesRunningJobsRetriesFailedJobsAndSchedulesNotifications() async throws {
+    func testRecoveryResumesRunningJobsRetriesFailedJobsAndRecordsInAppNotificationHistory() async throws {
         let fixture = makeRepositoryFixture()
         let repository = fixture.repository
         let now = Date(timeIntervalSince1970: 1_800_200_000)
@@ -75,11 +75,9 @@ final class AppIntelligenceRecoveryServiceTests: XCTestCase {
         )
         try repository.upsertClarificationQuestion(question)
 
-        let center = RecoveryMockNotificationCenter(state: .authorized)
         let service = AppIntelligenceRecoveryService(
             maxRetryAttempts: 3,
-            baseRetryDelay: 60,
-            notificationScheduler: LocalNotificationScheduler(notificationCenter: center)
+            baseRetryDelay: 60
         )
 
         let report = await service.recoverAfterLaunch(
@@ -92,9 +90,12 @@ final class AppIntelligenceRecoveryServiceTests: XCTestCase {
         XCTAssertEqual(report.retriedFailedJobIDs, [retryableFailedJob.id])
         XCTAssertEqual(report.abandonedFailedJobIDs, [exhaustedFailedJob.id])
         XCTAssertTrue(report.workerReport.completedJobIDs.contains(runningJob.id))
-        XCTAssertNotNil(report.preparedNotificationIntentID)
-        XCTAssertEqual(report.notificationScheduleReport.scheduledCount, 1)
-        XCTAssertEqual(center.requests.count, 1)
+        XCTAssertEqual(report.notificationReport.inAppOnlyIntentIDs.count, 1)
+        let storedNotification = try XCTUnwrap(repository.fetchNotificationIntents(status: .inAppOnly, limit: nil).first)
+        XCTAssertTrue(
+            [.dailyQuestion, .analysisReady].contains(storedNotification.kind),
+            "Expected in-app notification history to record either daily question or analysis-ready intent."
+        )
 
         let jobs = try repository.fetchIntelligenceJobs(status: nil, limit: nil)
         let resumed = try XCTUnwrap(jobs.first { $0.id == runningJob.id })
@@ -146,31 +147,6 @@ final class AppIntelligenceRecoveryServiceTests: XCTestCase {
 private struct RecoveryRepositoryFixture {
     let container: ModelContainer
     let repository: MoryMemoryRepository
-}
-
-@MainActor
-private final class RecoveryMockNotificationCenter: LocalNotificationSchedulingCenter {
-    var state: LocalNotificationAuthorizationState
-    var requests: [LocalNotificationScheduleRequest] = []
-
-    init(state: LocalNotificationAuthorizationState) {
-        self.state = state
-    }
-
-    func authorizationState() async -> LocalNotificationAuthorizationState {
-        state
-    }
-
-    func requestAuthorization() async throws -> Bool {
-        state = .authorized
-        return true
-    }
-
-    func add(_ request: LocalNotificationScheduleRequest) async throws {
-        requests.append(request)
-    }
-
-    func removePendingRequests(withIdentifiers identifiers: [String]) async {}
 }
 
 private enum RecoveryTestError: Error {

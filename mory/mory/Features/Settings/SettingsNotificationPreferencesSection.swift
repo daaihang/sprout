@@ -65,7 +65,7 @@ struct SettingsNotificationPreferencesSection: View {
                 ))
                 .disabled(!notificationPreferences.enabled || isUpdating)
 
-                Toggle("settings.notifications.backgroundDone", isOn: Binding(
+                Toggle("Analysis ready", isOn: Binding(
                     get: { notificationPreferences.backgroundDoneEnabled },
                     set: { newValue in
                         Task {
@@ -77,36 +77,12 @@ struct SettingsNotificationPreferencesSection: View {
                 ))
                 .disabled(!notificationPreferences.enabled || isUpdating)
 
-                Toggle("settings.notifications.repeatedTheme", isOn: Binding(
-                    get: { notificationPreferences.repeatedThemeEnabled },
-                    set: { newValue in
-                        Task {
-                            await updatePreferences { preferences in
-                                preferences.notificationPreferences.repeatedThemeEnabled = newValue
-                            }
-                        }
-                    }
-                ))
-                .disabled(!notificationPreferences.enabled || isUpdating)
-
-                Toggle("settings.notifications.stageForming", isOn: Binding(
+                Toggle("Reflection ready", isOn: Binding(
                     get: { notificationPreferences.stageFormingEnabled },
                     set: { newValue in
                         Task {
                             await updatePreferences { preferences in
                                 preferences.notificationPreferences.stageFormingEnabled = newValue
-                            }
-                        }
-                    }
-                ))
-                .disabled(!notificationPreferences.enabled || isUpdating)
-
-                Toggle("settings.notifications.revisit", isOn: Binding(
-                    get: { notificationPreferences.revisitEnabled },
-                    set: { newValue in
-                        Task {
-                            await updatePreferences { preferences in
-                                preferences.notificationPreferences.revisitEnabled = newValue
                             }
                         }
                     }
@@ -313,10 +289,10 @@ struct SettingsNotificationPreferencesSection: View {
                 result.cancellationReport.cancelledCount
             )
         }
-        if result.scheduleReport.scheduledCount > 0 {
+        if !result.notificationReport.scheduledIntentIDs.isEmpty {
             return String(
                 format: String(localized: "settings.notifications.result.scheduled.format"),
-                result.scheduleReport.scheduledCount
+                result.notificationReport.scheduledIntentIDs.count
             )
         }
         if result.systemAuthorizationRequested && !result.systemAuthorizationGranted {

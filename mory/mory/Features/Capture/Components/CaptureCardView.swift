@@ -145,7 +145,7 @@ struct CaptureCardView: View {
     private var cardFooter: some View {
         HStack(spacing: 6) {
             if let origin = item.origin,
-               let visual = presentation.provenanceDisplayMode.visual(for: origin) {
+               let visual = presentation.provenanceDisplayMode.visual(for: origin, provenance: item.provenance) {
                 originBadge(visual, origin: origin)
             }
 

@@ -583,6 +583,7 @@ struct CaptureCardItem: Identifiable, Hashable, Sendable {
     let id: String
     var payload: CaptureCardPayload
     var origin: CaptureArtifactOrigin?
+    var provenance: CaptureProvenance?
     var state: CaptureCardState
     var title: String?
     var detail: String
@@ -598,6 +599,7 @@ struct CaptureCardItem: Identifiable, Hashable, Sendable {
         id: String = UUID().uuidString,
         payload: CaptureCardPayload,
         origin: CaptureArtifactOrigin? = .manual,
+        provenance: CaptureProvenance? = nil,
         state: CaptureCardState = .normal,
         title: String? = nil,
         detail: String,
@@ -607,7 +609,8 @@ struct CaptureCardItem: Identifiable, Hashable, Sendable {
     ) {
         self.id = id
         self.payload = payload
-        self.origin = origin
+        self.provenance = provenance
+        self.origin = provenance?.artifactOrigin ?? origin
         self.state = state
         self.title = title
         self.detail = detail
@@ -627,6 +630,7 @@ struct CaptureCardCommonDisplay: Hashable, Sendable {
     let id: String
     let kind: CaptureCardKind
     let origin: CaptureArtifactOrigin?
+    let provenance: CaptureProvenance?
     let state: CaptureCardState
     let title: String?
     let detail: String
@@ -638,6 +642,7 @@ struct CaptureCardCommonDisplay: Hashable, Sendable {
         id: String,
         kind: CaptureCardKind,
         origin: CaptureArtifactOrigin?,
+        provenance: CaptureProvenance?,
         state: CaptureCardState,
         title: String?,
         detail: String,
@@ -648,6 +653,7 @@ struct CaptureCardCommonDisplay: Hashable, Sendable {
         self.id = id
         self.kind = kind
         self.origin = origin
+        self.provenance = provenance
         self.state = state
         self.title = title
         self.detail = detail
@@ -660,6 +666,7 @@ struct CaptureCardCommonDisplay: Hashable, Sendable {
         id = item.id
         kind = item.kind
         origin = item.origin
+        provenance = item.provenance
         state = item.state
         title = item.title
         detail = item.detail
@@ -673,6 +680,7 @@ struct CaptureCardCommonDisplay: Hashable, Sendable {
             id: id,
             kind: kind,
             origin: origin,
+            provenance: provenance,
             state: state,
             title: title,
             detail: detail,

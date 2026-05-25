@@ -272,13 +272,10 @@ struct HomeScreen: View {
                 cloudIntelligenceService: cloudIntelligenceService
             )
             .prepareIfNeeded(repository: memoryRepository)
-            _ = try? NotificationIntentPreparationService()
-                .prepareNextIntentIfNeeded(repository: memoryRepository)
-            _ = try? await LocalNotificationScheduler()
-                .schedulePendingIntents(
-                    repository: memoryRepository,
-                    requestAuthorizationIfNeeded: false
-                )
+            _ = try? await NotificationOrchestrator().orchestrate(
+                trigger: .homeForegroundRefresh,
+                repository: memoryRepository
+            )
         } catch {
             // Home remains usable when intelligence preparation or scheduling is unavailable.
         }

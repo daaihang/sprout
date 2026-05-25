@@ -52,6 +52,7 @@ struct Artifact: Identifiable, Codable, Hashable, Sendable {
     var metadata: [String: String]
     var binaryPayload: Data?
     var previewPayload: Data?
+    var captureProvenance: CaptureProvenance?
     var createdAt: Date
     var updatedAt: Date
 
@@ -67,6 +68,7 @@ struct Artifact: Identifiable, Codable, Hashable, Sendable {
         metadata: [String: String] = [:],
         binaryPayload: Data? = nil,
         previewPayload: Data? = nil,
+        captureProvenance: CaptureProvenance? = nil,
         createdAt: Date,
         updatedAt: Date
     ) {
@@ -81,6 +83,7 @@ struct Artifact: Identifiable, Codable, Hashable, Sendable {
         self.metadata = metadata
         self.binaryPayload = binaryPayload
         self.previewPayload = previewPayload
+        self.captureProvenance = captureProvenance
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }

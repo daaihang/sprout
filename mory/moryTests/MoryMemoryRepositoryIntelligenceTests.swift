@@ -313,7 +313,7 @@ final class MoryMemoryRepositoryIntelligenceTests: XCTestCase {
         context.insert(
             NotificationIntentStore(
                 domainModel: NotificationIntent(
-                    kind: .backgroundDone,
+                    kind: .analysisReady,
                     title: "Processing ready",
                     body: "Planning sync is ready for review.",
                     targetType: .record,

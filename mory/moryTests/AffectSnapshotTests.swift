@@ -170,6 +170,40 @@ final class AffectSnapshotTests: XCTestCase {
         XCTAssertEqual(availability.reason, .missingEntitlement)
     }
 
+    func testAffectDraftProvenancePersistsIntoEvidenceMetadata() throws {
+        let sessionID = UUID()
+        let inboxItemID = UUID()
+        let provenance = CaptureProvenance.external(
+            sourceKind: .journalingSuggestion,
+            importSessionID: sessionID,
+            externalInboxItemID: inboxItemID,
+            sourceDisplayName: "Apple Journaling",
+            createdAt: Date(timeIntervalSince1970: 1_800_000_030)
+        )
+        .withJournalingEvidenceID(UUID())
+        let snapshot = AffectSnapshotMapper().snapshot(
+            recordID: UUID(),
+            draft: AffectSnapshotDraft(
+                valence: 0.4,
+                labels: [.calm],
+                sources: [.journalSuggestionStateOfMind],
+                confidence: 0.9,
+                evidenceSummary: "Apple StateOfMind",
+                evidenceMetadata: ["valenceClassification": "pleasant"],
+                provenance: provenance,
+                userConfirmed: true,
+                rawInput: "calm"
+            )
+        )
+
+        let metadata = try XCTUnwrap(snapshot.evidence.first?.metadata)
+        XCTAssertEqual(metadata["valenceClassification"], "pleasant")
+        XCTAssertEqual(metadata["captureSourceKind"], CaptureProvenanceSourceKind.journalingSuggestion.rawValue)
+        XCTAssertEqual(metadata["captureImportSessionID"], sessionID.uuidString)
+        XCTAssertEqual(metadata["externalInboxItemID"], inboxItemID.uuidString)
+        XCTAssertEqual(metadata["captureSourceDisplayName"], "Apple Journaling")
+    }
+
     private func makeRepositoryFixture() -> AffectRepositoryFixture {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(

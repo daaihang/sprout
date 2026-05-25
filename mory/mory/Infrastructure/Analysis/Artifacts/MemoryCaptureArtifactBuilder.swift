@@ -27,7 +27,8 @@ struct MemoryCaptureArtifactBuilder {
                     summary: draft.rawText.trimmedOrNil ?? "Untitled Memory",
                     textContent: draft.rawText.trimmedOrNil ?? "Untitled Memory",
                     payload: .text(draft.rawText.trimmedOrNil ?? "Untitled Memory"),
-                    metadata: [:],
+                    metadata: draft.provenance.metadata.merging(["captureOrigin": draft.provenance.artifactOrigin.rawValue]) { _, new in new },
+                    captureProvenance: draft.provenance,
                     createdAt: createdAt,
                     updatedAt: createdAt
                 )
@@ -71,7 +72,7 @@ struct MemoryCaptureArtifactBuilder {
         createdAt: Date
     ) -> Artifact {
         switch draft {
-        case let .text(title, body, _):
+        case let .text(title, body, _, _):
             let resolvedBody = body.trimmedOrNil ?? "Untitled Memory"
             return Artifact(
                 recordID: recordID,
@@ -81,10 +82,11 @@ struct MemoryCaptureArtifactBuilder {
                 textContent: resolvedBody,
                 payload: .text(resolvedBody),
                 metadata: metadataForOrigin(of: draft, base: [:]),
+                captureProvenance: draft.provenance,
                 createdAt: createdAt,
                 updatedAt: createdAt
             )
-        case let .photo(title, summary, filename, imageData, thumbnailData, ocrText, photoMetadata, _):
+        case let .photo(title, summary, filename, imageData, thumbnailData, ocrText, photoMetadata, _, _):
             let resolvedSummary = summary.trimmedOrNil ?? "Photo capture"
             var textParts: [String] = []
             if let s = resolvedSummary.trimmedOrNil { textParts.append(s) }
@@ -101,10 +103,11 @@ struct MemoryCaptureArtifactBuilder {
                 metadata: metadataForOrigin(of: draft, base: photoMetadata),
                 binaryPayload: imageData,
                 previewPayload: thumbnailData,
+                captureProvenance: draft.provenance,
                 createdAt: createdAt,
                 updatedAt: createdAt
             )
-        case let .audio(title, summary, filename, audioData, transcriptionText, _):
+        case let .audio(title, summary, filename, audioData, transcriptionText, _, _):
             let resolvedSummary = summary.trimmedOrNil ?? "Audio capture"
             let textContent: String
             if suppressAudioTranscriptText {
@@ -131,10 +134,11 @@ struct MemoryCaptureArtifactBuilder {
                 metadata: metadata,
                 binaryPayload: audioData,
                 previewPayload: nil,
+                captureProvenance: draft.provenance,
                 createdAt: createdAt,
                 updatedAt: createdAt
             )
-        case let .video(title, summary, filename, videoData, thumbnailData, videoMetadata, _):
+        case let .video(title, summary, filename, videoData, thumbnailData, videoMetadata, _, _):
             let resolvedSummary = summary.trimmedOrNil ?? "Video capture"
             let mimeType = filename.lowercased().hasSuffix(".mov") ? "video/quicktime" : "video/mp4"
             var metadata = videoMetadata
@@ -152,10 +156,11 @@ struct MemoryCaptureArtifactBuilder {
                 metadata: metadata,
                 binaryPayload: videoData,
                 previewPayload: thumbnailData,
+                captureProvenance: draft.provenance,
                 createdAt: createdAt,
                 updatedAt: createdAt
             )
-        case let .location(title, summary, latitude, longitude, _):
+        case let .location(title, summary, latitude, longitude, _, _):
             let resolvedSummary = summary.trimmedOrNil ?? "Location capture"
             var metadata: [String: String] = [:]
             if let latitude { metadata["latitude"] = String(latitude) }
@@ -169,10 +174,11 @@ struct MemoryCaptureArtifactBuilder {
                 textContent: resolvedSummary,
                 payload: .metadata(metadata),
                 metadata: metadata,
+                captureProvenance: draft.provenance,
                 createdAt: createdAt,
                 updatedAt: createdAt
             )
-        case let .link(title, url, note, summary, metadata, thumbnailData, _):
+        case let .link(title, url, note, summary, metadata, thumbnailData, _, _):
             let resolvedSummary = summary?.trimmedOrNil ?? note?.trimmedOrNil ?? url
             let textContent = [summary?.trimmedOrNil, note?.trimmedOrNil]
                 .compactMap { $0 }
@@ -191,10 +197,11 @@ struct MemoryCaptureArtifactBuilder {
                 payload: .metadata(resolvedMetadata),
                 metadata: resolvedMetadata,
                 previewPayload: thumbnailData,
+                captureProvenance: draft.provenance,
                 createdAt: createdAt,
                 updatedAt: createdAt
             )
-        case let .todo(title, note, _):
+        case let .todo(title, note, _, _):
             let resolvedSummary = note?.trimmedOrNil ?? title
             let metadata = metadataForOrigin(of: draft, base: ["todo": "true"])
             return Artifact(
@@ -205,10 +212,11 @@ struct MemoryCaptureArtifactBuilder {
                 textContent: resolvedSummary,
                 payload: .metadata(metadata),
                 metadata: metadata,
+                captureProvenance: draft.provenance,
                 createdAt: createdAt,
                 updatedAt: createdAt
             )
-        case let .promptAnswer(prompt, answer, source, _):
+        case let .promptAnswer(prompt, answer, source, _, _):
             let resolvedAnswer = answer?.trimmedOrNil
             let textContent = [
                 "Prompt: \(prompt)",
@@ -229,10 +237,11 @@ struct MemoryCaptureArtifactBuilder {
                 textContent: textContent,
                 payload: .metadata(metadata),
                 metadata: metadata,
+                captureProvenance: draft.provenance,
                 createdAt: createdAt,
                 updatedAt: createdAt
             )
-        case let .personContext(name, note, photoData, metadata, _):
+        case let .personContext(name, note, photoData, metadata, _, _):
             let resolvedSummary = note?.trimmedOrNil ?? "Person context from capture"
             var resolvedMetadata = metadata
             resolvedMetadata["documentType"] = "personContext"
@@ -248,10 +257,11 @@ struct MemoryCaptureArtifactBuilder {
                 metadata: resolvedMetadata,
                 binaryPayload: photoData,
                 previewPayload: photoData,
+                captureProvenance: draft.provenance,
                 createdAt: createdAt,
                 updatedAt: createdAt
             )
-        case let .weather(condition, temp, humidity, windSpeed, uvIndex, latitude, longitude, conditionCode, symbolName, isDaylight, _):
+        case let .weather(condition, temp, humidity, windSpeed, uvIndex, latitude, longitude, conditionCode, symbolName, isDaylight, _, _):
             let title = "\(condition) \(String(format: "%.0f", temp))°C"
             let summary = "\(condition) · \(String(format: "%.0f", temp))°C · Humidity \(String(format: "%.0f", humidity * 100))%"
             var metadata: [String: String] = [
@@ -275,10 +285,11 @@ struct MemoryCaptureArtifactBuilder {
                 textContent: summary,
                 payload: .metadata(metadata),
                 metadata: metadata,
+                captureProvenance: draft.provenance,
                 createdAt: createdAt,
                 updatedAt: createdAt
             )
-        case let .music(trackName, artistName, albumName, durationSeconds, artworkURL, artworkData, artworkPalette, _):
+        case let .music(trackName, artistName, albumName, durationSeconds, artworkURL, artworkData, artworkPalette, _, _):
             let title = "\(trackName) – \(artistName)"
             let summary = [trackName, artistName, albumName].filter { !$0.isEmpty }.joined(separator: " · ")
             var metadata: [String: String] = [
@@ -301,6 +312,7 @@ struct MemoryCaptureArtifactBuilder {
                 textContent: summary,
                 payload: .metadata(metadata),
                 metadata: metadata,
+                captureProvenance: draft.provenance,
                 createdAt: createdAt,
                 updatedAt: createdAt
             )
@@ -310,6 +322,9 @@ struct MemoryCaptureArtifactBuilder {
     private func metadataForOrigin(of draft: CaptureArtifactDraft, base: [String: String]) -> [String: String] {
         var metadata = base
         metadata["captureOrigin"] = draft.origin.rawValue
+        if let provenance = draft.provenance {
+            metadata.merge(provenance.metadata) { _, new in new }
+        }
         return metadata
     }
 }

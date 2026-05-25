@@ -20,6 +20,7 @@ struct MemoryCreationUseCase {
             userIntensity: nil,
             inputContext: draft.inputContext?.trimmedOrNil,
             artifactIDs: captureArtifacts.map(\.id),
+            captureProvenance: draft.provenance,
             debugFixtureSeededAt: draft.inputContext?.hasPrefix("debug fixture seed") == true ? now : nil
         )
 

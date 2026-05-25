@@ -36,17 +36,32 @@ final class ExternalCaptureInboxTests: XCTestCase {
         let draft = try ExternalCaptureInboxCodec().makeDraft(from: queued)
         XCTAssertEqual(draft.title, "Shortcut note")
         XCTAssertEqual(draft.rawText, "Remember the dinner idea from the train.")
+        XCTAssertEqual(draft.provenance.sourceKind, .appIntent)
+        XCTAssertEqual(draft.provenance.externalInboxItemID, queued.id)
+        XCTAssertNotNil(draft.provenance.importSessionID)
         XCTAssertEqual(draft.affectSnapshots.first?.labels, [.curious])
+        XCTAssertEqual(draft.affectSnapshots.first?.provenance?.sourceKind, .appIntent)
+        XCTAssertEqual(draft.affectSnapshots.first?.provenance?.importSessionID, draft.provenance.importSessionID)
         XCTAssertEqual(draft.artifacts.count, 2)
+        XCTAssertTrue(draft.artifacts.allSatisfy {
+            $0.provenance?.sourceKind == .appIntent
+                && $0.provenance?.importSessionID == draft.provenance.importSessionID
+                && $0.provenance?.externalInboxItemID == queued.id
+        })
 
         let memory = try await repository.createMemoryFromExternalCaptureInboxItem(queued.id)
         XCTAssertEqual(memory.record.rawText, "Remember the dinner idea from the train.")
+        XCTAssertEqual(memory.record.captureProvenance?.sourceKind, .appIntent)
+        XCTAssertEqual(memory.record.captureProvenance?.externalInboxItemID, queued.id)
         XCTAssertEqual(try repository.fetchExternalCaptureInbox(status: .pending, limit: nil), [])
 
         let imported = try XCTUnwrap(try repository.fetchExternalCaptureInbox(status: .imported, limit: nil).first)
         XCTAssertEqual(imported.id, queued.id)
         XCTAssertEqual(imported.importedRecordID, memory.record.id)
-        XCTAssertEqual(try repository.fetchAffectSnapshots(recordID: memory.record.id, limit: nil).first?.labels, [.curious])
+        let persistedAffect = try XCTUnwrap(try repository.fetchAffectSnapshots(recordID: memory.record.id, limit: nil).first)
+        XCTAssertEqual(persistedAffect.labels, [.curious])
+        XCTAssertEqual(persistedAffect.evidence.first?.metadata["captureSourceKind"], CaptureProvenanceSourceKind.appIntent.rawValue)
+        XCTAssertEqual(persistedAffect.evidence.first?.metadata["externalInboxItemID"], queued.id.uuidString)
     }
 
     func testJournalingSuggestionInboxPreservesContextArtifactsAndAffect() throws {
@@ -81,10 +96,19 @@ final class ExternalCaptureInboxTests: XCTestCase {
 
         XCTAssertEqual(item.sourceKind, .journalingSuggestion)
         XCTAssertEqual(draft.title, "Evening walk")
-        XCTAssertTrue(draft.inputContext?.contains("journalingSuggestion") == true)
+        XCTAssertEqual(draft.provenance.sourceKind, .journalingSuggestion)
+        XCTAssertNotNil(draft.provenance.importSessionID)
+        XCTAssertEqual(draft.provenance.externalInboxItemID, item.id)
+        XCTAssertNil(draft.inputContext)
         XCTAssertEqual(draft.affectSnapshots.first?.sources, [.journalSuggestionStateOfMind])
+        XCTAssertEqual(draft.affectSnapshots.first?.provenance?.sourceKind, .journalingSuggestion)
         XCTAssertEqual(draft.affectSnapshots.first?.valence, 0.7)
         XCTAssertEqual(draft.artifacts.count, 4)
+        XCTAssertTrue(draft.artifacts.allSatisfy {
+            $0.provenance?.sourceKind == .journalingSuggestion
+                && $0.provenance?.importSessionID == draft.provenance.importSessionID
+                && $0.provenance?.externalInboxItemID == item.id
+        })
         XCTAssertTrue(draft.artifacts.contains { artifact in
             guard case .promptAnswer = artifact else { return false }
             return true
@@ -128,10 +152,12 @@ final class ExternalCaptureInboxTests: XCTestCase {
         let draft = try ExternalCaptureInboxCodec().makeDraft(from: item)
 
         XCTAssertEqual(draft.title, "Shared screenshot")
+        XCTAssertEqual(draft.provenance.sourceKind, .shareSheet)
         XCTAssertTrue(draft.artifacts.contains { artifact in
             if case .photo = artifact { return true }
             return false
         })
+        XCTAssertTrue(draft.artifacts.allSatisfy { $0.provenance?.sourceKind == .shareSheet })
     }
 
     func testShareDeepLinkParsesExternalCaptureComposeAction() throws {
@@ -165,6 +191,23 @@ final class ExternalCaptureInboxTests: XCTestCase {
         {"version":1,"id":"00000000-0000-0000-0000-000000000001","payloadKind":"externalCapture","sourceKind":"shareSheet","summary":"old","payloadData":"","status":"pending","receivedAt":"2026-05-24T00:00:00Z","updatedAt":"2026-05-24T00:00:00Z"}
         """.utf8)
         XCTAssertThrowsError(try decoder.decode(ExternalCaptureInboxItem.self, from: v1InboxItem))
+    }
+
+    func testExternalCaptureComposeHandoffStoreConsumesPendingItem() throws {
+        let suiteName = "ExternalCaptureComposeHandoffTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = ExternalCaptureComposeHandoffStore(defaults: defaults)
+        let itemID = UUID()
+        let createdAt = Date(timeIntervalSince1970: 1_800_000_100)
+
+        store.save(ExternalCaptureComposeHandoff(itemID: itemID, createdAt: createdAt))
+
+        XCTAssertEqual(store.load()?.itemID, itemID)
+        let consumed = try XCTUnwrap(store.consume())
+        XCTAssertEqual(consumed.itemID, itemID)
+        XCTAssertEqual(consumed.createdAt, createdAt)
+        XCTAssertNil(store.load())
     }
 
     func testJournalingSuggestionMapsMediaAndOfficialStateOfMindEvidence() throws {
@@ -236,6 +279,7 @@ final class ExternalCaptureInboxTests: XCTestCase {
         })
         let affect = try XCTUnwrap(draft.affectSnapshots.first)
         XCTAssertEqual(affect.sources, [.journalSuggestionStateOfMind])
+        XCTAssertEqual(affect.provenance?.sourceKind, .journalingSuggestion)
         XCTAssertEqual(affect.valence, 0.64)
         XCTAssertNil(affect.arousal)
         XCTAssertNil(affect.dominance)

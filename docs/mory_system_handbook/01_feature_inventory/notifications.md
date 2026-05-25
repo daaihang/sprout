@@ -10,14 +10,14 @@
 
 ## Expected User Experience
 
-Mory should remind users only when there is useful context: daily question, reflection ready, analysis finished, recurring theme, stage forming, revisit, or user-configured reminders. Users should know why a notification arrived.
+Mory should remind users only when there is useful context: daily question, analysis ready, reflection ready, or explicit debug/manual routing. Stage-forming, repeated-theme, and revisit signals can exist in-app, but should not proactively push by default. Users should know why a notification arrived and where it will open.
 
 ## Current Components
 
 | Component | Purpose | Status |
 | --- | --- | --- |
+| `NotificationOrchestrator` | Single entry for trigger -> dedupe -> policy -> local/remote delivery | `usable` |
 | `LocalNotificationScheduler` | Schedule local notifications | `usable` |
-| `NotificationIntentPreparationService` | Prepare notification intents | `wired` |
 | `RemotePushSyncService` | Register/sync APNs token and preferences | `wired` |
 | `NotificationDeliveryRouter` | Route delivery/interactions | `wired` |
 | `BackgroundTaskCoordinator` | Register/run BGTask handlers | `wired` |
@@ -28,19 +28,19 @@ Mory should remind users only when there is useful context: daily question, refl
 
 ```mermaid
 flowchart LR
-    A["Memory / question / reflection / pipeline status"] --> B["NotificationIntentPreparationService"]
-    B --> C["NotificationIntentStore"]
-    C --> D["LocalNotificationScheduler"]
-    C --> E["RemotePushSyncService"]
-    E --> F["Server /api/push/register + enqueue"]
-    F --> G["APNs worker"]
-    G --> H["Device notification"]
-    H --> I["Notification interaction writeback"]
+    A["Memory / question / reflection / pipeline status"] --> B["NotificationOrchestrator"]
+    B --> C["NotificationIntentStore / history"]
+    B --> D["LocalNotificationScheduler"]
+    B --> E["NotificationDeliveryRouter"]
+    E --> F["RemotePushSyncService"]
+    F --> G["Server /api/push/register + enqueue"]
+    G --> H["APNs worker"]
+    H --> I["Device notification"]
+    I --> J["Notification interaction writeback"]
 ```
 
 ## AI Intervention Points
 
-- Suggesting notification intent may call `/api/intelligence/suggest-notification-intent`.
 - Daily question generation calls `/api/intelligence/suggest-questions`.
 - Chapter suggestion can call `/api/intelligence/suggest-chapters`.
 - Notification scheduling itself is policy logic, not AI.
@@ -49,7 +49,7 @@ flowchart LR
 
 - Local notifications depend on user permission and scheduler state.
 - Remote pushes depend on APNs token registration, server queue, worker, and writeback.
-- Debug Remote Push Diagnostics can inspect parts of the chain.
+- Debug Remote Push Diagnostics and Settings/Memory Intelligence expose notification history and routing state.
 - Real-device timing and BGTask scheduling remain validation gaps.
 
 ## Billing Cut Point
@@ -58,10 +58,10 @@ Basic reminders should be free. AI-generated timing, deep context reminders, and
 
 ## Current Status
 
-`wired`
+`usable`
 
 ## Gaps And Next Step
 
-1. Document user-facing notification reasons and cadence.
-2. Add a product notification history/explanation surface.
-3. Complete real-device APNs and BGTask validation matrix.
+1. Complete real-device APNs and BGTask validation matrix.
+2. Remove legacy notification enums/toggles that no longer map to proactive delivery.
+3. Add release-ready notification copy and explanation polish.

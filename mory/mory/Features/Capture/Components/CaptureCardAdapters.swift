@@ -12,6 +12,7 @@ extension CaptureCardItem {
                 id: "artifact-\(artifact.id.uuidString)",
                 payload: .status(CaptureStatusCardPayload()),
                 origin: artifact.captureCardOrigin,
+                provenance: artifact.captureProvenance,
                 state: state,
                 title: artifact.title.trimmedOrNil ?? String(localized: "capture.card.kind.text"),
                 detail: captureCardModelSnippet(artifact.textContent)
@@ -23,6 +24,7 @@ extension CaptureCardItem {
                 id: "artifact-\(artifact.id.uuidString)",
                 payload: .photo(CapturePhotoCardPayload(thumbnailData: artifact.previewPayload ?? artifact.binaryPayload)),
                 origin: artifact.captureCardOrigin,
+                provenance: artifact.captureProvenance,
                 state: state,
                 title: artifact.title.trimmedOrNil,
                 detail: captureCardModelSnippet(artifact.summary)
@@ -36,6 +38,7 @@ extension CaptureCardItem {
                 id: "artifact-\(artifact.id.uuidString)",
                 payload: .audio(CaptureAudioCardPayload()),
                 origin: artifact.captureCardOrigin,
+                provenance: artifact.captureProvenance,
                 state: state,
                 title: artifact.title.trimmedOrNil ?? String(localized: "capture.card.kind.audio"),
                 detail: artifact.metadata["transcriptionText"].flatMap(captureCardModelSnippet)
@@ -56,6 +59,7 @@ extension CaptureCardItem {
                     playbackState: .stopped
                 )),
                 origin: artifact.captureCardOrigin,
+                provenance: artifact.captureProvenance,
                 state: state,
                 title: artifact.metadata["trackName"]?.trimmedOrNil
                     ?? artifact.title.trimmedOrNil
@@ -78,6 +82,7 @@ extension CaptureCardItem {
                 id: "artifact-\(artifact.id.uuidString)",
                 payload: .link(CaptureLinkCardPayload(thumbnailData: artifact.previewPayload)),
                 origin: artifact.captureCardOrigin,
+                provenance: artifact.captureProvenance,
                 state: state,
                 title: artifact.title.trimmedOrNil ?? String(localized: "capture.card.kind.link"),
                 detail: captureCardModelSnippet(artifact.summary)
@@ -95,6 +100,7 @@ extension CaptureCardItem {
                     longitude: artifact.metadata["longitude"].flatMap(Double.init)
                 )),
                 origin: artifact.captureCardOrigin,
+                provenance: artifact.captureProvenance,
                 state: state,
                 title: artifact.title.trimmedOrNil ?? String(localized: "capture.card.kind.place"),
                 detail: captureCardModelSnippet(artifact.summary)
@@ -130,6 +136,7 @@ extension CaptureCardItem {
                     isDaylight: isDaylight
                 )),
                 origin: artifact.captureCardOrigin,
+                provenance: artifact.captureProvenance,
                 state: state,
                 title: temperature.map(captureWeatherTemperatureTitle) ?? artifact.title.trimmedOrNil,
                 detail: condition,
@@ -141,6 +148,7 @@ extension CaptureCardItem {
                 id: "artifact-\(artifact.id.uuidString)",
                 payload: .todo(CaptureTodoCardPayload()),
                 origin: artifact.captureCardOrigin,
+                provenance: artifact.captureProvenance,
                 state: state,
                 title: artifact.title.trimmedOrNil ?? String(localized: "capture.card.kind.todo"),
                 detail: captureCardModelSnippet(artifact.summary)
@@ -156,6 +164,7 @@ extension CaptureCardItem {
                     id: "artifact-\(artifact.id.uuidString)",
                     payload: .prompt(CapturePromptCardPayload(prompt: prompt, answer: artifact.metadata["answer"]?.trimmedOrNil)),
                     origin: artifact.captureCardOrigin,
+                    provenance: artifact.captureProvenance,
                     state: state,
                     title: "Reflection prompt",
                     detail: captureCardModelSnippet(artifact.summary) ?? prompt,
@@ -170,6 +179,7 @@ extension CaptureCardItem {
                     id: "artifact-\(artifact.id.uuidString)",
                     payload: .person(CapturePersonContextCardPayload(name: name, photoData: artifact.previewPayload ?? artifact.binaryPayload)),
                     origin: artifact.captureCardOrigin,
+                    provenance: artifact.captureProvenance,
                     state: state,
                     title: name,
                     detail: captureCardModelSnippet(artifact.summary) ?? "Person context",
@@ -182,6 +192,7 @@ extension CaptureCardItem {
                 id: "artifact-\(artifact.id.uuidString)",
                 payload: .status(CaptureStatusCardPayload()),
                 origin: artifact.captureCardOrigin,
+                provenance: artifact.captureProvenance,
                 state: state,
                 title: artifact.title.trimmedOrNil ?? String(localized: "capture.card.kind.status"),
                 detail: captureCardModelSnippet(artifact.summary)
@@ -196,6 +207,7 @@ extension CaptureCardItem {
                 id: "artifact-\(artifact.id.uuidString)",
                 payload: .status(CaptureStatusCardPayload()),
                 origin: artifact.captureCardOrigin,
+                provenance: artifact.captureProvenance,
                 state: state,
                 title: artifact.title.trimmedOrNil ?? (artifact.kind == .video ? "Video" : String(localized: "capture.card.kind.status")),
                 detail: captureCardModelSnippet(artifact.summary)
@@ -215,53 +227,58 @@ extension CaptureCardItem {
         musicPlaybackState: CaptureMusicPlaybackState? = nil
     ) {
         switch draft {
-        case let .text(title, body, origin):
+        case let .text(title, body, origin, provenance):
             self.init(
                 id: id ?? "draft-\(draft.id)",
                 payload: .status(CaptureStatusCardPayload()),
                 origin: origin,
+                provenance: provenance,
                 state: state,
                 title: title ?? String(localized: "capture.card.kind.text"),
                 detail: captureCardModelSnippet(body) ?? String(localized: "capture.card.kind.text")
             )
-        case let .photo(title, summary, filename, _, thumbnailData, ocrText, _, origin):
+        case let .photo(title, summary, filename, _, thumbnailData, ocrText, _, origin, provenance):
             self.init(
                 id: id ?? "draft-\(draft.id)",
                 payload: .photo(CapturePhotoCardPayload(thumbnailData: thumbnailData)),
                 origin: origin,
+                provenance: provenance,
                 state: state,
                 title: title,
                 detail: [captureCardModelSnippet(summary), captureCardModelSnippet(ocrText), filename.trimmedOrNil].compactMap { $0 }.first ?? String(localized: "capture.card.photo.attached"),
                 metadata: filename.trimmedOrNil,
                 isRemovable: origin == .manual || origin == .context
             )
-        case let .audio(title, summary, filename, _, transcriptionText, origin):
+        case let .audio(title, summary, filename, _, transcriptionText, origin, provenance):
             self.init(
                 id: id ?? "draft-\(draft.id)",
                 payload: .audio(CaptureAudioCardPayload()),
                 origin: origin,
+                provenance: provenance,
                 state: state,
                 title: title ?? String(localized: "capture.card.kind.audio"),
                 detail: captureCardModelSnippet(transcriptionText) ?? captureCardModelSnippet(summary) ?? String(localized: "capture.card.audio.attached"),
                 metadata: filename.trimmedOrNil,
                 isRemovable: origin == .manual || origin == .context
             )
-        case let .video(title, summary, filename, _, thumbnailData, _, origin):
+        case let .video(title, summary, filename, _, thumbnailData, _, origin, provenance):
             self.init(
                 id: id ?? "draft-\(draft.id)",
                 payload: thumbnailData == nil ? .status(CaptureStatusCardPayload()) : .photo(CapturePhotoCardPayload(thumbnailData: thumbnailData)),
                 origin: origin,
+                provenance: provenance,
                 state: state,
                 title: title ?? "Video",
                 detail: captureCardModelSnippet(summary) ?? filename.trimmedOrNil ?? "Video attached",
                 metadata: filename.trimmedOrNil,
                 isRemovable: origin == .manual || origin == .context
             )
-        case let .location(title, summary, latitude, longitude, origin):
+        case let .location(title, summary, latitude, longitude, origin, provenance):
             self.init(
                 id: id ?? "draft-\(draft.id)",
                 payload: .place(CapturePlaceCardPayload(latitude: latitude, longitude: longitude)),
                 origin: origin,
+                provenance: provenance,
                 state: state,
                 title: title ?? String(localized: "capture.card.kind.place"),
                 detail: captureCardModelSnippet(summary) ?? String(localized: "capture.card.place.attached"),
@@ -269,51 +286,55 @@ extension CaptureCardItem {
                 isSelected: false,
                 isRemovable: origin == .manual || origin == .context
             )
-        case let .link(title, url, note, summary, _, thumbnailData, origin):
+        case let .link(title, url, note, summary, _, thumbnailData, origin, provenance):
             self.init(
                 id: id ?? "draft-\(draft.id)",
                 payload: .link(CaptureLinkCardPayload(thumbnailData: thumbnailData)),
                 origin: origin,
+                provenance: provenance,
                 state: state,
                 title: title ?? String(localized: "capture.card.kind.link"),
                 detail: summary.flatMap(captureCardModelSnippet) ?? note.flatMap(captureCardModelSnippet) ?? captureCardModelSnippet(url) ?? String(localized: "capture.card.link.attached"),
                 metadata: URL(string: url)?.host() ?? url,
                 isRemovable: origin == .manual || origin == .context
             )
-        case let .todo(title, note, origin):
+        case let .todo(title, note, origin, provenance):
             self.init(
                 id: id ?? "draft-\(draft.id)",
                 payload: .todo(CaptureTodoCardPayload()),
                 origin: origin,
+                provenance: provenance,
                 state: state,
                 title: title,
                 detail: note.flatMap(captureCardModelSnippet) ?? String(localized: "capture.card.kind.todo"),
                 metadata: String(localized: "capture.card.kind.todo"),
                 isRemovable: origin == .manual || origin == .context
             )
-        case let .promptAnswer(prompt, answer, source, origin):
+        case let .promptAnswer(prompt, answer, source, origin, provenance):
             self.init(
                 id: id ?? "draft-\(draft.id)",
                 payload: .prompt(CapturePromptCardPayload(prompt: prompt, answer: answer)),
                 origin: origin,
+                provenance: provenance,
                 state: state,
                 title: "Reflection prompt",
                 detail: answer?.trimmedOrNil ?? prompt,
                 metadata: source,
                 isRemovable: origin == .manual || origin == .context
             )
-        case let .personContext(name, note, photoData, _, origin):
+        case let .personContext(name, note, photoData, _, origin, provenance):
             self.init(
                 id: id ?? "draft-\(draft.id)",
                 payload: .person(CapturePersonContextCardPayload(name: name, photoData: photoData)),
                 origin: origin,
+                provenance: provenance,
                 state: state,
                 title: name,
                 detail: note?.trimmedOrNil ?? "Person context",
                 metadata: "Person context",
                 isRemovable: origin == .manual || origin == .context
             )
-        case let .weather(condition, temp, humidity, windSpeed, uvIndex, latitude, longitude, conditionCode, symbolName, isDaylight, origin):
+        case let .weather(condition, temp, humidity, windSpeed, uvIndex, latitude, longitude, conditionCode, symbolName, isDaylight, origin, provenance):
             self.init(
                 id: id ?? "draft-\(draft.id)",
                 payload: .weather(CaptureWeatherCardPayload(
@@ -331,6 +352,7 @@ extension CaptureCardItem {
                     isDaylight: isDaylight
                 )),
                 origin: origin,
+                provenance: provenance,
                 state: state,
                 title: captureWeatherTemperatureTitle(temp),
                 detail: condition,
@@ -338,7 +360,7 @@ extension CaptureCardItem {
                 isSelected: false,
                 isRemovable: origin == .manual || origin == .context
             )
-        case let .music(trackName, artistName, albumName, durationSeconds, artworkURL, artworkData, artworkPalette, origin):
+        case let .music(trackName, artistName, albumName, durationSeconds, artworkURL, artworkData, artworkPalette, origin, provenance):
             self.init(
                 id: id ?? "draft-\(draft.id)",
                 payload: .music(CaptureMusicCardPayload(
@@ -349,6 +371,7 @@ extension CaptureCardItem {
                     playbackState: musicPlaybackState
                 )),
                 origin: origin,
+                provenance: provenance,
                 state: state,
                 title: trackName,
                 detail: [artistName.trimmedOrNil, albumName.trimmedOrNil].compactMap { $0 }.joined(separator: " · "),
@@ -367,7 +390,7 @@ extension CaptureCardItem {
 
 private extension Artifact {
     var captureCardOrigin: CaptureArtifactOrigin? {
-        metadata["captureOrigin"].flatMap(CaptureArtifactOrigin.init(rawValue:))
+        captureProvenance?.artifactOrigin ?? metadata["captureOrigin"].flatMap(CaptureArtifactOrigin.init(rawValue:))
     }
 
     var captureCardArtworkPalette: MusicArtworkPalette? {

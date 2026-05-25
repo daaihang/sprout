@@ -65,7 +65,8 @@ struct CaptureComposerAttachmentItem: Identifiable {
             card: CaptureCardItem(
                 id: itemID,
                 payload: .affect(CaptureAffectCardPayload(valence: draft.valence, sourceDescription: draft.sources.first?.rawValue)),
-                origin: .imported,
+                origin: draft.provenance?.artifactOrigin ?? (draft.sources.contains(.journalSuggestionStateOfMind) ? .imported : .manual),
+                provenance: draft.provenance,
                 state: .normal,
                 title: title,
                 detail: detail,

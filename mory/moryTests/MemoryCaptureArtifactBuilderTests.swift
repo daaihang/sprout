@@ -100,4 +100,48 @@ final class MemoryCaptureArtifactBuilderTests: XCTestCase {
         XCTAssertEqual(weather.metadata["isDaylight"], "true")
         XCTAssertEqual(weather.metadata["captureOrigin"], CaptureArtifactOrigin.context.rawValue)
     }
+
+    func testBuildArtifactsPersistsCaptureProvenanceMetadataAndModel() throws {
+        let builder = MemoryCaptureArtifactBuilder()
+        let recordID = UUID()
+        let sessionID = UUID()
+        let inboxItemID = UUID()
+        let provenance = CaptureProvenance.external(
+            sourceKind: .shareSheet,
+            importSessionID: sessionID,
+            externalInboxItemID: inboxItemID,
+            sourceDisplayName: "Share Sheet",
+            createdAt: Date(timeIntervalSince1970: 1_800_000_010)
+        )
+        let draft = MemoryCaptureDraft(
+            rawText: "Shared page",
+            captureSource: .importFile,
+            provenance: provenance,
+            artifacts: [
+                .link(
+                    title: "Shared page",
+                    url: "https://example.com",
+                    note: "Worth saving",
+                    origin: .imported,
+                    provenance: provenance
+                )
+            ]
+        )
+
+        let artifacts = builder.buildArtifacts(
+            from: draft,
+            recordID: recordID,
+            createdAt: Date(timeIntervalSince1970: 1_800_000_020)
+        )
+
+        let link = try XCTUnwrap(artifacts.first(where: { $0.kind == .link }))
+        XCTAssertEqual(link.captureProvenance?.sourceKind, .shareSheet)
+        XCTAssertEqual(link.captureProvenance?.importSessionID, sessionID)
+        XCTAssertEqual(link.captureProvenance?.externalInboxItemID, inboxItemID)
+        XCTAssertEqual(link.metadata["captureOrigin"], CaptureArtifactOrigin.imported.rawValue)
+        XCTAssertEqual(link.metadata["captureOriginCategory"], CaptureOriginCategory.externalImport.rawValue)
+        XCTAssertEqual(link.metadata["captureSourceKind"], CaptureProvenanceSourceKind.shareSheet.rawValue)
+        XCTAssertEqual(link.metadata["captureImportSessionID"], sessionID.uuidString)
+        XCTAssertEqual(link.metadata["externalInboxItemID"], inboxItemID.uuidString)
+    }
 }

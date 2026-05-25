@@ -38,6 +38,8 @@ struct UnifiedCaptureComposerView: View {
     @State private var bodyText = ""
     @State private var mood = ""
     @State private var inputContext = ""
+    @State private var draftProvenance: CaptureProvenance = .manualComposer
+    @State private var bodyTextProvenance: CaptureProvenance = .manualComposer
     @State private var affectDrafts: [AffectSnapshotDraft] = []
     @State private var stagedArtifactDrafts: [CaptureArtifactDraft] = []
     @State private var contextCandidates: [ContextCandidate] = []
@@ -62,7 +64,7 @@ struct UnifiedCaptureComposerView: View {
     private var primaryArtifactDrafts: [CaptureArtifactDraft] {
         var drafts = stagedArtifactDrafts
         if let text = bodyText.trimmedOrNil {
-            drafts.insert(.text(title: nil, body: text, origin: .manual), at: 0)
+            drafts.insert(.text(title: nil, body: text, origin: bodyTextProvenance.artifactOrigin, provenance: bodyTextProvenance), at: 0)
         }
         return drafts
     }
@@ -227,23 +229,23 @@ struct UnifiedCaptureComposerView: View {
                 if let transcript = transcript.trimmedOrNil {
                     appendTranscriptToBody(transcript)
                 }
-                stagedArtifactDrafts.append(draft.withOrigin(.manual))
+                stagedArtifactDrafts.append(draft.withProvenance(manualProvenance(.audioRecorder)))
             }
         case .link:
             UnifiedLinkCaptureSheet { draft in
-                stagedArtifactDrafts.append(draft.withOrigin(.manual))
+                stagedArtifactDrafts.append(draft.withProvenance(manualProvenance(.linkComposer)))
             }
         case .music:
             UnifiedMusicCaptureSheet { draft in
-                stagedArtifactDrafts.append(draft.withOrigin(.manual))
+                stagedArtifactDrafts.append(draft.withProvenance(manualProvenance(.musicPicker)))
             }
         case .location:
             LocationPickerView(initialSelection: nil) { draft in
-                stagedArtifactDrafts.append(draft.withOrigin(.manual))
+                stagedArtifactDrafts.append(draft.withProvenance(manualProvenance(.locationPicker)))
             }
         case .todo:
             UnifiedTodoCaptureSheet { draft in
-                stagedArtifactDrafts.append(draft.withOrigin(.manual))
+                stagedArtifactDrafts.append(draft.withProvenance(manualProvenance(.todoComposer)))
             }
         case .mood:
             StructuredMoodPickerSheet(
@@ -271,6 +273,8 @@ struct UnifiedCaptureComposerView: View {
 
         guard let voice = seed.voiceResult, stagedArtifactDrafts.isEmpty, bodyText.isEmpty else { return }
         let transcript = voice.transcription.trimmedOrNil
+        draftProvenance = .manualVoice
+        bodyTextProvenance = .manualVoice
         bodyText = transcript ?? ""
         generatedTitle = transcript?.generatedMemoryTitle() ?? String(localized: "quickCapture.voice.defaultTitle")
         stagedArtifactDrafts.append(.audio(
@@ -279,7 +283,8 @@ struct UnifiedCaptureComposerView: View {
             filename: voice.filename,
             audioData: voice.audioData,
             transcriptionText: transcript ?? "",
-            origin: .manual
+            origin: .manual,
+            provenance: .manualVoice
         ))
     }
 
@@ -324,20 +329,21 @@ struct UnifiedCaptureComposerView: View {
         }
 
         guard let index = stagedArtifactDrafts.firstIndex(where: { draft in
-            if case let .audio(_, _, filename, _, _, _) = draft {
+            if case let .audio(_, _, filename, _, _, _, _) = draft {
                 return filename == voice.filename
             }
             return false
         }) else { return }
 
-        if case let .audio(existingTitle, _, filename, audioData, _, origin) = stagedArtifactDrafts[index] {
+        if case let .audio(existingTitle, _, filename, audioData, _, origin, provenance) = stagedArtifactDrafts[index] {
             stagedArtifactDrafts[index] = .audio(
                 title: existingTitle,
                 summary: String(localized: "quickCapture.voice.defaultSummary"),
                 filename: filename,
                 audioData: audioData,
                 transcriptionText: refinement.transcript,
-                origin: origin
+                origin: origin,
+                provenance: provenance
             )
         }
     }
@@ -357,7 +363,7 @@ struct UnifiedCaptureComposerView: View {
         let policy = (try? memoryRepository.fetchUserSettingsPreference().defaultContextSelection) ?? .allAvailable
         let drafts = await ContextAutoCollector().collectContextDrafts(policy: policy)
         contextCandidates = drafts.map { draft in
-            ContextCandidate(draft: draft.withOrigin(.context), capturedAt: collectedAt, isSelected: true)
+            ContextCandidate(draft: draft.withProvenance(.autoContext), capturedAt: collectedAt, isSelected: true)
         }
     }
 
@@ -400,7 +406,8 @@ struct UnifiedCaptureComposerView: View {
             thumbnailData: result.thumbnailData,
             ocrText: result.ocrText,
             photoMetadata: result.metadata,
-            origin: .manual
+            origin: .manual,
+            provenance: manualProvenance(filename.hasPrefix("camera_") ? .camera : .photoLibrary)
         ))
     }
 
@@ -419,7 +426,8 @@ struct UnifiedCaptureComposerView: View {
                 rawText: rawText,
                 mood: mood.trimmedOrNil,
                 inputContext: inputContext.trimmedOrNil,
-                captureSource: resolvedCaptureSource,
+                captureSource: draftProvenance.sourceKind.legacyCaptureSource ?? resolvedCaptureSource,
+                provenance: draftProvenance,
                 artifacts: allArtifactDrafts,
                 affectSnapshots: affectDrafts
             )
@@ -477,6 +485,9 @@ struct UnifiedCaptureComposerView: View {
         if !normalized.sources.contains(.userSelected) {
             normalized.sources.append(.userSelected)
         }
+        if normalized.provenance == nil {
+            normalized.provenance = manualProvenance(.moodPicker)
+        }
         if let index = affectDrafts.firstIndex(where: { $0.sources.contains(.userSelected) }) {
             affectDrafts[index] = normalized
         } else {
@@ -489,10 +500,14 @@ struct UnifiedCaptureComposerView: View {
 
     @MainActor
     private func mergeImportedDraft(_ draft: MemoryCaptureDraft) {
+        draftProvenance = draft.provenance
         if let title = draft.title?.trimmedOrNil, generatedTitle.trimmedOrNil == nil {
             generatedTitle = title
         }
         if let importedRawText = draft.rawText.trimmedOrNil {
+            if bodyText.trimmedOrNil == nil {
+                bodyTextProvenance = draft.provenance
+            }
             appendTranscriptToBody(importedRawText)
         }
         if let importedContext = draft.inputContext?.trimmedOrNil {
@@ -545,5 +560,26 @@ struct UnifiedCaptureComposerView: View {
             return .photo
         }
         return .composer
+    }
+
+    private func manualProvenance(_ sourceKind: CaptureProvenanceSourceKind) -> CaptureProvenance {
+        CaptureProvenance(originCategory: .userInput, sourceKind: sourceKind)
+    }
+}
+
+private extension CaptureProvenanceSourceKind {
+    var legacyCaptureSource: CaptureSource? {
+        switch self {
+        case .voice, .audioRecorder:
+            return .audio
+        case .camera, .photoLibrary:
+            return .photo
+        case .shareSheet, .appIntent, .shortcut, .widget:
+            return .importFile
+        case .composer, .linkComposer, .musicPicker, .locationPicker, .todoComposer, .moodPicker, .journalingSuggestion, .autoContext, .health, .fitness:
+            return .composer
+        case .aiAnalysis, .debugFixture, .unknown:
+            return nil
+        }
     }
 }
