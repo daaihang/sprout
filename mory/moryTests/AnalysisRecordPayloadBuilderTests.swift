@@ -1,7 +1,7 @@
 import XCTest
 @testable import mory
 
-final class AnalyzeRequestBuilderTests: XCTestCase {
+final class AnalysisRecordPayloadBuilderTests: XCTestCase {
     func testBuildUsesDocumentedRecordAggregateShape() throws {
         let now = Date(timeIntervalSince1970: 1_715_000_000)
         let record = RecordShell(
@@ -38,7 +38,7 @@ final class AnalyzeRequestBuilderTests: XCTestCase {
             )
         ]
 
-        let payload = AnalyzeRequestBuilder().build(
+        let payload = AnalysisRecordPayloadBuilder().build(
             record: record,
             artifacts: artifacts,
             knownEntities: knownEntities,
@@ -72,7 +72,7 @@ final class AnalyzeRequestBuilderTests: XCTestCase {
             inputContext: "debug"
         )
 
-        let payload = AnalyzeRequestBuilder().build(
+        let payload = AnalysisRecordPayloadBuilder().build(
             record: record,
             artifacts: [],
             knownEntities: [],

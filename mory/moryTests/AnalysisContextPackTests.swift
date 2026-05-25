@@ -222,7 +222,7 @@ private struct AnalysisContextRepositoryFixture {
     let repository: MoryMemoryRepository
 }
 
-private struct AnalysisContextTestRecordAnalysisService: RecordAnalysisServing {
+private struct AnalysisContextTestRecordAnalysisService: ReflectionAnalysisServing {
     func analyze(
         record: RecordShell,
         artifacts: [Artifact],

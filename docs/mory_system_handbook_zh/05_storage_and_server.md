@@ -26,7 +26,7 @@ Mory 是本地优先的应用。用户保存的核心记忆、附件索引、人
 服务端主要负责这些事情：
 
 - 登录和鉴权。
-- 接收 v7 Analyze 请求。
+- 接收 Analysis 请求。
 - 调用 AI provider。
 - 返回结构化分析和 proposal。
 - 管理 push token 和远程通知。
@@ -41,7 +41,7 @@ Mory 是本地优先的应用。用户保存的核心记忆、附件索引、人
 ```mermaid
 flowchart TD
     A["本地保存记忆"] --> B["构造 Context Pack"]
-    B --> C["调用 /api/analyze/v7"]
+    B --> C["调用 /api/analyze"]
     C --> D["服务端调用 AI"]
     D --> E["返回分析和 proposals"]
     E --> F["App 本地保存结果"]

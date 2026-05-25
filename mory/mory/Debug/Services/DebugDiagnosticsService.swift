@@ -203,7 +203,7 @@ struct DebugDiagnosticsService {
         guard let target, let memory = target.memory else { return nil }
         let pipelineStatus = try pipelineStatusFetcher(memory.record.id)
         let artifacts = try artifactsFetcher(memory.record.id)
-        let request = AnalyzeRequestBuilder().build(
+        let request = AnalysisRecordPayloadBuilder().build(
             record: memory.record,
             artifacts: artifacts,
             knownEntities: []
@@ -232,7 +232,7 @@ struct DebugDiagnosticsService {
         case .memory:
             guard let memory = target.memory else { return nil }
             let artifacts = try artifactsFetcher(memory.record.id)
-            let analyzePayload = AnalyzeRequestBuilder().build(record: memory.record, artifacts: artifacts)
+            let analyzePayload = AnalysisRecordPayloadBuilder().build(record: memory.record, artifacts: artifacts)
             let payload = MoryAPIClient.ReflectionPayload(
                 recordShell: analyzePayload.recordShell,
                 artifacts: analyzePayload.artifacts,
@@ -252,7 +252,7 @@ struct DebugDiagnosticsService {
         case .arc:
             guard let arc = target.arc else { return nil }
             let payload = MoryAPIClient.ReflectionPayload(
-                recordShell: AnalyzeRequestBuilder().build(
+                recordShell: AnalysisRecordPayloadBuilder().build(
                     record: RecordShell(createdAt: .now, updatedAt: .now, captureSource: .manual, rawText: arc.arc.summary),
                     artifacts: []
                 ).recordShell,
@@ -384,7 +384,7 @@ struct DebugDiagnosticsService {
         reflectionID: UUID,
         modelContext: ModelContext,
         memories: [MemorySummary],
-        analysisService: any RecordAnalysisServing
+        analysisService: any ReflectionAnalysisServing
     ) async throws -> DebugPipelineTraceSnapshot? {
         guard let reflection = try modelContext.fetch(
             FetchDescriptor<ReflectionSnapshotStore>(predicate: #Predicate { $0.id == reflectionID })

@@ -226,7 +226,7 @@ private struct IntelligenceJobWorkerRepositoryFixture {
     let repository: MoryMemoryRepository
 }
 
-private struct WorkerRecordAnalysisService: RecordAnalysisServing {
+private struct WorkerRecordAnalysisService: ReflectionAnalysisServing {
     let alexID: UUID
 
     func analyze(
@@ -299,14 +299,14 @@ private struct WorkerRecordAnalysisService: RecordAnalysisServing {
 }
 
 private struct WorkerMockCloudIntelligenceService: CloudIntelligenceServing {
-    func analyzeV7(_ payload: AnalyzeV7RequestPayload) async throws -> AnalyzeV7ResponseEnvelope {
+    func analyzeMemory(_ payload: AnalysisRequestPayload) async throws -> AnalysisResponseEnvelope {
         let rawText = payload.recordShell.rawText
         let lowercased = rawText.lowercased()
         let theme = lowercased.contains("career transition") || lowercased.contains("resume") || lowercased.contains("chapter in work")
             ? "Career Transition"
             : "Planning"
         let mentionsAlex = lowercased.contains("alex")
-        let entities: [AnalyzeResponseEnvelope.Entity] = mentionsAlex
+        let entities: [AnalysisRecordResponse.Entity] = mentionsAlex
             ? [
                 .init(kind: "person", name: "Alex", canonicalName: "Alex", aliases: nil, confidence: 0.92, sourceArtifactIDs: []),
                 .init(kind: "theme", name: theme, canonicalName: theme, aliases: nil, confidence: 0.8, sourceArtifactIDs: [])
@@ -314,7 +314,7 @@ private struct WorkerMockCloudIntelligenceService: CloudIntelligenceServing {
             : [
                 .init(kind: "theme", name: theme, canonicalName: theme, aliases: nil, confidence: 0.8, sourceArtifactIDs: [])
             ]
-        let candidateEdges: [AnalyzeResponseEnvelope.CandidateEdge] = mentionsAlex
+        let candidateEdges: [AnalysisRecordResponse.CandidateEdge] = mentionsAlex
             ? [
                 .init(
                     fromName: "Alex",
@@ -327,8 +327,8 @@ private struct WorkerMockCloudIntelligenceService: CloudIntelligenceServing {
             ]
             : []
 
-        return AnalyzeV7ResponseEnvelope(
-            analysis: AnalyzeResponseEnvelope(
+        return AnalysisResponseEnvelope(
+            analysis: AnalysisRecordResponse(
                 tags: [theme],
                 retrievalTerms: [theme],
                 emotion: .init(label: "focused", intensity: 0.5, confidence: 0.7, interpretation: nil),

@@ -2,8 +2,8 @@ import XCTest
 @testable import mory
 
 @MainActor
-final class ArchitecturePipelineExecutorTests: XCTestCase {
-    func testRunPersistsV7AnalysisGraphAndProposalsThroughPorts() async throws {
+final class AnalysisExecutorTests: XCTestCase {
+    func testRunPersistsAnalysisGraphAndProposalsThroughPorts() async throws {
         let fixture = PipelineFixture()
         let artifactID = UUID(uuidString: "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA")!
         let record = fixture.makeRecord(artifactIDs: [artifactID])
@@ -31,7 +31,7 @@ final class ArchitecturePipelineExecutorTests: XCTestCase {
         let contextProvider = PipelineContextProvider(pack: fixture.makeContextPack(recordID: record.id))
         let runtimeScope = PipelineRuntimeScope(activeRecordScope: [record.id])
 
-        try await ArchitecturePipelineExecutor().run(
+        try await AnalysisExecutor().run(
             record: record,
             artifacts: [artifact],
             dependencies: AnalysisPipelineDependencies(
@@ -49,7 +49,7 @@ final class ArchitecturePipelineExecutorTests: XCTestCase {
         XCTAssertEqual(payloads.first?.knownEntities.first?.name, "Known Linh")
         XCTAssertEqual(query.receivedPreRecordScopes, [[record.id]])
         XCTAssertEqual(query.receivedPostRecordScopes, [[record.id]])
-        XCTAssertEqual(persist.recordAnalyses.first?.summary, "Pipeline v7 summary")
+        XCTAssertEqual(persist.recordAnalyses.first?.summary, "Pipeline analysis summary")
         XCTAssertTrue(persist.entityNodes.contains { $0.displayName == "Linh" })
         XCTAssertTrue(persist.artifactEntityLinks.contains { $0.artifactID == artifactID })
         XCTAssertEqual(persist.affectSnapshots.count, 1)
@@ -62,7 +62,7 @@ final class ArchitecturePipelineExecutorTests: XCTestCase {
         XCTAssertEqual(tracing.traces.last??.statusCode, 200)
     }
 
-    func testRunRecordsAnalysisV7FailureTraceAndDoesNotPersistGraph() async throws {
+    func testRunRecordsAnalysisFailureTraceAndDoesNotPersistGraph() async throws {
         let fixture = PipelineFixture()
         let record = fixture.makeRecord()
         let cloud = PipelineTestCloudService(result: .failure(PipelineTestError.cloudFailed))
@@ -70,7 +70,7 @@ final class ArchitecturePipelineExecutorTests: XCTestCase {
         let tracing = PipelineTraceSpy()
 
         do {
-            try await ArchitecturePipelineExecutor().run(
+            try await AnalysisExecutor().run(
                 record: record,
                 artifacts: [],
                 dependencies: AnalysisPipelineDependencies(
@@ -82,7 +82,7 @@ final class ArchitecturePipelineExecutorTests: XCTestCase {
                     runtimeScope: PipelineRuntimeScope()
                 )
             )
-            XCTFail("Expected v7 cloud failure to propagate.")
+            XCTFail("Expected analysis cloud failure to propagate.")
         } catch PipelineTestError.cloudFailed {
             // Expected.
         } catch {
@@ -92,7 +92,7 @@ final class ArchitecturePipelineExecutorTests: XCTestCase {
         XCTAssertTrue(persist.recordAnalyses.isEmpty)
         XCTAssertTrue(persist.entityNodes.isEmpty)
         XCTAssertTrue(persist.graphDeltas.isEmpty)
-        XCTAssertEqual(tracing.traces.last??.failedStage, "analysis_v7")
+        XCTAssertEqual(tracing.traces.last??.failedStage, "analysis")
     }
 
     func testRunCanUseScopedMockPortsWithoutModelContainer() async throws {
@@ -124,7 +124,7 @@ final class ArchitecturePipelineExecutorTests: XCTestCase {
         )
         let cloud = PipelineTestCloudService(result: .success(Self.makeResponse(recordID: record.id)))
 
-        try await ArchitecturePipelineExecutor().run(
+        try await AnalysisExecutor().run(
             record: record,
             artifacts: [],
             dependencies: AnalysisPipelineDependencies(
@@ -141,10 +141,10 @@ final class ArchitecturePipelineExecutorTests: XCTestCase {
         XCTAssertEqual(query.receivedPostRecordScopes, [[includedRecordID]])
     }
 
-    private static func makeResponse(recordID: UUID) -> AnalyzeV7ResponseEnvelope {
+    private static func makeResponse(recordID: UUID) -> AnalysisResponseEnvelope {
         let entityID = UUID(uuidString: "BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB")!
-        return AnalyzeV7ResponseEnvelope(
-            analysis: AnalyzeResponseEnvelope(
+        return AnalysisResponseEnvelope(
+            analysis: AnalysisRecordResponse(
                 tags: ["planning"],
                 retrievalTerms: ["Linh"],
                 emotion: .init(label: "relieved", intensity: 0.6, confidence: 0.7, interpretation: nil),
@@ -152,8 +152,8 @@ final class ArchitecturePipelineExecutorTests: XCTestCase {
                     .init(kind: "person", name: "Linh", canonicalName: "Linh", aliases: ["L"], confidence: 0.9, sourceArtifactIDs: [])
                 ],
                 candidateEdges: [],
-                insight: "Pipeline v7 insight.",
-                summary: "Pipeline v7 summary",
+                insight: "Pipeline analysis insight.",
+                summary: "Pipeline analysis summary",
                 salienceScore: 0.66,
                 followUp: nil,
                 reflectionHint: nil
@@ -396,18 +396,18 @@ private struct PipelineRuntimeScope: AnalysisPipelineRuntimeScoping {
 
 private actor PipelineTestCloudService: CloudIntelligenceServing {
     enum Result {
-        case success(AnalyzeV7ResponseEnvelope)
+        case success(AnalysisResponseEnvelope)
         case failure(Error)
     }
 
     private let result: Result
-    private var capturedPayloads: [AnalyzeV7RequestPayload] = []
+    private var capturedPayloads: [AnalysisRequestPayload] = []
 
     init(result: Result) {
         self.result = result
     }
 
-    func analyzeV7(_ payload: AnalyzeV7RequestPayload) async throws -> AnalyzeV7ResponseEnvelope {
+    func analyzeMemory(_ payload: AnalysisRequestPayload) async throws -> AnalysisResponseEnvelope {
         capturedPayloads.append(payload)
         switch result {
         case let .success(response):
@@ -417,7 +417,7 @@ private actor PipelineTestCloudService: CloudIntelligenceServing {
         }
     }
 
-    func payloads() -> [AnalyzeV7RequestPayload] {
+    func payloads() -> [AnalysisRequestPayload] {
         capturedPayloads
     }
 

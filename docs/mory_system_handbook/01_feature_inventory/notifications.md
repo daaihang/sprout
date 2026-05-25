@@ -19,6 +19,8 @@ Mory should remind users only when there is useful context: daily question, anal
 | `NotificationOrchestrator` | Single entry for trigger -> dedupe -> policy -> local/remote delivery | `usable` |
 | `NotificationManagementView` | Single Settings/Debug surface for queue, history, dedupe, errors, and preferences | `usable` |
 | `NotificationManagementEventStore` | Persistent notification management log for dedupe, policy block, delivery, route, and interaction events | `usable` |
+| `BackgroundOperationOrchestrator` | Shared trigger entry for app launch, foreground, BGTask, silent push, pipeline-completed, APNs token, and URLSession callbacks before notification orchestration | `usable` |
+| `BackgroundManagementView` | Debug/Settings surface for background runs, operation events, jobs, pipeline statuses, and push state | `usable` |
 | `LocalNotificationScheduler` | Schedule local notifications | `usable` |
 | `RemotePushSyncService` | Register/sync APNs token and preferences | `wired` |
 | `NotificationDeliveryRouter` | Route delivery/interactions | `wired` |
@@ -30,7 +32,9 @@ Mory should remind users only when there is useful context: daily question, anal
 
 ```mermaid
 flowchart LR
-    A["Memory / question / reflection / pipeline status"] --> B["NotificationOrchestrator"]
+    A["App launch / foreground / BGTask / silent push / pipeline completed"] --> BG["BackgroundOperationOrchestrator"]
+    BG --> R["Owner-scoped BackgroundOperationDefaultsStore / in-memory test store"]
+    BG --> B["NotificationOrchestrator"]
     B --> C["NotificationIntentStore / history"]
     B --> L["NotificationManagementEventStore"]
     B --> D["LocalNotificationScheduler"]
@@ -58,6 +62,8 @@ flowchart LR
   - Dedupe: dedupe key hits and source trigger.
   - Errors: policy block, delivery error, route error.
 - Local/APNs actions on that page call the formal orchestrator and push sync services. They do not create side-channel intents.
+- App launch, scene foreground, APNs token changes, notification preference changes, BGTask callbacks, silent push, background URLSession, and pipeline completion now enter `BackgroundOperationOrchestrator` first. Notification generation still happens only through `NotificationOrchestrator`.
+- Background operation logs are diagnostic state, not memory facts: they are stored in an owner-scoped JSON/UserDefaults store with an in-memory test fallback, so early app startup does not mutate the SwiftData memory schema.
 - Real-device timing and BGTask scheduling remain validation gaps.
 
 ## Current User-Visible Entry
@@ -78,5 +84,5 @@ Basic reminders should be free. AI-generated timing, deep context reminders, and
 ## Gaps And Next Step
 
 1. Complete real-device APNs and BGTask validation matrix.
-2. Unify background triggers next: BGTask, silent push, startup recovery, and pipeline completion should feed a shared background-operation log before invoking `NotificationOrchestrator`.
+2. Harden `BackgroundOperationOrchestrator` beyond the usable baseline: retry policy, quota, cancellation, and product-readable status still need work.
 3. Add release-ready notification copy and explanation polish.

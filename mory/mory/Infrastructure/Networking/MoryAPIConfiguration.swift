@@ -3,16 +3,13 @@ import Foundation
 struct MoryAPIConfiguration: Sendable {
     let baseURL: URL
     let authPath: String
-    let analysisPath: String
 
     init(
         baseURL: URL,
-        authPath: String = "/auth/apple",
-        analysisPath: String = "/api/analysis/records"
+        authPath: String = "/auth/apple"
     ) {
         self.baseURL = baseURL
         self.authPath = authPath
-        self.analysisPath = analysisPath
     }
 
     static func fromBundle(_ bundle: Bundle = .main) -> MoryAPIConfiguration {

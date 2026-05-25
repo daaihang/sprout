@@ -24,7 +24,7 @@ final class QualityTuningLocalBatchTests: XCTestCase {
         let tokenProvider = MoryAuthTokenProvider(apiClient: apiClient, credentialStore: credentialStore)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: RemoteRecordAnalysisService(
+            analysisService: RemoteReflectionAnalysisService(
                 apiClient: apiClient,
                 tokenProvider: tokenProvider
             )

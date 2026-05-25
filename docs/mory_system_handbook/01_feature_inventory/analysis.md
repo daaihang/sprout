@@ -1,8 +1,8 @@
-# AI v7 Analyze Feature Inventory
+# Analysis Feature Inventory
 
 ## User Entry
 
-There is no direct user button for normal v7 analysis. It starts after a memory is saved or when a user retries analysis from memory detail/debug.
+There is no direct user button for normal Analysis. It starts after a memory is saved or when a user retries analysis from memory detail/debug.
 
 ## Expected User Experience
 
@@ -21,10 +21,10 @@ After saving a memory, Mory should quietly analyze it, then surface useful resul
 flowchart LR
     A["Memory saved"] --> B["refreshMemoryPipeline"]
     B --> C["AnalysisContextPackBuilder"]
-    C --> D["AnalyzeV7RequestPayload"]
-    D --> E["POST /api/analyze/v7"]
-    E --> F["AnalyzeV7ResponseEnvelope"]
-    F --> G["AnalyzeV7ResponseMapper"]
+    C --> D["AnalysisRequestPayload"]
+    D --> E["POST /api/analyze"]
+    E --> F["AnalysisResponseEnvelope"]
+    F --> G["AnalysisResponseMapper"]
     G --> H["RecordAnalysisSnapshot"]
     G --> I["Affect proposals"]
     G --> J["GraphDelta proposals"]
@@ -34,7 +34,7 @@ flowchart LR
 
 ## Context Inputs
 
-v7 analysis is intended to use:
+Analysis is intended to use:
 
 - current `RecordShell`,
 - current `Artifact` list,
@@ -61,7 +61,7 @@ v7 analysis is intended to use:
 
 ## AI Intervention Points
 
-v7 Analyze is cloud AI and happens after local save. It does not block memory creation. It can create proposals and derived summaries, but it should not directly overwrite user-authored memory text.
+Analysis is cloud AI and happens after local save. It does not block memory creation. It can create proposals and derived summaries, but it should not directly overwrite user-authored memory text.
 
 ## Failure And Retry
 
@@ -72,7 +72,7 @@ v7 Analyze is cloud AI and happens after local save. It does not block memory cr
 
 ## Billing Cut Point
 
-This is the most important server-enforced paid boundary. Free users can receive limited v7 analysis; Pro users can receive larger quotas, deeper context pack retrieval, richer proposal families, and longer history windows.
+This is the most important server-enforced paid boundary. Free users can receive limited Analysis; Pro users can receive larger quotas, deeper context pack retrieval, richer proposal families, and longer history windows.
 
 ## Current Status
 
@@ -82,5 +82,5 @@ This is the most important server-enforced paid boundary. Free users can receive
 
 1. Add a product-level analysis queue/status surface.
 2. Add "analysis ready" and "needs review" transitions.
-3. Enforce quota/entitlement on `/api/analyze/v7` before paid launch.
+3. Enforce quota/entitlement on `/api/analyze` before paid launch.
 4. Keep proposal-first safety boundaries visible to users.

@@ -81,7 +81,7 @@ final class MoryLocalDataSession {
 
     convenience init(
         ownerID: String,
-        analysisService: any RecordAnalysisServing,
+        analysisService: any ReflectionAnalysisServing,
         cloudIntelligenceService: (any CloudIntelligenceServing)? = nil,
         notificationOrchestrator: NotificationOrchestrator? = nil
     ) {
@@ -99,7 +99,7 @@ final class MoryLocalDataSession {
 
     init(
         ownerID: String,
-        analysisService: any RecordAnalysisServing,
+        analysisService: any ReflectionAnalysisServing,
         cloudIntelligenceService: (any CloudIntelligenceServing)? = nil,
         notificationOrchestrator: NotificationOrchestrator? = nil,
         registry: LocalDataOwnerRegistry
@@ -124,7 +124,7 @@ final class MoryLocalDataSession {
 
     init(
         ownerID: String,
-        analysisService: any RecordAnalysisServing,
+        analysisService: any ReflectionAnalysisServing,
         cloudIntelligenceService: (any CloudIntelligenceServing)? = nil,
         notificationOrchestrator: NotificationOrchestrator? = nil,
         scope: MoryLocalDataScope,

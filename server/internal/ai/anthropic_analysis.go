@@ -10,20 +10,20 @@ import (
 	"time"
 )
 
-func (p *AnthropicProvider) Analyze(ctx context.Context, req AnalyzeRequest, user UserContext) (AnalyzeResult, error) {
+func (p *AnthropicProvider) Analyze(ctx context.Context, req AnalysisRequest, user UserContext) (AnalysisResult, error) {
 	if err := req.Validate(); err != nil {
-		return AnalyzeResult{}, err
+		return AnalysisResult{}, err
 	}
 
-	userPrompt, err := buildAnalyzeUserPrompt(req, user)
+	userPrompt, err := buildAnalysisUserPrompt(req, user)
 	if err != nil {
-		return AnalyzeResult{}, err
+		return AnalysisResult{}, err
 	}
 
-	systemPrompt := buildAnalyzeSystemPromptForProfile(req.DebugOptions.PromptProfileOrDefault())
+	systemPrompt := buildAnalysisSystemPrompt()
 	payload := anthropicRequest{
 		Model:     p.model,
-		MaxTokens: 800,
+		MaxTokens: 1600,
 		System:    systemPrompt,
 		Messages: []anthropicMessage{{
 			Role: "user",
@@ -32,19 +32,16 @@ func (p *AnthropicProvider) Analyze(ctx context.Context, req AnalyzeRequest, use
 				Text: userPrompt,
 			}},
 		}},
-		Tools: []anthropicTool{analyzeResponseTool()},
-		ToolChoice: &anthropicToolChoice{
-			Type: "tool",
-			Name: "submit_analyze_response",
-		},
+		Tools:      []anthropicTool{analysisResponseTool()},
+		ToolChoice: &anthropicToolChoice{Type: "tool", Name: "submit_analysis_response"},
 	}
 
 	body, err := json.Marshal(payload)
 	if err != nil {
-		return AnalyzeResult{}, fmt.Errorf("marshal anthropic request: %w", err)
+		return AnalysisResult{}, fmt.Errorf("marshal anthropic analysis request: %w", err)
 	}
 
-	p.logger.Info("📤 anthropic analyze request",
+	p.logger.Info("📤 anthropic analysis request",
 		"provider", p.Name(),
 		"model", p.model,
 		"endpoint", p.baseURL,
@@ -54,11 +51,12 @@ func (p *AnthropicProvider) Analyze(ctx context.Context, req AnalyzeRequest, use
 		"request_body_len", len(body),
 		"record_id", req.RecordShell.ID,
 		"artifact_count", len(req.Artifacts),
+		"related_memory_count", len(req.ContextPack.RelatedMemories),
 	)
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, p.baseURL, bytes.NewReader(body))
 	if err != nil {
-		return AnalyzeResult{}, fmt.Errorf("create anthropic request: %w", err)
+		return AnalysisResult{}, fmt.Errorf("create anthropic analysis request: %w", err)
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("x-api-key", p.apiKey)
@@ -74,21 +72,21 @@ func (p *AnthropicProvider) Analyze(ctx context.Context, req AnalyzeRequest, use
 	resp, err := doRequestWithRetry(ctx, p.client, httpReq, p.maxRetries, p.backoff)
 	elapsed := time.Since(start)
 	if err != nil {
-		p.logger.Error("❌ anthropic analyze request failed",
+		p.logger.Error("❌ anthropic analysis request failed",
 			"provider", p.Name(),
 			"duration_ms", elapsed.Milliseconds(),
 			"error", err,
 		)
-		return AnalyzeResult{}, fmt.Errorf("anthropic request failed: %w", err)
+		return AnalysisResult{}, fmt.Errorf("anthropic analysis request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	responseBody, err := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
 	if err != nil {
-		return AnalyzeResult{}, fmt.Errorf("read anthropic response: %w", err)
+		return AnalysisResult{}, fmt.Errorf("read anthropic analysis response: %w", err)
 	}
 
-	p.logger.Info("📥 anthropic analyze response",
+	p.logger.Info("📥 anthropic analysis response",
 		"provider", p.Name(),
 		"status", resp.StatusCode,
 		"duration_ms", elapsed.Milliseconds(),
@@ -96,48 +94,38 @@ func (p *AnthropicProvider) Analyze(ctx context.Context, req AnalyzeRequest, use
 	)
 
 	if resp.StatusCode >= 300 {
-		p.logger.Error("❌ anthropic analyze response failed",
+		p.logger.Error("❌ anthropic analysis response failed",
 			"status", resp.StatusCode,
 			"provider", p.Name(),
 			"duration_ms", elapsed.Milliseconds(),
 			"body", truncateBody(responseBody, 2048),
 		)
-		return AnalyzeResult{}, fmt.Errorf("anthropic status %d", resp.StatusCode)
+		return AnalysisResult{}, fmt.Errorf("anthropic analysis status %d", resp.StatusCode)
 	}
 
 	var decoded anthropicResponse
 	if err := json.Unmarshal(responseBody, &decoded); err != nil {
-		p.logger.Error("❌ anthropic analyze decode failed",
+		p.logger.Error("❌ anthropic analysis decode failed",
 			"provider", p.Name(),
 			"duration_ms", elapsed.Milliseconds(),
 			"body", truncateBody(responseBody, 2048),
 			"error", err,
 		)
-		return AnalyzeResult{}, fmt.Errorf("decode anthropic response: %w", err)
+		return AnalysisResult{}, fmt.Errorf("decode anthropic analysis response: %w", err)
 	}
 
-	analyzeResp, err := anthropicToolResponse(decoded.Content)
+	analyzeResp, err := anthropicAnalysisResponse(decoded.Content)
 	if err != nil {
-		p.logger.Error("❌ anthropic analyze parse failed",
+		p.logger.Error("❌ anthropic analysis parse failed",
 			"provider", p.Name(),
 			"duration_ms", elapsed.Milliseconds(),
+			"body", truncateBody(responseBody, 1024),
 			"error", err,
 		)
-		return AnalyzeResult{}, err
+		return AnalysisResult{}, err
 	}
 
-	p.logger.Info("✅ anthropic analyze complete",
-		"provider", p.Name(),
-		"model", decoded.Model,
-		"duration_ms", elapsed.Milliseconds(),
-		"input_tokens", decoded.Usage.InputTokens,
-		"output_tokens", decoded.Usage.OutputTokens,
-		"entities_found", len(analyzeResp.Entities),
-		"tags_found", len(analyzeResp.Tags),
-		"edges_found", len(analyzeResp.Edges),
-	)
-
-	return AnalyzeResult{
+	return AnalysisResult{
 		Response: analyzeResp,
 		Provider: p.Name(),
 		Model:    decoded.Model,

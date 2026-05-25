@@ -227,7 +227,7 @@ private actor MockDailyQuestionCloudService: CloudIntelligenceServing {
     }
 }
 
-private struct DailyQuestionTestRecordAnalysisService: RecordAnalysisServing {
+private struct DailyQuestionTestRecordAnalysisService: ReflectionAnalysisServing {
     func analyze(
         record: RecordShell,
         artifacts: [Artifact],

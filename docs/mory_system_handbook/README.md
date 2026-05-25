@@ -4,12 +4,12 @@ This handbook is the source of truth for the current Mory product and architectu
 
 ## Current Conclusion
 
-Mory currently has a functional local-first memory capture and v7 analysis foundation:
+Mory currently has a functional local-first memory capture and Analysis foundation:
 
 - In-app capture supports text, photo, video, audio, link, place, weather, music, todo, prompt-answer, person-context, and structured mood evidence.
 - Apple Journaling Suggestions is modeled as typed evidence, then converted into normal `MemoryCaptureDraft` artifacts and `AffectSnapshotDraft` evidence.
 - External Capture and Share use the same durable App Group envelope/recovery path and can seed the unified composer.
-- v7 Analyze is the production analysis path after memory save: context pack -> `/api/analyze/v7` -> local proposal persistence and graph/profile updates.
+- Analysis is the production analysis path after memory save: context pack -> `/api/analyze` -> local proposal persistence and graph/profile updates.
 - SelfProfile, EntityProfile, PersonProfile, AffectSnapshot, GraphDelta, Reflection, Arc, and clarification questions exist as separate concepts.
 
 The main product problem is visibility. Many capabilities are wired or usable, but users and product owners cannot reliably see current state, provenance, AI timing, or remaining gaps without reading code.

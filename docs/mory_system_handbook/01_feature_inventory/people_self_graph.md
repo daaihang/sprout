@@ -29,7 +29,7 @@ Users should understand who Mory thinks each person is, what evidence supports t
 
 ```mermaid
 flowchart LR
-    A["Analyze v7 entities/proposals"] --> B["GraphUpdater"]
+    A["Analysis entities/proposals"] --> B["GraphUpdater"]
     B --> C["EntityNode + EntityEdge + ArtifactEntityLink"]
     A --> D["GraphDelta proposals"]
     A --> E["Profile update proposals"]
@@ -46,7 +46,7 @@ It has `selfEntityID`, but it should not be treated as a normal person that can 
 
 ## AI Intervention Points
 
-- v7 Analyze extracts entity mentions and proposals.
+- Analysis extracts entity mentions and proposals.
 - Entity resolution and graph update create/merge candidate nodes.
 - Person profile refresh can generate portraits and relationship summaries.
 - Context pack uses SelfProfile and known profiles before Analyze.

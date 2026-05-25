@@ -4,7 +4,7 @@ extension Notification.Name {
     static let pipelineDidComplete = Notification.Name("mory.pipelineDidComplete")
 }
 
-struct ArchitecturePipelineExecutor {
+struct AnalysisExecutor {
     private let graphUpdater = GraphUpdater()
     private let placeProfileResolver = PlaceProfileResolver()
     private let candidateBuilder = TemporalArcCandidateBuilder()
@@ -34,10 +34,10 @@ struct ArchitecturePipelineExecutor {
                 )
             }
 
-        // Step 2: Build a bounded v7 context pack and send the production Analyze v7 request.
+        // Step 2: Build a bounded context pack and send the production Analysis request.
         let contextPack = try await dependencies.contextProvider.buildContextPack(targetRecordID: record.id)
         let affectSnapshots = (try? dependencies.contextProvider.fetchAffectSnapshots(recordID: record.id, limit: 10)) ?? []
-        let payload = AnalyzeV7RequestBuilder().build(
+        let payload = AnalysisRequestBuilder().build(
             record: record,
             artifacts: artifacts,
             knownEntities: Array(knownEntities),
@@ -45,9 +45,9 @@ struct ArchitecturePipelineExecutor {
             affectSnapshots: affectSnapshots
         )
         let requestBody = String(data: (try? JSONEncoder().encode(payload)) ?? Data(), encoding: .utf8)
-        let envelope: AnalyzeV7ResponseEnvelope
+        let envelope: AnalysisResponseEnvelope
         do {
-            envelope = try await dependencies.cloudIntelligenceService.analyzeV7(payload)
+            envelope = try await dependencies.cloudIntelligenceService.analyzeMemory(payload)
             let responseBody = String(data: (try? JSONEncoder().encode(envelope)) ?? Data(), encoding: .utf8)
             let requestID: String?
             if let debugging = dependencies.cloudIntelligenceService as? any CloudIntelligenceDebugging {
@@ -82,23 +82,19 @@ struct ArchitecturePipelineExecutor {
                     responseBody: debugError?.responseBody,
                     rawErrorBody: debugError?.rawErrorBody,
                     statusCode: debugError?.statusCode,
-                    failedStage: debugError?.failedStage ?? "analysis_v7"
+                    failedStage: "analysis"
                 )
             )
             throw error
         }
-        let mapped = AnalyzeV7ResponseMapper().map(
+        let mapped = AnalysisResponseMapper().map(
             recordID: record.id,
             response: envelope,
             createdAt: Date.now
         )
         let analysis = mapped.analysis
 
-        // Step 3: Persist the record analysis snapshot
-        try dependencies.persist.persistRecordAnalysis(analysis)
-        try dependencies.persist.saveAnalysisPipelineChanges()
-
-        // Step 4: Compute entity graph updates after analysis and before reflection.
+        // Step 3: Compute entity graph updates after analysis and before reflection.
         let graphUpdate = graphUpdater.apply(
             analysis: analysis,
             linkedArtifactIDs: record.artifactIDs,
@@ -118,41 +114,7 @@ struct ArchitecturePipelineExecutor {
         let completeEntityNodes = mergedEntityNodes(graphUpdate.entityNodes, placeResolution.entityNodes)
         let completeArtifactEntityLinks = mergedArtifactEntityLinks(graphUpdate.artifactEntityLinks, placeResolution.artifactEntityLinks)
 
-        // Step 5: Persist graph updates
-        for profile in placeResolution.profiles {
-            try dependencies.persist.persistPlaceProfile(profile)
-        }
-        for node in completeEntityNodes {
-            try dependencies.persist.persistEntityNode(node)
-        }
-        for edge in graphUpdate.entityEdges {
-            try dependencies.persist.persistEntityEdge(edge)
-        }
-        for link in completeArtifactEntityLinks {
-            try dependencies.persist.persistArtifactEntityLink(link)
-        }
-        try dependencies.persist.saveAnalysisPipelineChanges()
-
-        // Step 6: Persist Analyze v7 proposals. Graph deltas remain staged unless
-        // explicitly applied by local policy/debug tooling.
-        for snapshot in mapped.affectProposals {
-            try dependencies.persist.persistAffectSnapshot(snapshot)
-        }
-        for delta in mapped.graphDeltaProposals {
-            try dependencies.persist.persistGraphDelta(delta)
-        }
-        for arc in mapped.arcProposals {
-            try dependencies.persist.persistTemporalArc(arc)
-        }
-        for reflection in mapped.reflectionProposals {
-            try dependencies.persist.persistReflection(reflection)
-        }
-        for question in mapped.questionProposals + mapped.mergeSplitQuestions {
-            try dependencies.persist.persistClarificationQuestion(question)
-        }
-        try dependencies.persist.saveAnalysisPipelineChanges()
-
-        // Step 7: Build deterministic local TemporalArcCandidates from the v7 analysis.
+        // Step 4: Build deterministic local TemporalArcCandidates from the analysis.
         let postContext = try dependencies.query.loadPostAnalysisContext(
             replacingWith: analysis,
             recordScope: activeRecordScope
@@ -171,7 +133,9 @@ struct ArchitecturePipelineExecutor {
             maxCandidates: 3
         )
 
-        // Step 8: Accept local candidate arcs via promoter.
+        // Step 5: Accept local candidate arcs via promoter.
+        var localTemporalArcs: [TemporalArc] = []
+        var localReflections: [ReflectionSnapshot] = []
         for candidate in candidates {
             guard candidate.recordIDs.contains(record.id) else { continue }
             guard arcQualityPolicy.evaluate(candidate).passed else { continue }
@@ -182,13 +146,30 @@ struct ArchitecturePipelineExecutor {
                 artifactEntityLinks: completeArtifactEntityLinks,
                 entityNodes: completeEntityNodes
             )
-            try dependencies.persist.persistTemporalArc(promotionResult.arc)
-            try dependencies.persist.persistReflection(promotionResult.reflection)
+            localTemporalArcs.append(promotionResult.arc)
+            localReflections.append(promotionResult.reflection)
         }
-        try dependencies.persist.saveAnalysisPipelineChanges()
 
-        // Step 9: Final save
-        try dependencies.persist.saveAnalysisPipelineChanges()
+        // Step 6: Materialize one explicit AnalysisOutput, then persist in a fixed order.
+        let output = AnalysisOutput(
+            recordAnalysis: analysis,
+            graphProjection: AnalysisGraphProjection(
+                placeProfiles: placeResolution.profiles,
+                entityNodes: completeEntityNodes,
+                entityEdges: graphUpdate.entityEdges,
+                artifactEntityLinks: completeArtifactEntityLinks
+            ),
+            proposals: AnalysisProposals(
+                affectSnapshots: mapped.affectProposals,
+                graphDeltas: mapped.graphDeltaProposals,
+                temporalArcs: mapped.arcProposals + localTemporalArcs,
+                reflections: mapped.reflectionProposals + localReflections,
+                questions: mapped.questionProposals + mapped.mergeSplitQuestions
+            ),
+            quality: mapped.quality,
+            followupPlan: AnalysisFollowupPlan()
+        )
+        try AnalysisOutputPersister().persist(output, using: dependencies.persist)
     }
 
     private func hasExistingArc(for candidate: TemporalArcCandidate, existingArcs: [TemporalArc]) -> Bool {

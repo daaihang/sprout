@@ -229,7 +229,7 @@ private struct TestJournalingCapabilityProvider: JournalingSuggestionCapabilityP
     var userEnabledJournalingSuggestions: Bool { userEnabled }
 }
 
-private struct AffectTestRecordAnalysisService: RecordAnalysisServing {
+private struct AffectTestRecordAnalysisService: ReflectionAnalysisServing {
     func analyze(
         record: RecordShell,
         artifacts: [Artifact],

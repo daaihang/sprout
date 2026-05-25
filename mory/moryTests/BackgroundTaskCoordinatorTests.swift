@@ -48,7 +48,7 @@ final class BackgroundTaskCoordinatorTests: XCTestCase {
 
 private enum BGCoordinatorTestError: Error { case unsupported }
 
-private struct BGCoordinatorTestAnalysisService: RecordAnalysisServing {
+private struct BGCoordinatorTestAnalysisService: ReflectionAnalysisServing {
     func analyze(
         record: RecordShell,
         artifacts: [Artifact],
@@ -82,7 +82,7 @@ private struct BGCoordinatorTestAnalysisService: RecordAnalysisServing {
 }
 
 private struct BGCoordinatorTestCloudService: CloudIntelligenceServing {
-    func analyzeV7(_ payload: AnalyzeV7RequestPayload) async throws -> AnalyzeV7ResponseEnvelope {
+    func analyzeMemory(_ payload: AnalysisRequestPayload) async throws -> AnalysisResponseEnvelope {
         throw BGCoordinatorTestError.unsupported
     }
     func refineTranscript(_ payload: MoryAPIClient.TranscriptRefinementPayload) async throws -> MoryAPIClient.TranscriptRefinementResponse {

@@ -58,7 +58,7 @@ Current missing provenance:
 
 ## AI Intervention Points
 
-External Capture does not call AI before composer. After save, normal v7 Analyze runs.
+External Capture does not call AI before composer. After save, normal Analysis runs.
 
 ## Failure And Retry
 

@@ -222,7 +222,7 @@ private enum LocalNotificationTestError: Error {
     case unsupported
 }
 
-private struct LocalNotificationTestRecordAnalysisService: RecordAnalysisServing {
+private struct LocalNotificationTestRecordAnalysisService: ReflectionAnalysisServing {
     func analyze(
         record: RecordShell,
         artifacts: [Artifact],

@@ -2,7 +2,7 @@ import XCTest
 @testable import mory
 
 @MainActor
-final class AnalyzeV7ContractTests: XCTestCase {
+final class AnalysisContractTests: XCTestCase {
     func testRequestBuilderIncludesContextPackMoodEvidenceAndPrivacyBudget() throws {
         let now = Date(timeIntervalSince1970: 1_768_864_000)
         let record = RecordShell(
@@ -40,7 +40,7 @@ final class AnalyzeV7ContractTests: XCTestCase {
             updatedAt: now
         )
         let sensitiveID = UUID(uuidString: "CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC")!
-        let payload = AnalyzeV7RequestBuilder().build(
+        let payload = AnalysisRequestBuilder().build(
             record: record,
             artifacts: [artifact],
             knownEntities: [EntityReference(id: UUID(uuidString: "DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD")!, kind: .person, name: "室友", aliases: ["roommate"], confidence: 0.7)],
@@ -52,21 +52,21 @@ final class AnalyzeV7ContractTests: XCTestCase {
         let data = try JSONEncoder().encode(payload)
         let json = try XCTUnwrap(String(data: data, encoding: .utf8))
 
-        XCTAssertEqual(payload.schemaVersion, 7)
         XCTAssertEqual(payload.clientRequestID, "EEEEEEEE-EEEE-EEEE-EEEE-EEEEEEEEEEEE")
         XCTAssertEqual(payload.moodEvidence.first?.toneHints, ["joking"])
         XCTAssertEqual(payload.contextPack.relatedMemories.count, 1)
         XCTAssertEqual(payload.contextPack.privacyDecisions.first?.action, ContextPrivacyAction.drop.rawValue)
+        XCTAssertFalse(json.contains("\"schema_version\""))
         XCTAssertTrue(json.contains("safe recurring dinner evidence"))
         XCTAssertFalse(json.contains("diagnosis detail should never be sent"))
         XCTAssertTrue(json.contains("\"supports_proposal_only_writeback\":true"))
     }
 
-    func testResponseMapperKeepsAnalyzeV7OutputAsLocalProposals() throws {
+    func testResponseMapperKeepsAnalysisOutputAsLocalProposals() throws {
         let recordID = UUID(uuidString: "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA")!
         let entityID = UUID(uuidString: "DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD")!
-        let response = AnalyzeV7ResponseEnvelope(
-            analysis: AnalyzeResponseEnvelope(
+        let response = AnalysisResponseEnvelope(
+            analysis: AnalysisRecordResponse(
                 tags: ["relationship"],
                 retrievalTerms: ["roommate"],
                 emotion: .init(label: "stressed", intensity: 0.8, confidence: 0.7, interpretation: nil),
@@ -157,7 +157,7 @@ final class AnalyzeV7ContractTests: XCTestCase {
             quality: .init(confidence: 0.63, uncertaintyReasons: ["insufficient_longitudinal_evidence"], needsUserCheck: ["tone"])
         )
 
-        let mapped = AnalyzeV7ResponseMapper().map(recordID: recordID, response: response)
+        let mapped = AnalysisResponseMapper().map(recordID: recordID, response: response)
 
         XCTAssertEqual(mapped.analysis.recordID, recordID)
         XCTAssertEqual(mapped.affectProposals.first?.toneHints, [.joking])
@@ -169,7 +169,7 @@ final class AnalyzeV7ContractTests: XCTestCase {
         XCTAssertEqual(mapped.quality.needsUserCheck, ["tone"])
     }
 
-    func testAnalyzeV7ResponseDecodesLowContextQualityFlags() throws {
+    func testAnalysisResponseDecodesLowContextQualityFlags() throws {
         let json = """
         {
           "analysis": {
@@ -190,69 +190,68 @@ final class AnalyzeV7ContractTests: XCTestCase {
         }
         """
 
-        let decoded = try JSONDecoder().decode(AnalyzeV7ResponseEnvelope.self, from: Data(json.utf8))
+        let decoded = try JSONDecoder().decode(AnalysisResponseEnvelope.self, from: Data(json.utf8))
 
         XCTAssertTrue(decoded.affectProposals.isEmpty)
         XCTAssertEqual(decoded.quality.uncertaintyReasons, ["thin_context", "missing_structured_mood_evidence"])
         XCTAssertEqual(decoded.quality.needsUserCheck, ["tone"])
     }
 
-    func testProductionPipelineUsesAnalyzeV7AndPersistsProposals() async throws {
+    func testProductionPipelineUsesAnalysisAndPersistsProposals() async throws {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
-        let legacyService = V7ProductionTestAnalysisService()
-        let cloudService = V7ProductionTestCloudService(response: Self.makeProductionResponse())
+        let reflectionService = ProductionTestReflectionService()
+        let cloudService = ProductionTestCloudService(response: Self.makeProductionResponse())
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
-            analysisService: legacyService,
+            analysisService: reflectionService,
             cloudIntelligenceService: cloudService
         )
 
         let memory = try await repository.createMemory(
             from: MemoryCaptureDraft(
-                title: "Production v7",
-                rawText: "production v7 test record about Linh and planning",
+                title: "Production Analysis",
+                rawText: "production analysis test record about Linh and planning",
                 mood: "focused",
                 captureSource: .composer,
-                artifacts: [.text(title: "Production v7", body: "production v7 test record about Linh and planning")]
+                artifacts: [.text(title: "Production Analysis", body: "production analysis test record about Linh and planning")]
             )
         )
         try await repository.refreshMemoryPipeline(recordID: memory.record.id)
 
         let payloads = await cloudService.payloads()
         XCTAssertEqual(payloads.count, 1)
-        XCTAssertEqual(payloads.first?.schemaVersion, 7)
         XCTAssertEqual(payloads.first?.contextPack.targetRecordID, memory.record.id.uuidString)
         XCTAssertNotNil(payloads.first?.contextPack.selfBrief)
-        let legacyAnalyzeCallCount = await legacyService.analyzeCallCount()
-        XCTAssertEqual(legacyAnalyzeCallCount, 0)
+        let reflectionCallCount = await reflectionService.reflectionCallCount()
+        XCTAssertEqual(reflectionCallCount, 0)
 
         let analysis = try XCTUnwrap(repository.fetchRecordAnalysis(recordID: memory.record.id))
-        XCTAssertEqual(analysis.summary, "v7 production summary")
+        XCTAssertEqual(analysis.summary, "production analysis summary")
         let affectSnapshots = try repository.fetchAffectSnapshots(recordID: memory.record.id, limit: nil)
         XCTAssertTrue(affectSnapshots.contains { $0.labels.contains(.relieved) })
         XCTAssertEqual(try repository.fetchGraphDeltas(applied: nil, limit: nil).count, 1)
-        XCTAssertTrue(try repository.fetchReflections(limit: nil).contains { $0.title == "Production v7 reflection" })
+        XCTAssertTrue(try repository.fetchReflections(limit: nil).contains { $0.title == "Production analysis reflection" })
         XCTAssertTrue(try repository.fetchClarificationQuestions(status: nil, limit: nil).contains { $0.prompt == "Was this planning moment about Linh?" })
-        XCTAssertTrue(try repository.fetchTemporalArcs(limit: nil).contains { $0.title == "Production v7 arc" })
+        XCTAssertTrue(try repository.fetchTemporalArcs(limit: nil).contains { $0.title == "Production analysis arc" })
         let status = try XCTUnwrap(repository.fetchPipelineStatus(recordID: memory.record.id))
         XCTAssertEqual(status.stage, .completed)
         XCTAssertEqual(status.lastHTTPStatusCode, 200)
-        XCTAssertTrue(status.requestBody?.contains("\"schema_version\":7") == true)
-        XCTAssertTrue(status.responseBody?.contains("v7 production summary") == true)
+        XCTAssertFalse(status.requestBody?.contains("\"schema_version\"") == true)
+        XCTAssertTrue(status.responseBody?.contains("production analysis summary") == true)
     }
 
-    static func makeProductionResponse() -> AnalyzeV7ResponseEnvelope {
+    static func makeProductionResponse() -> AnalysisResponseEnvelope {
         let recordID = UUID(uuidString: "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA")!
         let entityID = UUID(uuidString: "BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB")!
-        return AnalyzeV7ResponseEnvelope(
-            analysis: AnalyzeResponseEnvelope(
+        return AnalysisResponseEnvelope(
+            analysis: AnalysisRecordResponse(
                 tags: ["planning"],
                 retrievalTerms: [],
                 emotion: .init(label: "neutral", intensity: 0.5, confidence: 0.5, interpretation: nil),
                 entities: [.init(kind: "person", name: "Linh", canonicalName: "Linh", aliases: nil, confidence: 0.9, sourceArtifactIDs: [])],
                 candidateEdges: [],
                 insight: "test insight",
-                summary: "v7 production summary",
+                summary: "production analysis summary",
                 salienceScore: 0.5,
                 followUp: nil,
                 reflectionHint: nil
@@ -287,8 +286,8 @@ final class AnalyzeV7ContractTests: XCTestCase {
             arcCandidates: [
                 .init(
                     candidateID: "44444444-4444-4444-4444-444444444444",
-                    title: "Production v7 arc",
-                    summary: "A production v7 arc candidate.",
+                    title: "Production analysis arc",
+                    summary: "A production analysis arc candidate.",
                     sourceRecordIDs: [recordID.uuidString],
                     confidence: 0.65
                 )
@@ -296,7 +295,7 @@ final class AnalyzeV7ContractTests: XCTestCase {
             reflectionCandidates: [
                 .init(
                     candidateID: "22222222-2222-2222-2222-222222222222",
-                    title: "Production v7 reflection",
+                    title: "Production analysis reflection",
                     body: "Test body",
                     evidenceSummary: "Evidence",
                     confidence: 0.7,
@@ -310,7 +309,7 @@ final class AnalyzeV7ContractTests: XCTestCase {
                     candidateID: "55555555-5555-5555-5555-555555555555",
                     kind: ClarificationQuestionKind.dailyReflection.rawValue,
                     prompt: "Was this planning moment about Linh?",
-                    reason: "V7 production test.",
+                    reason: "Production analysis test.",
                     candidateAnswers: ["yes", "no"],
                     confidence: 0.6,
                     sensitivity: QuestionSensitivity.normal.rawValue,
@@ -433,58 +432,53 @@ final class AnalyzeV7ContractTests: XCTestCase {
 
 // MARK: - Test Doubles
 
-private enum V7ProductionTestError: Error {
+private enum ProductionTestError: Error {
     case unsupported
 }
 
-private actor V7ProductionTestCloudService: CloudIntelligenceServing {
-    let response: AnalyzeV7ResponseEnvelope
-    private var capturedPayloads: [AnalyzeV7RequestPayload] = []
+private actor ProductionTestCloudService: CloudIntelligenceServing {
+    let response: AnalysisResponseEnvelope
+    private var capturedPayloads: [AnalysisRequestPayload] = []
 
-    init(response: AnalyzeV7ResponseEnvelope) {
+    init(response: AnalysisResponseEnvelope) {
         self.response = response
     }
 
-    func analyzeV7(_ payload: AnalyzeV7RequestPayload) async throws -> AnalyzeV7ResponseEnvelope {
+    func analyzeMemory(_ payload: AnalysisRequestPayload) async throws -> AnalysisResponseEnvelope {
         capturedPayloads.append(payload)
         return response
     }
 
-    func payloads() -> [AnalyzeV7RequestPayload] {
+    func payloads() -> [AnalysisRequestPayload] {
         capturedPayloads
     }
 
     func refineTranscript(_ payload: MoryAPIClient.TranscriptRefinementPayload) async throws -> MoryAPIClient.TranscriptRefinementResponse {
-        throw V7ProductionTestError.unsupported
+        throw ProductionTestError.unsupported
     }
 
     func suggestQuestions(_ payload: MoryAPIClient.QuestionSuggestionPayload) async throws -> MoryAPIClient.QuestionSuggestionResponse {
-        throw V7ProductionTestError.unsupported
+        throw ProductionTestError.unsupported
     }
 
     func suggestChapters(_ payload: MoryAPIClient.ChapterSuggestionPayload) async throws -> MoryAPIClient.ChapterSuggestionResponse {
-        throw V7ProductionTestError.unsupported
+        throw ProductionTestError.unsupported
     }
 
     func analyzePhotoSemantics(_ payload: MoryAPIClient.PhotoSemanticAnalysisPayload) async throws -> MoryAPIClient.PhotoSemanticAnalysisResponse {
-        throw V7ProductionTestError.unsupported
+        throw ProductionTestError.unsupported
     }
 
     func runProviderEval() async throws -> MoryAPIClient.CloudIntelligenceEvalResponse {
-        throw V7ProductionTestError.unsupported
+        throw ProductionTestError.unsupported
     }
 }
 
-private actor V7ProductionTestAnalysisService: RecordAnalysisServing {
-    private var analyzeCalls = 0
+private actor ProductionTestReflectionService: ReflectionAnalysisServing {
+    private var reflectionCalls = 0
 
-    func analyze(record: RecordShell, artifacts: [Artifact], knownEntities: [EntityReference]) async throws -> RecordAnalysisSnapshot {
-        analyzeCalls += 1
-        throw V7ProductionTestError.unsupported
-    }
-
-    func analyzeCallCount() -> Int {
-        analyzeCalls
+    func reflectionCallCount() -> Int {
+        reflectionCalls
     }
 
     func generateReflection(
@@ -494,7 +488,8 @@ private actor V7ProductionTestAnalysisService: RecordAnalysisServing {
         knownEntities: [EntityReference],
         prompt: String?
     ) async throws -> ReflectionServiceResult {
-        throw V7ProductionTestError.unsupported
+        reflectionCalls += 1
+        throw ProductionTestError.unsupported
     }
 
     func replayReflection(
@@ -505,7 +500,8 @@ private actor V7ProductionTestAnalysisService: RecordAnalysisServing {
         knownEntities: [EntityReference],
         prompt: String?
     ) async throws -> ReflectionServiceResult {
-        throw V7ProductionTestError.unsupported
+        reflectionCalls += 1
+        throw ProductionTestError.unsupported
     }
 
     func latestDebugTrace() async -> DebugPipelineTraceSnapshot? { nil }

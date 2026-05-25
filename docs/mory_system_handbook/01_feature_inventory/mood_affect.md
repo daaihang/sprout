@@ -4,7 +4,7 @@
 
 - Mood button in the capture composer.
 - Apple Journaling Suggestions `StateOfMind`.
-- AI v7 affect proposals after analysis.
+- Analysis affect proposals after analysis.
 - User corrections from affect review/debug flows.
 
 ## Expected User Experience
@@ -52,7 +52,7 @@ StateOfMind source only supplies official fields: labels, associations, valence,
 
 - User-selected mood does not require AI.
 - Journaling StateOfMind is user-authorized system evidence, not AI inference.
-- v7 Analyze can return affect proposals after save.
+- Analysis can return affect proposals after save.
 - User correction should become evidence for future analysis.
 
 ## Billing Cut Point

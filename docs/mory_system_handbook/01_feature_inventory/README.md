@@ -49,6 +49,6 @@ Each feature document must include:
 - [External Capture](external_capture.md)
 - [Voice And Audio](voice_audio.md)
 - [Mood And Affect](mood_affect.md)
-- [AI v7 Analyze](ai_v7_analyze.md)
+- [Analysis](analysis.md)
 - [People, Self, And Graph](people_self_graph.md)
 - [Notifications And Background](notifications.md)

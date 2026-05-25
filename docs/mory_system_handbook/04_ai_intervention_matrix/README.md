@@ -11,7 +11,7 @@ This section records exactly where AI or intelligent processing participates, wh
 | Add auto context | `ContextAutoCollector` | Local/system services | Does not block editing | No | Context collecting card | Missing context mostly silent/diagnostic |
 | Voice transcript refinement | `VoiceTranscriptRefinementService` | Cloud | No explicit block | Yes, current risk | Refining card | Error swallowed |
 | Save memory | `MemoryCreationUseCase` | Local | Yes, short local save | No | Save spinner | Composer error |
-| Post-save analysis | `ArchitecturePipelineExecutor` | Cloud v7 | No | No direct text overwrite | Pipeline status | Detail/status/debug |
+| Post-save analysis | `AnalysisExecutor` | Cloud Analysis | No | No direct text overwrite | Pipeline status | Detail/status/debug |
 | Daily question | `DailyQuestionSuggestionService` | Cloud | Background/user initiated | No | Question card/notification | Debug/log/status |
 | Reflection generate/replay | Reflection endpoints | Cloud | Usually user/background initiated | No | Reflection view/debug | Error status/debug |
 | Notification orchestration | `NotificationOrchestrator` | Local + optional cloud routing | Background | No | Notification history/debug | Orchestration report + delivery/debug |
@@ -37,7 +37,7 @@ flowchart LR
     B --> C["Composer dismisses"]
     B --> D["Task refreshMemoryPipeline"]
     D --> E["running status"]
-    E --> F["/api/analyze/v7"]
+    E --> F["/api/analyze"]
     F --> G["completed or failed status"]
 ```
 

@@ -1030,7 +1030,7 @@ struct DebugFullDiagnosticsView: View {
     private func rawAnalyzeEntities(from responseBody: String?) -> [EntityReference]? {
         guard
             let data = responseBody?.data(using: .utf8),
-            let envelope = try? JSONDecoder().decode(AnalyzeResponseEnvelope.self, from: data)
+            let envelope = try? JSONDecoder().decode(AnalysisRecordResponse.self, from: data)
         else {
             return nil
         }

@@ -4,7 +4,7 @@ import OSLog
 private let log = Logger(subsystem: "com.mory", category: "intelligence")
 
 protocol CloudIntelligenceServing: Sendable {
-    func analyzeV7(_ payload: AnalyzeV7RequestPayload) async throws -> AnalyzeV7ResponseEnvelope
+    func analyzeMemory(_ payload: AnalysisRequestPayload) async throws -> AnalysisResponseEnvelope
     func refineTranscript(_ payload: MoryAPIClient.TranscriptRefinementPayload) async throws -> MoryAPIClient.TranscriptRefinementResponse
     func suggestQuestions(_ payload: MoryAPIClient.QuestionSuggestionPayload) async throws -> MoryAPIClient.QuestionSuggestionResponse
     func suggestChapters(_ payload: MoryAPIClient.ChapterSuggestionPayload) async throws -> MoryAPIClient.ChapterSuggestionResponse
@@ -13,19 +13,19 @@ protocol CloudIntelligenceServing: Sendable {
 }
 
 enum CloudIntelligenceContractError: LocalizedError {
-    case analyzeV7Unavailable
+    case analyzeMemoryUnavailable
 
     var errorDescription: String? {
         switch self {
-        case .analyzeV7Unavailable:
-            return "Analyze v7 is not implemented by this cloud intelligence service."
+        case .analyzeMemoryUnavailable:
+            return "Analysis is not implemented by this cloud intelligence service."
         }
     }
 }
 
 extension CloudIntelligenceServing {
-    func analyzeV7(_ payload: AnalyzeV7RequestPayload) async throws -> AnalyzeV7ResponseEnvelope {
-        throw CloudIntelligenceContractError.analyzeV7Unavailable
+    func analyzeMemory(_ payload: AnalysisRequestPayload) async throws -> AnalysisResponseEnvelope {
+        throw CloudIntelligenceContractError.analyzeMemoryUnavailable
     }
 }
 
@@ -43,9 +43,9 @@ struct RemoteCloudIntelligenceClient: CloudIntelligenceServing {
         self.tokenProvider = tokenProvider
     }
 
-    func analyzeV7(_ payload: AnalyzeV7RequestPayload) async throws -> AnalyzeV7ResponseEnvelope {
+    func analyzeMemory(_ payload: AnalysisRequestPayload) async throws -> AnalysisResponseEnvelope {
         try await send { token in
-            try await apiClient.analyzeRecordsV7(payload: payload, bearerToken: token)
+            try await apiClient.analyzeMemory(payload: payload, bearerToken: token)
         }
     }
 

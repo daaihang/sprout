@@ -69,7 +69,7 @@ Current missing provenance:
 
 ## AI Intervention Points
 
-Journaling import itself does not call cloud AI. AI participates after the memory is saved and v7 Analyze runs.
+Journaling import itself does not call cloud AI. AI participates after the memory is saved and Analysis runs.
 
 StateOfMind is treated as user-authorized affect evidence, not as AI inference.
 

@@ -23,10 +23,10 @@ The handbook treats current code as source of truth and old v3-v7 docs as histor
 | Journaling Suggestions | `wired` | Product toolbar plus fallback/debug | Real-device stability and per-suggestion provenance need stronger status. |
 | External Capture / Share | `wired` | Share extension and recovery inbox | Handoff is intended primary path; recovery/status still needs clearer product feedback. |
 | Voice refinement | `wired` | Composer loading card | Cloud refinement can overwrite edited transcript if it returns after user edits. |
-| v7 Analyze | `usable` | Detail/Timeline/Home show pipeline status partially | Users do not get a clear "analysis ready / needs review" journey. |
+| Analysis | `usable` | Detail/Timeline/Home show pipeline status partially | Users do not get a clear "analysis ready / needs review" journey. |
 | Self/Profile/People graph | `wired` | People UI and Debug | SelfProfile has no polished product management screen. |
 | GraphDelta proposals | `wired` | Insights/Debug review | Reject/reason/undo UX is incomplete. |
-| Notifications/background | `wired` | Settings/Debug | Real device BGTask/APNs behavior needs field validation. |
+| Notifications/background | `usable` | Settings/Debug | Background triggers now share `BackgroundOperationOrchestrator`; real device BGTask/APNs behavior still needs field validation. |
 | Billing/entitlements | `backend_only` | Not productized | Feature gating and server-enforced quotas are not implemented. |
 
 ## Current Architecture Fact

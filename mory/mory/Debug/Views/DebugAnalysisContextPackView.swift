@@ -6,9 +6,9 @@ struct DebugAnalysisContextPackView: View {
     @Environment(\.cloudIntelligenceService) private var cloudIntelligenceService
 
     @State private var pack: AnalysisContextPack?
-    @State private var requestPayload: AnalyzeV7RequestPayload?
-    @State private var responseEnvelope: AnalyzeV7ResponseEnvelope?
-    @State private var mappedResult: AnalyzeV7MappedResult?
+    @State private var requestPayload: AnalysisRequestPayload?
+    @State private var responseEnvelope: AnalysisResponseEnvelope?
+    @State private var mappedResult: AnalysisMappedResult?
     @State private var isWorking = false
     @State private var isSending = false
     @State private var message: String?
@@ -21,8 +21,8 @@ struct DebugAnalysisContextPackView: View {
                 }
                 .disabled(isWorking)
 
-                Button("Send Analyze v7 for latest memory") {
-                    Task { await sendAnalyzeV7() }
+                Button("Send Analysis for latest memory") {
+                    Task { await sendAnalysis() }
                 }
                 .disabled(isWorking || isSending || requestPayload == nil)
 
@@ -31,7 +31,7 @@ struct DebugAnalysisContextPackView: View {
                 }
 
                 if isSending {
-                    ProgressView("Sending Analyze v7")
+                    ProgressView("Sending Analysis")
                 }
 
                 if let message {
@@ -43,7 +43,7 @@ struct DebugAnalysisContextPackView: View {
             } header: {
                 Text("Actions")
             } footer: {
-                Text("Analyze v7 is the production memory analysis path. This debug view inspects the context pack, request payload, response proposals, and mapper output used by that path.")
+                Text("Analysis is the production memory analysis path. This debug view inspects the context pack, request payload, response proposals, and mapper output used by that path.")
             }
 
             if let pack {
@@ -133,12 +133,12 @@ struct DebugAnalysisContextPackView: View {
                 Section("Payload preview") {
                     DebugContextPayloadBlock(title: "Context pack JSON", content: payloadPreview(pack))
                     if let requestPayload {
-                        DebugContextPayloadBlock(title: "Analyze v7 request JSON", content: payloadPreview(requestPayload))
+                        DebugContextPayloadBlock(title: "Analysis request JSON", content: payloadPreview(requestPayload))
                     }
                 }
 
                 if let responseEnvelope {
-                    Section("Analyze v7 response") {
+                    Section("Analysis response") {
                         DebugContextValueRow(title: "Quality", value: "\(responseEnvelope.quality.confidence)")
                         DebugContextValueRow(title: "Uncertainty", value: responseEnvelope.quality.uncertaintyReasons.joined(separator: ", "))
                         DebugContextValueRow(title: "Needs user check", value: responseEnvelope.quality.needsUserCheck.joined(separator: ", "))
@@ -201,7 +201,7 @@ struct DebugAnalysisContextPackView: View {
                 )
             }
             pack = builtPack
-            requestPayload = AnalyzeV7RequestBuilder().build(
+            requestPayload = AnalysisRequestBuilder().build(
                 record: detail.record,
                 artifacts: detail.artifacts,
                 knownEntities: knownEntities,
@@ -217,22 +217,22 @@ struct DebugAnalysisContextPackView: View {
     }
 
     @MainActor
-    private func sendAnalyzeV7() async {
+    private func sendAnalysis() async {
         if requestPayload == nil {
             await buildLatestPack()
         }
         guard let payload = requestPayload else {
-            message = "No Analyze v7 request payload is available."
+            message = "No Analysis request payload is available."
             return
         }
         isSending = true
         defer { isSending = false }
         do {
-            let response = try await cloudIntelligenceService.analyzeV7(payload)
+            let response = try await cloudIntelligenceService.analyzeMemory(payload)
             responseEnvelope = response
             let recordID = UUID(uuidString: payload.recordShell.id) ?? payload.contextPack.targetRecordIDUUID
-            mappedResult = AnalyzeV7ResponseMapper().map(recordID: recordID, response: response)
-            message = "Analyze v7 returned \(response.affectProposals.count) affect proposal(s), \(response.reflectionCandidates.count) reflection candidate(s), and \(response.questionCandidates.count) question candidate(s)."
+            mappedResult = AnalysisResponseMapper().map(recordID: recordID, response: response)
+            message = "Analysis returned \(response.affectProposals.count) affect proposal(s), \(response.reflectionCandidates.count) reflection candidate(s), and \(response.questionCandidates.count) question candidate(s)."
         } catch {
             message = error.localizedDescription
         }
@@ -249,7 +249,7 @@ struct DebugAnalysisContextPackView: View {
     }
 }
 
-private extension AnalyzeV7RequestPayload.ContextPackPayload {
+private extension AnalysisRequestPayload.ContextPackPayload {
     var targetRecordIDUUID: UUID {
         UUID(uuidString: targetRecordID) ?? UUID()
     }

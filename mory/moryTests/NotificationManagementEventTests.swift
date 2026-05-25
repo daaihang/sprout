@@ -103,7 +103,7 @@ private enum NotificationManagementTestError: Error {
     case unsupported
 }
 
-private struct NotificationManagementTestRecordAnalysisService: RecordAnalysisServing {
+private struct NotificationManagementTestRecordAnalysisService: ReflectionAnalysisServing {
     func analyze(
         record: RecordShell,
         artifacts: [Artifact],

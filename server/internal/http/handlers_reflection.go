@@ -37,7 +37,7 @@ func (s *Server) handleReflectionGenerate(w http.ResponseWriter, r *http.Request
 	})
 	s.recordAI("reflection_generate", result.Provider, result.Usage, time.Since(start), err)
 	if err != nil {
-		if errors.Is(err, ai.ErrInvalidAnalyzeRequest) {
+		if errors.Is(err, ai.ErrInvalidAnalysisRequest) {
 			writeError(w, http.StatusBadRequest, "invalid reflection generate request")
 			return
 		}
@@ -85,7 +85,7 @@ func (s *Server) handleReflectionReplay(w http.ResponseWriter, r *http.Request) 
 	})
 	s.recordAI("reflection_replay", result.Provider, result.Usage, time.Since(start), err)
 	if err != nil {
-		if errors.Is(err, ai.ErrInvalidAnalyzeRequest) {
+		if errors.Is(err, ai.ErrInvalidAnalysisRequest) {
 			writeError(w, http.StatusBadRequest, "invalid reflection replay request")
 			return
 		}

@@ -6,18 +6,18 @@ import (
 	"strings"
 )
 
-func parseAnalyzeResponse(raw string) (AnalyzeResponse, error) {
+func parseAnalysisRecordResponse(raw string) (AnalysisRecordResponse, error) {
 	candidate := extractJSONObject(raw)
 	if candidate == "" {
-		return AnalyzeResponse{}, fmt.Errorf("no JSON object found in model response: %s", summarizeRaw(raw))
+		return AnalysisRecordResponse{}, fmt.Errorf("no JSON object found in model response: %s", summarizeRaw(raw))
 	}
 
-	var resp AnalyzeResponse
+	var resp AnalysisRecordResponse
 	if err := json.Unmarshal([]byte(candidate), &resp); err != nil {
-		return AnalyzeResponse{}, fmt.Errorf("decode analyze response: %w; raw=%s", err, summarizeRaw(raw))
+		return AnalysisRecordResponse{}, fmt.Errorf("decode analyze response: %w; raw=%s", err, summarizeRaw(raw))
 	}
 
-	return NormalizeResponse(resp), nil
+	return NormalizeAnalysisRecordResponse(resp), nil
 }
 
 func parseReflectionResponse(raw string) (ReflectionResponse, error) {

@@ -34,10 +34,10 @@ func TestAnthropicProviderAnalyze(t *testing.T) {
 			t.Fatalf("unexpected model %q", req.Model)
 		}
 
-		if req.ToolChoice == nil || req.ToolChoice.Name != "submit_analyze_response" {
+		if req.ToolChoice == nil || req.ToolChoice.Name != "submit_analysis_response" {
 			t.Fatalf("expected anthropic tool choice")
 		}
-		if len(req.Tools) != 1 || req.Tools[0].Name != "submit_analyze_response" {
+		if len(req.Tools) != 1 || req.Tools[0].Name != "submit_analysis_response" {
 			t.Fatalf("expected anthropic tool schema")
 		}
 
@@ -46,18 +46,28 @@ func TestAnthropicProviderAnalyze(t *testing.T) {
 			"content": []map[string]any{
 				{
 					"type": "tool_use",
-					"name": "submit_analyze_response",
+					"name": "submit_analysis_response",
 					"input": map[string]any{
-						"tags":            []string{"journal"},
-						"emotion":         map[string]any{"label": "positive", "intensity": 3, "confidence": 0.9},
-						"entities":        []any{},
-						"candidate_edges": []any{},
-						"insight":         "live anthropic",
-						"summary":         "anthropic summary",
-						"salience_score":  0.67,
-						"retrieval_terms": []string{"gratitude", "journal"},
-						"reflection_hint": "watch for repetition",
-						"follow_up":       nil,
+						"analysis": map[string]any{
+							"tags":            []string{"journal"},
+							"emotion":         map[string]any{"label": "positive", "intensity": 3, "confidence": 0.9},
+							"entities":        []any{},
+							"candidate_edges": []any{},
+							"insight":         "live anthropic",
+							"summary":         "anthropic summary",
+							"salience_score":  0.67,
+							"retrieval_terms": []string{"gratitude", "journal"},
+							"reflection_hint": "watch for repetition",
+							"follow_up":       nil,
+						},
+						"affect_proposals":         []any{},
+						"graph_delta_proposals":    []any{},
+						"profile_update_proposals": []any{},
+						"merge_split_candidates":   []any{},
+						"arc_candidates":           []any{},
+						"reflection_candidates":    []any{},
+						"question_candidates":      []any{},
+						"quality":                  map[string]any{"confidence": 0.67},
 					},
 				},
 			},
@@ -80,10 +90,9 @@ func TestAnthropicProviderAnalyze(t *testing.T) {
 		},
 	)
 
-	result, err := provider.Analyze(context.Background(), AnalyzeRequest{
-		SchemaVersion:  "record_aggregate.v1",
-		AnalysisReason: "preview",
-		RecordShell:    AnalyzeRecordShell{RawText: "今天很开心"},
+	result, err := provider.Analyze(context.Background(), AnalysisRequest{
+		RecordShell: AnalysisRecordShell{ID: "rec-1", RawText: "今天很开心"},
+		ContextPack: AnalysisContextPack{PackID: "pack-1", TargetRecordID: "rec-1"},
 	}, UserContext{UserID: "user-1", Tier: "grow"})
 	if err != nil {
 		t.Fatalf("anthropic analyze: %v", err)
@@ -91,8 +100,8 @@ func TestAnthropicProviderAnalyze(t *testing.T) {
 	if result.Provider != "anthropic" || result.Model != "claude-test" {
 		t.Fatalf("unexpected result meta: %+v", result)
 	}
-	if result.Response.Insight != "live anthropic" {
-		t.Fatalf("unexpected insight %q", result.Response.Insight)
+	if result.Response.Analysis.Insight != "live anthropic" {
+		t.Fatalf("unexpected insight %q", result.Response.Analysis.Insight)
 	}
 }
 
@@ -121,7 +130,7 @@ func TestOpenAICompatibleProviderAnalyze(t *testing.T) {
 			"choices": []map[string]any{
 				{
 					"message": map[string]any{
-						"content": `{"tags":["journal","gratitude"],"emotion":{"label":"positive","intensity":4,"confidence":0.88},"entities":[],"candidate_edges":[],"insight":"live openai","summary":"openai summary","salience_score":0.71,"retrieval_terms":["gratitude","journal"],"reflection_hint":"watch for repeated gratitude anchors","follow_up":null}`,
+						"content": `{"analysis":{"tags":["journal","gratitude"],"emotion":{"label":"positive","intensity":4,"confidence":0.88},"entities":[],"candidate_edges":[],"insight":"live openai","summary":"openai summary","salience_score":0.71,"retrieval_terms":["gratitude","journal"],"reflection_hint":"watch for repeated gratitude anchors","follow_up":null},"affect_proposals":[],"graph_delta_proposals":[],"profile_update_proposals":[],"merge_split_candidates":[],"arc_candidates":[],"reflection_candidates":[],"question_candidates":[],"quality":{"confidence":0.71}}`,
 					},
 				},
 			},
@@ -143,10 +152,9 @@ func TestOpenAICompatibleProviderAnalyze(t *testing.T) {
 		},
 	)
 
-	result, err := provider.Analyze(context.Background(), AnalyzeRequest{
-		SchemaVersion:  "record_aggregate.v1",
-		AnalysisReason: "preview",
-		RecordShell:    AnalyzeRecordShell{RawText: "今天很开心"},
+	result, err := provider.Analyze(context.Background(), AnalysisRequest{
+		RecordShell: AnalysisRecordShell{ID: "rec-1", RawText: "今天很开心"},
+		ContextPack: AnalysisContextPack{PackID: "pack-1", TargetRecordID: "rec-1"},
 	}, UserContext{UserID: "user-1", Tier: "grow"})
 	if err != nil {
 		t.Fatalf("openai analyze: %v", err)
@@ -154,8 +162,8 @@ func TestOpenAICompatibleProviderAnalyze(t *testing.T) {
 	if result.Provider != "openai_compatible" || result.Model != "gpt-test" {
 		t.Fatalf("unexpected result meta: %+v", result)
 	}
-	if result.Response.Insight != "live openai" {
-		t.Fatalf("unexpected insight %q", result.Response.Insight)
+	if result.Response.Analysis.Insight != "live openai" {
+		t.Fatalf("unexpected insight %q", result.Response.Analysis.Insight)
 	}
 }
 
@@ -201,8 +209,8 @@ func TestAnthropicProviderGenerateReflection(t *testing.T) {
 	)
 
 	result, err := provider.GenerateReflection(context.Background(), ReflectionRequest{
-		RecordShell: AnalyzeRecordShell{ID: "r1", RawText: "Dinner with Linh clarified the quarter plan."},
-		Artifacts:   []AnalyzeArtifact{{ID: "a1", Kind: "text", Title: "Dinner note"}},
+		RecordShell: AnalysisRecordShell{ID: "r1", RawText: "Dinner with Linh clarified the quarter plan."},
+		Artifacts:   []AnalysisArtifact{{ID: "a1", Kind: "text", Title: "Dinner note"}},
 	}, UserContext{UserID: "user-1", Tier: "grow"})
 	if err != nil {
 		t.Fatalf("anthropic generate reflection: %v", err)
@@ -257,7 +265,7 @@ func TestOpenAICompatibleProviderReplayReflection(t *testing.T) {
 	)
 
 	result, err := provider.ReplayReflection(context.Background(), ReflectionRequest{
-		RecordShell: AnalyzeRecordShell{ID: "r1", RawText: "Dinner with Linh clarified the quarter plan."},
+		RecordShell: AnalysisRecordShell{ID: "r1", RawText: "Dinner with Linh clarified the quarter plan."},
 		LinkedArcID: "arc-1",
 		Prompt:      "Restate the reflection with more emphasis on the planning pattern.",
 	}, UserContext{UserID: "user-1", Tier: "grow"})

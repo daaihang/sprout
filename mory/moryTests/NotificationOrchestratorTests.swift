@@ -411,7 +411,7 @@ private enum NotificationOrchestratorTestError: Error {
     case unsupported
 }
 
-private struct NotificationOrchestratorTestRecordAnalysisService: RecordAnalysisServing {
+private struct NotificationOrchestratorTestRecordAnalysisService: ReflectionAnalysisServing {
     func analyze(
         record: RecordShell,
         artifacts: [Artifact],

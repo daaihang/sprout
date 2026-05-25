@@ -51,7 +51,7 @@ final class CloudIntelligenceClientTests: XCTestCase {
                   "meta": {"provider":"mock","model":"mock-v6-photo-v1","usage":{"input_tokens":12,"output_tokens":8},"request_id":"req-test"}
                 }
                 """
-            case "/api/analyze/v7":
+            case "/api/analyze":
                 body = """
                 {
                   "analysis": {
@@ -72,7 +72,7 @@ final class CloudIntelligenceClientTests: XCTestCase {
                   "reflection_candidates": [],
                   "question_candidates": [],
                   "quality": {"confidence":0.42,"uncertainty_reasons":["thin_context"],"needs_user_check":["tone"]},
-                  "meta": {"provider":"mock","model":"mock-v7-analyze-v1","usage":{"input_tokens":18,"output_tokens":9},"request_id":"req-test"}
+                  "meta": {"provider":"mock","model":"mock-analysis-v1","usage":{"input_tokens":18,"output_tokens":9},"request_id":"req-test"}
                 }
                 """
             default:
@@ -125,64 +125,13 @@ final class CloudIntelligenceClientTests: XCTestCase {
         )
         XCTAssertEqual(photo.tags.first, "photo")
 
-        let v7 = try await client.analyzeRecordsV7(
-            payload: .init(
-                clientRequestID: "client-v7-test",
-                recordShell: .init(
-                    id: "record-v7",
-                    createdAt: "2026-05-23T00:00:00Z",
-                    updatedAt: "2026-05-23T00:00:00Z",
-                    rawText: "A thin memory.",
-                    captureSource: "composer",
-                    userMood: nil,
-                    userIntensity: nil,
-                    inputContext: nil
-                ),
-                artifacts: [],
-                knownEntities: [],
-                moodEvidence: [],
-                contextPack: .init(
-                    packID: "pack-v7",
-                    targetRecordID: "record-v7",
-                    selfBrief: nil,
-                    knownProfiles: [],
-                    relatedMemories: [],
-                    relatedArcs: [],
-                    priorReflections: [],
-                    correctionSignals: [],
-                    affectHistory: [],
-                    privacyDecisions: [],
-                    budgetReport: .init(
-                        maxProfiles: 8,
-                        maxRelatedMemories: 12,
-                        maxArcs: 6,
-                        maxReflections: 6,
-                        maxCorrections: 10,
-                        maxAffectHistory: 8,
-                        selectedProfiles: 0,
-                        selectedRelatedMemories: 0,
-                        selectedArcs: 0,
-                        selectedReflections: 0,
-                        selectedCorrections: 0,
-                        selectedAffectHistory: 0,
-                        droppedByBudget: 0,
-                        droppedByPrivacy: 0
-                    ),
-                    retrievalReport: .init(
-                        semanticSearchStatus: "disabled",
-                        retrievalSources: [],
-                        candidateMemoryCount: 0,
-                        fallbackReason: "test"
-                    ),
-                    builtAt: "2026-05-23T00:00:00Z"
-                ),
-                clientCapabilities: .moryV7Default,
-                debugOptions: nil
-            ),
+        let analysisPayload = makeAnalysisPayload()
+        let analysis = try await client.analyzeMemory(
+            payload: analysisPayload,
             bearerToken: "token"
         )
-        XCTAssertEqual(v7.meta?.model, "mock-v7-analyze-v1")
-        XCTAssertEqual(v7.quality.uncertaintyReasons, ["thin_context"])
+        XCTAssertEqual(analysis.meta?.model, "mock-analysis-v1")
+        XCTAssertEqual(analysis.quality.uncertaintyReasons, ["thin_context"])
     }
 
     private func makeClient() -> MoryAPIClient {
@@ -191,6 +140,65 @@ final class CloudIntelligenceClientTests: XCTestCase {
         return MoryAPIClient(
             configuration: MoryAPIConfiguration(baseURL: URL(string: "https://cloud.test")!),
             session: URLSession(configuration: configuration)
+        )
+    }
+
+    private func makeAnalysisPayload() -> AnalysisRequestPayload {
+        let budgetReport = AnalysisRequestPayload.BudgetReportPayload(
+            maxProfiles: 8,
+            maxRelatedMemories: 12,
+            maxArcs: 6,
+            maxReflections: 6,
+            maxCorrections: 10,
+            maxAffectHistory: 8,
+            selectedProfiles: 0,
+            selectedRelatedMemories: 0,
+            selectedArcs: 0,
+            selectedReflections: 0,
+            selectedCorrections: 0,
+            selectedAffectHistory: 0,
+            droppedByBudget: 0,
+            droppedByPrivacy: 0
+        )
+        let retrievalReport = AnalysisRequestPayload.RetrievalReportPayload(
+            semanticSearchStatus: "disabled",
+            retrievalSources: [],
+            candidateMemoryCount: 0,
+            fallbackReason: "test"
+        )
+        let contextPack = AnalysisRequestPayload.ContextPackPayload(
+            packID: "pack-analysis",
+            targetRecordID: "record-analysis",
+            selfBrief: nil,
+            knownProfiles: [],
+            relatedMemories: [],
+            relatedArcs: [],
+            priorReflections: [],
+            correctionSignals: [],
+            affectHistory: [],
+            privacyDecisions: [],
+            budgetReport: budgetReport,
+            retrievalReport: retrievalReport,
+            builtAt: "2026-05-23T00:00:00Z"
+        )
+        return AnalysisRequestPayload(
+            clientRequestID: "client-analysis-test",
+            recordShell: .init(
+                id: "record-analysis",
+                createdAt: "2026-05-23T00:00:00Z",
+                updatedAt: "2026-05-23T00:00:00Z",
+                rawText: "A thin memory.",
+                captureSource: "composer",
+                userMood: nil,
+                userIntensity: nil,
+                inputContext: nil
+            ),
+            artifacts: [],
+            knownEntities: [],
+            moodEvidence: [],
+            contextPack: contextPack,
+            clientCapabilities: .moryDefault,
+            debugOptions: nil
         )
     }
 }

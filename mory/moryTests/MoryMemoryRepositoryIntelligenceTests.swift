@@ -22,7 +22,7 @@ final class MoryMemoryRepositoryIntelligenceTests: XCTestCase {
         profile.displayName = "Mory Tester"
         profile.aliases.append("tester")
         profile.lifeRoles = [SelfRole(label: "founder", detail: "building Mory", confidence: 1)]
-        profile.longTermGoals = [SelfGoal(title: "ship v7", status: "active")]
+        profile.longTermGoals = [SelfGoal(title: "ship analysis", status: "active")]
         profile.preferences = [SelfPreference(key: "questionTone", value: "direct")]
         profile.sensitiveBoundaries = [SensitiveBoundary(label: "health", keywords: ["medical"])]
         profile.expressionPatterns = [ExpressionPattern(phrase: "I am done", interpretation: "may be venting", confidence: 0.7)]
@@ -33,7 +33,7 @@ final class MoryMemoryRepositoryIntelligenceTests: XCTestCase {
         XCTAssertEqual(stored.displayName, "Mory Tester")
         XCTAssertEqual(stored.aliases.last, "tester")
         XCTAssertEqual(stored.lifeRoles.first?.label, "founder")
-        XCTAssertEqual(stored.longTermGoals.first?.title, "ship v7")
+        XCTAssertEqual(stored.longTermGoals.first?.title, "ship analysis")
         XCTAssertEqual(stored.preferences.first?.value, "direct")
         XCTAssertEqual(stored.sensitiveBoundaries.first?.keywords, ["medical"])
         XCTAssertEqual(stored.expressionPatterns.first?.interpretation, "may be venting")
@@ -1098,7 +1098,7 @@ private struct RepositoryFixture {
     let repository: MoryMemoryRepository
 }
 
-private struct IntelligenceTestRecordAnalysisService: RecordAnalysisServing {
+private struct IntelligenceTestRecordAnalysisService: ReflectionAnalysisServing {
     func analyze(
         record: RecordShell,
         artifacts: [Artifact],
@@ -1164,10 +1164,10 @@ private enum IntelligenceTestCloudError: Error {
 }
 
 private struct IntelligenceTestCloudService: CloudIntelligenceServing {
-    func analyzeV7(_ payload: AnalyzeV7RequestPayload) async throws -> AnalyzeV7ResponseEnvelope {
+    func analyzeMemory(_ payload: AnalysisRequestPayload) async throws -> AnalysisResponseEnvelope {
         let personName = inferPersonName(from: payload)
         let insight = "Intelligence test summary"
-        let analysis = AnalyzeResponseEnvelope(
+        let analysis = AnalysisRecordResponse(
             tags: ["planning"],
             retrievalTerms: ["planning"],
             emotion: .init(label: "steady", intensity: 0.4, confidence: 0.8, interpretation: nil),
@@ -1189,7 +1189,7 @@ private struct IntelligenceTestCloudService: CloudIntelligenceServing {
             reflectionHint: nil
         )
 
-        return AnalyzeV7ResponseEnvelope(
+        return AnalysisResponseEnvelope(
             analysis: analysis,
             quality: .init(confidence: 0.7, uncertaintyReasons: [], needsUserCheck: [])
         )
@@ -1215,7 +1215,7 @@ private struct IntelligenceTestCloudService: CloudIntelligenceServing {
         throw IntelligenceTestCloudError.unsupported
     }
 
-    private func inferPersonName(from payload: AnalyzeV7RequestPayload) -> String {
+    private func inferPersonName(from payload: AnalysisRequestPayload) -> String {
         let textSources = [payload.recordShell.rawText] + payload.artifacts.map(\.textContent)
         if textSources.contains(where: { $0.localizedCaseInsensitiveContains("alex") }) {
             return "Alex"

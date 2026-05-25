@@ -10,17 +10,17 @@ import (
 	"time"
 )
 
-func (p *OpenAICompatibleProvider) AnalyzeV7(ctx context.Context, req AnalyzeV7Request, user UserContext) (AnalyzeV7Result, error) {
+func (p *OpenAICompatibleProvider) Analyze(ctx context.Context, req AnalysisRequest, user UserContext) (AnalysisResult, error) {
 	if err := req.Validate(); err != nil {
-		return AnalyzeV7Result{}, err
+		return AnalysisResult{}, err
 	}
 
-	userPrompt, err := buildAnalyzeV7UserPrompt(req, user)
+	userPrompt, err := buildAnalysisUserPrompt(req, user)
 	if err != nil {
-		return AnalyzeV7Result{}, err
+		return AnalysisResult{}, err
 	}
 
-	systemPrompt := buildAnalyzeV7SystemPrompt()
+	systemPrompt := buildAnalysisSystemPrompt()
 	payload := openAIChatRequest{
 		Model:          p.model,
 		ResponseFormat: map[string]string{"type": "json_object"},
@@ -34,10 +34,10 @@ func (p *OpenAICompatibleProvider) AnalyzeV7(ctx context.Context, req AnalyzeV7R
 
 	body, err := json.Marshal(payload)
 	if err != nil {
-		return AnalyzeV7Result{}, fmt.Errorf("marshal openai analyze v7 request: %w", err)
+		return AnalysisResult{}, fmt.Errorf("marshal openai analysis request: %w", err)
 	}
 
-	p.logger.Info("📤 openai analyze v7 request",
+	p.logger.Info("📤 openai analysis request",
 		"provider", p.Name(),
 		"model", p.model,
 		"endpoint", p.baseURL,
@@ -52,7 +52,7 @@ func (p *OpenAICompatibleProvider) AnalyzeV7(ctx context.Context, req AnalyzeV7R
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, p.baseURL, bytes.NewReader(body))
 	if err != nil {
-		return AnalyzeV7Result{}, fmt.Errorf("create openai analyze v7 request: %w", err)
+		return AnalysisResult{}, fmt.Errorf("create openai analysis request: %w", err)
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer "+p.apiKey)
@@ -61,21 +61,21 @@ func (p *OpenAICompatibleProvider) AnalyzeV7(ctx context.Context, req AnalyzeV7R
 	resp, err := doRequestWithRetry(ctx, p.client, httpReq, p.maxRetries, p.backoff)
 	elapsed := time.Since(start)
 	if err != nil {
-		p.logger.Error("❌ openai analyze v7 request failed",
+		p.logger.Error("❌ openai analysis request failed",
 			"provider", p.Name(),
 			"duration_ms", elapsed.Milliseconds(),
 			"error", err,
 		)
-		return AnalyzeV7Result{}, fmt.Errorf("openai-compatible analyze v7 request failed: %w", err)
+		return AnalysisResult{}, fmt.Errorf("openai-compatible analysis request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	responseBody, err := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
 	if err != nil {
-		return AnalyzeV7Result{}, fmt.Errorf("read openai analyze v7 response: %w", err)
+		return AnalysisResult{}, fmt.Errorf("read openai analysis response: %w", err)
 	}
 
-	p.logger.Info("📥 openai analyze v7 response",
+	p.logger.Info("📥 openai analysis response",
 		"provider", p.Name(),
 		"status", resp.StatusCode,
 		"duration_ms", elapsed.Milliseconds(),
@@ -83,43 +83,43 @@ func (p *OpenAICompatibleProvider) AnalyzeV7(ctx context.Context, req AnalyzeV7R
 	)
 
 	if resp.StatusCode >= 300 {
-		p.logger.Error("❌ openai analyze v7 response failed",
+		p.logger.Error("❌ openai analysis response failed",
 			"status", resp.StatusCode,
 			"provider", p.Name(),
 			"duration_ms", elapsed.Milliseconds(),
 			"body", truncateBody(responseBody, 2048),
 		)
-		return AnalyzeV7Result{}, fmt.Errorf("openai-compatible analyze v7 status %d: %s", resp.StatusCode, truncateBody(responseBody, 256))
+		return AnalysisResult{}, fmt.Errorf("openai-compatible analysis status %d: %s", resp.StatusCode, truncateBody(responseBody, 256))
 	}
 
 	var decoded openAIChatResponse
 	if err := json.Unmarshal(responseBody, &decoded); err != nil {
-		p.logger.Error("❌ openai analyze v7 decode failed",
+		p.logger.Error("❌ openai analysis decode failed",
 			"provider", p.Name(),
 			"status", resp.StatusCode,
 			"duration_ms", elapsed.Milliseconds(),
 			"body", truncateBody(responseBody, 2048),
 			"error", err,
 		)
-		return AnalyzeV7Result{}, fmt.Errorf("decode openai analyze v7 response: %w", err)
+		return AnalysisResult{}, fmt.Errorf("decode openai analysis response: %w", err)
 	}
 	if len(decoded.Choices) == 0 {
-		return AnalyzeV7Result{}, fmt.Errorf("openai-compatible analyze v7 response contained no choices")
+		return AnalysisResult{}, fmt.Errorf("openai-compatible analysis response contained no choices")
 	}
 
 	text := flattenOpenAIContent(decoded.Choices[0].Message.Content)
-	analyzeResp, err := parseAnalyzeV7Response(text)
+	analyzeResp, err := parseAnalysisResponse(text)
 	if err != nil {
-		p.logger.Error("❌ openai analyze v7 parse failed",
+		p.logger.Error("❌ openai analysis parse failed",
 			"provider", p.Name(),
 			"duration_ms", elapsed.Milliseconds(),
 			"raw_text", truncateBody([]byte(text), 1024),
 			"error", err,
 		)
-		return AnalyzeV7Result{}, err
+		return AnalysisResult{}, err
 	}
 
-	return AnalyzeV7Result{
+	return AnalysisResult{
 		Response: analyzeResp,
 		Provider: p.Name(),
 		Model:    decoded.Model,

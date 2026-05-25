@@ -69,7 +69,7 @@ struct DebugServerHealthView: View {
                 probe(name: String(localized: "debug.server.probe.root"), request: URLRequest(url: configuration.baseURL)),
                 probe(name: String(localized: "debug.server.probe.health"), request: URLRequest(url: configuration.url(for: "/healthz"))),
                 probe(name: String(localized: "debug.server.probe.auth"), request: jsonPost(url: configuration.url(for: "/auth/apple"), body: ["identity_token": "debug-invalid-token"])),
-                probe(name: String(localized: "debug.server.probe.analysis"), request: jsonPost(url: configuration.url(for: "/api/analysis/records"), body: [:]))
+                probe(name: String(localized: "debug.server.probe.analysis"), request: jsonPost(url: configuration.url(for: "/api/analyze"), body: [:]))
             ]
         }
     }

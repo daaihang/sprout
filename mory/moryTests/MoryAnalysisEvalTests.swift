@@ -6,7 +6,7 @@ import XCTest
 /// Unit coverage for individual services (EntityResolutionService, ContextRanker, etc.)
 /// already exists in dedicated test files; these tests cover the stitched pipeline.
 @MainActor
-final class MoryV7EvalTests: XCTestCase {
+final class MoryAnalysisEvalTests: XCTestCase {
 
     // MARK: - Golden fixture: apply addAlias GraphDelta → EntityProfile aliases updated
 
@@ -253,7 +253,7 @@ final class MoryV7EvalTests: XCTestCase {
 
 private enum EvalTestError: Error { case unsupported }
 
-private struct EvalTestAnalysisService: RecordAnalysisServing {
+private struct EvalTestAnalysisService: ReflectionAnalysisServing {
     func analyze(
         record: RecordShell,
         artifacts: [Artifact],

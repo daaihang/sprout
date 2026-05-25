@@ -20,29 +20,29 @@ This roadmap is organized by product risk, not version number.
 | GraphDelta reject/reason/undo is incomplete | Corrections do not feel safe. | Productize proposal review workflow. |
 | Journaling workout/event poster are not first-class cards | Imported suggestions feel incomplete. | Add activity/event context cards or better document cards. |
 | Real-device background/APNs validation remains incomplete | Notification reliability unknown. | Maintain device validation log and acceptance checklist. |
-| Background trigger state is not unified | BGTask, silent push, startup recovery, and pipeline completion are still hard to reason about together. | Next batch: introduce a background-operation/orchestration status layer that feeds `NotificationTrigger` rather than mixing background work with notification delivery. |
+| Background retry/quota/cancellation policy is still basic | The trigger surface is unified, but long-running failure policy is not productized. | Harden `BackgroundOperationOrchestrator` with explicit retry windows, cancellation, quotas, and product-readable status. |
 
 ## Product Clarity
 
 | Gap | Impact | Recommended Fix |
 | --- | --- | --- |
 | Feature status scattered across docs | Product owner cannot tell what is real. | Keep this handbook updated on every change. |
-| Debug and product state mixed | Users cannot see status without debug screens. | Notification state has been promoted into Settings/Debug via one page; repeat this pattern for broader intelligence/background status. |
+| Debug and product state mixed | Users cannot see status without debug screens. | Notification and background state now have Settings/Debug pages; decide which summaries should become user-facing product status. |
 | AI intervention points unclear | Users cannot predict when AI changes things. | Follow the AI Intervention Matrix for all future features. |
 
 ## Cleanup
 
 | Gap | Impact | Recommended Fix |
 | --- | --- | --- |
-| Legacy analyze path remains present | Possible confusion in tests/debug. | Keep documented as non-primary or remove in a cleanup batch. |
-| Some v7 flags are historical | Confusing status. | Mark deprecated or remove when no longer used. |
+| Old analysis routes removed | Possible confusion in tests/debug. | Already hard-cut to unified Analysis; keep route tests only. |
+| Some historical v7 flags remain in old implementation docs | Confusing status. | Mark deprecated or remove when no longer used. |
 | Feature docs can drift | Recreates current problem. | Add a check in implementation workflow: feature docs updated with code. |
 
 ## Next Recommended Implementation Sequence
 
-1. Unify background operation status around BGTask, silent push, startup recovery, pipeline completion, and notification triggers.
-2. Add import session provenance.
-3. Add voice refinement edit guard.
-4. Add product Intelligence Status surface.
-5. Add My Profile and profile evidence viewer.
+1. Add import session provenance.
+2. Add voice refinement edit guard.
+3. Add product Intelligence Status surface.
+4. Add My Profile and profile evidence viewer.
+5. Harden background retry/quota/cancellation after real-device BGTask/APNs validation.
 6. Define entitlement/quota contract before any paywall UI.

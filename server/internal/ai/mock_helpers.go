@@ -44,7 +44,7 @@ func uniqueStrings(values []string) []string {
 	return ordered
 }
 
-func extractArtifactSummaries(artifacts []AnalyzeArtifact) []string {
+func extractArtifactSummaries(artifacts []AnalysisArtifact) []string {
 	values := make([]string, 0, len(artifacts))
 	for _, artifact := range artifacts {
 		candidate := strings.TrimSpace(strings.Join([]string{

@@ -29,11 +29,6 @@ type onboardingCompleteResponse struct {
 	HasCompletedOnboarding bool `json:"has_completed_onboarding"`
 }
 
-type analyzePreviewResponseEnvelope struct {
-	ai.AnalyzeResponse
-	Mode string `json:"mode"`
-}
-
 type pushRegisterRequest struct {
 	DeviceID                           string `json:"device_id"`
 	APNSToken                          string `json:"apns_token"`
@@ -100,13 +95,8 @@ type pushEnqueueResponse struct {
 	PermanentFailedCount int    `json:"permanent_failed_count"`
 }
 
-type analyzeResponseEnvelope struct {
-	ai.AnalyzeResponse
-	Meta analyzeMeta `json:"meta"`
-}
-
-type analyzeV7ResponseEnvelope struct {
-	ai.AnalyzeV7Response
+type analyzeMemoryResponseEnvelope struct {
+	ai.AnalysisResponse
 	Meta analyzeMeta `json:"meta"`
 }
 
@@ -155,8 +145,8 @@ type cloudIntelligenceEvalResponse struct {
 }
 
 type reflectionRequest struct {
-	RecordShell   ai.AnalyzeRecordShell     `json:"record_shell"`
-	Artifacts     []ai.AnalyzeArtifact      `json:"artifacts"`
+	RecordShell   ai.AnalysisRecordShell    `json:"record_shell"`
+	Artifacts     []ai.AnalysisArtifact     `json:"artifacts"`
 	LinkedArcID   string                    `json:"linked_arc_id,omitempty"`
 	KnownEntities []ai.KnownEntityReference `json:"known_entities,omitempty"`
 	Prompt        string                    `json:"prompt,omitempty"`

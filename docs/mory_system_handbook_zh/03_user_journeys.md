@@ -10,7 +10,7 @@ flowchart TD
     B --> C["保存"]
     C --> D["先保存本地记忆"]
     D --> E["构造长期上下文"]
-    E --> F["调用 v7 AI 分析"]
+    E --> F["调用 Analysis"]
     F --> G["保存分析结果和 proposal"]
     G --> H["用户之后在详情、洞察、人物、问题里看到结果"]
 ```
@@ -34,7 +34,7 @@ flowchart TD
     B --> C["生成转写文本"]
     C --> D["可选 AI 润色或结构化"]
     D --> E["进入新建记忆正文和音频附件"]
-    E --> F["保存后走 v7 分析"]
+    E --> F["保存后走 Analysis"]
 ```
 
 用户体验重点：
@@ -134,17 +134,22 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A["系统或服务端准备提醒"] --> B["本地通知或远程推送"]
-    B --> C["用户点击通知"]
-    C --> D["回到问题、回顾或相关记忆"]
-    D --> E["用户回答后反哺长期模型"]
+    A["后台触发：启动 / 前台 / BGTask / silent push / pipeline 完成"] --> B["BackgroundOperationOrchestrator 记录运行和 operation events"]
+    B --> C["NotificationOrchestrator 生成候选、去重、policy"]
+    C --> D["本地通知或远程推送"]
+    D --> E["用户点击通知"]
+    E --> F["回到问题、回顾或相关记忆"]
+    F --> G["用户回答后反哺长期模型"]
 ```
 
 用户体验重点：
 
 - 通知不应该只是提醒打开 App，而应该带用户回到一个明确任务。
 - 用户回答问题后，Mory 应该记住这次修正。
+- 通知生成只能从 `NotificationOrchestrator` 出来；后台只负责决定何时触发、执行哪些 operation、记录运行。
+- 后台日志是诊断/运行状态，不是记忆事实；它存入 owner-scoped JSON/UserDefaults，而不是 SwiftData 记忆 schema。
 
 当前差距：
 
 - 通知节奏和真机可靠性还需要长期验证。
+- 后台域已经有统一入口、日志和 Debug/Settings 页面，但重试、取消、配额、长期状态解释还未产品化。

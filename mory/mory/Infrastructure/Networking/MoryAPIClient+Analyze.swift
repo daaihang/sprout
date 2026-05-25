@@ -2,12 +2,12 @@ import Foundation
 
 extension MoryAPIClient {
     struct ReflectionPayload: Encodable, Sendable {
-        var recordShell: AnalyzeRequestPayload.RecordShellPayload
-        var artifacts: [AnalyzeRequestPayload.ArtifactPayload]
+        var recordShell: AnalysisRecordPayload.RecordShellPayload
+        var artifacts: [AnalysisRecordPayload.ArtifactPayload]
         var linkedArcID: String?
-        var knownEntities: [AnalyzeRequestPayload.KnownEntityPayload]
+        var knownEntities: [AnalysisRecordPayload.KnownEntityPayload]
         var prompt: String?
-        var debugOptions: AnalyzeRequestPayload.DebugOptionsPayload? = AnalyzeRequestPayload.DebugOptionsPayload.current()
+        var debugOptions: AnalysisRecordPayload.DebugOptionsPayload? = AnalysisRecordPayload.DebugOptionsPayload.current()
 
         enum CodingKeys: String, CodingKey {
             case recordShell = "record_shell"
@@ -35,11 +35,11 @@ extension MoryAPIClient {
         }
     }
 
-    func analyzeRecords(
-        payload: AnalyzeRequestPayload,
+    func analyzeMemory(
+        payload: AnalysisRequestPayload,
         bearerToken: String
-    ) async throws -> AnalyzeResponseEnvelope {
-        var request = URLRequest(url: configuration.url(for: configuration.analysisPath))
+    ) async throws -> AnalysisResponseEnvelope {
+        var request = URLRequest(url: configuration.url(for: "/api/analyze"))
         let requestID = makeDebugRequestID(prefix: "analysis")
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -49,33 +49,11 @@ extension MoryAPIClient {
 
         do {
             let (data, response) = try await session.data(for: request)
-            let decoded = try decodeResponse(data: data, response: response, as: AnalyzeResponseEnvelope.self, failedStage: "analysis", requestID: requestID)
+            let decoded = try decodeResponse(data: data, response: response, as: AnalysisResponseEnvelope.self, failedStage: "analysis", requestID: requestID)
             await debugTraceBox.setRequestID(responseRequestID(response) ?? requestID)
             return decoded
         } catch {
             throw normalize(error: error, failedStage: "analysis")
-        }
-    }
-
-    func analyzeRecordsV7(
-        payload: AnalyzeV7RequestPayload,
-        bearerToken: String
-    ) async throws -> AnalyzeV7ResponseEnvelope {
-        var request = URLRequest(url: configuration.url(for: "/api/analyze/v7"))
-        let requestID = makeDebugRequestID(prefix: "analysis-v7")
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
-        request.setValue(requestID, forHTTPHeaderField: "X-Request-ID")
-        request.httpBody = try encoder.encode(payload)
-
-        do {
-            let (data, response) = try await session.data(for: request)
-            let decoded = try decodeResponse(data: data, response: response, as: AnalyzeV7ResponseEnvelope.self, failedStage: "analysis_v7", requestID: requestID)
-            await debugTraceBox.setRequestID(responseRequestID(response) ?? requestID)
-            return decoded
-        } catch {
-            throw normalize(error: error, failedStage: "analysis_v7")
         }
     }
 

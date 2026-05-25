@@ -15,14 +15,14 @@ This matrix maps features from user input to local persistence, API, AI output, 
 | Pipeline status | `MemoryPipelineStatusStore` | pending -> running -> completed/failed. |
 | Search | Spotlight index | Indexed after save and after analysis completion. |
 
-## v7 Analyze Path
+## Analysis Path
 
 | Step | Object | Notes |
 | --- | --- | --- |
 | Query context | `AnalysisContextPackBuilder` | SelfProfile, profiles, related memories, arcs/reflections, corrections, privacy/budget. |
-| Request | `AnalyzeV7RequestPayload` | Sent to `/api/analyze/v7`. |
-| Response | `AnalyzeV7ResponseEnvelope` | Analysis plus proposals. |
-| Mapping | `AnalyzeV7ResponseMapper` | Creates local analysis/proposal snapshots. |
+| Request | `AnalysisRequestPayload` | Sent to `/api/analyze`. |
+| Response | `AnalysisResponseEnvelope` | Analysis plus proposals. |
+| Mapping | `AnalysisResponseMapper` | Creates local analysis/proposal snapshots. |
 | Graph update | `GraphUpdater` and place resolver | Local trusted graph is updated through policy and persistence ports. |
 | Persistence | pipeline ports/repository | analysis, graph, affect, deltas, reflections, questions, arcs. |
 | UI | Detail, Timeline, Home, Insights, Debug | Status and results are visible in multiple places but not as one cohesive journey. |

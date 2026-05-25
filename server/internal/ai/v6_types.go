@@ -156,34 +156,34 @@ type PhotoSemanticAnalysisResult struct {
 
 func (r TranscriptRefinementRequest) Validate() error {
 	if strings.TrimSpace(r.RawTranscript) == "" {
-		return ErrInvalidAnalyzeRequest
+		return ErrInvalidAnalysisRequest
 	}
 	if len(r.RawTranscript) > 20000 {
-		return ErrInvalidAnalyzeRequest
+		return ErrInvalidAnalysisRequest
 	}
 	return nil
 }
 
 func (r QuestionSuggestionRequest) Validate() error {
 	if strings.TrimSpace(r.Target.Type) == "" || strings.TrimSpace(r.Target.ID) == "" {
-		return ErrInvalidAnalyzeRequest
+		return ErrInvalidAnalysisRequest
 	}
 	if len(r.Evidence) == 0 {
-		return ErrInvalidAnalyzeRequest
+		return ErrInvalidAnalysisRequest
 	}
 	return nil
 }
 
 func (r ChapterSuggestionRequest) Validate() error {
 	if len(r.Signals) == 0 && len(r.EvidenceSnippets) == 0 {
-		return ErrInvalidAnalyzeRequest
+		return ErrInvalidAnalysisRequest
 	}
 	return nil
 }
 
 func (r PhotoSemanticAnalysisRequest) Validate() error {
 	if len(r.LocalLabels) == 0 && strings.TrimSpace(r.OCRText) == "" && strings.TrimSpace(r.CaptionHint) == "" {
-		return ErrInvalidAnalyzeRequest
+		return ErrInvalidAnalysisRequest
 	}
 	return nil
 }

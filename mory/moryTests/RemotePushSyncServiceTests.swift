@@ -401,7 +401,7 @@ private struct PushRegisterRequestBody: Decodable {
     }
 }
 
-private struct RemotePushTestAnalysisService: RecordAnalysisServing {
+private struct RemotePushTestAnalysisService: ReflectionAnalysisServing {
     func analyze(
         record: RecordShell,
         artifacts: [Artifact],

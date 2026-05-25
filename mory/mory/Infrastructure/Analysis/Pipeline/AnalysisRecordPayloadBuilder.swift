@@ -1,6 +1,6 @@
 import Foundation
 
-struct AnalyzeRequestBuilder {
+struct AnalysisRecordPayloadBuilder {
     private let dateFormatter = ISO8601DateFormatter()
 
     func build(
@@ -10,9 +10,9 @@ struct AnalyzeRequestBuilder {
         analysisReason: String = "manual",
         schemaVersion: String = "record_aggregate.v1",
         clientVersion: String = "mory.v3",
-        debugOptions: AnalyzeRequestPayload.DebugOptionsPayload? = AnalyzeRequestPayload.DebugOptionsPayload.current()
-    ) -> AnalyzeRequestPayload {
-        AnalyzeRequestPayload(
+        debugOptions: AnalysisRecordPayload.DebugOptionsPayload? = AnalysisRecordPayload.DebugOptionsPayload.current()
+    ) -> AnalysisRecordPayload {
+        AnalysisRecordPayload(
             schemaVersion: schemaVersion,
             clientVersion: clientVersion,
             analysisReason: analysisReason,
@@ -50,7 +50,7 @@ struct AnalyzeRequestBuilder {
     }
 }
 
-struct AnalyzeRequestPayload: Codable, Sendable {
+struct AnalysisRecordPayload: Codable, Sendable {
     struct RecordShellPayload: Codable, Sendable {
         var id: String
         var createdAt: String

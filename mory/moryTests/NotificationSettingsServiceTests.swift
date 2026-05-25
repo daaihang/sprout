@@ -200,7 +200,7 @@ private enum NotificationSettingsTestError: Error {
     case unsupported
 }
 
-private struct NotificationSettingsTestRecordAnalysisService: RecordAnalysisServing {
+private struct NotificationSettingsTestRecordAnalysisService: ReflectionAnalysisServing {
     func analyze(
         record: RecordShell,
         artifacts: [Artifact],

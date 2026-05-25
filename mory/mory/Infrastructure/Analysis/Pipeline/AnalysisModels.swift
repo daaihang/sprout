@@ -1,7 +1,7 @@
 import Foundation
 
-struct AnalyzeV7RequestBuilder {
-    private let legacyBuilder = AnalyzeRequestBuilder()
+struct AnalysisRequestBuilder {
+    private let recordPayloadBuilder = AnalysisRecordPayloadBuilder()
     private let dateFormatter = ISO8601DateFormatter()
 
     func build(
@@ -11,30 +11,30 @@ struct AnalyzeV7RequestBuilder {
         contextPack: AnalysisContextPack,
         affectSnapshots: [AffectSnapshot] = [],
         clientRequestID: UUID = UUID(),
-        analysisReason: String = "capture_ingest_context_v7"
-    ) -> AnalyzeV7RequestPayload {
-        let legacy = legacyBuilder.build(
+        analysisReason: String = "capture_ingest_context"
+    ) -> AnalysisRequestPayload {
+        let base = recordPayloadBuilder.build(
             record: record,
             artifacts: artifacts,
             knownEntities: knownEntities,
             analysisReason: analysisReason,
-            schemaVersion: "analyze.v7",
-            clientVersion: "mory.v7"
+            schemaVersion: "analysis",
+            clientVersion: "mory.analysis"
         )
-        return AnalyzeV7RequestPayload(
+        return AnalysisRequestPayload(
             clientRequestID: clientRequestID.uuidString,
-            recordShell: legacy.recordShell,
-            artifacts: legacy.artifacts,
-            knownEntities: legacy.knownEntities,
+            recordShell: base.recordShell,
+            artifacts: base.artifacts,
+            knownEntities: base.knownEntities,
             moodEvidence: affectSnapshots.map(moodEvidencePayload),
             contextPack: contextPayload(contextPack),
-            clientCapabilities: .moryV7Default,
-            debugOptions: legacy.debugOptions
+            clientCapabilities: .moryDefault,
+            debugOptions: base.debugOptions
         )
     }
 
-    private func moodEvidencePayload(_ snapshot: AffectSnapshot) -> AnalyzeV7RequestPayload.MoodEvidencePayload {
-        AnalyzeV7RequestPayload.MoodEvidencePayload(
+    private func moodEvidencePayload(_ snapshot: AffectSnapshot) -> AnalysisRequestPayload.MoodEvidencePayload {
+        AnalysisRequestPayload.MoodEvidencePayload(
             id: snapshot.id.uuidString,
             recordID: snapshot.recordID.uuidString,
             valence: snapshot.valence,
@@ -47,7 +47,7 @@ struct AnalyzeV7RequestBuilder {
             confidence: snapshot.confidence,
             userConfirmed: snapshot.userConfirmed,
             evidence: snapshot.evidence.map {
-                AnalyzeV7RequestPayload.EvidencePayload(
+                AnalysisRequestPayload.EvidencePayload(
                     recordID: snapshot.recordID.uuidString,
                     artifactID: nil,
                     snippet: $0.summary,
@@ -57,12 +57,12 @@ struct AnalyzeV7RequestBuilder {
         )
     }
 
-    private func contextPayload(_ pack: AnalysisContextPack) -> AnalyzeV7RequestPayload.ContextPackPayload {
-        AnalyzeV7RequestPayload.ContextPackPayload(
+    private func contextPayload(_ pack: AnalysisContextPack) -> AnalysisRequestPayload.ContextPackPayload {
+        AnalysisRequestPayload.ContextPackPayload(
             packID: pack.packID.uuidString,
             targetRecordID: pack.targetRecordID.uuidString,
             selfBrief: pack.selfBrief.map { brief in
-                AnalyzeV7RequestPayload.SelfBriefPayload(
+                AnalysisRequestPayload.SelfBriefPayload(
                     selfEntityID: brief.selfEntityID.uuidString,
                     displayName: brief.displayName,
                     aliases: brief.aliases,
@@ -73,7 +73,7 @@ struct AnalyzeV7RequestBuilder {
                 )
             },
             knownProfiles: pack.relatedProfiles.map {
-                AnalyzeV7RequestPayload.KnownProfilePayload(
+                AnalysisRequestPayload.KnownProfilePayload(
                     entityID: $0.entityID.uuidString,
                     kind: $0.kind.rawValue,
                     displayName: $0.displayName,
@@ -85,7 +85,7 @@ struct AnalyzeV7RequestBuilder {
                 )
             },
             relatedMemories: pack.relatedMemories.map {
-                AnalyzeV7RequestPayload.RelatedMemoryPayload(
+                AnalysisRequestPayload.RelatedMemoryPayload(
                     recordID: $0.recordID.uuidString,
                     title: $0.title,
                     snippet: $0.snippet,
@@ -96,7 +96,7 @@ struct AnalyzeV7RequestBuilder {
                 )
             },
             relatedArcs: pack.relatedArcs.map {
-                AnalyzeV7RequestPayload.RelatedArcPayload(
+                AnalysisRequestPayload.RelatedArcPayload(
                     arcID: $0.arcID.uuidString,
                     title: $0.title,
                     summary: $0.summary,
@@ -106,7 +106,7 @@ struct AnalyzeV7RequestBuilder {
                 )
             },
             priorReflections: pack.priorReflections.map {
-                AnalyzeV7RequestPayload.PriorReflectionPayload(
+                AnalysisRequestPayload.PriorReflectionPayload(
                     reflectionID: $0.reflectionID.uuidString,
                     title: $0.title,
                     evidenceSummary: $0.evidenceSummary,
@@ -116,7 +116,7 @@ struct AnalyzeV7RequestBuilder {
                 )
             },
             correctionSignals: pack.correctionSignals.map {
-                AnalyzeV7RequestPayload.CorrectionSignalPayload(
+                AnalysisRequestPayload.CorrectionSignalPayload(
                     id: $0.id.uuidString,
                     kind: $0.kind.rawValue,
                     targetType: $0.targetType.rawValue,
@@ -127,7 +127,7 @@ struct AnalyzeV7RequestBuilder {
                 )
             },
             affectHistory: pack.affectHistory.map {
-                AnalyzeV7RequestPayload.AffectHistoryPayload(
+                AnalysisRequestPayload.AffectHistoryPayload(
                     mood: $0.mood,
                     count: $0.count,
                     latestRecordID: $0.latestRecordID.uuidString,
@@ -139,14 +139,14 @@ struct AnalyzeV7RequestBuilder {
                 )
             },
             privacyDecisions: pack.privacyDecisions.map {
-                AnalyzeV7RequestPayload.PrivacyDecisionPayload(
+                AnalysisRequestPayload.PrivacyDecisionPayload(
                     sourceType: $0.sourceType,
                     sourceID: $0.sourceID?.uuidString,
                     action: $0.action.rawValue,
                     reason: $0.reason
                 )
             },
-            budgetReport: AnalyzeV7RequestPayload.BudgetReportPayload(
+            budgetReport: AnalysisRequestPayload.BudgetReportPayload(
                 maxProfiles: pack.budget.limits.maxProfiles,
                 maxRelatedMemories: pack.budget.limits.maxRelatedMemories,
                 maxArcs: pack.budget.limits.maxArcs,
@@ -162,7 +162,7 @@ struct AnalyzeV7RequestBuilder {
                 droppedByBudget: pack.budget.droppedByBudget,
                 droppedByPrivacy: pack.budget.droppedByPrivacy
             ),
-            retrievalReport: AnalyzeV7RequestPayload.RetrievalReportPayload(
+            retrievalReport: AnalysisRequestPayload.RetrievalReportPayload(
                 semanticSearchStatus: pack.retrieval.semanticSearchStatus,
                 retrievalSources: pack.retrieval.retrievalSources,
                 candidateMemoryCount: pack.retrieval.candidateMemoryCount,
@@ -173,19 +173,17 @@ struct AnalyzeV7RequestBuilder {
     }
 }
 
-struct AnalyzeV7RequestPayload: Codable, Sendable {
-    var schemaVersion: Int = 7
+struct AnalysisRequestPayload: Codable, Sendable {
     var clientRequestID: String
-    var recordShell: AnalyzeRequestPayload.RecordShellPayload
-    var artifacts: [AnalyzeRequestPayload.ArtifactPayload]
-    var knownEntities: [AnalyzeRequestPayload.KnownEntityPayload]
+    var recordShell: AnalysisRecordPayload.RecordShellPayload
+    var artifacts: [AnalysisRecordPayload.ArtifactPayload]
+    var knownEntities: [AnalysisRecordPayload.KnownEntityPayload]
     var moodEvidence: [MoodEvidencePayload]
     var contextPack: ContextPackPayload
     var clientCapabilities: ClientCapabilitiesPayload
-    var debugOptions: AnalyzeRequestPayload.DebugOptionsPayload?
+    var debugOptions: AnalysisRecordPayload.DebugOptionsPayload?
 
     enum CodingKeys: String, CodingKey {
-        case schemaVersion = "schema_version"
         case clientRequestID = "client_request_id"
         case recordShell = "record_shell"
         case artifacts
@@ -489,7 +487,7 @@ struct AnalyzeV7RequestPayload: Codable, Sendable {
             case supportsProposalOnlyWriteback = "supports_proposal_only_writeback"
         }
 
-        static let moryV7Default = ClientCapabilitiesPayload(
+        static let moryDefault = ClientCapabilitiesPayload(
             supportsProfileProposals: true,
             supportsMergeCandidates: true,
             supportsAffectSnapshot: true,
@@ -499,8 +497,8 @@ struct AnalyzeV7RequestPayload: Codable, Sendable {
     }
 }
 
-struct AnalyzeV7ResponseEnvelope: Codable, Sendable {
-    var analysis: AnalyzeResponseEnvelope
+struct AnalysisResponseEnvelope: Codable, Sendable {
+    var analysis: AnalysisRecordResponse
     var affectProposals: [AffectProposal]
     var graphDeltaProposals: [GraphDeltaProposal]
     var profileUpdateProposals: [ProfileUpdateProposal]
@@ -526,7 +524,7 @@ struct AnalyzeV7ResponseEnvelope: Codable, Sendable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        analysis = try container.decode(AnalyzeResponseEnvelope.self, forKey: .analysis)
+        analysis = try container.decode(AnalysisRecordResponse.self, forKey: .analysis)
         affectProposals = try container.decodeIfPresent([AffectProposal].self, forKey: .affectProposals) ?? []
         graphDeltaProposals = try container.decodeIfPresent([GraphDeltaProposal].self, forKey: .graphDeltaProposals) ?? []
         profileUpdateProposals = try container.decodeIfPresent([ProfileUpdateProposal].self, forKey: .profileUpdateProposals) ?? []
@@ -539,7 +537,7 @@ struct AnalyzeV7ResponseEnvelope: Codable, Sendable {
     }
 
     init(
-        analysis: AnalyzeResponseEnvelope,
+        analysis: AnalysisRecordResponse,
         affectProposals: [AffectProposal] = [],
         graphDeltaProposals: [GraphDeltaProposal] = [],
         profileUpdateProposals: [ProfileUpdateProposal] = [],
@@ -572,7 +570,7 @@ struct AnalyzeV7ResponseEnvelope: Codable, Sendable {
         var toneHints: [String]
         var appraisal: AffectAppraisal?
         var confidence: Double?
-        var evidence: [AnalyzeV7RequestPayload.EvidencePayload]
+        var evidence: [AnalysisRequestPayload.EvidencePayload]
         var requiresConfirmation: Bool
         var rawInput: String?
 
@@ -597,7 +595,7 @@ struct AnalyzeV7ResponseEnvelope: Codable, Sendable {
         var operations: [Operation]
         var confidence: Double?
         var requiresConfirmation: Bool
-        var evidence: [AnalyzeV7RequestPayload.EvidencePayload]
+        var evidence: [AnalysisRequestPayload.EvidencePayload]
 
         enum CodingKeys: String, CodingKey {
             case proposalID = "proposal_id"
@@ -635,7 +633,7 @@ struct AnalyzeV7ResponseEnvelope: Codable, Sendable {
         var field: String
         var proposedValue: String
         var confidence: Double?
-        var evidence: [AnalyzeV7RequestPayload.EvidencePayload]
+        var evidence: [AnalysisRequestPayload.EvidencePayload]
         var requiresConfirmation: Bool
 
         enum CodingKeys: String, CodingKey {
@@ -656,8 +654,8 @@ struct AnalyzeV7ResponseEnvelope: Codable, Sendable {
         var sourceEntityIDs: [String]
         var targetEntityID: String?
         var confidence: Double?
-        var positiveEvidence: [AnalyzeV7RequestPayload.EvidencePayload]
-        var negativeEvidence: [AnalyzeV7RequestPayload.EvidencePayload]
+        var positiveEvidence: [AnalysisRequestPayload.EvidencePayload]
+        var negativeEvidence: [AnalysisRequestPayload.EvidencePayload]
         var question: String?
 
         enum CodingKeys: String, CodingKey {
@@ -757,7 +755,7 @@ struct AnalyzeV7ResponseEnvelope: Codable, Sendable {
     }
 }
 
-struct AnalyzeV7MappedResult: Sendable {
+struct AnalysisMappedResult: Sendable {
     var analysis: RecordAnalysisSnapshot
     var affectProposals: [AffectSnapshot]
     var graphDeltaProposals: [GraphDelta]
@@ -765,14 +763,14 @@ struct AnalyzeV7MappedResult: Sendable {
     var reflectionProposals: [ReflectionSnapshot]
     var questionProposals: [ClarificationQuestion]
     var mergeSplitQuestions: [ClarificationQuestion]
-    var quality: AnalyzeV7ResponseEnvelope.Quality
+    var quality: AnalysisResponseEnvelope.Quality
 }
 
-struct AnalyzeV7ResponseMapper {
-    private let legacyMapper = AnalyzeResponseMapper()
+struct AnalysisResponseMapper {
+    private let legacyMapper = AnalysisRecordResponseMapper()
 
-    func map(recordID: UUID, response: AnalyzeV7ResponseEnvelope, createdAt: Date = .now) -> AnalyzeV7MappedResult {
-        AnalyzeV7MappedResult(
+    func map(recordID: UUID, response: AnalysisResponseEnvelope, createdAt: Date = .now) -> AnalysisMappedResult {
+        AnalysisMappedResult(
             analysis: legacyMapper.map(recordID: recordID, response: response.analysis, createdAt: createdAt),
             affectProposals: mapAffectProposals(recordID: recordID, response.affectProposals, createdAt: createdAt),
             graphDeltaProposals: mapGraphDeltaProposals(response.graphDeltaProposals, createdAt: createdAt)
@@ -787,7 +785,7 @@ struct AnalyzeV7ResponseMapper {
 
     private func mapAffectProposals(
         recordID: UUID,
-        _ proposals: [AnalyzeV7ResponseEnvelope.AffectProposal],
+        _ proposals: [AnalysisResponseEnvelope.AffectProposal],
         createdAt: Date
     ) -> [AffectSnapshot] {
         proposals.map { proposal in
@@ -821,7 +819,7 @@ struct AnalyzeV7ResponseMapper {
     }
 
     private func mapGraphDeltaProposals(
-        _ proposals: [AnalyzeV7ResponseEnvelope.GraphDeltaProposal],
+        _ proposals: [AnalysisResponseEnvelope.GraphDeltaProposal],
         createdAt: Date
     ) -> [GraphDelta] {
         proposals.compactMap { proposal in
@@ -840,7 +838,7 @@ struct AnalyzeV7ResponseMapper {
     }
 
     private func mapProfileUpdateProposals(
-        _ proposals: [AnalyzeV7ResponseEnvelope.ProfileUpdateProposal],
+        _ proposals: [AnalysisResponseEnvelope.ProfileUpdateProposal],
         createdAt: Date
     ) -> [GraphDelta] {
         proposals.compactMap { proposal in
@@ -860,7 +858,7 @@ struct AnalyzeV7ResponseMapper {
                         metadata: [
                             "profile_kind": proposal.profileKind,
                             "field": proposal.field,
-                            "proposal_source": "analyze_v7"
+                            "proposal_source": "analysis"
                         ]
                     )
                 ],
@@ -871,7 +869,7 @@ struct AnalyzeV7ResponseMapper {
         }
     }
 
-    private func mapOperation(_ operation: AnalyzeV7ResponseEnvelope.GraphDeltaProposal.Operation) -> GraphDeltaOperation? {
+    private func mapOperation(_ operation: AnalysisResponseEnvelope.GraphDeltaProposal.Operation) -> GraphDeltaOperation? {
         guard
             let kind = GraphDeltaOperationKind(rawValue: operation.kind),
             let targetType = ClarificationTargetType(rawValue: operation.targetType),
@@ -889,7 +887,7 @@ struct AnalyzeV7ResponseMapper {
     }
 
     private func mapReflectionCandidates(
-        _ candidates: [AnalyzeV7ResponseEnvelope.ReflectionCandidate],
+        _ candidates: [AnalysisResponseEnvelope.ReflectionCandidate],
         createdAt: Date
     ) -> [ReflectionSnapshot] {
         candidates.map { candidate in
@@ -911,7 +909,7 @@ struct AnalyzeV7ResponseMapper {
     }
 
     private func mapArcCandidates(
-        _ candidates: [AnalyzeV7ResponseEnvelope.ArcCandidate],
+        _ candidates: [AnalysisResponseEnvelope.ArcCandidate],
         createdAt: Date
     ) -> [TemporalArc] {
         candidates.compactMap { candidate in
@@ -937,7 +935,7 @@ struct AnalyzeV7ResponseMapper {
 
     private func mapQuestionCandidates(
         recordID: UUID,
-        _ candidates: [AnalyzeV7ResponseEnvelope.QuestionCandidate],
+        _ candidates: [AnalysisResponseEnvelope.QuestionCandidate],
         createdAt: Date
     ) -> [ClarificationQuestion] {
         candidates.map { candidate in
@@ -960,7 +958,7 @@ struct AnalyzeV7ResponseMapper {
 
     private func mapMergeSplitCandidates(
         recordID: UUID,
-        _ candidates: [AnalyzeV7ResponseEnvelope.MergeSplitCandidate],
+        _ candidates: [AnalysisResponseEnvelope.MergeSplitCandidate],
         createdAt: Date
     ) -> [ClarificationQuestion] {
         candidates.compactMap { candidate in
@@ -972,7 +970,7 @@ struct AnalyzeV7ResponseMapper {
                 recordID: recordID,
                 kind: candidate.kind.contains("split") ? .entityAlias : .entityMerge,
                 prompt: prompt,
-                reason: "Analyze v7 identity candidate with confidence \(candidate.confidence ?? 0).",
+                reason: "Analysis identity candidate with confidence \(candidate.confidence ?? 0).",
                 targetType: .entity,
                 targetID: targetID,
                 sourceRecordIDs: [recordID],

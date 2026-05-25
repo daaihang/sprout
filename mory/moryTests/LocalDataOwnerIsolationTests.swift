@@ -97,7 +97,7 @@ final class LocalDataOwnerIsolationTests: XCTestCase {
     }
 }
 
-private struct OwnerIsolationRecordAnalysisService: RecordAnalysisServing {
+private struct OwnerIsolationRecordAnalysisService: ReflectionAnalysisServing {
     func analyze(
         record: RecordShell,
         artifacts: [Artifact],

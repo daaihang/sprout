@@ -373,7 +373,7 @@ private struct ExternalCaptureRepositoryHarness {
     let repository: MoryMemoryRepository
 }
 
-private struct ExternalCaptureNoopAnalysisService: RecordAnalysisServing {
+private struct ExternalCaptureNoopAnalysisService: ReflectionAnalysisServing {
     func analyze(
         record: RecordShell,
         artifacts: [Artifact],

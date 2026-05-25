@@ -288,7 +288,7 @@ struct MemoryMutationUseCase {
         do {
             try await repository.runArchitecturePipeline(record: record, artifacts: artifacts)
             do {
-                try repository.runLocalIntelligenceLoop(record: record, artifacts: artifacts)
+                try repository.applyAnalysisFollowups(record: record, artifacts: artifacts)
             } catch {
                 try repository.markLatestPostAnalysisJobFailed(recordID: recordID, error: error)
             }

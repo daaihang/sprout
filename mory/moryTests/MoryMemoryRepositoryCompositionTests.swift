@@ -1183,7 +1183,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertTrue(detail.entities.contains(where: { $0.aliases.contains("Linh Tran") }))
     }
 
-    func testV7GraphUpdatePersistsAnalysisEntitiesAndLinksWithoutLocationArtifact() async throws {
+    func testAnalysisGraphUpdatePersistsAnalysisEntitiesAndLinksWithoutLocationArtifact() async throws {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
@@ -2354,10 +2354,11 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
 
         let diagnostics = try repository.fetchDebugDiagnostics(targetType: .memory, targetID: memory.record.id)
         XCTAssertEqual(diagnostics.pipelineTrace?.statusCode, 200)
-        // v7 pipeline: requestBody is the JSON-encoded AnalyzeV7RequestPayload (contains schema_version: 7).
+        // Analysis pipeline: requestBody is the JSON-encoded AnalysisRequestPayload.
         XCTAssertNotNil(diagnostics.analyzePayload?.requestBody)
-        XCTAssertTrue(diagnostics.analyzePayload?.requestBody.contains("schema_version") == true)
-        // v7 pipeline: responseBody is the JSON-encoded AnalyzeV7ResponseEnvelope (contains "analysis" key).
+        XCTAssertTrue(diagnostics.analyzePayload?.requestBody.contains("client_request_id") == true)
+        XCTAssertFalse(diagnostics.analyzePayload?.requestBody.contains("schema_version") == true)
+        // Analysis pipeline: responseBody is the JSON-encoded AnalysisResponseEnvelope (contains "analysis" key).
         XCTAssertNotNil(diagnostics.analyzePayload?.responseBody)
         XCTAssertTrue(diagnostics.analyzePayload?.responseBody.contains("analysis") == true)
     }
@@ -2478,7 +2479,7 @@ private func XCTAssertThrowsErrorAsync(
     }
 }
 
-private struct StubRecordAnalysisService: RecordAnalysisServing {
+private struct StubRecordAnalysisService: ReflectionAnalysisServing {
     func analyze(
         record: RecordShell,
         artifacts: [Artifact],
@@ -2571,7 +2572,7 @@ private struct StubRecordAnalysisService: RecordAnalysisServing {
     }
 }
 
-private struct TextDrivenRecordAnalysisService: RecordAnalysisServing {
+private struct TextDrivenRecordAnalysisService: ReflectionAnalysisServing {
     func analyze(
         record: RecordShell,
         artifacts: [Artifact],
@@ -2650,7 +2651,7 @@ private struct TextDrivenRecordAnalysisService: RecordAnalysisServing {
     }
 }
 
-private struct FailingRecordAnalysisService: RecordAnalysisServing {
+private struct FailingRecordAnalysisService: ReflectionAnalysisServing {
     struct StubError: LocalizedError {
         var errorDescription: String? { "Analysis service unavailable." }
     }
@@ -2696,7 +2697,7 @@ private struct FailingRecordAnalysisService: RecordAnalysisServing {
     }
 }
 
-private struct LowSignalRecordAnalysisService: RecordAnalysisServing {
+private struct LowSignalRecordAnalysisService: ReflectionAnalysisServing {
     func analyze(
         record: RecordShell,
         artifacts: [Artifact],
@@ -2769,7 +2770,7 @@ private struct LowSignalRecordAnalysisService: RecordAnalysisServing {
     }
 }
 
-private struct AliasRecordAnalysisService: RecordAnalysisServing {
+private struct AliasRecordAnalysisService: ReflectionAnalysisServing {
     func analyze(
         record: RecordShell,
         artifacts: [Artifact],
@@ -3094,11 +3095,11 @@ private final class AuthURLProtocol: URLProtocol {
 
 // MARK: - Composition Cloud Service Stubs
 
-/// Standard stub mirrors the legacy composition analysis fixture through the v7 cloud contract.
+/// Standard stub mirrors the legacy composition analysis fixture through the Analysis cloud contract.
 private struct StubCompositionCloudService: CloudIntelligenceServing {
-    func analyzeV7(_ payload: AnalyzeV7RequestPayload) async throws -> AnalyzeV7ResponseEnvelope {
-        AnalyzeV7ResponseEnvelope(
-            analysis: AnalyzeResponseEnvelope(
+    func analyzeMemory(_ payload: AnalysisRequestPayload) async throws -> AnalysisResponseEnvelope {
+        AnalysisResponseEnvelope(
+            analysis: AnalysisRecordResponse(
                 tags: ["planning"],
                 retrievalTerms: ["planning", "rain"],
                 emotion: .init(label: "reflective", intensity: 0.6, confidence: 0.7, interpretation: nil),
@@ -3154,9 +3155,9 @@ private struct StubCompositionCloudService: CloudIntelligenceServing {
 /// Low-signal stub: returns noisy theme/OCR/photo entities that EntityQualityPolicy filters.
 /// No arcs or reflections.
 private struct LowSignalCompositionCloudService: CloudIntelligenceServing {
-    func analyzeV7(_ payload: AnalyzeV7RequestPayload) async throws -> AnalyzeV7ResponseEnvelope {
-        AnalyzeV7ResponseEnvelope(
-            analysis: AnalyzeResponseEnvelope(
+    func analyzeMemory(_ payload: AnalysisRequestPayload) async throws -> AnalysisResponseEnvelope {
+        AnalysisResponseEnvelope(
+            analysis: AnalysisRecordResponse(
                 tags: ["theme", "OCR"],
                 retrievalTerms: ["OCR", "photo"],
                 emotion: .init(label: "neutral", intensity: 0.2, confidence: 0.3, interpretation: nil),
@@ -3192,11 +3193,11 @@ private struct LowSignalCompositionCloudService: CloudIntelligenceServing {
 /// Text-driven stub: returns Ava or Ben based on payload rawText (mirrors TextDrivenRecordAnalysisService).
 /// Returns one reflection candidate so refresh-purge-rerun tests get count == 1.
 private struct TextDrivenCompositionCloudService: CloudIntelligenceServing {
-    func analyzeV7(_ payload: AnalyzeV7RequestPayload) async throws -> AnalyzeV7ResponseEnvelope {
+    func analyzeMemory(_ payload: AnalysisRequestPayload) async throws -> AnalysisResponseEnvelope {
         let rawText = payload.recordShell.rawText
         let personName = rawText.localizedCaseInsensitiveContains("Ben") ? "Ben" : "Ava"
-        return AnalyzeV7ResponseEnvelope(
-            analysis: AnalyzeResponseEnvelope(
+        return AnalysisResponseEnvelope(
+            analysis: AnalysisRecordResponse(
                 tags: ["planning"],
                 retrievalTerms: ["planning", personName.lowercased()],
                 emotion: .init(label: "focused", intensity: 0.6, confidence: 0.7, interpretation: nil),
@@ -3238,12 +3239,12 @@ private struct TextDrivenCompositionCloudService: CloudIntelligenceServing {
     func runProviderEval() async throws -> MoryAPIClient.CloudIntelligenceEvalResponse { throw CompositionStubError.unsupported }
 }
 
-/// Failing stub: throws from analyzeV7 and exposes 503/analysis debug info.
+/// Failing stub: throws from analyzeMemory and exposes 503/analysis debug info.
 private struct FailingCompositionCloudService: CloudIntelligenceServing, CloudIntelligenceDebugging {
     struct FailError: LocalizedError {
         var errorDescription: String? { "Analysis service unavailable." }
     }
-    func analyzeV7(_ payload: AnalyzeV7RequestPayload) async throws -> AnalyzeV7ResponseEnvelope {
+    func analyzeMemory(_ payload: AnalysisRequestPayload) async throws -> AnalysisResponseEnvelope {
         throw FailError()
     }
     func latestCloudDebugError() async -> MoryAPIClient.DebugErrorSnapshot? {

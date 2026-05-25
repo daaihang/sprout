@@ -19,7 +19,7 @@ This section records where users or developers can see current system state.
 | Debug Surface | Purpose |
 | --- | --- |
 | Debug Full Diagnostics | Broad local state export/inspection. |
-| Debug Analysis Context Pack | Inspect context pack and v7 request/response shape. |
+| Debug Analysis Context Pack | Inspect context pack and Analysis request/response shape. |
 | Debug Affect Snapshot | Inspect structured affect and Journaling StateOfMind evidence. |
 | Debug Person Profile | Inspect person profile data. |
 | Notification Management | Single Settings/Debug page for notification queue, history, dedupe, errors, preferences, APNs sync, debug test notification, and push metrics. |

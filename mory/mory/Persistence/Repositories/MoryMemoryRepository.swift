@@ -7,9 +7,9 @@ private let log = Logger(subsystem: "com.mory", category: "persistence")
 @MainActor
 final class MoryMemoryRepository: MoryMemoryRepositorying {
     let modelContext: ModelContext
-    let analysisService: any RecordAnalysisServing
+    let analysisService: any ReflectionAnalysisServing
     let cloudIntelligenceService: (any CloudIntelligenceServing)?
-    let architecturePipelineExecutor: ArchitecturePipelineExecutor
+    let architecturePipelineExecutor: AnalysisExecutor
     let homeBoardRuleEngine: HomeBoardRuleEngine
     let graphQueryService: MemoryGraphQueryService
     let memorySearchService: MemorySearchService
@@ -31,13 +31,13 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
 
     init(
         modelContext: ModelContext,
-        analysisService: any RecordAnalysisServing,
+        analysisService: any ReflectionAnalysisServing,
         cloudIntelligenceService: (any CloudIntelligenceServing)? = nil,
         spotlightIndexService: (any SpotlightIndexServicing)? = nil,
         localDataOwnerID: String? = nil,
         externalCaptureInboxStore: (any ExternalCaptureInboxStoring)? = nil,
         // Injected services with production defaults — override in tests to supply mocks.
-        architecturePipelineExecutor: ArchitecturePipelineExecutor = ArchitecturePipelineExecutor(),
+        architecturePipelineExecutor: AnalysisExecutor = AnalysisExecutor(),
         homeBoardRuleEngine: HomeBoardRuleEngine = HomeBoardRuleEngine(),
         graphQueryService: MemoryGraphQueryService = MemoryGraphQueryService(),
         memorySearchService: MemorySearchService = MemorySearchService(),
@@ -184,11 +184,11 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
 
     func rawQualityTuningEntities(from responseBody: String?) -> [EntityReference]? {
         guard let data = responseBody?.data(using: .utf8) else { return nil }
-        let envelope: AnalyzeResponseEnvelope
+        let envelope: AnalysisRecordResponse
         do {
-            envelope = try JSONDecoder().decode(AnalyzeResponseEnvelope.self, from: data)
+            envelope = try JSONDecoder().decode(AnalysisRecordResponse.self, from: data)
         } catch {
-            log.warning("rawQualityTuningEntities: Failed to decode AnalyzeResponseEnvelope: \(error)")
+            log.warning("rawQualityTuningEntities: Failed to decode AnalysisRecordResponse: \(error)")
             return nil
         }
         return envelope.entities.compactMap { entity in
@@ -300,7 +300,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         return ids.filter { seen.insert($0).inserted }
     }
 
-    func runLocalIntelligenceLoop(record: RecordShell, artifacts: [Artifact]) throws {
+    func applyAnalysisFollowups(record: RecordShell, artifacts: [Artifact]) throws {
         let flags = try fetchV6FeatureFlags()
         let preferences = try fetchIntelligencePreferences()
         guard preferences.localIntelligenceEnabled else { return }
@@ -2261,7 +2261,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
 
     func runArchitecturePipeline(record: RecordShell, artifacts: [Artifact]) async throws {
         guard let cloudIntelligenceService else {
-            throw CloudIntelligenceContractError.analyzeV7Unavailable
+            throw CloudIntelligenceContractError.analyzeMemoryUnavailable
         }
         latestAnalysisTrace = nil
         let dependencies = AnalysisPipelineDependencies(

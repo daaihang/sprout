@@ -35,13 +35,13 @@ flowchart LR
 | --- | --- | --- | --- |
 | During recording | None in current app code | No | No live tone analysis. |
 | After recording enters composer | Cloud transcript refinement | No explicit block | AI return can replace text after user edits. |
-| After memory save | v7 Analyze | No | Status not strongly surfaced. |
+| After memory save | Analysis | No | Status not strongly surfaced. |
 
 ## Persistence
 
 - Audio artifact stores media payload, metadata `transcriptionText`, and `captureOrigin`.
 - `RecordShell.rawText` uses body/transcript summary.
-- v7 analysis consumes audio transcript text via artifact text content.
+- Analysis consumes audio transcript text via artifact text content.
 
 ## Failure And Retry
 

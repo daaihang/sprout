@@ -204,13 +204,7 @@ protocol MoryMemoryRepositorying:
     AppIntelligenceRecoveryRepositorying,
     NotificationIntentRepositorying {}
 
-protocol RecordAnalysisServing: Sendable {
-    func analyze(
-        record: RecordShell,
-        artifacts: [Artifact],
-        knownEntities: [EntityReference]
-    ) async throws -> RecordAnalysisSnapshot
-
+protocol ReflectionAnalysisServing: Sendable {
     func generateReflection(
         record: RecordShell,
         artifacts: [Artifact],

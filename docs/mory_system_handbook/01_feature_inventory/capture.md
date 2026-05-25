@@ -51,7 +51,7 @@ flowchart LR
     B --> F["AffectSnapshotStore"]
     D --> G["MemoryPipelineStatusStore pending"]
     G --> H["CaptureOrchestrator starts refreshMemoryPipeline in Task"]
-    H --> I["Analyze v7 pipeline"]
+    H --> I["Analysis pipeline"]
 ```
 
 ## Persistence Fields
@@ -70,7 +70,7 @@ flowchart LR
 | Photo add | Local `PhotoArtifactProcessor` OCR/summary/thumbnail | Blocks photo card creation briefly | Processing card |
 | Voice seed | Cloud transcript refinement after composer opens | Does not block save explicitly | Refining card |
 | Save | No cloud AI before local save | Save waits for local persistence | Save spinner |
-| After save | v7 Analyze runs in background task spawned by app process | Does not block save | Pipeline status later |
+| After save | Analysis runs in background task spawned by app process | Does not block save | Pipeline status later |
 
 ## Failure And Retry
 
@@ -84,7 +84,7 @@ flowchart LR
 Potential future gates:
 
 - Free: local capture and basic local metadata.
-- Pro: deeper v7 analysis, full-history context pack, reflection, advanced people graph.
+- Pro: deeper Analysis, full-history context pack, reflection, advanced people graph.
 - Server must enforce AI quota; client gates are only UX.
 
 ## Current Status

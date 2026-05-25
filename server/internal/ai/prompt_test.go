@@ -6,14 +6,13 @@ import (
 )
 
 func TestBuildAnalyzeUserPromptIncludesContextArtifacts(t *testing.T) {
-	req := AnalyzeRequest{
-		SchemaVersion:  "v4",
-		AnalysisReason: "test",
-		RecordShell: AnalyzeRecordShell{
+	req := AnalysisRequest{
+		ClientRequestID: "client-analysis",
+		RecordShell: AnalysisRecordShell{
 			ID:      "rec-1",
 			RawText: "Walked home.",
 		},
-		Artifacts: []AnalyzeArtifact{
+		Artifacts: []AnalysisArtifact{
 			{
 				Kind:        "weather",
 				Title:       "Sunny 22°C",
@@ -50,11 +49,12 @@ func TestBuildAnalyzeUserPromptIncludesContextArtifacts(t *testing.T) {
 				},
 			},
 		},
+		ContextPack: AnalysisContextPack{PackID: "pack-1", TargetRecordID: "rec-1"},
 	}
 
-	body, err := buildAnalyzeUserPrompt(req, UserContext{UserID: "u1", Tier: "free"})
+	body, err := buildAnalysisUserPrompt(req, UserContext{UserID: "u1", Tier: "free"})
 	if err != nil {
-		t.Fatalf("buildAnalyzeUserPrompt error: %v", err)
+		t.Fatalf("buildAnalysisUserPrompt error: %v", err)
 	}
 
 	mustContain := []string{
@@ -76,18 +76,15 @@ func TestBuildAnalyzeUserPromptIncludesContextArtifacts(t *testing.T) {
 	}
 }
 
-func TestBuildAnalyzeUserPromptIncludesV7ContextPackAndMoodEvidence(t *testing.T) {
+func TestBuildAnalyzeUserPromptIncludesContextPackAndMoodEvidence(t *testing.T) {
 	confidence := 0.64
-	req := AnalyzeRequest{
-		SchemaVersion:   "analyze.v7",
-		ClientVersion:   "mory.v7",
-		ClientRequestID: "client-v7",
-		AnalysisReason:  "capture_ingest_context_v7",
-		RecordShell: AnalyzeRecordShell{
+	req := AnalysisRequest{
+		ClientRequestID: "client-analysis",
+		RecordShell: AnalysisRecordShell{
 			ID:      "rec-1",
 			RawText: "I joked that I was annoyed after dinner.",
 		},
-		MoodEvidence: []AnalyzeV7MoodEvidence{
+		MoodEvidence: []AnalysisMoodEvidence{
 			{
 				ID:            "mood-1",
 				RecordID:      "rec-1",
@@ -97,26 +94,26 @@ func TestBuildAnalyzeUserPromptIncludesV7ContextPackAndMoodEvidence(t *testing.T
 				UserConfirmed: true,
 			},
 		},
-		ContextPack: &AnalyzeV7ContextPack{
+		ContextPack: AnalysisContextPack{
 			PackID:         "pack-1",
 			TargetRecordID: "rec-1",
-			RelatedMemories: []AnalyzeV7RelatedMemory{
+			RelatedMemories: []AnalysisRelatedMemory{
 				{RecordID: "rec-old", Snippet: "Earlier dinner joke with the same roommate."},
 			},
-			PrivacyDecisions: []AnalyzeV7PrivacyDecision{
+			PrivacyDecisions: []AnalysisPrivacyDecision{
 				{SourceType: "memory", SourceID: "sensitive-1", Action: "redact", Reason: "sensitive boundary"},
 			},
 		},
-		ClientCapabilities: &AnalyzeV7ClientCapabilities{SupportsContextAwareReflection: true},
+		ClientCapabilities: AnalysisClientCapabilities{SupportsContextAwareReflection: true},
 	}
 
-	body, err := buildAnalyzeUserPrompt(req, UserContext{UserID: "u1", Tier: "free"})
+	body, err := buildAnalysisUserPrompt(req, UserContext{UserID: "u1", Tier: "free"})
 	if err != nil {
-		t.Fatalf("buildAnalyzeUserPrompt error: %v", err)
+		t.Fatalf("buildAnalysisUserPrompt error: %v", err)
 	}
 
 	for _, needle := range []string{
-		`"client_request_id":"client-v7"`,
+		`"client_request_id":"client-analysis"`,
 		`"mood_evidence"`,
 		`"tone_hints":["joking"]`,
 		`"context_pack"`,
@@ -131,7 +128,7 @@ func TestBuildAnalyzeUserPromptIncludesV7ContextPackAndMoodEvidence(t *testing.T
 }
 
 func TestBuildAnalyzeSystemPromptMentionsContextKinds(t *testing.T) {
-	sys := buildAnalyzeSystemPrompt()
+	sys := buildAnalysisSystemPrompt()
 	for _, kind := range []string{"weather", "music", "location"} {
 		if !strings.Contains(sys, kind) {
 			t.Errorf("system prompt should reference %q so the LLM treats it as ambient context; got: %s", kind, sys)
@@ -140,7 +137,7 @@ func TestBuildAnalyzeSystemPromptMentionsContextKinds(t *testing.T) {
 }
 
 func TestBuildAnalyzeSystemPromptRejectsTechnicalEntityNoise(t *testing.T) {
-	sys := buildAnalyzeSystemPrompt()
+	sys := buildAnalysisSystemPrompt()
 	for _, needle := range []string{
 		`Never create entities named "theme", "OCR", "ORC", "photo", "image", "caption", "artifact", "text", "unknown", "untitled"`,
 		`"quality tuning", "quality tuning lab", "debug", "fixture", "scenario", "receipt", "screenshot", "bookmark", or "link"`,
@@ -188,29 +185,15 @@ func TestPromptProfileDefaultsToBalanced(t *testing.T) {
 	}
 }
 
-func TestStrictPromptProfileAddsConservativeRules(t *testing.T) {
-	sys := buildAnalyzeSystemPromptForProfile("strict")
+func TestAnalyzePromptStatesProposalAndPrivacyRules(t *testing.T) {
+	sys := buildAnalysisSystemPrompt()
 	for _, needle := range []string{
-		"Prompt profile: strict.",
-		"Prefer omission over weak inference.",
-		"Single ordinary records should usually produce no story-level inference.",
-		"single photo, OCR, receipt, debug, or quality-tuning captures",
+		"AI output is proposal-first",
+		"privacy_decisions marked drop, redact, localOnly, or blockCloud",
+		"If tone is ambiguous",
 	} {
 		if !strings.Contains(sys, needle) {
-			t.Errorf("strict prompt missing %q; got: %s", needle, sys)
-		}
-	}
-}
-
-func TestAnalyzePromptIgnoresDebugProvenance(t *testing.T) {
-	sys := buildAnalyzeSystemPromptForProfile("balanced")
-	for _, needle := range []string{
-		`"quality tuning lab"`,
-		"Ignore debug provenance strings",
-		"must never become tags, themes, entities, candidate edges, summaries, salience evidence, reflection hints, or storyline anchors",
-	} {
-		if !strings.Contains(sys, needle) {
-			t.Errorf("analyze prompt missing debug provenance rule %q; got: %s", needle, sys)
+			t.Errorf("analysis prompt missing rule %q; got: %s", needle, sys)
 		}
 	}
 }

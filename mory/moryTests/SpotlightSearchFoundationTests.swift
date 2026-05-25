@@ -401,7 +401,7 @@ private final class RecordingSpotlightIndexService: SpotlightIndexServicing {
     }
 }
 
-private struct SearchStubRecordAnalysisService: RecordAnalysisServing {
+private struct SearchStubRecordAnalysisService: ReflectionAnalysisServing {
     func analyze(
         record: RecordShell,
         artifacts: [Artifact],

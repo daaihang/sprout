@@ -24,7 +24,7 @@ flowchart LR
     B --> C["Optional cloud transcript refinement"]
     C --> D["User edits text"]
     D --> E["Save"]
-    E --> F["v7 analysis"]
+    E --> F["Analysis"]
 ```
 
 Current risk: transcript refinement can apply after the user starts editing.
@@ -37,7 +37,7 @@ flowchart LR
     B --> C["Typed evidence bundle"]
     C --> D["Normal composer cards"]
     D --> E["Save normal memory"]
-    E --> F["v7 analysis uses artifacts and affect"]
+    E --> F["Analysis uses artifacts and affect"]
 ```
 
 Current risk: imported evidence is visible as cards, but original bundle/session provenance is not fully user-visible.
@@ -59,7 +59,7 @@ Current risk: if handoff fails, recovery exists but the user may not understand 
 
 ```mermaid
 flowchart LR
-    A["v7 analysis completes"] --> B["Analysis/proposals stored"]
+    A["Analysis completes"] --> B["Analysis/proposals stored"]
     B --> C["GraphDelta review / People detail / Questions"]
     C --> D["User applies or corrects"]
     D --> E["CorrectionEvent feeds future context"]

@@ -8,7 +8,7 @@ import SwiftData
 struct MoryApp: App {
     @UIApplicationDelegateAdaptor(MoryAppDelegate.self) private var appDelegate
 
-    private let analysisService: any RecordAnalysisServing
+    private let analysisService: any ReflectionAnalysisServing
     private let cloudIntelligenceService: any CloudIntelligenceServing
     private let remotePushSyncService: any RemotePushSyncing
     private let notificationOrchestrator: NotificationOrchestrator
@@ -29,7 +29,7 @@ struct MoryApp: App {
         let apiConfiguration = MoryAPIConfiguration.fromBundle()
         let client = MoryAPIClient(configuration: apiConfiguration)
         let tokenProvider = MoryAuthTokenProvider(apiClient: client, credentialStore: credentialStore)
-        let analysisService = RemoteRecordAnalysisService(
+        let analysisService = RemoteReflectionAnalysisService(
             apiClient: client,
             tokenProvider: tokenProvider
         )

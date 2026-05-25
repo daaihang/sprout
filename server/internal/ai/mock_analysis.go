@@ -5,11 +5,25 @@ import (
 	"strings"
 )
 
-func (p *MockProvider) Analyze(_ context.Context, req AnalyzeRequest, user UserContext) (AnalyzeResult, error) {
+func (p *MockProvider) Analyze(_ context.Context, req AnalysisRequest, _ UserContext) (AnalysisResult, error) {
 	if err := req.Validate(); err != nil {
-		return AnalyzeResult{}, err
+		return AnalysisResult{}, err
 	}
 
+	analysis := mockAnalysisRecordResponse(req)
+	response := BuildAnalysisResponse(req, analysis)
+	return AnalysisResult{
+		Response: response,
+		Provider: p.Name(),
+		Model:    "mock-analysis",
+		Usage: Usage{
+			InputTokens:  len(req.RecordShell.RawText)/4 + len(req.Artifacts)*12 + len(req.ContextPack.RelatedMemories)*16,
+			OutputTokens: 120 + len(response.AffectProposals)*16 + len(response.ReflectionCandidates)*24,
+		},
+	}, nil
+}
+
+func mockAnalysisRecordResponse(req AnalysisRequest) AnalysisRecordResponse {
 	parts := []string{req.RecordShell.RawText}
 	for _, artifact := range req.Artifacts {
 		parts = append(parts, strings.TrimSpace(strings.Join([]string{
@@ -70,7 +84,6 @@ func (p *MockProvider) Analyze(_ context.Context, req AnalyzeRequest, user UserC
 			})
 		}
 	}
-
 	if containsAny(lower, "妈妈", "母亲", "mom", "mother") {
 		confidence := 0.93
 		entities = append(entities, EntityMention{
@@ -104,10 +117,11 @@ func (p *MockProvider) Analyze(_ context.Context, req AnalyzeRequest, user UserC
 	}
 	if containsAny(lower, "决定", "decide", "should", "选择") {
 		confidence := 0.78
+		title := firstMeaningfulTitle(content, "pending decision")
 		entities = append(entities, EntityMention{
 			Kind:       "decision",
-			Name:       firstMeaningfulTitle(content, "pending decision"),
-			Canonical:  firstMeaningfulTitle(content, "pending decision"),
+			Name:       title,
+			Canonical:  title,
 			Confidence: &confidence,
 		})
 	}
@@ -125,7 +139,7 @@ func (p *MockProvider) Analyze(_ context.Context, req AnalyzeRequest, user UserC
 
 	intensity := 2.0
 	confidence := 0.84
-	resp := NormalizeResponse(AnalyzeResponse{
+	return NormalizeAnalysisRecordResponse(AnalysisRecordResponse{
 		Tags:           tags,
 		Emotion:        EmotionResult{Label: emotionLabel, Intensity: &intensity, Confidence: &confidence},
 		Entities:       entities,
@@ -140,11 +154,4 @@ func (p *MockProvider) Analyze(_ context.Context, req AnalyzeRequest, user UserC
 			ExpiresAt: oneHourFromNow(),
 		},
 	})
-
-	return AnalyzeResult{
-		Response: resp,
-		Provider: p.Name(),
-		Model:    "mock-analyzer-v1",
-		Usage:    Usage{InputTokens: len(content) / 4, OutputTokens: 120},
-	}, nil
 }

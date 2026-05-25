@@ -1,9 +1,9 @@
 import Foundation
 
-struct AnalyzeResponseMapper {
+struct AnalysisRecordResponseMapper {
     private let entityQualityPolicy = EntityQualityPolicy()
 
-    func map(recordID: UUID, response: AnalyzeResponseEnvelope, createdAt: Date = .now) -> RecordAnalysisSnapshot {
+    func map(recordID: UUID, response: AnalysisRecordResponse, createdAt: Date = .now) -> RecordAnalysisSnapshot {
         RecordAnalysisSnapshot(
             recordID: recordID,
             summary: bestSummary(from: response),
@@ -19,13 +19,13 @@ struct AnalyzeResponseMapper {
         )
     }
 
-    private func bestSummary(from response: AnalyzeResponseEnvelope) -> String {
+    private func bestSummary(from response: AnalysisRecordResponse) -> String {
         let primary = response.summary?.trimmingCharacters(in: .whitespacesAndNewlines)
         if let primary, !primary.isEmpty { return primary }
         return response.insight.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private func normalizedThemes(from response: AnalyzeResponseEnvelope) -> [String] {
+    private func normalizedThemes(from response: AnalysisRecordResponse) -> [String] {
         let themeEntities = response.entities
             .filter { $0.kind.lowercased() == EntityKind.theme.rawValue }
             .map(\.name)
@@ -35,7 +35,7 @@ struct AnalyzeResponseMapper {
         return Array(NSOrderedSet(array: filtered)) as? [String] ?? filtered
     }
 
-    private func buildEmotionInterpretation(from response: AnalyzeResponseEnvelope) -> String {
+    private func buildEmotionInterpretation(from response: AnalysisRecordResponse) -> String {
         if let interpretation = response.emotion.interpretation?.trimmingCharacters(in: .whitespacesAndNewlines), !interpretation.isEmpty {
             return interpretation
         }
@@ -45,7 +45,7 @@ struct AnalyzeResponseMapper {
         return response.emotion.label
     }
 
-    private func inferredSalienceScore(from response: AnalyzeResponseEnvelope) -> Double {
+    private func inferredSalienceScore(from response: AnalysisRecordResponse) -> Double {
         var score = 0.25
         score += min(Double(response.entities.count) * 0.08, 0.32)
         score += min(Double(response.candidateEdges.count) * 0.05, 0.20)
@@ -54,7 +54,7 @@ struct AnalyzeResponseMapper {
         return min(score, 1)
     }
 
-    private func retrievalTerms(from response: AnalyzeResponseEnvelope) -> [String] {
+    private func retrievalTerms(from response: AnalysisRecordResponse) -> [String] {
         let entityNames = response.entities
             .compactMap(mapEntity)
             .map(\.name)
@@ -69,12 +69,12 @@ struct AnalyzeResponseMapper {
         ) as? [String] ?? values
     }
 
-    private func inferEntities(from response: AnalyzeResponseEnvelope) -> [EntityReference] {
+    private func inferEntities(from response: AnalysisRecordResponse) -> [EntityReference] {
         let results = entityQualityPolicy.filter(response.entities.compactMap(mapEntity))
         return Array(results.prefix(8))
     }
 
-    private func mapEntity(_ entity: AnalyzeResponseEnvelope.Entity) -> EntityReference? {
+    private func mapEntity(_ entity: AnalysisRecordResponse.Entity) -> EntityReference? {
         guard let kind = EntityKind(rawValue: entity.kind.lowercased()) else { return nil }
         let rawName = entity.name.trimmingCharacters(in: .whitespacesAndNewlines)
         let canonicalName = entity.canonicalName?.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -92,7 +92,7 @@ struct AnalyzeResponseMapper {
         )
     }
 
-    private func inferCandidateEdges(from response: AnalyzeResponseEnvelope) -> [CandidateEntityEdge] {
+    private func inferCandidateEdges(from response: AnalysisRecordResponse) -> [CandidateEntityEdge] {
         let entityPolicy = entityQualityPolicy
         return response.candidateEdges.compactMap { edge -> CandidateEntityEdge? in
             guard
@@ -120,7 +120,7 @@ struct AnalyzeResponseMapper {
         }
     }
 
-    private func inferFollowUpCandidates(from response: AnalyzeResponseEnvelope) -> [FollowUpCandidate] {
+    private func inferFollowUpCandidates(from response: AnalysisRecordResponse) -> [FollowUpCandidate] {
         guard let followUp = response.followUp else { return [] }
         return [
             FollowUpCandidate(
@@ -146,7 +146,7 @@ struct AnalyzeResponseMapper {
     }
 }
 
-nonisolated struct AnalyzeResponseEnvelope: Codable, Sendable {
+nonisolated struct AnalysisRecordResponse: Codable, Sendable {
     struct Emotion: Codable, Sendable {
         var label: String
         var intensity: Double?

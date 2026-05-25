@@ -12,8 +12,8 @@ This catalog lists the active server endpoints and the iOS client families that 
 | POST | `/auth/refresh` | Refresh token | Refresh token |
 | POST | `/api/auth/refresh` | Refresh token alias | Refresh token |
 | POST | `/api/analysis/preview` | Legacy preview | No |
-| POST | `/api/analysis/records` | Legacy analyze | Bearer |
-| POST | `/api/analyze/v7` | Production v7 analysis | Bearer |
+| POST | `/api/analyze` | Unified memory analysis | Bearer |
+| POST | `/api/analyze` | Production Analysis | Bearer |
 | POST | `/api/reflections/generate` | Generate reflection | Bearer |
 | POST | `/api/reflections/replay` | Replay reflection | Bearer |
 | POST | `/api/intelligence/refine-transcript` | Voice transcript refinement | Bearer |
@@ -32,7 +32,7 @@ This catalog lists the active server endpoints and the iOS client families that 
 | File Family | Main Calls |
 | --- | --- |
 | `MoryAPIClient+Auth` | Apple auth, refresh |
-| `MoryAPIClient+Analyze` | legacy analyze, v7 analyze, reflection generate/replay |
+| `MoryAPIClient+Analyze` | Analysis, reflection generate/replay |
 | `MoryAPIClient+Notifications` | transcript refine, questions, chapters, photo analysis |
 | `MoryAPIClient+Push` | push register/enqueue/writeback |
 | `MoryAPIClient+Eval` | provider eval, server metrics |
@@ -41,15 +41,15 @@ This catalog lists the active server endpoints and the iOS client families that 
 
 Authenticated endpoints use Bearer access tokens. Refresh uses the refresh token as Bearer. Recent auth handling clears credentials and moves the app to unauthenticated when refresh fails, but every feature document should still specify where a cloud failure appears to users.
 
-## Analyze v7 Contract Role
+## Analysis Contract Role
 
-`/api/analyze/v7` is the production new-memory analysis path. Legacy `/api/analysis/records` remains present but should not be the main new-memory path.
+`/api/analyze` is the production new-memory analysis path. Legacy `/api/analyze` remains present but should not be the main new-memory path.
 
-v7 request includes current record/artifacts and context pack inputs. v7 response includes analysis plus affect, graph delta, profile, merge/split, arc, reflection, question, and quality proposal families.
+Analysis request includes current record/artifacts and context pack inputs. Analysis response includes analysis plus affect, graph delta, profile, merge/split, arc, reflection, question, and quality proposal families.
 
 ## Current API Gaps
 
 1. Subscription verify exists, but entitlement and quota are not integrated into feature gates.
 2. External Capture and Journaling are local/app-side and have no server contract.
 3. Error status is technically captured but not always translated into product guidance.
-4. OpenAPI is not guaranteed to cover every v7-native proposal shape in enough detail for client implementation without code inspection.
+4. OpenAPI is not guaranteed to cover every Analysis-native proposal shape in enough detail for client implementation without code inspection.

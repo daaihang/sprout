@@ -2,21 +2,20 @@ package ai
 
 import "strings"
 
-const V7AnalyzePromptVersion = "mory-v7-analyze-2026-05-23"
+const AnalysisPromptVersion = "mory-analysis-2026-05-23"
 
-type AnalyzeV7Request struct {
-	SchemaVersion      int                         `json:"schema_version"`
-	ClientRequestID    string                      `json:"client_request_id,omitempty"`
-	RecordShell        AnalyzeRecordShell          `json:"record_shell"`
-	Artifacts          []AnalyzeArtifact           `json:"artifacts"`
-	KnownEntities      []KnownEntityReference      `json:"known_entities,omitempty"`
-	MoodEvidence       []AnalyzeV7MoodEvidence     `json:"mood_evidence,omitempty"`
-	ContextPack        AnalyzeV7ContextPack        `json:"context_pack"`
-	ClientCapabilities AnalyzeV7ClientCapabilities `json:"client_capabilities,omitempty"`
-	DebugOptions       *DebugOptions               `json:"debug_options,omitempty"`
+type AnalysisRequest struct {
+	ClientRequestID    string                     `json:"client_request_id,omitempty"`
+	RecordShell        AnalysisRecordShell        `json:"record_shell"`
+	Artifacts          []AnalysisArtifact         `json:"artifacts"`
+	KnownEntities      []KnownEntityReference     `json:"known_entities,omitempty"`
+	MoodEvidence       []AnalysisMoodEvidence     `json:"mood_evidence,omitempty"`
+	ContextPack        AnalysisContextPack        `json:"context_pack"`
+	ClientCapabilities AnalysisClientCapabilities `json:"client_capabilities,omitempty"`
+	DebugOptions       *DebugOptions              `json:"debug_options,omitempty"`
 }
 
-type AnalyzeV7MoodEvidence struct {
+type AnalysisMoodEvidence struct {
 	ID            string            `json:"id,omitempty"`
 	RecordID      string            `json:"record_id,omitempty"`
 	Valence       *float64          `json:"valence,omitempty"`
@@ -31,23 +30,23 @@ type AnalyzeV7MoodEvidence struct {
 	Evidence      []EvidenceSnippet `json:"evidence,omitempty"`
 }
 
-type AnalyzeV7ContextPack struct {
-	PackID            string                      `json:"pack_id,omitempty"`
-	TargetRecordID    string                      `json:"target_record_id,omitempty"`
-	SelfBrief         *AnalyzeV7SelfBrief         `json:"self_brief,omitempty"`
-	KnownProfiles     []AnalyzeV7KnownProfile     `json:"known_profiles,omitempty"`
-	RelatedMemories   []AnalyzeV7RelatedMemory    `json:"related_memories,omitempty"`
-	RelatedArcs       []AnalyzeV7RelatedArc       `json:"related_arcs,omitempty"`
-	PriorReflections  []AnalyzeV7PriorReflection  `json:"prior_reflections,omitempty"`
-	CorrectionSignals []AnalyzeV7CorrectionSignal `json:"correction_signals,omitempty"`
-	AffectHistory     []AnalyzeV7AffectHistory    `json:"affect_history,omitempty"`
-	PrivacyDecisions  []AnalyzeV7PrivacyDecision  `json:"privacy_decisions,omitempty"`
-	BudgetReport      AnalyzeV7BudgetReport       `json:"budget_report,omitempty"`
-	RetrievalReport   AnalyzeV7RetrievalReport    `json:"retrieval_report,omitempty"`
-	BuiltAt           string                      `json:"built_at,omitempty"`
+type AnalysisContextPack struct {
+	PackID            string                     `json:"pack_id,omitempty"`
+	TargetRecordID    string                     `json:"target_record_id,omitempty"`
+	SelfBrief         *AnalysisSelfBrief         `json:"self_brief,omitempty"`
+	KnownProfiles     []AnalysisKnownProfile     `json:"known_profiles,omitempty"`
+	RelatedMemories   []AnalysisRelatedMemory    `json:"related_memories,omitempty"`
+	RelatedArcs       []AnalysisRelatedArc       `json:"related_arcs,omitempty"`
+	PriorReflections  []AnalysisPriorReflection  `json:"prior_reflections,omitempty"`
+	CorrectionSignals []AnalysisCorrectionSignal `json:"correction_signals,omitempty"`
+	AffectHistory     []AnalysisAffectHistory    `json:"affect_history,omitempty"`
+	PrivacyDecisions  []AnalysisPrivacyDecision  `json:"privacy_decisions,omitempty"`
+	BudgetReport      AnalysisBudgetReport       `json:"budget_report,omitempty"`
+	RetrievalReport   AnalysisRetrievalReport    `json:"retrieval_report,omitempty"`
+	BuiltAt           string                     `json:"built_at,omitempty"`
 }
 
-type AnalyzeV7SelfBrief struct {
+type AnalysisSelfBrief struct {
 	SelfEntityID    string   `json:"self_entity_id,omitempty"`
 	DisplayName     string   `json:"display_name,omitempty"`
 	Aliases         []string `json:"aliases,omitempty"`
@@ -57,7 +56,7 @@ type AnalyzeV7SelfBrief struct {
 	PrivacyMode     string   `json:"privacy_mode,omitempty"`
 }
 
-type AnalyzeV7KnownProfile struct {
+type AnalysisKnownProfile struct {
 	EntityID            string   `json:"entity_id,omitempty"`
 	Kind                string   `json:"kind,omitempty"`
 	DisplayName         string   `json:"display_name,omitempty"`
@@ -68,7 +67,7 @@ type AnalyzeV7KnownProfile struct {
 	InclusionReason     string   `json:"inclusion_reason,omitempty"`
 }
 
-type AnalyzeV7RelatedMemory struct {
+type AnalysisRelatedMemory struct {
 	RecordID         string   `json:"record_id,omitempty"`
 	Title            string   `json:"title,omitempty"`
 	Snippet          string   `json:"snippet,omitempty"`
@@ -78,7 +77,7 @@ type AnalyzeV7RelatedMemory struct {
 	InclusionReasons []string `json:"inclusion_reasons,omitempty"`
 }
 
-type AnalyzeV7RelatedArc struct {
+type AnalysisRelatedArc struct {
 	ArcID           string   `json:"arc_id,omitempty"`
 	Title           string   `json:"title,omitempty"`
 	Summary         string   `json:"summary,omitempty"`
@@ -87,7 +86,7 @@ type AnalyzeV7RelatedArc struct {
 	Score           float64  `json:"score,omitempty"`
 }
 
-type AnalyzeV7PriorReflection struct {
+type AnalysisPriorReflection struct {
 	ReflectionID    string   `json:"reflection_id,omitempty"`
 	Title           string   `json:"title,omitempty"`
 	EvidenceSummary string   `json:"evidence_summary,omitempty"`
@@ -96,7 +95,7 @@ type AnalyzeV7PriorReflection struct {
 	Confidence      float64  `json:"confidence,omitempty"`
 }
 
-type AnalyzeV7CorrectionSignal struct {
+type AnalysisCorrectionSignal struct {
 	ID         string `json:"id,omitempty"`
 	Kind       string `json:"kind,omitempty"`
 	TargetType string `json:"target_type,omitempty"`
@@ -106,7 +105,7 @@ type AnalyzeV7CorrectionSignal struct {
 	AnsweredAt string `json:"answered_at,omitempty"`
 }
 
-type AnalyzeV7AffectHistory struct {
+type AnalysisAffectHistory struct {
 	Mood             string   `json:"mood,omitempty"`
 	Count            int      `json:"count,omitempty"`
 	LatestRecordID   string   `json:"latest_record_id,omitempty"`
@@ -117,14 +116,14 @@ type AnalyzeV7AffectHistory struct {
 	Sources          []string `json:"sources,omitempty"`
 }
 
-type AnalyzeV7PrivacyDecision struct {
+type AnalysisPrivacyDecision struct {
 	SourceType string `json:"source_type,omitempty"`
 	SourceID   string `json:"source_id,omitempty"`
 	Action     string `json:"action,omitempty"`
 	Reason     string `json:"reason,omitempty"`
 }
 
-type AnalyzeV7BudgetReport struct {
+type AnalysisBudgetReport struct {
 	MaxProfiles             int `json:"max_profiles,omitempty"`
 	MaxRelatedMemories      int `json:"max_related_memories,omitempty"`
 	MaxArcs                 int `json:"max_arcs,omitempty"`
@@ -141,14 +140,14 @@ type AnalyzeV7BudgetReport struct {
 	DroppedByPrivacy        int `json:"dropped_by_privacy,omitempty"`
 }
 
-type AnalyzeV7RetrievalReport struct {
+type AnalysisRetrievalReport struct {
 	SemanticSearchStatus string   `json:"semantic_search_status,omitempty"`
 	RetrievalSources     []string `json:"retrieval_sources,omitempty"`
 	CandidateMemoryCount int      `json:"candidate_memory_count,omitempty"`
 	FallbackReason       string   `json:"fallback_reason,omitempty"`
 }
 
-type AnalyzeV7ClientCapabilities struct {
+type AnalysisClientCapabilities struct {
 	SupportsProfileProposals       bool `json:"supports_profile_proposals,omitempty"`
 	SupportsMergeCandidates        bool `json:"supports_merge_candidates,omitempty"`
 	SupportsAffectSnapshot         bool `json:"supports_affect_snapshot,omitempty"`
@@ -156,19 +155,19 @@ type AnalyzeV7ClientCapabilities struct {
 	SupportsProposalOnlyWriteback  bool `json:"supports_proposal_only_writeback,omitempty"`
 }
 
-type AnalyzeV7Response struct {
-	Analysis               AnalyzeResponse                  `json:"analysis"`
-	AffectProposals        []AnalyzeV7AffectProposal        `json:"affect_proposals"`
-	GraphDeltaProposals    []AnalyzeV7GraphDeltaProposal    `json:"graph_delta_proposals"`
-	ProfileUpdateProposals []AnalyzeV7ProfileUpdateProposal `json:"profile_update_proposals"`
-	MergeSplitCandidates   []AnalyzeV7MergeSplitCandidate   `json:"merge_split_candidates"`
-	ArcCandidates          []AnalyzeV7ArcCandidate          `json:"arc_candidates"`
-	ReflectionCandidates   []AnalyzeV7ReflectionCandidate   `json:"reflection_candidates"`
-	QuestionCandidates     []AnalyzeV7QuestionCandidate     `json:"question_candidates"`
-	Quality                AnalyzeV7Quality                 `json:"quality"`
+type AnalysisResponse struct {
+	Analysis               AnalysisRecordResponse          `json:"analysis"`
+	AffectProposals        []AnalysisAffectProposal        `json:"affect_proposals"`
+	GraphDeltaProposals    []AnalysisGraphDeltaProposal    `json:"graph_delta_proposals"`
+	ProfileUpdateProposals []AnalysisProfileUpdateProposal `json:"profile_update_proposals"`
+	MergeSplitCandidates   []AnalysisMergeSplitCandidate   `json:"merge_split_candidates"`
+	ArcCandidates          []AnalysisArcCandidate          `json:"arc_candidates"`
+	ReflectionCandidates   []AnalysisReflectionCandidate   `json:"reflection_candidates"`
+	QuestionCandidates     []AnalysisQuestionCandidate     `json:"question_candidates"`
+	Quality                AnalysisQuality                 `json:"quality"`
 }
 
-type AnalyzeV7AffectProposal struct {
+type AnalysisAffectProposal struct {
 	ProposalID           string            `json:"proposal_id,omitempty"`
 	Valence              *float64          `json:"valence,omitempty"`
 	Arousal              *float64          `json:"arousal,omitempty"`
@@ -182,15 +181,15 @@ type AnalyzeV7AffectProposal struct {
 	RawInput             string            `json:"raw_input,omitempty"`
 }
 
-type AnalyzeV7GraphDeltaProposal struct {
-	ProposalID           string                         `json:"proposal_id,omitempty"`
-	Operations           []AnalyzeV7GraphDeltaOperation `json:"operations"`
-	Confidence           *float64                       `json:"confidence,omitempty"`
-	RequiresConfirmation bool                           `json:"requires_confirmation"`
-	Evidence             []EvidenceSnippet              `json:"evidence"`
+type AnalysisGraphDeltaProposal struct {
+	ProposalID           string                        `json:"proposal_id,omitempty"`
+	Operations           []AnalysisGraphDeltaOperation `json:"operations"`
+	Confidence           *float64                      `json:"confidence,omitempty"`
+	RequiresConfirmation bool                          `json:"requires_confirmation"`
+	Evidence             []EvidenceSnippet             `json:"evidence"`
 }
 
-type AnalyzeV7GraphDeltaOperation struct {
+type AnalysisGraphDeltaOperation struct {
 	Kind         string            `json:"kind"`
 	TargetType   string            `json:"target_type"`
 	TargetID     string            `json:"target_id"`
@@ -200,7 +199,7 @@ type AnalyzeV7GraphDeltaOperation struct {
 	Metadata     map[string]string `json:"metadata"`
 }
 
-type AnalyzeV7ProfileUpdateProposal struct {
+type AnalysisProfileUpdateProposal struct {
 	ProposalID           string            `json:"proposal_id,omitempty"`
 	TargetEntityID       string            `json:"target_entity_id"`
 	ProfileKind          string            `json:"profile_kind"`
@@ -211,7 +210,7 @@ type AnalyzeV7ProfileUpdateProposal struct {
 	RequiresConfirmation bool              `json:"requires_confirmation"`
 }
 
-type AnalyzeV7MergeSplitCandidate struct {
+type AnalysisMergeSplitCandidate struct {
 	CandidateID      string            `json:"candidate_id,omitempty"`
 	Kind             string            `json:"kind"`
 	SourceEntityIDs  []string          `json:"source_entity_ids"`
@@ -222,7 +221,7 @@ type AnalyzeV7MergeSplitCandidate struct {
 	Question         string            `json:"question,omitempty"`
 }
 
-type AnalyzeV7ArcCandidate struct {
+type AnalysisArcCandidate struct {
 	CandidateID     string   `json:"candidate_id,omitempty"`
 	Title           string   `json:"title"`
 	Summary         string   `json:"summary"`
@@ -230,7 +229,7 @@ type AnalyzeV7ArcCandidate struct {
 	Confidence      *float64 `json:"confidence,omitempty"`
 }
 
-type AnalyzeV7ReflectionCandidate struct {
+type AnalysisReflectionCandidate struct {
 	CandidateID       string   `json:"candidate_id,omitempty"`
 	Title             string   `json:"title"`
 	Body              string   `json:"body"`
@@ -241,7 +240,7 @@ type AnalyzeV7ReflectionCandidate struct {
 	SourceEntityIDs   []string `json:"source_entity_ids"`
 }
 
-type AnalyzeV7QuestionCandidate struct {
+type AnalysisQuestionCandidate struct {
 	CandidateID       string   `json:"candidate_id,omitempty"`
 	Kind              string   `json:"kind"`
 	Prompt            string   `json:"prompt"`
@@ -255,59 +254,40 @@ type AnalyzeV7QuestionCandidate struct {
 	SourceArtifactIDs []string `json:"source_artifact_ids"`
 }
 
-type AnalyzeV7Quality struct {
+type AnalysisQuality struct {
 	Confidence         float64  `json:"confidence"`
 	UncertaintyReasons []string `json:"uncertainty_reasons"`
 	NeedsUserCheck     []string `json:"needs_user_check"`
 }
 
-func (r AnalyzeV7Request) Validate() error {
-	if r.SchemaVersion != 7 {
-		return ErrInvalidAnalyzeRequest
-	}
+func (r AnalysisRequest) Validate() error {
 	content := strings.TrimSpace(r.RecordShell.RawText)
 	if content == "" && len(r.Artifacts) == 0 {
-		return ErrInvalidAnalyzeRequest
+		return ErrInvalidAnalysisRequest
 	}
 	if len(content) > 20000 {
-		return ErrInvalidAnalyzeRequest
+		return ErrInvalidAnalysisRequest
 	}
 	return nil
 }
 
-func (r AnalyzeV7Request) ToAnalyzeRequest() AnalyzeRequest {
-	return AnalyzeRequest{
-		SchemaVersion:      "analyze.v7",
-		ClientVersion:      "mory.v7",
-		ClientRequestID:    r.ClientRequestID,
-		AnalysisReason:     "capture_ingest_context_v7",
-		RecordShell:        r.RecordShell,
-		Artifacts:          r.Artifacts,
-		KnownEntities:      r.KnownEntities,
-		MoodEvidence:       r.MoodEvidence,
-		ContextPack:        &r.ContextPack,
-		ClientCapabilities: &r.ClientCapabilities,
-		DebugOptions:       r.DebugOptions,
-	}
-}
-
-func BuildAnalyzeV7Response(req AnalyzeV7Request, analysis AnalyzeResponse) AnalyzeV7Response {
-	analysis = NormalizeResponse(analysis)
-	quality := buildAnalyzeV7Quality(req, analysis)
-	return NormalizeAnalyzeV7Response(AnalyzeV7Response{
+func BuildAnalysisResponse(req AnalysisRequest, analysis AnalysisRecordResponse) AnalysisResponse {
+	analysis = NormalizeAnalysisRecordResponse(analysis)
+	quality := buildAnalysisQuality(req, analysis)
+	return NormalizeAnalysisResponse(AnalysisResponse{
 		Analysis:               analysis,
-		AffectProposals:        buildAnalyzeV7AffectProposals(req, analysis, quality),
-		GraphDeltaProposals:    []AnalyzeV7GraphDeltaProposal{},
-		ProfileUpdateProposals: []AnalyzeV7ProfileUpdateProposal{},
-		MergeSplitCandidates:   []AnalyzeV7MergeSplitCandidate{},
-		ArcCandidates:          buildAnalyzeV7ArcCandidates(req, analysis),
-		ReflectionCandidates:   buildAnalyzeV7ReflectionCandidates(req, analysis, quality),
-		QuestionCandidates:     buildAnalyzeV7QuestionCandidates(req, analysis, quality),
+		AffectProposals:        buildAnalysisAffectProposals(req, analysis, quality),
+		GraphDeltaProposals:    []AnalysisGraphDeltaProposal{},
+		ProfileUpdateProposals: []AnalysisProfileUpdateProposal{},
+		MergeSplitCandidates:   []AnalysisMergeSplitCandidate{},
+		ArcCandidates:          buildAnalysisArcCandidates(req, analysis),
+		ReflectionCandidates:   buildAnalysisReflectionCandidates(req, analysis, quality),
+		QuestionCandidates:     buildAnalysisQuestionCandidates(req, analysis, quality),
 		Quality:                quality,
 	})
 }
 
-func buildAnalyzeV7Quality(req AnalyzeV7Request, analysis AnalyzeResponse) AnalyzeV7Quality {
+func buildAnalysisQuality(req AnalysisRequest, analysis AnalysisRecordResponse) AnalysisQuality {
 	confidence := 0.5
 	if analysis.SalienceScore != nil {
 		confidence = clamp01(*analysis.SalienceScore)
@@ -340,16 +320,16 @@ func buildAnalyzeV7Quality(req AnalyzeV7Request, analysis AnalyzeResponse) Analy
 			break
 		}
 	}
-	return AnalyzeV7Quality{
+	return AnalysisQuality{
 		Confidence:         confidence,
 		UncertaintyReasons: uniqueStrings(reasons),
 		NeedsUserCheck:     uniqueStrings(needsUserCheck),
 	}
 }
 
-func buildAnalyzeV7AffectProposals(req AnalyzeV7Request, analysis AnalyzeResponse, quality AnalyzeV7Quality) []AnalyzeV7AffectProposal {
+func buildAnalysisAffectProposals(req AnalysisRequest, analysis AnalysisRecordResponse, quality AnalysisQuality) []AnalysisAffectProposal {
 	if strings.TrimSpace(analysis.Emotion.Label) == "" {
-		return []AnalyzeV7AffectProposal{}
+		return []AnalysisAffectProposal{}
 	}
 	evidence := []EvidenceSnippet{}
 	if strings.TrimSpace(req.RecordShell.RawText) != "" {
@@ -359,7 +339,7 @@ func buildAnalyzeV7AffectProposals(req AnalyzeV7Request, analysis AnalyzeRespons
 			CreatedAt: req.RecordShell.CreatedAt,
 		})
 	}
-	return []AnalyzeV7AffectProposal{
+	return []AnalysisAffectProposal{
 		{
 			Valence:              valenceForEmotionLabel(analysis.Emotion.Label),
 			Arousal:              arousalForEmotionLabel(analysis.Emotion.Label),
@@ -374,10 +354,10 @@ func buildAnalyzeV7AffectProposals(req AnalyzeV7Request, analysis AnalyzeRespons
 	}
 }
 
-func buildAnalyzeV7ReflectionCandidates(req AnalyzeV7Request, analysis AnalyzeResponse, quality AnalyzeV7Quality) []AnalyzeV7ReflectionCandidate {
+func buildAnalysisReflectionCandidates(req AnalysisRequest, analysis AnalysisRecordResponse, quality AnalysisQuality) []AnalysisReflectionCandidate {
 	hint := strings.TrimSpace(analysis.ReflectionHint)
 	if hint == "" || len(req.ContextPack.RelatedMemories) == 0 {
-		return []AnalyzeV7ReflectionCandidate{}
+		return []AnalysisReflectionCandidate{}
 	}
 	sourceIDs := []string{req.RecordShell.ID}
 	evidence := []string{}
@@ -387,7 +367,7 @@ func buildAnalyzeV7ReflectionCandidates(req AnalyzeV7Request, analysis AnalyzeRe
 			evidence = append(evidence, truncateForEvidence(memory.Snippet, 180))
 		}
 	}
-	return []AnalyzeV7ReflectionCandidate{
+	return []AnalysisReflectionCandidate{
 		{
 			Title:             "Pattern to revisit",
 			Body:              hint,
@@ -400,15 +380,15 @@ func buildAnalyzeV7ReflectionCandidates(req AnalyzeV7Request, analysis AnalyzeRe
 	}
 }
 
-func buildAnalyzeV7QuestionCandidates(req AnalyzeV7Request, analysis AnalyzeResponse, quality AnalyzeV7Quality) []AnalyzeV7QuestionCandidate {
+func buildAnalysisQuestionCandidates(req AnalysisRequest, analysis AnalysisRecordResponse, quality AnalysisQuality) []AnalysisQuestionCandidate {
 	if analysis.FollowUp == nil || strings.TrimSpace(analysis.FollowUp.Question) == "" {
-		return []AnalyzeV7QuestionCandidate{}
+		return []AnalysisQuestionCandidate{}
 	}
-	return []AnalyzeV7QuestionCandidate{
+	return []AnalysisQuestionCandidate{
 		{
 			Kind:              "dailyReflection",
 			Prompt:            analysis.FollowUp.Question,
-			Reason:            "Analyze v7 follow-up from current memory and context pack.",
+			Reason:            "Analysis follow-up from current memory and context pack.",
 			CandidateAnswers:  []string{},
 			Confidence:        quality.Confidence,
 			Sensitivity:       "normal",
@@ -420,15 +400,15 @@ func buildAnalyzeV7QuestionCandidates(req AnalyzeV7Request, analysis AnalyzeResp
 	}
 }
 
-func buildAnalyzeV7ArcCandidates(req AnalyzeV7Request, analysis AnalyzeResponse) []AnalyzeV7ArcCandidate {
+func buildAnalysisArcCandidates(req AnalysisRequest, analysis AnalysisRecordResponse) []AnalysisArcCandidate {
 	if analysis.SalienceScore == nil || *analysis.SalienceScore < 0.74 || len(req.ContextPack.RelatedMemories) < 2 {
-		return []AnalyzeV7ArcCandidate{}
+		return []AnalysisArcCandidate{}
 	}
 	sourceIDs := []string{req.RecordShell.ID}
 	for _, memory := range req.ContextPack.RelatedMemories {
 		sourceIDs = append(sourceIDs, memory.RecordID)
 	}
-	return []AnalyzeV7ArcCandidate{
+	return []AnalysisArcCandidate{
 		{
 			Title:           firstNonEmptyString(analysis.Summary, "Emerging pattern"),
 			Summary:         firstNonEmptyString(analysis.ReflectionHint, analysis.Insight),
@@ -481,7 +461,7 @@ func affectLabelsForEmotionLabel(label string) []string {
 	}
 }
 
-func toneHintsForEmotionLabel(label string, quality AnalyzeV7Quality) []string {
+func toneHintsForEmotionLabel(label string, quality AnalysisQuality) []string {
 	for _, check := range quality.NeedsUserCheck {
 		if check == "tone" {
 			return []string{"uncertain"}
@@ -495,7 +475,7 @@ func toneHintsForEmotionLabel(label string, quality AnalyzeV7Quality) []string {
 	}
 }
 
-func artifactIDs(artifacts []AnalyzeArtifact) []string {
+func artifactIDs(artifacts []AnalysisArtifact) []string {
 	result := []string{}
 	for _, artifact := range artifacts {
 		if strings.TrimSpace(artifact.ID) != "" {

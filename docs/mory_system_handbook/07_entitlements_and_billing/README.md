@@ -22,7 +22,7 @@ This document defines future gating language and likely product boundaries. It i
 | Basic auto context | Available | Available | Client permissions |
 | Journaling import | Available | Available | Client capability |
 | Share/AppIntent import | Available | Available | Client capability |
-| v7 cloud analysis | Limited quota | Higher quota | Server |
+| cloud Analysis | Limited quota | Higher quota | Server |
 | Full-history context pack | Limited/recent window | Deeper retrieval | Server and client |
 | Rich PersonProfile portrait | Basic fields | Full portrait/evidence | Server and client |
 | Graph/Arc/Reflection depth | Basic | Full | Server and client |

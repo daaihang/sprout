@@ -5,8 +5,8 @@ import (
 	"fmt"
 )
 
-func buildAnalyzeV7SystemPrompt() string {
-	return `You are the Mory v7 long-term memory analysis service.
+func buildAnalysisSystemPrompt() string {
+	return `You are the Mory long-term memory analysis service.
 Return exactly one JSON object and no markdown.
 The JSON must match this top-level shape:
 {
@@ -33,20 +33,28 @@ The JSON must match this top-level shape:
 }
 Use empty arrays instead of null for all proposal collections.
 Use the context_pack as bounded evidence; never infer from hidden history.
-Preserve the user's language and avoid over-generalizing from one thin record.
+Treat weather, music, location, photos, OCR, links, receipts, screenshots, menus, invoices, and calendar captures as ambient carriers unless the user's text or context_pack makes them meaningful.
+Metadata-only links, dramatic article titles, screenshots, receipts, menus, invoices, and calendar OCR are carriers, not automatic entities or storylines.
+Multiple ambient artifacts near the same time do not create a storyline by themselves.
+Preserve the user's language. Chinese or mixed Chinese/English notes can be meaningful. Avoid over-generalizing from one thin record.
+Never create entities named "theme", "OCR", "ORC", "photo", "image", "caption", "artifact", "text", "unknown", "untitled", "quality tuning", "quality tuning lab", "debug", "fixture", "scenario", "receipt", "screenshot", "bookmark", or "link".
+Do not turn artifact-processing labels, OCR labels, or visual classifier labels into entities.
+For weak metadata-only captures, return entities: [], candidate_edges: [], salience_score <= 0.25.
 AI output is proposal-first: never claim merges, relationships, or self-profile changes as facts unless evidence is explicit.
+For same-name people, do not merge identities without explicit user confirmation or strong evidence.
 If tone is ambiguous, add "tone" to quality.needs_user_check and set affect proposal requires_confirmation to true.
 Only create arc/reflection candidates when related_memories, related_arcs, or prior_reflections provide real longitudinal evidence.
+Emotion alone is not enough for a reflection. Stronger evidence includes first-person speech transcript that names a recurring constraint, a concrete commitment such as protect mornings for writing before meetings, or repeated concrete decisions.
+Sensitive stress, health, money, or despair language should be handled conservatively.
 Do not include sensitive details that privacy_decisions marked drop, redact, localOnly, or blockCloud.`
 }
 
-func buildAnalyzeV7UserPrompt(req AnalyzeV7Request, user UserContext) (string, error) {
+func buildAnalysisUserPrompt(req AnalysisRequest, user UserContext) (string, error) {
 	payload := map[string]any{
 		"user": map[string]string{
 			"user_id": user.UserID,
 			"tier":    user.Tier,
 		},
-		"schema_version":      req.SchemaVersion,
 		"client_request_id":   req.ClientRequestID,
 		"record_shell":        req.RecordShell,
 		"artifacts":           req.Artifacts,
@@ -57,45 +65,45 @@ func buildAnalyzeV7UserPrompt(req AnalyzeV7Request, user UserContext) (string, e
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
-		return "", fmt.Errorf("marshal analyze v7 prompt payload: %w", err)
+		return "", fmt.Errorf("marshal analysis prompt payload: %w", err)
 	}
 	return string(body), nil
 }
 
-func parseAnalyzeV7Response(raw string) (AnalyzeV7Response, error) {
+func parseAnalysisResponse(raw string) (AnalysisResponse, error) {
 	candidate := extractJSONObject(raw)
 	if candidate == "" {
-		return AnalyzeV7Response{}, fmt.Errorf("no JSON object found in analyze v7 model response: %s", summarizeRaw(raw))
+		return AnalysisResponse{}, fmt.Errorf("no JSON object found in analysis model response: %s", summarizeRaw(raw))
 	}
-	var resp AnalyzeV7Response
+	var resp AnalysisResponse
 	if err := json.Unmarshal([]byte(candidate), &resp); err != nil {
-		return AnalyzeV7Response{}, fmt.Errorf("decode analyze v7 response: %w; raw=%s", err, summarizeRaw(raw))
+		return AnalysisResponse{}, fmt.Errorf("decode analysis response: %w; raw=%s", err, summarizeRaw(raw))
 	}
-	return NormalizeAnalyzeV7Response(resp), nil
+	return NormalizeAnalysisResponse(resp), nil
 }
 
-func NormalizeAnalyzeV7Response(resp AnalyzeV7Response) AnalyzeV7Response {
-	resp.Analysis = NormalizeResponse(resp.Analysis)
+func NormalizeAnalysisResponse(resp AnalysisResponse) AnalysisResponse {
+	resp.Analysis = NormalizeAnalysisRecordResponse(resp.Analysis)
 	if resp.AffectProposals == nil {
-		resp.AffectProposals = []AnalyzeV7AffectProposal{}
+		resp.AffectProposals = []AnalysisAffectProposal{}
 	}
 	if resp.GraphDeltaProposals == nil {
-		resp.GraphDeltaProposals = []AnalyzeV7GraphDeltaProposal{}
+		resp.GraphDeltaProposals = []AnalysisGraphDeltaProposal{}
 	}
 	if resp.ProfileUpdateProposals == nil {
-		resp.ProfileUpdateProposals = []AnalyzeV7ProfileUpdateProposal{}
+		resp.ProfileUpdateProposals = []AnalysisProfileUpdateProposal{}
 	}
 	if resp.MergeSplitCandidates == nil {
-		resp.MergeSplitCandidates = []AnalyzeV7MergeSplitCandidate{}
+		resp.MergeSplitCandidates = []AnalysisMergeSplitCandidate{}
 	}
 	if resp.ArcCandidates == nil {
-		resp.ArcCandidates = []AnalyzeV7ArcCandidate{}
+		resp.ArcCandidates = []AnalysisArcCandidate{}
 	}
 	if resp.ReflectionCandidates == nil {
-		resp.ReflectionCandidates = []AnalyzeV7ReflectionCandidate{}
+		resp.ReflectionCandidates = []AnalysisReflectionCandidate{}
 	}
 	if resp.QuestionCandidates == nil {
-		resp.QuestionCandidates = []AnalyzeV7QuestionCandidate{}
+		resp.QuestionCandidates = []AnalysisQuestionCandidate{}
 	}
 	if resp.Quality.UncertaintyReasons == nil {
 		resp.Quality.UncertaintyReasons = []string{}

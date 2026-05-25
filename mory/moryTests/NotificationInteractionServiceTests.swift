@@ -304,7 +304,7 @@ private enum NotificationInteractionTestError: Error {
     case unsupported
 }
 
-private struct NotificationInteractionTestRecordAnalysisService: RecordAnalysisServing {
+private struct NotificationInteractionTestRecordAnalysisService: ReflectionAnalysisServing {
     func analyze(
         record: RecordShell,
         artifacts: [Artifact],

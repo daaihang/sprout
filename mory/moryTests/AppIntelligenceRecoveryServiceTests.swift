@@ -154,9 +154,9 @@ private enum RecoveryTestError: Error {
 }
 
 private struct RecoveryMockCloudIntelligenceService: CloudIntelligenceServing {
-    func analyzeV7(_ payload: AnalyzeV7RequestPayload) async throws -> AnalyzeV7ResponseEnvelope {
-        AnalyzeV7ResponseEnvelope(
-            analysis: AnalyzeResponseEnvelope(
+    func analyzeMemory(_ payload: AnalysisRequestPayload) async throws -> AnalysisResponseEnvelope {
+        AnalysisResponseEnvelope(
+            analysis: AnalysisRecordResponse(
                 tags: ["recovery"],
                 retrievalTerms: ["recovery"],
                 emotion: .init(label: "neutral", intensity: 0.2, confidence: 0.6, interpretation: nil),
@@ -200,7 +200,7 @@ private struct RecoveryMockCloudIntelligenceService: CloudIntelligenceServing {
     }
 }
 
-private struct RecoveryRecordAnalysisService: RecordAnalysisServing {
+private struct RecoveryRecordAnalysisService: ReflectionAnalysisServing {
     func analyze(
         record: RecordShell,
         artifacts: [Artifact],

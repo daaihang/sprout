@@ -189,7 +189,7 @@ final class MemoryDetailPresentationResolverTests: XCTestCase {
     }
 }
 
-private struct StubRecordAnalysisService: RecordAnalysisServing {
+private struct StubRecordAnalysisService: ReflectionAnalysisServing {
     func analyze(
         record: RecordShell,
         artifacts: [Artifact],

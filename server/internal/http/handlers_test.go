@@ -85,45 +85,14 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 
 	t.Run("analyze", func(t *testing.T) {
 		body := `{
-			"schema_version":"record_aggregate.v1",
-			"analysis_reason":"manual",
-			"record_shell":{"raw_text":"今天和妈妈看了一部电影，感觉很开心","capture_source":"composer"},
-			"artifacts":[{"id":"a1","kind":"text","title":"电影夜晚","summary":"和妈妈看电影","text_content":"今天和妈妈看了一部电影，感觉很开心"}],
-			"known_entities":[{"id":"p1","kind":"person","name":"妈妈","aliases":["母亲"]}]
-		}`
-		req := httptest.NewRequest(http.MethodPost, "/api/analysis/records", bytes.NewBufferString(body))
-		req.Header.Set("Authorization", "Bearer "+token)
-		req.Header.Set("Content-Type", "application/json")
-		rec := httptest.NewRecorder()
-
-		server.Handler().ServeHTTP(rec, req)
-		if rec.Code != http.StatusOK {
-			t.Fatalf("analyze status = %d, body = %s", rec.Code, rec.Body.String())
-		}
-
-		var resp analyzeResponseEnvelope
-		if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-			t.Fatalf("decode analyze response: %v", err)
-		}
-		if resp.Meta.Provider != "mock" {
-			t.Fatalf("expected mock provider, got %q", resp.Meta.Provider)
-		}
-		if len(resp.Tags) == 0 {
-			t.Fatalf("expected tags in analyze response")
-		}
-	})
-
-	t.Run("analyze v7", func(t *testing.T) {
-		body := `{
-			"schema_version":7,
-			"client_request_id":"client-v7-test",
-			"record_shell":{"id":"rec-v7","raw_text":"今天和妈妈看电影，很开心","capture_source":"composer","user_mood":"开心"},
+			"client_request_id":"client-analysis-test",
+			"record_shell":{"id":"rec-analysis","raw_text":"今天和妈妈看电影，很开心","capture_source":"composer","user_mood":"开心"},
 			"artifacts":[{"id":"a1","kind":"text","title":"电影夜晚","summary":"和妈妈看电影","text_content":"今天和妈妈看电影，很开心"}],
 			"known_entities":[{"id":"p1","kind":"person","name":"妈妈","aliases":["母亲"]}],
 			"mood_evidence":[],
 			"context_pack":{
-				"pack_id":"pack-v7",
-				"target_record_id":"rec-v7",
+				"pack_id":"pack-analysis",
+				"target_record_id":"rec-analysis",
 				"self_brief":{"self_entity_id":"self-1","aliases":["我"],"privacy_mode":"localFirst"},
 				"known_profiles":[{"entity_id":"p1","kind":"person","display_name":"妈妈","relationship_to_user":"family","mention_count":4,"common_context_labels":["movie"],"inclusion_reason":"entity overlap"}],
 				"related_memories":[{"record_id":"rec-old","title":"上次电影","snippet":"上次也和妈妈看电影后觉得开心。","score":0.82,"inclusion_reasons":["entity overlap"]}],
@@ -133,25 +102,25 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 			},
 			"client_capabilities":{"supports_affect_snapshot":true,"supports_context_aware_reflection":true,"supports_proposal_only_writeback":true}
 		}`
-		req := httptest.NewRequest(http.MethodPost, "/api/analyze/v7", bytes.NewBufferString(body))
+		req := httptest.NewRequest(http.MethodPost, "/api/analyze", bytes.NewBufferString(body))
 		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Set("Content-Type", "application/json")
 		rec := httptest.NewRecorder()
 
 		server.Handler().ServeHTTP(rec, req)
 		if rec.Code != http.StatusOK {
-			t.Fatalf("analyze v7 status = %d, body = %s", rec.Code, rec.Body.String())
+			t.Fatalf("analyze status = %d, body = %s", rec.Code, rec.Body.String())
 		}
 
-		var resp analyzeV7ResponseEnvelope
+		var resp analyzeMemoryResponseEnvelope
 		if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-			t.Fatalf("decode analyze v7 response: %v", err)
+			t.Fatalf("decode analyze response: %v", err)
 		}
 		if resp.Meta.Provider != "mock" {
 			t.Fatalf("expected mock provider, got %q", resp.Meta.Provider)
 		}
-		if resp.Meta.PromptVersion != ai.V7AnalyzePromptVersion {
-			t.Fatalf("expected prompt version %q, got %q", ai.V7AnalyzePromptVersion, resp.Meta.PromptVersion)
+		if resp.Meta.PromptVersion != ai.AnalysisPromptVersion {
+			t.Fatalf("expected prompt version %q, got %q", ai.AnalysisPromptVersion, resp.Meta.PromptVersion)
 		}
 		if len(resp.AffectProposals) == 0 {
 			t.Fatalf("expected affect proposals")
@@ -164,35 +133,6 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 		}
 		if !containsString(resp.Quality.NeedsUserCheck, "tone") {
 			t.Fatalf("expected tone user check, got %+v", resp.Quality)
-		}
-	})
-
-	t.Run("analyze preview", func(t *testing.T) {
-		body := `{
-			"schema_version":"record_aggregate.v1",
-			"analysis_reason":"preview",
-			"record_shell":{"raw_text":"今天和妈妈看了一部电影，感觉很开心","capture_source":"composer"},
-			"artifacts":[{"id":"a1","kind":"text","title":"电影夜晚","summary":"和妈妈看电影","text_content":"今天和妈妈看了一部电影，感觉很开心"}],
-			"known_entities":[]
-		}`
-		req := httptest.NewRequest(http.MethodPost, "/api/analysis/preview", bytes.NewBufferString(body))
-		req.Header.Set("Content-Type", "application/json")
-		rec := httptest.NewRecorder()
-
-		server.Handler().ServeHTTP(rec, req)
-		if rec.Code != http.StatusOK {
-			t.Fatalf("preview status = %d, body = %s", rec.Code, rec.Body.String())
-		}
-
-		var resp analyzePreviewResponseEnvelope
-		if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-			t.Fatalf("decode preview response: %v", err)
-		}
-		if resp.Mode != "preview" {
-			t.Fatalf("expected preview mode, got %q", resp.Mode)
-		}
-		if len(resp.Tags) == 0 {
-			t.Fatalf("expected preview tags in response")
 		}
 	})
 
@@ -587,12 +527,13 @@ func TestUnauthorizedAnalyze(t *testing.T) {
 		UserProfiles:  store,
 	})
 
-	req := httptest.NewRequest(http.MethodPost, "/api/analysis/records", bytes.NewBufferString(`{
-		"schema_version":"record_aggregate.v1",
-		"analysis_reason":"manual",
-		"record_shell":{"raw_text":"hi","capture_source":"composer"},
+	req := httptest.NewRequest(http.MethodPost, "/api/analyze", bytes.NewBufferString(`{
+		"client_request_id":"unauthorized-analysis",
+		"record_shell":{"id":"rec-unauthorized","raw_text":"hi","capture_source":"composer"},
 		"artifacts":[],
-		"known_entities":[]
+		"known_entities":[],
+		"context_pack":{"pack_id":"pack-unauthorized","target_record_id":"rec-unauthorized"},
+		"client_capabilities":{"supports_proposal_only_writeback":true}
 	}`))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
@@ -749,15 +690,16 @@ func TestCanonicalAnalysisRoutesAndSchema(t *testing.T) {
 
 	token := issueDevToken(t, server, `{"identity_token":"tester-schema"}`)
 	body := `{
-		"schema_version":"record_aggregate.v1",
-		"client_version":"mory.v3",
-		"analysis_reason":"capture_ingest",
-		"record_shell":{"raw_text":"A local-first note about Linh.","capture_source":"composer"},
+		"client_request_id":"client-analysis-route-test",
+		"record_shell":{"id":"rec-analysis-route","raw_text":"A local-first note about Linh.","capture_source":"composer"},
 		"artifacts":[{"id":"a1","kind":"text","title":"Note","summary":"Local-first note","text_content":"A local-first note about Linh.","metadata":{"source":"composer"}}],
-		"known_entities":[{"id":"p1","kind":"person","name":"Linh","aliases":["Linh Tran"]}]
+		"known_entities":[{"id":"p1","kind":"person","name":"Linh","aliases":["Linh Tran"]}],
+		"mood_evidence":[],
+		"context_pack":{"pack_id":"pack-analysis-route","target_record_id":"rec-analysis-route","budget_report":{"max_profiles":8,"max_related_memories":12},"retrieval_report":{"semantic_search_status":"disabled"}},
+		"client_capabilities":{"supports_affect_snapshot":true,"supports_context_aware_reflection":true,"supports_proposal_only_writeback":true}
 	}`
 
-	analyzeReq := httptest.NewRequest(http.MethodPost, "/api/analysis/records", bytes.NewBufferString(body))
+	analyzeReq := httptest.NewRequest(http.MethodPost, "/api/analyze", bytes.NewBufferString(body))
 	analyzeReq.Header.Set("Authorization", "Bearer "+token)
 	analyzeReq.Header.Set("Content-Type", "application/json")
 	analyzeRec := httptest.NewRecorder()
@@ -766,21 +708,30 @@ func TestCanonicalAnalysisRoutesAndSchema(t *testing.T) {
 		t.Fatalf("canonical analyze status = %d, body = %s", analyzeRec.Code, analyzeRec.Body.String())
 	}
 
-	previewReq := httptest.NewRequest(http.MethodPost, "/api/analysis/preview", bytes.NewBufferString(body))
+	previewReq := httptest.NewRequest(http.MethodPost, "/api/analysis/"+"preview", bytes.NewBufferString(body))
 	previewReq.Header.Set("Content-Type", "application/json")
 	previewRec := httptest.NewRecorder()
 	server.Handler().ServeHTTP(previewRec, previewReq)
-	if previewRec.Code != http.StatusOK {
-		t.Fatalf("canonical preview status = %d, body = %s", previewRec.Code, previewRec.Body.String())
+	if previewRec.Code != http.StatusNotFound {
+		t.Fatalf("analysis preview route should be removed, got %d", previewRec.Code)
 	}
 
-	legacyReq := httptest.NewRequest(http.MethodPost, "/api/records/analyze", bytes.NewBufferString(body))
+	legacyReq := httptest.NewRequest(http.MethodPost, "/api/analysis/"+"records", bytes.NewBufferString(body))
 	legacyReq.Header.Set("Authorization", "Bearer "+token)
 	legacyReq.Header.Set("Content-Type", "application/json")
 	legacyRec := httptest.NewRecorder()
 	server.Handler().ServeHTTP(legacyRec, legacyReq)
 	if legacyRec.Code != http.StatusNotFound {
-		t.Fatalf("legacy analyze route should be removed, got %d", legacyRec.Code)
+		t.Fatalf("analysis records route should be removed, got %d", legacyRec.Code)
+	}
+
+	vRouteReq := httptest.NewRequest(http.MethodPost, "/api/analyze/"+"v"+"7", bytes.NewBufferString(body))
+	vRouteReq.Header.Set("Authorization", "Bearer "+token)
+	vRouteReq.Header.Set("Content-Type", "application/json")
+	vRouteRec := httptest.NewRecorder()
+	server.Handler().ServeHTTP(vRouteRec, vRouteReq)
+	if vRouteRec.Code != http.StatusNotFound {
+		t.Fatalf("versioned analyze route should be removed, got %d", vRouteRec.Code)
 	}
 }
 

@@ -55,7 +55,7 @@ Journaling Suggestions 不是一种新的记忆类型。它是系统给 Mory 的
 | Person Profile | 已接入 | 有人物画像和关系字段，但证据展示还不够。 |
 | Entity Resolution | 已接入 | 能做实体解析和纠错，但高风险合并仍需要用户确认。 |
 | Analysis Context Pack | 可用 | 分析前会构造长期上下文包。 |
-| v7 Analyze | 可用 | 新记忆分析主链路已经切到 v7。 |
+| Analysis | 可用 | 新记忆分析主链路已经统一为 Analysis。 |
 | GraphDelta proposal | 已接入 | AI 结论先作为 proposal，用户可 review。 |
 | Reflection / Arc | 已接入 | 能生成反思和故事线，但产品解释还要继续加强。 |
 | Clarification Question | 已接入 | Mory 可以向用户提问以补充长期记忆。 |
@@ -69,6 +69,8 @@ Journaling Suggestions 不是一种新的记忆类型。它是系统给 Mory 的
 | 远程推送 | 已接入 | 服务端和客户端都有基础链路。 |
 | BGTask | 已接入 | 可用于后台刷新和处理，但真机调度不可精确控制。 |
 | 分析完成提醒 | 已接入 | 还需要更明确的用户体验和时机策略。 |
+| 统一通知管理 | 已接入 | `NotificationOrchestrator` 是唯一生成/去重/policy/routing 入口，系统通知只保留 dailyQuestion、analysisReady、reflectionReady、debugTest。 |
+| 后台运行记录 | 可用基础版 | `BackgroundOperationOrchestrator` 已接收启动、前台、BGTask、silent push、pipeline completed、APNs token、URLSession 触发，并记录运行日志；日志是 owner-scoped JSON/UserDefaults 诊断状态，不进入 SwiftData 记忆事实库。 |
 
 ## 订阅和付费
 

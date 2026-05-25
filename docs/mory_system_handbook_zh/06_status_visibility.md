@@ -24,9 +24,10 @@ Mory 当前最大的问题之一，是很多能力存在，但用户和产品负
 - Share Extension 是否成功写入共享容器。
 - 外部导入 item 是否 pending、imported 或 failed。
 - Context Pack 包含了哪些历史证据，丢弃了哪些。
-- v7 request 和 response 的结构。
+- Analysis request 和 response 的结构。
 - GraphDelta proposal 的状态。
 - 通知 intent 的生成和投递状态。
+- 后台 trigger、operation run、operation event 的执行状态。
 - 登录 token 和 401 恢复状态。
 
 ## 当前已有的可见面
@@ -39,6 +40,8 @@ Mory 当前最大的问题之一，是很多能力存在，但用户和产品负
 | Insights 页面 | 一些 proposal 和洞察 | 拒绝、撤销、原因解释不完整。 |
 | Settings | 权限、外部捕获、通知等 | 太多状态仍偏开发者理解。 |
 | Debug Center | 详细诊断 | 普通用户不会进入，也不该依赖它。 |
+| Notification Management | 通知队列、历史、去重、错误、偏好和 push metrics | 已统一通知状态，但不解释所有后台任务。 |
+| Background Operations | 后台 run/event、job、pipeline status、push state | 已有统一后台调试页；日志是 owner-scoped JSON/UserDefaults 诊断状态，还不是面向普通用户的状态页。 |
 
 ## 当前最该补的产品状态页
 

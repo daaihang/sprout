@@ -1,6 +1,6 @@
 import Foundation
 
-struct RemoteRecordAnalysisService: RecordAnalysisServing {
+struct RemoteReflectionAnalysisService: ReflectionAnalysisServing {
     private actor DebugTraceStore {
         private var latest: DebugPipelineTraceSnapshot?
 
@@ -13,8 +13,7 @@ struct RemoteRecordAnalysisService: RecordAnalysisServing {
         }
     }
 
-    private let requestBuilder = AnalyzeRequestBuilder()
-    private let responseMapper = AnalyzeResponseMapper()
+    private let requestBuilder = AnalysisRecordPayloadBuilder()
     private let apiClient: MoryAPIClient
     private let tokenProvider: MoryAuthTokenProvider
     private let debugTraceStore = DebugTraceStore()
@@ -25,72 +24,6 @@ struct RemoteRecordAnalysisService: RecordAnalysisServing {
     ) {
         self.apiClient = apiClient
         self.tokenProvider = tokenProvider
-    }
-
-    func analyze(
-        record: RecordShell,
-        artifacts: [Artifact],
-        knownEntities: [EntityReference] = []
-    ) async throws -> RecordAnalysisSnapshot {
-        let request = requestBuilder.build(
-            record: record,
-            artifacts: artifacts,
-            knownEntities: knownEntities,
-            analysisReason: "capture_ingest"
-        )
-        let requestBody = String(data: (try? JSONEncoder().encode(request)) ?? Data(), encoding: .utf8)
-
-        do {
-            let token = try await tokenProvider.accessToken()
-            let response = try await apiClient.analyzeRecords(payload: request, bearerToken: token)
-            let responseBody = String(data: (try? JSONEncoder().encode(response)) ?? Data(), encoding: .utf8)
-            await debugTraceStore.set(
-                DebugPipelineTraceSnapshot(
-                    requestID: await apiClient.latestDebugRequestID(),
-                    requestBody: requestBody,
-                    responseBody: responseBody,
-                    rawErrorBody: nil,
-                    statusCode: nil,
-                    failedStage: nil
-                )
-            )
-            return responseMapper.map(recordID: record.id, response: response, createdAt: record.updatedAt)
-        } catch MoryAPIClient.APIError.unauthorized {
-            await tokenProvider.invalidate()
-            let token = try await tokenProvider.accessToken()
-            let response = try await apiClient.analyzeRecords(payload: request, bearerToken: token)
-            let responseBody = String(data: (try? JSONEncoder().encode(response)) ?? Data(), encoding: .utf8)
-            await debugTraceStore.set(
-                DebugPipelineTraceSnapshot(
-                    requestID: await apiClient.latestDebugRequestID(),
-                    requestBody: requestBody,
-                    responseBody: responseBody,
-                    rawErrorBody: nil,
-                    statusCode: nil,
-                    failedStage: nil
-                )
-            )
-            return responseMapper.map(recordID: record.id, response: response, createdAt: record.updatedAt)
-        } catch {
-            let apiTrace = await apiClient.latestDebugError()
-            let requestID: String?
-            if let traceRequestID = apiTrace?.requestID {
-                requestID = traceRequestID
-            } else {
-                requestID = await apiClient.latestDebugRequestID()
-            }
-            await debugTraceStore.set(
-                DebugPipelineTraceSnapshot(
-                    requestID: requestID,
-                    requestBody: requestBody,
-                    responseBody: apiTrace?.responseBody,
-                    rawErrorBody: apiTrace?.rawErrorBody,
-                    statusCode: apiTrace?.statusCode,
-                    failedStage: apiTrace?.failedStage
-                )
-            )
-            throw error
-        }
     }
 
     func latestDebugTrace() async -> DebugPipelineTraceSnapshot? {

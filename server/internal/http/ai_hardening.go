@@ -84,7 +84,7 @@ func classifyAIError(err error) (aiErrorClass, bool) {
 	if err == nil {
 		return "", false
 	}
-	if errors.Is(err, ai.ErrInvalidAnalyzeRequest) {
+	if errors.Is(err, ai.ErrInvalidAnalysisRequest) {
 		return aiErrorClassInvalid, false
 	}
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
