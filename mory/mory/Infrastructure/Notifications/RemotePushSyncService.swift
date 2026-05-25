@@ -1,4 +1,5 @@
 import Foundation
+import Security
 import UIKit
 
 extension Notification.Name {
@@ -27,12 +28,65 @@ enum PushDeviceRegistrationStore {
         if currentAPNSToken() == hex {
             return
         }
-        UserDefaults.standard.set(hex, forKey: apnsTokenKey)
+        saveAPNSTokenToKeychain(hex)
+        // Remove legacy UserDefaults entry if still present.
+        UserDefaults.standard.removeObject(forKey: apnsTokenKey)
         NotificationCenter.default.post(name: .moryAPNSTokenDidUpdate, object: nil)
     }
 
     static func currentAPNSToken() -> String? {
-        let token = UserDefaults.standard.string(forKey: apnsTokenKey)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Prefer Keychain; fall back to UserDefaults for one-time migration.
+        if let keychainToken = loadAPNSTokenFromKeychain() {
+            return keychainToken
+        }
+        // Migrate legacy value.
+        if let legacy = UserDefaults.standard.string(forKey: apnsTokenKey)?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !legacy.isEmpty {
+            saveAPNSTokenToKeychain(legacy)
+            UserDefaults.standard.removeObject(forKey: apnsTokenKey)
+            return legacy
+        }
+        return nil
+    }
+
+    // MARK: - Keychain helpers (APNS token)
+
+    private static let apnsKeychainService = "dev.mory.apns"
+    private static let apnsKeychainAccount = "device-token"
+
+    private static func saveAPNSTokenToKeychain(_ hex: String) {
+        let data = Data(hex.utf8)
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: apnsKeychainService,
+            kSecAttrAccount as String: apnsKeychainAccount
+        ]
+        // Try update first; add if missing.
+        let attrs: [String: Any] = [
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        ]
+        let updateStatus = SecItemUpdate(query as CFDictionary, attrs as CFDictionary)
+        if updateStatus == errSecItemNotFound {
+            var addQuery = query
+            addQuery[kSecValueData as String] = data
+            addQuery[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+            SecItemAdd(addQuery as CFDictionary, nil)
+        }
+    }
+
+    private static func loadAPNSTokenFromKeychain() -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: apnsKeychainService,
+            kSecAttrAccount as String: apnsKeychainAccount,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+        var result: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        guard status == errSecSuccess, let data = result as? Data else { return nil }
+        let token = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let token, !token.isEmpty else { return nil }
         return token
     }
