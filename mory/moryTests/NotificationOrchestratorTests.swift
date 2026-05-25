@@ -36,6 +36,35 @@ final class NotificationOrchestratorTests: XCTestCase {
         XCTAssertEqual(stored.sourceTrigger, .homeForegroundRefresh)
     }
 
+    func testRepositoryPersistsNotificationManagementEventRoundTrip() throws {
+        let fixture = makeRepositoryFixture()
+        let targetID = UUID()
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let event = NotificationManagementEvent(
+            eventKind: .deduped,
+            intentID: UUID(),
+            dedupeKey: "dailyQuestion|question|\(targetID.uuidString)",
+            trigger: .homeForegroundRefresh,
+            kind: .dailyQuestion,
+            targetType: .question,
+            targetID: targetID,
+            message: "Skipped duplicate candidate.",
+            createdAt: now
+        )
+
+        try fixture.repository.upsertNotificationManagementEvent(event)
+
+        let stored = try XCTUnwrap(fixture.repository.fetchNotificationManagementEvents(kind: .deduped, limit: nil).first)
+        XCTAssertEqual(stored.id, event.id)
+        XCTAssertEqual(stored.eventKind, .deduped)
+        XCTAssertEqual(stored.dedupeKey, event.dedupeKey)
+        XCTAssertEqual(stored.trigger, .homeForegroundRefresh)
+        XCTAssertEqual(stored.kind, .dailyQuestion)
+        XCTAssertEqual(stored.targetID, targetID)
+        XCTAssertEqual(stored.message, event.message)
+        XCTAssertEqual(stored.createdAt, now)
+    }
+
     func testAppLaunchRecoveryRecordsDailyQuestionAsInAppOnly() async throws {
         let fixture = makeRepositoryFixture()
         let repository = fixture.repository
@@ -66,6 +95,9 @@ final class NotificationOrchestratorTests: XCTestCase {
         XCTAssertEqual(stored.targetType, .question)
         XCTAssertEqual(stored.targetID, question.id)
         XCTAssertEqual(stored.deepLink, "mory://home/question/\(question.id.uuidString)")
+        let events = try repository.fetchNotificationManagementEvents(kind: nil, limit: nil)
+        XCTAssertTrue(events.contains { $0.eventKind == .generated && $0.intentID == stored.id })
+        XCTAssertTrue(events.contains { $0.eventKind == .inAppOnly && $0.intentID == stored.id })
     }
 
     func testBackgroundRefreshSchedulesAnalysisReadyForCompletedPipeline() async throws {
@@ -193,6 +225,10 @@ final class NotificationOrchestratorTests: XCTestCase {
 
         XCTAssertEqual(report.dedupedIntentIDs.count, 1)
         XCTAssertEqual(try repository.fetchNotificationIntents(status: nil, limit: nil).count, 1)
+        let dedupeEvent = try XCTUnwrap(repository.fetchNotificationManagementEvents(kind: .deduped, limit: nil).first)
+        XCTAssertEqual(dedupeEvent.trigger, .homeForegroundRefresh)
+        XCTAssertEqual(dedupeEvent.kind, .dailyQuestion)
+        XCTAssertEqual(dedupeEvent.targetID, question.id)
     }
 
     func testSensitiveDailyQuestionIsBlockedBeforeScheduling() async throws {
@@ -229,6 +265,42 @@ final class NotificationOrchestratorTests: XCTestCase {
         XCTAssertTrue(center.requests.isEmpty)
         let stored = try XCTUnwrap(repository.fetchNotificationIntents(status: .blocked, limit: nil).first)
         XCTAssertTrue(stored.blockedReasons.contains(NotificationPolicyBlockReason.sensitiveTopicSuppressed.rawValue))
+        let blockEvent = try XCTUnwrap(repository.fetchNotificationManagementEvents(kind: .policyBlocked, limit: nil).first)
+        XCTAssertEqual(blockEvent.intentID, stored.id)
+        XCTAssertEqual(blockEvent.kind, .dailyQuestion)
+    }
+
+    func testDebugIntentWithoutResolvableDeepLinkIsBlockedAndLogged() async throws {
+        let fixture = makeRepositoryFixture()
+        let repository = fixture.repository
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        try enableNotificationLoop(on: repository, now: now)
+
+        var intent = NotificationIntent(
+            kind: .debugTest,
+            title: "Mory",
+            body: "A broken debug notification.",
+            targetType: .record,
+            targetID: UUID(),
+            scheduledAt: now,
+            deliveryChannel: .local,
+            deepLink: "mory://unknown",
+            createdAt: now
+        )
+        intent.sourceTrigger = .debugManual
+
+        let report = try await NotificationOrchestrator().orchestrate(
+            trigger: .debugManual(intent: intent),
+            repository: repository,
+            now: now
+        )
+
+        XCTAssertEqual(report.blockedIntentIDs.count, 1)
+        let stored = try XCTUnwrap(repository.fetchNotificationIntents(status: .blocked, limit: nil).first)
+        XCTAssertEqual(stored.blockedReasons, [NotificationPolicyBlockReason.noResolvableRoute.rawValue])
+        let routeEvent = try XCTUnwrap(repository.fetchNotificationManagementEvents(kind: .routeError, limit: nil).first)
+        XCTAssertEqual(routeEvent.intentID, stored.id)
+        XCTAssertEqual(routeEvent.trigger, .debugManual)
     }
 
     private func makeRepositoryFixture() -> NotificationOrchestratorRepositoryFixture {

@@ -10,13 +10,15 @@
 
 ## Expected User Experience
 
-Mory should remind users only when there is useful context: daily question, analysis ready, reflection ready, or explicit debug/manual routing. Stage-forming, repeated-theme, and revisit signals can exist in-app, but should not proactively push by default. Users should know why a notification arrived and where it will open.
+Mory should remind users only when there is useful context: daily question, analysis ready, reflection ready, or explicit debug/manual routing. Former stage/repeated/revisit push concepts are no longer part of `NotificationIntent`, APNs registration, or Notification Management; similar long-term patterns can surface inside Home/Insights cards only. Users should know why a notification arrived and where it will open.
 
 ## Current Components
 
 | Component | Purpose | Status |
 | --- | --- | --- |
 | `NotificationOrchestrator` | Single entry for trigger -> dedupe -> policy -> local/remote delivery | `usable` |
+| `NotificationManagementView` | Single Settings/Debug surface for queue, history, dedupe, errors, and preferences | `usable` |
+| `NotificationManagementEventStore` | Persistent notification management log for dedupe, policy block, delivery, route, and interaction events | `usable` |
 | `LocalNotificationScheduler` | Schedule local notifications | `usable` |
 | `RemotePushSyncService` | Register/sync APNs token and preferences | `wired` |
 | `NotificationDeliveryRouter` | Route delivery/interactions | `wired` |
@@ -30,6 +32,7 @@ Mory should remind users only when there is useful context: daily question, anal
 flowchart LR
     A["Memory / question / reflection / pipeline status"] --> B["NotificationOrchestrator"]
     B --> C["NotificationIntentStore / history"]
+    B --> L["NotificationManagementEventStore"]
     B --> D["LocalNotificationScheduler"]
     B --> E["NotificationDeliveryRouter"]
     E --> F["RemotePushSyncService"]
@@ -49,8 +52,20 @@ flowchart LR
 
 - Local notifications depend on user permission and scheduler state.
 - Remote pushes depend on APNs token registration, server queue, worker, and writeback.
-- Debug Remote Push Diagnostics and Settings/Memory Intelligence expose notification history and routing state.
+- `Notification Management` is the single reachable status page from Settings and Debug. It shows:
+  - Queue: `pending`, `scheduled`, `inAppOnly`, `blocked`.
+  - History: `delivered`, `opened`, `dismissed`.
+  - Dedupe: dedupe key hits and source trigger.
+  - Errors: policy block, delivery error, route error.
+- Local/APNs actions on that page call the formal orchestrator and push sync services. They do not create side-channel intents.
 - Real-device timing and BGTask scheduling remain validation gaps.
+
+## Current User-Visible Entry
+
+- Settings -> Notifications opens `NotificationManagementView`.
+- Debug -> Notification Management opens the same view.
+- Memory Intelligence no longer has a separate Notification History page.
+- Remote Push and Notification Background debug pages are no longer product/debug entry points.
 
 ## Billing Cut Point
 
@@ -58,10 +73,10 @@ Basic reminders should be free. AI-generated timing, deep context reminders, and
 
 ## Current Status
 
-`usable`
+`stable`
 
 ## Gaps And Next Step
 
 1. Complete real-device APNs and BGTask validation matrix.
-2. Remove legacy notification enums/toggles that no longer map to proactive delivery.
+2. Unify background triggers next: BGTask, silent push, startup recovery, and pipeline completion should feed a shared background-operation log before invoking `NotificationOrchestrator`.
 3. Add release-ready notification copy and explanation polish.

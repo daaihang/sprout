@@ -146,7 +146,7 @@ protocol AnalysisContextPackRepositorying:
     MemorySettingsRepositorying {}
 
 @MainActor
-protocol NotificationPreparationRepositorying: NotificationIntentRepositorying {
+protocol NotificationPreparationRepositorying: NotificationIntentRepositorying, NotificationManagementEventRepositorying {
     func fetchIntelligencePreferences() throws -> IntelligencePreferences
     func fetchV6FeatureFlags() throws -> V6FeatureFlags
     func fetchClarificationQuestions(status: ClarificationQuestionStatus?, limit: Int?) throws -> [ClarificationQuestion]

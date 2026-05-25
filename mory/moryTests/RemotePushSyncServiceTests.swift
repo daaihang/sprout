@@ -64,12 +64,9 @@ final class RemotePushSyncServiceTests: XCTestCase {
         XCTAssertFalse(payload.apnsToken.isEmpty)
         XCTAssertTrue(payload.hasQuestionReady)
         XCTAssertTrue(payload.notificationsEnabled)
-        XCTAssertTrue(payload.backgroundDoneEnabled)
+        XCTAssertTrue(payload.analysisReadyEnabled)
         XCTAssertTrue(payload.dailyQuestionEnabled)
-        // Legacy remote compatibility flags are intentionally disabled in unified notification mode.
-        XCTAssertFalse(payload.repeatedThemeEnabled)
-        XCTAssertFalse(payload.stageFormingEnabled)
-        XCTAssertFalse(payload.revisitEnabled)
+        XCTAssertTrue(payload.reflectionReadyEnabled)
         XCTAssertEqual(payload.deliveryPace, NotificationFrequencyStrategy.active.rawValue)
         XCTAssertEqual(payload.maxPerDay, 4)
         XCTAssertEqual(payload.minimumMinutesBetweenNotifications, 30)
@@ -269,11 +266,9 @@ final class RemotePushSyncServiceTests: XCTestCase {
         preferences.homeSuggestionsEnabled = true
         preferences.notificationPreferences = NotificationPreferences(
             enabled: true,
-            backgroundDoneEnabled: true,
+            analysisReadyEnabled: true,
             dailyQuestionEnabled: true,
-            repeatedThemeEnabled: true,
-            stageFormingEnabled: true,
-            revisitEnabled: true,
+            reflectionReadyEnabled: true,
             frequencyStrategy: .active,
             maxPerDay: 4,
             minimumMinutesBetweenNotifications: 30,
@@ -347,11 +342,9 @@ private struct PushRegisterRequestBody: Decodable {
     let timezone: String
     let hasQuestionReady: Bool
     let notificationsEnabled: Bool
-    let backgroundDoneEnabled: Bool
+    let analysisReadyEnabled: Bool
     let dailyQuestionEnabled: Bool
-    let repeatedThemeEnabled: Bool
-    let stageFormingEnabled: Bool
-    let revisitEnabled: Bool
+    let reflectionReadyEnabled: Bool
     let deliveryPace: String
     let maxPerDay: Int
     let minimumMinutesBetweenNotifications: Int
@@ -369,11 +362,9 @@ private struct PushRegisterRequestBody: Decodable {
         case timezone
         case hasQuestionReady = "has_question_ready"
         case notificationsEnabled = "notifications_enabled"
-        case backgroundDoneEnabled = "background_done_enabled"
+        case analysisReadyEnabled = "analysis_ready_enabled"
         case dailyQuestionEnabled = "daily_question_enabled"
-        case repeatedThemeEnabled = "repeated_theme_enabled"
-        case stageFormingEnabled = "stage_forming_enabled"
-        case revisitEnabled = "revisit_enabled"
+        case reflectionReadyEnabled = "reflection_ready_enabled"
         case deliveryPace = "delivery_pace"
         case maxPerDay = "max_per_day"
         case minimumMinutesBetweenNotifications = "minimum_minutes_between_notifications"
@@ -393,11 +384,9 @@ private struct PushRegisterRequestBody: Decodable {
             timezone: timezone,
             hasQuestionReady: hasQuestionReady,
             notificationsEnabled: notificationsEnabled,
-            backgroundDoneEnabled: backgroundDoneEnabled,
+            analysisReadyEnabled: analysisReadyEnabled,
             dailyQuestionEnabled: dailyQuestionEnabled,
-            repeatedThemeEnabled: repeatedThemeEnabled,
-            stageFormingEnabled: stageFormingEnabled,
-            revisitEnabled: revisitEnabled,
+            reflectionReadyEnabled: reflectionReadyEnabled,
             deliveryPace: deliveryPace,
             maxPerDay: maxPerDay,
             minimumMinutesBetweenNotifications: minimumMinutesBetweenNotifications,

@@ -84,19 +84,6 @@ struct DebugCapabilityTestsView: View {
                         subtitle: String(localized: "debug.capability.storage.subtitle")
                     )
                 }
-
-                NavigationLink {
-                    DebugNotificationBackgroundView(
-                        authManager: authManager,
-                        runtimeEnvironment: runtimeEnvironment
-                    )
-                } label: {
-                    DebugMenuRow(
-                        icon: "bell.badge",
-                        title: String(localized: "debug.capability.notification"),
-                        subtitle: String(localized: "debug.capability.notification.subtitle")
-                    )
-                }
             } footer: {
                 Text("debug.capability.footer")
             }

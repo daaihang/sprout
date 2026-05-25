@@ -105,7 +105,7 @@ final class DebugCenterModelsTests: XCTestCase {
         XCTAssertEqual(updated.flags.updatedAt, now)
     }
 
-    func testJobQueueSnapshotCountsJobsIntentsAndGraphDeltas() {
+    func testJobQueueSnapshotCountsJobsAndGraphDeltas() {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let pendingDue = IntelligenceJob(
             kind: .dailyQuestion,
@@ -139,24 +139,6 @@ final class DebugCenterModelsTests: XCTestCase {
             scheduledAt: now,
             requiresCloudAI: true
         )
-        let pendingIntent = NotificationIntent(
-            kind: .debugTest,
-            title: "Debug",
-            body: "Test",
-            targetType: .question,
-            targetID: UUID(),
-            scheduledAt: now,
-            status: .pending
-        )
-        let deliveredIntent = NotificationIntent(
-            kind: .dailyQuestion,
-            title: "Question",
-            body: "Body",
-            targetType: .question,
-            targetID: UUID(),
-            scheduledAt: now,
-            status: .delivered
-        )
         let unappliedDelta = GraphDelta(
             source: .cloudAI,
             operations: [],
@@ -173,7 +155,6 @@ final class DebugCenterModelsTests: XCTestCase {
         let snapshot = DebugJobQueueSnapshot(
             generatedAt: now,
             jobs: [pendingDue, pendingFuture, running, failed],
-            notificationIntents: [pendingIntent, deliveredIntent],
             graphDeltas: [unappliedDelta, appliedDelta]
         )
 
@@ -185,7 +166,6 @@ final class DebugCenterModelsTests: XCTestCase {
         XCTAssertEqual(snapshot.cloudRequiredJobCount, 2)
         XCTAssertEqual(snapshot.unappliedGraphDeltaCount, 1)
         XCTAssertEqual(snapshot.jobStatusCounts.first { $0.label == IntelligenceJobStatus.pending.rawValue }?.count, 2)
-        XCTAssertEqual(snapshot.notificationStatusCounts.first { $0.label == NotificationIntentStatus.delivered.rawValue }?.count, 1)
         XCTAssertEqual(snapshot.graphDeltaCounts.first { $0.label == "applied" }?.count, 1)
     }
 

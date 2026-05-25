@@ -200,12 +200,12 @@ struct DebugDiagnosticsView: View {
                 }
 
                 NavigationLink {
-                    DebugRemotePushDiagnosticsView()
+                    NotificationManagementView()
                 } label: {
                     DebugMenuRow(
                         icon: "bell.badge",
-                        title: "Remote Push",
-                        subtitle: "Inspect APNs registration, queued intents, and server enqueue results"
+                        title: "Notification Management",
+                        subtitle: "Inspect queue, history, dedupe, errors, preferences, and push diagnostics"
                     )
                 }
 
@@ -853,98 +853,4 @@ struct DebugStorageIntegrityView: View {
     }
 }
 
-struct DebugNotificationBackgroundView: View {
-    let authManager: AuthSessionManager?
-    let runtimeEnvironment: AppRuntimeEnvironment
-
-    @Environment(\.scenePhase) private var scenePhase
-    @State private var authDiagnostics: AuthDiagnosticsSnapshot?
-    @State private var lastNotificationText = String(localized: "debug.notification.none")
-    @State private var checkSessionMessage: String?
-
-    var body: some View {
-        List {
-            Section {
-                DebugValueRow(title: String(localized: "debug.environment.buildChannel"), value: runtimeEnvironment.buildChannel.label)
-                DebugValueRow(title: String(localized: "debug.environment.distribution"), value: runtimeEnvironment.distribution.rawValue)
-                DebugValueRow(title: String(localized: "debug.notification.scenePhase"), value: scenePhaseText)
-                DebugValueRow(title: String(localized: "debug.notification.receipt"), value: receiptText)
-                DebugValueRow(title: String(localized: "debug.notification.debugTools"), value: runtimeEnvironment.allowsDebugTools ? String(localized: "debug.value.enabled") : String(localized: "debug.value.disabled"))
-            } header: {
-                Text("debug.notification.runtime")
-            }
-
-            Section {
-                DebugValueRow(title: String(localized: "debug.notification.lastPipeline"), value: lastNotificationText)
-                Button {
-                    postTestNotification()
-                } label: {
-                    Label("debug.notification.postTest", systemImage: "bell")
-                }
-            } header: {
-                Text("debug.notification.pipeline")
-            } footer: {
-                Text("debug.notification.footer")
-            }
-
-            Section {
-                if let authDiagnostics {
-                    DebugValueRow(title: String(localized: "debug.auth.state"), value: authDiagnostics.state)
-                    DebugValueRow(title: String(localized: "debug.auth.storedCredential"), value: authDiagnostics.hasStoredCredential ? String(localized: "debug.value.yes") : String(localized: "debug.value.no"))
-                    DebugValueRow(title: String(localized: "debug.auth.expired"), value: authDiagnostics.isExpired ? String(localized: "debug.value.yes") : String(localized: "debug.value.no"))
-                }
-                if let checkSessionMessage {
-                    Text(checkSessionMessage)
-                        .font(.caption.monospaced())
-                        .textSelection(.enabled)
-                }
-                Button {
-                    Task { await runSessionRestoreCheck() }
-                } label: {
-                    Label("debug.notification.checkSession", systemImage: "key")
-                }
-            } header: {
-                Text("debug.notification.coldStart")
-            } footer: {
-                Text("debug.notification.coldStart.footer")
-            }
-        }
-        .navigationTitle("debug.capability.notification")
-        .onReceive(NotificationCenter.default.publisher(for: .pipelineDidComplete)) { notification in
-            let recordID = (notification.userInfo?["recordID"] as? UUID)?.uuidString ?? String(localized: "debug.value.none")
-            lastNotificationText = "\(Date.now.formatted(date: .omitted, time: .standard)) \(recordID)"
-        }
-        .task {
-            authDiagnostics = await authManager?.fetchDiagnostics()
-        }
-    }
-
-    private var scenePhaseText: String {
-        switch scenePhase {
-        case .active: String(localized: "debug.notification.scene.active")
-        case .inactive: String(localized: "debug.notification.scene.inactive")
-        case .background: String(localized: "debug.notification.scene.background")
-        @unknown default: String(localized: "debug.value.unknown")
-        }
-    }
-
-    private var receiptText: String {
-        String(format: String(localized: "debug.notification.receipt.detected"), runtimeEnvironment.distribution.rawValue)
-    }
-
-    private func postTestNotification() {
-        NotificationCenter.default.post(
-            name: .pipelineDidComplete,
-            object: nil,
-            userInfo: ["recordID": UUID()]
-        )
-    }
-
-    @MainActor
-    private func runSessionRestoreCheck() async {
-        await authManager?.checkSession()
-        authDiagnostics = await authManager?.fetchDiagnostics()
-        checkSessionMessage = String(localized: "debug.notification.checkSession.done")
-    }
-}
 #endif

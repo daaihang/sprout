@@ -9,7 +9,6 @@ struct DebugStatusCount: Identifiable, Hashable, Sendable {
 struct DebugJobQueueSnapshot: Hashable, Sendable {
     let generatedAt: Date
     let jobs: [IntelligenceJob]
-    let notificationIntents: [NotificationIntent]
     let graphDeltas: [GraphDelta]
 
     var totalJobCount: Int { jobs.count }
@@ -29,12 +28,6 @@ struct DebugJobQueueSnapshot: Hashable, Sendable {
     var jobKindCounts: [DebugStatusCount] {
         IntelligenceJobKind.allCases.map { kind in
             DebugStatusCount(label: kind.rawValue, count: jobs.filter { $0.kind == kind }.count)
-        }
-    }
-
-    var notificationStatusCounts: [DebugStatusCount] {
-        NotificationIntentStatus.allCases.map { status in
-            DebugStatusCount(label: status.rawValue, count: notificationIntents.filter { $0.status == status }.count)
         }
     }
 

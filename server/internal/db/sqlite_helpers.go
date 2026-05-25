@@ -21,11 +21,9 @@ func boolToInt(value bool) int {
 func (s *SQLiteStore) migratePushTokenColumns() error {
 	columnDefinitions := []string{
 		"notifications_enabled INTEGER NOT NULL DEFAULT 0",
-		"background_done_enabled INTEGER NOT NULL DEFAULT 1",
+		"analysis_ready_enabled INTEGER NOT NULL DEFAULT 1",
 		"daily_question_enabled INTEGER NOT NULL DEFAULT 0",
-		"repeated_theme_enabled INTEGER NOT NULL DEFAULT 1",
-		"stage_forming_enabled INTEGER NOT NULL DEFAULT 1",
-		"revisit_enabled INTEGER NOT NULL DEFAULT 1",
+		"reflection_ready_enabled INTEGER NOT NULL DEFAULT 1",
 		"delivery_pace TEXT NOT NULL DEFAULT ''",
 		"max_per_day INTEGER NOT NULL DEFAULT 0",
 		"minimum_minutes_between_notifications INTEGER NOT NULL DEFAULT 0",
@@ -67,11 +65,9 @@ func scanPushToken(scanner interface {
 	var token PushToken
 	var hasQuestionReady int
 	var notificationsEnabled int
-	var backgroundDoneEnabled int
+	var analysisReadyEnabled int
 	var dailyQuestionEnabled int
-	var repeatedThemeEnabled int
-	var stageFormingEnabled int
-	var revisitEnabled int
+	var reflectionReadyEnabled int
 	var richPreviewsEnabled int
 	var localIntelligenceEnabled int
 	var cloudIntelligenceEnabled int
@@ -87,11 +83,9 @@ func scanPushToken(scanner interface {
 		&token.Timezone,
 		&hasQuestionReady,
 		&notificationsEnabled,
-		&backgroundDoneEnabled,
+		&analysisReadyEnabled,
 		&dailyQuestionEnabled,
-		&repeatedThemeEnabled,
-		&stageFormingEnabled,
-		&revisitEnabled,
+		&reflectionReadyEnabled,
 		&token.DeliveryPace,
 		&token.MaxPerDay,
 		&token.MinimumMinutesBetweenNotifications,
@@ -111,11 +105,9 @@ func scanPushToken(scanner interface {
 
 	token.HasQuestionReady = hasQuestionReady == 1
 	token.NotificationsEnabled = notificationsEnabled == 1
-	token.BackgroundDoneEnabled = backgroundDoneEnabled == 1
+	token.AnalysisReadyEnabled = analysisReadyEnabled == 1
 	token.DailyQuestionEnabled = dailyQuestionEnabled == 1
-	token.RepeatedThemeEnabled = repeatedThemeEnabled == 1
-	token.StageFormingEnabled = stageFormingEnabled == 1
-	token.RevisitEnabled = revisitEnabled == 1
+	token.ReflectionReadyEnabled = reflectionReadyEnabled == 1
 	token.RichPreviewsEnabled = richPreviewsEnabled == 1
 	token.LocalIntelligenceEnabled = localIntelligenceEnabled == 1
 	token.CloudIntelligenceEnabled = cloudIntelligenceEnabled == 1

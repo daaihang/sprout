@@ -85,7 +85,7 @@ func v6OperationSchema(operation string) string {
 		return `{
   "schema_version": 1,
   "intent": {
-    "kind": "backgroundDone|dailyQuestion|repeatedTheme|stageForming|revisit",
+    "kind": "analysisReady|dailyQuestion|reflectionReady|debugTest",
     "privacy_level": "generic|contextual|sensitive",
     "title": "short notification title",
     "body": "short notification body",

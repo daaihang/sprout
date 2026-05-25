@@ -99,6 +99,7 @@ extension MoryMemoryRepository {
 
     func clearAllLocalData() throws {
         try deleteAll(NotificationIntentStore.self)
+        try deleteAll(NotificationManagementEventStore.self)
         try externalCaptureInboxStore.clear()
         try deleteAll(HomeBoardSignalStore.self)
         try deleteAll(GraphDeltaStore.self)

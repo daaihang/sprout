@@ -146,6 +146,7 @@ struct NotificationInteractionService {
             if intent.deliveredAt == nil {
                 intent.deliveredAt = now
             }
+            intent.openedAt = now
             if intent.status == .pending || intent.status == .scheduled {
                 intent.status = .delivered
             }
@@ -158,7 +159,29 @@ struct NotificationInteractionService {
         }
 
         try repository.upsertNotificationIntent(intent)
+        try repository.upsertNotificationManagementEvent(NotificationManagementEvent(
+            eventKind: eventKind(for: event.action),
+            intentID: intent.id,
+            dedupeKey: intent.dedupeKey,
+            trigger: intent.sourceTrigger,
+            kind: intent.kind,
+            targetType: intent.targetType,
+            targetID: intent.targetID,
+            message: "Notification \(event.action.rawValue).",
+            createdAt: now
+        ))
         return intent
+    }
+
+    private func eventKind(for action: NotificationInteractionAction) -> NotificationManagementEventKind {
+        switch action {
+        case .delivered:
+            return .delivered
+        case .opened:
+            return .opened
+        case .dismissed:
+            return .dismissed
+        }
     }
 
     private func destination(

@@ -496,18 +496,16 @@ func isDebugDeliveryKind(kind string) bool {
 
 func kindEnabled(token db.PushToken, kind string) bool {
 	switch strings.TrimSpace(kind) {
-	case "backgroundDone":
-		return token.BackgroundDoneEnabled
+	case "analysisReady":
+		return token.AnalysisReadyEnabled
 	case "dailyQuestion":
 		return token.DailyQuestionEnabled
-	case "repeatedTheme":
-		return token.RepeatedThemeEnabled
-	case "stageForming":
-		return token.StageFormingEnabled
-	case "revisit":
-		return token.RevisitEnabled
-	default:
+	case "reflectionReady":
+		return token.ReflectionReadyEnabled
+	case "debugTest":
 		return true
+	default:
+		return false
 	}
 }
 

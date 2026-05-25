@@ -7,11 +7,9 @@ extension MoryAPIClient {
         var timezone: String
         var hasQuestionReady: Bool
         var notificationsEnabled: Bool
-        var backgroundDoneEnabled: Bool
+        var analysisReadyEnabled: Bool
         var dailyQuestionEnabled: Bool
-        var repeatedThemeEnabled: Bool
-        var stageFormingEnabled: Bool
-        var revisitEnabled: Bool
+        var reflectionReadyEnabled: Bool
         var deliveryPace: String
         var maxPerDay: Int
         var minimumMinutesBetweenNotifications: Int
@@ -29,11 +27,9 @@ extension MoryAPIClient {
             case timezone
             case hasQuestionReady = "has_question_ready"
             case notificationsEnabled = "notifications_enabled"
-            case backgroundDoneEnabled = "background_done_enabled"
+            case analysisReadyEnabled = "analysis_ready_enabled"
             case dailyQuestionEnabled = "daily_question_enabled"
-            case repeatedThemeEnabled = "repeated_theme_enabled"
-            case stageFormingEnabled = "stage_forming_enabled"
-            case revisitEnabled = "revisit_enabled"
+            case reflectionReadyEnabled = "reflection_ready_enabled"
             case deliveryPace = "delivery_pace"
             case maxPerDay = "max_per_day"
             case minimumMinutesBetweenNotifications = "minimum_minutes_between_notifications"
@@ -45,6 +41,39 @@ extension MoryAPIClient {
             case semanticSearchEnabled = "semantic_search_enabled"
             case homeSuggestionsEnabled = "home_suggestions_enabled"
         }
+    }
+
+    static func pushRegisterPayload(
+        deviceID: String,
+        apnsToken: String,
+        timezone: String,
+        hasQuestionReady: Bool,
+        notificationPreferences: NotificationPreferences,
+        intelligencePreferences: IntelligencePreferences,
+        semanticSearchEnabled: Bool,
+        quietStart: String?,
+        quietEnd: String?
+    ) -> PushRegisterPayload {
+        PushRegisterPayload(
+            deviceID: deviceID,
+            apnsToken: apnsToken,
+            timezone: timezone,
+            hasQuestionReady: hasQuestionReady,
+            notificationsEnabled: notificationPreferences.enabled,
+            analysisReadyEnabled: notificationPreferences.analysisReadyEnabled,
+            dailyQuestionEnabled: notificationPreferences.dailyQuestionEnabled,
+            reflectionReadyEnabled: notificationPreferences.reflectionReadyEnabled,
+            deliveryPace: notificationPreferences.resolvedFrequencyStrategy.rawValue,
+            maxPerDay: notificationPreferences.maxPerDay,
+            minimumMinutesBetweenNotifications: notificationPreferences.resolvedMinimumMinutesBetweenNotifications,
+            quietStart: quietStart,
+            quietEnd: quietEnd,
+            richPreviewsEnabled: notificationPreferences.richPreviewsEnabled,
+            localIntelligenceEnabled: intelligencePreferences.localIntelligenceEnabled,
+            cloudIntelligenceEnabled: intelligencePreferences.cloudIntelligenceEnabled,
+            semanticSearchEnabled: semanticSearchEnabled,
+            homeSuggestionsEnabled: intelligencePreferences.homeSuggestionsEnabled
+        )
     }
 
     struct PushRegisterResponse: Decodable, Sendable, Equatable {
@@ -225,4 +254,29 @@ extension MoryAPIClient {
         )
     }
 
+}
+
+extension MoryAPIClient.PushRegisterPayload {
+    var registrationDigestComponents: [String] {
+        [
+            deviceID,
+            apnsToken,
+            timezone,
+            String(hasQuestionReady),
+            String(notificationsEnabled),
+            String(analysisReadyEnabled),
+            String(dailyQuestionEnabled),
+            String(reflectionReadyEnabled),
+            deliveryPace,
+            String(maxPerDay),
+            String(minimumMinutesBetweenNotifications),
+            quietStart ?? "",
+            quietEnd ?? "",
+            String(richPreviewsEnabled),
+            String(localIntelligenceEnabled),
+            String(cloudIntelligenceEnabled),
+            String(semanticSearchEnabled),
+            String(homeSuggestionsEnabled),
+        ]
+    }
 }

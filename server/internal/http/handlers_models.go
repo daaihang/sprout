@@ -40,11 +40,9 @@ type pushRegisterRequest struct {
 	Timezone                           string `json:"timezone"`
 	HasQuestionReady                   bool   `json:"has_question_ready"`
 	NotificationsEnabled               bool   `json:"notifications_enabled"`
-	BackgroundDoneEnabled              bool   `json:"background_done_enabled"`
+	AnalysisReadyEnabled               bool   `json:"analysis_ready_enabled"`
 	DailyQuestionEnabled               bool   `json:"daily_question_enabled"`
-	RepeatedThemeEnabled               bool   `json:"repeated_theme_enabled"`
-	StageFormingEnabled                bool   `json:"stage_forming_enabled"`
-	RevisitEnabled                     bool   `json:"revisit_enabled"`
+	ReflectionReadyEnabled             bool   `json:"reflection_ready_enabled"`
 	DeliveryPace                       string `json:"delivery_pace"`
 	MaxPerDay                          int    `json:"max_per_day"`
 	MinimumMinutesBetweenNotifications int    `json:"minimum_minutes_between_notifications"`

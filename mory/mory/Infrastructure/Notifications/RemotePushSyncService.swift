@@ -372,20 +372,14 @@ final class RemotePushSyncService: RemotePushSyncing {
         }
 
         let notificationPreferences = preferences.notificationPreferences
-        let payload = MoryAPIClient.PushRegisterPayload(
+        let payload = MoryAPIClient.pushRegisterPayload(
             deviceID: PushDeviceRegistrationStore.currentDeviceID(),
             apnsToken: apnsToken,
             timezone: PushDeviceRegistrationStore.currentTimezoneID(),
             hasQuestionReady: hasQuestionReady,
-            notificationsEnabled: notificationPreferences.enabled,
-            backgroundDoneEnabled: notificationPreferences.backgroundDoneEnabled,
-            dailyQuestionEnabled: notificationPreferences.dailyQuestionEnabled,
-            repeatedThemeEnabled: notificationPreferences.remoteRepeatedThemeCompatibilityEnabled,
-            stageFormingEnabled: notificationPreferences.remoteStageFormingCompatibilityEnabled,
-            revisitEnabled: notificationPreferences.remoteRevisitCompatibilityEnabled,
-            deliveryPace: notificationPreferences.resolvedFrequencyStrategy.rawValue,
-            maxPerDay: notificationPreferences.maxPerDay,
-            minimumMinutesBetweenNotifications: notificationPreferences.resolvedMinimumMinutesBetweenNotifications,
+            notificationPreferences: notificationPreferences,
+            intelligencePreferences: preferences,
+            semanticSearchEnabled: flags.semanticSearch,
             quietStart: formatQuietTime(
                 hour: notificationPreferences.quietHoursStartHour,
                 minute: notificationPreferences.quietHoursStartMinute
@@ -393,12 +387,7 @@ final class RemotePushSyncService: RemotePushSyncing {
             quietEnd: formatQuietTime(
                 hour: notificationPreferences.quietHoursEndHour,
                 minute: notificationPreferences.quietHoursEndMinute
-            ),
-            richPreviewsEnabled: notificationPreferences.richPreviewsEnabled,
-            localIntelligenceEnabled: preferences.localIntelligenceEnabled,
-            cloudIntelligenceEnabled: preferences.cloudIntelligenceEnabled,
-            semanticSearchEnabled: flags.semanticSearch,
-            homeSuggestionsEnabled: preferences.homeSuggestionsEnabled
+            )
         )
 
         return RemotePushRegistrationSnapshot(payload: payload)
@@ -520,28 +509,7 @@ private struct RemotePushRegistrationSnapshot {
     let payload: MoryAPIClient.PushRegisterPayload
 
     var digest: String {
-        [
-            payload.deviceID,
-            payload.apnsToken,
-            payload.timezone,
-            String(payload.hasQuestionReady),
-            String(payload.notificationsEnabled),
-            String(payload.backgroundDoneEnabled),
-            String(payload.dailyQuestionEnabled),
-            String(payload.repeatedThemeEnabled),
-            String(payload.stageFormingEnabled),
-            String(payload.revisitEnabled),
-            payload.deliveryPace,
-            String(payload.maxPerDay),
-            String(payload.minimumMinutesBetweenNotifications),
-            payload.quietStart ?? "",
-            payload.quietEnd ?? "",
-            String(payload.richPreviewsEnabled),
-            String(payload.localIntelligenceEnabled),
-            String(payload.cloudIntelligenceEnabled),
-            String(payload.semanticSearchEnabled),
-            String(payload.homeSuggestionsEnabled),
-        ].joined(separator: "|")
+        payload.registrationDigestComponents.joined(separator: "|")
     }
 }
 

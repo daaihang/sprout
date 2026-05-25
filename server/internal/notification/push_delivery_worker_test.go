@@ -171,10 +171,8 @@ func insertWorkerTestToken(t *testing.T, store *db.SQLiteStore) {
 		Timezone:                           "UTC",
 		NotificationsEnabled:               true,
 		DailyQuestionEnabled:               true,
-		BackgroundDoneEnabled:              true,
-		RepeatedThemeEnabled:               true,
-		StageFormingEnabled:                true,
-		RevisitEnabled:                     true,
+		AnalysisReadyEnabled:               true,
+		ReflectionReadyEnabled:             true,
 		MaxPerDay:                          10,
 		MinimumMinutesBetweenNotifications: 0,
 	}); err != nil {

@@ -43,6 +43,12 @@ protocol NotificationIntentRepositorying: AnyObject {
 }
 
 @MainActor
+protocol NotificationManagementEventRepositorying: AnyObject {
+    func fetchNotificationManagementEvents(kind: NotificationManagementEventKind?, limit: Int?) throws -> [NotificationManagementEvent]
+    func upsertNotificationManagementEvent(_ event: NotificationManagementEvent) throws
+}
+
+@MainActor
 final class SystemLocalNotificationCenter: LocalNotificationSchedulingCenter {
     private let center: UNUserNotificationCenter
 

@@ -97,7 +97,6 @@ struct DebugJobQueueView: View {
                     DebugCenterValueRow(title: "Running jobs", value: "\(snapshot.runningJobCount)")
                     DebugCenterValueRow(title: "Failed jobs", value: "\(snapshot.failedJobCount)")
                     DebugCenterValueRow(title: "Cloud required jobs", value: "\(snapshot.cloudRequiredJobCount)")
-                    DebugCenterValueRow(title: "Notification intents", value: "\(snapshot.notificationIntents.count)")
                     DebugCenterValueRow(title: "Unapplied graph deltas", value: "\(snapshot.unappliedGraphDeltaCount)")
                 }
 
@@ -113,12 +112,6 @@ struct DebugJobQueueView: View {
                     }
                 }
 
-                Section("Notification intent counts") {
-                    ForEach(snapshot.notificationStatusCounts) { count in
-                        DebugCenterValueRow(title: count.label, value: "\(count.count)")
-                    }
-                }
-
                 Section("Recent jobs") {
                     if snapshot.jobs.isEmpty {
                         Text("No jobs")
@@ -126,17 +119,6 @@ struct DebugJobQueueView: View {
                     } else {
                         ForEach(snapshot.jobs.prefix(20)) { job in
                             DebugJobRow(job: job)
-                        }
-                    }
-                }
-
-                Section("Recent notification intents") {
-                    if snapshot.notificationIntents.isEmpty {
-                        Text("No notification intents")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(snapshot.notificationIntents.prefix(12)) { intent in
-                            DebugNotificationIntentRow(intent: intent)
                         }
                     }
                 }
@@ -186,15 +168,12 @@ struct DebugJobQueueView: View {
         do {
             let jobs = try memoryRepository.fetchIntelligenceJobs(status: nil, limit: nil)
                 .sorted { $0.updatedAt > $1.updatedAt }
-            let intents = try memoryRepository.fetchNotificationIntents(status: nil, limit: nil)
-                .sorted { $0.createdAt > $1.createdAt }
             let deltas = try memoryRepository.fetchGraphDeltas(applied: nil, limit: nil)
                 .sorted { $0.createdAt > $1.createdAt }
             flags = try memoryRepository.fetchV6FeatureFlags()
             snapshot = DebugJobQueueSnapshot(
                 generatedAt: .now,
                 jobs: jobs,
-                notificationIntents: intents,
                 graphDeltas: deltas
             )
             resultMessage = nil
@@ -337,7 +316,6 @@ struct DebugJobQueueView: View {
             "Running: \(snapshot.runningJobCount)",
             "Failed: \(snapshot.failedJobCount)",
             "Cloud required: \(snapshot.cloudRequiredJobCount)",
-            "Notification intents: \(snapshot.notificationIntents.count)",
             "Unapplied graph deltas: \(snapshot.unappliedGraphDeltaCount)",
             "",
             "[Jobs]",
@@ -370,32 +348,6 @@ private struct DebugJobRow: View {
             if let lastError = job.lastError?.trimmedOrNil {
                 DebugCenterPayloadBlock(title: "Last error", content: lastError)
             }
-        }
-        .padding(.vertical, 4)
-    }
-}
-
-private struct DebugNotificationIntentRow: View {
-    let intent: NotificationIntent
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(intent.kind.rawValue)
-                    .font(.subheadline.weight(.semibold))
-                Spacer()
-                Text(intent.status.rawValue)
-                    .font(.caption.monospaced())
-                    .foregroundStyle(.secondary)
-            }
-            Text(intent.title)
-                .font(.caption)
-            Text(intent.body)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            DebugCenterValueRow(title: "Target", value: "\(intent.targetType.rawValue) · \(intent.targetID.uuidString)")
-            DebugCenterValueRow(title: "Channel", value: intent.deliveryChannel.rawValue)
-            DebugCenterValueRow(title: "Scheduled", value: intent.scheduledAt.formatted(.iso8601))
         }
         .padding(.vertical, 4)
     }

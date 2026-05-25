@@ -33,6 +33,9 @@ final class NotificationInteractionServiceTests: XCTestCase {
         XCTAssertEqual(stored.status, .delivered)
         XCTAssertEqual(stored.deliveredAt, now)
         XCTAssertNil(stored.dismissedAt)
+        let eventLog = try XCTUnwrap(fixture.repository.fetchNotificationManagementEvents(kind: .delivered, limit: nil).first)
+        XCTAssertEqual(eventLog.intentID, intent.id)
+        XCTAssertEqual(eventLog.kind, .dailyQuestion)
     }
 
     func testOpenedInteractionReturnsRouteAndMarksIntentDelivered() throws {
@@ -55,6 +58,10 @@ final class NotificationInteractionServiceTests: XCTestCase {
         let stored = try XCTUnwrap(fixture.repository.fetchNotificationIntents(status: nil, limit: nil).first)
         XCTAssertEqual(stored.status, .delivered)
         XCTAssertEqual(stored.deliveredAt, now)
+        XCTAssertEqual(stored.openedAt, now)
+        let eventLog = try XCTUnwrap(fixture.repository.fetchNotificationManagementEvents(kind: .opened, limit: nil).first)
+        XCTAssertEqual(eventLog.intentID, intent.id)
+        XCTAssertEqual(eventLog.targetID, intent.targetID)
     }
 
     func testDismissedInteractionMarksIntentDismissed() throws {
@@ -76,6 +83,9 @@ final class NotificationInteractionServiceTests: XCTestCase {
         XCTAssertEqual(stored.status, .dismissed)
         XCTAssertEqual(stored.deliveredAt, now)
         XCTAssertEqual(stored.dismissedAt, now)
+        let eventLog = try XCTUnwrap(fixture.repository.fetchNotificationManagementEvents(kind: .dismissed, limit: nil).first)
+        XCTAssertEqual(eventLog.intentID, intent.id)
+        XCTAssertEqual(eventLog.kind, .dailyQuestion)
     }
 
     func testOpenedInteractionCanRouteEvenWhenIntentIsMissing() throws {

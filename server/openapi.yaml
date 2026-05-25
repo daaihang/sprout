@@ -248,15 +248,11 @@ paths:
                   type: boolean
                 notifications_enabled:
                   type: boolean
-                background_done_enabled:
+                analysis_ready_enabled:
                   type: boolean
                 daily_question_enabled:
                   type: boolean
-                repeated_theme_enabled:
-                  type: boolean
-                stage_forming_enabled:
-                  type: boolean
-                revisit_enabled:
+                reflection_ready_enabled:
                   type: boolean
                 delivery_pace:
                   type: string

@@ -111,6 +111,58 @@ enum NotificationIntentCreator: String, Codable, CaseIterable, Identifiable, Sen
     var id: String { rawValue }
 }
 
+enum NotificationManagementEventKind: String, Codable, CaseIterable, Identifiable, Sendable {
+    case generated
+    case deduped
+    case policyBlocked
+    case deliveryError
+    case routeError
+    case scheduled
+    case delivered
+    case opened
+    case dismissed
+    case inAppOnly
+
+    var id: String { rawValue }
+}
+
+struct NotificationManagementEvent: Identifiable, Codable, Hashable, Sendable {
+    var id: UUID
+    var eventKind: NotificationManagementEventKind
+    var intentID: UUID?
+    var dedupeKey: String?
+    var trigger: NotificationTriggerSource?
+    var kind: NotificationIntentKind?
+    var targetType: ClarificationTargetType?
+    var targetID: UUID?
+    var message: String
+    var createdAt: Date
+
+    init(
+        id: UUID = UUID(),
+        eventKind: NotificationManagementEventKind,
+        intentID: UUID? = nil,
+        dedupeKey: String? = nil,
+        trigger: NotificationTriggerSource? = nil,
+        kind: NotificationIntentKind? = nil,
+        targetType: ClarificationTargetType? = nil,
+        targetID: UUID? = nil,
+        message: String,
+        createdAt: Date = .now
+    ) {
+        self.id = id
+        self.eventKind = eventKind
+        self.intentID = intentID
+        self.dedupeKey = dedupeKey
+        self.trigger = trigger
+        self.kind = kind
+        self.targetType = targetType
+        self.targetID = targetID
+        self.message = message
+        self.createdAt = createdAt
+    }
+}
+
 struct NotificationIntent: Identifiable, Codable, Hashable, Sendable {
     var id: UUID
     var kind: NotificationIntentKind
@@ -131,6 +183,7 @@ struct NotificationIntent: Identifiable, Codable, Hashable, Sendable {
     var blockedReasons: [String]
     var createdAt: Date
     var deliveredAt: Date?
+    var openedAt: Date?
     var dismissedAt: Date?
 
     init(
@@ -153,6 +206,7 @@ struct NotificationIntent: Identifiable, Codable, Hashable, Sendable {
         blockedReasons: [String] = [],
         createdAt: Date = .now,
         deliveredAt: Date? = nil,
+        openedAt: Date? = nil,
         dismissedAt: Date? = nil
     ) {
         self.id = id
@@ -178,6 +232,7 @@ struct NotificationIntent: Identifiable, Codable, Hashable, Sendable {
         self.blockedReasons = blockedReasons
         self.createdAt = createdAt
         self.deliveredAt = deliveredAt
+        self.openedAt = openedAt
         self.dismissedAt = dismissedAt
     }
 

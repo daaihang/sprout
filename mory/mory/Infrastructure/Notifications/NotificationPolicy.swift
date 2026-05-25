@@ -87,7 +87,7 @@ struct NotificationPolicy: Sendable {
     ) -> Bool {
         switch kind {
         case .analysisReady:
-            return preferences.backgroundDoneEnabled
+            return preferences.analysisReadyEnabled
         case .dailyQuestion:
             return preferences.dailyQuestionEnabled
         case .reflectionReady:

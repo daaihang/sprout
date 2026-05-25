@@ -105,6 +105,13 @@ struct NotificationOrchestrator {
             if let activeIntent = existingIntents.first(where: {
                 $0.dedupeKey == candidate.intent.dedupeKey && $0.status != .blocked
             }) {
+                try repository.upsertNotificationManagementEvent(event(
+                    .deduped,
+                    intent: activeIntent,
+                    trigger: trigger.source,
+                    message: "Skipped duplicate candidate for \(candidate.intent.dedupeKey).",
+                    now: now
+                ))
                 report.dedupedIntentIDs.append(activeIntent.id)
                 return report
             }
@@ -116,11 +123,25 @@ struct NotificationOrchestrator {
             intent.sourceTrigger = trigger.source
             intent.lastEvaluatedAt = now
             report.generatedIntentIDs.append(intent.id)
+            try repository.upsertNotificationManagementEvent(event(
+                .generated,
+                intent: intent,
+                trigger: trigger.source,
+                message: "Generated \(intent.kind.rawValue) candidate.",
+                now: now
+            ))
 
             guard hasResolvableRoute(intent) else {
                 intent.status = .blocked
                 intent.blockedReasons = [NotificationPolicyBlockReason.noResolvableRoute.rawValue]
                 try repository.upsertNotificationIntent(intent)
+                try repository.upsertNotificationManagementEvent(event(
+                    .routeError,
+                    intent: intent,
+                    trigger: trigger.source,
+                    message: "Blocked notification because deepLink is missing or cannot be parsed.",
+                    now: now
+                ))
                 report.blockedIntentIDs.append(intent.id)
                 return report
             }
@@ -129,6 +150,13 @@ struct NotificationOrchestrator {
                 intent.status = .inAppOnly
                 intent.blockedReasons = []
                 try repository.upsertNotificationIntent(intent)
+                try repository.upsertNotificationManagementEvent(event(
+                    .inAppOnly,
+                    intent: intent,
+                    trigger: trigger.source,
+                    message: "Stored as in-app only for \(trigger.source.rawValue).",
+                    now: now
+                ))
                 report.inAppOnlyIntentIDs.append(intent.id)
                 return report
             }
@@ -147,6 +175,13 @@ struct NotificationOrchestrator {
                 intent.status = .blocked
                 intent.blockedReasons = decision.blockReasons.map(\.rawValue)
                 try repository.upsertNotificationIntent(intent)
+                try repository.upsertNotificationManagementEvent(event(
+                    .policyBlocked,
+                    intent: intent,
+                    trigger: trigger.source,
+                    message: "Policy blocked notification: \(intent.blockedReasons.joined(separator: ", ")).",
+                    now: now
+                ))
                 report.blockedIntentIDs.append(intent.id)
                 return report
             }
@@ -170,7 +205,21 @@ struct NotificationOrchestrator {
                     if deliveredIntent.deliveryChannel == .remote {
                         report.remoteEnqueuedIntentIDs.append(deliveredIntent.id)
                     }
+                    try repository.upsertNotificationManagementEvent(event(
+                        .scheduled,
+                        intent: deliveredIntent,
+                        trigger: trigger.source,
+                        message: "Scheduled through \(deliveredIntent.deliveryChannel.rawValue) delivery.",
+                        now: now
+                    ))
                 } else {
+                    try repository.upsertNotificationManagementEvent(event(
+                        .deliveryError,
+                        intent: deliveredIntent,
+                        trigger: trigger.source,
+                        message: "Delivery did not schedule: \(deliveredIntent.blockedReasons.joined(separator: ", ")).",
+                        now: now
+                    ))
                     report.blockedIntentIDs.append(deliveredIntent.id)
                 }
             } catch {
@@ -179,6 +228,13 @@ struct NotificationOrchestrator {
                 failedIntent.status = .blocked
                 failedIntent.blockedReasons = ["delivery_error"]
                 try repository.upsertNotificationIntent(failedIntent)
+                try repository.upsertNotificationManagementEvent(event(
+                    .deliveryError,
+                    intent: failedIntent,
+                    trigger: trigger.source,
+                    message: error.localizedDescription,
+                    now: now
+                ))
                 report.blockedIntentIDs.append(failedIntent.id)
             }
 
@@ -416,6 +472,26 @@ struct NotificationOrchestrator {
 
     private func relevantPipelineTimestamp(_ status: MemoryPipelineStatusSnapshot) -> Date {
         status.completedAt ?? status.lastAttemptAt ?? status.updatedAt
+    }
+
+    private func event(
+        _ kind: NotificationManagementEventKind,
+        intent: NotificationIntent,
+        trigger: NotificationTriggerSource,
+        message: String,
+        now: Date = .now
+    ) -> NotificationManagementEvent {
+        NotificationManagementEvent(
+            eventKind: kind,
+            intentID: intent.id,
+            dedupeKey: intent.dedupeKey,
+            trigger: trigger,
+            kind: intent.kind,
+            targetType: intent.targetType,
+            targetID: intent.targetID,
+            message: message,
+            createdAt: now
+        )
     }
 }
 

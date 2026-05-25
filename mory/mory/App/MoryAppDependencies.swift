@@ -155,6 +155,8 @@ private final class MissingMemoryRepository: MoryMemoryRepositorying {
     func dismissClarificationQuestion(_ id: UUID) throws { let _: Void = fail() }
     func fetchNotificationIntents(status: NotificationIntentStatus?, limit: Int?) throws -> [NotificationIntent] { fail() }
     func upsertNotificationIntent(_ intent: NotificationIntent) throws { let _: Void = fail() }
+    func fetchNotificationManagementEvents(kind: NotificationManagementEventKind?, limit: Int?) throws -> [NotificationManagementEvent] { fail() }
+    func upsertNotificationManagementEvent(_ event: NotificationManagementEvent) throws { let _: Void = fail() }
     func enqueueExternalCapture(_ request: ExternalCaptureRequest, receivedAt: Date) throws -> ExternalCaptureInboxItem { fail() }
     func enqueueJournalingSuggestion(_ suggestion: JournalingSuggestionDraft, receivedAt: Date) throws -> ExternalCaptureInboxItem { fail() }
     func fetchExternalCaptureInbox(status: ExternalCaptureInboxStatus?, limit: Int?) throws -> [ExternalCaptureInboxItem] { fail() }

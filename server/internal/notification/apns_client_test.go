@@ -58,7 +58,7 @@ func TestTokenAPNSClientSendsProductionPayload(t *testing.T) {
 		Title:        "Mory",
 		Body:         "A decision is ready.",
 		IntentID:     "intent-1",
-		Kind:         "repeatedTheme",
+		Kind:         "analysisReady",
 		TargetType:   "decision",
 		TargetID:     "decision-1",
 		PrivacyLevel: "contextual",

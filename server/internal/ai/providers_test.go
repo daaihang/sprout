@@ -342,7 +342,7 @@ func TestAnthropicProviderV6SuggestNotificationIntent(t *testing.T) {
 			"content": []map[string]any{
 				{
 					"type": "text",
-					"text": `{"schema_version":1,"intent":{"kind":"repeatedTheme","privacy_level":"contextual","title":"Mory","body":"你最近多次提到搬家，要不要补一句今天最在意的点？","deep_link":"mory://insights/theme/move","scheduled_at":"2026-05-19T10:00:00Z"}}`,
+					"text": `{"schema_version":1,"intent":{"kind":"dailyQuestion","privacy_level":"contextual","title":"Mory","body":"你最近多次提到搬家，要不要补一句今天最在意的点？","deep_link":"mory://home/question/question-1","scheduled_at":"2026-05-19T10:00:00Z"}}`,
 				},
 			},
 			"usage": map[string]any{
@@ -365,7 +365,7 @@ func TestAnthropicProviderV6SuggestNotificationIntent(t *testing.T) {
 	)
 
 	result, err := provider.SuggestNotificationIntent(context.Background(), NotificationIntentSuggestionRequest{
-		Trigger: "repeated_theme",
+		Trigger: "daily_question",
 		RecentEvidence: []EvidenceSnippet{{
 			RecordID: "r1",
 			Snippet:  "最近第三次提到搬家。",
@@ -374,7 +374,7 @@ func TestAnthropicProviderV6SuggestNotificationIntent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("suggest notification intent: %v", err)
 	}
-	if result.Response.Intent.Kind != "repeatedTheme" || result.Response.Intent.PrivacyLevel != "contextual" {
+	if result.Response.Intent.Kind != "dailyQuestion" || result.Response.Intent.PrivacyLevel != "contextual" {
 		t.Fatalf("unexpected notification result: %+v", result)
 	}
 }

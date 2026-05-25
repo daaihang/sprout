@@ -233,7 +233,7 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 	})
 
 	t.Run("push register upsert", func(t *testing.T) {
-		body := `{"device_id":"iphone-1","apns_token":"token-a","timezone":"Asia/Shanghai","has_question_ready":true,"notifications_enabled":true,"background_done_enabled":true,"daily_question_enabled":true,"repeated_theme_enabled":true,"stage_forming_enabled":true,"revisit_enabled":true,"delivery_pace":"balanced","max_per_day":3,"minimum_minutes_between_notifications":90,"quiet_start":"22:00","quiet_end":"07:00","rich_previews_enabled":true,"local_intelligence_enabled":true,"cloud_intelligence_enabled":true,"semantic_search_enabled":true,"home_suggestions_enabled":true}`
+		body := `{"device_id":"iphone-1","apns_token":"token-a","timezone":"Asia/Shanghai","has_question_ready":true,"notifications_enabled":true,"analysis_ready_enabled":true,"daily_question_enabled":true,"reflection_ready_enabled":true,"delivery_pace":"balanced","max_per_day":3,"minimum_minutes_between_notifications":90,"quiet_start":"22:00","quiet_end":"07:00","rich_previews_enabled":true,"local_intelligence_enabled":true,"cloud_intelligence_enabled":true,"semantic_search_enabled":true,"home_suggestions_enabled":true}`
 		req := httptest.NewRequest(http.MethodPost, "/api/push/register", bytes.NewBufferString(body))
 		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Set("Content-Type", "application/json")
@@ -251,7 +251,7 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 		if stored.APNSToken != "token-a" || !stored.HasQuestionReady || !stored.NotificationsEnabled || !stored.DailyQuestionEnabled {
 			t.Fatalf("unexpected stored token after insert: %+v", stored)
 		}
-		if !stored.BackgroundDoneEnabled || !stored.RepeatedThemeEnabled || !stored.StageFormingEnabled || !stored.RevisitEnabled {
+		if !stored.AnalysisReadyEnabled || !stored.ReflectionReadyEnabled {
 			t.Fatalf("expected expanded notification toggles to persist: %+v", stored)
 		}
 		if stored.DeliveryPace != "balanced" || stored.MaxPerDay != 3 || stored.MinimumMinutesBetweenNotifications != 90 || stored.QuietStart != "22:00" || stored.QuietEnd != "07:00" {
@@ -261,7 +261,7 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 			t.Fatalf("expected expanded intelligence preference fields after insert: %+v", stored)
 		}
 
-		updateBody := `{"device_id":"iphone-1","apns_token":"token-b","timezone":"America/Los_Angeles","has_question_ready":false,"notifications_enabled":false,"background_done_enabled":false,"daily_question_enabled":false,"repeated_theme_enabled":false,"stage_forming_enabled":false,"revisit_enabled":false,"delivery_pace":"light","max_per_day":1,"minimum_minutes_between_notifications":15,"quiet_start":"23:00","quiet_end":"08:00","rich_previews_enabled":false,"local_intelligence_enabled":false,"cloud_intelligence_enabled":false,"semantic_search_enabled":false,"home_suggestions_enabled":false}`
+		updateBody := `{"device_id":"iphone-1","apns_token":"token-b","timezone":"America/Los_Angeles","has_question_ready":false,"notifications_enabled":false,"analysis_ready_enabled":false,"daily_question_enabled":false,"reflection_ready_enabled":false,"delivery_pace":"light","max_per_day":1,"minimum_minutes_between_notifications":15,"quiet_start":"23:00","quiet_end":"08:00","rich_previews_enabled":false,"local_intelligence_enabled":false,"cloud_intelligence_enabled":false,"semantic_search_enabled":false,"home_suggestions_enabled":false}`
 		updateReq := httptest.NewRequest(http.MethodPost, "/api/push/register", bytes.NewBufferString(updateBody))
 		updateReq.Header.Set("Authorization", "Bearer "+token)
 		updateReq.Header.Set("Content-Type", "application/json")
@@ -279,7 +279,7 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 		if updated.APNSToken != "token-b" || updated.Timezone != "America/Los_Angeles" || updated.HasQuestionReady || updated.NotificationsEnabled || updated.DailyQuestionEnabled {
 			t.Fatalf("unexpected stored token after update: %+v", updated)
 		}
-		if updated.BackgroundDoneEnabled || updated.RepeatedThemeEnabled || updated.StageFormingEnabled || updated.RevisitEnabled {
+		if updated.AnalysisReadyEnabled || updated.ReflectionReadyEnabled {
 			t.Fatalf("expected expanded notification toggles to update: %+v", updated)
 		}
 		if updated.DeliveryPace != "light" || updated.MaxPerDay != 1 || updated.MinimumMinutesBetweenNotifications != 15 || updated.QuietStart != "23:00" || updated.QuietEnd != "08:00" {
@@ -291,7 +291,7 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 	})
 
 	t.Run("push enqueue delivers to eligible registered device", func(t *testing.T) {
-		registerBody := `{"device_id":"iphone-1","apns_token":"token-a","timezone":"Asia/Shanghai","has_question_ready":true,"notifications_enabled":true,"background_done_enabled":true,"daily_question_enabled":true,"repeated_theme_enabled":true,"stage_forming_enabled":true,"revisit_enabled":true,"delivery_pace":"balanced","max_per_day":3,"minimum_minutes_between_notifications":90,"quiet_start":"22:00","quiet_end":"07:00","rich_previews_enabled":true,"local_intelligence_enabled":true,"cloud_intelligence_enabled":true,"semantic_search_enabled":true,"home_suggestions_enabled":true}`
+		registerBody := `{"device_id":"iphone-1","apns_token":"token-a","timezone":"Asia/Shanghai","has_question_ready":true,"notifications_enabled":true,"analysis_ready_enabled":true,"daily_question_enabled":true,"reflection_ready_enabled":true,"delivery_pace":"balanced","max_per_day":3,"minimum_minutes_between_notifications":90,"quiet_start":"22:00","quiet_end":"07:00","rich_previews_enabled":true,"local_intelligence_enabled":true,"cloud_intelligence_enabled":true,"semantic_search_enabled":true,"home_suggestions_enabled":true}`
 		registerReq := httptest.NewRequest(http.MethodPost, "/api/push/register", bytes.NewBufferString(registerBody))
 		registerReq.Header.Set("Authorization", "Bearer "+token)
 		registerReq.Header.Set("Content-Type", "application/json")

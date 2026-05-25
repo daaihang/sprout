@@ -23,6 +23,7 @@ extension NotificationIntentStore {
             blockedReasons: domainModel.blockedReasons,
             createdAt: domainModel.createdAt,
             deliveredAt: domainModel.deliveredAt,
+            openedAt: domainModel.openedAt,
             dismissedAt: domainModel.dismissedAt
         )
     }
@@ -48,6 +49,7 @@ extension NotificationIntentStore {
             blockedReasons: blockedReasons ?? [],
             createdAt: createdAt,
             deliveredAt: deliveredAt,
+            openedAt: openedAt,
             dismissedAt: dismissedAt
         )
     }
@@ -72,6 +74,40 @@ extension NotificationIntentStore {
         blockedReasons = domainModel.blockedReasons
         createdAt = domainModel.createdAt
         deliveredAt = domainModel.deliveredAt
+        openedAt = domainModel.openedAt
         dismissedAt = domainModel.dismissedAt
+    }
+}
+
+@MainActor
+extension NotificationManagementEventStore {
+    convenience init(domainModel: NotificationManagementEvent) {
+        self.init(
+            id: domainModel.id,
+            eventKindRawValue: domainModel.eventKind.rawValue,
+            intentID: domainModel.intentID,
+            dedupeKey: domainModel.dedupeKey,
+            triggerRawValue: domainModel.trigger?.rawValue,
+            kindRawValue: domainModel.kind?.rawValue,
+            targetTypeRawValue: domainModel.targetType?.rawValue,
+            targetID: domainModel.targetID,
+            message: domainModel.message,
+            createdAt: domainModel.createdAt
+        )
+    }
+
+    var domainModel: NotificationManagementEvent {
+        NotificationManagementEvent(
+            id: id,
+            eventKind: NotificationManagementEventKind(rawValue: eventKindRawValue) ?? .generated,
+            intentID: intentID,
+            dedupeKey: dedupeKey,
+            trigger: triggerRawValue.flatMap(NotificationTriggerSource.init(rawValue:)),
+            kind: kindRawValue.flatMap(NotificationIntentKind.init(rawValue:)),
+            targetType: targetTypeRawValue.flatMap(ClarificationTargetType.init(rawValue:)),
+            targetID: targetID,
+            message: message,
+            createdAt: createdAt
+        )
     }
 }

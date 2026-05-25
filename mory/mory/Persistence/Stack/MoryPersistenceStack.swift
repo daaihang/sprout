@@ -62,6 +62,7 @@ struct MoryPersistenceStack {
         GraphDeltaStore.self,
         HomeBoardSignalStore.self,
         NotificationIntentStore.self,
+        NotificationManagementEventStore.self,
         RecordShellStore.self,
         ArtifactStore.self,
         BoardStore.self,

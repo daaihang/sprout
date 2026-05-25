@@ -6,6 +6,17 @@ import SwiftUI
 import UIKit
 
 struct SettingsNotificationPreferencesSection: View {
+    let memoryRepository: any MoryMemoryRepositorying
+
+    var body: some View {
+        Form {
+            NotificationPreferencesContent(memoryRepository: memoryRepository)
+        }
+        .navigationTitle("settings.notifications.title")
+    }
+}
+
+struct NotificationPreferencesContent: View {
     @Environment(\.openURL) private var openURL
     @Environment(\.notificationOrchestrator) private var notificationOrchestrator
 
@@ -19,7 +30,7 @@ struct SettingsNotificationPreferencesSection: View {
     private let settingsService = NotificationSettingsService()
 
     var body: some View {
-        Form {
+        Group {
             Section {
                 LabeledContent(
                     "settings.notifications.system.status",
@@ -67,11 +78,11 @@ struct SettingsNotificationPreferencesSection: View {
                 .disabled(!notificationPreferences.enabled || isUpdating)
 
                 Toggle("Analysis ready", isOn: Binding(
-                    get: { notificationPreferences.backgroundDoneEnabled },
+                    get: { notificationPreferences.analysisReadyEnabled },
                     set: { newValue in
                         Task {
                             await updatePreferences { preferences in
-                                preferences.notificationPreferences.backgroundDoneEnabled = newValue
+                                preferences.notificationPreferences.analysisReadyEnabled = newValue
                             }
                         }
                     }
@@ -79,11 +90,11 @@ struct SettingsNotificationPreferencesSection: View {
                 .disabled(!notificationPreferences.enabled || isUpdating)
 
                 Toggle("Reflection ready", isOn: Binding(
-                    get: { notificationPreferences.stageFormingEnabled },
+                    get: { notificationPreferences.reflectionReadyEnabled },
                     set: { newValue in
                         Task {
                             await updatePreferences { preferences in
-                                preferences.notificationPreferences.stageFormingEnabled = newValue
+                                preferences.notificationPreferences.setReflectionReadyEnabled(newValue)
                             }
                         }
                     }
@@ -221,11 +232,7 @@ struct SettingsNotificationPreferencesSection: View {
                 }
             }
         }
-        .navigationTitle("settings.notifications.title")
         .task {
-            await load()
-        }
-        .refreshable {
             await load()
         }
     }

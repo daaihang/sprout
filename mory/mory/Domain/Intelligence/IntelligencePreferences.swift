@@ -56,11 +56,9 @@ enum NotificationFrequencyStrategy: String, Codable, CaseIterable, Identifiable,
 
 struct NotificationPreferences: Codable, Hashable, Sendable {
     var enabled: Bool
-    var backgroundDoneEnabled: Bool
+    var analysisReadyEnabled: Bool
     var dailyQuestionEnabled: Bool
-    var repeatedThemeEnabled: Bool
-    var stageFormingEnabled: Bool
-    var revisitEnabled: Bool
+    var reflectionReadyEnabled: Bool
     var frequencyStrategy: NotificationFrequencyStrategy?
     var maxPerDay: Int
     var minimumMinutesBetweenNotifications: Int?
@@ -72,11 +70,9 @@ struct NotificationPreferences: Codable, Hashable, Sendable {
 
     init(
         enabled: Bool = false,
-        backgroundDoneEnabled: Bool = true,
+        analysisReadyEnabled: Bool = true,
         dailyQuestionEnabled: Bool = false,
-        repeatedThemeEnabled: Bool = true,
-        stageFormingEnabled: Bool = true,
-        revisitEnabled: Bool = true,
+        reflectionReadyEnabled: Bool = true,
         frequencyStrategy: NotificationFrequencyStrategy? = .balanced,
         maxPerDay: Int = 2,
         minimumMinutesBetweenNotifications: Int? = nil,
@@ -87,11 +83,9 @@ struct NotificationPreferences: Codable, Hashable, Sendable {
         richPreviewsEnabled: Bool = false
     ) {
         self.enabled = enabled
-        self.backgroundDoneEnabled = backgroundDoneEnabled
+        self.analysisReadyEnabled = analysisReadyEnabled
         self.dailyQuestionEnabled = dailyQuestionEnabled
-        self.repeatedThemeEnabled = repeatedThemeEnabled
-        self.stageFormingEnabled = stageFormingEnabled
-        self.revisitEnabled = revisitEnabled
+        self.reflectionReadyEnabled = reflectionReadyEnabled
         self.frequencyStrategy = frequencyStrategy
         self.maxPerDay = max(0, maxPerDay)
         self.minimumMinutesBetweenNotifications = minimumMinutesBetweenNotifications.map { max(0, $0) }
@@ -114,20 +108,8 @@ struct NotificationPreferences: Codable, Hashable, Sendable {
         )
     }
 
-    var reflectionReadyEnabled: Bool {
-        stageFormingEnabled
-    }
-
-    var remoteRepeatedThemeCompatibilityEnabled: Bool {
-        false
-    }
-
-    var remoteStageFormingCompatibilityEnabled: Bool {
-        false
-    }
-
-    var remoteRevisitCompatibilityEnabled: Bool {
-        false
+    mutating func setReflectionReadyEnabled(_ enabled: Bool) {
+        reflectionReadyEnabled = enabled
     }
 }
 
