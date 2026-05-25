@@ -282,6 +282,15 @@ enum TemporalArcStatus: String, Codable, CaseIterable, Identifiable, Sendable {
     case merged
 
     var id: String { rawValue }
+
+    var displayLabel: String {
+        switch self {
+        case .candidate: String(localized: "arc.status.candidate")
+        case .accepted: String(localized: "arc.status.accepted")
+        case .archived: String(localized: "arc.status.archived")
+        case .merged: String(localized: "arc.status.merged")
+        }
+    }
 }
 
 struct TemporalArc: Identifiable, Codable, Hashable, Sendable {

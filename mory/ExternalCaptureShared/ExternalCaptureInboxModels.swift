@@ -13,6 +13,14 @@ enum ExternalCaptureInboxStatus: String, Codable, CaseIterable, Identifiable, Se
     case dismissed
 
     var id: String { rawValue }
+
+    var displayLabel: String {
+        switch self {
+        case .pending: String(localized: "status.pending")
+        case .imported: String(localized: "status.imported")
+        case .dismissed: String(localized: "status.dismissed")
+        }
+    }
 }
 
 struct ExternalCaptureInboxItem: Identifiable, Codable, Hashable, Sendable {

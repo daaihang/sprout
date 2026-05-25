@@ -11,6 +11,19 @@ enum ExternalCaptureSourceKind: String, Codable, CaseIterable, Identifiable, Sen
 
     var id: String { rawValue }
 
+    /// Human-readable label for UI display.
+    var displayLabel: String {
+        switch self {
+        case .appIntent: "App Intent"
+        case .shortcut: "Shortcut"
+        case .shareSheet: "Share Sheet"
+        case .journalingSuggestion: "Journaling Suggestion"
+        case .health: "Health"
+        case .fitness: "Fitness"
+        case .unknown: "Unknown"
+        }
+    }
+
     init(from decoder: Decoder) throws {
         let rawValue = try decoder.singleValueContainer().decode(String.self)
         self = Self(rawValue: rawValue) ?? .unknown

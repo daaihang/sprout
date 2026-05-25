@@ -182,6 +182,16 @@ enum ClarificationQuestionStatus: String, Codable, CaseIterable, Identifiable, S
     case stale
 
     var id: String { rawValue }
+
+    var displayLabel: String {
+        switch self {
+        case .pending: String(localized: "status.pending")
+        case .answered: String(localized: "status.answered")
+        case .dismissed: String(localized: "status.dismissed")
+        case .expired: String(localized: "status.expired")
+        case .stale: String(localized: "status.stale")
+        }
+    }
 }
 
 struct ClarificationAnswerOption: Identifiable, Codable, Hashable, Sendable {

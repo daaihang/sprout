@@ -545,7 +545,7 @@ struct ClarificationQuestionDetailView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text(question.prompt)
                                 .font(.headline)
-                            Text(question.status.rawValue.capitalized)
+                            Text(question.status.displayLabel)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             if let answer = question.answer {

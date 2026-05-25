@@ -29,13 +29,13 @@ struct ExternalCaptureDraftReviewView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text(item.title ?? item.sourceKind.rawValue)
+                                    Text(item.title ?? item.sourceKind.displayLabel)
                                         .font(.headline)
                                     Text(item.summary)
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                         .lineLimit(2)
-                                    Text("\(item.sourceKind.rawValue) • \(item.status.rawValue)")
+                                    Text("\(item.sourceKind.displayLabel) • \(item.status.displayLabel)")
                                         .font(.caption2)
                                         .foregroundStyle(.secondary)
                                 }

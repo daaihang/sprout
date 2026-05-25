@@ -30,7 +30,7 @@ struct ArcsScreen: View {
                                     Text(item.arc.title)
                                         .font(.headline)
                                     Spacer()
-                                    Text(item.arc.status.rawValue)
+                                    Text(item.arc.status.displayLabel)
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
