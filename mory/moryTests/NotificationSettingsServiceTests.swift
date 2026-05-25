@@ -14,6 +14,7 @@ final class NotificationSettingsServiceTests: XCTestCase {
         let result = try await service.setNotificationsEnabled(
             true,
             repository: repository,
+            notificationOrchestrator: .localDelivery,
             requestSystemAuthorization: true
         )
 
@@ -24,7 +25,7 @@ final class NotificationSettingsServiceTests: XCTestCase {
         XCTAssertEqual(center.requestAuthorizationCallCount, 1)
         XCTAssertTrue(result.systemAuthorizationRequested)
         XCTAssertTrue(result.systemAuthorizationGranted)
-        XCTAssertEqual(result.snapshot.authorizationState, .authorized)
+        XCTAssertEqual(result.snapshot.authorizationState, LocalNotificationAuthorizationState.authorized)
         XCTAssertTrue(result.notificationReport.generatedIntentIDs.isEmpty)
     }
 
@@ -34,7 +35,10 @@ final class NotificationSettingsServiceTests: XCTestCase {
         let center = NotificationSettingsMockCenter(state: .notDetermined)
         let service = NotificationSettingsService(notificationCenter: center)
 
-        _ = try await service.updatePreferences(repository: repository) { preferences in
+        _ = try await service.updatePreferences(
+            repository: repository,
+            notificationOrchestrator: .localDelivery
+        ) { preferences in
             preferences.notificationPreferences.dailyQuestionEnabled = false
             preferences.notificationPreferences.maxPerDay = 4
         }
@@ -58,6 +62,7 @@ final class NotificationSettingsServiceTests: XCTestCase {
         let result = try await service.setNotificationsEnabled(
             false,
             repository: repository,
+            notificationOrchestrator: .localDelivery,
             requestSystemAuthorization: false,
             now: now
         )

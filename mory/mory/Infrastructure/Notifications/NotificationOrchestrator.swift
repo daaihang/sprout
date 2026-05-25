@@ -72,6 +72,16 @@ struct NotificationOrchestrator {
         self.reflectionWindow = reflectionWindow
     }
 
+    static var localDelivery: NotificationOrchestrator {
+        NotificationOrchestrator(policy: NotificationPolicy())
+    }
+
+    static func live(remotePushSyncService: any RemotePushSyncing) -> NotificationOrchestrator {
+        NotificationOrchestrator(
+            deliveryRouter: NotificationDeliveryRouter(remotePushSyncService: remotePushSyncService)
+        )
+    }
+
     func orchestrate(
         trigger: NotificationTrigger,
         repository: any NotificationPreparationRepositorying,
@@ -85,7 +95,6 @@ struct NotificationOrchestrator {
         let candidates = try buildCandidates(
             trigger: trigger,
             repository: repository,
-            existingIntents: existingIntents,
             now: now
         )
 
@@ -97,7 +106,7 @@ struct NotificationOrchestrator {
                 $0.dedupeKey == candidate.intent.dedupeKey && $0.status != .blocked
             }) {
                 report.dedupedIntentIDs.append(activeIntent.id)
-                continue
+                return report
             }
 
             var intent = candidate.intent
@@ -108,12 +117,20 @@ struct NotificationOrchestrator {
             intent.lastEvaluatedAt = now
             report.generatedIntentIDs.append(intent.id)
 
+            guard hasResolvableRoute(intent) else {
+                intent.status = .blocked
+                intent.blockedReasons = [NotificationPolicyBlockReason.noResolvableRoute.rawValue]
+                try repository.upsertNotificationIntent(intent)
+                report.blockedIntentIDs.append(intent.id)
+                return report
+            }
+
             if !trigger.deliversSystemNotification {
                 intent.status = .inAppOnly
                 intent.blockedReasons = []
                 try repository.upsertNotificationIntent(intent)
                 report.inAppOnlyIntentIDs.append(intent.id)
-                continue
+                return report
             }
 
             let policyExistingIntents = existingIntents.filter { $0.id != intent.id && $0.status != .blocked }
@@ -131,7 +148,7 @@ struct NotificationOrchestrator {
                 intent.blockedReasons = decision.blockReasons.map(\.rawValue)
                 try repository.upsertNotificationIntent(intent)
                 report.blockedIntentIDs.append(intent.id)
-                continue
+                return report
             }
 
             approvedIntent.dedupeKey = intent.dedupeKey
@@ -165,7 +182,7 @@ struct NotificationOrchestrator {
                 report.blockedIntentIDs.append(failedIntent.id)
             }
 
-            break
+            return report
         }
 
         return report
@@ -174,11 +191,13 @@ struct NotificationOrchestrator {
     private func buildCandidates(
         trigger: NotificationTrigger,
         repository: any NotificationPreparationRepositorying,
-        existingIntents: [NotificationIntent],
         now: Date
     ) throws -> [PreparedNotificationCandidate] {
         switch trigger {
-        case let .debugManual(intent):
+        case .debugManual(var intent):
+            if intent.kind == .debugTest, intent.deepLink?.trimmedOrNil == nil {
+                intent.deepLink = "mory://home"
+            }
             return [PreparedNotificationCandidate(intent: intent)]
         case let .pipelineCompleted(recordID):
             if let reflectionCandidate = try reflectionReadyCandidate(
@@ -196,7 +215,19 @@ struct NotificationOrchestrator {
                 return [analysisCandidate]
             }
             return []
-        case .appLaunchRecovery, .homeForegroundRefresh, .backgroundRefresh, .silentPush, .settingsChanged:
+        case .backgroundRefresh, .silentPush:
+            var candidates: [PreparedNotificationCandidate] = []
+            if let reflection = try reflectionReadyCandidate(repository: repository, recordID: nil, now: now) {
+                candidates.append(reflection)
+            }
+            if let analysis = try analysisReadyCandidate(repository: repository, recordID: nil, now: now) {
+                candidates.append(analysis)
+            }
+            if let question = try dailyQuestionCandidate(repository: repository, now: now) {
+                candidates.append(question)
+            }
+            return candidates
+        case .appLaunchRecovery, .homeForegroundRefresh, .settingsChanged:
             var candidates: [PreparedNotificationCandidate] = []
             if let question = try dailyQuestionCandidate(repository: repository, now: now) {
                 candidates.append(question)
@@ -369,11 +400,18 @@ struct NotificationOrchestrator {
         if let result = report.results.first(where: { $0.intentID == intent.id }), !result.scheduled {
             var blockedIntent = intent
             blockedIntent.status = .blocked
-            blockedIntent.blockedReasons = [result.skipReason?.rawValue].compactMap { $0 } + result.policyBlockReasons.map(\.rawValue)
+            blockedIntent.blockedReasons = [result.skipReason?.rawValue].compactMap { $0 }
             try repository.upsertNotificationIntent(blockedIntent)
         }
         return try repository.fetchNotificationIntents(status: nil, limit: nil)
             .first(where: { $0.id == intent.id }) ?? intent
+    }
+
+    private func hasResolvableRoute(_ intent: NotificationIntent) -> Bool {
+        guard let deepLink = intent.deepLink?.trimmedOrNil else {
+            return false
+        }
+        return MoryDeepLinkRoute.parse(deepLink) != nil
     }
 
     private func relevantPipelineTimestamp(_ status: MemoryPipelineStatusSnapshot) -> Date {

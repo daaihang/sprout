@@ -11,6 +11,7 @@ final class BackgroundTaskCoordinator {
     private(set) var repository: (any MoryMemoryRepositorying)?
     private var cloudService: (any CloudIntelligenceServing)?
     private var remotePushSyncService: (any RemotePushSyncing)?
+    private var notificationOrchestrator: NotificationOrchestrator?
 
     private let jobWorker = IntelligenceJobWorker()
 
@@ -49,11 +50,13 @@ final class BackgroundTaskCoordinator {
     func configure(
         repository: any MoryMemoryRepositorying,
         cloudService: (any CloudIntelligenceServing)?,
-        remotePushSyncService: (any RemotePushSyncing)? = nil
+        remotePushSyncService: (any RemotePushSyncing)? = nil,
+        notificationOrchestrator: NotificationOrchestrator? = nil
     ) {
         self.repository = repository
         self.cloudService = cloudService
         self.remotePushSyncService = remotePushSyncService
+        self.notificationOrchestrator = notificationOrchestrator
     }
 
     // MARK: - Schedule
@@ -70,10 +73,7 @@ final class BackgroundTaskCoordinator {
         guard let repository else {
             throw CocoaError(.fileNoSuchFile)
         }
-        let router = remotePushSyncService.map { NotificationDeliveryRouter(remotePushSyncService: $0) }
-        return try await NotificationOrchestrator(
-            deliveryRouter: router
-        ).orchestrate(
+        return try await resolvedNotificationOrchestrator.orchestrate(
             trigger: trigger,
             repository: repository,
             now: now
@@ -92,7 +92,8 @@ final class BackgroundTaskCoordinator {
             _ = await self.jobWorker.processDueJobs(
                 repository: repo,
                 cloudIntelligenceService: svc,
-                remotePushSyncService: self.remotePushSyncService
+                remotePushSyncService: self.remotePushSyncService,
+                notificationOrchestrator: self.resolvedNotificationOrchestrator
             )
             task.setTaskCompleted(success: true)
         }
@@ -106,16 +107,17 @@ final class BackgroundTaskCoordinator {
             return
         }
         let t = Task { @MainActor in
-            let router = self.remotePushSyncService.map { NotificationDeliveryRouter(remotePushSyncService: $0) }
-            _ = try? await NotificationOrchestrator(
-                deliveryRouter: router
-            ).orchestrate(
+            _ = try? await self.resolvedNotificationOrchestrator.orchestrate(
                 trigger: .backgroundRefresh,
                 repository: repo
             )
             task.setTaskCompleted(success: true)
         }
         task.expirationHandler = { t.cancel() }
+    }
+
+    private var resolvedNotificationOrchestrator: NotificationOrchestrator {
+        notificationOrchestrator ?? .localDelivery
     }
 
     // MARK: - Private schedule helpers

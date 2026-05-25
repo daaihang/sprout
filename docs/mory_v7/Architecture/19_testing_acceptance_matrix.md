@@ -90,7 +90,7 @@ v7 acceptance coverage is now in place for the architecture baseline:
 - identity/correction tests: `EntityResolutionServiceTests`;
 - structured mood tests: `AffectSnapshotTests`;
 - background tests: `BackgroundTaskCoordinatorTests`;
-- notification routing/policy/writeback tests: `NotificationDeliveryRouterTests`, `LocalNotificationSchedulerTests`, `NotificationIntentPreparationServiceTests`, `NotificationInteractionServiceTests`;
+- notification trigger/routing/policy/writeback tests: `NotificationOrchestratorTests`, `NotificationDeliveryRouterTests`, `LocalNotificationSchedulerTests`, `NotificationSettingsServiceTests`, `NotificationInteractionServiceTests`;
 - cloud contract tests: `AnalyzeV7ContractTests`.
 
 The remaining production tasks are real-device APNs/background soak, real-user telemetry, App Store capability checks, and polished user-facing UI.

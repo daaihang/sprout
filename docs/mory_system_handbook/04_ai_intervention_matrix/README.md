@@ -14,7 +14,7 @@ This section records exactly where AI or intelligent processing participates, wh
 | Post-save analysis | `ArchitecturePipelineExecutor` | Cloud v7 | No | No direct text overwrite | Pipeline status | Detail/status/debug |
 | Daily question | `DailyQuestionSuggestionService` | Cloud | Background/user initiated | No | Question card/notification | Debug/log/status |
 | Reflection generate/replay | Reflection endpoints | Cloud | Usually user/background initiated | No | Reflection view/debug | Error status/debug |
-| Notification intent suggestion | `NotificationIntentPreparationService` | Cloud optional | Background | No | Notification intent/debug | Debug/notification status |
+| Notification orchestration | `NotificationOrchestrator` | Local + optional cloud routing | Background | No | Notification history/debug | Orchestration report + delivery/debug |
 | Job worker recovery | `IntelligenceJobWorker` | Local + cloud | Background | No | Debug job queue | Job failure state |
 
 ## Detailed Notes

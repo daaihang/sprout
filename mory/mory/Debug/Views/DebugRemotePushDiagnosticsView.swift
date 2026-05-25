@@ -4,6 +4,7 @@ import SwiftUI
 struct DebugRemotePushDiagnosticsView: View {
     @Environment(\.memoryRepository) private var memoryRepository
     @Environment(\.remotePushSyncService) private var remotePushSyncService
+    @Environment(\.notificationOrchestrator) private var notificationOrchestrator
 
     @State private var snapshot: RemotePushDebugSnapshot?
     @State private var isWorking = false
@@ -120,9 +121,7 @@ struct DebugRemotePushDiagnosticsView: View {
         defer { isWorking = false }
 
         do {
-            let report = try await NotificationOrchestrator(
-                deliveryRouter: NotificationDeliveryRouter(remotePushSyncService: remotePushSyncService)
-            ).orchestrate(
+            let report = try await notificationOrchestrator.orchestrate(
                 trigger: .backgroundRefresh,
                 repository: memoryRepository
             )
@@ -146,19 +145,17 @@ struct DebugRemotePushDiagnosticsView: View {
                 title: "Mory Debug",
                 body: "Remote push test from Debug at \(timestamp).",
                 privacyLevel: .generic,
-                targetType: .question,
+                targetType: .record,
                 targetID: targetID,
                 scheduledAt: .now,
                 status: .pending,
                 deliveryChannel: .remote,
-                deepLink: "mory://home/question/\(targetID.uuidString)",
+                deepLink: "mory://home",
                 reason: "Debug manual push.",
                 sourceTrigger: .debugManual,
                 createdBy: .debug
             )
-            let report = try await NotificationOrchestrator(
-                deliveryRouter: NotificationDeliveryRouter(remotePushSyncService: remotePushSyncService)
-            ).orchestrate(
+            let report = try await notificationOrchestrator.orchestrate(
                 trigger: .debugManual(intent: intent),
                 repository: memoryRepository
             )

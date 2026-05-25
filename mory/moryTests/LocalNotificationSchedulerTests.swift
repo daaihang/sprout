@@ -11,10 +11,7 @@ final class LocalNotificationSchedulerTests: XCTestCase {
         try enableNotifications(on: repository, now: now)
         let intent = try insertPendingDailyQuestionIntent(on: repository, scheduledAt: now)
         let center = MockLocalNotificationCenter(state: .authorized)
-        let scheduler = LocalNotificationScheduler(
-            notificationCenter: center,
-            policy: NotificationPolicy(calendar: utcCalendar())
-        )
+        let scheduler = LocalNotificationScheduler(notificationCenter: center)
 
         let report = try await scheduler.schedulePendingIntents(repository: repository, now: now)
 
@@ -108,22 +105,22 @@ final class LocalNotificationSchedulerTests: XCTestCase {
         XCTAssertTrue(center.requests.isEmpty)
     }
 
-    func testPolicyBlockedIntentIsNotScheduled() async throws {
+    func testRemoteChannelIntentIsSkippedByDeliveryScheduler() async throws {
         let fixture = makeRepositoryFixture()
         let repository = fixture.repository
         let now = Date(timeIntervalSince1970: 1_800_000_000)
-        _ = try insertPendingDailyQuestionIntent(on: repository, scheduledAt: now)
-        let center = MockLocalNotificationCenter(state: .authorized)
-        let scheduler = LocalNotificationScheduler(
-            notificationCenter: center,
-            policy: NotificationPolicy(calendar: utcCalendar())
+        _ = try insertPendingDailyQuestionIntent(
+            on: repository,
+            scheduledAt: now,
+            deliveryChannel: .remote
         )
+        let center = MockLocalNotificationCenter(state: .authorized)
+        let scheduler = LocalNotificationScheduler(notificationCenter: center)
 
         let report = try await scheduler.schedulePendingIntents(repository: repository, now: now)
 
         XCTAssertEqual(report.scheduledCount, 0)
-        XCTAssertEqual(report.results.first?.skipReason, .policyBlocked)
-        XCTAssertTrue(report.results.first?.policyBlockReasons.contains(.notificationsDisabled) == true)
+        XCTAssertEqual(report.results.first?.skipReason, .unsupportedChannel)
         XCTAssertTrue(center.requests.isEmpty)
     }
 
@@ -159,7 +156,8 @@ final class LocalNotificationSchedulerTests: XCTestCase {
 
     private func insertPendingDailyQuestionIntent(
         on repository: MoryMemoryRepository,
-        scheduledAt: Date
+        scheduledAt: Date,
+        deliveryChannel: NotificationDeliveryChannel = .local
     ) throws -> NotificationIntent {
         let intent = NotificationIntent(
             kind: .dailyQuestion,
@@ -170,17 +168,11 @@ final class LocalNotificationSchedulerTests: XCTestCase {
             targetID: UUID(),
             scheduledAt: scheduledAt,
             status: .pending,
-            deliveryChannel: .local,
+            deliveryChannel: deliveryChannel,
             createdAt: scheduledAt
         )
         try repository.upsertNotificationIntent(intent)
         return intent
-    }
-
-    private func utcCalendar() -> Calendar {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
-        return calendar
     }
 }
 

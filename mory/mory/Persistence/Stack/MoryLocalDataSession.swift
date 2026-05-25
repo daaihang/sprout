@@ -82,7 +82,8 @@ final class MoryLocalDataSession {
     convenience init(
         ownerID: String,
         analysisService: any RecordAnalysisServing,
-        cloudIntelligenceService: (any CloudIntelligenceServing)? = nil
+        cloudIntelligenceService: (any CloudIntelligenceServing)? = nil,
+        notificationOrchestrator: NotificationOrchestrator? = nil
     ) {
         let baseDirectory = Self.testingBaseDirectoryIfNeeded()
         let registry = LocalDataOwnerRegistry(baseDirectory: baseDirectory)
@@ -90,6 +91,7 @@ final class MoryLocalDataSession {
             ownerID: ownerID,
             analysisService: analysisService,
             cloudIntelligenceService: cloudIntelligenceService,
+            notificationOrchestrator: notificationOrchestrator,
             scope: registry.scope(for: ownerID),
             baseDirectory: baseDirectory
         )
@@ -99,6 +101,7 @@ final class MoryLocalDataSession {
         ownerID: String,
         analysisService: any RecordAnalysisServing,
         cloudIntelligenceService: (any CloudIntelligenceServing)? = nil,
+        notificationOrchestrator: NotificationOrchestrator? = nil,
         registry: LocalDataOwnerRegistry
     ) {
         self.ownerID = ownerID
@@ -108,7 +111,8 @@ final class MoryLocalDataSession {
             modelContext: modelContainer.mainContext,
             analysisService: analysisService,
             cloudIntelligenceService: cloudIntelligenceService,
-            localDataOwnerID: ownerID
+            localDataOwnerID: ownerID,
+            notificationOrchestrator: notificationOrchestrator
         )
         self.diagnostics = Self.makeDiagnostics(
             ownerID: ownerID,
@@ -122,6 +126,7 @@ final class MoryLocalDataSession {
         ownerID: String,
         analysisService: any RecordAnalysisServing,
         cloudIntelligenceService: (any CloudIntelligenceServing)? = nil,
+        notificationOrchestrator: NotificationOrchestrator? = nil,
         scope: MoryLocalDataScope,
         baseDirectory: URL?
     ) {
@@ -135,7 +140,8 @@ final class MoryLocalDataSession {
             modelContext: modelContainer.mainContext,
             analysisService: analysisService,
             cloudIntelligenceService: cloudIntelligenceService,
-            localDataOwnerID: ownerID
+            localDataOwnerID: ownerID,
+            notificationOrchestrator: notificationOrchestrator
         )
         self.diagnostics = Self.makeDiagnostics(
             ownerID: ownerID,

@@ -255,9 +255,9 @@ flowchart TD
     B --> C["BGProcessingTask / BGAppRefreshTask"]
     C --> D["IntelligenceJobWorker"]
     D --> E["Repository jobs / graph deltas / profile refresh"]
-    D --> F["NotificationIntentPreparationService"]
+    D --> F["NotificationOrchestrator"]
     F --> G["NotificationDeliveryRouter"]
-    G --> H["LocalNotificationScheduler"]
+    G --> H["LocalNotificationScheduler (delivery only)"]
     G --> I["RemotePushSyncService / APNs server"]
 ```
 

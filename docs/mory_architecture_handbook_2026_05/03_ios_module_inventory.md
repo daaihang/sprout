@@ -213,7 +213,7 @@
 
 职责：
 
-- notification intent preparation。
+- notification orchestration（trigger -> dedupe -> policy -> routing）。
 - local notification scheduling。
 - remote push registration/sync/writeback。
 - notification delivery routing。
@@ -234,7 +234,7 @@
 
 关键文件：
 
-- `NotificationIntentPreparationService.swift`
+- `NotificationOrchestrator.swift`
 - `NotificationDeliveryRouter.swift`
 - `LocalNotificationScheduler.swift`
 - `RemotePushSyncService.swift`

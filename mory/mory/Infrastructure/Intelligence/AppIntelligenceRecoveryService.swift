@@ -34,9 +34,11 @@ struct AppIntelligenceRecoveryService {
         repository: any AppIntelligenceRecoveryRepositorying,
         cloudIntelligenceService: any CloudIntelligenceServing,
         remotePushSyncService: (any RemotePushSyncing)? = nil,
+        notificationOrchestrator: NotificationOrchestrator? = nil,
         now: Date = .now
     ) async -> AppIntelligenceRecoveryReport {
         var report = AppIntelligenceRecoveryReport()
+        let resolvedOrchestrator = notificationOrchestrator ?? .localDelivery
 
         do {
             report = try recoverUnfinishedJobs(
@@ -52,6 +54,7 @@ struct AppIntelligenceRecoveryService {
             repository: repository,
             cloudIntelligenceService: cloudIntelligenceService,
             remotePushSyncService: remotePushSyncService,
+            notificationOrchestrator: resolvedOrchestrator,
             now: now
         )
 
@@ -66,10 +69,7 @@ struct AppIntelligenceRecoveryService {
         }
 
         do {
-            let router = remotePushSyncService.map { NotificationDeliveryRouter(remotePushSyncService: $0) }
-            report.notificationReport = try await NotificationOrchestrator(
-                deliveryRouter: router
-            ).orchestrate(
+            report.notificationReport = try await resolvedOrchestrator.orchestrate(
                 trigger: .appLaunchRecovery,
                 repository: repository,
                 now: now

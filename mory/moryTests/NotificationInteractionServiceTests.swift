@@ -80,7 +80,7 @@ final class NotificationInteractionServiceTests: XCTestCase {
 
     func testOpenedInteractionCanRouteEvenWhenIntentIsMissing() throws {
         let fixture = makeRepositoryFixture()
-        let intent = makeIntent(kind: .repeatedTheme, targetType: .theme, status: .scheduled)
+        let intent = makeIntent(kind: .analysisReady, targetType: .theme, status: .scheduled)
         let service = NotificationInteractionService()
         let event = try XCTUnwrap(NotificationInteractionEvent(
             action: .opened,
@@ -110,9 +110,9 @@ final class NotificationInteractionServiceTests: XCTestCase {
         XCTAssertEqual(result.route?.deepLink, .home(.question(intent.targetID)))
     }
 
-    func testOpenedStageFormingChapterDeepLinksToArcCandidate() throws {
+    func testOpenedChapterInteractionDeepLinksToArcCandidate() throws {
         let fixture = makeRepositoryFixture()
-        let intent = makeIntent(kind: .stageForming, targetType: .chapter, status: .scheduled)
+        let intent = makeIntent(kind: .reflectionReady, targetType: .chapter, status: .scheduled)
         try fixture.repository.upsertNotificationIntent(intent)
         let service = NotificationInteractionService()
         let event = try XCTUnwrap(NotificationInteractionEvent(
@@ -128,7 +128,7 @@ final class NotificationInteractionServiceTests: XCTestCase {
 
     func testOpenedThemeInteractionDeepLinksToEntityDetail() throws {
         let fixture = makeRepositoryFixture()
-        let intent = makeIntent(kind: .repeatedTheme, targetType: .theme, status: .scheduled)
+        let intent = makeIntent(kind: .analysisReady, targetType: .theme, status: .scheduled)
         try fixture.repository.upsertNotificationIntent(intent)
         let service = NotificationInteractionService()
         let event = try XCTUnwrap(NotificationInteractionEvent(
@@ -178,7 +178,7 @@ final class NotificationInteractionServiceTests: XCTestCase {
 
     func testOpenedDecisionInteractionDeepLinksToEntityDetail() throws {
         let fixture = makeRepositoryFixture()
-        let intent = makeIntent(kind: .stageForming, targetType: .decision, status: .scheduled)
+        let intent = makeIntent(kind: .reflectionReady, targetType: .decision, status: .scheduled)
         try fixture.repository.upsertNotificationIntent(intent)
         let service = NotificationInteractionService()
         let event = try XCTUnwrap(NotificationInteractionEvent(

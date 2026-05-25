@@ -27,7 +27,7 @@ struct NotificationDeliveryRouter {
             )
             if let result = report.results.first(where: { $0.intentID == routed.id }), !result.scheduled {
                 routed.status = .blocked
-                routed.blockedReasons = [result.skipReason?.rawValue].compactMap { $0 } + result.policyBlockReasons.map(\.rawValue)
+                routed.blockedReasons = [result.skipReason?.rawValue].compactMap { $0 }
                 try repository.upsertNotificationIntent(routed)
             } else {
                 routed = try repository.fetchNotificationIntents(status: nil, limit: nil)

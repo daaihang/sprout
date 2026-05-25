@@ -8,10 +8,12 @@ final class NotificationDeliveryRouterTests: XCTestCase {
     override func setUp() {
         super.setUp()
         // Clear any APNS token left by other tests.
+        PushDeviceRegistrationStore.resetForTests()
         UserDefaults.standard.removeObject(forKey: apnsTokenKey)
     }
 
     override func tearDown() {
+        PushDeviceRegistrationStore.resetForTests()
         UserDefaults.standard.removeObject(forKey: apnsTokenKey)
         super.tearDown()
     }

@@ -318,7 +318,7 @@ struct MemoryMutationUseCase {
             ) {
                 await repository.indexMemoryIfPossible(summary)
             }
-            _ = try? await NotificationOrchestrator().orchestrate(
+            _ = try? await repository.notificationOrchestrator.orchestrate(
                 trigger: .pipelineCompleted(recordID: recordID),
                 repository: repository,
                 now: completedAt

@@ -40,8 +40,6 @@ protocol LocalNotificationSchedulingCenter: AnyObject {
 protocol NotificationIntentRepositorying: AnyObject {
     func fetchNotificationIntents(status: NotificationIntentStatus?, limit: Int?) throws -> [NotificationIntent]
     func upsertNotificationIntent(_ intent: NotificationIntent) throws
-    func fetchIntelligencePreferences() throws -> IntelligencePreferences
-    func fetchV6FeatureFlags() throws -> V6FeatureFlags
 }
 
 @MainActor
@@ -100,7 +98,6 @@ enum LocalNotificationSchedulerSkipReason: String, Codable, Hashable, Sendable {
     case authorizationRequired
     case authorizationDenied
     case authorizationRequestDenied
-    case policyBlocked
     case scheduleFailed
 }
 
@@ -108,18 +105,15 @@ struct LocalNotificationSchedulerItemResult: Hashable, Sendable {
     var intentID: UUID
     var scheduled: Bool
     var skipReason: LocalNotificationSchedulerSkipReason?
-    var policyBlockReasons: [NotificationPolicyBlockReason]
 
     init(
         intentID: UUID,
         scheduled: Bool,
-        skipReason: LocalNotificationSchedulerSkipReason? = nil,
-        policyBlockReasons: [NotificationPolicyBlockReason] = []
+        skipReason: LocalNotificationSchedulerSkipReason? = nil
     ) {
         self.intentID = intentID
         self.scheduled = scheduled
         self.skipReason = skipReason
-        self.policyBlockReasons = policyBlockReasons
     }
 }
 
@@ -150,19 +144,13 @@ struct LocalNotificationCancellationReport: Hashable, Sendable {
 @MainActor
 struct LocalNotificationScheduler {
     private let notificationCenter: any LocalNotificationSchedulingCenter
-    private let policy: NotificationPolicy
 
-    init(policy: NotificationPolicy = NotificationPolicy()) {
+    init() {
         self.notificationCenter = SystemLocalNotificationCenter()
-        self.policy = policy
     }
 
-    init(
-        notificationCenter: any LocalNotificationSchedulingCenter,
-        policy: NotificationPolicy = NotificationPolicy()
-    ) {
+    init(notificationCenter: any LocalNotificationSchedulingCenter) {
         self.notificationCenter = notificationCenter
-        self.policy = policy
     }
 
     func schedulePendingIntents(
@@ -187,10 +175,6 @@ struct LocalNotificationScheduler {
             )
         }
 
-        let preferences = try repository.fetchIntelligencePreferences()
-        let flags = try repository.fetchV6FeatureFlags()
-        let existingIntents = try repository.fetchNotificationIntents(status: nil, limit: nil)
-        var scheduledThisRun: [NotificationIntent] = []
         var results: [LocalNotificationSchedulerItemResult] = []
 
         for intent in pendingIntents {
@@ -199,34 +183,11 @@ struct LocalNotificationScheduler {
                 continue
             }
 
-            let policyExistingIntents = existingIntents
-                .filter { $0.id != intent.id && $0.status != .pending }
-                + scheduledThisRun
-            let decision = policy.evaluate(
-                intent: intent,
-                existingIntents: policyExistingIntents,
-                preferences: preferences,
-                flags: flags,
-                now: now
-            )
-
-            guard let approvedIntent = decision.approvedIntent else {
-                results.append(
-                    skippedResult(
-                        for: intent,
-                        reason: .policyBlocked,
-                        policyBlockReasons: decision.blockReasons
-                    )
-                )
-                continue
-            }
-
             do {
-                try await notificationCenter.add(scheduleRequest(for: approvedIntent))
-                var scheduledIntent = approvedIntent
+                try await notificationCenter.add(scheduleRequest(for: intent))
+                var scheduledIntent = intent
                 scheduledIntent.status = .scheduled
                 try repository.upsertNotificationIntent(scheduledIntent)
-                scheduledThisRun.append(scheduledIntent)
                 results.append(LocalNotificationSchedulerItemResult(intentID: scheduledIntent.id, scheduled: true))
             } catch {
                 results.append(skippedResult(for: intent, reason: .scheduleFailed))
@@ -299,14 +260,12 @@ struct LocalNotificationScheduler {
 
     private func skippedResult(
         for intent: NotificationIntent,
-        reason: LocalNotificationSchedulerSkipReason,
-        policyBlockReasons: [NotificationPolicyBlockReason] = []
+        reason: LocalNotificationSchedulerSkipReason
     ) -> LocalNotificationSchedulerItemResult {
         LocalNotificationSchedulerItemResult(
             intentID: intent.id,
             scheduled: false,
-            skipReason: reason,
-            policyBlockReasons: policyBlockReasons
+            skipReason: reason
         )
     }
 

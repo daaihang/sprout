@@ -75,6 +75,15 @@ enum PushDeviceRegistrationStore {
         }
     }
 
+    private static func clearAPNSTokenFromKeychain() {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: apnsKeychainService,
+            kSecAttrAccount as String: apnsKeychainAccount
+        ]
+        SecItemDelete(query as CFDictionary)
+    }
+
     private static func loadAPNSTokenFromKeychain() -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -169,6 +178,7 @@ enum PushDeviceRegistrationStore {
     #if DEBUG
     static func resetForTests() {
         UserDefaults.standard.removeObject(forKey: apnsTokenKey)
+        clearAPNSTokenFromKeychain()
         UserDefaults.standard.removeObject(forKey: activeOwnerKey)
         removeKeys(withPrefixes: [
             registrationDigestKey,
@@ -370,9 +380,9 @@ final class RemotePushSyncService: RemotePushSyncing {
             notificationsEnabled: notificationPreferences.enabled,
             backgroundDoneEnabled: notificationPreferences.backgroundDoneEnabled,
             dailyQuestionEnabled: notificationPreferences.dailyQuestionEnabled,
-            repeatedThemeEnabled: notificationPreferences.repeatedThemeEnabled,
-            stageFormingEnabled: notificationPreferences.stageFormingEnabled,
-            revisitEnabled: notificationPreferences.revisitEnabled,
+            repeatedThemeEnabled: notificationPreferences.remoteRepeatedThemeCompatibilityEnabled,
+            stageFormingEnabled: notificationPreferences.remoteStageFormingCompatibilityEnabled,
+            revisitEnabled: notificationPreferences.remoteRevisitCompatibilityEnabled,
             deliveryPace: notificationPreferences.resolvedFrequencyStrategy.rawValue,
             maxPerDay: notificationPreferences.maxPerDay,
             minimumMinutesBetweenNotifications: notificationPreferences.resolvedMinimumMinutesBetweenNotifications,

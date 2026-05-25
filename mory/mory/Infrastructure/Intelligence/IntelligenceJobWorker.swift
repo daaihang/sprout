@@ -28,10 +28,12 @@ struct IntelligenceJobWorker {
         repository: any IntelligenceJobRepositorying,
         cloudIntelligenceService: any CloudIntelligenceServing,
         remotePushSyncService: (any RemotePushSyncing)? = nil,
+        notificationOrchestrator: NotificationOrchestrator? = nil,
         now: Date = .now,
         limit: Int = 24
     ) async -> IntelligenceJobWorkerReport {
         var report = IntelligenceJobWorkerReport()
+        let resolvedOrchestrator = notificationOrchestrator ?? .localDelivery
 
         let flags: V6FeatureFlags
         do {
@@ -72,6 +74,7 @@ struct IntelligenceJobWorker {
                     repository: repository,
                     cloudIntelligenceService: cloudIntelligenceService,
                     remotePushSyncService: remotePushSyncService,
+                    notificationOrchestrator: resolvedOrchestrator,
                     now: now,
                     report: &report
                 )
@@ -99,6 +102,7 @@ struct IntelligenceJobWorker {
         repository: any IntelligenceJobRepositorying,
         cloudIntelligenceService: any CloudIntelligenceServing,
         remotePushSyncService: (any RemotePushSyncing)?,
+        notificationOrchestrator: NotificationOrchestrator,
         now: Date,
         report: inout IntelligenceJobWorkerReport
     ) async throws {
@@ -117,10 +121,7 @@ struct IntelligenceJobWorker {
             report.preparedQuestionCount += prepared.count
 
         case .notificationIntent:
-            let router = remotePushSyncService.map { NotificationDeliveryRouter(remotePushSyncService: $0) }
-            let notificationReport = try await NotificationOrchestrator(
-                deliveryRouter: router
-            ).orchestrate(
+            let notificationReport = try await notificationOrchestrator.orchestrate(
                 trigger: .backgroundRefresh,
                 repository: repository,
                 now: now,

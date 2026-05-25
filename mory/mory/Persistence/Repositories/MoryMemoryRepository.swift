@@ -25,6 +25,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     let graphDeltaApplier: GraphDeltaApplier
     let affectSnapshotMapper: AffectSnapshotMapper
     let externalCaptureInboxStore: any ExternalCaptureInboxStoring
+    let notificationOrchestrator: NotificationOrchestrator
     var latestAnalysisTrace: DebugPipelineTraceSnapshot?
     var latestReflectionTrace: DebugPipelineTraceSnapshot?
 
@@ -48,7 +49,8 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         entityEnrichmentService: EntityEnrichmentService = EntityEnrichmentService(),
         clarificationQuestionBuilder: ClarificationQuestionBuilder = ClarificationQuestionBuilder(),
         graphDeltaApplier: GraphDeltaApplier = GraphDeltaApplier(),
-        affectSnapshotMapper: AffectSnapshotMapper = AffectSnapshotMapper()
+        affectSnapshotMapper: AffectSnapshotMapper = AffectSnapshotMapper(),
+        notificationOrchestrator: NotificationOrchestrator? = nil
     ) {
         self.modelContext = modelContext
         self.analysisService = analysisService
@@ -72,6 +74,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         self.clarificationQuestionBuilder = clarificationQuestionBuilder
         self.graphDeltaApplier = graphDeltaApplier
         self.affectSnapshotMapper = affectSnapshotMapper
+        self.notificationOrchestrator = notificationOrchestrator ?? .localDelivery
     }
 
     func evaluateQualityTuningExpectation(

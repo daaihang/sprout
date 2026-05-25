@@ -66,9 +66,10 @@ final class RemotePushSyncServiceTests: XCTestCase {
         XCTAssertTrue(payload.notificationsEnabled)
         XCTAssertTrue(payload.backgroundDoneEnabled)
         XCTAssertTrue(payload.dailyQuestionEnabled)
-        XCTAssertTrue(payload.repeatedThemeEnabled)
-        XCTAssertTrue(payload.stageFormingEnabled)
-        XCTAssertTrue(payload.revisitEnabled)
+        // Legacy remote compatibility flags are intentionally disabled in unified notification mode.
+        XCTAssertFalse(payload.repeatedThemeEnabled)
+        XCTAssertFalse(payload.stageFormingEnabled)
+        XCTAssertFalse(payload.revisitEnabled)
         XCTAssertEqual(payload.deliveryPace, NotificationFrequencyStrategy.active.rawValue)
         XCTAssertEqual(payload.maxPerDay, 4)
         XCTAssertEqual(payload.minimumMinutesBetweenNotifications, 30)
@@ -170,7 +171,7 @@ final class RemotePushSyncServiceTests: XCTestCase {
         let scheduledAt = Date(timeIntervalSince1970: 1_800_500_200)
         let intent = NotificationIntent(
             id: intentID,
-            kind: .repeatedTheme,
+            kind: .analysisReady,
             title: "Mory",
             body: "A decision pattern is ready.",
             privacyLevel: .contextual,

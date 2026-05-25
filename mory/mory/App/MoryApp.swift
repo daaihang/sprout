@@ -11,6 +11,7 @@ struct MoryApp: App {
     private let analysisService: any RecordAnalysisServing
     private let cloudIntelligenceService: any CloudIntelligenceServing
     private let remotePushSyncService: any RemotePushSyncing
+    private let notificationOrchestrator: NotificationOrchestrator
     private let credentialStore: KeychainCredentialStore
     private let runtimeEnvironment: AppRuntimeEnvironment
     private let ownerScopedSystemStateCoordinator = MoryOwnerScopedSystemStateCoordinator()
@@ -39,10 +40,12 @@ struct MoryApp: App {
             apiClient: client,
             tokenProvider: tokenProvider
         )
-        remotePushSyncService = RemotePushSyncService(
+        let remotePushSyncService = RemotePushSyncService(
             apiClient: client,
             tokenProvider: tokenProvider
         )
+        self.remotePushSyncService = remotePushSyncService
+        notificationOrchestrator = .live(remotePushSyncService: remotePushSyncService)
         _authManager = State(initialValue: AuthSessionManager(
             credentialStore: credentialStore,
             apiClient: client
@@ -155,6 +158,7 @@ struct MoryApp: App {
                 .environment(\.memoryRepository, localDataSession.memoryRepository)
                 .environment(\.cloudIntelligenceService, cloudIntelligenceService)
                 .environment(\.remotePushSyncService, remotePushSyncService)
+                .environment(\.notificationOrchestrator, notificationOrchestrator)
                 .environment(\.localDataDiagnostics, localDataSession.diagnostics)
                 .modelContainer(localDataSession.modelContainer)
             } else {
@@ -163,7 +167,8 @@ struct MoryApp: App {
                         let session = MoryLocalDataSession(
                             ownerID: ownerID,
                             analysisService: analysisService,
-                            cloudIntelligenceService: cloudIntelligenceService
+                            cloudIntelligenceService: cloudIntelligenceService,
+                            notificationOrchestrator: notificationOrchestrator
                         )
                         await ownerScopedSystemStateCoordinator.prepareActiveOwner(
                             ownerID: ownerID,
@@ -173,7 +178,8 @@ struct MoryApp: App {
                         appDelegate.backgroundTaskCoordinator.configure(
                             repository: session.memoryRepository,
                             cloudService: cloudIntelligenceService,
-                            remotePushSyncService: remotePushSyncService
+                            remotePushSyncService: remotePushSyncService,
+                            notificationOrchestrator: notificationOrchestrator
                         )
                         appDelegate.backgroundTaskCoordinator.scheduleIfNeeded()
                         localDataSession = session

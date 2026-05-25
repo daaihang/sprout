@@ -8,6 +8,7 @@ enum NotificationPolicyBlockReason: String, Codable, Hashable, Sendable {
     case minimumInterval
     case quietHours
     case sensitiveTopicSuppressed
+    case noResolvableRoute
 }
 
 struct NotificationPolicyDecision: Hashable, Sendable {
@@ -90,13 +91,7 @@ struct NotificationPolicy: Sendable {
         case .dailyQuestion:
             return preferences.dailyQuestionEnabled
         case .reflectionReady:
-            return preferences.stageFormingEnabled
-        case .repeatedTheme:
-            return preferences.repeatedThemeEnabled
-        case .stageForming:
-            return preferences.stageFormingEnabled
-        case .revisit:
-            return preferences.revisitEnabled
+            return preferences.reflectionReadyEnabled
         case .debugTest:
             return preferences.enabled
         }
@@ -199,12 +194,6 @@ struct NotificationPolicy: Sendable {
             return "A question is ready for today."
         case .reflectionReady:
             return "A reflection is ready to review."
-        case .repeatedTheme:
-            return "A recurring pattern is ready to review."
-        case .stageForming:
-            return "A memory chapter may be forming."
-        case .revisit:
-            return "A meaningful memory is ready to revisit."
         case .debugTest:
             return "A debug notification is ready."
         }

@@ -7,6 +7,7 @@ import UIKit
 
 struct SettingsNotificationPreferencesSection: View {
     @Environment(\.openURL) private var openURL
+    @Environment(\.notificationOrchestrator) private var notificationOrchestrator
 
     let memoryRepository: any MoryMemoryRepositorying
 
@@ -253,6 +254,7 @@ struct SettingsNotificationPreferencesSection: View {
             let result = try await settingsService.setNotificationsEnabled(
                 enabled,
                 repository: memoryRepository,
+                notificationOrchestrator: notificationOrchestrator,
                 requestSystemAuthorization: requestAuthorization
             )
             snapshot = result.snapshot
@@ -272,6 +274,7 @@ struct SettingsNotificationPreferencesSection: View {
         do {
             let result = try await settingsService.updatePreferences(
                 repository: memoryRepository,
+                notificationOrchestrator: notificationOrchestrator,
                 mutation: mutation
             )
             snapshot = result.snapshot

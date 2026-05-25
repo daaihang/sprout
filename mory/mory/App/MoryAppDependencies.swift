@@ -18,6 +18,11 @@ private struct RemotePushSyncServiceKey: EnvironmentKey {
     static let defaultValue: any RemotePushSyncing = MissingRemotePushSyncService()
 }
 
+private struct NotificationOrchestratorKey: EnvironmentKey {
+    @MainActor
+    static let defaultValue = NotificationOrchestrator(policy: NotificationPolicy())
+}
+
 private struct LocalDataDiagnosticsKey: EnvironmentKey {
     static let defaultValue: MoryLocalDataDiagnostics? = nil
 }
@@ -36,6 +41,11 @@ extension EnvironmentValues {
     var remotePushSyncService: any RemotePushSyncing {
         get { self[RemotePushSyncServiceKey.self] }
         set { self[RemotePushSyncServiceKey.self] = newValue }
+    }
+
+    var notificationOrchestrator: NotificationOrchestrator {
+        get { self[NotificationOrchestratorKey.self] }
+        set { self[NotificationOrchestratorKey.self] = newValue }
     }
 
     var localDataDiagnostics: MoryLocalDataDiagnostics? {

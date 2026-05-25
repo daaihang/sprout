@@ -29,18 +29,15 @@ struct NotificationSettingsService {
     private let notificationCenter: any LocalNotificationSchedulingCenter
     private let scheduler: LocalNotificationScheduler
 
-    init(policy: NotificationPolicy = NotificationPolicy()) {
+    init() {
         let center = SystemLocalNotificationCenter()
         self.notificationCenter = center
-        self.scheduler = LocalNotificationScheduler(notificationCenter: center, policy: policy)
+        self.scheduler = LocalNotificationScheduler(notificationCenter: center)
     }
 
-    init(
-        notificationCenter: any LocalNotificationSchedulingCenter,
-        policy: NotificationPolicy = NotificationPolicy()
-    ) {
+    init(notificationCenter: any LocalNotificationSchedulingCenter) {
         self.notificationCenter = notificationCenter
-        self.scheduler = LocalNotificationScheduler(notificationCenter: notificationCenter, policy: policy)
+        self.scheduler = LocalNotificationScheduler(notificationCenter: notificationCenter)
     }
 
     func loadSnapshot(
@@ -52,11 +49,13 @@ struct NotificationSettingsService {
     func setNotificationsEnabled(
         _ enabled: Bool,
         repository: any MoryMemoryRepositorying,
+        notificationOrchestrator: NotificationOrchestrator,
         requestSystemAuthorization: Bool = true,
         now: Date = .now
     ) async throws -> NotificationSettingsUpdateResult {
         try await updatePreferences(
             repository: repository,
+            notificationOrchestrator: notificationOrchestrator,
             now: now,
             requestSystemAuthorization: requestSystemAuthorization
         ) { preferences in
@@ -70,6 +69,7 @@ struct NotificationSettingsService {
 
     func updatePreferences(
         repository: any MoryMemoryRepositorying,
+        notificationOrchestrator: NotificationOrchestrator,
         now: Date = .now,
         requestSystemAuthorization: Bool = false,
         mutation: (inout IntelligencePreferences) -> Void
@@ -92,9 +92,7 @@ struct NotificationSettingsService {
         let notificationReport: NotificationOrchestrationReport
         if preferences.notificationPreferences.enabled {
             cancellationReport = .empty
-            notificationReport = try await NotificationOrchestrator(
-                localScheduler: scheduler
-            ).orchestrate(
+            notificationReport = try await notificationOrchestrator.orchestrate(
                 trigger: .settingsChanged,
                 repository: repository,
                 now: now

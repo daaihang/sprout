@@ -102,8 +102,7 @@ final class NotificationOrchestratorTests: XCTestCase {
         let center = MockLocalNotificationCenter(state: .authorized)
         let orchestrator = NotificationOrchestrator(
             localScheduler: LocalNotificationScheduler(
-                notificationCenter: center,
-                policy: NotificationPolicy(calendar: utcCalendar())
+                notificationCenter: center
             )
         )
 
@@ -218,8 +217,7 @@ final class NotificationOrchestratorTests: XCTestCase {
         let center = MockLocalNotificationCenter(state: .authorized)
         let report = try await NotificationOrchestrator(
             localScheduler: LocalNotificationScheduler(
-                notificationCenter: center,
-                policy: NotificationPolicy(calendar: utcCalendar())
+                notificationCenter: center
             )
         ).orchestrate(
             trigger: .backgroundRefresh,
@@ -292,12 +290,6 @@ final class NotificationOrchestratorTests: XCTestCase {
         try repository.upsert(artifact: artifact)
         try repository.save()
         return (record, artifact)
-    }
-
-    private func utcCalendar() -> Calendar {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
-        return calendar
     }
 }
 

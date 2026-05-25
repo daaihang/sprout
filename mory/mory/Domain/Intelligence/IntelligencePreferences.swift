@@ -113,6 +113,22 @@ struct NotificationPreferences: Codable, Hashable, Sendable {
                 ?? resolvedFrequencyStrategy.defaultMinimumMinutesBetweenNotifications
         )
     }
+
+    var reflectionReadyEnabled: Bool {
+        stageFormingEnabled
+    }
+
+    var remoteRepeatedThemeCompatibilityEnabled: Bool {
+        false
+    }
+
+    var remoteStageFormingCompatibilityEnabled: Bool {
+        false
+    }
+
+    var remoteRevisitCompatibilityEnabled: Bool {
+        false
+    }
 }
 
 struct IntelligencePreferences: Identifiable, Codable, Hashable, Sendable {

@@ -14,6 +14,7 @@ struct MoryRootView: View {
     @Environment(\.memoryRepository) private var memoryRepository
     @Environment(\.cloudIntelligenceService) private var cloudIntelligenceService
     @Environment(\.remotePushSyncService) private var remotePushSyncService
+    @Environment(\.notificationOrchestrator) private var notificationOrchestrator
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage(MoryOnboardingStep.completionStorageKey) private var hasCompletedOnboarding = false
     @StateObject private var notificationInbox = NotificationInteractionInbox.shared
@@ -436,6 +437,8 @@ struct MoryRootView: View {
 
     private func apply(_ deepLink: MoryDeepLinkRoute) {
         switch deepLink {
+        case .homeRoot:
+            selectedTab = .today
         case let .home(route):
             selectedTab = .today
             pendingHomeRoute = route
@@ -457,7 +460,8 @@ struct MoryRootView: View {
         _ = await startupRecoveryService.recoverAfterLaunch(
             repository: memoryRepository,
             cloudIntelligenceService: cloudIntelligenceService,
-            remotePushSyncService: remotePushSyncService
+            remotePushSyncService: remotePushSyncService,
+            notificationOrchestrator: notificationOrchestrator
         )
         remotePushSyncService.registerSystemRemoteNotificationsIfNeeded(repository: memoryRepository)
         await syncRemotePushRegistration(force: true)

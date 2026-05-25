@@ -147,6 +147,8 @@ protocol AnalysisContextPackRepositorying:
 
 @MainActor
 protocol NotificationPreparationRepositorying: NotificationIntentRepositorying {
+    func fetchIntelligencePreferences() throws -> IntelligencePreferences
+    func fetchV6FeatureFlags() throws -> V6FeatureFlags
     func fetchClarificationQuestions(status: ClarificationQuestionStatus?, limit: Int?) throws -> [ClarificationQuestion]
     func fetchRecentMemories(limit: Int?) throws -> [MemorySummary]
     func fetchPipelineStatusSummaries(limit: Int?) throws -> [PipelineStatusSummary]
@@ -157,6 +159,8 @@ protocol NotificationPreparationRepositorying: NotificationIntentRepositorying {
 
 @MainActor
 protocol DailyQuestionRepositorying: NotificationIntentRepositorying {
+    func fetchIntelligencePreferences() throws -> IntelligencePreferences
+    func fetchV6FeatureFlags() throws -> V6FeatureFlags
     func fetchClarificationQuestions(status: ClarificationQuestionStatus?, limit: Int?) throws -> [ClarificationQuestion]
     func upsertClarificationQuestion(_ question: ClarificationQuestion) throws
     func fetchRecentMemories(limit: Int?) throws -> [MemorySummary]

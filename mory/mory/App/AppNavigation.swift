@@ -30,10 +30,70 @@ enum MoryAppTab: String, CaseIterable, Hashable, Identifiable, Sendable {
 }
 
 enum MoryDeepLinkRoute: Hashable, Sendable {
+    case homeRoot
     case home(HomeRoute)
     case memories(MemoriesRoute)
     case insights(InsightsRoute)
     case search
+
+    static func parse(_ string: String) -> MoryDeepLinkRoute? {
+        guard let url = URL(string: string),
+              url.scheme?.lowercased() == "mory" else {
+            return nil
+        }
+
+        let pathSegments = url.path
+            .split(separator: "/")
+            .map(String.init)
+        guard let host = url.host?.lowercased() else {
+            return nil
+        }
+
+        switch host {
+        case "home":
+            if pathSegments.isEmpty {
+                return .homeRoot
+            }
+            guard pathSegments.count == 2,
+                  pathSegments[0] == "question",
+                  let id = UUID(uuidString: pathSegments[1]) else {
+                return nil
+            }
+            return .home(.question(id))
+
+        case "memories":
+            guard pathSegments.count == 2 else { return nil }
+            switch pathSegments[0] {
+            case "record":
+                guard let id = UUID(uuidString: pathSegments[1]) else { return nil }
+                return .memories(.memory(id))
+            default:
+                return nil
+            }
+
+        case "insights":
+            guard pathSegments.count == 2,
+                  let id = UUID(uuidString: pathSegments[1]) else {
+                return nil
+            }
+            switch pathSegments[0] {
+            case "chapter":
+                return .insights(.arc(id))
+            case "reflection":
+                return .insights(.reflection(id))
+            case "entity", "place", "theme", "decision":
+                return .insights(.entity(id))
+            default:
+                return nil
+            }
+
+        case "search":
+            return .search
+
+        default:
+            return nil
+        }
+    }
 }
 
 enum MemoriesRoute: Hashable, Identifiable, Sendable {

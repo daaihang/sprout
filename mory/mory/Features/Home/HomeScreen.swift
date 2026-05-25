@@ -41,6 +41,7 @@ struct HomeScreen: View {
 
     @Environment(\.memoryRepository) private var memoryRepository
     @Environment(\.cloudIntelligenceService) private var cloudIntelligenceService
+    @Environment(\.notificationOrchestrator) private var notificationOrchestrator
 
     let surface: Surface
 
@@ -272,7 +273,7 @@ struct HomeScreen: View {
                 cloudIntelligenceService: cloudIntelligenceService
             )
             .prepareIfNeeded(repository: memoryRepository)
-            _ = try? await NotificationOrchestrator().orchestrate(
+            _ = try? await notificationOrchestrator.orchestrate(
                 trigger: .homeForegroundRefresh,
                 repository: memoryRepository
             )

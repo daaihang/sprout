@@ -34,7 +34,7 @@
 | I6 | Go `handlers.go` / `sqlite.go` 过大 | server v8 扩展成本高 | completed：HTTP handlers、SQLite store、OpenAI/Anthropic/Mock provider operations 已按职责拆分，route/interface/contract 不变 | `go test ./...` |
 | I7 | Proposal review 体验不足 | 用户不理解 AI 为什么建议 | evidence/impact preview +统一 ProposalReviewService | GraphDelta review tests |
 | I8 | contact-to-person resolution 未产品化 | Journaling contacts 只能做 context，不能稳定进入人物关系 | 独立 identity review flow | EntityResolutionServiceTests + UI path |
-| I9 | 通知生成入口分散 | Home / recovery / BGTask / settings / silent push 各自生成或调度通知，容易重复、文案失控、点击路由不一致 | 引入 `NotificationOrchestrator` 作为唯一 trigger -> dedupe -> policy -> routing 入口；阶段/重复/回访信号降级为 in-app | Notification orchestrator tests + notification history surface |
+| I9 | 通知生成入口分散 | Home / recovery / BGTask / settings / silent push 各自生成或调度通知，容易重复、文案失控、点击路由不一致 | completed：`NotificationOrchestrator` 已成为唯一 trigger -> dedupe -> policy -> routing 入口；`stage/repeated/revisit` 已降级为 in-app 信号，不进入系统通知 | `NotificationOrchestratorTests` + routing/settings/recovery/worker tests + notification history surface |
 
 ## 3. Cleanup
 
