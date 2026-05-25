@@ -1,3 +1,4 @@
+#if DEBUG
 import SwiftUI
 
 struct DebugRemotePushDiagnosticsView: View {
@@ -206,3 +207,4 @@ private struct DebugRemotePushMetricRows: View {
         return output
     }
 }
+#endif

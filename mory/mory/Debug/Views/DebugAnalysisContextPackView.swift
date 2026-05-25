@@ -1,3 +1,4 @@
+#if DEBUG
 import SwiftUI
 
 struct DebugAnalysisContextPackView: View {
@@ -289,3 +290,4 @@ private struct DebugContextPayloadBlock: View {
         }
     }
 }
+#endif

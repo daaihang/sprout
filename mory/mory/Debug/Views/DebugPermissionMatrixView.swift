@@ -1,3 +1,4 @@
+#if DEBUG
 import SwiftUI
 import SwiftData
 import Photos
@@ -199,3 +200,4 @@ struct DebugPermissionMatrixView: View {
         }
     }
 }
+#endif

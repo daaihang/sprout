@@ -1,3 +1,4 @@
+#if DEBUG
 import SwiftUI
 
 struct DebugClarificationQuestionsView: View {
@@ -124,3 +125,4 @@ private struct DebugQuestionRow: View {
         .padding(.vertical, 4)
     }
 }
+#endif

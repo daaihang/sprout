@@ -1,3 +1,4 @@
+#if DEBUG
 import Foundation
 import SwiftUI
 
@@ -156,3 +157,4 @@ private struct DebugPersonProfileBlock: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
+#endif

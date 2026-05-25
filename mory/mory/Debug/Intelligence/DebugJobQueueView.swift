@@ -1,3 +1,4 @@
+#if DEBUG
 import SwiftUI
 import BackgroundTasks
 
@@ -421,3 +422,4 @@ private struct DebugGraphDeltaRow: View {
         .padding(.vertical, 4)
     }
 }
+#endif

@@ -1,3 +1,4 @@
+#if DEBUG
 import SwiftUI
 import UIKit
 
@@ -895,3 +896,4 @@ private extension CaptureCardItem {
         return payload.latitude != nil && payload.longitude != nil
     }
 }
+#endif

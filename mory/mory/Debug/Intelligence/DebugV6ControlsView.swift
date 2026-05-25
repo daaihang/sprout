@@ -1,3 +1,4 @@
+#if DEBUG
 import SwiftUI
 
 struct DebugV6ControlsView: View {
@@ -225,3 +226,4 @@ struct DebugV6ControlsView: View {
         )
     }
 }
+#endif

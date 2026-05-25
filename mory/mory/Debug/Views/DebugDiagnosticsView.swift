@@ -1,3 +1,4 @@
+#if DEBUG
 import SwiftUI
 import SwiftData
 import PhotosUI
@@ -946,3 +947,4 @@ struct DebugNotificationBackgroundView: View {
         checkSessionMessage = String(localized: "debug.notification.checkSession.done")
     }
 }
+#endif

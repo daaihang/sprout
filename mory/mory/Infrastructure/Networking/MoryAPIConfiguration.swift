@@ -17,10 +17,13 @@ struct MoryAPIConfiguration: Sendable {
 
     static func fromBundle(_ bundle: Bundle = .main) -> MoryAPIConfiguration {
         let baseURLString = bundle.object(forInfoDictionaryKey: "MORY_API_BASE_URL") as? String
+        let raw = baseURLString?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty ?? defaultBaseURL.absoluteString
 
-        return MoryAPIConfiguration(
-            baseURL: URL(string: baseURLString?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty ?? defaultBaseURL.absoluteString)!
-        )
+        guard let url = URL(string: raw) else {
+            fatalError("MoryAPIConfiguration: invalid base URL string: \(raw)")
+        }
+
+        return MoryAPIConfiguration(baseURL: url)
     }
 
     static var defaultBaseURL: URL {

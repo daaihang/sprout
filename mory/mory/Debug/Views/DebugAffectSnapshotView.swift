@@ -1,3 +1,4 @@
+#if DEBUG
 import SwiftUI
 
 struct DebugAffectSnapshotView: View {
@@ -170,3 +171,4 @@ private struct DebugAffectValue: View {
         }
     }
 }
+#endif

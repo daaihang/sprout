@@ -1,3 +1,4 @@
+#if DEBUG
 import SwiftUI
 import SwiftData
 
@@ -207,3 +208,4 @@ private func renderTitle(for item: HomeBoardItemSnapshot) -> String {
         return title
     }
 }
+#endif

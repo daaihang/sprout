@@ -1,3 +1,4 @@
+#if DEBUG
 import SwiftUI
 
 struct DebugSemanticSearchView: View {
@@ -219,3 +220,4 @@ struct DebugSemanticSearchView: View {
         }
     }
 }
+#endif

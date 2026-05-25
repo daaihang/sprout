@@ -30,9 +30,7 @@ final class MoryAppDelegate: NSObject, UIApplicationDelegate, UNUserNotification
         _ application: UIApplication,
         didFailToRegisterForRemoteNotificationsWithError error: Error
     ) {
-        #if DEBUG
-        print("APNs registration failed: \(error.localizedDescription)")
-        #endif
+        log.warning("APNs registration failed: \(error.localizedDescription)")
     }
 
     // MARK: - Silent push / background fetch

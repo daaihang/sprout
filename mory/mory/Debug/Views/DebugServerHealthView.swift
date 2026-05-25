@@ -1,3 +1,4 @@
+#if DEBUG
 import SwiftUI
 import SwiftData
 
@@ -95,3 +96,4 @@ struct DebugServerHealthView: View {
         }
     }
 }
+#endif
