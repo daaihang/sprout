@@ -176,6 +176,16 @@ struct DebugDiagnosticsView: View {
                 }
 
                 NavigationLink {
+                    SkeuomorphicCardLabView()
+                } label: {
+                    DebugMenuRow(
+                        icon: "rectangle.on.rectangle.angled",
+                        title: "Skeuomorphic Card Lab",
+                        subtitle: "Preview immersive card styles: Polaroid, Cassette, Notebook, Vinyl"
+                    )
+                }
+
+                NavigationLink {
                     PlaceProfileManagementView(
                         memoryRepository: memoryRepository,
                         showsDebugDetails: true,
