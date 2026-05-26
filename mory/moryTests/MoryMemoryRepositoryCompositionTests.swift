@@ -1878,6 +1878,22 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let detail = try XCTUnwrap(result.detail)
         XCTAssertTrue(detail.artifacts.contains(where: { $0.kind == .location && $0.title == "Office" }))
         XCTAssertTrue(detail.artifacts.contains(where: { $0.kind == .todo && $0.title == "Send recap" }))
+        XCTAssertEqual(
+            Set(detail.artifactSemanticDigests.filter { result.addedArtifactIDs.contains($0.artifactID) }.map(\.artifactID)),
+            Set(result.addedArtifactIDs)
+        )
+        let arrangement = try XCTUnwrap(detail.cardArrangement)
+        let arrangedArtifactIDs = arrangement.nodes.flatMap { node -> [UUID] in
+            switch node.contentRef {
+            case let .artifact(id):
+                return [id]
+            case let .artifactGroup(ids, _):
+                return ids
+            case .recordBody, .affect, .journalingSuggestion:
+                return []
+            }
+        }
+        XCTAssertTrue(Set(result.addedArtifactIDs).isSubset(of: Set(arrangedArtifactIDs)))
     }
 
     func testApplyMemoryMutationUpdatesDeletesReordersAndPurgesGraphLinks() async throws {

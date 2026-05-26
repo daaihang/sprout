@@ -142,17 +142,17 @@ struct UnifiedCaptureComposerView: View {
             GeometryReader { proxy in
                 ScrollView {
                     VStack(spacing: 0) {
-	                        CaptureAttachmentCarouselView(
-	                            items: attachmentItems,
-	                            onRemoveStagedArtifact: removeStagedArtifact(at:),
-	                            onRemoveContextCandidate: removeContextCandidate(id:),
-	                            onRemoveAffectDraft: removeAffectDraft(at:),
-	                            onRemoveJournalingSuggestion: removeJournalingSuggestion(importSessionID:),
-                                onReorderStagedArtifact: reorderStagedArtifact(from:to:),
-                                onSetSize: setArrangementSize(for:size:),
-                                onStackWithPrevious: stackArrangementNodeWithPrevious(item:),
-                                onUnstack: unstackArrangementNode(item:)
-	                        )
+                        CaptureAttachmentCarouselView(
+                            items: attachmentItems,
+                            onRemoveStagedArtifact: removeStagedArtifact(at:),
+                            onRemoveContextCandidate: removeContextCandidate(id:),
+                            onRemoveAffectDraft: removeAffectDraft(at:),
+                            onRemoveJournalingSuggestion: removeJournalingSuggestion(importSessionID:),
+                            onReorderStagedArtifact: reorderStagedArtifact(from:to:),
+                            onSetSize: setArrangementSize(for:size:),
+                            onStackWithPrevious: stackArrangementNodeWithPrevious(item:),
+                            onUnstack: unstackArrangementNode(item:)
+                        )
 
                         CaptureBodyEditorView(
                             text: $bodyText,
@@ -654,13 +654,15 @@ struct UnifiedCaptureComposerView: View {
                 inputContext = importedContext
             }
         }
+        if let importedArrangement = draft.cardArrangement {
+            cardArrangementDraft.mergeArrangement(importedArrangement)
+        }
         let nonTextArtifacts = draft.artifacts.filter { artifact in
             if case .text = artifact.content { return false }
             return true
         }
         appendStagedArtifacts(nonTextArtifacts)
-        if let importedArrangement = draft.cardArrangement {
-            cardArrangementDraft.mergeArrangement(importedArrangement)
+        if draft.cardArrangement != nil {
             syncCardArrangementDraft()
         }
         if !draft.affectSnapshots.isEmpty {

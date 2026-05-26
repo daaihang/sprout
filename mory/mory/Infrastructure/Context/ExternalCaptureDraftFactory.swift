@@ -49,6 +49,11 @@ struct ExternalCaptureDraftFactory: Sendable {
         let affectDrafts = suggestion.bundle.stateOfMind.compactMap {
             makeAffectDraft(from: $0, provenance: baseProvenance.withJournalingEvidenceID($0.id))
         }
+        let cardArrangement = journalingSuggestionArrangement(
+            rawText: bodyText,
+            artifacts: artifacts,
+            importSessionID: importSessionID
+        )
         return MemoryCaptureDraft(
             title: suggestion.title,
             rawText: bodyText,
@@ -56,8 +61,47 @@ struct ExternalCaptureDraftFactory: Sendable {
             inputContext: diagnostics.joined(separator: "\n").trimmedOrNil,
             provenance: baseProvenance,
             artifacts: artifacts,
-            affectSnapshots: affectDrafts
+            affectSnapshots: affectDrafts,
+            cardArrangement: cardArrangement
         )
+    }
+
+    private func journalingSuggestionArrangement(
+        rawText: String,
+        artifacts: [CaptureArtifactDraft],
+        importSessionID: UUID
+    ) -> MemoryCardArrangementDraft {
+        var nodes: [MemoryCardDraftNode] = []
+        var order = 0
+
+        if rawText.trimmedOrNil != nil {
+            nodes.append(
+                MemoryCardDraftNode(
+                    contentRef: .recordBody,
+                    visualRecipe: .notebook,
+                    layout: MemoryCardLayoutToken(order: order, size: .wide, rotationDegrees: -1.5, zIndex: order)
+                )
+            )
+            order += 1
+        }
+
+        let groupedDraftIDs = artifacts.compactMap { draft -> UUID? in
+            if case .text = draft.content {
+                return nil
+            }
+            return draft.provenance?.importSessionID == importSessionID ? draft.draftID : nil
+        }
+        if !groupedDraftIDs.isEmpty {
+            nodes.append(
+                MemoryCardDraftNode(
+                    contentRef: .artifactDraftGroup(groupedDraftIDs, kind: .journalingBundle),
+                    visualRecipe: .bundlePacket,
+                    layout: MemoryCardLayoutToken(order: order, size: .stack, rotationDegrees: -2, zIndex: order)
+                )
+            )
+        }
+
+        return MemoryCardArrangementDraft(nodes: nodes)
     }
 
     func makeDraft(from request: ExternalCaptureRequest) -> MemoryCaptureDraft {

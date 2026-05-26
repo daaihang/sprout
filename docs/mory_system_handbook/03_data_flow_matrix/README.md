@@ -7,12 +7,14 @@ This matrix maps features from user input to local persistence, API, AI output, 
 | Step | Object | Notes |
 | --- | --- | --- |
 | User input | `UnifiedCaptureComposerView` state | Body, staged artifacts, affect drafts, context candidates. |
-| Draft | `MemoryCaptureDraft` | Title, rawText, mood, inputContext, provenance, artifacts, affectSnapshots. |
+| Draft | `MemoryCaptureDraft` | Title, rawText, mood, inputContext, provenance, artifacts, affectSnapshots, cardArrangement. |
 | Artifact conversion | `MemoryCaptureArtifactBuilder` | Creates `Artifact` records and metadata. |
 | Record persistence | `RecordShellStore` | Primary capture shell. |
 | Artifact persistence | `ArtifactStore` | Text/media/metadata payloads. |
+| Digest persistence | `ArtifactSemanticDigestStore` | Structured media/text-derived meaning for future analysis. |
+| Arrangement persistence | `MemoryCardArrangementStore` | User-authored visual card layout; excluded from default AI analysis input. |
 | Mood persistence | `AffectSnapshotStore` | Structured affect evidence. |
-| Pipeline status | `MemoryPipelineStatusStore` | pending -> running -> completed/failed. |
+| Pipeline status | `MemoryPipelineStatusStore` | Save-only path writes `notScheduled`; explicit analysis moves to pending/running/completed/failed. |
 | Search | Spotlight index | Indexed after save and after analysis completion. |
 
 ## Analysis Path

@@ -51,8 +51,8 @@ flowchart LR
     C --> F["ArtifactSemanticDigestStore"]
     B --> G["MemoryCardArrangementStore"]
     B --> H["AffectSnapshotStore"]
-    D --> I["MemoryPipelineStatusStore pending"]
-    I --> J["CaptureOrchestrator starts refreshMemoryPipeline in Task"]
+    D --> I["MemoryPipelineStatusStore notScheduled"]
+    I --> J["Explicit policy may start refreshMemoryPipeline"]
     J --> K["Analysis pipeline"]
 ```
 

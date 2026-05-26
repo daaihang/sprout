@@ -109,6 +109,25 @@ final class ExternalCaptureInboxTests: XCTestCase {
                 && $0.provenance?.importSessionID == draft.provenance.importSessionID
                 && $0.provenance?.externalInboxItemID == item.id
         })
+        let arrangement = try XCTUnwrap(draft.cardArrangement)
+        let groupedNode = try XCTUnwrap(arrangement.nodes.first { node in
+            if case .artifactDraftGroup = node.contentRef {
+                return true
+            }
+            return false
+        })
+        if case let .artifactDraftGroup(groupedDraftIDs, kind) = groupedNode.contentRef {
+            let nonTextDraftIDs = draft.artifacts.compactMap { artifact -> UUID? in
+                if case .text = artifact.content {
+                    return nil
+                }
+                return artifact.draftID
+            }
+            XCTAssertEqual(kind, .journalingBundle)
+            XCTAssertEqual(Set(groupedDraftIDs), Set(nonTextDraftIDs))
+        } else {
+            XCTFail("Expected journaling suggestion arrangement to group non-text drafts")
+        }
         XCTAssertTrue(draft.artifacts.contains { artifact in
             guard case .promptAnswer = artifact.content else { return false }
             return true

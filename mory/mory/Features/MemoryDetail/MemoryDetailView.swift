@@ -14,6 +14,7 @@ struct MemoryDetailView: View {
     @State private var draftArtifactOrder: [UUID] = []
     @State private var draftCardArrangement: MemoryCardArrangement?
     @State private var draftDeletedArtifactIDs: Set<UUID> = []
+    @State private var draftNewArtifactText = ""
     @State private var isSavingEdits = false
     @State private var isConfirmingDiscardEdits = false
 
@@ -23,6 +24,7 @@ struct MemoryDetailView: View {
                 if isEditing {
                     MemoryDetailEditingView(
                         rawText: $draftRawText,
+                        newArtifactText: $draftNewArtifactText,
                         artifacts: draftEditableArtifacts,
                         errorMessage: errorMessage,
                         onDeleteArtifact: { artifactID in
@@ -182,6 +184,7 @@ struct MemoryDetailView: View {
         draftArtifactOrder = orderedArtifacts(from: snapshot).map(\.id)
         draftCardArrangement = editBaseArrangement(for: snapshot)
         draftDeletedArtifactIDs = []
+        draftNewArtifactText = ""
     }
 
     private var draftHasChanges: Bool {
@@ -191,6 +194,7 @@ struct MemoryDetailView: View {
         let record = snapshot.record
         if draftRawText != record.rawText { return true }
         if !draftDeletedArtifactIDs.isEmpty { return true }
+        if draftNewArtifactText.trimmedOrNil != nil { return true }
         if draftCardArrangement != editBaseArrangement(for: snapshot) { return true }
         return mutationArtifactOrder != nil
     }
@@ -208,6 +212,7 @@ struct MemoryDetailView: View {
                     recordPatch: MemoryMutationRecordPatch(
                         rawText: .set(draftRawText)
                     ),
+                    addedArtifacts: addedArtifactsForEditedDraft(),
                     updatedArtifacts: updatedTextArtifactsForEditedBody(),
                     deletedArtifactIDs: Array(draftDeletedArtifactIDs),
                     artifactOrder: mutationArtifactOrder,
@@ -259,6 +264,19 @@ struct MemoryDetailView: View {
         artifact.textContent = body
         artifact.payload = .text(body)
         return [artifact]
+    }
+
+    private func addedArtifactsForEditedDraft() -> [CaptureArtifactDraft] {
+        guard let note = draftNewArtifactText.trimmedOrNil else { return [] }
+        return [
+            .promptAnswer(
+                prompt: String(localized: "memory.edit.addAttachment"),
+                answer: note,
+                source: "detail_edit",
+                origin: .manual,
+                provenance: .manualComposer
+            )
+        ]
     }
 
     private func orderedArtifacts(from snapshot: MemoryDetailSnapshot) -> [Artifact] {
@@ -369,6 +387,7 @@ struct MemoryDetailView: View {
 
 private struct MemoryDetailEditingView: View {
     @Binding var rawText: String
+    @Binding var newArtifactText: String
 
     let artifacts: [Artifact]
     let errorMessage: String?
@@ -387,6 +406,10 @@ private struct MemoryDetailEditingView: View {
                 VStack(spacing: 0) {
                     artifactCarousel
 
+                    supportingArtifactEditor
+                        .padding(.horizontal, 20)
+                        .padding(.top, artifacts.isEmpty ? 16 : 4)
+
                     CaptureBodyEditorView(
                         text: $rawText,
                         focus: $isBodyFocused,
@@ -402,6 +425,17 @@ private struct MemoryDetailEditingView: View {
             .scrollDismissesKeyboard(.interactively)
         }
         .background(Color(.systemBackground))
+    }
+
+    private var supportingArtifactEditor: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("memory.edit.addAttachment")
+                .font(.headline)
+            TextField("memory.edit.addAttachment.placeholder", text: $newArtifactText, axis: .vertical)
+                .textFieldStyle(.roundedBorder)
+                .lineLimit(2...4)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder

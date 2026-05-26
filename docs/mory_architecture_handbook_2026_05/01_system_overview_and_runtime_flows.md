@@ -82,14 +82,15 @@ sequenceDiagram
     UI->>Repo: createMemory(MemoryCaptureDraft)
     Repo->>Builder: build artifacts
     Repo->>Builder: build local semantic digests
-    Repo->>Repo: persist RecordShell, Artifact, ArtifactSemanticDigest, MemoryCardArrangement, AffectSnapshot, PipelineStatus.pending
+    Repo->>Repo: persist RecordShell, Artifact, ArtifactSemanticDigest, MemoryCardArrangement, AffectSnapshot, PipelineStatus.notScheduled
+    Repo-->>UI: MemorySummary
+    UI->>Repo: optional explicit refreshMemoryPipeline
     Repo->>Pipe: runArchitecturePipeline
     Pipe->>Repo: build AnalysisContextPack
     Pipe->>Server: analyzeMemory(payload)
     Server-->>Pipe: analysis + proposals + quality
     Pipe->>Repo: persist analysis, graph nodes/edges/links, proposals
     Pipe->>Repo: promote local arcs/reflections if quality passes
-    Repo-->>UI: MemorySummary
 ```
 
 输入：
@@ -112,12 +113,12 @@ sequenceDiagram
 
 问题：
 
-- `createMemory` 同时负责记录创建、artifact build、affect 持久化、pipeline status、indexing、pipeline trigger。
+- `createMemory` 同时负责记录创建、artifact build、affect 持久化、notScheduled pipeline status 和 indexing；pipeline trigger 已拆成显式策略。
 - pipeline 失败语义依赖 repository 的状态更新和 debug trace，事务边界需要继续细化。
 
 解决方向：
 
-- 将“保存草稿”和“启动分析”拆成两个 use case，但保持用户侧一个 save 行为。
+- 维持“保存草稿”和“启动分析”的解耦；AI disabled/save-only 路径不能留下永久 pending。
 - 为 pipeline 增加独立 status writer，避免分析失败污染 record save。
 
 ## 4. Share 到 Composer 流程
