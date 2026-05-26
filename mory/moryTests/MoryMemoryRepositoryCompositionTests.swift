@@ -1990,6 +1990,58 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertEqual(result.pipelineStatus?.stage, .notScheduled)
     }
 
+    func testApplyMemoryMutationArrangementOnlyPreservesAnalysisAndPipelineStatus() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
+        )
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Visual arrangement only",
+                rawText: "A memory with analysis that should survive visual desk edits.",
+                captureSource: .composer,
+                artifacts: [
+                    .text(title: "Visual arrangement only", body: "A memory with analysis that should survive visual desk edits."),
+                    .photo(title: "Photo", summary: "Photo summary", filename: "photo.jpg"),
+                    .todo(title: "Follow up", note: "Keep the plan")
+                ]
+            )
+        )
+        try await repository.refreshMemoryPipeline(recordID: memory.record.id)
+
+        let analyzedDetail = try XCTUnwrap(repository.fetchMemoryDetail(recordID: memory.record.id))
+        let originalUpdatedAt = analyzedDetail.record.updatedAt
+        let photoID = try XCTUnwrap(analyzedDetail.artifacts.first(where: { $0.kind == .photo })?.id)
+        let visualArrangement = try XCTUnwrap(analyzedDetail.cardArrangement)
+            .settingSize(.small, forArtifactID: photoID, updatedAt: Date.now)
+        XCTAssertEqual(analyzedDetail.pipelineStatus?.stage, .completed)
+        XCTAssertNotNil(analyzedDetail.analysis)
+
+        let result = try await repository.applyMemoryMutation(
+            recordID: memory.record.id,
+            mutation: MemoryMutationDraft(cardArrangement: visualArrangement),
+            refreshPolicy: .saveOnly
+        )
+
+        XCTAssertFalse(result.invalidatedDerivedData)
+        XCTAssertEqual(result.pipelineStatus?.stage, .completed)
+        let detail = try XCTUnwrap(result.detail)
+        XCTAssertNotNil(detail.analysis)
+        XCTAssertEqual(detail.record.updatedAt, originalUpdatedAt)
+
+        let arrangement = try XCTUnwrap(detail.cardArrangement)
+        let photoNode = try XCTUnwrap(arrangement.nodes.first { node in
+            if case let .artifact(id) = node.contentRef {
+                return id == photoID
+            }
+            return false
+        })
+        XCTAssertEqual(photoNode.layout.size, .small)
+    }
+
     func testApplyMemoryMutationUpdatesDeletesReordersAndPurgesGraphLinks() async throws {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(

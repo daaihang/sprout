@@ -38,7 +38,8 @@ struct MemoryMutationUseCase {
         }
 
         let now = Date.now
-        var updatedRecord = recordStore.domainModel
+        let originalRecord = recordStore.domainModel
+        var updatedRecord = originalRecord
         let existingArtifactIDs = Set(updatedRecord.artifactIDs)
         let deletedArtifactIDs = repository.orderedUniqueUUIDs(mutation.deletedArtifactIDs)
 
@@ -124,11 +125,26 @@ struct MemoryMutationUseCase {
                 throw MemoryRepositoryError.invalidArtifactOrder(recordID: recordID)
             }
             let remaining = artifactIDs.filter { !requestedSet.contains($0) }
-            artifactIDs = uniqueRequestedOrder + remaining
-            reorderedArtifactIDs = uniqueRequestedOrder
+            let reorderedIDs = uniqueRequestedOrder + remaining
+            if reorderedIDs != artifactIDs {
+                reorderedArtifactIDs = uniqueRequestedOrder
+            }
+            artifactIDs = reorderedIDs
         }
 
-        try repository.purgeDerivedDataForRefresh(recordID: recordID)
+        let recordFactsChanged = updatedRecord.rawText != originalRecord.rawText
+            || updatedRecord.userMood != originalRecord.userMood
+            || updatedRecord.inputContext != originalRecord.inputContext
+            || updatedRecord.captureSource != originalRecord.captureSource
+        let artifactFactsChanged = !addedArtifacts.isEmpty
+            || !normalizedUpdatedArtifacts.isEmpty
+            || !deletedArtifactIDs.isEmpty
+            || artifactIDs != originalRecord.artifactIDs
+        let recordingFactsChanged = recordFactsChanged || artifactFactsChanged
+
+        if recordingFactsChanged {
+            try repository.purgeDerivedDataForRefresh(recordID: recordID)
+        }
 
         for artifact in addedArtifacts {
             try repository.upsert(artifact: artifact)
@@ -160,27 +176,33 @@ struct MemoryMutationUseCase {
             digestStores.forEach { repository.modelContext.delete($0) }
         }
 
-        updatedRecord.artifactIDs = artifactIDs
-        updatedRecord.updatedAt = now
-        recordStore.apply(domainModel: updatedRecord)
+        if recordingFactsChanged {
+            updatedRecord.artifactIDs = artifactIDs
+            updatedRecord.updatedAt = now
+            recordStore.apply(domainModel: updatedRecord)
+        }
         let arrangementArtifacts = try repository.fetchArtifacts(recordID: recordID)
-        let existingArrangement = try repository.fetchMemoryCardArrangement(recordID: recordID)
-        let baseArrangement = mutation.cardArrangement
-            ?? existingArrangement
-            ?? MemoryCardArrangement.defaultArrangement(record: updatedRecord, artifacts: arrangementArtifacts, createdAt: now)
-        try repository.upsert(
-            memoryCardArrangement: baseArrangement.synchronized(
-                record: updatedRecord,
-                artifacts: arrangementArtifacts,
-                artifactOrder: mutation.artifactOrder,
-                updatedAt: now
+        if recordingFactsChanged || mutation.cardArrangement != nil {
+            let existingArrangement = try repository.fetchMemoryCardArrangement(recordID: recordID)
+            let baseArrangement = mutation.cardArrangement
+                ?? existingArrangement
+                ?? MemoryCardArrangement.defaultArrangement(record: updatedRecord, artifacts: arrangementArtifacts, createdAt: now)
+            try repository.upsert(
+                memoryCardArrangement: baseArrangement.synchronized(
+                    record: updatedRecord,
+                    artifacts: arrangementArtifacts,
+                    artifactOrder: mutation.artifactOrder,
+                    updatedAt: now
+                )
             )
-        )
-        if mutation.recordPatch.userMood.shouldUpdate {
+        }
+        if updatedRecord.userMood != originalRecord.userMood {
             try repository.replaceUserAffectSnapshot(recordID: recordID, rawMood: updatedRecord.userMood, now: now)
         }
 
-        try repository.upsertNotScheduledPipelineStatus(recordID: recordID, updatedAt: now)
+        if recordingFactsChanged {
+            try repository.upsertNotScheduledPipelineStatus(recordID: recordID, updatedAt: now)
+        }
         try repository.save()
 
         var detail = try repository.fetchMemoryDetail(recordID: recordID)
@@ -212,7 +234,7 @@ struct MemoryMutationUseCase {
             updatedArtifactIDs: updatedArtifactIDs,
             deletedArtifactIDs: deletedArtifactIDs,
             reorderedArtifactIDs: reorderedArtifactIDs,
-            invalidatedDerivedData: true,
+            invalidatedDerivedData: recordingFactsChanged,
             pipelineStatus: pipelineStatus
         )
     }
