@@ -15,32 +15,6 @@ struct InsightsRootScreen: View {
 
     var body: some View {
         List {
-            Section {
-                NavigationLink {
-                    ArcsScreen()
-                        .moryHidesTabChrome()
-                } label: {
-                    MoryHubRow(
-                        title: "insights.hub.storylines.title",
-                        subtitle: "insights.hub.storylines.subtitle",
-                        systemImage: "point.topleft.down.curvedto.point.bottomright.up"
-                    )
-                }
-
-                NavigationLink {
-                    ReflectionsScreen()
-                        .moryHidesTabChrome()
-                } label: {
-                    MoryHubRow(
-                        title: "insights.hub.reflections.title",
-                        subtitle: "insights.hub.reflections.subtitle",
-                        systemImage: "sparkles"
-                    )
-                }
-
-            } footer: {
-                Text("insights.hub.footer")
-            }
             if let errorMessage {
                 Section {
                     Text(errorMessage)
@@ -84,89 +58,28 @@ struct InsightsRootScreen: View {
                     }
                 }
 
-                insightSection(
-                    title: "insights.section.storylines",
-                    empty: "empty.insights.storylines",
-                    rows: snapshot.storylines
-                ) { item in
-                    NavigationLink {
-                        ArcDetailView(arcID: item.arc.id)
-                            .moryHidesTabChrome()
-                    } label: {
-                        StorylineRow(summary: item)
-                    }
-                }
-
-                insightSection(
-                    title: "insights.section.suggestedReflections",
-                    empty: "empty.insights.reflections",
-                    rows: snapshot.suggestedReflections
-                ) { item in
-                    NavigationLink {
-                        ReflectionDetailView(reflectionID: item.reflection.id)
-                            .moryHidesTabChrome()
-                    } label: {
-                        ReflectionInsightRow(summary: item)
-                    }
-                }
-
-                insightSection(
-                    title: "insights.section.people",
-                    empty: "empty.insights.people",
-                    rows: snapshot.people
-                ) { item in
-                    NavigationLink {
-                        PersonDetailView(entityID: item.entity.id)
-                            .moryHidesTabChrome()
-                    } label: {
-                        EntityInsightRow(snapshot: item)
-                    }
-                }
-
-                insightSection(
-                    title: "insights.section.places",
-                    empty: "empty.insights.places",
-                    rows: snapshot.places
-                ) { item in
-                    NavigationLink {
-                        EntityDetailView(entityID: item.entity.id)
-                            .moryHidesTabChrome()
-                    } label: {
-                        EntityInsightRow(snapshot: item)
-                    }
-                }
-
-                insightSection(
-                    title: "insights.section.themes",
-                    empty: "empty.insights.themes",
-                    rows: snapshot.themes
-                ) { item in
-                    NavigationLink {
-                        EntityDetailView(entityID: item.entity.id)
-                            .moryHidesTabChrome()
-                    } label: {
-                        EntityInsightRow(snapshot: item)
-                    }
-                }
-
-                insightSection(
-                    title: "insights.section.decisions",
-                    empty: "empty.insights.decisions",
-                    rows: snapshot.decisions
-                ) { item in
-                    NavigationLink {
-                        EntityDetailView(entityID: item.entity.id)
-                            .moryHidesTabChrome()
-                    } label: {
-                        EntityInsightRow(snapshot: item)
-                    }
-                }
-
-                if !snapshot.savedReflections.isEmpty {
+                let storylinePreview = previewStorylines(from: snapshot)
+                if !storylinePreview.isEmpty {
                     insightSection(
-                        title: "insights.section.savedReflections",
-                        empty: "",
-                        rows: snapshot.savedReflections
+                        title: "insights.section.storylines",
+                        empty: "empty.insights.storylines",
+                        rows: storylinePreview
+                    ) { item in
+                        NavigationLink {
+                            ArcDetailView(arcID: item.arc.id)
+                                .moryHidesTabChrome()
+                        } label: {
+                            StorylineRow(summary: item)
+                        }
+                    }
+                }
+
+                let reflectionPreview = previewReflections(from: snapshot)
+                if !reflectionPreview.isEmpty {
+                    insightSection(
+                        title: "reflections.section.title",
+                        empty: "empty.insights.reflections",
+                        rows: reflectionPreview
                     ) { item in
                         NavigationLink {
                             ReflectionDetailView(reflectionID: item.reflection.id)
@@ -175,6 +88,33 @@ struct InsightsRootScreen: View {
                             ReflectionInsightRow(summary: item)
                         }
                     }
+                }
+
+                Section {
+                    NavigationLink {
+                        ArcsScreen()
+                            .moryHidesTabChrome()
+                    } label: {
+                        MoryHubRow(
+                            title: "insights.hub.storylines.title",
+                            subtitle: "insights.hub.storylines.subtitle",
+                            systemImage: "point.topleft.down.curvedto.point.bottomright.up"
+                        )
+                    }
+
+                    NavigationLink {
+                        ReflectionsScreen()
+                            .moryHidesTabChrome()
+                    } label: {
+                        MoryHubRow(
+                            title: "insights.hub.reflections.title",
+                            subtitle: "insights.hub.reflections.subtitle",
+                            systemImage: "sparkles"
+                        )
+                    }
+
+                } footer: {
+                    Text("insights.hub.footer")
                 }
             } else {
                 Section {
@@ -229,6 +169,19 @@ struct InsightsRootScreen: View {
         guard let requestedRoute else { return }
         selectedRoute = requestedRoute
         self.requestedRoute = nil
+    }
+
+    private func previewStorylines(from snapshot: InsightsPresentationSnapshot) -> [TemporalArcSummarySnapshot] {
+        snapshot.storylines
+            .filter { item in
+                item.arc.id != snapshot.highlightedStoryline?.arc.id
+            }
+            .prefix(3)
+            .map { $0 }
+    }
+
+    private func previewReflections(from snapshot: InsightsPresentationSnapshot) -> [ReflectionSummarySnapshot] {
+        Array((snapshot.suggestedReflections + snapshot.savedReflections).prefix(4))
     }
 
     @ViewBuilder
@@ -339,40 +292,6 @@ private struct ReflectionInsightRow: View {
     }
 }
 
-private struct EntityInsightRow: View {
-    let snapshot: EntityDetailSnapshot
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ViewThatFits(in: .horizontal) {
-                HStack {
-                    Text(snapshot.entity.displayName)
-                        .font(.headline)
-                    Spacer()
-                    Text(snapshot.entity.kind.presentationLabel)
-                }
-                VStack(alignment: .leading, spacing: MorySpacing.xSmall) {
-                    Text(snapshot.entity.displayName)
-                        .font(.headline)
-                    Text(snapshot.entity.kind.presentationLabel)
-                }
-            }
-            if let summary = snapshot.entity.summary.trimmedOrNil {
-                Text(summary)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Text("insights.entity.stats \(snapshot.relatedMemories.count) \(snapshot.relatedArcs.count) \(snapshot.relatedReflections.count)")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .accessibilityElement(children: .combine)
-    }
-}
-
 private extension TemporalArcStatus {
     var presentationLabel: String {
         switch self {
@@ -384,28 +303,11 @@ private extension TemporalArcStatus {
     }
 }
 
-private extension EntityKind {
-    var presentationLabel: String {
-        switch self {
-        case .person: return String(localized: "entity.kind.person")
-        case .place: return String(localized: "entity.kind.place")
-        case .theme: return String(localized: "entity.kind.theme")
-        case .decision: return String(localized: "entity.kind.decision")
-        case .activity: return String(localized: "entity.kind.activity")
-        case .object: return String(localized: "entity.kind.object")
-        }
-    }
-}
-
 private extension InsightsPresentationSnapshot {
     var isPubliclyEmpty: Bool {
         highlightedStoryline == nil
             && storylines.isEmpty
             && suggestedReflections.isEmpty
             && savedReflections.isEmpty
-            && people.isEmpty
-            && places.isEmpty
-            && themes.isEmpty
-            && decisions.isEmpty
     }
 }

@@ -17,6 +17,10 @@ struct SearchScreen: View {
         var showsIdleIndexControls: Bool {
             self == .standalone
         }
+
+        var showsCrossDomainResults: Bool {
+            self == .standalone
+        }
     }
 
     @Environment(\.memoryRepository) private var memoryRepository
@@ -72,7 +76,7 @@ struct SearchScreen: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             } else if query.trimmedOrNil != nil {
-                if result.isPubliclyEmpty {
+                if isEmptyForPresentation {
                     Section {
                         MoryPublicEmptyStateView(
                             state: .search,
@@ -81,10 +85,12 @@ struct SearchScreen: View {
                     }
                 }
 
-                Section("Search source") {
-                    Text(verbatim: result.sourceSummary)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                if presentation.showsCrossDomainResults {
+                    Section("Search source") {
+                        Text(verbatim: result.sourceSummary)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 Section("search.section.memories") {
@@ -104,53 +110,55 @@ struct SearchScreen: View {
                     }
                 }
 
-                Section("search.section.entities") {
-                    if result.entities.isEmpty {
-                        Text("search.empty.entities")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(result.entities) { entityResult in
-                            NavigationLink {
-                                EntityDestinationView(entityID: entityResult.entity.id, kind: entityResult.entity.kind)
-                                    .moryHidesTabChrome()
-                            } label: {
-                                SearchEntityRow(result: entityResult)
+                if presentation.showsCrossDomainResults {
+                    Section("search.section.entities") {
+                        if result.entities.isEmpty {
+                            Text("search.empty.entities")
+                                .foregroundStyle(.secondary)
+                        } else {
+                            ForEach(result.entities) { entityResult in
+                                NavigationLink {
+                                    EntityDestinationView(entityID: entityResult.entity.id, kind: entityResult.entity.kind)
+                                        .moryHidesTabChrome()
+                                } label: {
+                                    SearchEntityRow(result: entityResult)
+                                }
+                                .accessibilityElement(children: .combine)
                             }
-                            .accessibilityElement(children: .combine)
                         }
                     }
-                }
 
-                Section("search.section.arcs") {
-                    if result.arcs.isEmpty {
-                        Text("search.empty.arcs")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(result.arcs) { arcResult in
-                            NavigationLink {
-                                ArcDetailView(arcID: arcResult.summary.arc.id)
-                                    .moryHidesTabChrome()
-                            } label: {
-                                SearchArcRow(result: arcResult)
+                    Section("search.section.arcs") {
+                        if result.arcs.isEmpty {
+                            Text("search.empty.arcs")
+                                .foregroundStyle(.secondary)
+                        } else {
+                            ForEach(result.arcs) { arcResult in
+                                NavigationLink {
+                                    ArcDetailView(arcID: arcResult.summary.arc.id)
+                                        .moryHidesTabChrome()
+                                } label: {
+                                    SearchArcRow(result: arcResult)
+                                }
+                                .accessibilityElement(children: .combine)
                             }
-                            .accessibilityElement(children: .combine)
                         }
                     }
-                }
 
-                Section("search.section.reflections") {
-                    if result.reflections.isEmpty {
-                        Text("search.empty.reflections")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(result.reflections) { reflectionResult in
-                            NavigationLink {
-                                ReflectionDetailView(reflectionID: reflectionResult.summary.reflection.id)
-                                    .moryHidesTabChrome()
-                            } label: {
-                                SearchReflectionRow(result: reflectionResult)
+                    Section("search.section.reflections") {
+                        if result.reflections.isEmpty {
+                            Text("search.empty.reflections")
+                                .foregroundStyle(.secondary)
+                        } else {
+                            ForEach(result.reflections) { reflectionResult in
+                                NavigationLink {
+                                    ReflectionDetailView(reflectionID: reflectionResult.summary.reflection.id)
+                                        .moryHidesTabChrome()
+                                } label: {
+                                    SearchReflectionRow(result: reflectionResult)
+                                }
+                                .accessibilityElement(children: .combine)
                             }
-                            .accessibilityElement(children: .combine)
                         }
                     }
                 }
@@ -160,6 +168,13 @@ struct SearchScreen: View {
         .task(id: query) {
             await load()
         }
+    }
+
+    private var isEmptyForPresentation: Bool {
+        if presentation.showsCrossDomainResults {
+            return result.isPubliclyEmpty
+        }
+        return result.memories.isEmpty
     }
 
     private func load() async {
