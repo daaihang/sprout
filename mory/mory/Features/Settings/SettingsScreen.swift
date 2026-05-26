@@ -71,7 +71,10 @@ struct SettingsScreen: View {
             SettingsAppearanceLanguageSection(memoryRepository: memoryRepository)
         case .diagnostics:
             if runtimeEnvironment.allowsDebugTools {
-                DebugRuntimeOperationsView()
+                DebugDiagnosticsView(
+                    authManager: authManager,
+                    runtimeEnvironment: runtimeEnvironment
+                )
             } else {
                 SettingsPlaceholderSection(
                     title: "settings.diagnostics.title",
