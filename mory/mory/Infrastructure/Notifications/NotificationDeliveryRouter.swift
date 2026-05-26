@@ -3,7 +3,7 @@ import Foundation
 @MainActor
 struct NotificationDeliveryRouter {
     var localScheduler: LocalNotificationScheduler = .init()
-    var remotePushSyncService: any RemotePushSyncing
+    var pushEnqueuer: any PushNotificationEnqueuing
 
     func route(
         intent: NotificationIntent,
@@ -11,12 +11,11 @@ struct NotificationDeliveryRouter {
         now: Date = .now
     ) async throws -> NotificationIntent {
         var routed = intent
-        let hasToken = PushDeviceRegistrationStore.currentAPNSToken() != nil
-        routed.deliveryChannel = hasToken ? .remote : .local
+        routed.deliveryChannel = pushEnqueuer.hasAPNSToken ? .remote : .local
         routed.lastEvaluatedAt = now
         try repository.upsertNotificationIntent(routed)
         if routed.deliveryChannel == .remote {
-            _ = try await remotePushSyncService.enqueueRemoteNotificationIntent(routed)
+            _ = try await pushEnqueuer.enqueueRemoteNotificationIntent(routed)
             routed.status = .scheduled
             try repository.upsertNotificationIntent(routed)
         } else {

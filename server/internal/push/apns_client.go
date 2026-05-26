@@ -1,4 +1,4 @@
-package notification
+package push
 
 import (
 	"bytes"
@@ -280,7 +280,7 @@ func apnsPayload(message APNSMessage) map[string]any {
 				"body":  message.Body,
 			},
 			"sound":    "default",
-			"category": "mory.notification.intent",
+			"category": "mory.push.intent",
 		},
 		"mory_notification_intent_id":   message.IntentID,
 		"mory_notification_kind":        message.Kind,

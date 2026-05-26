@@ -17,7 +17,7 @@ import (
 	"sprout/server/internal/auth"
 	"sprout/server/internal/config"
 	"sprout/server/internal/db"
-	"sprout/server/internal/notification"
+	"sprout/server/internal/push"
 	"sprout/server/internal/subscription"
 )
 
@@ -30,7 +30,7 @@ type Dependencies struct {
 	Subscription       *subscription.Service
 	PushTokens         db.PushTokenStore
 	UserProfiles       db.UserProfileStore
-	PushDeliveryWorker *notification.PushDeliveryWorker
+	PushDeliveryWorker *push.PushDeliveryWorker
 }
 
 type Server struct {
@@ -42,7 +42,7 @@ type Server struct {
 	subscription       *subscription.Service
 	pushTokens         db.PushTokenStore
 	userProfiles       db.UserProfileStore
-	pushDeliveryWorker *notification.PushDeliveryWorker
+	pushDeliveryWorker *push.PushDeliveryWorker
 	metrics            *metrics
 	aiRateLimiter      *aiRateLimiter
 	mux                *http.ServeMux
@@ -51,9 +51,9 @@ type Server struct {
 func NewServer(deps Dependencies) *Server {
 	pushDeliveryWorker := deps.PushDeliveryWorker
 	if pushDeliveryWorker == nil && deps.PushTokens != nil {
-		pushDeliveryWorker = notification.NewPushDeliveryWorker(
+		pushDeliveryWorker = push.NewPushDeliveryWorker(
 			deps.PushTokens,
-			notification.DisabledAPNSClient{},
+			push.DisabledAPNSClient{},
 			deps.Logger,
 			firstNonEmpty(firstString(deps.Config.AppleAudiences), "com.speculolabs.mory"),
 		)
@@ -399,7 +399,7 @@ func writeText(w http.ResponseWriter, status int, body string) {
 	_, _ = w.Write([]byte(body))
 }
 
-func metricsText(cfg config.Config, snapshot map[string]any, worker notification.DeliveryWorkerMetricsSnapshot) string {
+func metricsText(cfg config.Config, snapshot map[string]any, worker push.DeliveryWorkerMetricsSnapshot) string {
 	var builder strings.Builder
 	builder.WriteString(fmt.Sprintf(
 		"requests_total %v\nrequests_4xx_total %v\nrequests_5xx_total %v\naverage_latency_ms %v\n",

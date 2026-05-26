@@ -208,6 +208,8 @@ private struct MissingCloudIntelligenceService: CloudIntelligenceServing {
 
 @MainActor
 private final class MissingRemotePushSyncService: RemotePushSyncing {
+    var hasAPNSToken: Bool { false }
+
     func registerSystemRemoteNotificationsIfNeeded(repository: any MoryMemoryRepositorying) {}
     func syncRegistrationIfPossible(repository: any MoryMemoryRepositorying, force: Bool) async {}
     func enqueueRemoteNotificationIntent(_ intent: NotificationIntent) async throws -> MoryAPIClient.PushEnqueueResponse {

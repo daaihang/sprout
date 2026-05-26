@@ -75,22 +75,12 @@ struct DebugDiagnosticsView: View {
                 }
 
                 NavigationLink {
-                    BackgroundManagementView()
+                    DebugRuntimeOperationsView()
                 } label: {
                     DebugMenuRow(
                         icon: "clock.arrow.circlepath",
-                        title: "Background Operations",
-                        subtitle: "Inspect unified background triggers, operation runs, notification handoffs, and debug simulations"
-                    )
-                }
-
-                NavigationLink {
-                    DebugJobQueueView()
-                } label: {
-                    DebugMenuRow(
-                        icon: "list.bullet",
-                        title: "Job Queue",
-                        subtitle: "Inspect V6 jobs, notification intents, graph deltas, recovery, and due worker execution"
+                        title: "Runtime Operations",
+                        subtitle: "Inspect and trigger Background, Intelligence jobs, Notifications, and Push through formal orchestrators"
                     )
                 }
 
@@ -215,16 +205,6 @@ struct DebugDiagnosticsView: View {
                         icon: "wrench.and.screwdriver",
                         title: "Data Repair",
                         subtitle: "Backfill missing captureOrigin metadata for legacy local artifacts"
-                    )
-                }
-
-                NavigationLink {
-                    NotificationManagementView()
-                } label: {
-                    DebugMenuRow(
-                        icon: "bell.badge",
-                        title: "Notification Management",
-                        subtitle: "Inspect queue, history, dedupe, errors, preferences, and push diagnostics"
                     )
                 }
 

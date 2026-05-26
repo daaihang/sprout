@@ -3,7 +3,7 @@ package http
 import (
 	"net/http"
 
-	"sprout/server/internal/notification"
+	"sprout/server/internal/push"
 )
 
 func (s *Server) handleHealthz(w http.ResponseWriter, _ *http.Request) {
@@ -13,7 +13,7 @@ func (s *Server) handleHealthz(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (s *Server) handleMetrics(w http.ResponseWriter, _ *http.Request) {
-	workerMetrics := notification.DeliveryWorkerMetricsSnapshot{}
+	workerMetrics := push.DeliveryWorkerMetricsSnapshot{}
 	if s.pushDeliveryWorker != nil {
 		workerMetrics = s.pushDeliveryWorker.MetricsSnapshot()
 	}

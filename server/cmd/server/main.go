@@ -14,7 +14,7 @@ import (
 	"sprout/server/internal/config"
 	"sprout/server/internal/db"
 	httpapi "sprout/server/internal/http"
-	"sprout/server/internal/notification"
+	"sprout/server/internal/push"
 	"sprout/server/internal/subscription"
 )
 
@@ -45,7 +45,7 @@ func main() {
 		logger.Error("init ai provider", "error", err)
 		os.Exit(1)
 	}
-	apnsClient, err := notification.NewAPNSClient(notification.APNSClientConfig{
+	apnsClient, err := push.NewAPNSClient(push.APNSClientConfig{
 		Enabled:     cfg.APNSEnabled,
 		Environment: cfg.APNSEnvironment,
 		KeyID:       cfg.APNSKeyID,
@@ -61,12 +61,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	pushDeliveryWorker := notification.NewPushDeliveryWorkerWithOptions(
+	pushDeliveryWorker := push.NewPushDeliveryWorkerWithOptions(
 		store,
 		apnsClient,
 		logger,
 		firstNonEmpty(cfg.APNSTopic, firstAudienceOrFallback(cfg.AppleAudiences, "com.speculolabs.mory")),
-		notification.PushDeliveryWorkerOptions{
+		push.PushDeliveryWorkerOptions{
 			MaxAttempts:           cfg.PushDeliveryMaxAttempts,
 			RetryBackoff:          cfg.PushDeliveryRetryBackoff,
 			AlertFailureThreshold: cfg.PushDeliveryAlertFailureThreshold,

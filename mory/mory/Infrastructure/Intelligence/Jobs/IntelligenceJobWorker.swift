@@ -16,29 +16,29 @@ struct IntelligenceJobWorker {
     private let clarificationQuestionBuilder: ClarificationQuestionBuilder
     private let graphDeltaApplier: GraphDeltaApplier
     private let cloudIntelligenceService: (any CloudIntelligenceServing)?
-    private let notificationOrchestrator: NotificationOrchestrator?
+    private let notificationRouting: (any IntelligenceNotificationRouting)?
 
     init(
         clarificationQuestionBuilder: ClarificationQuestionBuilder? = nil,
         graphDeltaApplier: GraphDeltaApplier? = nil,
         cloudIntelligenceService: (any CloudIntelligenceServing)? = nil,
-        notificationOrchestrator: NotificationOrchestrator? = nil
+        notificationRouting: (any IntelligenceNotificationRouting)? = nil
     ) {
         self.clarificationQuestionBuilder = clarificationQuestionBuilder ?? ClarificationQuestionBuilder()
         self.graphDeltaApplier = graphDeltaApplier ?? GraphDeltaApplier()
         self.cloudIntelligenceService = cloudIntelligenceService
-        self.notificationOrchestrator = notificationOrchestrator
+        self.notificationRouting = notificationRouting
     }
 
     func processDueJobs(
         repository: any IntelligenceJobRepositorying,
         cloudIntelligenceService: any CloudIntelligenceServing,
-        notificationOrchestrator: NotificationOrchestrator? = nil,
+        notificationRouting: (any IntelligenceNotificationRouting)? = nil,
         now: Date = .now,
         limit: Int = 24
     ) async -> IntelligenceJobWorkerReport {
         var report = IntelligenceJobWorkerReport()
-        let resolvedOrchestrator = notificationOrchestrator ?? self.notificationOrchestrator ?? .localDelivery
+        let resolvedNotificationRouting = notificationRouting ?? self.notificationRouting
 
         let flags: V6FeatureFlags
         do {
@@ -78,7 +78,7 @@ struct IntelligenceJobWorker {
                     running,
                     repository: repository,
                     cloudIntelligenceService: cloudIntelligenceService,
-                    notificationOrchestrator: resolvedOrchestrator,
+                    notificationRouting: resolvedNotificationRouting,
                     now: now,
                     report: &report
                 )
@@ -105,7 +105,7 @@ struct IntelligenceJobWorker {
         _ runningJob: IntelligenceJob,
         repository: any IntelligenceJobRepositorying,
         cloudIntelligenceService: any CloudIntelligenceServing,
-        notificationOrchestrator: NotificationOrchestrator,
+        notificationRouting: (any IntelligenceNotificationRouting)?,
         now: Date,
         report: inout IntelligenceJobWorkerReport
     ) async throws {
@@ -124,7 +124,10 @@ struct IntelligenceJobWorker {
             report.preparedQuestionCount += prepared.count
 
         case .notificationIntent:
-            let notificationReport = try await notificationOrchestrator.orchestrate(
+            guard let notificationRouting else {
+                throw IntelligenceJobWorkerError.notificationRoutingUnavailable
+            }
+            let notificationReport = try await notificationRouting.routeIntelligenceNotification(
                 trigger: .backgroundRefresh,
                 repository: repository,
                 now: now,
@@ -644,11 +647,14 @@ extension IntelligenceJobWorker: BackgroundJobProcessing {
 }
 
 private enum IntelligenceJobWorkerError: LocalizedError {
+    case notificationRoutingUnavailable
     case unsupportedTargetType
     case unsupportedJobKind(IntelligenceJobKind)
 
     var errorDescription: String? {
         switch self {
+        case .notificationRoutingUnavailable:
+            return "Notification routing is unavailable for intelligence job execution."
         case .unsupportedTargetType:
             return "Unsupported intelligence job target type."
         case let .unsupportedJobKind(kind):

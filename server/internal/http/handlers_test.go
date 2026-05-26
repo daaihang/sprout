@@ -17,7 +17,7 @@ import (
 	"sprout/server/internal/auth"
 	"sprout/server/internal/config"
 	"sprout/server/internal/db"
-	"sprout/server/internal/notification"
+	"sprout/server/internal/push"
 	"sprout/server/internal/subscription"
 )
 
@@ -53,7 +53,7 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 		Subscription:  subscription.NewService("mock", "seed"),
 		PushTokens:    store,
 		UserProfiles:  store,
-		PushDeliveryWorker: notification.NewPushDeliveryWorker(
+		PushDeliveryWorker: push.NewPushDeliveryWorker(
 			store,
 			pushClient,
 			slog.New(slog.NewTextHandler(io.Discard, nil)),
@@ -868,10 +868,10 @@ func (v failingAppleVerifier) VerifyIdentityToken(_ context.Context, _, _ string
 }
 
 type testAPNSClient struct {
-	messages []notification.APNSMessage
+	messages []push.APNSMessage
 }
 
-func (c *testAPNSClient) Send(_ context.Context, message notification.APNSMessage) error {
+func (c *testAPNSClient) Send(_ context.Context, message push.APNSMessage) error {
 	c.messages = append(c.messages, message)
 	return nil
 }

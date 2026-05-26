@@ -3,24 +3,19 @@ import XCTest
 
 @MainActor
 final class NotificationDeliveryRouterTests: XCTestCase {
-    private let apnsTokenKey = "mory.apnsTokenHex"
-
     override func setUp() {
         super.setUp()
-        // Clear any APNS token left by other tests.
         PushDeviceRegistrationStore.resetForTests()
-        UserDefaults.standard.removeObject(forKey: apnsTokenKey)
     }
 
     override func tearDown() {
         PushDeviceRegistrationStore.resetForTests()
-        UserDefaults.standard.removeObject(forKey: apnsTokenKey)
         super.tearDown()
     }
 
     func testRouterSetsLocalChannelWhenNoAPNSToken() async throws {
         // No APNS token → should route to local.
-        let fixture = makeRouterFixture()
+        let fixture = makeRouterFixture(hasAPNSToken: false)
         let intent = makeTestIntent()
 
         try await fixture.router.route(intent: intent, repository: fixture.repository)
@@ -32,9 +27,7 @@ final class NotificationDeliveryRouterTests: XCTestCase {
     }
 
     func testRouterSetsRemoteChannelWhenAPNSTokenPresent() async throws {
-        // Seed a fake APNS hex token.
-        UserDefaults.standard.set("deadbeefcafe1234", forKey: apnsTokenKey)
-        let fixture = makeRouterFixture()
+        let fixture = makeRouterFixture(hasAPNSToken: true)
         let intent = makeTestIntent()
 
         // Remote service throws (test double) — we only care about the upserted channel.
@@ -53,10 +46,10 @@ final class NotificationDeliveryRouterTests: XCTestCase {
         var repository: RouterTestNotificationIntentRepository
     }
 
-    private func makeRouterFixture() -> RouterFixture {
+    private func makeRouterFixture(hasAPNSToken: Bool) -> RouterFixture {
         let repository = RouterTestNotificationIntentRepository()
-        let remotePushService = RouterTestRemotePushService()
-        var router = NotificationDeliveryRouter(remotePushSyncService: remotePushService)
+        let remotePushService = RouterTestRemotePushService(hasAPNSToken: hasAPNSToken)
+        var router = NotificationDeliveryRouter(pushEnqueuer: remotePushService)
         // Inject a stub notification center so no real UNUserNotificationCenter calls happen.
         router.localScheduler = LocalNotificationScheduler(
             notificationCenter: RouterTestLocalNotificationCenter()
@@ -135,6 +128,12 @@ private final class RouterTestNotificationIntentRepository: NotificationIntentRe
 }
 
 private final class RouterTestRemotePushService: RemotePushSyncing {
+    let hasAPNSToken: Bool
+
+    init(hasAPNSToken: Bool) {
+        self.hasAPNSToken = hasAPNSToken
+    }
+
     func prepareForLocalDataOwner(_ ownerID: String) {}
     func registerSystemRemoteNotificationsIfNeeded(repository: any MoryMemoryRepositorying) {}
     func syncRegistrationIfPossible(repository: any MoryMemoryRepositorying, force: Bool) async {}

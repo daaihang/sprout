@@ -11,7 +11,7 @@ extension BackgroundOperationOrchestrator {
             jobRecoverer: IntelligenceJobRecoveryService(),
             jobProcessor: IntelligenceJobWorker(
                 cloudIntelligenceService: cloudIntelligenceService,
-                notificationOrchestrator: notificationOrchestrator
+                notificationRouting: notificationOrchestrator
             ),
             questionPreparer: IntelligenceBackgroundQuestionPreparer(
                 cloudIntelligenceService: cloudIntelligenceService

@@ -8,7 +8,7 @@ import (
 
 	"sprout/server/internal/auth"
 	"sprout/server/internal/db"
-	"sprout/server/internal/notification"
+	"sprout/server/internal/push"
 )
 
 func (s *Server) handlePushRegister(w http.ResponseWriter, r *http.Request) {
@@ -103,7 +103,7 @@ func (s *Server) handlePushEnqueue(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "intent_id, kind, title, body, target_type, and target_id are required")
 		return
 	}
-	if !notification.SupportedTargetType(targetType) {
+	if !push.SupportedTargetType(targetType) {
 		writeError(w, http.StatusBadRequest, "target_type must be one of record, artifact, question, entity, place, theme, decision, chapter, or reflection")
 		return
 	}
@@ -121,7 +121,7 @@ func (s *Server) handlePushEnqueue(w http.ResponseWriter, r *http.Request) {
 	enqueueReport, err := s.pushDeliveryWorker.EnqueueIntent(
 		r.Context(),
 		claims.UserID,
-		notification.DeliveryIntent{
+		push.DeliveryIntent{
 			IntentID:     intentID,
 			Kind:         kind,
 			Title:        title,
