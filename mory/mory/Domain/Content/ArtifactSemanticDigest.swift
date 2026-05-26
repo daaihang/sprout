@@ -34,6 +34,7 @@ struct ArtifactSemanticDigest: Identifiable, Codable, Hashable, Sendable {
     var visualLabels: [String]
     var transcript: String?
     var languageCode: String?
+    var confidence: Double?
     var durationSeconds: Double?
     var dimensions: ArtifactMediaDimensions?
     var captureDate: String?
@@ -55,6 +56,7 @@ struct ArtifactSemanticDigest: Identifiable, Codable, Hashable, Sendable {
         visualLabels: [String] = [],
         transcript: String? = nil,
         languageCode: String? = nil,
+        confidence: Double? = nil,
         durationSeconds: Double? = nil,
         dimensions: ArtifactMediaDimensions? = nil,
         captureDate: String? = nil,
@@ -75,6 +77,7 @@ struct ArtifactSemanticDigest: Identifiable, Codable, Hashable, Sendable {
         self.visualLabels = visualLabels
         self.transcript = transcript
         self.languageCode = languageCode
+        self.confidence = confidence
         self.durationSeconds = durationSeconds
         self.dimensions = dimensions
         self.captureDate = captureDate

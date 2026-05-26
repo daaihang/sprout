@@ -79,6 +79,8 @@ struct AudioArtifactContent: Hashable, Sendable {
     var filename: String
     var audioData: Data?
     var transcriptionText: String = ""
+    var languageCode: String?
+    var transcriptionConfidence: Double?
     var durationSeconds: Double?
 }
 
@@ -320,8 +322,34 @@ extension CaptureArtifactDraft {
         CaptureArtifactDraft(origin: origin, provenance: provenance, content: .photo(PhotoArtifactContent(title: title, summary: summary, filename: filename, imageData: imageData, thumbnailData: thumbnailData, ocrText: ocrText, photoMetadata: photoMetadata)))
     }
 
-    static func audio(title: String? = nil, summary: String, filename: String, audioData: Data? = nil, transcriptionText: String = "", durationSeconds: Double? = nil, origin: CaptureArtifactOrigin = .manual, provenance: CaptureProvenance? = nil) -> CaptureArtifactDraft {
-        CaptureArtifactDraft(origin: origin, provenance: provenance, content: .audio(AudioArtifactContent(title: title, summary: summary, filename: filename, audioData: audioData, transcriptionText: transcriptionText, durationSeconds: durationSeconds)))
+    static func audio(
+        title: String? = nil,
+        summary: String,
+        filename: String,
+        audioData: Data? = nil,
+        transcriptionText: String = "",
+        languageCode: String? = nil,
+        transcriptionConfidence: Double? = nil,
+        durationSeconds: Double? = nil,
+        origin: CaptureArtifactOrigin = .manual,
+        provenance: CaptureProvenance? = nil
+    ) -> CaptureArtifactDraft {
+        CaptureArtifactDraft(
+            origin: origin,
+            provenance: provenance,
+            content: .audio(
+                AudioArtifactContent(
+                    title: title,
+                    summary: summary,
+                    filename: filename,
+                    audioData: audioData,
+                    transcriptionText: transcriptionText,
+                    languageCode: languageCode,
+                    transcriptionConfidence: transcriptionConfidence,
+                    durationSeconds: durationSeconds
+                )
+            )
+        )
     }
 
     static func video(title: String? = nil, summary: String, filename: String, videoData: Data? = nil, thumbnailData: Data? = nil, videoMetadata: [String: String] = [:], origin: CaptureArtifactOrigin = .manual, provenance: CaptureProvenance? = nil) -> CaptureArtifactDraft {

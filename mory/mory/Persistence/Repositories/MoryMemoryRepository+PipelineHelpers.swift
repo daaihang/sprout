@@ -28,8 +28,7 @@ extension MoryMemoryRepository {
             inputContract = AnalysisInputContract(
                 record: record,
                 artifacts: artifacts,
-                semanticDigests: try fetchArtifactSemanticDigests(recordID: record.id),
-                excludedCardArrangementID: try fetchMemoryCardArrangement(recordID: record.id)?.id
+                semanticDigests: try fetchArtifactSemanticDigests(recordID: record.id)
             )
         }
         try await architecturePipelineExecutor.run(

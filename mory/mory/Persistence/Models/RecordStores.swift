@@ -106,6 +106,7 @@ final class ArtifactSemanticDigestStore {
     var visualLabels: [String]
     var transcript: String?
     var languageCode: String?
+    var confidence: Double?
     var durationSeconds: Double?
     var dimensionsData: Data?
     var captureDate: String?
@@ -127,6 +128,7 @@ final class ArtifactSemanticDigestStore {
         visualLabels: [String] = [],
         transcript: String? = nil,
         languageCode: String? = nil,
+        confidence: Double? = nil,
         durationSeconds: Double? = nil,
         dimensionsData: Data? = nil,
         captureDate: String? = nil,
@@ -147,6 +149,7 @@ final class ArtifactSemanticDigestStore {
         self.visualLabels = visualLabels
         self.transcript = transcript
         self.languageCode = languageCode
+        self.confidence = confidence
         self.durationSeconds = durationSeconds
         self.dimensionsData = dimensionsData
         self.captureDate = captureDate

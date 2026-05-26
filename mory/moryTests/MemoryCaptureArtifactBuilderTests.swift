@@ -195,6 +195,8 @@ final class MemoryCaptureArtifactBuilderTests: XCTestCase {
                         filename: "voice.caf",
                         audioData: Data([8, 9]),
                         transcriptionText: "protect mornings for writing",
+                        languageCode: "en-US",
+                        transcriptionConfidence: 0.91,
                         durationSeconds: 42
                     ),
                     .livePhoto(
@@ -238,6 +240,8 @@ final class MemoryCaptureArtifactBuilderTests: XCTestCase {
         let audioDigest = try XCTUnwrap(digests.first(where: { $0.artifactKind == .audio }))
         XCTAssertEqual(audioDigest.source, .localCapture)
         XCTAssertEqual(audioDigest.transcript, "protect mornings for writing")
+        XCTAssertEqual(audioDigest.languageCode, "en-US")
+        XCTAssertEqual(audioDigest.confidence, 0.91)
         XCTAssertEqual(audioDigest.durationSeconds, 42)
 
         let livePhotoDigest = try XCTUnwrap(digests.first(where: { $0.artifactKind == .livePhoto }))

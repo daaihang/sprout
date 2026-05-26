@@ -69,8 +69,7 @@ final class AnalysisContractTests: XCTestCase {
         XCTAssertEqual(contract.artifacts.map(\.id), [artifactID])
         XCTAssertEqual(contract.semanticDigests.map(\.artifactID), [artifactID])
         XCTAssertEqual(contract.semanticDigests.first?.ocrText, "note")
-        XCTAssertEqual(contract.excludedCardArrangementID, arrangement.id)
-        XCTAssertTrue(contract.arrangementExclusionReason.contains("visual layout"))
+        XCTAssertTrue(AnalysisInputContract.arrangementExclusionReason.contains("visual layout"))
 
         let payload = AnalysisRequestBuilder().build(
             inputContract: contract,

@@ -2,28 +2,23 @@ import Foundation
 
 struct AnalysisInputContract: Hashable, Sendable {
     static let schemaVersion = "analysis_input.record_fact.v1"
+    static let arrangementExclusionReason = "MemoryCardArrangement is a user-authored visual layout and is not part of the semantic analysis input."
 
     var schemaVersion: String
     var record: RecordShell
     var artifacts: [Artifact]
     var semanticDigests: [ArtifactSemanticDigest]
-    var excludedCardArrangementID: UUID?
-    var arrangementExclusionReason: String
 
     init(
         schemaVersion: String = AnalysisInputContract.schemaVersion,
         record: RecordShell,
         artifacts: [Artifact],
-        semanticDigests: [ArtifactSemanticDigest],
-        excludedCardArrangementID: UUID?,
-        arrangementExclusionReason: String = "MemoryCardArrangement is a user-authored visual layout and is not part of the semantic analysis input."
+        semanticDigests: [ArtifactSemanticDigest]
     ) {
         self.schemaVersion = schemaVersion
         self.record = record
         self.artifacts = artifacts
         self.semanticDigests = semanticDigests
-        self.excludedCardArrangementID = excludedCardArrangementID
-        self.arrangementExclusionReason = arrangementExclusionReason
     }
 }
 
@@ -32,8 +27,7 @@ struct AnalysisInputContractBuilder {
         AnalysisInputContract(
             record: detail.record,
             artifacts: orderedArtifacts(in: detail),
-            semanticDigests: orderedSemanticDigests(in: detail),
-            excludedCardArrangementID: detail.cardArrangement?.id
+            semanticDigests: orderedSemanticDigests(in: detail)
         )
     }
 

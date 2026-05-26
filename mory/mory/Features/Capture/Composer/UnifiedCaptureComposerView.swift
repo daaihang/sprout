@@ -370,6 +370,9 @@ struct UnifiedCaptureComposerView: View {
                 filename: updated.filename,
                 audioData: updated.audioData,
                 transcriptionText: updated.transcriptionText,
+                languageCode: updated.languageCode,
+                transcriptionConfidence: updated.transcriptionConfidence,
+                durationSeconds: updated.durationSeconds,
                 origin: stagedArtifactDrafts[index].origin,
                 provenance: stagedArtifactDrafts[index].provenance
             )

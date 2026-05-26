@@ -175,6 +175,12 @@ struct MemoryCaptureArtifactBuilder {
             if let transcript = c.transcriptionText.trimmedOrNil {
                 metadata["transcriptionText"] = transcript
             }
+            if let languageCode = c.languageCode?.trimmedOrNil {
+                metadata["languageCode"] = languageCode
+            }
+            if let transcriptionConfidence = c.transcriptionConfidence {
+                metadata["transcriptionConfidence"] = String(transcriptionConfidence)
+            }
             if let durationSeconds = c.durationSeconds {
                 metadata["durationSeconds"] = String(durationSeconds)
             }
@@ -491,6 +497,8 @@ struct MemoryCaptureArtifactBuilder {
                 source: .localCapture,
                 summary: artifact.summary.trimmedOrNil,
                 transcript: artifact.metadata["transcriptionText"]?.trimmedOrNil ?? artifact.textContent.trimmedOrNil,
+                languageCode: artifact.metadata["languageCode"]?.trimmedOrNil,
+                confidence: artifact.metadata["transcriptionConfidence"].flatMap(Double.init),
                 durationSeconds: artifact.metadata["durationSeconds"].flatMap(Double.init),
                 localIdentifier: artifact.mediaRef?.localIdentifier ?? artifact.metadata["localIdentifier"],
                 createdAt: createdAt,

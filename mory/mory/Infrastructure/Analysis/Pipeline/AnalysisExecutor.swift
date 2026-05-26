@@ -42,8 +42,7 @@ struct AnalysisExecutor {
             inputContract: inputContract ?? AnalysisInputContract(
                 record: record,
                 artifacts: artifacts,
-                semanticDigests: [],
-                excludedCardArrangementID: nil
+                semanticDigests: []
             ),
             knownEntities: Array(knownEntities),
             contextPack: contextPack,

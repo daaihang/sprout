@@ -123,6 +123,7 @@ extension ArtifactSemanticDigestStore {
             visualLabels: domainModel.visualLabels,
             transcript: domainModel.transcript,
             languageCode: domainModel.languageCode,
+            confidence: domainModel.confidence,
             durationSeconds: domainModel.durationSeconds,
             dimensionsData: PersistenceCoding.encode(domainModel.dimensions),
             captureDate: domainModel.captureDate,
@@ -147,6 +148,7 @@ extension ArtifactSemanticDigestStore {
             visualLabels: visualLabels,
             transcript: transcript,
             languageCode: languageCode,
+            confidence: confidence,
             durationSeconds: durationSeconds,
             dimensions: PersistenceCoding.decode(ArtifactMediaDimensions.self, from: dimensionsData),
             captureDate: captureDate,
@@ -170,6 +172,7 @@ extension ArtifactSemanticDigestStore {
         visualLabels = domainModel.visualLabels
         transcript = domainModel.transcript
         languageCode = domainModel.languageCode
+        confidence = domainModel.confidence
         durationSeconds = domainModel.durationSeconds
         dimensionsData = PersistenceCoding.encode(domainModel.dimensions)
         captureDate = domainModel.captureDate

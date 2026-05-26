@@ -16,8 +16,7 @@ struct AnalysisRequestBuilder {
         let contract = AnalysisInputContract(
             record: record,
             artifacts: artifacts,
-            semanticDigests: [],
-            excludedCardArrangementID: nil
+            semanticDigests: []
         )
         return build(
             inputContract: contract,
