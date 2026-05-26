@@ -21,6 +21,8 @@ struct MemoryDetailView: View {
     @State private var isSavingEdits = false
     @State private var isConfirmingDiscardEdits = false
 
+    private let productPathPolicy = MemoryDetailProductPathPolicy()
+
     var body: some View {
         Group {
             if let snapshot {
@@ -49,7 +51,9 @@ struct MemoryDetailView: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 24) {
                             MemoryDeskRenderer(snapshot: snapshot)
-                            MemoryDetailInsightPanel(snapshot: snapshot)
+                            if productPathPolicy.exposesAnalysisDebugSurfaces {
+                                MemoryDetailInsightPanel(snapshot: snapshot)
+                            }
                         }
                         .padding(.vertical, 18)
                     }
@@ -114,10 +118,14 @@ struct MemoryDetailView: View {
                         beginEditing()
                     }
 
-                    Button(isRefreshingPipeline ? String(localized: "memory.analysis.retrying") : String(localized: "memory.analysis.retry")) {
-                        Task { await refreshPipeline() }
+                    if productPathPolicy.exposesAnalysisDebugSurfaces {
+                        Divider()
+
+                        Button(isRefreshingPipeline ? String(localized: "memory.analysis.retrying") : String(localized: "memory.analysis.retry")) {
+                            Task { await refreshPipeline() }
+                        }
+                        .disabled(isRefreshingPipeline)
                     }
-                    .disabled(isRefreshingPipeline)
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }
