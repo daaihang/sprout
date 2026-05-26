@@ -572,7 +572,7 @@ struct UnifiedCaptureComposerView: View {
             let sourceDraftID = stagedArtifactDrafts[sourceIndex].draftID
             let targetDraftID = stagedArtifactDrafts[targetIndex].draftID
             let item = stagedArtifactDrafts.remove(at: sourceIndex)
-            let insertionIndex = sourceIndex < targetIndex ? targetIndex : targetIndex
+            let insertionIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex
             stagedArtifactDrafts.insert(item, at: insertionIndex)
             cardArrangementDraft.reorderArtifactDraft(from: sourceDraftID, to: targetDraftID)
         }
