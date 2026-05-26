@@ -5,9 +5,8 @@ enum MoryAppTab: String, CaseIterable, Hashable, Identifiable, Sendable {
     case today
     case memories
     case insights
-    case search
 
-    static let publicTabs: [MoryAppTab] = [.today, .memories, .insights, .search]
+    static let publicTabs: [MoryAppTab] = [.today, .memories, .insights]
 
     var id: String { rawValue }
 
@@ -16,7 +15,6 @@ enum MoryAppTab: String, CaseIterable, Hashable, Identifiable, Sendable {
         case .today: "tab.today"
         case .memories: "tab.memories"
         case .insights: "tab.insights"
-        case .search: "search.nav.title"
         }
     }
 
@@ -25,7 +23,6 @@ enum MoryAppTab: String, CaseIterable, Hashable, Identifiable, Sendable {
         case .today: "house.fill"
         case .memories: "archivebox.fill"
         case .insights: "chart.line.uptrend.xyaxis"
-        case .search: "magnifyingglass"
         }
     }
 }
@@ -118,7 +115,7 @@ final class NavigationRouteCoordinator: ObservableObject {
         case .insights:
             selectedTab = .insights
         case .search:
-            selectedTab = .search
+            selectedTab = .memories
         }
     }
 
@@ -139,7 +136,7 @@ final class NavigationRouteCoordinator: ObservableObject {
             insightsRoute = nil
             insightsRoute = route
         case .search:
-            selectedTab = .search
+            selectedTab = .memories
         }
     }
 }

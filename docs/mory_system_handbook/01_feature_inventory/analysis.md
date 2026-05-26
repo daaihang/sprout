@@ -12,7 +12,8 @@ After saving a memory, Mory should quietly analyze it, then surface useful resul
 
 - Memory Detail shows pipeline status, retry, and AI analysis disclosure.
 - Timeline/Home can show pipeline status.
-- Insights and Debug can expose proposals and context-pack traces.
+- Settings / Memory Intelligence and Debug can expose proposals and context-pack traces.
+- Insights focuses on user-facing analysis outputs such as reflections, chapters, questions, and patterns.
 - There is no single product-level "analysis ready" or "needs review" inbox.
 
 ## Data Chain

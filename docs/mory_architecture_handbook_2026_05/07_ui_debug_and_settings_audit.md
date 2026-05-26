@@ -13,13 +13,13 @@
 
 | 模块 | 职责 | 当前状态 | 问题 |
 | --- | --- | --- | --- |
-| Home | 今日 board、快速浏览、系统卡片 | 可用 | HomeScreen 仍较大 |
+| Home | 今日记忆桌面 / future daily board | 暂保留轻量入口 | 新视觉需等沉浸式记录卡片稳定后再推进 |
 | Capture | 新建/编辑 capture draft、cards、输入工具 | v7 功能已接入 | Composer 和 CardView 大 |
-| Memories/Detail | 记忆列表、详情、编辑 | 有统一 mutation path | detail mode views 仍可继续拆 |
+| Memories/Detail | 记忆列表、顶部搜索、详情、编辑 | 有统一 mutation path | detail mode views 仍可继续拆 |
 | People/Entities | 人物、实体、profile、merge/split | 基础入口可用 | identity correction UX 还需加强 |
-| Insights | GraphDelta review、insights presentation | 已接 proposal review | apply/reject 解释性不足 |
+| Insights | 反思、章节、问题和智能产出呈现 | 去掉主 tab 的 GraphDelta 审核感 | 需要继续理清洞察信息架构 |
 | Settings | preferences、diagnostics、data controls | section 已拆分 | settings 与 debug 的边界需清楚 |
-| Search/Timeline/Arcs/Reflections | 浏览和检索 | 基础清楚 | 后续可接更多 v8 value surfaces |
+| Timeline/Arcs/Reflections/Search | 浏览和检索 | Search 已收进 Memories 顶部 | 后续可接更多 v8 value surfaces |
 
 ## 3. Capture UI
 
@@ -66,23 +66,23 @@
   - split evidence
 - 所有选择写入 `CorrectionEvent` 或 `GraphDelta`。
 
-## 5. Insights / Proposal Review UI
+## 5. Insights / Intelligence Output UI
 
 当前能力：
 
-- GraphDelta review。
-- Apply / reject / undo-reject 基础路径。
+- 展示反思、章节、问题和部分智能结果。
+- GraphDelta review 仍保留在 Settings / Debug / Memory Intelligence 内部入口，不放在主 Insights tab。
 
 问题：
 
-- 用户难以理解 proposal 为什么出现。
-- GraphDelta operation summary 需要映射到自然语言。
+- Insights 容易被做成审核后台，而不是用户可理解的复盘入口。
+- 智能产出的 readiness、证据和下一步动作仍需统一叙事。
 
 解决方案：
 
-- 提供 evidence snippets、source memory、confidence、operation preview。
-- Apply 前显示影响范围。
-- Reject 必须写 correction signal。
+- 主 Insights 只承载用户复盘价值：reflection、chapter、question、pattern。
+- Proposal review 保持在设置/调试/智能管理入口，后续再用统一 ProposalReviewService 产品化。
+- 当 Insights 展示 AI 结果时，提供 evidence snippets、source memory、confidence 和可解释下一步。
 
 ## 6. Settings UI
 

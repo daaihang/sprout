@@ -80,7 +80,7 @@ Block v6 beta if:
 
 - Existing capture breaks.
 - Existing memory detail breaks.
-- Search tab cannot open.
+- Memories search entry cannot open.
 - User layout is silently lost.
 - AI modifies original content without preserving source.
 - Question cards cannot be dismissed.
@@ -94,4 +94,3 @@ Acceptable beta limitations:
 - Remote push can be staged after local notifications.
 - Drag reorder can be edit-mode only.
 - Multimedia views can ship one at a time.
-

@@ -1,13 +1,40 @@
 import SwiftUI
 
 struct SearchScreen: View {
+    enum Presentation {
+        case standalone
+        case embeddedInMemories
+
+        var navigationTitle: LocalizedStringKey {
+            switch self {
+            case .standalone:
+                return "search.nav.title"
+            case .embeddedInMemories:
+                return "tab.memories"
+            }
+        }
+
+        var showsIdleIndexControls: Bool {
+            self == .standalone
+        }
+    }
+
     @Environment(\.memoryRepository) private var memoryRepository
 
     @Binding var query: String
+    let presentation: Presentation
     @State private var result = SearchSnapshot(query: "", memories: [], entities: [], arcs: [], reflections: [])
     @State private var errorMessage: String?
     @State private var indexStatusMessage: String?
     @State private var isRebuildingIndex = false
+
+    init(
+        query: Binding<String>,
+        presentation: Presentation = .standalone
+    ) {
+        _query = query
+        self.presentation = presentation
+    }
 
     var body: some View {
         List {
@@ -18,7 +45,7 @@ struct SearchScreen: View {
                 }
             }
 
-            if query.trimmedOrNil == nil {
+            if query.trimmedOrNil == nil, presentation.showsIdleIndexControls {
                 Section("Semantic index") {
                     if let indexStatusMessage {
                         Text(verbatim: indexStatusMessage)
@@ -44,7 +71,7 @@ struct SearchScreen: View {
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-            } else {
+            } else if query.trimmedOrNil != nil {
                 if result.isPubliclyEmpty {
                     Section {
                         MoryPublicEmptyStateView(
@@ -129,7 +156,7 @@ struct SearchScreen: View {
                 }
             }
         }
-        .navigationTitle("search.nav.title")
+        .navigationTitle(presentation.navigationTitle)
         .task(id: query) {
             await load()
         }

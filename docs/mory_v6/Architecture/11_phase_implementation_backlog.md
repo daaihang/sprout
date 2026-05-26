@@ -201,7 +201,7 @@ Tests:
 
 Exit criteria:
 
-- Search tab remains familiar but becomes meaning-aware on supported systems.
+- Memories top search remains familiar but becomes meaning-aware on supported systems.
 
 ## 7. Phase 5: Daily Questions And Notifications
 

@@ -17,7 +17,7 @@ This section lists user-facing and near-user-facing Mory features. Each feature 
 | Journaling Suggestions | `wired` | Composer toolbar | Platform diagnostics/fallback | Add stronger provenance and real-device checklist results. |
 | External Capture / Share | `wired` | Share extension/AppIntent | External draft review/inbox | Make handoff outcome visible. |
 | Self and people profiles | `wired` | People screens | Person profile debug | Add My Profile surface and evidence viewer. |
-| GraphDelta review | `wired` | Insights review | Debug review | Add reject reason and undo clarity. |
+| GraphDelta review | `wired` | Settings / Memory Intelligence | Debug review | Keep review out of the main Insights tab until the product review model is clearer. |
 | Notifications | `wired` | Settings/notification permissions | Remote push diagnostics | Validate real-device timing and APNs delivery. |
 | Subscription/paywall | `backend_only` | None | Server subscription verify | Define and enforce entitlement boundaries. |
 

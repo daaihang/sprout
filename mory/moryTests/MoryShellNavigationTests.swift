@@ -5,9 +5,9 @@ import XCTest
 @testable import mory
 
 final class MoryShellNavigationTests: XCTestCase {
-    func testPublicTabsIncludeSearchAsNativeTab() {
-        XCTAssertEqual(MoryAppTab.publicTabs, [.today, .memories, .insights, .search])
-        XCTAssertEqual(MoryAppTab.publicTabs.map(\.titleKey), ["tab.today", "tab.memories", "tab.insights", "search.nav.title"])
+    func testPublicTabsKeepSearchInsideMemories() {
+        XCTAssertEqual(MoryAppTab.publicTabs, [.today, .memories, .insights])
+        XCTAssertEqual(MoryAppTab.publicTabs.map(\.titleKey), ["tab.today", "tab.memories", "tab.insights"])
     }
 
     func testOnboardingContentIsShortSkippableAndStartsCapture() {
@@ -87,7 +87,7 @@ final class MoryShellNavigationTests: XCTestCase {
         XCTAssertEqual(coordinator.insightsRoute, .reflection(reflectionID))
 
         coordinator.apply(.search)
-        XCTAssertEqual(coordinator.selectedTab, .search)
+        XCTAssertEqual(coordinator.selectedTab, .memories)
     }
 
     func testDefaultUserSettingsPreferenceHasSyncReadyMetadata() {

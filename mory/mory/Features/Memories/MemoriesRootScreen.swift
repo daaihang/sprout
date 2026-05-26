@@ -13,6 +13,7 @@ struct MemoriesRootScreen: View {
     @State private var isPresentingComposer = false
     @State private var errorMessage: String?
     @State private var selectedRoute: MemoriesRoute?
+    @State private var searchQuery = ""
 
     init(
         requestedRoute: Binding<MemoriesRoute?> = .constant(nil),
@@ -32,54 +33,18 @@ struct MemoriesRootScreen: View {
     }
 
     var body: some View {
-        List {
-            if let errorMessage {
-                Section {
-                    Text(errorMessage)
-                        .foregroundStyle(.red)
-                }
-            }
-
-            if let snapshot {
-                Section {
-                    Text("memories.library.count \(snapshot.filteredCount) \(snapshot.totalCount)")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                } footer: {
-                    Text(filter.isActive ? "memories.library.footer" : "memories.filters.title")
-                }
-
-                if snapshot.groups.isEmpty {
-                    Section {
-                        MoryPublicEmptyStateView(
-                            state: filter.isActive ? .filteredMemories : .memories,
-                            onAction: handleEmptyStateAction
-                        )
-                    }
-                } else {
-                    ForEach(snapshot.groups) { group in
-                        Section(group.dayLabel) {
-                            ForEach(group.rows) { row in
-                                NavigationLink {
-                                    MemoryDetailView(recordID: row.memory.id)
-                                        .moryHidesTabChrome()
-                                } label: {
-                                    MemoryLibraryRowView(row: row)
-                                }
-                                .accessibilityElement(children: .combine)
-                            }
-                        }
-                    }
-                }
+        Group {
+            if searchQuery.trimmedOrNil != nil {
+                SearchScreen(
+                    query: $searchQuery,
+                    presentation: .embeddedInMemories
+                )
             } else {
-                Section {
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
-                }
+                memoryLibraryContent
             }
         }
         .navigationTitle("tab.memories")
+        .searchable(text: $searchQuery, prompt: "search.prompt")
         .navigationDestination(item: $selectedRoute) { route in
             switch route {
             case let .memory(recordID):
@@ -134,6 +99,56 @@ struct MemoriesRootScreen: View {
             }
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
+        }
+    }
+
+    private var memoryLibraryContent: some View {
+        List {
+            if let errorMessage {
+                Section {
+                    Text(errorMessage)
+                        .foregroundStyle(.red)
+                }
+            }
+
+            if let snapshot {
+                Section {
+                    Text("memories.library.count \(snapshot.filteredCount) \(snapshot.totalCount)")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                } footer: {
+                    Text(filter.isActive ? "memories.library.footer" : "memories.filters.title")
+                }
+
+                if snapshot.groups.isEmpty {
+                    Section {
+                        MoryPublicEmptyStateView(
+                            state: filter.isActive ? .filteredMemories : .memories,
+                            onAction: handleEmptyStateAction
+                        )
+                    }
+                } else {
+                    ForEach(snapshot.groups) { group in
+                        Section(group.dayLabel) {
+                            ForEach(group.rows) { row in
+                                NavigationLink {
+                                    MemoryDetailView(recordID: row.memory.id)
+                                        .moryHidesTabChrome()
+                                } label: {
+                                    MemoryLibraryRowView(row: row)
+                                }
+                                .accessibilityElement(children: .combine)
+                            }
+                        }
+                    }
+                }
+            } else {
+                Section {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                }
+            }
         }
     }
 

@@ -324,12 +324,12 @@
 主要模块：
 
 - Capture：composer、cards、audio/photo/link/location/mood/Journaling。
-- Home：today board、cards、grid。
-- Memories/MemoryDetail：列表、详情、编辑。
+- Home：today memory desk / future daily board（当前先不承载重内容管理）。
+- Memories/MemoryDetail：列表、顶部搜索、详情、编辑。
 - People/Entities：人物、实体、profile、merge/split。
-- Insights：GraphDelta review、insights presentation。
+- Insights：反思、章节、问题和智能产出呈现；不作为 GraphDelta 审核后台。
 - Settings：preferences、platform diagnostics、data controls、notification settings。
-- Search/Timeline/Arcs/Reflections/Auth。
+- Timeline/Arcs/Reflections/Auth；Search 入口收进 Memories 顶部。
 
 问题：
 

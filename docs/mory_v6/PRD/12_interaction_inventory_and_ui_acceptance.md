@@ -94,8 +94,8 @@ Artifact internals should not dominate the default reading experience.
 
 Search should support:
 
-- Tab bar search entry.
-- Auto-focus when search tab is selected intentionally.
+- Memories top search entry.
+- Auto-focus when the Memories search field is activated intentionally.
 - Keyboard opens when appropriate.
 - Text search fallback.
 - Semantic search where available.

@@ -26,7 +26,6 @@ struct MoryRootView: View {
     @State private var didRunStartupRecovery = false
     @State private var isEditingHomeBoard = false
     @State private var isPresentingMemoriesFilters = false
-    @State private var searchQuery = ""
     @State private var notificationTask: Task<Void, Never>?
     @State private var pushSyncTask: Task<Void, Never>?
     @State private var externalCaptureTask: Task<Void, Never>?
@@ -83,14 +82,7 @@ struct MoryRootView: View {
                 .id(tabRefreshID)
             }
 
-            Tab(value: MoryAppTab.search, role: .search) {
-                tabRoot(for: .search) {
-                    SearchScreen(query: $searchQuery)
-                }
-                .id(tabRefreshID)
-            }
         }
-        .tabViewSearchActivation(.searchTabSelection)
         .tabBarMinimizeBehavior(.onScrollDown)
         .sheet(isPresented: $isPresentingVoiceSheet) {
             VoiceRecordingSheetView(
@@ -227,12 +219,7 @@ struct MoryRootView: View {
         for tab: MoryAppTab,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        if tab == .search {
-            tabNavigationStack(for: tab, content: content)
-                .searchable(text: $searchQuery, prompt: "search.prompt")
-        } else {
-            tabNavigationStack(for: tab, content: content)
-        }
+        tabNavigationStack(for: tab, content: content)
     }
 
     private func tabNavigationStack<Content: View>(
@@ -311,7 +298,7 @@ struct MoryRootView: View {
                 }
                 .accessibilityLabel(Text("timeline.nav.title"))
             }
-        case .insights, .search:
+        case .insights:
             ToolbarItem(placement: .topBarTrailing) {
                 settingsButton
             }

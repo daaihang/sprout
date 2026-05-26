@@ -41,20 +41,6 @@ struct InsightsRootScreen: View {
             } footer: {
                 Text("insights.hub.footer")
             }
-
-            Section("Analysis Review") {
-                NavigationLink {
-                    GraphDeltaReviewView()
-                        .moryHidesTabChrome()
-                } label: {
-                    MoryHubRow(
-                        title: "GraphDelta Review",
-                        subtitle: "Review and apply pending graph proposals.",
-                        systemImage: "point.3.connected.trianglepath.dotted"
-                    )
-                }
-            }
-
             if let errorMessage {
                 Section {
                     Text(errorMessage)

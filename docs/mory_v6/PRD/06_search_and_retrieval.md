@@ -59,7 +59,7 @@ Search results should include:
 
 ## 5. Search UI
 
-Search remains a native search tab or search role tab.
+Search lives at the top of Memories instead of a standalone bottom tab.
 
 It should not become a multi-turn chat screen.
 
@@ -112,4 +112,3 @@ This feedback should improve ranking without exposing private content to the ser
 - Search results open correct detail screens.
 - Result types are visually distinct.
 - AI-generated or semantic results show enough source context.
-

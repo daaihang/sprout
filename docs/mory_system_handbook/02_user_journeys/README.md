@@ -11,7 +11,7 @@ flowchart LR
     C --> D["Save"]
     D --> E["Local memory appears"]
     E --> F["Analysis runs in background"]
-    F --> G["Insights/proposals/status become available"]
+    F --> G["Memory detail status and Insights outputs become available"]
 ```
 
 Current state: the memory appears after local save, but analysis status is not presented as a coherent user journey.
@@ -60,7 +60,7 @@ Current risk: if handoff fails, recovery exists but the user may not understand 
 ```mermaid
 flowchart LR
     A["Analysis completes"] --> B["Analysis/proposals stored"]
-    B --> C["GraphDelta review / People detail / Questions"]
+    B --> C["Settings review / People detail / Questions / Insights outputs"]
     C --> D["User applies or corrects"]
     D --> E["CorrectionEvent feeds future context"]
 ```

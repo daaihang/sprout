@@ -7,10 +7,10 @@ This section records where users or developers can see current system state.
 | Surface | Shows | Gap |
 | --- | --- | --- |
 | Composer | staged cards, affect cards, save/loading errors | Does not explain post-save analysis. |
-| Home | board cards and some pipeline status | Analysis readiness is not a cohesive journey. |
-| Timeline | memory list and pipeline badge | Status is small and passive. |
+| Home | today's memory desk / lightweight capture motivation | Final home design waits for immersive capture cards. |
+| Memories | memory list, top search, and pipeline badge | Status is small and passive. |
 | Memory Detail | pipeline status, retry, AI analysis disclosure | Good for a single memory, not global state. |
-| Insights | graph/proposal/reflection surfaces | Review model not fully explained. |
+| Insights | reflections, chapters, questions, and user-facing intelligence outputs | Information architecture still needs refinement. |
 | People | person profiles and edits | SelfProfile and evidence not fully productized. |
 | Settings | permissions, capture preferences, unified notification management, diagnostics | Notification state is now centralized; broader intelligence status is still incomplete. |
 
