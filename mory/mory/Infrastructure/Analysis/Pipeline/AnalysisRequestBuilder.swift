@@ -7,6 +7,34 @@ struct AnalysisRequestBuilder {
     func build(
         record: RecordShell,
         artifacts: [Artifact],
+        semanticDigests: [ArtifactSemanticDigest] = [],
+        excludedCardArrangementID: UUID? = nil,
+        arrangementExclusionReason: String = "MemoryCardArrangement is a user-authored visual layout and is not part of the semantic analysis input.",
+        knownEntities: [EntityReference] = [],
+        contextPack: AnalysisContextPack,
+        affectSnapshots: [AffectSnapshot] = [],
+        clientRequestID: UUID = UUID(),
+        analysisReason: String = "capture_ingest_context"
+    ) -> AnalysisRequestPayload {
+        let contract = AnalysisInputContract(
+            record: record,
+            artifacts: artifacts,
+            semanticDigests: semanticDigests,
+            excludedCardArrangementID: excludedCardArrangementID,
+            arrangementExclusionReason: arrangementExclusionReason
+        )
+        return build(
+            inputContract: contract,
+            knownEntities: knownEntities,
+            contextPack: contextPack,
+            affectSnapshots: affectSnapshots,
+            clientRequestID: clientRequestID,
+            analysisReason: analysisReason
+        )
+    }
+
+    func build(
+        inputContract: AnalysisInputContract,
         knownEntities: [EntityReference] = [],
         contextPack: AnalysisContextPack,
         affectSnapshots: [AffectSnapshot] = [],
@@ -14,8 +42,8 @@ struct AnalysisRequestBuilder {
         analysisReason: String = "capture_ingest_context"
     ) -> AnalysisRequestPayload {
         let base = recordPayloadBuilder.build(
-            record: record,
-            artifacts: artifacts,
+            record: inputContract.record,
+            artifacts: inputContract.artifacts,
             knownEntities: knownEntities,
             analysisReason: analysisReason,
             schemaVersion: "analysis",
@@ -25,11 +53,35 @@ struct AnalysisRequestBuilder {
             clientRequestID: clientRequestID.uuidString,
             recordShell: base.recordShell,
             artifacts: base.artifacts,
+            semanticDigests: inputContract.semanticDigests.map(semanticDigestPayload),
+            arrangementExclusion: AnalysisRequestPayload.ArrangementExclusionPayload(inputContract),
             knownEntities: base.knownEntities,
             moodEvidence: affectSnapshots.map(moodEvidencePayload),
             contextPack: contextPayload(contextPack),
             clientCapabilities: .moryDefault,
             debugOptions: base.debugOptions
+        )
+    }
+
+    private func semanticDigestPayload(_ digest: ArtifactSemanticDigest) -> AnalysisRequestPayload.SemanticDigestPayload {
+        AnalysisRequestPayload.SemanticDigestPayload(
+            id: digest.id.uuidString,
+            recordID: digest.recordID.uuidString,
+            artifactID: digest.artifactID.uuidString,
+            artifactKind: digest.artifactKind.rawValue,
+            source: digest.source.rawValue,
+            summary: digest.summary,
+            caption: digest.caption,
+            ocrText: digest.ocrText,
+            visualLabels: digest.visualLabels,
+            transcript: digest.transcript,
+            languageCode: digest.languageCode,
+            durationSeconds: digest.durationSeconds,
+            width: digest.dimensions?.width,
+            height: digest.dimensions?.height,
+            captureDate: digest.captureDate,
+            localIdentifier: digest.localIdentifier,
+            technicalNotes: digest.technicalNotes
         )
     }
 
@@ -169,6 +221,15 @@ struct AnalysisRequestBuilder {
                 fallbackReason: pack.retrieval.fallbackReason
             ),
             builtAt: dateFormatter.string(from: pack.builtAt)
+        )
+    }
+}
+
+private extension AnalysisRequestPayload.ArrangementExclusionPayload {
+    init(_ inputContract: AnalysisInputContract) {
+        self.init(
+            excludedCardArrangementID: inputContract.excludedCardArrangementID?.uuidString,
+            reason: inputContract.arrangementExclusionReason
         )
     }
 }

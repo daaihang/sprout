@@ -21,9 +21,21 @@ extension MoryMemoryRepository {
             tracing: self,
             runtimeScope: QualityTuningAnalysisPipelineRuntimeScope()
         )
+        let inputContract: AnalysisInputContract
+        if let detail = try fetchMemoryDetail(recordID: record.id) {
+            inputContract = AnalysisInputContractBuilder().build(from: detail)
+        } else {
+            inputContract = AnalysisInputContract(
+                record: record,
+                artifacts: artifacts,
+                semanticDigests: try fetchArtifactSemanticDigests(recordID: record.id),
+                excludedCardArrangementID: try fetchMemoryCardArrangement(recordID: record.id)?.id
+            )
+        }
         try await architecturePipelineExecutor.run(
             record: record,
             artifacts: artifacts,
+            inputContract: inputContract,
             dependencies: dependencies
         )
     }

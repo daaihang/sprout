@@ -8,11 +8,38 @@ type AnalysisRequest struct {
 	ClientRequestID    string                     `json:"client_request_id,omitempty"`
 	RecordShell        AnalysisRecordShell        `json:"record_shell"`
 	Artifacts          []AnalysisArtifact         `json:"artifacts"`
+	SemanticDigests    []ArtifactSemanticDigest   `json:"semantic_digests,omitempty"`
+	ArrangementExcl    *ArrangementExclusion      `json:"arrangement_exclusion,omitempty"`
 	KnownEntities      []KnownEntityReference     `json:"known_entities,omitempty"`
 	MoodEvidence       []AnalysisMoodEvidence     `json:"mood_evidence,omitempty"`
 	ContextPack        AnalysisContextPack        `json:"context_pack"`
 	ClientCapabilities AnalysisClientCapabilities `json:"client_capabilities,omitempty"`
 	DebugOptions       *DebugOptions              `json:"debug_options,omitempty"`
+}
+
+type ArtifactSemanticDigest struct {
+	ID              string   `json:"id,omitempty"`
+	RecordID        string   `json:"record_id,omitempty"`
+	ArtifactID      string   `json:"artifact_id,omitempty"`
+	ArtifactKind    string   `json:"artifact_kind,omitempty"`
+	Source          string   `json:"source,omitempty"`
+	Summary         string   `json:"summary,omitempty"`
+	Caption         string   `json:"caption,omitempty"`
+	OCRText         string   `json:"ocr_text,omitempty"`
+	VisualLabels    []string `json:"visual_labels,omitempty"`
+	Transcript      string   `json:"transcript,omitempty"`
+	LanguageCode    string   `json:"language_code,omitempty"`
+	DurationSeconds *float64 `json:"duration_seconds,omitempty"`
+	Width           *int     `json:"width,omitempty"`
+	Height          *int     `json:"height,omitempty"`
+	CaptureDate     string   `json:"capture_date,omitempty"`
+	LocalIdentifier string   `json:"local_identifier,omitempty"`
+	TechnicalNotes  []string `json:"technical_notes,omitempty"`
+}
+
+type ArrangementExclusion struct {
+	ExcludedCardArrangementID string `json:"excluded_card_arrangement_id,omitempty"`
+	Reason                    string `json:"reason,omitempty"`
 }
 
 type AnalysisMoodEvidence struct {

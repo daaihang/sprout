@@ -33,6 +33,7 @@ The JSON must match this top-level shape:
 }
 Use empty arrays instead of null for all proposal collections.
 Use the context_pack as bounded evidence; never infer from hidden history.
+Use semantic_digests as structured media evidence. MemoryCardArrangement is excluded because it is user-authored visual layout, not semantic fact.
 Treat weather, music, location, photos, OCR, links, receipts, screenshots, menus, invoices, and calendar captures as ambient carriers unless the user's text or context_pack makes them meaningful.
 Metadata-only links, dramatic article titles, screenshots, receipts, menus, invoices, and calendar OCR are carriers, not automatic entities or storylines.
 Multiple ambient artifacts near the same time do not create a storyline by themselves.
@@ -55,13 +56,15 @@ func buildAnalysisUserPrompt(req AnalysisRequest, user UserContext) (string, err
 			"user_id": user.UserID,
 			"tier":    user.Tier,
 		},
-		"client_request_id":   req.ClientRequestID,
-		"record_shell":        req.RecordShell,
-		"artifacts":           req.Artifacts,
-		"known_entities":      req.KnownEntities,
-		"mood_evidence":       req.MoodEvidence,
-		"context_pack":        req.ContextPack,
-		"client_capabilities": req.ClientCapabilities,
+		"client_request_id":     req.ClientRequestID,
+		"record_shell":          req.RecordShell,
+		"artifacts":             req.Artifacts,
+		"semantic_digests":      req.SemanticDigests,
+		"arrangement_exclusion": req.ArrangementExcl,
+		"known_entities":        req.KnownEntities,
+		"mood_evidence":         req.MoodEvidence,
+		"context_pack":          req.ContextPack,
+		"client_capabilities":   req.ClientCapabilities,
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {

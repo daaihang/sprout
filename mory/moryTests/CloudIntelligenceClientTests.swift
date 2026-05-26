@@ -194,6 +194,8 @@ final class CloudIntelligenceClientTests: XCTestCase {
                 inputContext: nil
             ),
             artifacts: [],
+            semanticDigests: [],
+            arrangementExclusion: nil,
             knownEntities: [],
             moodEvidence: [],
             contextPack: contextPack,
