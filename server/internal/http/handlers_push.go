@@ -141,13 +141,8 @@ func (s *Server) handlePushEnqueue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	deliveryReport, err := s.pushDeliveryWorker.DeliverDue(r.Context(), time.Now().UTC(), 32)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to deliver queued push notifications")
-		return
-	}
 	if s.logger != nil {
-		s.logger.Info("push enqueue complete",
+		s.logger.Info("push enqueue accepted",
 			"user_id", claims.UserID,
 			"intent_id", intentID,
 			"kind", kind,
@@ -155,23 +150,14 @@ func (s *Server) handlePushEnqueue(w http.ResponseWriter, r *http.Request) {
 			"target_id", targetID,
 			"queued", enqueueReport.QueuedCount,
 			"skipped", enqueueReport.SkippedCount,
-			"due", deliveryReport.DueCount,
-			"sent", deliveryReport.SentCount,
-			"failed", deliveryReport.FailedCount,
-			"retried", deliveryReport.RetriedCount,
-			"permanent_failed", deliveryReport.PermanentFailedCount,
 		)
 	}
 
 	writeJSON(w, http.StatusOK, pushEnqueueResponse{
-		Accepted:             true,
-		UserID:               claims.UserID,
-		QueuedCount:          enqueueReport.QueuedCount,
-		SkippedCount:         enqueueReport.SkippedCount,
-		SentCount:            deliveryReport.SentCount,
-		FailedCount:          deliveryReport.FailedCount,
-		RetriedCount:         deliveryReport.RetriedCount,
-		PermanentFailedCount: deliveryReport.PermanentFailedCount,
+		Accepted:     true,
+		UserID:       claims.UserID,
+		QueuedCount:  enqueueReport.QueuedCount,
+		SkippedCount: enqueueReport.SkippedCount,
 	})
 }
 

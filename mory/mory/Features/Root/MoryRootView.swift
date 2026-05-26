@@ -13,8 +13,7 @@ struct MoryRootView: View {
 
     @Environment(\.memoryRepository) private var memoryRepository
     @Environment(\.remotePushSyncService) private var remotePushSyncService
-    @Environment(\.notificationOrchestrator) private var notificationOrchestrator
-    @Environment(\.backgroundOperationOrchestrator) private var backgroundOperationOrchestrator
+    @Environment(\.backgroundTriggerDispatcher) private var backgroundTriggerDispatcher
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage(MoryOnboardingStep.completionStorageKey) private var hasCompletedOnboarding = false
     @StateObject private var notificationInbox = NotificationInteractionInbox.shared
@@ -34,14 +33,6 @@ struct MoryRootView: View {
     @State private var notificationTask: Task<Void, Never>?
     @State private var pushSyncTask: Task<Void, Never>?
     @State private var externalCaptureTask: Task<Void, Never>?
-
-    private var runtimeOperationsCoordinator: RuntimeOperationsCoordinator {
-        RuntimeOperationsCoordinator(
-            backgroundOperationOrchestrator: backgroundOperationOrchestrator,
-            notificationOrchestrator: notificationOrchestrator,
-            remotePushSyncService: remotePushSyncService
-        )
-    }
 
     init(
         authManager: AuthSessionManager? = nil,
@@ -364,10 +355,10 @@ struct MoryRootView: View {
 
     @MainActor
     private func runBackground(kind: BackgroundTriggerKind, source: String) async {
-        _ = await runtimeOperationsCoordinator.runBackground(
-            kind: kind,
-            source: source,
-            repository: memoryRepository
+        _ = await backgroundTriggerDispatcher.handle(
+            trigger: BackgroundTrigger(kind: kind, source: source),
+            repository: memoryRepository,
+            now: .now
         )
     }
 
@@ -421,10 +412,11 @@ struct MoryRootView: View {
         }
 
         do {
-            let result = try await runtimeOperationsCoordinator.handleNotificationInteraction(
-                event,
+            let result = try NotificationInteractionService().handle(
+                event: event,
                 repository: memoryRepository
             )
+            await remotePushSyncService.writeBackInteraction(event)
             guard let route = result.route else { return }
             apply(route)
         } catch {

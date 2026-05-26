@@ -1,3 +1,4 @@
+import SwiftData
 import XCTest
 @testable import mory
 
@@ -96,11 +97,12 @@ final class RuntimeOperationsCoordinatorTests: XCTestCase {
             analysisService: RuntimeAnalysisService(),
             backgroundOperationStore: BackgroundOperationMemoryStore()
         )
-        return RuntimeFixture(repository: repository)
+        return RuntimeFixture(container: container, repository: repository)
     }
 }
 
 private struct RuntimeFixture {
+    let container: ModelContainer
     let repository: MoryMemoryRepository
 }
 
@@ -174,22 +176,18 @@ private final class RuntimePushService: RemotePushSyncing {
     func prepareForLocalDataOwner(_ ownerID: String) {}
     func registerSystemRemoteNotificationsIfNeeded(repository: any MoryMemoryRepositorying) {}
     func syncRegistrationIfPossible(repository: any MoryMemoryRepositorying, force: Bool) async {}
-    func enqueueRemoteNotificationIntent(_ intent: NotificationIntent) async throws -> MoryAPIClient.PushEnqueueResponse {
+    func enqueueRemotePush(_ payload: RemotePushDeliveryPayload) async throws -> MoryAPIClient.PushEnqueueResponse {
         MoryAPIClient.PushEnqueueResponse(
             accepted: true,
             userID: "runtime-test",
             queuedCount: 1,
-            skippedCount: 0,
-            sentCount: 0,
-            failedCount: 0,
-            retriedCount: 0,
-            permanentFailedCount: 0
+            skippedCount: 0
         )
     }
     func writeBackInteraction(_ event: NotificationInteractionEvent) async {
         writeBackEventIDs.append(event.id)
     }
-    func fetchDebugSnapshot(repository: any NotificationIntentRepositorying) async -> RemotePushDebugSnapshot {
+    func fetchDebugSnapshot(intentCounts: RemotePushDebugIntentCounts) async -> RemotePushDebugSnapshot {
         RemotePushDebugSnapshot(
             ownerID: nil,
             deviceID: "runtime-test-device",
@@ -198,9 +196,9 @@ private final class RuntimePushService: RemotePushSyncing {
             apnsTokenPreview: nil,
             hasRegistrationDigest: false,
             pendingWritebackCount: 0,
-            pendingIntentCount: 0,
-            scheduledIntentCount: 0,
-            remoteIntentCount: 0
+            pendingIntentCount: intentCounts.pendingIntentCount,
+            scheduledIntentCount: intentCounts.scheduledIntentCount,
+            remoteIntentCount: intentCounts.remoteIntentCount
         )
     }
     func fetchServerMetricsText() async throws -> String { "" }

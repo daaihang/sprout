@@ -223,14 +223,14 @@ private final class MissingRemotePushSyncService: RemotePushSyncing {
 
     func registerSystemRemoteNotificationsIfNeeded(repository: any MoryMemoryRepositorying) {}
     func syncRegistrationIfPossible(repository: any MoryMemoryRepositorying, force: Bool) async {}
-    func enqueueRemoteNotificationIntent(_ intent: NotificationIntent) async throws -> MoryAPIClient.PushEnqueueResponse {
+    func enqueueRemotePush(_ payload: RemotePushDeliveryPayload) async throws -> MoryAPIClient.PushEnqueueResponse {
         let msg = "Remote push sync dependency was not injected."
         diLog.critical("\(msg)")
         SentrySDK.capture(error: NSError(domain: "MoryDI", code: -3, userInfo: [NSLocalizedDescriptionKey: msg]))
         fatalError(msg)
     }
     func writeBackInteraction(_ event: NotificationInteractionEvent) async {}
-    func fetchDebugSnapshot(repository: any NotificationIntentRepositorying) async -> RemotePushDebugSnapshot {
+    func fetchDebugSnapshot(intentCounts: RemotePushDebugIntentCounts) async -> RemotePushDebugSnapshot {
         RemotePushDebugSnapshot(
             ownerID: nil,
             deviceID: "",

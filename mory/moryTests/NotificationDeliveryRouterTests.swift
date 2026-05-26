@@ -30,13 +30,18 @@ final class NotificationDeliveryRouterTests: XCTestCase {
         let fixture = makeRouterFixture(hasAPNSToken: true)
         let intent = makeTestIntent()
 
-        // Remote service throws (test double) — we only care about the upserted channel.
-        try? await fixture.router.route(intent: intent, repository: fixture.repository)
+        try await fixture.router.route(intent: intent, repository: fixture.repository)
 
         let stored = try XCTUnwrap(
             fixture.repository.fetchNotificationIntents(status: nil, limit: nil).first
         )
         XCTAssertEqual(stored.deliveryChannel, .remote)
+        let payload = try XCTUnwrap(fixture.remotePushService.lastPayload)
+        XCTAssertEqual(payload.intentID, intent.id)
+        XCTAssertEqual(payload.kind, intent.kind.rawValue)
+        XCTAssertEqual(payload.targetType, intent.targetType.rawValue)
+        XCTAssertEqual(payload.targetID, intent.targetID)
+        XCTAssertEqual(payload.deepLink, "mory://memories/record/\(intent.targetID.uuidString)")
     }
 
     // MARK: - Helpers
@@ -44,6 +49,7 @@ final class NotificationDeliveryRouterTests: XCTestCase {
     private struct RouterFixture {
         var router: NotificationDeliveryRouter
         var repository: RouterTestNotificationIntentRepository
+        var remotePushService: RouterTestRemotePushService
     }
 
     private func makeRouterFixture(hasAPNSToken: Bool) -> RouterFixture {
@@ -54,7 +60,11 @@ final class NotificationDeliveryRouterTests: XCTestCase {
         router.localScheduler = LocalNotificationScheduler(
             notificationCenter: RouterTestLocalNotificationCenter()
         )
-        return RouterFixture(router: router, repository: repository)
+        return RouterFixture(
+            router: router,
+            repository: repository,
+            remotePushService: remotePushService
+        )
     }
 
     private func makeTestIntent() -> NotificationIntent {
@@ -71,8 +81,6 @@ final class NotificationDeliveryRouterTests: XCTestCase {
 }
 
 // MARK: - Test Doubles
-
-private enum RouterTestError: Error { case unsupported }
 
 @MainActor
 private final class RouterTestNotificationIntentRepository: NotificationIntentRepositorying {
@@ -129,6 +137,7 @@ private final class RouterTestNotificationIntentRepository: NotificationIntentRe
 
 private final class RouterTestRemotePushService: RemotePushSyncing {
     let hasAPNSToken: Bool
+    private(set) var lastPayload: RemotePushDeliveryPayload?
 
     init(hasAPNSToken: Bool) {
         self.hasAPNSToken = hasAPNSToken
@@ -137,11 +146,17 @@ private final class RouterTestRemotePushService: RemotePushSyncing {
     func prepareForLocalDataOwner(_ ownerID: String) {}
     func registerSystemRemoteNotificationsIfNeeded(repository: any MoryMemoryRepositorying) {}
     func syncRegistrationIfPossible(repository: any MoryMemoryRepositorying, force: Bool) async {}
-    func enqueueRemoteNotificationIntent(_ intent: NotificationIntent) async throws -> MoryAPIClient.PushEnqueueResponse {
-        throw RouterTestError.unsupported
+    func enqueueRemotePush(_ payload: RemotePushDeliveryPayload) async throws -> MoryAPIClient.PushEnqueueResponse {
+        lastPayload = payload
+        return MoryAPIClient.PushEnqueueResponse(
+            accepted: true,
+            userID: "router-test",
+            queuedCount: 1,
+            skippedCount: 0
+        )
     }
     func writeBackInteraction(_ event: NotificationInteractionEvent) async {}
-    func fetchDebugSnapshot(repository: any NotificationIntentRepositorying) async -> RemotePushDebugSnapshot {
+    func fetchDebugSnapshot(intentCounts: RemotePushDebugIntentCounts) async -> RemotePushDebugSnapshot {
         RemotePushDebugSnapshot(
             ownerID: nil, deviceID: "test", timezone: "UTC",
             hasAPNSToken: false, apnsTokenPreview: nil,

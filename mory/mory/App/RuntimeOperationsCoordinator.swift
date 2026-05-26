@@ -54,8 +54,14 @@ struct RuntimeOperationsCoordinator {
             .sorted { $0.updatedAt > $1.updatedAt }
         let graphDeltas = try repository.fetchGraphDeltas(applied: nil, limit: nil)
             .sorted { $0.createdAt > $1.createdAt }
-        let intents = try repository.fetchNotificationIntents(status: nil, limit: 160)
+        let allIntents = try repository.fetchNotificationIntents(status: nil, limit: nil)
+        let intents = Array(allIntents.prefix(160))
         let notificationEvents = try repository.fetchNotificationManagementEvents(kind: nil, limit: 240)
+        let pushIntentCounts = RemotePushDebugIntentCounts(
+            pendingIntentCount: allIntents.filter { $0.status == .pending }.count,
+            scheduledIntentCount: allIntents.filter { $0.status == .scheduled }.count,
+            remoteIntentCount: allIntents.filter { $0.deliveryChannel == .remote }.count
+        )
 
         return RuntimeOperationsSnapshot(
             generatedAt: now,
@@ -64,7 +70,7 @@ struct RuntimeOperationsCoordinator {
             jobQueue: DebugJobQueueSnapshot(generatedAt: now, jobs: jobs, graphDeltas: graphDeltas),
             pipelineStatuses: try repository.fetchPipelineStatusSummaries(limit: 50),
             notifications: NotificationManagementSnapshot.build(intents: intents, events: notificationEvents),
-            push: await remotePushSyncService.fetchDebugSnapshot(repository: repository)
+            push: await remotePushSyncService.fetchDebugSnapshot(intentCounts: pushIntentCounts)
         )
     }
 

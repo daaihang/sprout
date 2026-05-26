@@ -283,12 +283,12 @@ paths:
                   format: date-time
       responses:
         "200":
-          description: Enqueue and delivery attempt report
+          description: Enqueue report
           content:
             application/json:
               schema:
                 type: object
-                required: [accepted, user_id, queued_count, skipped_count, sent_count, failed_count]
+                required: [accepted, user_id, queued_count, skipped_count]
                 properties:
                   accepted:
                     type: boolean
@@ -297,14 +297,6 @@ paths:
                   queued_count:
                     type: integer
                   skipped_count:
-                    type: integer
-                  sent_count:
-                    type: integer
-                  failed_count:
-                    type: integer
-                  retried_count:
-                    type: integer
-                  permanent_failed_count:
                     type: integer
   /api/push/delivery-writeback:
     post:

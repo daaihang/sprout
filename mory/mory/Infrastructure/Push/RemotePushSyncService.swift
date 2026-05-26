@@ -292,17 +292,16 @@ final class RemotePushSyncService: RemotePushSyncing {
         }
     }
 
-    func enqueueRemoteNotificationIntent(_ intent: NotificationIntent) async throws -> MoryAPIClient.PushEnqueueResponse {
+    func enqueueRemotePush(_ payload: RemotePushDeliveryPayload) async throws -> MoryAPIClient.PushEnqueueResponse {
         try await sendWithRefresh { bearerToken in
             try await apiClient.enqueuePush(
-                payload: makePushEnqueuePayload(for: intent),
+                payload: makePushEnqueuePayload(for: payload),
                 bearerToken: bearerToken
             )
         }
     }
 
-    func fetchDebugSnapshot(repository: any NotificationIntentRepositorying) async -> RemotePushDebugSnapshot {
-        let intents = (try? repository.fetchNotificationIntents(status: nil, limit: nil)) ?? []
+    func fetchDebugSnapshot(intentCounts: RemotePushDebugIntentCounts) async -> RemotePushDebugSnapshot {
         let apnsToken = PushDeviceRegistrationStore.currentAPNSToken()
         return RemotePushDebugSnapshot(
             ownerID: PushDeviceRegistrationStore.currentOwnerID(),
@@ -312,9 +311,9 @@ final class RemotePushSyncService: RemotePushSyncing {
             apnsTokenPreview: apnsToken.map(previewToken),
             hasRegistrationDigest: PushDeviceRegistrationStore.lastRegistrationDigest() != nil,
             pendingWritebackCount: PushDeviceRegistrationStore.loadPendingWritebacks().count,
-            pendingIntentCount: intents.filter { $0.status == .pending }.count,
-            scheduledIntentCount: intents.filter { $0.status == .scheduled }.count,
-            remoteIntentCount: intents.filter { $0.deliveryChannel == .remote }.count
+            pendingIntentCount: intentCounts.pendingIntentCount,
+            scheduledIntentCount: intentCounts.scheduledIntentCount,
+            remoteIntentCount: intentCounts.remoteIntentCount
         )
     }
 
@@ -387,77 +386,55 @@ final class RemotePushSyncService: RemotePushSyncing {
         }
     }
 
-    private func makePushEnqueuePayload(for intent: NotificationIntent) -> MoryAPIClient.PushEnqueuePayload {
+    private func makePushEnqueuePayload(for payload: RemotePushDeliveryPayload) -> MoryAPIClient.PushEnqueuePayload {
         let target = MoryAPIClient.PushDeliveryTargetPayload(
-            type: intent.targetType.rawValue,
-            id: intent.targetID.uuidString,
+            type: payload.targetType,
+            id: payload.targetID.uuidString,
             parentRecordID: nil,
-            artifactKind: intent.targetType == .artifact ? "unknown" : nil,
-            entityKind: entityKindHint(for: intent.targetType),
+            artifactKind: payload.targetType == "artifact" ? "unknown" : nil,
+            entityKind: entityKindHint(for: payload.targetType),
             label: nil,
             sourceRecordIDs: []
         )
-        let scheduledAt = isoFormatter.string(from: intent.scheduledAt)
-        let deepLink = deepLink(for: intent)
-        let payload = MoryAPIClient.PushDeliveryPayloadEnvelope(
-            intentID: intent.id.uuidString,
-            kind: intent.kind.rawValue,
-            title: intent.title,
-            body: intent.body,
-            privacyLevel: intent.privacyLevel.rawValue,
-            deepLink: deepLink,
+        let scheduledAt = isoFormatter.string(from: payload.scheduledAt)
+        let envelope = MoryAPIClient.PushDeliveryPayloadEnvelope(
+            intentID: payload.intentID.uuidString,
+            kind: payload.kind,
+            title: payload.title,
+            body: payload.body,
+            privacyLevel: payload.privacyLevel,
+            deepLink: payload.deepLink,
             target: target,
             scheduledAt: scheduledAt
         )
         return MoryAPIClient.PushEnqueuePayload(
-            intentID: intent.id.uuidString,
-            kind: intent.kind.rawValue,
-            title: intent.title,
-            body: intent.body,
-            targetType: intent.targetType.rawValue,
-            targetID: intent.targetID.uuidString,
-            privacyLevel: intent.privacyLevel.rawValue,
-            deepLink: deepLink,
+            intentID: payload.intentID.uuidString,
+            kind: payload.kind,
+            title: payload.title,
+            body: payload.body,
+            targetType: payload.targetType,
+            targetID: payload.targetID.uuidString,
+            privacyLevel: payload.privacyLevel,
+            deepLink: payload.deepLink,
             target: target,
-            payload: payload,
+            payload: envelope,
             scheduledAt: scheduledAt
         )
     }
 
-    private func deepLink(for intent: NotificationIntent) -> String {
-        switch intent.targetType {
-        case .question:
-            return "mory://home/question/\(intent.targetID.uuidString)"
-        case .record:
-            return "mory://memories/record/\(intent.targetID.uuidString)"
-        case .artifact:
-            return "mory://memories/artifact/\(intent.targetID.uuidString)"
-        case .chapter:
-            return "mory://insights/chapter/\(intent.targetID.uuidString)"
-        case .reflection:
-            return "mory://insights/reflection/\(intent.targetID.uuidString)"
-        case .entity:
-            return "mory://insights/entity/\(intent.targetID.uuidString)"
-        case .place:
-            return "mory://insights/place/\(intent.targetID.uuidString)"
-        case .theme:
-            return "mory://insights/theme/\(intent.targetID.uuidString)"
-        case .decision:
-            return "mory://insights/decision/\(intent.targetID.uuidString)"
-        }
-    }
-
-    private func entityKindHint(for targetType: ClarificationTargetType) -> String? {
+    private func entityKindHint(for targetType: String) -> String? {
         switch targetType {
-        case .place:
+        case "place":
             return "place"
-        case .theme:
+        case "theme":
             return "theme"
-        case .decision:
+        case "decision":
             return "decision"
-        case .entity:
+        case "entity":
             return "entity"
-        case .record, .artifact, .question, .chapter, .reflection:
+        case "record", "artifact", "question", "chapter", "reflection":
+            return nil
+        default:
             return nil
         }
     }

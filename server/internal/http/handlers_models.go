@@ -85,14 +85,10 @@ type pushEnqueueRequest struct {
 }
 
 type pushEnqueueResponse struct {
-	Accepted             bool   `json:"accepted"`
-	UserID               string `json:"user_id"`
-	QueuedCount          int    `json:"queued_count"`
-	SkippedCount         int    `json:"skipped_count"`
-	SentCount            int    `json:"sent_count"`
-	FailedCount          int    `json:"failed_count"`
-	RetriedCount         int    `json:"retried_count"`
-	PermanentFailedCount int    `json:"permanent_failed_count"`
+	Accepted     bool   `json:"accepted"`
+	UserID       string `json:"user_id"`
+	QueuedCount  int    `json:"queued_count"`
+	SkippedCount int    `json:"skipped_count"`
 }
 
 type analyzeMemoryResponseEnvelope struct {

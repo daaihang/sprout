@@ -44,21 +44,22 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 	}
 	authenticator := auth.NewAuthenticator(cfg.JWTSecret, cfg.JWTIssuer, 24*time.Hour)
 	pushClient := &testAPNSClient{}
+	pushDeliveryWorker := push.NewPushDeliveryWorker(
+		store,
+		pushClient,
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+		"com.speculolabs.mory",
+	)
 	server := NewServer(Dependencies{
-		Config:        cfg,
-		Logger:        slog.New(slog.NewTextHandler(io.Discard, nil)),
-		Authenticator: authenticator,
-		AppleVerifier: nil,
-		AIProvider:    ai.NewMockProvider(),
-		Subscription:  subscription.NewService("mock", "seed"),
-		PushTokens:    store,
-		UserProfiles:  store,
-		PushDeliveryWorker: push.NewPushDeliveryWorker(
-			store,
-			pushClient,
-			slog.New(slog.NewTextHandler(io.Discard, nil)),
-			"com.speculolabs.mory",
-		),
+		Config:             cfg,
+		Logger:             slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Authenticator:      authenticator,
+		AppleVerifier:      nil,
+		AIProvider:         ai.NewMockProvider(),
+		Subscription:       subscription.NewService("mock", "seed"),
+		PushTokens:         store,
+		UserProfiles:       store,
+		PushDeliveryWorker: pushDeliveryWorker,
 	})
 
 	token := issueDevToken(t, server, `{"identity_token":"tester-1"}`)
@@ -230,7 +231,7 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 		}
 	})
 
-	t.Run("push enqueue delivers to eligible registered device", func(t *testing.T) {
+	t.Run("push enqueue queues eligible registered device", func(t *testing.T) {
 		registerBody := `{"device_id":"iphone-1","apns_token":"token-a","timezone":"Asia/Shanghai","has_question_ready":true,"notifications_enabled":true,"analysis_ready_enabled":true,"daily_question_enabled":true,"reflection_ready_enabled":true,"delivery_pace":"balanced","max_per_day":3,"minimum_minutes_between_notifications":90,"quiet_start":"22:00","quiet_end":"07:00","rich_previews_enabled":true,"local_intelligence_enabled":true,"cloud_intelligence_enabled":true,"semantic_search_enabled":true,"home_suggestions_enabled":true}`
 		registerReq := httptest.NewRequest(http.MethodPost, "/api/push/register", bytes.NewBufferString(registerBody))
 		registerReq.Header.Set("Authorization", "Bearer "+token)
@@ -252,9 +253,38 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 		if rec.Code != http.StatusOK {
 			t.Fatalf("push enqueue status = %d, body = %s", rec.Code, rec.Body.String())
 		}
+		var enqueueResp map[string]any
+		if err := json.Unmarshal(rec.Body.Bytes(), &enqueueResp); err != nil {
+			t.Fatalf("decode push enqueue response: %v", err)
+		}
+		if len(enqueueResp) != 4 {
+			t.Fatalf("push enqueue response should only include enqueue fields: %+v", enqueueResp)
+		}
+
+		if len(pushClient.messages) != 0 {
+			t.Fatalf("expected no synchronous APNS send, got %d", len(pushClient.messages))
+		}
+		delivery, err := store.GetPushDelivery(context.Background(), "tester-1", "iphone-1", "intent-queued-1")
+		if err != nil {
+			t.Fatalf("get push delivery after enqueue: %v", err)
+		}
+		if delivery.Status != "pending" || delivery.SentAt != nil {
+			t.Fatalf("expected pending push delivery after enqueue, got %+v", delivery)
+		}
+		if !strings.Contains(delivery.PayloadJSON, `"target"`) || !strings.Contains(delivery.PayloadJSON, `"question"`) {
+			t.Fatalf("expected stored production payload JSON, got %q", delivery.PayloadJSON)
+		}
+
+		report, err := pushDeliveryWorker.DeliverDue(context.Background(), time.Date(2025, 5, 19, 12, 1, 0, 0, time.UTC), 32)
+		if err != nil {
+			t.Fatalf("deliver due after enqueue: %v", err)
+		}
+		if report.SentCount != 1 {
+			t.Fatalf("expected scheduled worker to send one notification, got %+v", report)
+		}
 
 		if len(pushClient.messages) != 1 {
-			t.Fatalf("expected one APNS send, got %d", len(pushClient.messages))
+			t.Fatalf("expected one APNS send after scheduled delivery, got %d", len(pushClient.messages))
 		}
 		if pushClient.messages[0].IntentID != "intent-queued-1" || pushClient.messages[0].Kind != "dailyQuestion" {
 			t.Fatalf("unexpected APNS message: %+v", pushClient.messages[0])
@@ -263,15 +293,12 @@ func TestAuthAnalyzeAndPushFlow(t *testing.T) {
 			t.Fatalf("expected full push target payload, got %+v", pushClient.messages[0])
 		}
 
-		delivery, err := store.GetPushDelivery(context.Background(), "tester-1", "iphone-1", "intent-queued-1")
+		delivery, err = store.GetPushDelivery(context.Background(), "tester-1", "iphone-1", "intent-queued-1")
 		if err != nil {
-			t.Fatalf("get push delivery after enqueue: %v", err)
+			t.Fatalf("get push delivery after scheduled delivery: %v", err)
 		}
 		if delivery.Status != "sent" || delivery.SentAt == nil {
 			t.Fatalf("expected sent push delivery, got %+v", delivery)
-		}
-		if !strings.Contains(delivery.PayloadJSON, `"target"`) || !strings.Contains(delivery.PayloadJSON, `"question"`) {
-			t.Fatalf("expected stored production payload JSON, got %q", delivery.PayloadJSON)
 		}
 	})
 

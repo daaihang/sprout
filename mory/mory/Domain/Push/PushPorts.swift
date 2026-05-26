@@ -13,10 +13,22 @@ struct RemotePushDebugSnapshot: Hashable, Sendable {
     var remoteIntentCount: Int
 }
 
+struct RemotePushDebugIntentCounts: Hashable, Sendable {
+    var pendingIntentCount: Int
+    var scheduledIntentCount: Int
+    var remoteIntentCount: Int
+
+    static let empty = RemotePushDebugIntentCounts(
+        pendingIntentCount: 0,
+        scheduledIntentCount: 0,
+        remoteIntentCount: 0
+    )
+}
+
 @MainActor
 protocol PushNotificationEnqueuing: AnyObject {
     var hasAPNSToken: Bool { get }
-    func enqueueRemoteNotificationIntent(_ intent: NotificationIntent) async throws -> MoryAPIClient.PushEnqueueResponse
+    func enqueueRemotePush(_ payload: RemotePushDeliveryPayload) async throws -> MoryAPIClient.PushEnqueueResponse
 }
 
 @MainActor
@@ -25,6 +37,6 @@ protocol RemotePushSyncing: PushNotificationEnqueuing {
     func registerSystemRemoteNotificationsIfNeeded(repository: any MoryMemoryRepositorying)
     func syncRegistrationIfPossible(repository: any MoryMemoryRepositorying, force: Bool) async
     func writeBackInteraction(_ event: NotificationInteractionEvent) async
-    func fetchDebugSnapshot(repository: any NotificationIntentRepositorying) async -> RemotePushDebugSnapshot
+    func fetchDebugSnapshot(intentCounts: RemotePushDebugIntentCounts) async -> RemotePushDebugSnapshot
     func fetchServerMetricsText() async throws -> String
 }
