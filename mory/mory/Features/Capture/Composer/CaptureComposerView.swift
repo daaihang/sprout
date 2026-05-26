@@ -405,7 +405,7 @@ struct CaptureComposerView: View {
 
             let orchestrator = CaptureOrchestrator(memoryRepository: memoryRepository)
             let memory = try await orchestrator.capture(draft: draft)
-            savedStatusMessage = memory.pipelineStatus?.userLabel ?? String(localized: "pipeline.status.pending")
+            savedStatusMessage = memory.pipelineStatus?.userLabel ?? String(localized: "pipeline.status.notScheduled")
             errorMessage = nil
             onSaved?()
             dismiss()

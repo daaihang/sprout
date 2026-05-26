@@ -16433,19 +16433,36 @@
         }
       }
     },
+    "pipeline.explain.notScheduled" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The record is saved locally. Analysis has not been scheduled."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "记录已保存在本地，尚未安排解析。"
+          }
+        }
+      }
+    },
     "pipeline.explain.pending" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Your capture is already stored on device. Analysis will be attached after the pipeline runs."
+            "value" : "Analysis has been queued and will start when the pipeline runs."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "记录已保存在设备上。解析结果会在处理完成后附加。"
+            "value" : "解析已进入队列，会在流程运行时开始。"
           }
         }
       }
@@ -16501,7 +16518,7 @@
         }
       }
     },
-    "pipeline.status.pending" : {
+    "pipeline.status.notScheduled" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -16514,6 +16531,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已保存到本地"
+          }
+        }
+      }
+    },
+    "pipeline.status.pending" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Analysis queued"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "等待解析"
           }
         }
       }
@@ -22482,6 +22516,102 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Worker"
+          }
+        }
+      }
+    },
+    "memory.desk.group.journalingBundle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Journaling bundle"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "手记建议包"
+          }
+        }
+      }
+    },
+    "memory.desk.group.mediaStack" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Media stack"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "媒体堆叠"
+          }
+        }
+      }
+    },
+    "memory.desk.group.mixedContext" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Context stack"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "上下文堆叠"
+          }
+        }
+      }
+    },
+    "memory.desk.group.photoStack" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Photo stack"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "照片堆叠"
+          }
+        }
+      }
+    },
+    "memory.desk.journalingSuggestion.detail" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Imported Journaling Suggestion"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "来自手记建议的导入内容"
+          }
+        }
+      }
+    },
+    "memory.desk.journalingSuggestion.metadata" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Journaling"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "手记"
           }
         }
       }

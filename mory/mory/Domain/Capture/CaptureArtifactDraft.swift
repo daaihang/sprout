@@ -278,11 +278,25 @@ enum CaptureArtifactContent: Hashable, Sendable {
 // MARK: - CaptureArtifactDraft
 
 struct CaptureArtifactDraft: Hashable, Sendable, Identifiable {
+    var draftID: UUID
     var origin: CaptureArtifactOrigin
     var provenance: CaptureProvenance?
     var content: CaptureArtifactContent
 
-    var id: String { content.stableID }
+    init(
+        draftID: UUID = UUID(),
+        origin: CaptureArtifactOrigin,
+        provenance: CaptureProvenance? = nil,
+        content: CaptureArtifactContent
+    ) {
+        self.draftID = draftID
+        self.origin = origin
+        self.provenance = provenance
+        self.content = content
+    }
+
+    var id: String { draftID.uuidString }
+    var contentStableID: String { content.stableID }
     var captureSummary: String { content.captureSummary }
 
     func withOrigin(_ origin: CaptureArtifactOrigin) -> CaptureArtifactDraft {

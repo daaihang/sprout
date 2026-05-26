@@ -6,32 +6,20 @@ struct MemoryDetailView: View {
     let recordID: UUID
 
     @State private var snapshot: MemoryDetailSnapshot?
-    @State private var userPreference = UserSettingsPreference.defaults
-    @State private var recordPreference: MemoryDetailPresentationPreference?
     @State private var errorMessage: String?
     @State private var isRefreshingPipeline = false
     @State private var isReloading = false
     @State private var isEditing = false
     @State private var draftRawText = ""
     @State private var draftArtifactOrder: [UUID] = []
+    @State private var draftCardArrangement: MemoryCardArrangement?
     @State private var draftDeletedArtifactIDs: Set<UUID> = []
     @State private var isSavingEdits = false
     @State private var isConfirmingDiscardEdits = false
 
-    private let resolver = MemoryDetailPresentationResolver()
-
-    private var presentation: MemoryDetailPresentationSnapshot? {
-        guard let snapshot else { return nil }
-        return resolver.resolve(
-            snapshot: snapshot,
-            userPreference: userPreference,
-            recordPreference: recordPreference
-        )
-    }
-
     var body: some View {
         Group {
-            if snapshot != nil, let presentation {
+            if let snapshot {
                 if isEditing {
                     MemoryDetailEditingView(
                         rawText: $draftRawText,
@@ -40,16 +28,20 @@ struct MemoryDetailView: View {
                         onDeleteArtifact: { artifactID in
                             withAnimation(.snappy(duration: 0.2)) {
                                 _ = draftDeletedArtifactIDs.insert(artifactID)
+                                syncDraftCardArrangement()
                             }
                         },
                         onMoveArtifact: moveDraftArtifact(_:by:),
-                        onReorderArtifact: reorderDraftArtifact(_:near:)
+                        onReorderArtifact: reorderDraftArtifact(_:near:),
+                        onSetArtifactSize: setDraftArtifactSize(_:size:),
+                        onStackArtifactWithPrevious: stackDraftArtifactWithPrevious(_:),
+                        onUnstackArtifact: unstackDraftArtifact(_:)
                     )
                 } else {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 24) {
-                            MemoryDetailAdaptiveView(presentation: presentation)
-                            MemoryDetailInsightPanel(presentation: presentation)
+                            MemoryDeskRenderer(snapshot: snapshot)
+                            MemoryDetailInsightPanel(snapshot: snapshot)
                         }
                         .padding(.vertical, 18)
                     }
@@ -118,22 +110,6 @@ struct MemoryDetailView: View {
                         Task { await refreshPipeline() }
                     }
                     .disabled(isRefreshingPipeline)
-
-                    Divider()
-
-                    Button {
-                        clearPresentationMode()
-                    } label: {
-                        Label("Automatic layout", systemImage: recordPreference == nil ? "checkmark" : "wand.and.stars")
-                    }
-
-                    ForEach(MemoryDetailPresentationMode.allCases) { mode in
-                        Button {
-                            savePresentationMode(mode)
-                        } label: {
-                            Label(mode.title, systemImage: recordPreference?.mode == mode ? "checkmark" : mode.systemImage)
-                        }
-                    }
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }
@@ -150,8 +126,6 @@ struct MemoryDetailView: View {
 
         do {
             snapshot = try memoryRepository.fetchMemoryDetail(recordID: recordID)
-            userPreference = try memoryRepository.fetchUserSettingsPreference()
-            recordPreference = try memoryRepository.fetchMemoryDetailPresentationPreference(recordID: recordID)
             if let snapshot {
                 resetEditDraft(from: snapshot)
             }
@@ -206,6 +180,7 @@ struct MemoryDetailView: View {
         let record = snapshot.record
         draftRawText = record.rawText
         draftArtifactOrder = orderedArtifacts(from: snapshot).map(\.id)
+        draftCardArrangement = editBaseArrangement(for: snapshot)
         draftDeletedArtifactIDs = []
     }
 
@@ -216,6 +191,7 @@ struct MemoryDetailView: View {
         let record = snapshot.record
         if draftRawText != record.rawText { return true }
         if !draftDeletedArtifactIDs.isEmpty { return true }
+        if draftCardArrangement != editBaseArrangement(for: snapshot) { return true }
         return mutationArtifactOrder != nil
     }
 
@@ -234,7 +210,8 @@ struct MemoryDetailView: View {
                     ),
                     updatedArtifacts: updatedTextArtifactsForEditedBody(),
                     deletedArtifactIDs: Array(draftDeletedArtifactIDs),
-                    artifactOrder: mutationArtifactOrder
+                    artifactOrder: mutationArtifactOrder,
+                    cardArrangement: draftCardArrangement
                 ),
                 refreshPolicy: .runImmediately
             )
@@ -294,6 +271,15 @@ struct MemoryDetailView: View {
         return ordered + remaining
     }
 
+    private func editBaseArrangement(for snapshot: MemoryDetailSnapshot) -> MemoryCardArrangement {
+        snapshot.cardArrangement
+            ?? MemoryCardArrangement.defaultArrangement(
+                record: snapshot.record,
+                artifacts: snapshot.artifacts,
+                createdAt: snapshot.record.createdAt
+            )
+    }
+
     private func canMoveDraftArtifact(_ id: UUID, by offset: Int) -> Bool {
         let visibleOrder = visibleDraftAttachmentIDs
         guard let visibleIndex = visibleOrder.firstIndex(of: id) else { return false }
@@ -315,6 +301,7 @@ struct MemoryDetailView: View {
 
         withAnimation(.snappy(duration: 0.18)) {
             draftArtifactOrder.swapAt(sourceIndex, targetIndex)
+            syncDraftCardArrangement()
         }
     }
 
@@ -335,7 +322,39 @@ struct MemoryDetailView: View {
                 ? min(adjustedTargetIndex + 1, draftArtifactOrder.endIndex)
                 : adjustedTargetIndex
             draftArtifactOrder.insert(movedID, at: insertionIndex)
+            syncDraftCardArrangement()
         }
+    }
+
+    private func setDraftArtifactSize(_ artifactID: UUID, size: MemoryCardSizeToken) {
+        draftCardArrangement = draftCardArrangement?.settingSize(size, forArtifactID: artifactID, updatedAt: Date.now)
+    }
+
+    private func stackDraftArtifactWithPrevious(_ artifactID: UUID) {
+        draftCardArrangement = draftCardArrangement?.stackingWithPrevious(artifactID: artifactID, updatedAt: Date.now)
+    }
+
+    private func unstackDraftArtifact(_ artifactID: UUID) {
+        guard let snapshot else { return }
+        draftCardArrangement = draftCardArrangement?.unstackingContainingArtifactID(
+            artifactID,
+            artifacts: snapshot.artifacts,
+            updatedAt: Date.now
+        )
+    }
+
+    private func syncDraftCardArrangement() {
+        guard let snapshot, let arrangement = draftCardArrangement else { return }
+        var updatedRecord = snapshot.record
+        updatedRecord.rawText = draftRawText
+        updatedRecord.artifactIDs = draftArtifactOrder.filter { !draftDeletedArtifactIDs.contains($0) }
+        let artifacts = snapshot.artifacts.filter { !draftDeletedArtifactIDs.contains($0.id) }
+        draftCardArrangement = arrangement.synchronized(
+            record: updatedRecord,
+            artifacts: artifacts,
+            artifactOrder: updatedRecord.artifactIDs,
+            updatedAt: Date.now
+        )
     }
 
     private var visibleDraftAttachmentIDs: [UUID] {
@@ -346,26 +365,6 @@ struct MemoryDetailView: View {
             .filter { artifactByID[$0]?.isVisibleMemoryDetailAttachment == true }
     }
 
-    private func savePresentationMode(_ mode: MemoryDetailPresentationMode) {
-        do {
-            let preference = MemoryDetailPresentationPreference(recordID: recordID, mode: mode)
-            try memoryRepository.saveMemoryDetailPresentationPreference(preference)
-            recordPreference = preference
-            errorMessage = nil
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
-    private func clearPresentationMode() {
-        do {
-            try memoryRepository.clearMemoryDetailPresentationPreference(recordID: recordID)
-            recordPreference = nil
-            errorMessage = nil
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
 }
 
 private struct MemoryDetailEditingView: View {
@@ -376,6 +375,9 @@ private struct MemoryDetailEditingView: View {
     var onDeleteArtifact: (UUID) -> Void
     var onMoveArtifact: (UUID, Int) -> Void
     var onReorderArtifact: (UUID, UUID) -> Void
+    var onSetArtifactSize: (UUID, MemoryCardSizeToken) -> Void
+    var onStackArtifactWithPrevious: (UUID) -> Void
+    var onUnstackArtifact: (UUID) -> Void
 
     @FocusState private var isBodyFocused: Bool
 
@@ -414,7 +416,10 @@ private struct MemoryDetailEditingView: View {
                             canMoveLater: index < artifacts.count - 1,
                             onDelete: { onDeleteArtifact(artifact.id) },
                             onMoveEarlier: { onMoveArtifact(artifact.id, -1) },
-                            onMoveLater: { onMoveArtifact(artifact.id, 1) }
+                            onMoveLater: { onMoveArtifact(artifact.id, 1) },
+                            onSetSize: { size in onSetArtifactSize(artifact.id, size) },
+                            onStackWithPrevious: { onStackArtifactWithPrevious(artifact.id) },
+                            onUnstack: { onUnstackArtifact(artifact.id) }
                         )
                         .draggable(artifact.id.uuidString)
                         .dropDestination(for: String.self) { droppedIDs, _ in
@@ -457,6 +462,9 @@ private struct MemoryDetailEditingArtifactCard: View {
     var onDelete: () -> Void
     var onMoveEarlier: () -> Void
     var onMoveLater: () -> Void
+    var onSetSize: (MemoryCardSizeToken) -> Void
+    var onStackWithPrevious: () -> Void
+    var onUnstack: () -> Void
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -476,6 +484,28 @@ private struct MemoryDetailEditingArtifactCard: View {
                     Label("memory.edit.moveAttachmentDown", systemImage: "arrow.down")
                 }
                 .disabled(!canMoveLater)
+
+                Divider()
+
+                Menu("memory.arrangement.size") {
+                    ForEach(MemoryCardSizeToken.allCases) { size in
+                        Button(size.rawValue) {
+                            onSetSize(size)
+                        }
+                    }
+                }
+
+                Button {
+                    onStackWithPrevious()
+                } label: {
+                    Label("memory.arrangement.stackWithPrevious", systemImage: "square.stack.3d.up")
+                }
+
+                Button {
+                    onUnstack()
+                } label: {
+                    Label("memory.arrangement.unstack", systemImage: "square.split.2x1")
+                }
 
                 Divider()
 

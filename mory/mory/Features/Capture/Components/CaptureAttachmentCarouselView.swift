@@ -6,6 +6,10 @@ struct CaptureAttachmentCarouselView: View {
     let onRemoveContextCandidate: (UUID) -> Void
     let onRemoveAffectDraft: (Int) -> Void
     let onRemoveJournalingSuggestion: (UUID) -> Void
+    var onReorderStagedArtifact: (Int, Int) -> Void = { _, _ in }
+    var onSetSize: (CaptureComposerAttachmentItem, MemoryCardSizeToken) -> Void = { _, _ in }
+    var onStackWithPrevious: (CaptureComposerAttachmentItem) -> Void = { _ in }
+    var onUnstack: (CaptureComposerAttachmentItem) -> Void = { _ in }
 
     var body: some View {
         if !items.isEmpty {
@@ -20,6 +24,35 @@ struct CaptureAttachmentCarouselView: View {
                             content
                                 .scaleEffect(phase.isIdentity ? 1 : 0.97)
                                 .opacity(phase.isIdentity ? 1 : 0.86)
+                        }
+                        .draggable(item.id)
+                        .dropDestination(for: String.self) { droppedIDs, _ in
+                            guard let droppedID = droppedIDs.first,
+                                  let source = items.first(where: { $0.id == droppedID }),
+                                  case let .stagedArtifact(sourceIndex) = source.source,
+                                  case let .stagedArtifact(targetIndex) = item.source,
+                                  sourceIndex != targetIndex else {
+                                return false
+                            }
+                            onReorderStagedArtifact(sourceIndex, targetIndex)
+                            return true
+                        }
+                        .contextMenu {
+                            if item.supportsArrangementEditing {
+                                Menu("memory.arrangement.size") {
+                                    ForEach(MemoryCardSizeToken.allCases) { size in
+                                        Button(size.rawValue) {
+                                            onSetSize(item, size)
+                                        }
+                                    }
+                                }
+                                Button("memory.arrangement.stackWithPrevious") {
+                                    onStackWithPrevious(item)
+                                }
+                                Button("memory.arrangement.unstack") {
+                                    onUnstack(item)
+                                }
+                            }
                         }
                     }
                 }
@@ -45,6 +78,17 @@ struct CaptureAttachmentCarouselView: View {
             onRemoveJournalingSuggestion(importSessionID)
         case .processing:
             return
+        }
+    }
+}
+
+private extension CaptureComposerAttachmentItem {
+    var supportsArrangementEditing: Bool {
+        switch source {
+        case .stagedArtifact, .contextCandidate:
+            return true
+        case .affect, .journalingSuggestion, .processing:
+            return false
         }
     }
 }

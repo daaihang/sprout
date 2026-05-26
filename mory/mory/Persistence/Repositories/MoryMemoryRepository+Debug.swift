@@ -124,6 +124,8 @@ extension MoryMemoryRepository {
         try deleteAll(ReflectionSnapshotStore.self)
         try deleteAll(TemporalArcStore.self)
         try deleteAll(MemoryDetailPresentationPreferenceStore.self)
+        try deleteAll(MemoryCardArrangementStore.self)
+        try deleteAll(ArtifactSemanticDigestStore.self)
         try deleteAll(ArtifactStore.self)
         try deleteAll(RecordShellStore.self)
         latestReflectionTrace = nil

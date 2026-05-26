@@ -65,6 +65,8 @@ struct MoryPersistenceStack {
         NotificationManagementEventStore.self,
         RecordShellStore.self,
         ArtifactStore.self,
+        ArtifactSemanticDigestStore.self,
+        MemoryCardArrangementStore.self,
         BoardStore.self,
         CompositionStore.self,
         CompositionItemStore.self,

@@ -250,6 +250,29 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         }
     }
 
+    func upsert(artifactSemanticDigest: ArtifactSemanticDigest) throws {
+        let descriptor = FetchDescriptor<ArtifactSemanticDigestStore>(
+            predicate: #Predicate { $0.id == artifactSemanticDigest.id }
+        )
+        if let existing = try modelContext.fetch(descriptor).first {
+            existing.apply(domainModel: artifactSemanticDigest)
+        } else {
+            modelContext.insert(ArtifactSemanticDigestStore(domainModel: artifactSemanticDigest))
+        }
+    }
+
+    func upsert(memoryCardArrangement: MemoryCardArrangement) throws {
+        let recordID = memoryCardArrangement.recordID
+        let descriptor = FetchDescriptor<MemoryCardArrangementStore>(
+            predicate: #Predicate { $0.recordID == recordID }
+        )
+        if let existing = try modelContext.fetch(descriptor).first {
+            existing.apply(domainModel: memoryCardArrangement)
+        } else {
+            modelContext.insert(MemoryCardArrangementStore(domainModel: memoryCardArrangement))
+        }
+    }
+
     func upsert(recordAnalysis: RecordAnalysisSnapshot) throws {
         let recordID = recordAnalysis.recordID
         let descriptor = FetchDescriptor<RecordAnalysisSnapshotStore>(predicate: #Predicate { $0.recordID == recordID })

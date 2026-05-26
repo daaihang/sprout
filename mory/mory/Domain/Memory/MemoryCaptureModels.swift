@@ -8,6 +8,7 @@ struct MemoryCaptureDraft: Hashable, Sendable {
     var provenance: CaptureProvenance
     var artifacts: [CaptureArtifactDraft]
     var affectSnapshots: [AffectSnapshotDraft]
+    var cardArrangement: MemoryCardArrangementDraft?
 
     init(
         title: String? = nil,
@@ -16,7 +17,8 @@ struct MemoryCaptureDraft: Hashable, Sendable {
         inputContext: String? = nil,
         provenance: CaptureProvenance = .manualComposer,
         artifacts: [CaptureArtifactDraft] = [],
-        affectSnapshots: [AffectSnapshotDraft] = []
+        affectSnapshots: [AffectSnapshotDraft] = [],
+        cardArrangement: MemoryCardArrangementDraft? = nil
     ) {
         self.title = title
         self.rawText = rawText
@@ -25,6 +27,7 @@ struct MemoryCaptureDraft: Hashable, Sendable {
         self.provenance = provenance
         self.artifacts = artifacts
         self.affectSnapshots = affectSnapshots
+        self.cardArrangement = cardArrangement
     }
 
     init(
@@ -35,7 +38,8 @@ struct MemoryCaptureDraft: Hashable, Sendable {
         captureSource: CaptureSource,
         provenance: CaptureProvenance? = nil,
         artifacts: [CaptureArtifactDraft] = [],
-        affectSnapshots: [AffectSnapshotDraft] = []
+        affectSnapshots: [AffectSnapshotDraft] = [],
+        cardArrangement: MemoryCardArrangementDraft? = nil
     ) {
         self.init(
             title: title,
@@ -44,7 +48,8 @@ struct MemoryCaptureDraft: Hashable, Sendable {
             inputContext: inputContext,
             provenance: provenance ?? captureSource.defaultProvenance,
             artifacts: artifacts,
-            affectSnapshots: affectSnapshots
+            affectSnapshots: affectSnapshots,
+            cardArrangement: cardArrangement
         )
     }
 

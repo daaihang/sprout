@@ -1083,6 +1083,7 @@ struct DebugFullDiagnosticsView: View {
 
     private func pipelineStageColor(_ stage: MemoryPipelineStage) -> Color {
         switch stage {
+        case .notScheduled: return .secondary
         case .pending: return .gray
         case .running: return .blue
         case .completed: return .green

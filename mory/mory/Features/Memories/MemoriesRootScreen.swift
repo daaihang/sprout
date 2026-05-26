@@ -349,6 +349,7 @@ private struct MemoryLibraryFilterBar: View {
 
     private func stageLabel(_ stage: MemoryPipelineStage) -> String {
         switch stage {
+        case .notScheduled: return String(localized: "pipeline.status.notScheduled")
         case .pending: return String(localized: "pipeline.status.pending")
         case .running: return String(localized: "pipeline.status.running")
         case .completed: return String(localized: "pipeline.status.completed")

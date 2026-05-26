@@ -103,14 +103,28 @@ struct CaptureCardView: View {
         switch item.payload {
         case let .photo(payload):
             PolaroidCaptureCardContent(common: common, payload: payload)
+        case let .video(payload):
+            DeskMediaCaptureCardContent(
+                common: common,
+                thumbnailData: payload.thumbnailData,
+                symbolName: "play.fill",
+                badge: String(localized: "capture.card.kind.video"),
+                accent: accent
+            )
+        case let .livePhoto(payload):
+            DeskMediaCaptureCardContent(
+                common: common,
+                thumbnailData: payload.thumbnailData,
+                symbolName: "livephoto",
+                badge: String(localized: "capture.card.kind.livePhoto"),
+                accent: accent
+            )
         case let .audio(payload):
             CassetteCaptureCardContent(common: common, payload: payload)
         case let .music(payload):
             VinylRecordCaptureCardContent(common: common, payload: payload, accent: accent)
-        case .todo, .link, .prompt:
+        case .todo, .link, .prompt, .person, .affect, .weather, .place, .journalingSuggestion, .status:
             NotebookCaptureCardContent(common: common, item: item, accent: accent)
-        default:
-            standardCardBody
         }
     }
 
@@ -410,5 +424,75 @@ struct CaptureCardView: View {
             condition: [item.title, item.detail].compactMap { $0 }.joined(separator: " "),
             isDaylight: weatherPayloadForAudit?.isDaylight
         )
+    }
+}
+
+private struct DeskMediaCaptureCardContent: View {
+    let common: CaptureCardCommonDisplay
+    let thumbnailData: Data?
+    let symbolName: String
+    let badge: String
+    let accent: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .fill(Color(white: 0.10))
+
+                if let thumbnailData, let image = UIImage(data: thumbnailData) {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    LinearGradient(
+                        colors: [accent.opacity(0.45), Color.black.opacity(0.82)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    Image(systemName: symbolName)
+                        .font(.system(size: 30, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.9))
+                }
+
+                Circle()
+                    .fill(.ultraThinMaterial)
+                    .frame(width: 42, height: 42)
+                    .overlay {
+                        Image(systemName: symbolName)
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(.white)
+                    }
+                    .shadow(color: .black.opacity(0.28), radius: 8, y: 4)
+            }
+            .frame(width: 190, height: 138)
+            .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(common.title?.trimmedOrNil ?? badge)
+                    .font(.system(size: 13, weight: .semibold, design: .serif))
+                    .foregroundStyle(Color(white: 0.18))
+                    .lineLimit(1)
+
+                Text(common.detail)
+                    .font(.system(size: 10, design: .serif))
+                    .foregroundStyle(Color(white: 0.36))
+                    .lineLimit(2)
+
+                Text(badge.uppercased())
+                    .font(.system(size: 8, weight: .bold, design: .monospaced))
+                    .foregroundStyle(accent.opacity(0.8))
+                    .padding(.top, 1)
+            }
+            .padding(.horizontal, 4)
+        }
+        .padding(10)
+        .background(Color(red: 0.96, green: 0.94, blue: 0.88), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .strokeBorder(Color.brown.opacity(0.16), lineWidth: 0.6)
+        }
+        .shadow(color: .black.opacity(0.08), radius: 2, y: 1)
+        .shadow(color: .black.opacity(0.05), radius: 8, y: 4)
     }
 }

@@ -72,13 +72,15 @@ struct MemoryMutationUseCase {
             }
         }
 
-        let addedArtifacts = mutation.addedArtifacts.isEmpty
-            ? []
-            : artifactBuilder.buildArtifacts(
+        let addedArtifactResult = mutation.addedArtifacts.isEmpty
+            ? MemoryCaptureArtifactBuildResult(artifacts: [], artifactIDByDraftID: [:])
+            : artifactBuilder.buildArtifactResult(
                 from: MemoryCaptureDraft(rawText: "", artifacts: mutation.addedArtifacts),
                 recordID: recordID,
                 createdAt: now
             )
+        let addedArtifacts = addedArtifactResult.artifacts
+        let addedSemanticDigests = artifactBuilder.buildSemanticDigests(from: addedArtifacts, createdAt: now)
 
         var updatedArtifactIDs: [UUID] = []
         var normalizedUpdatedArtifacts: [Artifact] = []
@@ -94,6 +96,7 @@ struct MemoryMutationUseCase {
             updatedArtifactIDs.append(artifact.id)
         }
         updatedArtifactIDs = repository.orderedUniqueUUIDs(updatedArtifactIDs)
+        let updatedSemanticDigests = artifactBuilder.buildSemanticDigests(from: normalizedUpdatedArtifacts, createdAt: now)
 
         for artifactID in deletedArtifactIDs {
             let belongsToRecord: Bool
@@ -130,8 +133,20 @@ struct MemoryMutationUseCase {
         for artifact in addedArtifacts {
             try repository.upsert(artifact: artifact)
         }
+        for digest in addedSemanticDigests {
+            try repository.upsert(artifactSemanticDigest: digest)
+        }
         for artifact in normalizedUpdatedArtifacts {
             try repository.upsert(artifact: artifact)
+        }
+        for artifactID in updatedArtifactIDs {
+            let digestStores = try repository.modelContext.fetch(
+                FetchDescriptor<ArtifactSemanticDigestStore>(predicate: #Predicate { $0.artifactID == artifactID })
+            )
+            digestStores.forEach { repository.modelContext.delete($0) }
+        }
+        for digest in updatedSemanticDigests {
+            try repository.upsert(artifactSemanticDigest: digest)
         }
         for artifactID in deletedArtifactIDs {
             if let store = try repository.modelContext.fetch(
@@ -139,16 +154,33 @@ struct MemoryMutationUseCase {
             ).first {
                 repository.modelContext.delete(store)
             }
+            let digestStores = try repository.modelContext.fetch(
+                FetchDescriptor<ArtifactSemanticDigestStore>(predicate: #Predicate { $0.artifactID == artifactID })
+            )
+            digestStores.forEach { repository.modelContext.delete($0) }
         }
 
         updatedRecord.artifactIDs = artifactIDs
         updatedRecord.updatedAt = now
         recordStore.apply(domainModel: updatedRecord)
+        let arrangementArtifacts = try repository.fetchArtifacts(recordID: recordID)
+        let existingArrangement = try repository.fetchMemoryCardArrangement(recordID: recordID)
+        let baseArrangement = mutation.cardArrangement
+            ?? existingArrangement
+            ?? MemoryCardArrangement.defaultArrangement(record: updatedRecord, artifacts: arrangementArtifacts, createdAt: now)
+        try repository.upsert(
+            memoryCardArrangement: baseArrangement.synchronized(
+                record: updatedRecord,
+                artifacts: arrangementArtifacts,
+                artifactOrder: mutation.artifactOrder,
+                updatedAt: now
+            )
+        )
         if mutation.recordPatch.userMood.shouldUpdate {
             try repository.replaceUserAffectSnapshot(recordID: recordID, rawMood: updatedRecord.userMood, now: now)
         }
 
-        try repository.upsertPendingPipelineStatus(recordID: recordID, updatedAt: now)
+        try repository.upsertNotScheduledPipelineStatus(recordID: recordID, updatedAt: now)
         try repository.save()
 
         var detail = try repository.fetchMemoryDetail(recordID: recordID)
@@ -224,6 +256,14 @@ struct MemoryMutationUseCase {
             FetchDescriptor<ArtifactStore>(predicate: #Predicate { $0.recordID == recordID })
         )
         artifacts.forEach { repository.modelContext.delete($0) }
+        let semanticDigests = try repository.modelContext.fetch(
+            FetchDescriptor<ArtifactSemanticDigestStore>(predicate: #Predicate { $0.recordID == recordID })
+        )
+        semanticDigests.forEach { repository.modelContext.delete($0) }
+        let arrangements = try repository.modelContext.fetch(
+            FetchDescriptor<MemoryCardArrangementStore>(predicate: #Predicate { $0.recordID == recordID })
+        )
+        arrangements.forEach { repository.modelContext.delete($0) }
         try repository.save()
 
         let spotlightIndexService = repository.spotlightIndexService

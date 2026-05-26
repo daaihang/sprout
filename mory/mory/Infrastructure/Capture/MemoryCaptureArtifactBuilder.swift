@@ -1,41 +1,73 @@
 import Foundation
 
+struct MemoryCaptureArtifactBuildResult: Hashable, Sendable {
+    var artifacts: [Artifact]
+    var artifactIDByDraftID: [UUID: UUID]
+}
+
 struct MemoryCaptureArtifactBuilder {
     func buildArtifacts(from draft: MemoryCaptureDraft, recordID: UUID, createdAt: Date) -> [Artifact] {
+        buildArtifactResult(from: draft, recordID: recordID, createdAt: createdAt).artifacts
+    }
+
+    func buildArtifactResult(from draft: MemoryCaptureDraft, recordID: UUID, createdAt: Date) -> MemoryCaptureArtifactBuildResult {
         let hasTextArtifact = draft.artifacts.contains { artifactDraft in
             if case .text = artifactDraft.content {
                 return true
             }
             return false
         }
-        let explicitArtifacts = draft.artifacts.map { artifactDraft in
-            makeArtifact(
+        let explicitPairs = draft.artifacts.map { artifactDraft in
+            let artifact = makeArtifact(
                 from: artifactDraft,
                 fallbackTitle: draft.title?.generatedMemoryTitle(),
                 suppressAudioTranscriptText: hasTextArtifact,
                 recordID: recordID,
                 createdAt: createdAt
             )
+            return (artifactDraft.draftID, artifact)
         }
+        let explicitArtifacts = explicitPairs.map(\.1)
 
         if explicitArtifacts.isEmpty {
-            return [
-                Artifact(
-                    recordID: recordID,
-                    kind: .text,
-                    title: draft.title?.generatedMemoryTitle() ?? draft.rawText.generatedMemoryTitle() ?? "Untitled Memory",
-                    summary: draft.rawText.trimmedOrNil ?? "Untitled Memory",
-                    textContent: draft.rawText.trimmedOrNil ?? "Untitled Memory",
-                    payload: .text(draft.rawText.trimmedOrNil ?? "Untitled Memory"),
-                    metadata: draft.provenance.metadata.merging(["captureOrigin": draft.provenance.artifactOrigin.rawValue]) { _, new in new },
-                    captureProvenance: draft.provenance,
-                    createdAt: createdAt,
-                    updatedAt: createdAt
-                )
-            ]
+            return MemoryCaptureArtifactBuildResult(
+                artifacts: [fallbackTextArtifact(from: draft, recordID: recordID, createdAt: createdAt)],
+                artifactIDByDraftID: [:]
+            )
         }
 
-        return explicitArtifacts
+        return MemoryCaptureArtifactBuildResult(
+            artifacts: explicitArtifacts,
+            artifactIDByDraftID: Dictionary(uniqueKeysWithValues: explicitPairs.map { ($0.0, $0.1.id) })
+        )
+    }
+
+    func buildSemanticDigests(from artifacts: [Artifact], createdAt: Date) -> [ArtifactSemanticDigest] {
+        artifacts.compactMap { artifact in
+            makeSemanticDigest(from: artifact, createdAt: createdAt)
+        }
+    }
+
+    func buildCardArrangement(
+        from draft: MemoryCaptureDraft,
+        record: RecordShell,
+        artifacts: [Artifact],
+        artifactIDByDraftID: [UUID: UUID],
+        createdAt: Date
+    ) -> MemoryCardArrangement {
+        if let cardArrangement = draft.cardArrangement {
+            return cardArrangement.resolve(
+                record: record,
+                artifacts: artifacts,
+                artifactIDByDraftID: artifactIDByDraftID,
+                createdAt: createdAt
+            )
+        }
+        return MemoryCardArrangement.defaultArrangement(
+            record: record,
+            artifacts: artifacts,
+            createdAt: createdAt
+        )
     }
 
     func resolvedRecordRawText(from draft: MemoryCaptureDraft, artifacts: [Artifact]) -> String {
@@ -64,6 +96,21 @@ struct MemoryCaptureArtifactBuilder {
             ?? artifacts.first
     }
 
+    private func fallbackTextArtifact(from draft: MemoryCaptureDraft, recordID: UUID, createdAt: Date) -> Artifact {
+        Artifact(
+            recordID: recordID,
+            kind: .text,
+            title: draft.title?.generatedMemoryTitle() ?? draft.rawText.generatedMemoryTitle() ?? "Untitled Memory",
+            summary: draft.rawText.trimmedOrNil ?? "Untitled Memory",
+            textContent: draft.rawText.trimmedOrNil ?? "Untitled Memory",
+            payload: .text(draft.rawText.trimmedOrNil ?? "Untitled Memory"),
+            metadata: draft.provenance.metadata.merging(["captureOrigin": draft.provenance.artifactOrigin.rawValue]) { _, new in new },
+            captureProvenance: draft.provenance,
+            createdAt: createdAt,
+            updatedAt: createdAt
+        )
+    }
+
     private func makeArtifact(
         from draft: CaptureArtifactDraft,
         fallbackTitle: String?,
@@ -89,17 +136,23 @@ struct MemoryCaptureArtifactBuilder {
         case let .photo(c):
             let resolvedSummary = c.summary.trimmedOrNil ?? "Photo capture"
             var textParts: [String] = []
-            if let s = resolvedSummary.trimmedOrNil { textParts.append(s) }
+            if let summary = resolvedSummary.trimmedOrNil { textParts.append(summary) }
             if let ocr = c.ocrText.trimmedOrNil { textParts.append("OCR: \(ocr)") }
             let textContent = textParts.isEmpty ? resolvedSummary : textParts.joined(separator: "\n")
+            let mediaRef = ArtifactMediaRef(
+                filename: c.filename,
+                mimeType: "image/jpeg",
+                byteCount: c.imageData?.count,
+                localIdentifier: c.photoMetadata["localIdentifier"]
+            )
             return Artifact(
                 recordID: recordID,
                 kind: .photo,
                 title: c.title?.trimmedOrNil ?? fallbackTitle?.trimmedOrNil ?? "Photo",
                 summary: resolvedSummary,
                 textContent: textContent,
-                payload: .media(ArtifactMediaRef(filename: c.filename, mimeType: "image/jpeg")),
-                mediaRef: ArtifactMediaRef(filename: c.filename, mimeType: "image/jpeg"),
+                payload: .media(mediaRef),
+                mediaRef: mediaRef,
                 metadata: metadataForOrigin(of: draft, base: c.photoMetadata),
                 binaryPayload: c.imageData,
                 previewPayload: c.thumbnailData,
@@ -123,14 +176,15 @@ struct MemoryCaptureArtifactBuilder {
                 metadata["transcriptionText"] = transcript
             }
             metadata = metadataForOrigin(of: draft, base: metadata)
+            let mediaRef = ArtifactMediaRef(filename: c.filename, mimeType: mimeType, byteCount: c.audioData?.count)
             return Artifact(
                 recordID: recordID,
                 kind: .audio,
                 title: c.title?.trimmedOrNil ?? fallbackTitle?.trimmedOrNil ?? "Audio",
                 summary: resolvedSummary,
                 textContent: textContent,
-                payload: .media(ArtifactMediaRef(filename: c.filename, mimeType: mimeType)),
-                mediaRef: ArtifactMediaRef(filename: c.filename, mimeType: mimeType),
+                payload: .media(mediaRef),
+                mediaRef: mediaRef,
                 metadata: metadata,
                 binaryPayload: c.audioData,
                 previewPayload: nil,
@@ -146,14 +200,20 @@ struct MemoryCaptureArtifactBuilder {
             metadata["mimeType"] = mimeType
             if let byteCount = c.videoData?.count { metadata["byteCount"] = "\(byteCount)" }
             metadata = metadataForOrigin(of: draft, base: metadata)
+            let mediaRef = ArtifactMediaRef(
+                filename: c.filename,
+                mimeType: mimeType,
+                byteCount: c.videoData?.count,
+                localIdentifier: metadata["localIdentifier"]
+            )
             return Artifact(
                 recordID: recordID,
                 kind: .video,
                 title: c.title?.trimmedOrNil ?? fallbackTitle?.trimmedOrNil ?? "Video",
                 summary: resolvedSummary,
                 textContent: resolvedSummary,
-                payload: .media(ArtifactMediaRef(filename: c.filename, mimeType: mimeType, byteCount: c.videoData?.count)),
-                mediaRef: ArtifactMediaRef(filename: c.filename, mimeType: mimeType, byteCount: c.videoData?.count),
+                payload: .media(mediaRef),
+                mediaRef: mediaRef,
                 metadata: metadata,
                 binaryPayload: c.videoData,
                 previewPayload: c.thumbnailData,
@@ -217,17 +277,17 @@ struct MemoryCaptureArtifactBuilder {
                 .joined(separator: "\n")
                 .trimmedOrNil
                 ?? resolvedSummary
-            var resolvedMetadata = c.metadata
-            resolvedMetadata["url"] = c.url
-            resolvedMetadata = metadataForOrigin(of: draft, base: resolvedMetadata)
+            var metadata = c.metadata
+            metadata["url"] = c.url
+            metadata = metadataForOrigin(of: draft, base: metadata)
             return Artifact(
                 recordID: recordID,
                 kind: .link,
                 title: c.title?.trimmedOrNil ?? fallbackTitle?.trimmedOrNil ?? c.url,
                 summary: resolvedSummary,
                 textContent: textContent,
-                payload: .metadata(resolvedMetadata),
-                metadata: resolvedMetadata,
+                payload: .metadata(metadata),
+                metadata: metadata,
                 previewPayload: c.thumbnailData,
                 captureProvenance: draft.provenance,
                 createdAt: createdAt,
@@ -275,18 +335,18 @@ struct MemoryCaptureArtifactBuilder {
             )
         case let .personContext(c):
             let resolvedSummary = c.note?.trimmedOrNil ?? "Person context from capture"
-            var resolvedMetadata = c.metadata
-            resolvedMetadata["documentType"] = "personContext"
-            resolvedMetadata["personName"] = c.name
-            resolvedMetadata = metadataForOrigin(of: draft, base: resolvedMetadata)
+            var metadata = c.metadata
+            metadata["documentType"] = "personContext"
+            metadata["personName"] = c.name
+            metadata = metadataForOrigin(of: draft, base: metadata)
             return Artifact(
                 recordID: recordID,
                 kind: .document,
                 title: c.name,
                 summary: resolvedSummary,
                 textContent: [c.name, c.note?.trimmedOrNil].compactMap { $0 }.joined(separator: "\n"),
-                payload: .metadata(resolvedMetadata),
-                metadata: resolvedMetadata,
+                payload: .metadata(metadata),
+                metadata: metadata,
                 binaryPayload: c.photoData,
                 previewPayload: c.photoData,
                 captureProvenance: draft.provenance,
@@ -294,8 +354,8 @@ struct MemoryCaptureArtifactBuilder {
                 updatedAt: createdAt
             )
         case let .weather(c):
-            let title = "\(c.condition) \(String(format: "%.0f", c.temperatureCelsius))°C"
-            let summary = "\(c.condition) · \(String(format: "%.0f", c.temperatureCelsius))°C · Humidity \(String(format: "%.0f", c.humidity * 100))%"
+            let title = "\(c.condition) \(String(format: "%.0f", c.temperatureCelsius))C"
+            let summary = "\(c.condition) · \(String(format: "%.0f", c.temperatureCelsius))C · Humidity \(String(format: "%.0f", c.humidity * 100))%"
             var metadata: [String: String] = [
                 "condition": c.condition,
                 "temperatureCelsius": String(format: "%.1f", c.temperatureCelsius),
@@ -322,7 +382,7 @@ struct MemoryCaptureArtifactBuilder {
                 updatedAt: createdAt
             )
         case let .music(c):
-            let title = "\(c.trackName) – \(c.artistName)"
+            let title = "\(c.trackName) - \(c.artistName)"
             let summary = [c.trackName, c.artistName, c.albumName].filter { !$0.isEmpty }.joined(separator: " · ")
             var metadata: [String: String] = [
                 "trackName": c.trackName,
@@ -344,6 +404,8 @@ struct MemoryCaptureArtifactBuilder {
                 textContent: summary,
                 payload: .metadata(metadata),
                 metadata: metadata,
+                binaryPayload: c.artworkData,
+                previewPayload: c.artworkData,
                 captureProvenance: draft.provenance,
                 createdAt: createdAt,
                 updatedAt: createdAt
@@ -358,6 +420,153 @@ struct MemoryCaptureArtifactBuilder {
             metadata.merge(provenance.metadata) { _, new in new }
         }
         return metadata
+    }
+
+    private func makeSemanticDigest(from artifact: Artifact, createdAt: Date) -> ArtifactSemanticDigest? {
+        switch artifact.kind {
+        case .text:
+            return nil
+        case .photo:
+            let parsed = parsePhotoSemanticSummary(artifact.summary)
+            return ArtifactSemanticDigest(
+                recordID: artifact.recordID,
+                artifactID: artifact.id,
+                artifactKind: artifact.kind,
+                source: .localVision,
+                summary: artifact.summary.trimmedOrNil,
+                caption: parsed.caption,
+                ocrText: parsed.ocrText ?? extractOCRText(from: artifact.textContent),
+                visualLabels: parsed.visualLabels,
+                dimensions: dimensions(from: artifact.metadata),
+                captureDate: artifact.metadata["captureDate"],
+                localIdentifier: artifact.mediaRef?.localIdentifier ?? artifact.metadata["localIdentifier"],
+                createdAt: createdAt,
+                updatedAt: createdAt
+            )
+        case .video:
+            return ArtifactSemanticDigest(
+                recordID: artifact.recordID,
+                artifactID: artifact.id,
+                artifactKind: artifact.kind,
+                source: .localMedia,
+                summary: artifact.summary.trimmedOrNil,
+                caption: artifact.title.trimmedOrNil,
+                durationSeconds: artifact.metadata["durationSeconds"].flatMap(Double.init),
+                dimensions: dimensions(from: artifact.metadata),
+                captureDate: artifact.metadata["captureDate"],
+                localIdentifier: artifact.mediaRef?.localIdentifier ?? artifact.metadata["localIdentifier"],
+                technicalNotes: compactTechnicalNotes(from: artifact.metadata, keys: ["mimeType", "byteCount", "filename"]),
+                createdAt: createdAt,
+                updatedAt: createdAt
+            )
+        case .livePhoto:
+            let parsed = parsePhotoSemanticSummary(artifact.summary)
+            return ArtifactSemanticDigest(
+                recordID: artifact.recordID,
+                artifactID: artifact.id,
+                artifactKind: artifact.kind,
+                source: .localMedia,
+                summary: artifact.summary.trimmedOrNil,
+                caption: artifact.title.trimmedOrNil ?? parsed.caption,
+                ocrText: parsed.ocrText ?? extractOCRText(from: artifact.textContent),
+                visualLabels: parsed.visualLabels,
+                dimensions: dimensions(from: artifact.metadata),
+                captureDate: artifact.metadata["captureDate"],
+                localIdentifier: artifact.mediaRef?.localIdentifier ?? artifact.metadata["localIdentifier"],
+                technicalNotes: compactTechnicalNotes(
+                    from: artifact.metadata,
+                    keys: ["stillFilename", "videoFilename", "stillByteCount", "pairedVideoByteCount", "pairedVideoMimeType"]
+                ),
+                createdAt: createdAt,
+                updatedAt: createdAt
+            )
+        case .audio:
+            return ArtifactSemanticDigest(
+                recordID: artifact.recordID,
+                artifactID: artifact.id,
+                artifactKind: artifact.kind,
+                source: .localCapture,
+                summary: artifact.summary.trimmedOrNil,
+                transcript: artifact.metadata["transcriptionText"]?.trimmedOrNil ?? artifact.textContent.trimmedOrNil,
+                durationSeconds: artifact.metadata["durationSeconds"].flatMap(Double.init),
+                localIdentifier: artifact.mediaRef?.localIdentifier ?? artifact.metadata["localIdentifier"],
+                createdAt: createdAt,
+                updatedAt: createdAt
+            )
+        case .music, .link, .location, .weather, .todo, .document:
+            return ArtifactSemanticDigest(
+                recordID: artifact.recordID,
+                artifactID: artifact.id,
+                artifactKind: artifact.kind,
+                source: .localCapture,
+                summary: artifact.summary.trimmedOrNil,
+                caption: artifact.title.trimmedOrNil,
+                durationSeconds: artifact.metadata["durationSeconds"].flatMap(Double.init),
+                localIdentifier: artifact.mediaRef?.localIdentifier ?? artifact.metadata["localIdentifier"],
+                technicalNotes: digestNotes(for: artifact),
+                createdAt: createdAt,
+                updatedAt: createdAt
+            )
+        }
+    }
+
+    private func parsePhotoSemanticSummary(_ summary: String) -> (caption: String?, visualLabels: [String], ocrText: String?) {
+        let parts = summary
+            .components(separatedBy: " | ")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        let labelPart = parts.first { !$0.hasPrefix("Text:") }
+        let labels = labelPart?
+            .components(separatedBy: ",")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty } ?? []
+        let ocr = parts.first { $0.hasPrefix("Text:") }?
+            .replacingOccurrences(of: "Text:", with: "")
+            .trimmedOrNil
+        return (labelPart?.trimmedOrNil, labels, ocr)
+    }
+
+    private func extractOCRText(from textContent: String) -> String? {
+        guard let range = textContent.range(of: "OCR:") else { return nil }
+        return String(textContent[range.upperBound...]).trimmedOrNil
+    }
+
+    private func dimensions(from metadata: [String: String]) -> ArtifactMediaDimensions? {
+        let dimensions = ArtifactMediaDimensions(
+            width: metadata["width"].flatMap(Int.init),
+            height: metadata["height"].flatMap(Int.init)
+        )
+        return dimensions.isEmpty ? nil : dimensions
+    }
+
+    private func digestNotes(for artifact: Artifact) -> [String] {
+        switch artifact.kind {
+        case .music:
+            return compactTechnicalNotes(from: artifact.metadata, keys: ["trackName", "artistName", "albumName", "durationSeconds"])
+        case .link:
+            return compactTechnicalNotes(from: artifact.metadata, keys: ["url"])
+        case .location:
+            return compactTechnicalNotes(from: artifact.metadata, keys: ["latitude", "longitude"])
+        case .weather:
+            return compactTechnicalNotes(
+                from: artifact.metadata,
+                keys: ["condition", "temperatureCelsius", "humidity", "windSpeedKmh", "uvIndex", "conditionCode", "symbolName"]
+            )
+        case .document:
+            return compactTechnicalNotes(from: artifact.metadata, keys: ["documentType", "personName", "source"])
+        case .todo:
+            return compactTechnicalNotes(from: artifact.metadata, keys: ["todo"])
+        case .text, .photo, .audio, .video, .livePhoto:
+            return []
+        }
+    }
+
+    private func compactTechnicalNotes(from metadata: [String: String], keys: [String]) -> [String] {
+        keys.compactMap { key in
+            metadata[key].flatMap { value in
+                value.trimmedOrNil.map { "\(key)=\($0)" }
+            }
+        }
     }
 }
 

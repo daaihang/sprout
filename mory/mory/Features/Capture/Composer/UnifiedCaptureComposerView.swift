@@ -42,6 +42,7 @@ struct UnifiedCaptureComposerView: View {
     @State private var bodyTextProvenance: CaptureProvenance = .manualComposer
     @State private var affectDrafts: [AffectSnapshotDraft] = []
     @State private var stagedArtifactDrafts: [CaptureArtifactDraft] = []
+    @State private var cardArrangementDraft = MemoryCardArrangementDraft()
     @State private var contextCandidates: [ContextCandidate] = []
     @State private var isCollectingContext = false
     @State private var hasLoadedInitialContext = false
@@ -146,7 +147,11 @@ struct UnifiedCaptureComposerView: View {
 	                            onRemoveStagedArtifact: removeStagedArtifact(at:),
 	                            onRemoveContextCandidate: removeContextCandidate(id:),
 	                            onRemoveAffectDraft: removeAffectDraft(at:),
-	                            onRemoveJournalingSuggestion: removeJournalingSuggestion(importSessionID:)
+	                            onRemoveJournalingSuggestion: removeJournalingSuggestion(importSessionID:),
+                                onReorderStagedArtifact: reorderStagedArtifact(from:to:),
+                                onSetSize: setArrangementSize(for:size:),
+                                onStackWithPrevious: stackArrangementNodeWithPrevious(item:),
+                                onUnstack: unstackArrangementNode(item:)
 	                        )
 
                         CaptureBodyEditorView(
@@ -250,23 +255,23 @@ struct UnifiedCaptureComposerView: View {
                 if let transcript = transcript.trimmedOrNil {
                     appendTranscriptToBody(transcript)
                 }
-                stagedArtifactDrafts.append(draft.withProvenance(manualProvenance(.audioRecorder)))
+                appendStagedArtifact(draft.withProvenance(manualProvenance(.audioRecorder)))
             }
         case .link:
             UnifiedLinkCaptureSheet { draft in
-                stagedArtifactDrafts.append(draft.withProvenance(manualProvenance(.linkComposer)))
+                appendStagedArtifact(draft.withProvenance(manualProvenance(.linkComposer)))
             }
         case .music:
             UnifiedMusicCaptureSheet { draft in
-                stagedArtifactDrafts.append(draft.withProvenance(manualProvenance(.musicPicker)))
+                appendStagedArtifact(draft.withProvenance(manualProvenance(.musicPicker)))
             }
         case .location:
             LocationPickerView(initialSelection: nil) { draft in
-                stagedArtifactDrafts.append(draft.withProvenance(manualProvenance(.locationPicker)))
+                appendStagedArtifact(draft.withProvenance(manualProvenance(.locationPicker)))
             }
         case .todo:
             UnifiedTodoCaptureSheet { draft in
-                stagedArtifactDrafts.append(draft.withProvenance(manualProvenance(.todoComposer)))
+                appendStagedArtifact(draft.withProvenance(manualProvenance(.todoComposer)))
             }
         case .mood:
             StructuredMoodPickerSheet(
@@ -298,7 +303,7 @@ struct UnifiedCaptureComposerView: View {
         bodyTextProvenance = .manualVoice
         bodyText = transcript ?? ""
         generatedTitle = transcript?.generatedMemoryTitle() ?? String(localized: "quickCapture.voice.defaultTitle")
-        stagedArtifactDrafts.append(.audio(
+        appendStagedArtifact(.audio(
             title: String(localized: "quickCapture.voice.defaultTitle"),
             summary: String(localized: "quickCapture.voice.defaultSummary"),
             filename: voice.filename,
@@ -388,6 +393,7 @@ struct UnifiedCaptureComposerView: View {
         contextCandidates = drafts.map { draft in
             ContextCandidate(draft: draft.withProvenance(.autoContext), capturedAt: collectedAt, isSelected: true)
         }
+        syncCardArrangementDraft()
     }
 
     @MainActor
@@ -407,7 +413,7 @@ struct UnifiedCaptureComposerView: View {
                     origin: .manual,
                     provenance: manualProvenance(.photoLibrary)
                 )
-                stagedArtifactDrafts.append(draft)
+                appendStagedArtifact(draft)
             } catch {
                 errorMessage = error.localizedDescription
             }
@@ -426,7 +432,7 @@ struct UnifiedCaptureComposerView: View {
     private func addPhotoData(_ data: Data, filename: String) async {
         let result = await PhotoArtifactProcessor().process(imageData: data, filename: filename)
         let summary = result.summary.trimmedOrNil ?? String(localized: "quickCapture.photo.defaultSummary")
-        stagedArtifactDrafts.append(.photo(
+        appendStagedArtifact(.photo(
             title: nil,
             summary: summary,
             filename: filename,
@@ -437,6 +443,75 @@ struct UnifiedCaptureComposerView: View {
             origin: .manual,
             provenance: manualProvenance(filename.hasPrefix("camera_") ? .camera : .photoLibrary)
         ))
+    }
+
+    @MainActor
+    private func appendStagedArtifact(_ draft: CaptureArtifactDraft) {
+        stagedArtifactDrafts.append(draft)
+        cardArrangementDraft.appendArtifactDraft(draft)
+    }
+
+    @MainActor
+    private func appendStagedArtifacts(_ drafts: [CaptureArtifactDraft]) {
+        drafts.forEach(appendStagedArtifact)
+    }
+
+    @MainActor
+    private func syncCardArrangementDraft() {
+        cardArrangementDraft.sync(
+            recordBodyIsPresent: bodyText.trimmedOrNil != nil,
+            artifactDrafts: arrangementArtifactDrafts
+        )
+    }
+
+    @MainActor
+    private var arrangementArtifactDrafts: [CaptureArtifactDraft] {
+        allArtifactDrafts.filter { draft in
+            if case .text = draft.content {
+                return false
+            }
+            return true
+        }
+    }
+
+    @MainActor
+    private func resolvedCardArrangementDraft(rawText: String) -> MemoryCardArrangementDraft {
+        var arrangement = cardArrangementDraft
+        arrangement.sync(
+            recordBodyIsPresent: rawText.trimmedOrNil != nil,
+            artifactDrafts: arrangementArtifactDrafts
+        )
+        return arrangement
+    }
+
+    @MainActor
+    private func setArrangementSize(for item: CaptureComposerAttachmentItem, size: MemoryCardSizeToken) {
+        guard let draftID = arrangementDraftID(for: item) else { return }
+        cardArrangementDraft.setSize(size, forDraftID: draftID)
+    }
+
+    @MainActor
+    private func stackArrangementNodeWithPrevious(item: CaptureComposerAttachmentItem) {
+        guard let draftID = arrangementDraftID(for: item) else { return }
+        cardArrangementDraft.toggleStackWithPrevious(draftID: draftID)
+    }
+
+    @MainActor
+    private func unstackArrangementNode(item: CaptureComposerAttachmentItem) {
+        guard let draftID = arrangementDraftID(for: item) else { return }
+        cardArrangementDraft.unstackContainingDraft(draftID)
+    }
+
+    @MainActor
+    private func arrangementDraftID(for item: CaptureComposerAttachmentItem) -> UUID? {
+        switch item.source {
+        case let .stagedArtifact(index):
+            return stagedArtifactDrafts.indices.contains(index) ? stagedArtifactDrafts[index].draftID : nil
+        case let .contextCandidate(id):
+            return contextCandidates.first(where: { $0.id == id })?.draft.draftID
+        case .affect, .journalingSuggestion, .processing:
+            return nil
+        }
     }
 
     @MainActor
@@ -456,7 +531,8 @@ struct UnifiedCaptureComposerView: View {
                 inputContext: inputContext.trimmedOrNil,
                 provenance: draftProvenance,
                 artifacts: allArtifactDrafts,
-                affectSnapshots: affectDrafts
+                affectSnapshots: affectDrafts,
+                cardArrangement: resolvedCardArrangementDraft(rawText: rawText)
             )
             let memory = try await CaptureOrchestrator(memoryRepository: memoryRepository).capture(draft: draft)
             if let inboxItemID = seed.externalInboxItemID {
@@ -472,7 +548,25 @@ struct UnifiedCaptureComposerView: View {
     @MainActor
     private func removeStagedArtifact(at index: Int) {
         guard stagedArtifactDrafts.indices.contains(index) else { return }
-        stagedArtifactDrafts.remove(at: index)
+        let removed = stagedArtifactDrafts.remove(at: index)
+        cardArrangementDraft.removeArtifactDraft(removed.draftID)
+    }
+
+    @MainActor
+    private func reorderStagedArtifact(from sourceIndex: Int, to targetIndex: Int) {
+        guard stagedArtifactDrafts.indices.contains(sourceIndex),
+              stagedArtifactDrafts.indices.contains(targetIndex),
+              sourceIndex != targetIndex else {
+            return
+        }
+        withAnimation(.snappy(duration: 0.2)) {
+            let sourceDraftID = stagedArtifactDrafts[sourceIndex].draftID
+            let targetDraftID = stagedArtifactDrafts[targetIndex].draftID
+            let item = stagedArtifactDrafts.remove(at: sourceIndex)
+            let insertionIndex = sourceIndex < targetIndex ? targetIndex : targetIndex
+            stagedArtifactDrafts.insert(item, at: insertionIndex)
+            cardArrangementDraft.reorderArtifactDraft(from: sourceDraftID, to: targetDraftID)
+        }
     }
 
     @MainActor
@@ -487,12 +581,17 @@ struct UnifiedCaptureComposerView: View {
     @MainActor
     private func removeContextCandidate(id: UUID) {
         guard let index = contextCandidates.firstIndex(where: { $0.id == id }) else { return }
-        contextCandidates.remove(at: index)
+        let removed = contextCandidates.remove(at: index)
+        cardArrangementDraft.removeArtifactDraft(removed.draft.draftID)
     }
 
     @MainActor
     private func removeJournalingSuggestion(importSessionID: UUID) {
+        let removedDraftIDs = stagedArtifactDrafts
+            .filter { $0.isJournalingSuggestion(in: importSessionID) }
+            .map(\.draftID)
         stagedArtifactDrafts.removeAll { $0.isJournalingSuggestion(in: importSessionID) }
+        removedDraftIDs.forEach { cardArrangementDraft.removeArtifactDraft($0) }
         affectDrafts.removeAll { $0.isJournalingSuggestion(in: importSessionID) }
         mood = affectDrafts.first?.labels.first?.rawValue
             ?? affectDrafts.first?.rawInput?.trimmedOrNil
@@ -559,7 +658,11 @@ struct UnifiedCaptureComposerView: View {
             if case .text = artifact.content { return false }
             return true
         }
-        stagedArtifactDrafts.append(contentsOf: nonTextArtifacts)
+        appendStagedArtifacts(nonTextArtifacts)
+        if let importedArrangement = draft.cardArrangement {
+            cardArrangementDraft.mergeArrangement(importedArrangement)
+            syncCardArrangementDraft()
+        }
         if !draft.affectSnapshots.isEmpty {
             affectDrafts.append(contentsOf: draft.affectSnapshots)
             mood = draft.affectSnapshots.first?.labels.first?.rawValue

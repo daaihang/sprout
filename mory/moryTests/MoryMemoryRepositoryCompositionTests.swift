@@ -87,6 +87,210 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertEqual(memory.record.captureProvenance, provenance)
     }
 
+    func testCreateMemoryPersistsSemanticDigestsAndDefaultCardArrangement() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
+        )
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Media walk",
+                rawText: "I walked through the old lane and kept a few traces.",
+                mood: "calm",
+                inputContext: "typed in composer",
+                artifacts: [
+                    .text(title: "Media walk", body: "I walked through the old lane and kept a few traces."),
+                    .photo(
+                        title: "Window",
+                        summary: "window, flowers | Text: afternoon market",
+                        filename: "window.jpg",
+                        photoMetadata: [
+                            "width": "1200",
+                            "height": "900",
+                            "localIdentifier": "photo-1"
+                        ]
+                    ),
+                    .video(
+                        title: "Street clip",
+                        summary: "Short clip",
+                        filename: "street.mov",
+                        videoData: Data([1, 2, 3, 4]),
+                        thumbnailData: Data([9]),
+                        videoMetadata: ["durationSeconds": "4.5"]
+                    ),
+                    .livePhoto(
+                        title: "Doorway",
+                        summary: "doorway | Text: quiet",
+                        stillFilename: "doorway.heic",
+                        videoFilename: "doorway.mov",
+                        stillImageData: Data([5, 6]),
+                        pairedVideoData: Data([7, 8, 9]),
+                        thumbnailData: Data([5]),
+                        metadata: ["localIdentifier": "live-1"]
+                    )
+                ]
+            )
+        )
+
+        let detail = try XCTUnwrap(repository.fetchMemoryDetail(recordID: memory.record.id))
+        let digests = detail.artifactSemanticDigests
+        XCTAssertEqual(digests.count, 3)
+
+        let photoDigest = try XCTUnwrap(digests.first(where: { $0.artifactKind == .photo }))
+        XCTAssertEqual(photoDigest.ocrText, "afternoon market")
+        XCTAssertEqual(photoDigest.visualLabels, ["window", "flowers"])
+        XCTAssertEqual(photoDigest.dimensions?.width, 1200)
+        XCTAssertEqual(photoDigest.localIdentifier, "photo-1")
+
+        let videoDigest = try XCTUnwrap(digests.first(where: { $0.artifactKind == .video }))
+        XCTAssertEqual(videoDigest.durationSeconds, 4.5)
+        XCTAssertTrue(videoDigest.technicalNotes.contains("filename=street.mov"))
+
+        let livePhotoDigest = try XCTUnwrap(digests.first(where: { $0.artifactKind == .livePhoto }))
+        XCTAssertEqual(livePhotoDigest.localIdentifier, "live-1")
+        XCTAssertTrue(livePhotoDigest.technicalNotes.contains("videoFilename=doorway.mov"))
+
+        let arrangement = try XCTUnwrap(detail.cardArrangement)
+        XCTAssertEqual(arrangement.recordID, memory.record.id)
+        XCTAssertEqual(arrangement.nodes.count, 4)
+        XCTAssertTrue(arrangement.nodes.contains { $0.contentRef == .recordBody && $0.visualRecipe == .notebook })
+
+        let nodesByArtifactID = Dictionary(uniqueKeysWithValues: arrangement.nodes.compactMap { node -> (UUID, MemoryCardNode)? in
+            guard case let .artifact(artifactID) = node.contentRef else { return nil }
+            return (artifactID, node)
+        })
+        let photoID = try XCTUnwrap(detail.artifacts.first(where: { $0.kind == .photo })?.id)
+        let videoID = try XCTUnwrap(detail.artifacts.first(where: { $0.kind == .video })?.id)
+        let livePhotoID = try XCTUnwrap(detail.artifacts.first(where: { $0.kind == .livePhoto })?.id)
+        XCTAssertEqual(nodesByArtifactID[photoID]?.visualRecipe, .polaroid)
+        XCTAssertEqual(nodesByArtifactID[videoID]?.visualRecipe, .filmFrame)
+        XCTAssertEqual(nodesByArtifactID[livePhotoID]?.visualRecipe, .livePhotoPrint)
+    }
+
+    func testCreateMemoryRemapsArrangementDraftIDsToPersistedArtifactIDs() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
+        )
+        let photoDraftID = UUID(uuidString: "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA")!
+        let audioDraftID = UUID(uuidString: "BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB")!
+        let photoDraft = CaptureArtifactDraft(
+            draftID: photoDraftID,
+            origin: .manual,
+            content: .photo(PhotoArtifactContent(title: "Draft photo", summary: "window", filename: "draft.jpg"))
+        )
+        let audioDraft = CaptureArtifactDraft(
+            draftID: audioDraftID,
+            origin: .manual,
+            content: .audio(AudioArtifactContent(title: "Draft audio", summary: "voice", filename: "draft.caf", transcriptionText: "voice"))
+        )
+        let arrangementDraft = MemoryCardArrangementDraft(nodes: [
+            MemoryCardDraftNode(
+                contentRef: .recordBody,
+                visualRecipe: .notebook,
+                layout: MemoryCardLayoutToken(order: 0, size: .wide)
+            ),
+            MemoryCardDraftNode(
+                contentRef: .artifactDraftGroup([photoDraftID, audioDraftID], kind: .mediaStack),
+                visualRecipe: .bundlePacket,
+                layout: MemoryCardLayoutToken(order: 1, size: .stack, rotationDegrees: -2)
+            )
+        ])
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                rawText: "A stacked draft",
+                artifacts: [photoDraft, audioDraft],
+                cardArrangement: arrangementDraft
+            )
+        )
+
+        let detail = try XCTUnwrap(repository.fetchMemoryDetail(recordID: memory.record.id))
+        let photoID = try XCTUnwrap(detail.artifacts.first(where: { $0.kind == .photo })?.id)
+        let audioID = try XCTUnwrap(detail.artifacts.first(where: { $0.kind == .audio })?.id)
+        let arrangement = try XCTUnwrap(detail.cardArrangement)
+        let group = try XCTUnwrap(arrangement.nodes.first { node in
+            if case .artifactGroup = node.contentRef { return true }
+            return false
+        })
+
+        if case let .artifactGroup(ids, kind) = group.contentRef {
+            XCTAssertEqual(kind, .mediaStack)
+            XCTAssertEqual(ids, [photoID, audioID])
+            XCTAssertFalse(ids.contains(photoDraftID))
+            XCTAssertFalse(ids.contains(audioDraftID))
+        } else {
+            XCTFail("Expected remapped artifact group")
+        }
+    }
+
+    func testMemoryMutationKeepsSemanticDigestsAndCardArrangementInSync() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
+        )
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                rawText: "A mutable memory",
+                artifacts: [
+                    .text(title: nil, body: "A mutable memory"),
+                    .photo(
+                        title: "First photo",
+                        summary: "photo | Text: first",
+                        filename: "first.jpg"
+                    ),
+                    .video(
+                        title: "Clip",
+                        summary: "clip",
+                        filename: "clip.mov",
+                        videoData: Data([1, 2, 3]),
+                        thumbnailData: Data([9]),
+                        videoMetadata: ["durationSeconds": "7"]
+                    )
+                ]
+            )
+        )
+        let initialDetail = try XCTUnwrap(repository.fetchMemoryDetail(recordID: memory.record.id))
+        let photoID = try XCTUnwrap(initialDetail.artifacts.first(where: { $0.kind == .photo })?.id)
+        let videoID = try XCTUnwrap(initialDetail.artifacts.first(where: { $0.kind == .video })?.id)
+
+        let result = try await repository.applyMemoryMutation(
+            recordID: memory.record.id,
+            mutation: MemoryMutationDraft(
+                deletedArtifactIDs: [videoID],
+                artifactOrder: [photoID]
+            ),
+            refreshPolicy: .markPending
+        )
+
+        let detail = try XCTUnwrap(result.detail)
+        XCTAssertNil(detail.artifacts.first(where: { $0.id == videoID }))
+        XCTAssertNil(detail.artifactSemanticDigests.first(where: { $0.artifactID == videoID }))
+        XCTAssertNotNil(detail.artifactSemanticDigests.first(where: { $0.artifactID == photoID }))
+
+        let arrangement = try XCTUnwrap(detail.cardArrangement)
+        XCTAssertFalse(arrangement.nodes.contains { node in
+            if case let .artifact(id) = node.contentRef {
+                return id == videoID
+            }
+            return false
+        })
+        XCTAssertTrue(arrangement.nodes.contains { node in
+            if case let .artifact(id) = node.contentRef {
+                return id == photoID
+            }
+            return false
+        })
+    }
+
     func testUserSettingsPreferenceDefaultsPersistAndSurviveLocalDataClear() throws {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
@@ -1544,7 +1748,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         )
 
         XCTAssertEqual(memory.record.rawText, "This should save even if analysis is unavailable.")
-        XCTAssertEqual(memory.pipelineStatus?.stage, .pending)
+        XCTAssertEqual(memory.pipelineStatus?.stage, .notScheduled)
         XCTAssertNil(try repository.fetchRecordAnalysis(recordID: memory.record.id))
 
         do {
@@ -1591,7 +1795,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertEqual(detail.record.userMood, "focused")
         XCTAssertEqual(detail.record.inputContext, "rewritten in detail")
         XCTAssertTrue(detail.artifacts.contains(where: { $0.summary == "Follow-up note with one more concrete detail." }))
-        XCTAssertEqual(detail.pipelineStatus?.stage, .pending)
+        XCTAssertEqual(detail.pipelineStatus?.stage, .notScheduled)
     }
 
     func testApplyMemoryMutationUpdatesRecordAndInvalidatesDerivedData() async throws {
@@ -1633,7 +1837,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertNil(detail.record.inputContext)
         XCTAssertEqual(result.addedArtifactIDs.count, 0)
         XCTAssertEqual(detail.artifacts.filter { $0.kind == .text }.count, 1)
-        XCTAssertEqual(result.pipelineStatus?.stage, .pending)
+        XCTAssertEqual(result.pipelineStatus?.stage, .notScheduled)
         XCTAssertTrue(result.invalidatedDerivedData)
         XCTAssertNil(try repository.fetchRecordAnalysis(recordID: memory.record.id))
     }
@@ -1669,7 +1873,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let record = try XCTUnwrap(try repository.fetchRecordShell(id: memory.record.id))
         XCTAssertEqual(result.addedArtifactIDs.count, 2)
         XCTAssertEqual(record.artifactIDs.suffix(2), result.addedArtifactIDs[...])
-        XCTAssertEqual(result.pipelineStatus?.stage, .pending)
+        XCTAssertEqual(result.pipelineStatus?.stage, .notScheduled)
 
         let detail = try XCTUnwrap(result.detail)
         XCTAssertTrue(detail.artifacts.contains(where: { $0.kind == .location && $0.title == "Office" }))
@@ -1833,7 +2037,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertEqual(detail.record.inputContext, "quick text capture")
         XCTAssertEqual(textArtifact.kind, .text)
         XCTAssertEqual(textArtifact.summary, "Met Alex after lunch and decided to revisit the launch copy.")
-        XCTAssertEqual(detail.pipelineStatus?.stage, .pending)
+        XCTAssertEqual(detail.pipelineStatus?.stage, .notScheduled)
     }
 
     func testQuickVoiceCaptureDraftPersistsAudioArtifactWithTranscript() async throws {
@@ -1870,7 +2074,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertEqual(audioArtifact.title, "Voice note")
         XCTAssertEqual(audioArtifact.mediaRef?.filename, "quick_voice.caf")
         XCTAssertEqual(audioArtifact.textContent, "I keep returning to protecting mornings for writing before meetings.")
-        XCTAssertEqual(detail.pipelineStatus?.stage, .pending)
+        XCTAssertEqual(detail.pipelineStatus?.stage, .notScheduled)
     }
 
     func testVoiceComposerDraftKeepsTranscriptInTextArtifactAndAudioMetadata() async throws {
@@ -1976,7 +2180,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         )
 
         XCTAssertEqual(updated?.artifactCount, 4)
-        XCTAssertEqual(updated?.pipelineStatus?.stage, .pending)
+        XCTAssertEqual(updated?.pipelineStatus?.stage, .notScheduled)
 
         let detail = try XCTUnwrap(repository.fetchMemoryDetail(recordID: memory.record.id))
         XCTAssertTrue(detail.artifacts.contains(where: { $0.kind == .location && $0.metadata["latitude"] == "31.23" }))

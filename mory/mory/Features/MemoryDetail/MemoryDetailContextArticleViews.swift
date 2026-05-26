@@ -39,11 +39,11 @@ struct MemoryArticleArtifactView: View {
 }
 
 struct MemoryDetailInsightPanel: View {
-    let presentation: MemoryDetailPresentationSnapshot
+    let snapshot: MemoryDetailSnapshot
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            if let pipelineStatus = presentation.pipelineStatus {
+            if let pipelineStatus = snapshot.pipelineStatus {
                 DisclosureGroup("Analysis status") {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(pipelineStatus.userLabel)
@@ -59,7 +59,7 @@ struct MemoryDetailInsightPanel: View {
                 }
             }
 
-            if let analysis = presentation.analysis {
+            if let analysis = snapshot.analysis {
                 DisclosureGroup("AI analysis") {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(analysis.summary)
@@ -76,14 +76,14 @@ struct MemoryDetailInsightPanel: View {
             if hasRelatedInsights {
                 DisclosureGroup("Related") {
                     VStack(alignment: .leading, spacing: 10) {
-                        if !presentation.entities.isEmpty {
-                            Text(presentation.entities.map(\.displayName).joined(separator: " · "))
+                        if !snapshot.entities.isEmpty {
+                            Text(snapshot.entities.map(\.displayName).joined(separator: " · "))
                         }
-                        if !presentation.arcs.isEmpty {
-                            Text(presentation.arcs.map(\.title).joined(separator: " · "))
+                        if !snapshot.arcs.isEmpty {
+                            Text(snapshot.arcs.map(\.title).joined(separator: " · "))
                         }
-                        if !presentation.reflections.isEmpty {
-                            Text(presentation.reflections.map(\.title).joined(separator: " · "))
+                        if !snapshot.reflections.isEmpty {
+                            Text(snapshot.reflections.map(\.title).joined(separator: " · "))
                         }
                     }
                     .font(.subheadline)
@@ -96,6 +96,6 @@ struct MemoryDetailInsightPanel: View {
     }
 
     private var hasRelatedInsights: Bool {
-        !presentation.entities.isEmpty || !presentation.arcs.isEmpty || !presentation.reflections.isEmpty
+        !snapshot.entities.isEmpty || !snapshot.arcs.isEmpty || !snapshot.reflections.isEmpty
     }
 }

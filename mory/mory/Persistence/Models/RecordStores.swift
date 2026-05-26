@@ -93,6 +93,97 @@ final class ArtifactStore {
 }
 
 @Model
+final class ArtifactSemanticDigestStore {
+    @Attribute(.unique) var id: UUID
+    var recordID: UUID
+    var artifactID: UUID
+    var artifactKindRawValue: String
+    var schemaVersion: Int
+    var sourceRawValue: String
+    var summary: String?
+    var caption: String?
+    var ocrText: String?
+    var visualLabels: [String]
+    var transcript: String?
+    var languageCode: String?
+    var durationSeconds: Double?
+    var dimensionsData: Data?
+    var captureDate: String?
+    var localIdentifier: String?
+    var technicalNotes: [String]
+    var createdAt: Date
+    var updatedAt: Date
+
+    init(
+        id: UUID,
+        recordID: UUID,
+        artifactID: UUID,
+        artifactKindRawValue: String,
+        schemaVersion: Int,
+        sourceRawValue: String,
+        summary: String? = nil,
+        caption: String? = nil,
+        ocrText: String? = nil,
+        visualLabels: [String] = [],
+        transcript: String? = nil,
+        languageCode: String? = nil,
+        durationSeconds: Double? = nil,
+        dimensionsData: Data? = nil,
+        captureDate: String? = nil,
+        localIdentifier: String? = nil,
+        technicalNotes: [String] = [],
+        createdAt: Date,
+        updatedAt: Date
+    ) {
+        self.id = id
+        self.recordID = recordID
+        self.artifactID = artifactID
+        self.artifactKindRawValue = artifactKindRawValue
+        self.schemaVersion = schemaVersion
+        self.sourceRawValue = sourceRawValue
+        self.summary = summary
+        self.caption = caption
+        self.ocrText = ocrText
+        self.visualLabels = visualLabels
+        self.transcript = transcript
+        self.languageCode = languageCode
+        self.durationSeconds = durationSeconds
+        self.dimensionsData = dimensionsData
+        self.captureDate = captureDate
+        self.localIdentifier = localIdentifier
+        self.technicalNotes = technicalNotes
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+}
+
+@Model
+final class MemoryCardArrangementStore {
+    @Attribute(.unique) var recordID: UUID
+    var id: UUID
+    var schemaVersion: Int
+    var nodesData: Data?
+    var createdAt: Date
+    var updatedAt: Date
+
+    init(
+        id: UUID,
+        recordID: UUID,
+        schemaVersion: Int,
+        nodesData: Data? = nil,
+        createdAt: Date,
+        updatedAt: Date
+    ) {
+        self.id = id
+        self.recordID = recordID
+        self.schemaVersion = schemaVersion
+        self.nodesData = nodesData
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+}
+
+@Model
 final class RecordAnalysisSnapshotStore {
     @Attribute(.unique) var id: UUID
     var recordID: UUID

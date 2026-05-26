@@ -77,6 +77,25 @@ extension MoryMemoryRepository {
         )
     }
 
+    func upsertNotScheduledPipelineStatus(recordID: UUID, updatedAt: Date) throws {
+        try upsertPipelineStatus(
+            MemoryPipelineStatusSnapshot(
+                recordID: recordID,
+                stage: .notScheduled,
+                requestID: nil,
+                lastError: nil,
+                requestBody: nil,
+                responseBody: nil,
+                rawErrorBody: nil,
+                lastHTTPStatusCode: nil,
+                failedStage: nil,
+                lastAttemptAt: nil,
+                completedAt: nil,
+                updatedAt: updatedAt
+            )
+        )
+    }
+
     func orderedUniqueUUIDs(_ ids: [UUID]) -> [UUID] {
         OrderedCollections.unique(ids)
     }

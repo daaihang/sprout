@@ -153,6 +153,21 @@ extension MoryMemoryRepository {
         return try modelContext.fetch(descriptor).map(\.domainModel)
     }
 
+    func fetchArtifactSemanticDigests(recordID: UUID) throws -> [ArtifactSemanticDigest] {
+        let descriptor = FetchDescriptor<ArtifactSemanticDigestStore>(
+            predicate: #Predicate { $0.recordID == recordID },
+            sortBy: [SortDescriptor(\.updatedAt, order: .reverse)]
+        )
+        return try modelContext.fetch(descriptor).map(\.domainModel)
+    }
+
+    func fetchMemoryCardArrangement(recordID: UUID) throws -> MemoryCardArrangement? {
+        let descriptor = FetchDescriptor<MemoryCardArrangementStore>(
+            predicate: #Predicate { $0.recordID == recordID }
+        )
+        return try modelContext.fetch(descriptor).first?.domainModel
+    }
+
     func fetchRecordShell(id: UUID) throws -> RecordShell? {
         let descriptor = FetchDescriptor<RecordShellStore>(predicate: #Predicate { $0.id == id })
         return try modelContext.fetch(descriptor).first?.domainModel
@@ -212,6 +227,8 @@ extension MoryMemoryRepository {
         return MemoryDetailSnapshot(
             record: record,
             artifacts: artifacts,
+            artifactSemanticDigests: try fetchArtifactSemanticDigests(recordID: recordID),
+            cardArrangement: try fetchMemoryCardArrangement(recordID: recordID),
             analysis: try fetchRecordAnalysis(recordID: recordID),
             pipelineStatus: try fetchPipelineStatus(recordID: recordID),
             entities: entities,

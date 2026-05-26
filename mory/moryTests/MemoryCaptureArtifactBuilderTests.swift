@@ -162,6 +162,80 @@ final class MemoryCaptureArtifactBuilderTests: XCTestCase {
         XCTAssertEqual(livePhoto.captureProvenance, provenance)
     }
 
+    func testBuildSemanticDigestsKeepsMediaMeaningOutsideArtifactMetadata() throws {
+        let builder = MemoryCaptureArtifactBuilder()
+        let recordID = UUID()
+        let createdAt = Date(timeIntervalSince1970: 1_800_000_000)
+        let artifacts = builder.buildArtifacts(
+            from: MemoryCaptureDraft(
+                rawText: "A day with media",
+                artifacts: [
+                    .photo(
+                        title: "Board",
+                        summary: "whiteboard, notes | Text: Ship the capture layer",
+                        filename: "board.jpg",
+                        photoMetadata: [
+                            "width": "1600",
+                            "height": "1200",
+                            "captureDate": "2026-05-27",
+                            "localIdentifier": "photo-local-id"
+                        ]
+                    ),
+                    .video(
+                        title: "Clip",
+                        summary: "Walking clip",
+                        filename: "clip.mov",
+                        videoData: Data([0, 1, 2]),
+                        thumbnailData: Data([9]),
+                        videoMetadata: ["durationSeconds": "12.5"]
+                    ),
+                    .livePhoto(
+                        title: "Live",
+                        summary: "garden | Text: afternoon wind",
+                        stillFilename: "live.heic",
+                        videoFilename: "live.mov",
+                        stillImageData: Data([3, 4]),
+                        pairedVideoData: Data([5, 6, 7]),
+                        thumbnailData: Data([3]),
+                        metadata: [
+                            "width": "4032",
+                            "height": "3024",
+                            "localIdentifier": "live-local-id"
+                        ]
+                    )
+                ]
+            ),
+            recordID: recordID,
+            createdAt: createdAt
+        )
+
+        let digests = builder.buildSemanticDigests(from: artifacts, createdAt: createdAt)
+
+        let photoDigest = try XCTUnwrap(digests.first(where: { $0.artifactKind == .photo }))
+        XCTAssertEqual(photoDigest.source, .localVision)
+        XCTAssertEqual(photoDigest.caption, "whiteboard, notes")
+        XCTAssertEqual(photoDigest.visualLabels, ["whiteboard", "notes"])
+        XCTAssertEqual(photoDigest.ocrText, "Ship the capture layer")
+        XCTAssertEqual(photoDigest.dimensions?.width, 1600)
+        XCTAssertEqual(photoDigest.dimensions?.height, 1200)
+        XCTAssertEqual(photoDigest.captureDate, "2026-05-27")
+        XCTAssertEqual(photoDigest.localIdentifier, "photo-local-id")
+
+        let videoDigest = try XCTUnwrap(digests.first(where: { $0.artifactKind == .video }))
+        XCTAssertEqual(videoDigest.source, .localMedia)
+        XCTAssertEqual(videoDigest.durationSeconds, 12.5)
+        XCTAssertTrue(videoDigest.technicalNotes.contains("mimeType=video/quicktime"))
+        XCTAssertTrue(videoDigest.technicalNotes.contains("byteCount=3"))
+
+        let livePhotoDigest = try XCTUnwrap(digests.first(where: { $0.artifactKind == .livePhoto }))
+        XCTAssertEqual(livePhotoDigest.source, .localMedia)
+        XCTAssertEqual(livePhotoDigest.visualLabels, ["garden"])
+        XCTAssertEqual(livePhotoDigest.dimensions?.width, 4032)
+        XCTAssertEqual(livePhotoDigest.localIdentifier, "live-local-id")
+        XCTAssertTrue(livePhotoDigest.technicalNotes.contains("videoFilename=live.mov"))
+        XCTAssertTrue(livePhotoDigest.technicalNotes.contains("pairedVideoByteCount=3"))
+    }
+
     func testBuildArtifactsPersistsWeatherConditionMetadata() throws {
         let builder = MemoryCaptureArtifactBuilder()
         let artifacts = builder.buildArtifacts(
