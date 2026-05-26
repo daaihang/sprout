@@ -90,5 +90,4 @@ extension MoryMemoryRepository {
     func createMemoryFromExternalCaptureInboxItem(_ id: UUID) async throws -> MemorySummary {
         try await ExternalCaptureImportUseCase(repository: self).createMemoryFromExternalCaptureInboxItem(id)
     }
-
 }

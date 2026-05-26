@@ -3,8 +3,8 @@ import XCTest
 @testable import mory
 
 @MainActor
-final class AppIntelligenceRecoveryServiceTests: XCTestCase {
-    func testRecoveryResumesRunningJobsRetriesFailedJobsAndRecordsInAppNotificationHistory() async throws {
+final class IntelligenceJobRecoveryServiceTests: XCTestCase {
+    func testRecoveryResumesRunningJobsAndRetriesFailedJobsWithoutExecutingBackgroundOperations() async throws {
         let fixture = makeRepositoryFixture()
         let repository = fixture.repository
         let now = Date(timeIntervalSince1970: 1_800_200_000)
@@ -17,15 +17,6 @@ final class AppIntelligenceRecoveryServiceTests: XCTestCase {
                 artifacts: [.text(title: "Recovery source", body: "Recovery should re-run this pipeline job.")]
             )
         )
-        let questionAnchorMemory = try await repository.createMemory(
-            from: MemoryCaptureDraft(
-                title: "Question anchor",
-                rawText: "Keep this memory as the source for daily question intent preparation.",
-                captureSource: .composer,
-                artifacts: [.text(title: "Question anchor", body: "Keep this memory as the source for daily question intent preparation.")]
-            )
-        )
-
         let runningJob = IntelligenceJob(
             kind: .postAnalysis,
             targetType: .record,
@@ -63,44 +54,26 @@ final class AppIntelligenceRecoveryServiceTests: XCTestCase {
         try repository.upsertIntelligenceJob(retryableFailedJob)
         try repository.upsertIntelligenceJob(exhaustedFailedJob)
 
-        let question = ClarificationQuestion(
-            kind: .dailyReflection,
-            prompt: "What should Mory ask today?",
-            targetType: .record,
-            targetID: questionAnchorMemory.id,
-            sourceRecordIDs: [questionAnchorMemory.id],
-            priority: 0.8,
-            reason: "Prepared before app relaunch.",
-            createdAt: now
-        )
-        try repository.upsertClarificationQuestion(question)
-
-        let service = AppIntelligenceRecoveryService(
+        let service = IntelligenceJobRecoveryService(
             maxRetryAttempts: 3,
             baseRetryDelay: 60
         )
 
-        let report = await service.recoverAfterLaunch(
+        let report = try service.recoverUnfinishedJobs(
             repository: repository,
-            cloudIntelligenceService: RecoveryMockCloudIntelligenceService(),
             now: now
         )
 
         XCTAssertEqual(report.resumedRunningJobIDs, [runningJob.id])
         XCTAssertEqual(report.retriedFailedJobIDs, [retryableFailedJob.id])
         XCTAssertEqual(report.abandonedFailedJobIDs, [exhaustedFailedJob.id])
-        XCTAssertTrue(report.workerReport.completedJobIDs.contains(runningJob.id))
-        XCTAssertEqual(report.notificationReport.inAppOnlyIntentIDs.count, 1)
-        let storedNotification = try XCTUnwrap(repository.fetchNotificationIntents(status: .inAppOnly, limit: nil).first)
-        XCTAssertTrue(
-            [.dailyQuestion, .analysisReady].contains(storedNotification.kind),
-            "Expected in-app notification history to record either daily question or analysis-ready intent."
-        )
+        XCTAssertTrue(try repository.fetchNotificationIntents(status: .inAppOnly, limit: nil).isEmpty)
 
         let jobs = try repository.fetchIntelligenceJobs(status: nil, limit: nil)
         let resumed = try XCTUnwrap(jobs.first { $0.id == runningJob.id })
-        XCTAssertEqual(resumed.status, .completed)
-        XCTAssertNotNil(resumed.completedAt)
+        XCTAssertEqual(resumed.status, .pending)
+        XCTAssertNil(resumed.startedAt)
+        XCTAssertNil(resumed.completedAt)
 
         let retried = try XCTUnwrap(jobs.first { $0.id == retryableFailedJob.id })
         XCTAssertEqual(retried.status, .pending)

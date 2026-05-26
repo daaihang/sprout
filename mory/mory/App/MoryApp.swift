@@ -12,6 +12,7 @@ struct MoryApp: App {
     private let cloudIntelligenceService: any CloudIntelligenceServing
     private let remotePushSyncService: any RemotePushSyncing
     private let notificationOrchestrator: NotificationOrchestrator
+    private let backgroundOperationOrchestrator: BackgroundOperationOrchestrator
     private let credentialStore: KeychainCredentialStore
     private let runtimeEnvironment: AppRuntimeEnvironment
     private let ownerScopedSystemStateCoordinator = MoryOwnerScopedSystemStateCoordinator()
@@ -36,16 +37,23 @@ struct MoryApp: App {
         self.credentialStore = credentialStore
         self.runtimeEnvironment = runtimeEnvironment
         self.analysisService = analysisService
-        cloudIntelligenceService = RemoteCloudIntelligenceClient(
+        let cloudIntelligenceService = RemoteCloudIntelligenceClient(
             apiClient: client,
             tokenProvider: tokenProvider
         )
+        self.cloudIntelligenceService = cloudIntelligenceService
         let remotePushSyncService = RemotePushSyncService(
             apiClient: client,
             tokenProvider: tokenProvider
         )
         self.remotePushSyncService = remotePushSyncService
-        notificationOrchestrator = .live(remotePushSyncService: remotePushSyncService)
+        let notificationOrchestrator = NotificationOrchestrator.live(remotePushSyncService: remotePushSyncService)
+        self.notificationOrchestrator = notificationOrchestrator
+        backgroundOperationOrchestrator = .live(
+            cloudIntelligenceService: cloudIntelligenceService,
+            notificationOrchestrator: notificationOrchestrator,
+            remotePushSyncService: remotePushSyncService
+        )
         _authManager = State(initialValue: AuthSessionManager(
             credentialStore: credentialStore,
             apiClient: client
@@ -159,6 +167,7 @@ struct MoryApp: App {
                 .environment(\.cloudIntelligenceService, cloudIntelligenceService)
                 .environment(\.remotePushSyncService, remotePushSyncService)
                 .environment(\.notificationOrchestrator, notificationOrchestrator)
+                .environment(\.backgroundOperationOrchestrator, backgroundOperationOrchestrator)
                 .environment(\.localDataDiagnostics, localDataSession.diagnostics)
                 .modelContainer(localDataSession.modelContainer)
             } else {
@@ -168,7 +177,8 @@ struct MoryApp: App {
                             ownerID: ownerID,
                             analysisService: analysisService,
                             cloudIntelligenceService: cloudIntelligenceService,
-                            notificationOrchestrator: notificationOrchestrator
+                            notificationOrchestrator: notificationOrchestrator,
+                            backgroundTriggerDispatcher: backgroundOperationOrchestrator
                         )
                         await ownerScopedSystemStateCoordinator.prepareActiveOwner(
                             ownerID: ownerID,
@@ -177,9 +187,7 @@ struct MoryApp: App {
                         )
                         appDelegate.backgroundTaskCoordinator.configure(
                             repository: session.memoryRepository,
-                            cloudService: cloudIntelligenceService,
-                            remotePushSyncService: remotePushSyncService,
-                            notificationOrchestrator: notificationOrchestrator
+                            backgroundOrchestrator: backgroundOperationOrchestrator
                         )
                         appDelegate.backgroundTaskCoordinator.scheduleIfNeeded()
                         localDataSession = session

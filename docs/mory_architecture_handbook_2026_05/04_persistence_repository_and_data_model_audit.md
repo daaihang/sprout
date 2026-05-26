@@ -100,7 +100,7 @@ sequenceDiagram
     participant Repo as MoryMemoryRepository
     participant Builder as MemoryCaptureArtifactBuilder
     participant Store as SwiftData
-    participant Pipe as ArchitecturePipelineExecutor
+    participant Pipe as AnalysisExecutor
 
     Feature->>Repo: createMemory(draft)
     Repo->>Builder: buildArtifacts

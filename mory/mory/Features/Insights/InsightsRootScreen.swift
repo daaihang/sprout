@@ -42,7 +42,7 @@ struct InsightsRootScreen: View {
                 Text("insights.hub.footer")
             }
 
-            Section("v7 Review") {
+            Section("Analysis Review") {
                 NavigationLink {
                     GraphDeltaReviewView()
                         .moryHidesTabChrome()

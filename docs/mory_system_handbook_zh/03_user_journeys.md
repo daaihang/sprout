@@ -135,18 +135,20 @@ flowchart TD
 ```mermaid
 flowchart TD
     A["后台触发：启动 / 前台 / BGTask / silent push / pipeline 完成"] --> B["BackgroundOperationOrchestrator 记录运行和 operation events"]
-    B --> C["NotificationOrchestrator 生成候选、去重、policy"]
-    C --> D["本地通知或远程推送"]
-    D --> E["用户点击通知"]
-    E --> F["回到问题、回顾或相关记忆"]
-    F --> G["用户回答后反哺长期模型"]
+    B --> C["BackgroundReminderRouting port"]
+    C --> D["NotificationOrchestrator 生成候选、去重、policy"]
+    D --> E["本地通知或远程推送"]
+    E --> F["用户点击通知"]
+    F --> G["回到问题、回顾或相关记忆"]
+    G --> H["用户回答后反哺长期模型"]
 ```
 
 用户体验重点：
 
 - 通知不应该只是提醒打开 App，而应该带用户回到一个明确任务。
 - 用户回答问题后，Mory 应该记住这次修正。
-- 通知生成只能从 `NotificationOrchestrator` 出来；后台只负责决定何时触发、执行哪些 operation、记录运行。
+- 通知生成只能从 `NotificationOrchestrator` 出来；后台只负责决定何时触发、执行哪些 operation、记录运行，并通过 Background-facing port 调用通知域。
+- 分析、GraphDelta、画像刷新、问题生成等 job 业务属于 Intelligence/Jobs，不属于 Background。
 - 后台日志是诊断/运行状态，不是记忆事实；它存入 owner-scoped JSON/UserDefaults，而不是 SwiftData 记忆 schema。
 
 当前差距：

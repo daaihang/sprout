@@ -111,9 +111,6 @@ struct NotificationManagementView: View {
                 .disabled(isWorking)
 
                 Menu {
-                    Button("Run background trigger") {
-                        Task { await runBackgroundTrigger() }
-                    }
                     Button("Run debug test notification") {
                         Task { await runDebugTestNotification() }
                     }
@@ -224,17 +221,6 @@ struct NotificationManagementView: View {
     }
 
     @MainActor
-    private func runBackgroundTrigger() async {
-        await perform("Background trigger") {
-            let report = try await notificationOrchestrator.orchestrate(
-                trigger: .backgroundRefresh,
-                repository: memoryRepository
-            )
-            return reportSummary(report)
-        }
-    }
-
-    @MainActor
     private func runDebugTestNotification() async {
         await perform("Debug test") {
             let intent = NotificationIntent(
@@ -267,7 +253,7 @@ struct NotificationManagementView: View {
                 repository: memoryRepository,
                 force: true
             )
-            return "Requested APNs registration sync."
+            return "Remote registration sync requested."
         }
     }
 

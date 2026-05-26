@@ -128,6 +128,18 @@ protocol ExternalCaptureRepositorying {
 }
 
 @MainActor
+protocol BackgroundOperationRepositorying {
+    func fetchBackgroundOperationRuns(status: BackgroundOperationStatus?, limit: Int?) throws -> [BackgroundOperationRun]
+    func fetchBackgroundOperationEvents(runID: UUID?, limit: Int?) throws -> [BackgroundOperationEvent]
+    func upsertBackgroundOperationRun(_ run: BackgroundOperationRun) throws
+    func upsertBackgroundOperationEvent(_ event: BackgroundOperationEvent) throws
+}
+
+@MainActor
+protocol BackgroundRuntimeRepositorying:
+    BackgroundOperationRepositorying {}
+
+@MainActor
 protocol MemoryDebugRepositorying {
     func fetchDebugDiagnostics(targetType: DebugAnalysisTarget, targetID: UUID?) throws -> DebugDiagnosticsSnapshot
     func rerunDebugPipeline(targetType: DebugAnalysisTarget, targetID: UUID?, mode: DebugRebuildMode) async throws
@@ -183,11 +195,6 @@ protocol IntelligenceJobRepositorying:
     NotificationPreparationRepositorying {}
 
 @MainActor
-protocol AppIntelligenceRecoveryRepositorying:
-    IntelligenceRecoveryRepositorying,
-    IntelligenceJobRepositorying {}
-
-@MainActor
 protocol MoryMemoryRepositorying:
     MemoryCaptureRepositorying,
     MemoryLibraryRepositorying,
@@ -195,13 +202,14 @@ protocol MoryMemoryRepositorying:
     MemoryIntelligenceRepositorying,
     MemorySettingsRepositorying,
     ExternalCaptureRepositorying,
+    BackgroundOperationRepositorying,
+    BackgroundRuntimeRepositorying,
     MemoryDebugRepositorying,
     AnalysisContextPackRepositorying,
     NotificationPreparationRepositorying,
     DailyQuestionRepositorying,
     IntelligenceRecoveryRepositorying,
     IntelligenceJobRepositorying,
-    AppIntelligenceRecoveryRepositorying,
     NotificationIntentRepositorying {}
 
 protocol ReflectionAnalysisServing: Sendable {

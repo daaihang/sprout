@@ -37,7 +37,7 @@ Current iOS data-flow status:
 - Local notification scheduling now has a mockable iOS scheduler and `UNUserNotificationCenter` adapter. Foreground Home refresh can schedule pending intents when permission already exists, without prompting.
 - Notification opt-in now has a basic settings path: user preferences can request system authorization, enable daily-question notification defaults, update per-type switches, and cancel pending/scheduled local intents when disabled.
 - Local notification interactions now support concrete deep-link routes for the first V6 surfaces: daily question opens can push a specific question card, record targets can push memory detail, artifact targets can resolve back to the parent memory detail, and chapter/reflection/entity-family targets can push the corresponding Insights detail screen.
-- App launch now runs a lightweight recovery pass: `running` intelligence jobs are reset to `pending`, retryable `failed` jobs are rescheduled with bounded backoff, unified notification-intent preparation is attempted, and pending local notification intents are scheduled when permission already exists.
+- App launch now enters `BackgroundOperationOrchestrator`, which records the run, delegates retry/resume bookkeeping to `IntelligenceJobRecoveryService`, and routes notification preparation through the notification domain without passive permission prompts.
 - The iOS intelligence worker now executes the first expanded recovered job kinds: entity enrichment, clarification question generation, graph delta application, chapter candidate generation, notification intent preparation, semantic indexing, daily question preparation, and local notification scheduling.
 - Go now has production APNs token-auth client wiring and a server-side scheduled delivery loop. Remaining Phase 5/6 work is real credential deployment, production observability, and polished settings UX.
 
@@ -58,7 +58,7 @@ Current implementation boundary:
 - `LocalNotificationScheduler` can schedule pending local intents and mark them `scheduled`.
 - `NotificationSettingsService` stores user notification preferences separately from rollout flags and system authorization.
 - `NotificationInteractionService` resolves local notification metadata, updates delivered/dismissed state, and maps open events to a tab plus optional concrete route.
-- `AppIntelligenceRecoveryService` owns launch-time retry/resume bookkeeping and notification preparation recovery.
+- `IntelligenceJobRecoveryService` owns launch-time retry/resume bookkeeping under `Infrastructure/Intelligence/Jobs`; `BackgroundOperationOrchestrator` owns the app-launch trigger and run/event record.
 - Permission prompts are only available from the settings opt-in path, not from passive Home refresh.
 
 Remote notification path:

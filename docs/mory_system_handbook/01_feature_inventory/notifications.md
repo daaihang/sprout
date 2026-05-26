@@ -34,7 +34,10 @@ Mory should remind users only when there is useful context: daily question, anal
 flowchart LR
     A["App launch / foreground / BGTask / silent push / pipeline completed"] --> BG["BackgroundOperationOrchestrator"]
     BG --> R["Owner-scoped BackgroundOperationDefaultsStore / in-memory test store"]
-    BG --> B["NotificationOrchestrator"]
+    BG --> P["BackgroundReminderRouting port"]
+    P --> B["NotificationOrchestrator"]
+    BG --> J["BackgroundJobProcessing/Recovering ports"]
+    J --> K["Intelligence/Jobs"]
     B --> C["NotificationIntentStore / history"]
     B --> L["NotificationManagementEventStore"]
     B --> D["LocalNotificationScheduler"]
@@ -62,7 +65,8 @@ flowchart LR
   - Dedupe: dedupe key hits and source trigger.
   - Errors: policy block, delivery error, route error.
 - Local/APNs actions on that page call the formal orchestrator and push sync services. They do not create side-channel intents.
-- App launch, scene foreground, APNs token changes, notification preference changes, BGTask callbacks, silent push, background URLSession, and pipeline completion now enter `BackgroundOperationOrchestrator` first. Notification generation still happens only through `NotificationOrchestrator`.
+- App launch, scene foreground, APNs token changes, notification preference changes, BGTask callbacks, silent push, background URLSession, and pipeline completion now enter `BackgroundOperationOrchestrator` first. Notification generation still happens only through `NotificationOrchestrator`, reached through a Background-facing reminder routing port.
+- Intelligence jobs and recovery live in `Infrastructure/Intelligence/Jobs`; Background records and schedules their execution but does not own GraphDelta, question generation, profile refresh, or analysis implementation.
 - Background operation logs are diagnostic state, not memory facts: they are stored in an owner-scoped JSON/UserDefaults store with an in-memory test fallback, so early app startup does not mutate the SwiftData memory schema.
 - Real-device timing and BGTask scheduling remain validation gaps.
 

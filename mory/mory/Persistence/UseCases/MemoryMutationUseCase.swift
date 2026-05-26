@@ -318,8 +318,12 @@ struct MemoryMutationUseCase {
             ) {
                 await repository.indexMemoryIfPossible(summary)
             }
-            _ = try? await repository.notificationOrchestrator.orchestrate(
-                trigger: .pipelineCompleted(recordID: recordID),
+            _ = await repository.backgroundTriggerDispatcher?.handle(
+                trigger: BackgroundTrigger(
+                    kind: .pipelineCompleted,
+                    targetID: recordID,
+                    source: "MemoryMutationUseCase.refreshMemoryPipeline"
+                ),
                 repository: repository,
                 now: completedAt
             )

@@ -69,7 +69,7 @@ struct NotificationSettingsService {
 
     func updatePreferences(
         repository: any MoryMemoryRepositorying,
-        notificationOrchestrator: NotificationOrchestrator,
+        notificationOrchestrator _: NotificationOrchestrator,
         now: Date = .now,
         requestSystemAuthorization: Bool = false,
         mutation: (inout IntelligencePreferences) -> Void
@@ -92,11 +92,7 @@ struct NotificationSettingsService {
         let notificationReport: NotificationOrchestrationReport
         if preferences.notificationPreferences.enabled {
             cancellationReport = .empty
-            notificationReport = try await notificationOrchestrator.orchestrate(
-                trigger: .settingsChanged,
-                repository: repository,
-                now: now
-            )
+            notificationReport = .empty
         } else {
             cancellationReport = try await scheduler.cancelPendingAndScheduledLocalIntents(
                 repository: repository,

@@ -1,7 +1,7 @@
 import Foundation
 import OSLog
 
-private let log = Logger(subsystem: "com.mory", category: "intelligence")
+private let log = Logger(subsystem: "com.mory", category: "intelligence.jobs")
 
 struct IntelligenceJobWorkerReport: Hashable, Sendable {
     var completedJobIDs: [UUID] = []
@@ -15,25 +15,30 @@ struct IntelligenceJobWorkerReport: Hashable, Sendable {
 struct IntelligenceJobWorker {
     private let clarificationQuestionBuilder: ClarificationQuestionBuilder
     private let graphDeltaApplier: GraphDeltaApplier
+    private let cloudIntelligenceService: (any CloudIntelligenceServing)?
+    private let notificationOrchestrator: NotificationOrchestrator?
 
     init(
         clarificationQuestionBuilder: ClarificationQuestionBuilder? = nil,
-        graphDeltaApplier: GraphDeltaApplier? = nil
+        graphDeltaApplier: GraphDeltaApplier? = nil,
+        cloudIntelligenceService: (any CloudIntelligenceServing)? = nil,
+        notificationOrchestrator: NotificationOrchestrator? = nil
     ) {
         self.clarificationQuestionBuilder = clarificationQuestionBuilder ?? ClarificationQuestionBuilder()
         self.graphDeltaApplier = graphDeltaApplier ?? GraphDeltaApplier()
+        self.cloudIntelligenceService = cloudIntelligenceService
+        self.notificationOrchestrator = notificationOrchestrator
     }
 
     func processDueJobs(
         repository: any IntelligenceJobRepositorying,
         cloudIntelligenceService: any CloudIntelligenceServing,
-        remotePushSyncService: (any RemotePushSyncing)? = nil,
         notificationOrchestrator: NotificationOrchestrator? = nil,
         now: Date = .now,
         limit: Int = 24
     ) async -> IntelligenceJobWorkerReport {
         var report = IntelligenceJobWorkerReport()
-        let resolvedOrchestrator = notificationOrchestrator ?? .localDelivery
+        let resolvedOrchestrator = notificationOrchestrator ?? self.notificationOrchestrator ?? .localDelivery
 
         let flags: V6FeatureFlags
         do {
@@ -73,7 +78,6 @@ struct IntelligenceJobWorker {
                     running,
                     repository: repository,
                     cloudIntelligenceService: cloudIntelligenceService,
-                    remotePushSyncService: remotePushSyncService,
                     notificationOrchestrator: resolvedOrchestrator,
                     now: now,
                     report: &report
@@ -101,7 +105,6 @@ struct IntelligenceJobWorker {
         _ runningJob: IntelligenceJob,
         repository: any IntelligenceJobRepositorying,
         cloudIntelligenceService: any CloudIntelligenceServing,
-        remotePushSyncService: (any RemotePushSyncing)?,
         notificationOrchestrator: NotificationOrchestrator,
         now: Date,
         report: inout IntelligenceJobWorkerReport
@@ -607,6 +610,36 @@ struct IntelligenceJobWorker {
 
     private func isoDateString(from date: Date) -> String {
         ISO8601DateFormatter().string(from: date)
+    }
+}
+
+extension IntelligenceJobWorker: BackgroundJobProcessing {
+    func processBackgroundJobs(
+        repository: any IntelligenceJobRepositorying,
+        now: Date,
+        limit: Int
+    ) async -> BackgroundOperationOutcome {
+        guard let cloudIntelligenceService else {
+            return .skipped(message: "Cloud intelligence service unavailable.")
+        }
+
+        let report = await processDueJobs(
+            repository: repository,
+            cloudIntelligenceService: cloudIntelligenceService,
+            now: now,
+            limit: limit
+        )
+        let counts = [
+            "completed": report.completedJobIDs.count,
+            "failed": report.failedJobIDs.count,
+            "unsupported": report.unsupportedJobIDs.count,
+            "questions": report.preparedQuestionCount,
+            "notifications": report.scheduledNotificationCount,
+        ]
+        guard report.failedJobIDs.isEmpty else {
+            return .failed(error: "Failed jobs: \(report.failedJobIDs.count)", resultCounts: counts)
+        }
+        return .completed(resultCounts: counts)
     }
 }
 

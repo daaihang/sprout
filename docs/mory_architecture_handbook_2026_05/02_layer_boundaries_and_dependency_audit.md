@@ -37,7 +37,7 @@ flowchart TD
 | 层 | 当前状态 | 评价 |
 | --- | --- | --- |
 | Domain | 没有直接导入 SwiftData/SwiftUI；包含模型和 repository protocol | 基础方向正确，但 `MemoryFeatureModels.swift` 过载 |
-| Infrastructure | 连接 Analysis、Context、Notifications、Networking、Auth、Search | 职责合理，但 pipeline 层直接依赖 SwiftData |
+| Infrastructure | 连接 Analysis、Context、Notifications、Networking、Auth、Search | Pipeline 已通过 ports 与 SwiftData 分离；后续重点是继续拆 service/handler |
 | Persistence | SwiftData store、mapper、repository 已拆分 | 文件组织改善明显，但 repository 类型仍过大 |
 | Features | 原生 SwiftUI 页面，依赖 repository protocol | 合理，但多个 view 文件过大，部分页面直连过多功能 |
 | Debug | 大量诊断 UI 和 action | 合理存在，但 debug view 与 formatter/action 混合 |
@@ -70,23 +70,19 @@ flowchart TD
   - `DebugRepositorying`
 - App environment 可继续注入一个 composite repository，但 view/use case 只接收所需小端口。
 
-### 3.2 Pipeline 直接依赖 SwiftData
+### 3.2 Pipeline ports 已完成，repository 仍承担 adapter
 
-`ArchitecturePipelineExecutor` 在 Infrastructure/Analysis/Pipeline 下，但导入 `SwiftData` 并接收 `ModelContext`。
+`AnalysisExecutor` 在 Infrastructure/Analysis/Pipeline 下，已通过 `AnalysisPipelineQuerying`、`AnalysisPipelinePersisting`、`AnalysisPipelineTracing`、`AnalysisPipelineRuntimeScoping`、`AnalysisContextPacking` 与 SwiftData/`ModelContext` 分离。
 
 影响：
 
-- Pipeline tests 容易被 SwiftData lifecycle 影响。
-- 后台任务、mock tests、future server-side/local-model pipeline 不容易复用。
-- 分析逻辑与数据查询细节耦合。
+- Pipeline 本身已经可以用 mock ports 测试。
+- 剩余风险在 `MoryMemoryRepository` 同时作为 SwiftData-backed adapter 和 use case facade，后续功能仍可能把编排逻辑继续塞回 repository。
 
 建议：
 
-- 定义：
-  - `AnalysisPipelineQuerying`
-  - `AnalysisPipelinePersisting`
-  - `AnalysisPipelineTracing`
-- Repository 实现这些端口，pipeline 不直接碰 `ModelContext`。
+- 保持 pipeline 只依赖 ports。
+- 下一步抽 `MemoryCreationService`、`MemoryMutationService`、`ExternalCaptureImportService` 等 use case service，逐步减轻 repository facade。
 
 ### 3.3 ExternalCaptureShared 同时做合同和 IO
 
@@ -126,7 +122,7 @@ Go server 的 `handlers.go` 和 `sqlite.go` 文件超过 1000 行，当前还可
 
 - HTTP handlers 按 auth/analyze/reflection/push/subscription/eval 拆文件。
 - SQLite store 按 push token、push delivery、user profile、migration 拆文件。
-- AI provider 按 legacy/v6/v7 prompt path 继续拆。
+- AI provider 按 Analysis、Reflection 和其他 intelligence operation 继续拆。
 
 ## 4. 允许依赖矩阵
 
@@ -143,7 +139,7 @@ Go server 的 `handlers.go` 和 `sqlite.go` 文件超过 1000 行，当前还可
 ## 5. 解决方案路线
 
 1. 先拆 repository protocol，不急着继续拆文件。
-2. 给 Analyze pipeline 增加 ports，移除 `ModelContext` 直接依赖。
+2. 维持 Analysis pipeline ports 边界，继续抽 use case service，避免 `ModelContext` 编排回流。
 3. 将 ExternalCaptureShared 纯合同化，把 attachment IO 分文件。
 4. Debug 继续保留，但拆 view、action、formatter。
 5. Server 在新增 v8 API 前先拆 handler/db 大文件。

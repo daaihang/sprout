@@ -59,7 +59,7 @@ Completion evidence:
 - `SelfReferenceResolver`, `AnalysisContextPack`, `ContextPackBuilder`, `ContextRanker`, `ContextBudgeter`, and `PrivacyGate` are implemented as Phase 1 local runtime services.
 - Debug Center includes an `Analysis Context Pack` viewer for latest-memory pack inspection.
 - Phase 1 tests cover self-reference, repository roundtrip, ranking, privacy drop, semantic-disabled fallback, and budget cap behavior.
-- Analyze payload and cloud contracts remained unchanged in Phase 1; the context pack became inspectable locally first and is consumed by production Analyze v7 as of Phase 5 production replacement.
+- Analyze payload and cloud contracts remained unchanged in Phase 1; the context pack became inspectable locally first and is consumed by production Analysis as of Phase 5 production replacement.
 
 ## Phase 2: Entity Resolution + GraphDelta v2
 
@@ -127,7 +127,7 @@ Completion evidence:
 - deleting source memories invalidates stale person profile evidence and removes profiles that no longer have sources unless the user has explicitly retained or edited them.
 - Debug Center includes a data-only `Person Profiles` inspector with refresh and cloud-safe brief inspection.
 - sensitive and cloud-hidden profiles are redacted by `PersonProfileContextBrief` before future cloud context usage.
-- Cloud AI portrait proposals and formal polished profile UI remain outside Phase 3; Analyze v7 payload consumption is implemented in Phase 5.
+- Cloud AI portrait proposals and formal polished profile UI remain outside Phase 3; Analysis payload consumption is implemented in Phase 5.
 
 ## Phase 4: Structured Mood + Context Sources
 
@@ -164,7 +164,7 @@ Completion evidence:
 - Debug Center includes a data-only `Affect Snapshots` inspector for persisted affect, correction events, and Journaling Suggestions fallback state.
 - Apple Journaling Suggestions entitlement, real system picker UI, App Intents, and Share extension remain outside Phase 4 and continue as post-v7 product/platform work. Cloud Analyze consumption is implemented in Phase 5.
 
-## Phase 5: Analyze v7 Contract + Context-Aware Reflection
+## Phase 5: Analysis Contract + Context-Aware Reflection
 
 Goal:
 
@@ -172,7 +172,7 @@ Goal:
 
 Deliverables:
 
-- `/api/analyze/v7`,
+- `/api/analyze`,
 - v7 request/response models,
 - proposal-first response mapper,
 - context-aware reflection/proposal contract,
@@ -188,9 +188,9 @@ Tests:
 
 Completion evidence:
 
-- iOS has `AnalyzeV7RequestPayload`, `AnalyzeV7ResponseEnvelope`, and `AnalyzeV7ResponseMapper` for bounded context-pack and structured mood transport.
-- iOS new-memory analysis builds an `AnalysisContextPack`, sends `/api/analyze/v7`, treats the mapped v7 analysis as authoritative, and no longer calls legacy `analysisService.analyze(...)` in the production pipeline.
-- Server exposes `/api/analyze/v7`, validates schema version 7, forwards context evidence into a provider-native v7 prompt/parser path, and returns analysis plus proposal-first v7 output.
+- iOS has `AnalysisRequestPayload`, `AnalysisResponseEnvelope`, and `AnalysisResponseMapper` for bounded context-pack and structured mood transport.
+- iOS new-memory analysis builds an `AnalysisContextPack`, sends `/api/analyze`, treats the mapped Analysis response as authoritative, and no longer calls legacy `analysisService.analyze(...)` in the production pipeline.
+- Server exposes `/api/analyze`, validates the unified Analysis payload, forwards context evidence into a provider-native Analysis prompt/parser path, and returns analysis plus proposal-first Analysis output.
 - v7 proposals are persisted locally through policy/staging boundaries: affect snapshots, graph deltas, arc candidates, reflection candidates, and question candidates.
 - v7 quality flags identify thin context, insufficient longitudinal evidence, privacy redaction, missing structured mood evidence, and tone checks.
 - Contract tests cover request payload privacy/budget contents, proposal mapping, low-context decode behavior, and server route metadata.
@@ -221,10 +221,12 @@ Tests:
 
 Completion evidence:
 
-- `BackgroundTaskCoordinator` registers `BGProcessingTask` (ID: `dev.mory.intelligence.process`) and `BGAppRefreshTask` (ID: `dev.mory.intelligence.refresh`) before first runloop via `MoryAppDelegate`.
+- `BackgroundOperationOrchestrator` is the single background entry for app launch, scene/home foreground, BGTask, silent push, pipeline completion, APNs token updates, notification preference changes, background URLSession completion, and debug manual triggers.
+- `BackgroundTaskCoordinator` registers `BGProcessingTask` (ID: `dev.mory.intelligence.process`) and `BGAppRefreshTask` (ID: `dev.mory.intelligence.refresh`) before first runloop via `MoryAppDelegate`, then delegates work to `BackgroundOperationOrchestrator`.
+- `BackgroundOperationOrchestrator` only owns trigger mapping and run/event logging. Intelligence job recovery/processing lives under `Infrastructure/Intelligence/Jobs`; notification generation remains inside `NotificationOrchestrator`; push sync remains in the notification/push adapter.
 - `NotificationDeliveryRouter` routes `NotificationIntent` to `.local` or `.remote` channel based on APNS token presence in `PushDeviceRegistrationStore`.
-- `BackgroundURLSessionInfrastructure` provides `BackgroundURLSessionCompletionStore`, `BackgroundURLSessionDelegate`, and a `MoryAPIClient.backgroundSession` static lazy property.
-- `MoryAppDelegate` handles silent push `didReceiveRemoteNotification` and `handleEventsForBackgroundURLSession` callbacks.
+- `BackgroundURLSessionInfrastructure` provides `BackgroundURLSessionCompletionStore`, `BackgroundURLSessionDelegate`, and a `MoryAPIClient.backgroundSession` static lazy property under `Infrastructure/Background`.
+- `MoryAppDelegate` handles silent push `didReceiveRemoteNotification` and `handleEventsForBackgroundURLSession` callbacks as a thin adapter into the background domain.
 - `Info.plist` includes `UIBackgroundModes: [fetch, processing]` and `BGTaskSchedulerPermittedIdentifiers` with both task IDs.
 - Tests: `BackgroundTaskCoordinatorTests` (4 tests: nil-before-configure, configure stores repo, scheduleIfNeeded no-crash, reconfigure) and `NotificationDeliveryRouterTests` (2 tests: local channel when no token, remote channel when token present).
 
@@ -257,7 +259,7 @@ Completion evidence:
 - `AnalysisContextPackTests`, `EntityResolutionServiceTests`, and `AffectSnapshotTests` cover context ranking/budget/privacy, self-reference CJK edge cases, not-same blocking, Chinese name matching, and note-less affect correction.
 - `DebugAnalysisContextPackView`, `DebugAffectSnapshotView`, `DebugClarificationQuestionsView`, and Debug Center actions expose context payloads, affect snapshots, clarification answers/dismissal, pending GraphDelta application, BGTask scheduling, and notification traces for development inspection.
 - `NotificationOrchestratorTests`, `NotificationDeliveryRouterTests`, `LocalNotificationSchedulerTests`, `NotificationSettingsServiceTests`, `NotificationInteractionServiceTests`, and `BackgroundTaskCoordinatorTests` cover trigger orchestration, dedupe, single-pass policy, local/APNs routing, writeback, and BGTask scheduling boundaries.
-- Privacy gates remain local-first: context packs are budgeted, sensitive records can be redacted/dropped, Analyze v7 is proposal-based, and AI output does not directly mutate trusted graph state.
+- Privacy gates remain local-first: context packs are budgeted, sensitive records can be redacted/dropped, Analysis is proposal-based, and AI output does not directly mutate trusted graph state.
 - Native product wiring exists (without visual polish): `GraphDeltaReviewView`, `MemoryIntelligenceSettingsView`, `PersonProfileEditView`, `PersonMergeSplitView`, `StructuredMoodPickerSheet`, `JournalingSuggestionImportView`, and `ExternalCaptureDraftReviewView` are connected from Insights, Settings, People, Capture, and Debug entries.
 - External capture now has a durable pending inbox: App Intent, Share, and Journaling-originated drafts can be queued as `ExternalCaptureInboxItem`, inspected from Settings/Debug, and imported through the normal memory creation path.
 - v7 documentation now separates the completed architecture/debug/test baseline from post-v7 production release hardening.
@@ -266,14 +268,14 @@ Completion evidence:
 
 Goal:
 
-- stabilize the production Analyze v7 graph pipeline before adding new platform surfaces.
+- stabilize the production Analysis graph pipeline before adding new platform surfaces.
 
 Completion evidence:
 
-- `ArchitecturePipelineExecutor` now merges `GraphUpdater` analysis output with `PlaceProfileResolver` output before persistence.
+- `AnalysisExecutor` now merges `GraphUpdater` analysis output with `PlaceProfileResolver` output before persistence.
 - the production pipeline persists the complete graph view: `EntityNode`, `EntityEdge`, and `ArtifactEntityLink` from both analysis and place resolution.
 - local temporal arc/reflection candidate building and promotion use the same complete graph view, so people/themes/decisions from text-only analysis are not dropped when no location artifact exists.
-- `MoryMemoryRepositoryCompositionTests` now inject v7 cloud stubs by default, preserving hard cutover coverage instead of relying on legacy `RecordAnalysisServing`.
+- `MoryMemoryRepositoryCompositionTests` now inject v7 cloud stubs by default, preserving hard cutover coverage instead of relying on legacy `ReflectionAnalysisServing`.
 - regression coverage verifies text-only v7 analysis persists non-place entities, analysis links, and graph edges.
 
 ## Overall Phase Status
@@ -281,11 +283,11 @@ Completion evidence:
 | Phase | Current status | Gap |
 | --- | --- | --- |
 | Phase 0 | completed | docs/gap matrix completed; implementation starts at Phase 1 |
-| Phase 1 | completed | local SelfProfile persistence and inspectable context pack skeleton are implemented; production Analyze v7 consumes the context pack as of Phase 5 |
+| Phase 1 | completed | local SelfProfile persistence and inspectable context pack skeleton are implemented; production Analysis consumes the context pack as of Phase 5 |
 | Phase 2 | completed | entity resolution foundation, correction ledger, and person merge/split mutation are implemented; proposal consumption and cloud-context integration continue in Phase 5 |
 | Phase 3 | completed | local PersonProfile persistence, deterministic portrait refresh jobs, mutation actions, evidence invalidation, and debug inspection are implemented; cloud AI portrait proposals remain Phase 5 |
 | Phase 4 | completed | local structured affect persistence, correction events, context-pack affect history, Journaling draft mapping, and external capture handoff foundation are implemented; real Apple picker entitlement and Share Extension paths are implemented as v7.2 platform work |
-| Phase 5 | completed | production new-memory analysis is hard-cut over to Analyze v7 with context pack payloads, native server proposal output, local proposal persistence, and no legacy Analyze fallback |
+| Phase 5 | completed | production new-memory analysis is hard-cut over to Analysis with context pack payloads, native server proposal output, local proposal persistence, and no legacy Analyze fallback |
 | Phase 6 | completed | BGTask (BGProcessingTask + BGAppRefreshTask) + BackgroundURLSession + NotificationDeliveryRouter + silent push handler implemented; tests in BackgroundTaskCoordinatorTests + NotificationDeliveryRouterTests |
 | Phase 7 | completed | eval fixtures, debug surfaces, privacy/budget gates, graph-delta apply inspection, clarification question inspection, BGTask/router tests, affect correction eval, and docs/code status reconciliation are complete; real-user telemetry and public release privacy review are post-v7 production hardening |
 | v7.1 Stabilization | completed | production graph persistence and composition test baseline are stabilized; new platform capabilities remain post-v7 hardening |
@@ -354,7 +356,7 @@ Completion evidence:
 - `ExternalCaptureShared/ExternalCaptureWireModels.swift` is the shared V2-only wire contract used by the app and Share Extension; `ExternalCaptureRequest`, `JournalingSuggestionDraft`, and `ExternalCaptureInboxItem` reject non-v2 payloads.
 - Share Extension no longer auto-closes on `viewDidAppear` or relies on a responder-chain `openURL:` hack. It presents a native confirmation page whose primary action is `Continue in Mory`: write the V2 envelope to the App Group handoff store, then immediately request `mory://external-capture?id=...&action=compose`.
 - Main app deep-link handling maps the handoff item through `ExternalCaptureDraftFactory` into `UnifiedCaptureComposerView`, so the user lands in the normal memory composer with text, URL, and image/video evidence prefilled. The recovery list is debug/diagnostics-only if iOS refuses to open the app.
-- App import paths map V2 envelopes through `ExternalCaptureDraftFactory` into the normal `MemoryCaptureDraft -> repository save -> Analyze v7` path. Link evidence becomes a link artifact instead of polluting record body text.
+- App import paths map V2 envelopes through `ExternalCaptureDraftFactory` into the normal `MemoryCaptureDraft -> repository save -> Analysis` path. Link evidence becomes a link artifact instead of polluting record body text.
 - `AppleJournalingSuggestionAdapter` maps location/location group, song/podcast/generic media, photo/video/live photo, workout/workout group/motion activity, contacts, reflection prompt, StateOfMind, and iOS 26 EventPoster into evidence items, attachments, diagnostics, and affect evidence.
 - Journaling `StateOfMind` stores only official fields (`labels`, `associations`, `valence`, `valenceClassification`, `kind`) as `journalSuggestionStateOfMind` evidence; arousal/dominance are not fabricated.
 - Focused tests cover V2-only rejection, external inbox import/mark-imported, Share image attachment import, Journaling media/StateOfMind mapping, affect snapshots, and platform diagnostics.

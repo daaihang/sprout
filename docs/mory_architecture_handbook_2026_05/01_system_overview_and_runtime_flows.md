@@ -11,7 +11,7 @@ Mory 当前由四个运行单元组成：
 | iOS App | 登录、记录、展示、分析、调试、设置、通知协调 | SwiftUI + SwiftData + platform services |
 | Share Extension | 从系统 Share Sheet 接收文本、URL、图片，写入 App Group handoff payload | 不能直接依赖 App persistence |
 | ExternalCaptureShared | App 与 extension 共用的 Codable wire contract 和附件引用 | 应保持可序列化、轻依赖 |
-| Go server | Auth、Analyze v7、AI provider、push delivery、subscription verification | HTTP API + SQLite + provider adapters |
+| Go server | Auth、Analysis、AI provider、push delivery、subscription verification | HTTP API + SQLite + provider adapters |
 
 Mory 的核心产品链路是：
 
@@ -20,8 +20,8 @@ flowchart TD
     A["User captures memory"] --> B["MemoryCaptureDraft"]
     B --> C["SwiftData RecordShell + Artifact + AffectSnapshot"]
     C --> D["AnalysisContextPackBuilder"]
-    D --> E["/api/analyze/v7"]
-    E --> F["AnalyzeV7ResponseEnvelope"]
+    D --> E["/api/analyze"]
+    E --> F["AnalysisResponseEnvelope"]
     F --> G["RecordAnalysisSnapshot"]
     F --> H["Proposals: Affect / GraphDelta / Arc / Reflection / Question"]
     G --> I["Entity graph + Arc/Reflection local promotion"]
@@ -48,7 +48,7 @@ sequenceDiagram
     App->>Auth: restore session / observe auth state
     App->>Data: create owner-scoped local data session
     Data->>Repo: inject ModelContext, analysis service, cloud service
-    App->>BG: configure repository + cloud service
+    App->>BG: configure repository + background orchestrator
     App->>Root: pass repository, auth, pending external URL
     Root->>Repo: read home, insights, settings, debug state
 ```
@@ -57,7 +57,7 @@ sequenceDiagram
 
 - 依赖注入集中在 `MoryApp`、`MoryAppDependencies`、`MoryLocalDataSession`。
 - `MoryLocalDataSession` 是 owner-scoped data vault 的关键入口。
-- `MoryMemoryRepository` 仍接收 legacy `RecordAnalysisServing`，但新建记忆生产链路已切到 `CloudIntelligenceServing.analyzeV7`。
+- `MoryMemoryRepository` 仍接收 `ReflectionAnalysisServing` 用于 reflection/replay 等路径，但新建记忆生产链路已切到 `CloudIntelligenceServing.analyzeMemory`。
 
 问题：
 
@@ -76,15 +76,15 @@ sequenceDiagram
     participant UI as UnifiedCaptureComposerView
     participant Builder as MemoryCaptureArtifactBuilder
     participant Repo as MoryMemoryRepository
-    participant Pipe as ArchitecturePipelineExecutor
-    participant Server as /api/analyze/v7
+    participant Pipe as AnalysisExecutor
+    participant Server as /api/analyze
 
     UI->>Repo: createMemory(MemoryCaptureDraft)
     Repo->>Builder: build artifacts
     Repo->>Repo: persist RecordShell, Artifact, AffectSnapshot, PipelineStatus.pending
     Repo->>Pipe: runArchitecturePipeline
     Pipe->>Repo: build AnalysisContextPack
-    Pipe->>Server: analyzeV7(payload)
+    Pipe->>Server: analyzeMemory(payload)
     Server-->>Pipe: analysis + proposals + quality
     Pipe->>Repo: persist analysis, graph nodes/edges/links, proposals
     Pipe->>Repo: promote local arcs/reflections if quality passes
@@ -184,23 +184,23 @@ flowchart TD
 - typed bundle 作为唯一正式转换入口。
 - flatten 仅限 diagnostics/export，命名上标出 `diagnosticFlattenedEvidenceItems`。
 
-## 6. Analyze v7 到 proposals 流程
+## 6. Analysis 到 proposals 流程
 
 ```mermaid
 sequenceDiagram
     participant Repo as Repository
     participant Pack as ContextPackBuilder
     participant Cloud as CloudIntelligenceClient
-    participant Server as Go /api/analyze/v7
-    participant Mapper as AnalyzeV7ResponseMapper
+    participant Server as Go /api/analyze
+    participant Mapper as AnalysisResponseMapper
     participant Policy as Local policy/staging
 
     Repo->>Pack: build(targetRecordID)
     Pack-->>Repo: bounded context pack
-    Repo->>Cloud: analyzeV7(payload)
-    Cloud->>Server: POST /api/analyze/v7
+    Repo->>Cloud: analyzeMemory(payload)
+    Cloud->>Server: POST /api/analyze
     Server-->>Cloud: analysis + proposals + quality
-    Cloud-->>Repo: AnalyzeV7ResponseEnvelope
+    Cloud-->>Repo: AnalysisResponseEnvelope
     Repo->>Mapper: map response
     Mapper-->>Repo: analysis + domain proposals
     Repo->>Policy: persist/stage proposals
@@ -214,19 +214,19 @@ sequenceDiagram
 
 问题：
 
-- `ArchitecturePipelineExecutor` 直接 import SwiftData 并接收 `ModelContext`，pipeline 和 persistence 绑定。
-- Analyze v7 request/response models 文件较大，后续 provider capability 扩展会继续增长。
+- `AnalysisExecutor` 已通过 pipeline ports 与 SwiftData 分离，但 `MoryMemoryRepository` 仍同时承担 use case 编排和 SwiftData-backed adapter 职责。
+- Analysis request/response models 文件较大，后续 provider capability 扩展会继续增长。
 
 解决方向：
 
-- 为 pipeline 引入 `AnalysisPipelineQuerying` 与 `AnalysisPipelineWriting`。
-- 将 Analyze v7 request payload、response envelope、mapper、quality/capabilities 拆为多个文件。
+- 继续把 repository 内的 use case 编排移到更小的 application services。
+- 将 Analysis request payload、response envelope、mapper、quality/capabilities 拆为多个文件。
 
 ## 7. GraphDelta 与 Correction 流程
 
 ```mermaid
 flowchart TD
-    A["Analyze v7 proposal"] --> B["GraphDeltaStore pending"]
+    A["Analysis proposal"] --> B["GraphDeltaStore pending"]
     B --> C["GraphDeltaReviewView / DebugJobQueueView"]
     C --> D{"User or debug action"}
     D -->|"Apply"| E["GraphDeltaApplier"]
@@ -253,13 +253,22 @@ flowchart TD
 flowchart TD
     A["AppDelegate / app lifecycle"] --> B["BackgroundTaskCoordinator"]
     B --> C["BGProcessingTask / BGAppRefreshTask"]
-    C --> D["IntelligenceJobWorker"]
-    D --> E["Repository jobs / graph deltas / profile refresh"]
-    D --> F["NotificationOrchestrator"]
-    F --> G["NotificationDeliveryRouter"]
-    G --> H["LocalNotificationScheduler (delivery only)"]
-    G --> I["RemotePushSyncService / APNs server"]
+    C --> D["BackgroundOperationOrchestrator"]
+    D --> E["BackgroundOperationRun/Event"]
+    D --> F["BackgroundJobProcessing port"]
+    F --> G["Intelligence/Jobs: IntelligenceJobWorker"]
+    D --> H["BackgroundReminderRouting port"]
+    H --> I["Notification domain: NotificationOrchestrator"]
+    I --> J["NotificationDeliveryRouter"]
+    J --> K["LocalNotificationScheduler (delivery only)"]
+    J --> L["RemotePushSyncService / APNs server"]
 ```
+
+边界规则：
+
+- Background 域只负责 trigger mapping、运行记录、BGTask/URLSession adapter，不拥有 analysis、GraphDelta、question generation 或 notification policy。
+- Intelligence/Jobs 域负责 job recovery、job execution、profile refresh、GraphDelta apply 和 chapter/question generation。
+- Notification 域负责 notification trigger -> dedupe -> policy -> local/remote routing；Background 只通过 reminder routing port 触发它。
 
 当前能力：
 

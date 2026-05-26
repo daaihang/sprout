@@ -12,9 +12,8 @@ struct MoryRootView: View {
     @Binding private var pendingExternalCaptureURL: URL?
 
     @Environment(\.memoryRepository) private var memoryRepository
-    @Environment(\.cloudIntelligenceService) private var cloudIntelligenceService
     @Environment(\.remotePushSyncService) private var remotePushSyncService
-    @Environment(\.notificationOrchestrator) private var notificationOrchestrator
+    @Environment(\.backgroundOperationOrchestrator) private var backgroundOperationOrchestrator
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage(MoryOnboardingStep.completionStorageKey) private var hasCompletedOnboarding = false
     @StateObject private var notificationInbox = NotificationInteractionInbox.shared
@@ -35,7 +34,6 @@ struct MoryRootView: View {
     @State private var pushSyncTask: Task<Void, Never>?
     @State private var externalCaptureTask: Task<Void, Never>?
     private let notificationInteractionService = NotificationInteractionService()
-    private let startupRecoveryService = AppIntelligenceRecoveryService()
 
     init(
         authManager: AuthSessionManager? = nil,
@@ -139,15 +137,14 @@ struct MoryRootView: View {
         .onReceive(NotificationCenter.default.publisher(for: .moryAPNSTokenDidUpdate)) { _ in
             pushSyncTask?.cancel()
             pushSyncTask = Task {
-                await remotePushSyncService.syncRegistrationIfPossible(
-                    repository: memoryRepository,
-                    force: true
-                )
+                await runBackground(trigger: BackgroundTrigger(kind: .apnsTokenUpdated, source: "NotificationCenter"))
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .moryNotificationPreferencesDidChange)) { _ in
             pushSyncTask?.cancel()
-            pushSyncTask = Task { await syncRemotePushRegistration(force: true) }
+            pushSyncTask = Task {
+                await runBackground(trigger: BackgroundTrigger(kind: .notificationPreferencesChanged, source: "NotificationCenter"))
+            }
         }
         .task {
             await recoverStartupIntelligenceIfNeeded()
@@ -171,7 +168,10 @@ struct MoryRootView: View {
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active else { return }
             externalCaptureTask?.cancel()
-            externalCaptureTask = Task { await handlePendingExternalCaptureHandoffIfNeeded() }
+            externalCaptureTask = Task {
+                await runBackground(trigger: BackgroundTrigger(kind: .sceneForeground, source: "scenePhase"))
+                await handlePendingExternalCaptureHandoffIfNeeded()
+            }
         }
     }
 
@@ -354,6 +354,14 @@ struct MoryRootView: View {
         }
     }
 
+    @MainActor
+    private func runBackground(trigger: BackgroundTrigger) async {
+        _ = await backgroundOperationOrchestrator.handle(
+            trigger: trigger,
+            repository: memoryRepository,
+        )
+    }
+
     private func startVoiceCapture() {
         let generator = UIImpactFeedbackGenerator(style: .medium)
         generator.prepare()
@@ -457,22 +465,7 @@ struct MoryRootView: View {
         guard !didRunStartupRecovery else { return }
         didRunStartupRecovery = true
 
-        _ = await startupRecoveryService.recoverAfterLaunch(
-            repository: memoryRepository,
-            cloudIntelligenceService: cloudIntelligenceService,
-            remotePushSyncService: remotePushSyncService,
-            notificationOrchestrator: notificationOrchestrator
-        )
-        remotePushSyncService.registerSystemRemoteNotificationsIfNeeded(repository: memoryRepository)
-        await syncRemotePushRegistration(force: true)
-    }
-
-    private func syncRemotePushRegistration(force: Bool) async {
-        remotePushSyncService.registerSystemRemoteNotificationsIfNeeded(repository: memoryRepository)
-        await remotePushSyncService.syncRegistrationIfPossible(
-            repository: memoryRepository,
-            force: force
-        )
+        await runBackground(trigger: BackgroundTrigger(kind: .appLaunch, source: "MoryRootView.task"))
     }
 }
 

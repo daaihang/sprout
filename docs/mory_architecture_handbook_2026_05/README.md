@@ -33,7 +33,7 @@ Mory 当前已经形成了较清晰的分层方向：
 - `Features` 承接正式 SwiftUI 页面和最小原生产品入口。
 - `Debug` 承接开发期诊断、回放、测试触发和 payload inspection。
 - `ExternalCaptureShared` 让 Share Extension 和 App 使用同一组 Codable payload。
-- Go server 已有 `/api/analyze/v7`、provider、auth、push 和 SQLite persistence。
+- Go server 已有 canonical `/api/analyze`、provider、auth、push 和 SQLite persistence。
 
 这说明 v7 的主方向没有偏离：Mory 正在从“单条记录分析器”走向“identity-aware long-term memory system”。真正的问题不再是“有没有模块”，而是：
 
@@ -49,10 +49,10 @@ Mory 当前已经形成了较清晰的分层方向：
 | --- | --- | --- | --- |
 | Critical | `MoryMemoryRepository` 仍是中心 God object | UI、Debug、Notification、Search、Graph、Capture 仍由同一个实现类型承接事务和 helper，长期维护成本高 | 第一轮 repository ports 已完成；下一步抽 use case service 和 pipeline ports |
 | Critical | `MemoryFeatureModels.swift` 聚合过多领域 | Capture、Library、Search、Graph、Timeline、Debug、Repository protocol 混在一个 Domain 文件 | 拆成业务模型包：Capture、Library、Search、GraphPresentation、RepositoryPorts |
-| Important | `ArchitecturePipelineExecutor` 直接依赖 `ModelContext` | Analysis pipeline 和 SwiftData 查询绑定，难以独立测试、替换持久层或后台执行 | 引入 pipeline query/persistence port，由 repository 或 data session 注入 |
+| Important | Repository 仍承担 pipeline adapter 和 use case facade | Analysis pipeline 已通过 ports 与 SwiftData 分离，但生产 adapter 和业务编排仍集中在 `MoryMemoryRepository` | 下一步抽 use case service，保持 pipeline 只依赖 query/persist/trace/context ports |
 | Important | Capture card 与 Debug view 文件仍过大 | 新卡片类型和新诊断面板会持续制造冲突 | 按 card type 和 debug feature 拆 view + formatter |
 | Important | `ExternalCaptureWireModels.swift` 混合合同和文件 IO | Share Extension 和 App 都依赖同一大文件，职责不够纯 | 拆成 wire models、attachment store、inbox models、Journaling bundle models |
-| Cleanup | Go server 的 handler、SQLite、provider 文件变大 | 后续 v8/v9 API 会继续堆叠 | 按 route group、store concern、provider v7 path 拆文件 |
+| Cleanup | Go server 的 handler、SQLite、provider 文件变大 | 后续 v8/v9 API 会继续堆叠 | 按 route group、store concern、provider operation 拆文件 |
 
 ## 文档目录
 
@@ -95,7 +95,7 @@ Mory 当前已经形成了较清晰的分层方向：
 - Debug 页面可以比正式页面更直连 repository，但不能拥有 durable mutation semantics。
 - External Capture 仍保留 debug/recovery inbox，正式路径应优先 handoff 到 composer。
 - Journaling Suggestions 在真机能力、entitlement、系统建议稳定性上仍需要设备验证。
-- Analyze v7 的 proposal-first 策略是正确边界，AI 输出不应直接变成 trusted graph。
+- Analysis 的 proposal-first 策略是正确边界，AI 输出不应直接变成 trusted graph。
 
 ## 验证建议
 

@@ -116,4 +116,4 @@ Each action writes a mutation/correction event and triggers recompute where need
 
 Phase 3 implements the local foundation first: persisted `PersonProfile`, deterministic evidence-backed `PersonPortrait` refresh, profile mutation actions, stale evidence invalidation, cloud-safe context briefs, and a Debug Center inspector.
 
-Cloud AI portrait proposals and Analyze v7 consumption remain Phase 5 work. The Phase 3 debug inspector is intentionally data-oriented; formal user-facing profile UI polish is a later pass.
+Cloud AI portrait proposals and Analysis consumption remain Phase 5 work. The Phase 3 debug inspector is intentionally data-oriented; formal user-facing profile UI polish is a later pass.

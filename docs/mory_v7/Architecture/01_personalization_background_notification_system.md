@@ -22,8 +22,8 @@ This document defines architecture changes for backend, AI, and notification loo
 
 Code:
 
-- `/Users/z14/Documents/sprout/mory/mory/Infrastructure/Analysis/Pipeline/AnalyzeRequestBuilder.swift`
-- `/Users/z14/Documents/sprout/mory/mory/Infrastructure/Analysis/Pipeline/ArchitecturePipelineExecutor.swift`
+- `/Users/z14/Documents/sprout/mory/mory/Infrastructure/Analysis/Pipeline/AnalysisRecordPayloadBuilder.swift`
+- `/Users/z14/Documents/sprout/mory/mory/Infrastructure/Analysis/Pipeline/AnalysisExecutor.swift`
 - `/Users/z14/Documents/sprout/server/internal/ai/types.go`
 
 ### 2.2 Daily Question Evidence Is Also Narrow
@@ -37,22 +37,25 @@ Code:
 
 - `/Users/z14/Documents/sprout/mory/mory/Infrastructure/Intelligence/DailyQuestionSuggestionService.swift`
 - `/Users/z14/Documents/sprout/mory/mory/Features/Home/HomeScreen.swift`
-- `/Users/z14/Documents/sprout/mory/mory/Infrastructure/Intelligence/AppIntelligenceRecoveryService.swift`
+- `/Users/z14/Documents/sprout/mory/mory/Infrastructure/Intelligence/Jobs/IntelligenceJobRecoveryService.swift`
+- `/Users/z14/Documents/sprout/mory/mory/Infrastructure/Intelligence/Jobs/IntelligenceJobWorker.swift`
+- `/Users/z14/Documents/sprout/mory/mory/Infrastructure/Background/BackgroundOperationOrchestrator.swift`
 
-### 2.3 Background Orchestration Is Not System-Scheduled Yet
+### 2.3 Background Orchestration Is System-Scheduled And Centrally Routed
 
-- App has launch recovery and pending job worker, but no `BGTaskScheduler` registration path.
-- No background URL session pipeline for durable AI-upload/download tasks.
+- `BackgroundTaskCoordinator` registers `BGProcessingTask` and `BGAppRefreshTask`, then delegates work to `BackgroundOperationOrchestrator`.
+- Silent push, background URLSession completion, app launch, foreground refresh, pipeline completion, APNs token updates, and notification preference changes all enter the same background orchestrator. Background records the run and calls Intelligence/Notification/Push through ports; it does not own those domains' business logic.
+- Background URLSession infrastructure exists for deferred network transport; real-device reliability validation remains required.
 
 Code signal:
 
-- no `BGTaskScheduler`, `BGAppRefreshTaskRequest`, `BGProcessingTaskRequest`, `URLSessionConfiguration.background` in app source.
+- `BGTaskScheduler`, `BGAppRefreshTaskRequest`, `BGProcessingTaskRequest`, and `URLSessionConfiguration.background` are present under `Infrastructure/Background`.
 
 ### 2.4 Remote Push Foundation Exists, But Proactive Loop Is Partial
 
 - iOS can register APNs token and sync preferences.
 - Go server can queue and deliver push intents, and write back delivery events.
-- But app-side proactive generation still depends heavily on foreground hooks.
+- App-side proactive generation is routed through the background domain; the remaining gap is real-device soak and product-level status explanation.
 
 Code:
 
@@ -82,7 +85,7 @@ Code:
 Code:
 
 - `/Users/z14/Documents/sprout/mory/mory/Domain/Capture/RecordShell.swift`
-- `/Users/z14/Documents/sprout/mory/mory/Infrastructure/Analysis/Pipeline/AnalyzeResponseMapper.swift`
+- `/Users/z14/Documents/sprout/mory/mory/Infrastructure/Analysis/Pipeline/AnalysisRecordResponseMapper.swift`
 
 ### 2.7 Daily Question Answer UX Is Limited
 

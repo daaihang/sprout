@@ -232,7 +232,7 @@ Tasks:
 - Add notification interaction handling.
   - Current implementation status: local notification payload metadata is centralized; app-level `UNUserNotificationCenterDelegate` handling records foreground delivery, open, and dismiss events; open events can deep-link to a specific daily question card, memory detail, artifact-parent memory detail, chapter candidate, reflection detail, or supported Insights entity target when the payload target supports it.
 - Add retry/resume on app launch.
-  - Current implementation status: `AppIntelligenceRecoveryService` resets interrupted running jobs to pending, reschedules retryable failed jobs with bounded backoff, and submits a trigger to the unified notification orchestrator without passive permission prompts.
+  - Current implementation status: `BackgroundOperationOrchestrator` records the app-launch run and delegates job retry/resume bookkeeping to `IntelligenceJobRecoveryService`, which resets interrupted running jobs to pending and reschedules retryable failed jobs with bounded backoff. Notification preparation is routed through the notification domain without passive permission prompts.
 - Add push delivery writeback and APNs preference sync.
   - Current implementation status: iOS now syncs APNs token, notification preferences, AI/search/home toggles, quiet hours, delivery pace, max-per-day, and minimum spacing to Go `/api/push/register`.
   - Current implementation status: iOS writes delivered/opened/dismissed interactions to `/api/push/delivery-writeback`, stores failed writebacks locally, and flushes them after the next successful push registration sync.
@@ -243,7 +243,8 @@ Files:
 
 ```text
 Infrastructure/Intelligence/DailyQuestionEngine.swift
-Infrastructure/Intelligence/AppIntelligenceRecoveryService.swift
+Infrastructure/Intelligence/Jobs/IntelligenceJobRecoveryService.swift
+Infrastructure/Background/BackgroundOperationOrchestrator.swift
 Infrastructure/Notifications/LocalNotificationScheduler.swift
 Infrastructure/Notifications/NotificationPolicy.swift
 Features/Settings/

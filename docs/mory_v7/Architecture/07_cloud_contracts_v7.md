@@ -21,7 +21,7 @@ Allowed outputs:
 
 Repository/policy decides what is applied.
 
-## 3. `/api/analyze/v7`
+## 3. `/api/analyze`
 
 Request:
 
@@ -132,9 +132,9 @@ Response quality flags:
 Production path:
 
 1. keep legacy `/api/analyze` only for non-production diagnostics until later cleanup,
-2. route new-memory analysis through `/api/analyze/v7`,
+2. route new-memory analysis through `/api/analyze`,
 3. build a bounded `AnalysisContextPack` before every production request,
-4. require provider-native v7 output with analysis plus proposal arrays,
+4. require provider-native Analysis output with analysis plus proposal arrays,
 5. persist v7 proposals locally through policy/staging instead of direct trusted graph mutation,
 6. backfill only selected records where useful.
 

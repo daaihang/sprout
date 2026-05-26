@@ -196,6 +196,9 @@
     "Analysis ready" : {
 
     },
+    "Analysis Review" : {
+
+    },
     "Analysis status" : {
       "localizations" : {
         "zh-Hans" : {
@@ -221,7 +224,6 @@
       }
     },
     "APNs token" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -690,6 +692,12 @@
           }
         }
       }
+    },
+    "Background" : {
+
+    },
+    "Background Operations" : {
+
     },
     "Blocked" : {
 
@@ -4350,6 +4358,9 @@
         }
       }
     },
+    "Completed" : {
+
+    },
     "Condition" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -4613,6 +4624,9 @@
           }
         }
       }
+    },
+    "Debug tools are unavailable in this build." : {
+
     },
     "debug.action.analysis" : {
       "extractionState" : "manual",
@@ -12281,6 +12295,9 @@
     "Errors" : {
 
     },
+    "Events" : {
+
+    },
     "Evidence: %lld" : {
 
     },
@@ -12332,6 +12349,9 @@
           }
         }
       }
+    },
+    "Failed jobs" : {
+
     },
     "Failed Stage: %@" : {
       "extractionState" : "manual",
@@ -13014,6 +13034,9 @@
         }
       }
     },
+    "ID" : {
+
+    },
     "Import" : {
 
     },
@@ -13508,7 +13531,6 @@
       }
     },
     "Job Queue" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15132,6 +15154,12 @@
         }
       }
     },
+    "No background events." : {
+
+    },
+    "No background runs." : {
+
+    },
     "No dedupe hits." : {
 
     },
@@ -15634,11 +15662,13 @@
         }
       }
     },
+    "Pending jobs" : {
+
+    },
     "Pending Proposals" : {
 
     },
     "Pending writebacks" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15935,6 +15965,9 @@
           }
         }
       }
+    },
+    "Pipeline statuses" : {
+
     },
     "pipeline.explain.completed" : {
       "extractionState" : "manual",
@@ -16267,6 +16300,9 @@
           }
         }
       }
+    },
+    "Push digest" : {
+
     },
     "Quality Tuning Lab" : {
       "extractionState" : "stale",
@@ -17575,6 +17611,9 @@
         }
       }
     },
+    "Recent events" : {
+
+    },
     "Recent jobs" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -17596,6 +17635,9 @@
           }
         }
       }
+    },
+    "Recent runs" : {
+
     },
     "Record" : {
       "extractionState" : "stale",
@@ -18045,6 +18087,9 @@
         }
       }
     },
+    "Related pages" : {
+
+    },
     "Relationship" : {
       "localizations" : {
         "zh-Hans" : {
@@ -18244,6 +18289,9 @@
         }
       }
     },
+    "Run" : {
+
+    },
     "Run All Presets" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -18255,7 +18303,16 @@
         }
       }
     },
+    "Run app launch recovery" : {
+
+    },
     "Run background trigger" : {
+
+    },
+    "Run BG processing simulation" : {
+
+    },
+    "Run BG refresh simulation" : {
 
     },
     "Run chapter/stage suggest" : {
@@ -18371,6 +18428,9 @@
         }
       }
     },
+    "Run silent push simulation" : {
+
+    },
     "Run Strict + Balanced Matrix" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -18403,6 +18463,9 @@
           }
         }
       }
+    },
+    "Runs" : {
+
     },
     "Runs use the real memory repository and will appear in Home, Timeline, Search, Arcs, and Reflections." : {
       "extractionState" : "stale",
@@ -21240,6 +21303,9 @@
         }
       }
     },
+    "Started" : {
+
+    },
     "State" : {
       "localizations" : {
         "zh-Hans" : {
@@ -21352,6 +21418,9 @@
           }
         }
       }
+    },
+    "Sync APNs registration" : {
+
     },
     "tab.arcs" : {
       "extractionState" : "manual",
@@ -21901,9 +21970,6 @@
           }
         }
       }
-    },
-    "v7 Review" : {
-
     },
     "Valence" : {
 

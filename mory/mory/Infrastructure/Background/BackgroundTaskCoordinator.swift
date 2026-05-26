@@ -7,13 +7,14 @@ enum BackgroundTaskIdentifier {
 }
 
 @MainActor
+// BGTaskScheduler adapter; operation ownership lives in BackgroundOperationOrchestrator.
 final class BackgroundTaskCoordinator {
     private(set) var repository: (any MoryMemoryRepositorying)?
-    private var cloudService: (any CloudIntelligenceServing)?
-    private var remotePushSyncService: (any RemotePushSyncing)?
-    private var notificationOrchestrator: NotificationOrchestrator?
+    private var backgroundOrchestrator: BackgroundOperationOrchestrator
 
-    private let jobWorker = IntelligenceJobWorker()
+    init(backgroundOrchestrator: BackgroundOperationOrchestrator? = nil) {
+        self.backgroundOrchestrator = backgroundOrchestrator ?? .noop
+    }
 
     // MARK: - Registration (must be called before first runloop in AppDelegate)
 
@@ -49,14 +50,10 @@ final class BackgroundTaskCoordinator {
 
     func configure(
         repository: any MoryMemoryRepositorying,
-        cloudService: (any CloudIntelligenceServing)?,
-        remotePushSyncService: (any RemotePushSyncing)? = nil,
-        notificationOrchestrator: NotificationOrchestrator? = nil
+        backgroundOrchestrator: BackgroundOperationOrchestrator
     ) {
         self.repository = repository
-        self.cloudService = cloudService
-        self.remotePushSyncService = remotePushSyncService
-        self.notificationOrchestrator = notificationOrchestrator
+        self.backgroundOrchestrator = backgroundOrchestrator
     }
 
     // MARK: - Schedule
@@ -66,14 +63,14 @@ final class BackgroundTaskCoordinator {
         scheduleRefresh()
     }
 
-    func orchestrateNotifications(
-        trigger: NotificationTrigger,
+    func handle(
+        trigger: BackgroundTrigger,
         now: Date = .now
-    ) async throws -> NotificationOrchestrationReport {
+    ) async -> BackgroundOperationReport? {
         guard let repository else {
-            throw CocoaError(.fileNoSuchFile)
+            return nil
         }
-        return try await resolvedNotificationOrchestrator.orchestrate(
+        return await backgroundOrchestrator.handle(
             trigger: trigger,
             repository: repository,
             now: now
@@ -84,40 +81,32 @@ final class BackgroundTaskCoordinator {
 
     private func handleProcessingTask(_ task: BGProcessingTask) {
         scheduleProcess()
-        guard let repo = repository, let svc = cloudService else {
+        guard repository != nil else {
             task.setTaskCompleted(success: false)
             return
         }
         let t = Task { @MainActor in
-            _ = await self.jobWorker.processDueJobs(
-                repository: repo,
-                cloudIntelligenceService: svc,
-                remotePushSyncService: self.remotePushSyncService,
-                notificationOrchestrator: self.resolvedNotificationOrchestrator
+            let report = await self.handle(
+                trigger: BackgroundTrigger(kind: .bgProcessingTask, source: "BGTaskScheduler")
             )
-            task.setTaskCompleted(success: true)
+            task.setTaskCompleted(success: report?.errors.isEmpty ?? false)
         }
         task.expirationHandler = { t.cancel() }
     }
 
     private func handleRefreshTask(_ task: BGAppRefreshTask) {
         scheduleRefresh()
-        guard let repo = repository else {
+        guard repository != nil else {
             task.setTaskCompleted(success: false)
             return
         }
         let t = Task { @MainActor in
-            _ = try? await self.resolvedNotificationOrchestrator.orchestrate(
-                trigger: .backgroundRefresh,
-                repository: repo
+            let report = await self.handle(
+                trigger: BackgroundTrigger(kind: .bgAppRefreshTask, source: "BGTaskScheduler")
             )
-            task.setTaskCompleted(success: true)
+            task.setTaskCompleted(success: report?.errors.isEmpty ?? false)
         }
         task.expirationHandler = { t.cancel() }
-    }
-
-    private var resolvedNotificationOrchestrator: NotificationOrchestrator {
-        notificationOrchestrator ?? .localDelivery
     }
 
     // MARK: - Private schedule helpers

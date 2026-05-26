@@ -111,9 +111,9 @@
 
 关键文件：
 
-- `ArchitecturePipelineExecutor.swift`
-- `AnalyzeV7Models.swift`
-- `AnalyzeResponseMapper.swift`
+- `AnalysisExecutor.swift`
+- `AnalysisModels.swift`
+- `AnalysisModels.swift` (`AnalysisResponseMapper`)
 - `AnalysisContextPackBuilder.swift`
 - `GraphUpdater.swift`
 - `PlaceProfileResolver.swift`
@@ -122,13 +122,13 @@
 
 问题：
 
-- Pipeline 和 SwiftData 绑定。
-- `AnalyzeV7Models.swift` 同时容纳 request、response、mapper、capabilities，文件较大。
+- Pipeline 已通过 ports 与 SwiftData 分离；repository 仍承担生产 adapter 和 use case facade。
+- `AnalysisModels.swift` 同时容纳 request、response、mapper、capabilities，文件较大。
 
 解决方案：
 
 - Pipeline 改为依赖 query/persist ports。
-- Analyze v7 拆成 request、response、mapper、quality/capabilities 文件。
+- Analysis 拆成 request、response、mapper、quality/capabilities 文件。
 
 ## 4. Infrastructure / Context
 
@@ -195,19 +195,21 @@
 - `EntityResolutionService.swift`
 - `GraphDeltaApplier.swift`
 - `ClarificationQuestionBuilder.swift`
-- `IntelligenceJobWorker.swift`
-- `BackgroundTaskCoordinator.swift`
 - `CloudIntelligenceClient.swift`
+- `Infrastructure/Intelligence/Jobs/IntelligenceJobWorker.swift`
+- `Infrastructure/Intelligence/Jobs/IntelligenceJobRecoveryService.swift`
+- `Infrastructure/Background/BackgroundTaskCoordinator.swift`
 
 问题：
 
 - 多个 service 仍直接接大 `MoryMemoryRepositorying`。
-- Job worker 中 GraphDelta apply、profile refresh、notification 等职责容易继续膨胀。
+- Job worker 中 GraphDelta apply、profile refresh、notification 等职责仍需要继续按 job handler 拆分，但它已不属于 Background 域。
 
 解决方案：
 
 - service 依赖最小 repository ports。
 - 将 job kind 的执行器拆成独立 handler。
+- Background 只通过 `BackgroundJobProcessing`、`BackgroundJobRecovering`、`BackgroundReminderRouting` 等 ports 调用 Intelligence/Notification/Push 域。
 
 ## 6. Infrastructure / Notifications
 
@@ -257,14 +259,14 @@
 
 - API client。
 - Auth refresh aware requests。
-- Analyze v7、reflection、question、chapter、photo semantic、notification、push、eval endpoints。
+- Analysis、reflection、question、chapter、photo semantic、notification、push、eval endpoints。
 - Cloud debug error storage。
 
 关键文件：
 
 - `MoryAPIClient.swift`
 - `MoryAPIConfiguration.swift`
-- `BackgroundURLSessionInfrastructure.swift`
+- `Infrastructure/Background/BackgroundURLSessionInfrastructure.swift`
 
 问题：
 

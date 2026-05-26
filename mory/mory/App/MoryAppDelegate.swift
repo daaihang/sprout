@@ -41,17 +41,13 @@ final class MoryAppDelegate: NSObject, UIApplicationDelegate, UNUserNotification
         fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
     ) {
         Task { @MainActor in
-            guard backgroundTaskCoordinator.repository != nil else {
-                completionHandler(.noData)
-                return
+            let report = await backgroundTaskCoordinator.handle(
+                trigger: BackgroundTrigger(kind: .silentPush, source: "APNs")
+            )
+            if let report, !report.errors.isEmpty {
+                log.error("Silent push background work failed: \(report.errors.joined(separator: "; "))")
             }
-            do {
-                _ = try await backgroundTaskCoordinator.orchestrateNotifications(trigger: .silentPush)
-            } catch {
-                log.error("Background notification prep failed: \(error)")
-                SentrySDK.capture(error: error)
-            }
-            completionHandler(.newData)
+            completionHandler(report == nil ? .noData : .newData)
         }
     }
 
@@ -67,6 +63,15 @@ final class MoryAppDelegate: NSObject, UIApplicationDelegate, UNUserNotification
             return
         }
         BackgroundURLSessionCompletionStore.shared.handler = completionHandler
+        Task { @MainActor in
+            _ = await backgroundTaskCoordinator.handle(
+                trigger: BackgroundTrigger(
+                    kind: .backgroundURLSessionCompleted,
+                    source: "URLSession",
+                    metadata: ["identifier": identifier]
+                )
+            )
+        }
     }
 
     // MARK: - UNUserNotificationCenterDelegate

@@ -40,8 +40,7 @@ struct HomeScreen: View {
     }
 
     @Environment(\.memoryRepository) private var memoryRepository
-    @Environment(\.cloudIntelligenceService) private var cloudIntelligenceService
-    @Environment(\.notificationOrchestrator) private var notificationOrchestrator
+    @Environment(\.backgroundOperationOrchestrator) private var backgroundOperationOrchestrator
 
     let surface: Surface
 
@@ -269,13 +268,9 @@ struct HomeScreen: View {
             }
             dailyQuestionPreparationEvidenceSignature = evidenceSignature
 
-            _ = try? await DailyQuestionSuggestionService(
-                cloudIntelligenceService: cloudIntelligenceService
-            )
-            .prepareIfNeeded(repository: memoryRepository)
-            _ = try? await notificationOrchestrator.orchestrate(
-                trigger: .homeForegroundRefresh,
-                repository: memoryRepository
+            _ = await backgroundOperationOrchestrator.handle(
+                trigger: BackgroundTrigger(kind: .homeForegroundRefresh, source: "HomeScreen.reload"),
+                repository: memoryRepository,
             )
         } catch {
             // Home remains usable when intelligence preparation or scheduling is unavailable.

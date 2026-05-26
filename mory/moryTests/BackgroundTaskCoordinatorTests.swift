@@ -16,7 +16,7 @@ final class BackgroundTaskCoordinatorTests: XCTestCase {
             modelContext: container.mainContext,
             analysisService: BGCoordinatorTestAnalysisService()
         )
-        coordinator.configure(repository: repository, cloudService: nil)
+        coordinator.configure(repository: repository, backgroundOrchestrator: .noop)
         XCTAssertNotNil(coordinator.repository)
     }
 
@@ -34,12 +34,11 @@ final class BackgroundTaskCoordinatorTests: XCTestCase {
             modelContext: container.mainContext,
             analysisService: BGCoordinatorTestAnalysisService()
         )
-        let service = BGCoordinatorTestCloudService()
-        coordinator.configure(repository: repository, cloudService: service)
+        coordinator.configure(repository: repository, backgroundOrchestrator: .noop)
         XCTAssertNotNil(coordinator.repository)
 
-        // Reconfigure with nil cloud service; repository reference should persist.
-        coordinator.configure(repository: repository, cloudService: nil)
+        // Reconfigure with the same orchestrator; repository reference should persist.
+        coordinator.configure(repository: repository, backgroundOrchestrator: .noop)
         XCTAssertNotNil(coordinator.repository)
     }
 }
@@ -54,7 +53,7 @@ private struct BGCoordinatorTestAnalysisService: ReflectionAnalysisServing {
         artifacts: [Artifact],
         knownEntities: [EntityReference]
     ) async throws -> RecordAnalysisSnapshot {
-        RecordAnalysisSnapshot(recordID: record.id, summary: record.rawText, createdAt: .now)
+        await RecordAnalysisSnapshot(recordID: record.id, summary: record.rawText, createdAt: .now)
     }
 
     func generateReflection(
@@ -79,25 +78,4 @@ private struct BGCoordinatorTestAnalysisService: ReflectionAnalysisServing {
     }
 
     func latestDebugTrace() async -> DebugPipelineTraceSnapshot? { nil }
-}
-
-private struct BGCoordinatorTestCloudService: CloudIntelligenceServing {
-    func analyzeMemory(_ payload: AnalysisRequestPayload) async throws -> AnalysisResponseEnvelope {
-        throw BGCoordinatorTestError.unsupported
-    }
-    func refineTranscript(_ payload: MoryAPIClient.TranscriptRefinementPayload) async throws -> MoryAPIClient.TranscriptRefinementResponse {
-        throw BGCoordinatorTestError.unsupported
-    }
-    func suggestQuestions(_ payload: MoryAPIClient.QuestionSuggestionPayload) async throws -> MoryAPIClient.QuestionSuggestionResponse {
-        throw BGCoordinatorTestError.unsupported
-    }
-    func suggestChapters(_ payload: MoryAPIClient.ChapterSuggestionPayload) async throws -> MoryAPIClient.ChapterSuggestionResponse {
-        throw BGCoordinatorTestError.unsupported
-    }
-    func analyzePhotoSemantics(_ payload: MoryAPIClient.PhotoSemanticAnalysisPayload) async throws -> MoryAPIClient.PhotoSemanticAnalysisResponse {
-        throw BGCoordinatorTestError.unsupported
-    }
-    func runProviderEval() async throws -> MoryAPIClient.CloudIntelligenceEvalResponse {
-        throw BGCoordinatorTestError.unsupported
-    }
 }

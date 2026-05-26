@@ -106,6 +106,6 @@ v7 completion covers the development baseline for this layer:
 - golden tests exist for sparse first-day context, graph delta apply/idempotence, person merge recovery, and affect correction recurrence into future context packs;
 - context pack, identity resolution, affect mapping, notification routing, BGTask scheduling, and local notification policy have targeted tests;
 - Debug Center surfaces can inspect context packs, affect snapshots, clarification questions, pending GraphDeltas, BGTask scheduling, notification routing, and cloud/debug payloads;
-- privacy controls are enforced through local-first storage, budgeted context packs, sensitive-history redaction/drop decisions, and proposal-based Analyze v7 output.
+- privacy controls are enforced through local-first storage, budgeted context packs, sensitive-history redaction/drop decisions, and proposal-based Analysis output.
 
 Post-v7 production observability should add real-user aggregate metrics for notification conversion/regret and privacy audit reporting. These are release-hardening tasks, not blockers for the v7 architecture baseline.

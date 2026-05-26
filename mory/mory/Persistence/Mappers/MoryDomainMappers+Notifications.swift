@@ -56,7 +56,8 @@ extension NotificationIntentStore {
 
     private static func requireNotificationIntentKind(_ rawValue: String) -> NotificationIntentKind {
         guard let kind = NotificationIntentKind(rawValue: rawValue) else {
-            preconditionFailure("Unsupported NotificationIntentKind raw value: \(rawValue)")
+            NSLog("Unsupported NotificationIntentKind raw value: %@; falling back to debugTest.", rawValue)
+            return .debugTest
         }
         return kind
     }
@@ -121,7 +122,8 @@ extension NotificationManagementEventStore {
     private static func notificationIntentKind(_ rawValue: String?) -> NotificationIntentKind? {
         guard let rawValue else { return nil }
         guard let kind = NotificationIntentKind(rawValue: rawValue) else {
-            preconditionFailure("Unsupported NotificationIntentKind raw value: \(rawValue)")
+            NSLog("Unsupported NotificationIntentKind raw value in management event: %@; dropping kind.", rawValue)
+            return nil
         }
         return kind
     }

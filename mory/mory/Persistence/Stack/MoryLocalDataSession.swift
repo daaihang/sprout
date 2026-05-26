@@ -83,7 +83,8 @@ final class MoryLocalDataSession {
         ownerID: String,
         analysisService: any ReflectionAnalysisServing,
         cloudIntelligenceService: (any CloudIntelligenceServing)? = nil,
-        notificationOrchestrator: NotificationOrchestrator? = nil
+        notificationOrchestrator: NotificationOrchestrator? = nil,
+        backgroundTriggerDispatcher: (any BackgroundTriggerDispatching)? = nil
     ) {
         let baseDirectory = Self.testingBaseDirectoryIfNeeded()
         let registry = LocalDataOwnerRegistry(baseDirectory: baseDirectory)
@@ -92,6 +93,7 @@ final class MoryLocalDataSession {
             analysisService: analysisService,
             cloudIntelligenceService: cloudIntelligenceService,
             notificationOrchestrator: notificationOrchestrator,
+            backgroundTriggerDispatcher: backgroundTriggerDispatcher,
             scope: registry.scope(for: ownerID),
             baseDirectory: baseDirectory
         )
@@ -102,6 +104,7 @@ final class MoryLocalDataSession {
         analysisService: any ReflectionAnalysisServing,
         cloudIntelligenceService: (any CloudIntelligenceServing)? = nil,
         notificationOrchestrator: NotificationOrchestrator? = nil,
+        backgroundTriggerDispatcher: (any BackgroundTriggerDispatching)? = nil,
         registry: LocalDataOwnerRegistry
     ) {
         self.ownerID = ownerID
@@ -112,7 +115,8 @@ final class MoryLocalDataSession {
             analysisService: analysisService,
             cloudIntelligenceService: cloudIntelligenceService,
             localDataOwnerID: ownerID,
-            notificationOrchestrator: notificationOrchestrator
+            notificationOrchestrator: notificationOrchestrator,
+            backgroundTriggerDispatcher: backgroundTriggerDispatcher
         )
         self.diagnostics = Self.makeDiagnostics(
             ownerID: ownerID,
@@ -127,6 +131,7 @@ final class MoryLocalDataSession {
         analysisService: any ReflectionAnalysisServing,
         cloudIntelligenceService: (any CloudIntelligenceServing)? = nil,
         notificationOrchestrator: NotificationOrchestrator? = nil,
+        backgroundTriggerDispatcher: (any BackgroundTriggerDispatching)? = nil,
         scope: MoryLocalDataScope,
         baseDirectory: URL?
     ) {
@@ -141,7 +146,8 @@ final class MoryLocalDataSession {
             analysisService: analysisService,
             cloudIntelligenceService: cloudIntelligenceService,
             localDataOwnerID: ownerID,
-            notificationOrchestrator: notificationOrchestrator
+            notificationOrchestrator: notificationOrchestrator,
+            backgroundTriggerDispatcher: backgroundTriggerDispatcher
         )
         self.diagnostics = Self.makeDiagnostics(
             ownerID: ownerID,

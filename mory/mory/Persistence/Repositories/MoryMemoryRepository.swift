@@ -25,7 +25,9 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     let graphDeltaApplier: GraphDeltaApplier
     let affectSnapshotMapper: AffectSnapshotMapper
     let externalCaptureInboxStore: any ExternalCaptureInboxStoring
+    let backgroundOperationStore: any BackgroundOperationStoring
     let notificationOrchestrator: NotificationOrchestrator
+    let backgroundTriggerDispatcher: (any BackgroundTriggerDispatching)?
     var latestAnalysisTrace: DebugPipelineTraceSnapshot?
     var latestReflectionTrace: DebugPipelineTraceSnapshot?
 
@@ -50,7 +52,9 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         clarificationQuestionBuilder: ClarificationQuestionBuilder = ClarificationQuestionBuilder(),
         graphDeltaApplier: GraphDeltaApplier = GraphDeltaApplier(),
         affectSnapshotMapper: AffectSnapshotMapper = AffectSnapshotMapper(),
-        notificationOrchestrator: NotificationOrchestrator? = nil
+        backgroundOperationStore: (any BackgroundOperationStoring)? = nil,
+        notificationOrchestrator: NotificationOrchestrator? = nil,
+        backgroundTriggerDispatcher: (any BackgroundTriggerDispatching)? = nil
     ) {
         self.modelContext = modelContext
         self.analysisService = analysisService
@@ -61,6 +65,13 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
             scope: localDataOwnerID.map { .owner($0) } ?? .legacy,
             includeSharedInboxFallback: true
         )
+        if let backgroundOperationStore {
+            self.backgroundOperationStore = backgroundOperationStore
+        } else if let localDataOwnerID {
+            self.backgroundOperationStore = BackgroundOperationDefaultsStore(ownerID: localDataOwnerID)
+        } else {
+            self.backgroundOperationStore = BackgroundOperationMemoryStore()
+        }
         self.architecturePipelineExecutor = architecturePipelineExecutor
         self.homeBoardRuleEngine = homeBoardRuleEngine
         self.graphQueryService = graphQueryService
@@ -75,6 +86,7 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         self.graphDeltaApplier = graphDeltaApplier
         self.affectSnapshotMapper = affectSnapshotMapper
         self.notificationOrchestrator = notificationOrchestrator ?? .localDelivery
+        self.backgroundTriggerDispatcher = backgroundTriggerDispatcher
     }
 
     func evaluateQualityTuningExpectation(
@@ -642,7 +654,8 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         let stores = try modelContext.fetch(FetchDescriptor<NotificationIntentStore>())
 
         for store in stores {
-            let shouldDelete = switch store.domainModel.targetType {
+            let targetType = ClarificationTargetType(rawValue: store.targetTypeRawValue) ?? .record
+            let shouldDelete = switch targetType {
             case .record:
                 recordIDs.contains(store.targetID)
             case .artifact:
@@ -1449,6 +1462,10 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         let intentStores = try modelContext.fetch(FetchDescriptor<NotificationIntentStore>())
         for store in intentStores where store.targetTypeRawValue == ClarificationTargetType.entity.rawValue {
             guard let replacementID = replacements[store.targetID] else { continue }
+            guard NotificationIntentKind(rawValue: store.kindRawValue) != nil else {
+                modelContext.delete(store)
+                continue
+            }
             var intent = store.domainModel
             intent.targetID = replacementID
             store.apply(domainModel: intent)

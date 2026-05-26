@@ -53,7 +53,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AuthResponse"
-  /api/analysis/records:
+  /api/analyze:
     post:
       summary: Analyze a journal record
       security:
@@ -71,22 +71,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AnalyzeResponseEnvelope"
-  /api/analysis/preview:
-    post:
-      summary: Analyze a journal record preview
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AnalyzeRequest"
-      responses:
-        "200":
-          description: Structured preview analyze response
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AnalyzePreviewResponseEnvelope"
   /api/reflections/generate:
     post:
       summary: Generate a reflection candidate from a record aggregate
@@ -598,13 +582,6 @@ components:
                   type: integer
                 output_tokens:
                   type: integer
-    AnalyzePreviewResponseEnvelope:
-      allOf:
-        - $ref: "#/components/schemas/AnalyzeResponseEnvelope"
-        - type: object
-          properties:
-            mode:
-              type: string
     CloudMeta:
       type: object
       properties:

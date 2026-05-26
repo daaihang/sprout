@@ -23,6 +23,12 @@ struct MemoryIntelligenceSettingsView: View {
                 } label: {
                     Label("Platform Capture Diagnostics", systemImage: "checklist.checked")
                 }
+
+                NavigationLink {
+                    BackgroundManagementView()
+                } label: {
+                    Label("Background Operations", systemImage: "clock.arrow.circlepath")
+                }
             }
 
             Section("Journaling Suggestions") {

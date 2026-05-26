@@ -7,11 +7,12 @@
 | Batch | 状态 | 结果 | 剩余差口 |
 | --- | --- | --- | --- |
 | Batch 1: Repository Port Split | completed | `MoryMemoryRepositorying` 已拆成 capture、library、profile/graph、intelligence、settings、external capture、debug 等小端口；核心 intelligence/notification/capture services 已改为接收更窄依赖 | App environment、Settings、Debug 仍保留 composite repository；use case service extraction 属于 Batch 2/C2 后续工作 |
-| Batch 2: Analysis Pipeline Ports | completed | `ArchitecturePipelineExecutor` 已移除 SwiftData/`ModelContext` 依赖，改为 `AnalysisPipelineQuerying/Persisting/Tracing/RuntimeScoping/ContextPacking` ports；repository 作为 SwiftData-backed adapter；新增纯 mock pipeline tests | `MoryMemoryRepository` 仍承担 use case 编排和 SwiftData adapter；C2 use case service extraction 仍未开始 |
+| Batch 2: Analysis Pipeline Ports | completed | `AnalysisExecutor` 已移除 SwiftData/`ModelContext` 依赖，改为 `AnalysisPipelineQuerying/Persisting/Tracing/RuntimeScoping/ContextPacking` ports；repository 作为 SwiftData-backed adapter；新增纯 mock pipeline tests | `MoryMemoryRepository` 仍承担 use case 编排和 SwiftData adapter；C2 use case service extraction 仍未开始 |
 | Batch 3: Domain Model Split | completed | `MemoryFeatureModels.swift` 已按 settings、capture、library、search、graph presentation、timeline、string helpers 和 repository contracts 拆分；类型名和行为保持不变 | C2 use case extraction、Batch 4 capture UI split、Batch 5 shared/API/server split 仍未开始 |
 | Batch 4: Capture UI Split | completed | `CaptureCardView` 已拆成 dispatch/chrome/typed card content files；composer sheet views 已移出主 composer，sheet presentation 由 `CaptureComposerSheetCoordinator` 管理 | Composer 正文/draft/save 状态仍在 view 内；完整 composer view model 抽取留到后续 |
 | Batch 5: ExternalCaptureShared Pure Contract | completed | `ExternalCaptureWireModels.swift` 已拆成 shared container、attachment models/store、evidence models、Journaling bundle、request 和 inbox models；类型名和 Codable 形状保持不变 | I4 `MoryAPIClient` endpoint split、Batch 6 Go server split、C2 use case extraction 仍未开始 |
 | Batch 6 + I4 + C2: Server/API/Use Case Split | completed | Go server handlers/db/provider operation 文件已按 route/store/operation family 拆分；`MoryAPIClient` 已拆成 Auth/Analyze/Notifications/Push/Eval endpoint extensions；memory creation/mutation/entity mutation/external import 已抽成 SwiftData-backed use case services，repository 对外保持 facade | Debug 大文件拆分、proposal review UX、contact-to-person review flow、完整 composer view model 仍未开始 |
+| Batch 7: Unified Background Domain | completed | `BackgroundOperationOrchestrator` 已成为 app launch、scene foreground、Home foreground、BGTask、silent push、pipeline completed、APNs token、notification preference、background URLSession 和 Debug manual 的统一后台入口；run/event 记录进入 owner-scoped diagnostics store；BGTask/URLSession adapter 留在 `Infrastructure/Background`，job worker/recovery 已回归 `Infrastructure/Intelligence/Jobs` 并通过 Background ports 接入 | 真机 BGTask/APNs/silent-push soak、retry/quota/cancellation 策略和普通用户可见状态仍未完成 |
 
 ## 1. Critical
 
@@ -20,7 +21,7 @@
 | C1 | `MoryMemoryRepositorying` 超大协议 | 测试难、UI/Debug 误用、service 依赖面过宽 | 已完成第一轮 port split；继续逐步迁移 broad consumers | focused compile + service tests 通过 |
 | C2 | `MoryMemoryRepository` 仍是 God object | 多事务、多 helper、多 service 聚合，长期难维护 | completed：已抽 `MemoryCreationUseCase`、`MemoryMutationUseCase`、`EntityMutationUseCase`、`ExternalCaptureImportUseCase`；repository 对外方法保留 facade 语义 | repository focused tests + build |
 | C3 | `MemoryFeatureModels.swift` 承担过多 domain/presentation/protocol | Domain 层成为杂物间，后续 v8 模型难定位 | 已拆成 Settings/Capture/Library/Search/GraphPresentation/Timeline/StringHelpers/RepositoryPorts | 全量 build + model tests |
-| C4 | Analyze pipeline 直接依赖 `ModelContext` | Analysis 逻辑被 SwiftData 绑定，后台/测试/替换困难 | 已引入 `AnalysisPipelineQuerying/Persisting/Tracing/RuntimeScoping/ContextPacking`，executor 不再 import SwiftData | pipeline unit tests 不启动 SwiftData；v7 production repository tests 继续覆盖真实 SwiftData adapter |
+| C4 | Analysis pipeline 曾直接依赖 `ModelContext` | Analysis 逻辑被 SwiftData 绑定会导致后台/测试/替换困难 | 已引入 `AnalysisPipelineQuerying/Persisting/Tracing/RuntimeScoping/ContextPacking`，executor 不再 import SwiftData | pipeline unit tests 不启动 SwiftData；production repository tests 继续覆盖真实 SwiftData adapter |
 
 ## 2. Important
 
@@ -36,6 +37,7 @@
 | I8 | contact-to-person resolution 未产品化 | Journaling contacts 只能做 context，不能稳定进入人物关系 | 独立 identity review flow | EntityResolutionServiceTests + UI path |
 | I9 | 通知生成入口分散 | Home / recovery / BGTask / settings / silent push 各自生成或调度通知，容易重复、文案失控、点击路由不一致 | completed：`NotificationOrchestrator` 已成为唯一 trigger -> dedupe -> policy -> routing 入口；旧 stage/repeated/revisit push model 已从 `NotificationIntent`、APNs registration payload 和 server push token schema 中移除 | `NotificationOrchestratorTests` + routing/settings/recovery/worker tests + notification history surface |
 | I10 | 通知状态和调试入口分散 | Settings、Memory Intelligence、Debug Remote Push、Notification Background、Job Queue 各自展示一部分状态 | completed：`NotificationManagementView` 已成为唯一 Settings/Debug 可达通知管理页，固定 Queue/History/Dedupe/Errors + Preferences；通知日志落到 `NotificationManagementEventStore` | `NotificationManagementEventTests` + NotificationOrchestrator/Interaction tests + app build |
+| I11 | 后台触发和后台状态分散 | AppDelegate、Root、Home、pipeline、BGTask、silent push、URLSession 分散触发恢复、job、通知、push sync，难以判断一次后台运行做了什么 | completed：统一到 `BackgroundOperationOrchestrator`，所有入口记录 `BackgroundOperationRun/Event`；Background 仅依赖 `BackgroundJobProcessing/Recovering/QuestionPreparing/ReminderRouting/PushRegistrationSyncing` ports，Intelligence/Notification/Push 业务实现留在各自域 | background rg audit + app build + BackgroundManagementView |
 
 ## 3. Cleanup
 
@@ -75,7 +77,7 @@
 
 目标：
 
-- `ArchitecturePipelineExecutor` 不再直接 import SwiftData。
+- `AnalysisExecutor` 不再直接 import SwiftData。
 - 当前状态：completed。Pipeline 已通过 ports 查询历史、保存结果、写 trace，并可用纯 mock ports 单测；repository 仍负责生产 SwiftData-backed adapter。
 
 步骤：
@@ -89,14 +91,14 @@
 
 - Pipeline unit tests 不需要 ModelContainer。
 - v7 production create memory tests 仍通过。
-- `ArchitecturePipelineExecutor.swift` 不出现 `SwiftData` / `ModelContext` / `FetchDescriptor`。
+- `AnalysisExecutor.swift` 不出现 `SwiftData` / `ModelContext` / `FetchDescriptor`。
 
 ### Batch 3: Domain Model Split
 
 目标：
 
 - `MemoryFeatureModels.swift` 拆成稳定领域文件。
-- 当前状态：completed。原大文件已删除，模型按领域拆分到 `Domain/Memory` 多个文件，repository composite 和 `RecordAnalysisServing` 已移动到 `MemoryRepositoryPorts.swift`。
+- 当前状态：completed。原大文件已删除，模型按领域拆分到 `Domain/Memory` 多个文件，repository composite 和 `ReflectionAnalysisServing` 已移动到 `MemoryRepositoryPorts.swift`。
 
 步骤：
 
@@ -175,7 +177,7 @@
 
 - Focused iOS tests 通过。
 - iOS build 通过。
-- Codable payload、SwiftData schema、UI entry 和 Analyze v7 production path 不变。
+- Codable payload、SwiftData schema、UI entry 和 Analysis production path 不变。
 
 ## 5. 不建议马上做的事
 
