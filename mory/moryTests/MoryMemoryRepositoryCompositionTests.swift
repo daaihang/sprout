@@ -1914,6 +1914,82 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertTrue(Set(result.addedArtifactIDs).isSubset(of: Set(arrangedArtifactIDs)))
     }
 
+    func testApplyMemoryMutationPreservesUserArrangementSizeAndStack() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
+        )
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Preserve arrangement",
+                rawText: "A memory with a user arranged desk.",
+                captureSource: .composer,
+                artifacts: [
+                    .text(title: "Preserve arrangement", body: "A memory with a user arranged desk."),
+                    .photo(title: "Photo", summary: "Photo summary", filename: "photo.jpg"),
+                    .audio(title: "Voice", summary: "Audio summary", filename: "voice.caf", transcriptionText: "Audio transcript"),
+                    .todo(title: "Follow up", note: "Keep this stacked")
+                ]
+            )
+        )
+
+        let initialDetail = try XCTUnwrap(repository.fetchMemoryDetail(recordID: memory.record.id))
+        let photoID = try XCTUnwrap(initialDetail.artifacts.first(where: { $0.kind == .photo })?.id)
+        let audioID = try XCTUnwrap(initialDetail.artifacts.first(where: { $0.kind == .audio })?.id)
+        let todoID = try XCTUnwrap(initialDetail.artifacts.first(where: { $0.kind == .todo })?.id)
+        let initialArrangement = try XCTUnwrap(initialDetail.cardArrangement)
+        let userArrangement = initialArrangement
+            .settingSize(.small, forArtifactID: photoID, updatedAt: Date.now)
+            .stackingWithPrevious(artifactID: todoID, updatedAt: Date.now)
+
+        _ = try await repository.applyMemoryMutation(
+            recordID: memory.record.id,
+            mutation: MemoryMutationDraft(
+                artifactOrder: [photoID, audioID, todoID],
+                cardArrangement: userArrangement
+            ),
+            refreshPolicy: .markPending
+        )
+
+        let result = try await repository.applyMemoryMutation(
+            recordID: memory.record.id,
+            mutation: MemoryMutationDraft(
+                recordPatch: MemoryMutationRecordPatch(rawText: .set("A memory with preserved user arrangement.")),
+                artifactOrder: [todoID, audioID, photoID]
+            ),
+            refreshPolicy: .markPending
+        )
+
+        let detail = try XCTUnwrap(result.detail)
+        let arrangement = try XCTUnwrap(detail.cardArrangement)
+        let photoNode = try XCTUnwrap(arrangement.nodes.first { node in
+            if case let .artifact(id) = node.contentRef {
+                return id == photoID
+            }
+            return false
+        })
+        XCTAssertEqual(photoNode.layout.size, .small)
+
+        let stackedNode = try XCTUnwrap(arrangement.nodes.first { node in
+            if case let .artifactGroup(ids, _) = node.contentRef {
+                return ids == [audioID, todoID]
+            }
+            return false
+        })
+        XCTAssertEqual(stackedNode.visualRecipe, .bundlePacket)
+        XCTAssertEqual(stackedNode.layout.size, .stack)
+        XCTAssertFalse(arrangement.nodes.contains { node in
+            if case let .artifact(id) = node.contentRef {
+                return id == todoID
+            }
+            return false
+        })
+        XCTAssertEqual(result.pipelineStatus?.stage, .notScheduled)
+    }
+
     func testApplyMemoryMutationUpdatesDeletesReordersAndPurgesGraphLinks() async throws {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
