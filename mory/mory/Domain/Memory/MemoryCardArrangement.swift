@@ -185,6 +185,11 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
     }
 
     mutating func removeArtifactDraft(_ draftID: UUID) {
+        removeArtifactDraft(draftID, artifactDrafts: [])
+    }
+
+    mutating func removeArtifactDraft(_ draftID: UUID, artifactDrafts: [CaptureArtifactDraft]) {
+        let draftByID = Dictionary(uniqueKeysWithValues: artifactDrafts.map { ($0.draftID, $0) })
         nodes = nodes.compactMap { node in
             var node = node
             switch node.contentRef {
@@ -195,8 +200,13 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
                 guard !keptIDs.isEmpty else { return nil }
                 if keptIDs.count == 1 {
                     node.contentRef = .artifactDraft(keptIDs[0])
-                    node.visualRecipe = .statusNote
-                    node.layout.size = .medium
+                    if let keptDraft = draftByID[keptIDs[0]] {
+                        node.visualRecipe = Self.defaultVisualRecipe(for: keptDraft.content)
+                        node.layout.size = Self.defaultSize(for: keptDraft.content)
+                    } else {
+                        node.visualRecipe = .statusNote
+                        node.layout.size = .medium
+                    }
                 } else {
                     node.contentRef = .artifactDraftGroup(keptIDs, kind: .mediaStack)
                 }
@@ -240,16 +250,27 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
     }
 
     mutating func unstackNode(_ nodeID: UUID) {
+        unstackNode(nodeID, artifactDrafts: [])
+    }
+
+    mutating func unstackNode(_ nodeID: UUID, artifactDrafts: [CaptureArtifactDraft]) {
         guard let index = nodes.firstIndex(where: { $0.id == nodeID }),
               case let .artifactDraftGroup(ids, _) = nodes[index].contentRef else {
             return
         }
         let baseOrder = nodes[index].layout.order
-        let expanded = ids.enumerated().map { offset, draftID in
-            MemoryCardDraftNode(
+        let draftByID = Dictionary(uniqueKeysWithValues: artifactDrafts.map { ($0.draftID, $0) })
+        let expanded: [MemoryCardDraftNode] = ids.enumerated().map { offset, draftID in
+            let draft = draftByID[draftID]
+            return MemoryCardDraftNode(
                 contentRef: .artifactDraft(draftID),
-                visualRecipe: .statusNote,
-                layout: MemoryCardLayoutToken(order: baseOrder + offset, size: .medium, zIndex: baseOrder + offset)
+                visualRecipe: draft.map { Self.defaultVisualRecipe(for: $0.content) } ?? .statusNote,
+                layout: MemoryCardLayoutToken(
+                    order: baseOrder + offset,
+                    size: draft.map { Self.defaultSize(for: $0.content) } ?? .medium,
+                    rotationDegrees: Self.defaultRotation(for: draftID),
+                    zIndex: baseOrder + offset
+                )
             )
         }
         nodes.remove(at: index)
@@ -258,8 +279,12 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
     }
 
     mutating func unstackContainingDraft(_ draftID: UUID) {
+        unstackContainingDraft(draftID, artifactDrafts: [])
+    }
+
+    mutating func unstackContainingDraft(_ draftID: UUID, artifactDrafts: [CaptureArtifactDraft]) {
         guard let index = nodeIndex(containingArtifactDraft: draftID) else { return }
-        unstackNode(nodes[index].id)
+        unstackNode(nodes[index].id, artifactDrafts: artifactDrafts)
     }
 
     mutating func sync(recordBodyIsPresent: Bool, artifactDrafts: [CaptureArtifactDraft]) {
@@ -276,7 +301,13 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
                 guard !keptIDs.isEmpty else { return nil }
                 node.contentRef = keptIDs.count == 1 ? .artifactDraft(keptIDs[0]) : .artifactDraftGroup(keptIDs, kind: kind)
                 if keptIDs.count == 1 {
-                    node.layout.size = .medium
+                    if let draft = artifactDrafts.first(where: { $0.draftID == keptIDs[0] }) {
+                        node.visualRecipe = Self.defaultVisualRecipe(for: draft.content)
+                        node.layout.size = Self.defaultSize(for: draft.content)
+                    } else {
+                        node.visualRecipe = .statusNote
+                        node.layout.size = .medium
+                    }
                     node.layout.groupID = nil
                 }
                 return node

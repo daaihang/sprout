@@ -85,9 +85,9 @@ struct CaptureAttachmentCarouselView: View {
 private extension CaptureComposerAttachmentItem {
     var supportsArrangementEditing: Bool {
         switch source {
-        case .stagedArtifact, .contextCandidate:
+        case .stagedArtifact, .contextCandidate, .journalingSuggestion:
             return true
-        case .affect, .journalingSuggestion, .processing:
+        case .affect, .processing:
             return false
         }
     }

@@ -499,7 +499,7 @@ struct UnifiedCaptureComposerView: View {
     @MainActor
     private func unstackArrangementNode(item: CaptureComposerAttachmentItem) {
         guard let draftID = arrangementDraftID(for: item) else { return }
-        cardArrangementDraft.unstackContainingDraft(draftID)
+        cardArrangementDraft.unstackContainingDraft(draftID, artifactDrafts: arrangementArtifactDrafts)
     }
 
     @MainActor
@@ -509,7 +509,13 @@ struct UnifiedCaptureComposerView: View {
             return stagedArtifactDrafts.indices.contains(index) ? stagedArtifactDrafts[index].draftID : nil
         case let .contextCandidate(id):
             return contextCandidates.first(where: { $0.id == id })?.draft.draftID
-        case .affect, .journalingSuggestion, .processing:
+        case let .journalingSuggestion(importSessionID):
+            return stagedArtifactDrafts.first { draft in
+                guard draft.isJournalingSuggestion(in: importSessionID) else { return false }
+                if case .text = draft.content { return false }
+                return true
+            }?.draftID
+        case .affect, .processing:
             return nil
         }
     }
@@ -549,7 +555,7 @@ struct UnifiedCaptureComposerView: View {
     private func removeStagedArtifact(at index: Int) {
         guard stagedArtifactDrafts.indices.contains(index) else { return }
         let removed = stagedArtifactDrafts.remove(at: index)
-        cardArrangementDraft.removeArtifactDraft(removed.draftID)
+        cardArrangementDraft.removeArtifactDraft(removed.draftID, artifactDrafts: arrangementArtifactDrafts)
     }
 
     @MainActor
@@ -582,7 +588,7 @@ struct UnifiedCaptureComposerView: View {
     private func removeContextCandidate(id: UUID) {
         guard let index = contextCandidates.firstIndex(where: { $0.id == id }) else { return }
         let removed = contextCandidates.remove(at: index)
-        cardArrangementDraft.removeArtifactDraft(removed.draft.draftID)
+        cardArrangementDraft.removeArtifactDraft(removed.draft.draftID, artifactDrafts: arrangementArtifactDrafts)
     }
 
     @MainActor
@@ -591,7 +597,7 @@ struct UnifiedCaptureComposerView: View {
             .filter { $0.isJournalingSuggestion(in: importSessionID) }
             .map(\.draftID)
         stagedArtifactDrafts.removeAll { $0.isJournalingSuggestion(in: importSessionID) }
-        removedDraftIDs.forEach { cardArrangementDraft.removeArtifactDraft($0) }
+        removedDraftIDs.forEach { cardArrangementDraft.removeArtifactDraft($0, artifactDrafts: arrangementArtifactDrafts) }
         affectDrafts.removeAll { $0.isJournalingSuggestion(in: importSessionID) }
         mood = affectDrafts.first?.labels.first?.rawValue
             ?? affectDrafts.first?.rawInput?.trimmedOrNil
