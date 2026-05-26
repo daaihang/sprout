@@ -42,17 +42,20 @@ struct MemoryEditDraft: Hashable, Sendable {
     var userMood: String?
     var inputContext: String?
     var appendedArtifactText: String?
+    var addedArtifacts: [CaptureArtifactDraft]
 
     init(
         rawText: String,
         userMood: String? = nil,
         inputContext: String? = nil,
-        appendedArtifactText: String? = nil
+        appendedArtifactText: String? = nil,
+        addedArtifacts: [CaptureArtifactDraft] = []
     ) {
         self.rawText = rawText
         self.userMood = userMood
         self.inputContext = inputContext
         self.appendedArtifactText = appendedArtifactText
+        self.addedArtifacts = addedArtifacts
     }
 }
 

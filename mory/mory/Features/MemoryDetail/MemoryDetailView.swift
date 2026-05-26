@@ -14,6 +14,9 @@ struct MemoryDetailView: View {
     @State private var draftArtifactOrder: [UUID] = []
     @State private var draftCardArrangement: MemoryCardArrangement?
     @State private var draftDeletedArtifactIDs: Set<UUID> = []
+    @State private var draftNewArtifactKind: MemoryDetailNewArtifactKind = .note
+    @State private var draftNewArtifactTitle = ""
+    @State private var draftNewArtifactURL = ""
     @State private var draftNewArtifactText = ""
     @State private var isSavingEdits = false
     @State private var isConfirmingDiscardEdits = false
@@ -24,6 +27,9 @@ struct MemoryDetailView: View {
                 if isEditing {
                     MemoryDetailEditingView(
                         rawText: $draftRawText,
+                        newArtifactKind: $draftNewArtifactKind,
+                        newArtifactTitle: $draftNewArtifactTitle,
+                        newArtifactURL: $draftNewArtifactURL,
                         newArtifactText: $draftNewArtifactText,
                         artifacts: draftEditableArtifacts,
                         errorMessage: errorMessage,
@@ -184,6 +190,9 @@ struct MemoryDetailView: View {
         draftArtifactOrder = orderedArtifacts(from: snapshot).map(\.id)
         draftCardArrangement = editBaseArrangement(for: snapshot)
         draftDeletedArtifactIDs = []
+        draftNewArtifactKind = .note
+        draftNewArtifactTitle = ""
+        draftNewArtifactURL = ""
         draftNewArtifactText = ""
     }
 
@@ -194,7 +203,7 @@ struct MemoryDetailView: View {
         let record = snapshot.record
         if draftRawText != record.rawText { return true }
         if !draftDeletedArtifactIDs.isEmpty { return true }
-        if draftNewArtifactText.trimmedOrNil != nil { return true }
+        if pendingNewArtifactDraft() != nil { return true }
         if draftCardArrangement != editBaseArrangement(for: snapshot) { return true }
         return mutationArtifactOrder != nil
     }
@@ -267,16 +276,42 @@ struct MemoryDetailView: View {
     }
 
     private func addedArtifactsForEditedDraft() -> [CaptureArtifactDraft] {
-        guard let note = draftNewArtifactText.trimmedOrNil else { return [] }
-        return [
-            .promptAnswer(
+        pendingNewArtifactDraft().map { [$0] } ?? []
+    }
+
+    private func pendingNewArtifactDraft() -> CaptureArtifactDraft? {
+        switch draftNewArtifactKind {
+        case .note:
+            guard let note = draftNewArtifactText.trimmedOrNil else { return nil }
+            return .promptAnswer(
                 prompt: String(localized: "memory.edit.addAttachment"),
                 answer: note,
                 source: "detail_edit",
                 origin: .manual,
                 provenance: .manualComposer
             )
-        ]
+        case .link:
+            guard let url = draftNewArtifactURL.trimmedOrNil else { return nil }
+            return .link(
+                title: draftNewArtifactTitle.trimmedOrNil,
+                url: url,
+                note: draftNewArtifactText.trimmedOrNil,
+                summary: draftNewArtifactText.trimmedOrNil,
+                origin: .manual,
+                provenance: .manualComposer
+            )
+        case .todo:
+            guard let title = draftNewArtifactTitle.trimmedOrNil
+                ?? draftNewArtifactText.firstMeaningfulLine else {
+                return nil
+            }
+            return .todo(
+                title: title,
+                note: draftNewArtifactText.trimmedOrNil,
+                origin: .manual,
+                provenance: .manualComposer
+            )
+        }
     }
 
     private func orderedArtifacts(from snapshot: MemoryDetailSnapshot) -> [Artifact] {
@@ -387,6 +422,9 @@ struct MemoryDetailView: View {
 
 private struct MemoryDetailEditingView: View {
     @Binding var rawText: String
+    @Binding var newArtifactKind: MemoryDetailNewArtifactKind
+    @Binding var newArtifactTitle: String
+    @Binding var newArtifactURL: String
     @Binding var newArtifactText: String
 
     let artifacts: [Artifact]
@@ -431,7 +469,27 @@ private struct MemoryDetailEditingView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("memory.edit.addAttachment")
                 .font(.headline)
-            TextField("memory.edit.addAttachment.placeholder", text: $newArtifactText, axis: .vertical)
+
+            Picker("memory.edit.addAttachment", selection: $newArtifactKind) {
+                ForEach(MemoryDetailNewArtifactKind.allCases) { kind in
+                    Text(kind.labelKey).tag(kind)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            if newArtifactKind.usesTitleField {
+                TextField("capture.field.title", text: $newArtifactTitle)
+                    .textFieldStyle(.roundedBorder)
+            }
+
+            if newArtifactKind == .link {
+                TextField("capture.field.url", text: $newArtifactURL)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.URL)
+                    .textFieldStyle(.roundedBorder)
+            }
+
+            TextField(newArtifactKind.notePlaceholderKey, text: $newArtifactText, axis: .vertical)
                 .textFieldStyle(.roundedBorder)
                 .lineLimit(2...4)
         }
@@ -565,5 +623,44 @@ private struct MemoryDetailEditingArtifactCard: View {
 private extension Artifact {
     var isVisibleMemoryDetailAttachment: Bool {
         kind != .text
+    }
+}
+
+private enum MemoryDetailNewArtifactKind: String, CaseIterable, Identifiable {
+    case note
+    case link
+    case todo
+
+    var id: String { rawValue }
+
+    var labelKey: LocalizedStringKey {
+        switch self {
+        case .note:
+            return "capture.field.note"
+        case .link:
+            return "capture.card.kind.link"
+        case .todo:
+            return "capture.card.kind.todo"
+        }
+    }
+
+    var notePlaceholderKey: LocalizedStringKey {
+        switch self {
+        case .note:
+            return "memory.edit.addAttachment.placeholder"
+        case .link:
+            return "capture.field.note"
+        case .todo:
+            return "capture.field.note"
+        }
+    }
+
+    var usesTitleField: Bool {
+        switch self {
+        case .note:
+            return false
+        case .link, .todo:
+            return true
+        }
     }
 }

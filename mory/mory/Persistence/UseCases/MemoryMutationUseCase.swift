@@ -276,11 +276,17 @@ struct MemoryMutationUseCase {
     }
 
     func updateMemory(recordID: UUID, draft: MemoryEditDraft) async throws -> MemoryDetailSnapshot? {
-        let addedArtifacts: [CaptureArtifactDraft]
+        var addedArtifacts = draft.addedArtifacts
         if let appendedArtifactText = draft.appendedArtifactText?.trimmedOrNil {
-            addedArtifacts = [.text(title: appendedArtifactText.firstMeaningfulLine ?? "Added Note", body: appendedArtifactText)]
-        } else {
-            addedArtifacts = []
+            addedArtifacts.append(
+                .promptAnswer(
+                    prompt: "Added Note",
+                    answer: appendedArtifactText,
+                    source: "detail_edit",
+                    origin: .manual,
+                    provenance: .manualComposer
+                )
+            )
         }
 
         let result = try await applyMemoryMutation(

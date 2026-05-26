@@ -1786,7 +1786,10 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
                 rawText: "Corrected wording with clearer intent.",
                 userMood: "focused",
                 inputContext: "rewritten in detail",
-                appendedArtifactText: "Follow-up note with one more concrete detail."
+                appendedArtifactText: "Follow-up note with one more concrete detail.",
+                addedArtifacts: [
+                    .link(title: "Reference", url: "https://example.com/detail", note: "Detail edit source")
+                ]
             )
         )
 
@@ -1794,7 +1797,20 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertEqual(detail.record.rawText, "Corrected wording with clearer intent.")
         XCTAssertEqual(detail.record.userMood, "focused")
         XCTAssertEqual(detail.record.inputContext, "rewritten in detail")
-        XCTAssertTrue(detail.artifacts.contains(where: { $0.summary == "Follow-up note with one more concrete detail." }))
+        let addedArtifact = try XCTUnwrap(detail.artifacts.first(where: { $0.summary == "Follow-up note with one more concrete detail." }))
+        XCTAssertEqual(addedArtifact.kind, .document)
+        XCTAssertEqual(addedArtifact.metadata["documentType"], "promptAnswer")
+        XCTAssertNotNil(detail.artifactSemanticDigests.first(where: { $0.artifactID == addedArtifact.id }))
+        let arrangement = try XCTUnwrap(detail.cardArrangement)
+        XCTAssertTrue(arrangement.nodes.contains { node in
+            if case let .artifact(id) = node.contentRef {
+                return id == addedArtifact.id
+            }
+            return false
+        })
+        let addedLink = try XCTUnwrap(detail.artifacts.first(where: { $0.kind == .link }))
+        XCTAssertEqual(addedLink.metadata["url"], "https://example.com/detail")
+        XCTAssertNotNil(detail.artifactSemanticDigests.first(where: { $0.artifactID == addedLink.id }))
         XCTAssertEqual(detail.pipelineStatus?.stage, .notScheduled)
     }
 
@@ -1864,20 +1880,22 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
             mutation: MemoryMutationDraft(
                 addedArtifacts: [
                     .location(title: "Office", summary: "Shanghai Jing'an", latitude: 31.23, longitude: 121.47),
-                    .todo(title: "Send recap", note: "Before Friday")
+                    .todo(title: "Send recap", note: "Before Friday"),
+                    .link(title: "Reference", url: "https://example.com/recap", note: "Source material")
                 ]
             ),
             refreshPolicy: .markPending
         )
 
         let record = try XCTUnwrap(try repository.fetchRecordShell(id: memory.record.id))
-        XCTAssertEqual(result.addedArtifactIDs.count, 2)
-        XCTAssertEqual(record.artifactIDs.suffix(2), result.addedArtifactIDs[...])
+        XCTAssertEqual(result.addedArtifactIDs.count, 3)
+        XCTAssertEqual(record.artifactIDs.suffix(3), result.addedArtifactIDs[...])
         XCTAssertEqual(result.pipelineStatus?.stage, .notScheduled)
 
         let detail = try XCTUnwrap(result.detail)
         XCTAssertTrue(detail.artifacts.contains(where: { $0.kind == .location && $0.title == "Office" }))
         XCTAssertTrue(detail.artifacts.contains(where: { $0.kind == .todo && $0.title == "Send recap" }))
+        XCTAssertTrue(detail.artifacts.contains(where: { $0.kind == .link && $0.metadata["url"] == "https://example.com/recap" }))
         XCTAssertEqual(
             Set(detail.artifactSemanticDigests.filter { result.addedArtifactIDs.contains($0.artifactID) }.map(\.artifactID)),
             Set(result.addedArtifactIDs)
