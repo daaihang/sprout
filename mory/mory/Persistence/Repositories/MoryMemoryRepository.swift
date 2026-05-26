@@ -26,7 +26,6 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     let affectSnapshotMapper: AffectSnapshotMapper
     let externalCaptureInboxStore: any ExternalCaptureInboxStoring
     let backgroundOperationStore: any BackgroundOperationStoring
-    let notificationOrchestrator: NotificationOrchestrator
     let backgroundTriggerDispatcher: (any BackgroundTriggerDispatching)?
     var latestAnalysisTrace: DebugPipelineTraceSnapshot?
     var latestReflectionTrace: DebugPipelineTraceSnapshot?
@@ -53,7 +52,6 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         graphDeltaApplier: GraphDeltaApplier = GraphDeltaApplier(),
         affectSnapshotMapper: AffectSnapshotMapper = AffectSnapshotMapper(),
         backgroundOperationStore: (any BackgroundOperationStoring)? = nil,
-        notificationOrchestrator: NotificationOrchestrator? = nil,
         backgroundTriggerDispatcher: (any BackgroundTriggerDispatching)? = nil
     ) {
         self.modelContext = modelContext
@@ -85,7 +83,6 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
         self.clarificationQuestionBuilder = clarificationQuestionBuilder
         self.graphDeltaApplier = graphDeltaApplier
         self.affectSnapshotMapper = affectSnapshotMapper
-        self.notificationOrchestrator = notificationOrchestrator ?? .localDelivery
         self.backgroundTriggerDispatcher = backgroundTriggerDispatcher
     }
 

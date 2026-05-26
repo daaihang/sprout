@@ -49,13 +49,11 @@ struct NotificationSettingsService {
     func setNotificationsEnabled(
         _ enabled: Bool,
         repository: any MoryMemoryRepositorying,
-        notificationOrchestrator: NotificationOrchestrator,
         requestSystemAuthorization: Bool = true,
         now: Date = .now
     ) async throws -> NotificationSettingsUpdateResult {
         try await updatePreferences(
             repository: repository,
-            notificationOrchestrator: notificationOrchestrator,
             now: now,
             requestSystemAuthorization: requestSystemAuthorization
         ) { preferences in
@@ -69,7 +67,6 @@ struct NotificationSettingsService {
 
     func updatePreferences(
         repository: any MoryMemoryRepositorying,
-        notificationOrchestrator _: NotificationOrchestrator,
         now: Date = .now,
         requestSystemAuthorization: Bool = false,
         mutation: (inout IntelligencePreferences) -> Void

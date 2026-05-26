@@ -17,10 +17,10 @@ Mory should remind users only when there is useful context: daily question, anal
 | Component | Purpose | Status |
 | --- | --- | --- |
 | `NotificationOrchestrator` | Single entry for trigger -> dedupe -> policy -> local/remote delivery | `usable` |
-| `NotificationManagementView` | Single Settings/Debug surface for queue, history, dedupe, errors, and preferences | `usable` |
+| `NotificationManagementView` | Settings surface for user notification preferences | `usable` |
 | `NotificationManagementEventStore` | Persistent notification management log for dedupe, policy block, delivery, route, and interaction events | `usable` |
 | `BackgroundOperationOrchestrator` | Shared trigger entry for app launch, foreground, BGTask, silent push, pipeline-completed, APNs token, and URLSession callbacks before notification orchestration | `usable` |
-| `BackgroundManagementView` | Debug/Settings surface for background runs, operation events, jobs, pipeline statuses, and push state | `usable` |
+| `DebugRuntimeOperationsView` | Single Debug surface for background runs, jobs, notification queue/history/errors, and Push diagnostics | `usable` |
 | `LocalNotificationScheduler` | Schedule local notifications | `usable` |
 | `RemotePushSyncService` | Register/sync APNs token and preferences | `wired` |
 | `NotificationDeliveryRouter` | Route delivery/interactions | `wired` |

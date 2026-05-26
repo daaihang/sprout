@@ -227,8 +227,8 @@ sequenceDiagram
 ```mermaid
 flowchart TD
     A["Analysis proposal"] --> B["GraphDeltaStore pending"]
-    B --> C["GraphDeltaReviewView / DebugJobQueueView"]
-    C --> D{"User or debug action"}
+    B --> C["GraphDeltaReviewView"]
+    C --> D{"User review action"}
     D -->|"Apply"| E["GraphDeltaApplier"]
     D -->|"Reject"| F["CorrectionEvent graphDeltaRejected"]
     E --> G["Trusted graph/profile mutation"]

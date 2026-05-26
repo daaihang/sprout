@@ -90,8 +90,8 @@ Relevant code:
 | --- | --- | --- |
 | launch/home recovery is primary; BGTask missing | ✅ resolved | `BackgroundTaskCoordinator` registers `BGProcessingTask` + `BGAppRefreshTask`; `MoryAppDelegate` handles expiry callbacks |
 | no background URLSession pipeline | ✅ resolved | `BackgroundURLSessionInfrastructure` provides `BackgroundURLSessionCompletionStore`, `BackgroundURLSessionDelegate`, `MoryAPIClient.backgroundSession` |
-| APNs not fully connected to proactive intent production | ✅ resolved | `NotificationDeliveryRouter` routes intents to remote (APNS) or local channel based on token presence |
-| local notifications exist; no unified local/remote router | ✅ resolved | `NotificationDeliveryRouter` upserts intent + routes to remote push service or `LocalNotificationScheduler` |
+| APNs not fully connected to proactive intent production | ✅ resolved | `NotificationDeliveryRouter` routes intents to remote (APNS) or local channel through the Push domain `PushNotificationEnqueuing` port |
+| local notifications exist; no unified local/remote router | ✅ resolved | `NotificationDeliveryRouter` upserts intent + routes to the Push enqueuer or `LocalNotificationScheduler` |
 | daily question weak outside foreground | ✅ resolved | `BGAppRefreshTask` and foreground refresh enter `BackgroundOperationOrchestrator`, which prepares daily questions when cloud intelligence is available |
 
 Relevant code:
@@ -102,7 +102,7 @@ Relevant code:
 - `mory/mory/Infrastructure/Intelligence/Jobs/IntelligenceJobWorker.swift`
 - `mory/mory/Infrastructure/Intelligence/Jobs/IntelligenceJobRecoveryService.swift`
 - `mory/mory/Infrastructure/Notifications/NotificationDeliveryRouter.swift`
-- `mory/mory/Infrastructure/Notifications/RemotePushSyncService.swift`
+- `mory/mory/Infrastructure/Push/RemotePushSyncService.swift`
 - `mory/mory/App/MoryAppDelegate.swift`
 
 ## 8. Multimodal Context
@@ -154,4 +154,5 @@ The gaps above were the implementation source of truth for v7. As of v7 foundati
 | External capture inbox | ✅ complete | Share Extension writes V2-only pending drafts; App Intent phrase validation remains later |
 | Analysis contract | ✅ complete | production new-memory pipeline uses `/api/analyze`; old versioned and preview Analyze routes are no longer registered |
 | BGTask/background URLSession/APNs routing | ✅ complete | real-device soak and telemetry remain later |
+| Runtime debug orchestration | ✅ complete | Debug has one `DebugRuntimeOperationsView`; it triggers formal orchestrators and no longer directly mutates jobs or GraphDeltas |
 | Eval/debug/privacy gate | ✅ complete | real-user notification quality dashboard and public release privacy audit remain post-v7 production hardening |

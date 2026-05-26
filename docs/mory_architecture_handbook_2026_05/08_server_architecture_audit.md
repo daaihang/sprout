@@ -1,6 +1,6 @@
 # 08. Server Architecture Audit
 
-本文审计 Go server。范围包括 HTTP handlers、auth、AI providers、Analysis contract、SQLite store、notification push delivery 和 subscription。
+本文审计 Go server。范围包括 HTTP handlers、auth、AI providers、Analysis contract、SQLite store、Push delivery 和 subscription。
 
 ## 1. Server 总览
 
@@ -10,7 +10,7 @@ flowchart TD
     B --> C["auth middleware / user context"]
     B --> D["server/internal/ai"]
     B --> E["server/internal/db"]
-    B --> F["server/internal/notification"]
+    B --> F["server/internal/push"]
     B --> G["server/internal/subscription"]
     D --> H["OpenAI-compatible provider"]
     D --> I["Anthropic provider"]
@@ -28,7 +28,7 @@ flowchart TD
 | `internal/auth` | Apple auth / JWT |
 | `internal/ai` | Analysis、reflection、intelligence providers、prompt、parse |
 | `internal/db` | SQLite persistence |
-| `internal/notification` | push payload、APNs、delivery worker |
+| `internal/push` | push payload、APNs、delivery worker、retry/pacing |
 | `internal/subscription` | subscription verify |
 
 ## 2. HTTP Layer

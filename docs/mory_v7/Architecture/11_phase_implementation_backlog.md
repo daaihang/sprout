@@ -223,8 +223,8 @@ Completion evidence:
 
 - `BackgroundOperationOrchestrator` is the single background entry for app launch, scene/home foreground, BGTask, silent push, pipeline completion, APNs token updates, notification preference changes, background URLSession completion, and debug manual triggers.
 - `BackgroundTaskCoordinator` registers `BGProcessingTask` (ID: `dev.mory.intelligence.process`) and `BGAppRefreshTask` (ID: `dev.mory.intelligence.refresh`) before first runloop via `MoryAppDelegate`, then delegates work to `BackgroundOperationOrchestrator`.
-- `BackgroundOperationOrchestrator` only owns trigger mapping and run/event logging. Intelligence job recovery/processing lives under `Infrastructure/Intelligence/Jobs`; notification generation remains inside `NotificationOrchestrator`; push sync remains in the notification/push adapter.
-- `NotificationDeliveryRouter` routes `NotificationIntent` to `.local` or `.remote` channel based on APNS token presence in `PushDeviceRegistrationStore`.
+- `BackgroundOperationOrchestrator` only owns trigger mapping and run/event logging. Intelligence job recovery/processing lives under `Infrastructure/Intelligence/Jobs`; notification generation remains inside `NotificationOrchestrator`; APNs registration/writeback lives under the Push domain.
+- `NotificationDeliveryRouter` routes `NotificationIntent` to `.local` or `.remote` channel through the Push domain `PushNotificationEnqueuing` port.
 - `BackgroundURLSessionInfrastructure` provides `BackgroundURLSessionCompletionStore`, `BackgroundURLSessionDelegate`, and a `MoryAPIClient.backgroundSession` static lazy property under `Infrastructure/Background`.
 - `MoryAppDelegate` handles silent push `didReceiveRemoteNotification` and `handleEventsForBackgroundURLSession` callbacks as a thin adapter into the background domain.
 - `Info.plist` includes `UIBackgroundModes: [fetch, processing]` and `BGTaskSchedulerPermittedIdentifiers` with both task IDs.
@@ -257,7 +257,7 @@ Completion evidence:
 
 - `MoryV7EvalTests` covers sparse first-day context pack construction, GraphDelta apply/idempotence, person merge recovery, and affect correction appearing in future context pack affect history.
 - `AnalysisContextPackTests`, `EntityResolutionServiceTests`, and `AffectSnapshotTests` cover context ranking/budget/privacy, self-reference CJK edge cases, not-same blocking, Chinese name matching, and note-less affect correction.
-- `DebugAnalysisContextPackView`, `DebugAffectSnapshotView`, `DebugClarificationQuestionsView`, and Debug Center actions expose context payloads, affect snapshots, clarification answers/dismissal, pending GraphDelta application, BGTask scheduling, and notification traces for development inspection.
+- `DebugAnalysisContextPackView`, `DebugAffectSnapshotView`, `DebugClarificationQuestionsView`, and the single `DebugRuntimeOperationsView` expose context payloads, affect snapshots, clarification answers/dismissal, read-only GraphDelta/job state, BGTask triggers, notification traces, and Push diagnostics for development inspection.
 - `NotificationOrchestratorTests`, `NotificationDeliveryRouterTests`, `LocalNotificationSchedulerTests`, `NotificationSettingsServiceTests`, `NotificationInteractionServiceTests`, and `BackgroundTaskCoordinatorTests` cover trigger orchestration, dedupe, single-pass policy, local/APNs routing, writeback, and BGTask scheduling boundaries.
 - Privacy gates remain local-first: context packs are budgeted, sensitive records can be redacted/dropped, Analysis is proposal-based, and AI output does not directly mutate trusted graph state.
 - Native product wiring exists (without visual polish): `GraphDeltaReviewView`, `MemoryIntelligenceSettingsView`, `PersonProfileEditView`, `PersonMergeSplitView`, `StructuredMoodPickerSheet`, `JournalingSuggestionImportView`, and `ExternalCaptureDraftReviewView` are connected from Insights, Settings, People, Capture, and Debug entries.

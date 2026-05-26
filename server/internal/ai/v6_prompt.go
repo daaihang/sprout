@@ -81,18 +81,6 @@ func v6OperationSchema(operation string) string {
   "safety": "normal|sensitive|unknown",
   "confidence": 0.0
 }`
-	case "suggest_notification_intent":
-		return `{
-  "schema_version": 1,
-  "intent": {
-    "kind": "analysisReady|dailyQuestion|reflectionReady|debugTest",
-    "privacy_level": "generic|contextual|sensitive",
-    "title": "short notification title",
-    "body": "short notification body",
-    "deep_link": "optional mory:// deep link if supplied or inferable",
-    "scheduled_at": "optional RFC3339 time"
-  }
-}`
 	default:
 		return `{"schema_version": 1}`
 	}

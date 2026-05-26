@@ -102,10 +102,10 @@ It should remain light-state.
 Recommended additions:
 
 ```text
-internal/notification/
+internal/push/
   apns_client.go
-  notification_sender.go
-  notification_policy.go
+  push_delivery_worker.go
+  push_payload.go
 
 internal/intelligence/
   transcript_refine.go

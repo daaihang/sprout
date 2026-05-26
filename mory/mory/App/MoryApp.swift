@@ -177,7 +177,6 @@ struct MoryApp: App {
                             ownerID: ownerID,
                             analysisService: analysisService,
                             cloudIntelligenceService: cloudIntelligenceService,
-                            notificationOrchestrator: notificationOrchestrator,
                             backgroundTriggerDispatcher: backgroundOperationOrchestrator
                         )
                         await ownerScopedSystemStateCoordinator.prepareActiveOwner(

@@ -439,8 +439,8 @@ private struct RuntimeNotificationEventRow: View {
                     .font(.caption.monospaced())
                     .foregroundStyle(.secondary)
             }
-            RuntimeValueRow(title: "Intent", value: event.intentID.uuidString)
-            if let message = event.message?.trimmedOrNil {
+            RuntimeValueRow(title: "Intent", value: event.intentID?.uuidString ?? "None")
+            if let message = event.message.trimmedOrNil {
                 Text(message)
                     .font(.caption)
                     .foregroundStyle(.secondary)

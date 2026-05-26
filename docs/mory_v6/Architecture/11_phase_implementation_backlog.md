@@ -292,13 +292,13 @@ Current implementation status:
 
 - Go V6 endpoints and OpenAPI contracts exist for transcript refinement, question suggestions, chapter suggestions, and photo semantic placeholders. Notification intent suggestion was removed from the server contract; iOS owns notification candidate generation through `NotificationOrchestrator`.
 - Go push endpoints now include `/api/push/register` preference payload expansion, `/api/push/enqueue` lightweight delivery queuing/due-delivery attempt, and `/api/push/delivery-writeback` interaction writeback.
-- Go has an initial `internal/notification/PushDeliveryWorker` that enforces stored device preferences, quiet hours, daily caps, and minimum spacing before sending through an APNs client.
+- Go has an initial `internal/push/PushDeliveryWorker` that enforces stored device preferences, quiet hours, daily caps, and minimum spacing before sending through an APNs client.
 - Go now has a real token-auth APNs client behind `APNS_ENABLED=true`, plus credential config for key ID, team ID, topic, environment, and `.p8` auth key path/content.
 - Go now has a long-running scheduled delivery loop controlled by `PUSH_DELIVERY_WORKER_ENABLED`, `PUSH_DELIVERY_INTERVAL`, and `PUSH_DELIVERY_BATCH_SIZE`.
 - Go push delivery now persists `attempt_count` and `next_attempt_at`, retries transient APNs failures with exponential backoff, permanently fails non-retryable APNs errors, and exposes delivery counters/timestamps through `/metrics`.
 - Remote push enqueue payloads now include a production target envelope for `record`, `artifact`, `question`, `entity`, `place`, `theme`, `decision`, `chapter`, and `reflection`, while preserving flat iOS userInfo keys in the APNs payload.
 - iOS clients/protocols exist for those endpoints.
-- iOS debug settings now expose APNs token presence, device/timezone state, registration digest state, pending writeback count, notification-intent counts, force sync, and a basic enqueue-first-pending-intent action.
+- iOS Debug now exposes APNs token presence, device/timezone state, registration digest state, pending writeback count, notification-intent counts, force sync, background run/event history, and job/GraphDelta status from one `DebugRuntimeOperationsView`.
 - iOS Debug Center now includes Cloud Intelligence Debug for all V6 cloud operations, with decoded outputs, provider/model metadata, token usage when returned, request IDs, and transport error traces.
 - iOS Debug Center now includes Semantic Search Debug and Home Board Debug so search indexing/retrieval and memory desktop card generation can be inspected without direct database access.
 - Cloud V6 intelligence is now provider-backed in live mode with explicit per-operation JSON shape prompts and operation-level `/metrics` counters for requests, errors, latency, and token usage.
@@ -321,7 +321,7 @@ server/internal/ai/prompt.go
 server/internal/http/server.go
 server/internal/http/handlers.go
 server/internal/intelligence/
-server/internal/notification/
+server/internal/push/
 server/internal/ratelimit/
 server/openapi.yaml
 mory/mory/Infrastructure/Networking/

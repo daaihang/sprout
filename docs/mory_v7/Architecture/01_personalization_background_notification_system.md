@@ -59,9 +59,9 @@ Code signal:
 
 Code:
 
-- `/Users/z14/Documents/sprout/mory/mory/Infrastructure/Notifications/RemotePushSyncService.swift`
+- `/Users/z14/Documents/sprout/mory/mory/Infrastructure/Push/RemotePushSyncService.swift`
 - `/Users/z14/Documents/sprout/server/internal/http/handlers.go`
-- `/Users/z14/Documents/sprout/server/internal/notification/push_delivery_worker.go`
+- `/Users/z14/Documents/sprout/server/internal/push/push_delivery_worker.go`
 
 ### 2.5 Entity Identity Lifecycle Is Incomplete
 
