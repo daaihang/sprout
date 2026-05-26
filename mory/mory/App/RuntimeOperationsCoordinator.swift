@@ -16,6 +16,19 @@ struct RuntimeOperationResult: Hashable, Sendable {
 }
 
 @MainActor
+protocol RuntimeOperationsRepositorying:
+    AnyObject,
+    BackgroundRuntimeRepositorying,
+    NotificationIntentRepositorying,
+    NotificationManagementEventRepositorying {
+    func fetchIntelligenceJobs(status: IntelligenceJobStatus?, limit: Int?) throws -> [IntelligenceJob]
+    func fetchGraphDeltas(applied: Bool?, limit: Int?) throws -> [GraphDelta]
+    func fetchPipelineStatusSummaries(limit: Int?) throws -> [PipelineStatusSummary]
+}
+
+extension MoryMemoryRepository: RuntimeOperationsRepositorying {}
+
+@MainActor
 struct RuntimeOperationsCoordinator {
     private let backgroundOperationOrchestrator: BackgroundOperationOrchestrator
     private let notificationOrchestrator: NotificationOrchestrator
@@ -31,7 +44,7 @@ struct RuntimeOperationsCoordinator {
         self.remotePushSyncService = remotePushSyncService
     }
 
-    func loadSnapshot(repository: any MoryMemoryRepositorying, now: Date = .now) async throws -> RuntimeOperationsSnapshot {
+    func loadSnapshot(repository: any RuntimeOperationsRepositorying, now: Date = .now) async throws -> RuntimeOperationsSnapshot {
         let jobs = try repository.fetchIntelligenceJobs(status: nil, limit: nil)
             .sorted { $0.updatedAt > $1.updatedAt }
         let graphDeltas = try repository.fetchGraphDeltas(applied: nil, limit: nil)

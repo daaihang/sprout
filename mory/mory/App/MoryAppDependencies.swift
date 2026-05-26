@@ -219,7 +219,7 @@ private final class MissingRemotePushSyncService: RemotePushSyncing {
         fatalError(msg)
     }
     func writeBackInteraction(_ event: NotificationInteractionEvent) async {}
-    func fetchDebugSnapshot(repository: any MoryMemoryRepositorying) async -> RemotePushDebugSnapshot {
+    func fetchDebugSnapshot(repository: any NotificationIntentRepositorying) async -> RemotePushDebugSnapshot {
         RemotePushDebugSnapshot(
             ownerID: nil,
             deviceID: "",

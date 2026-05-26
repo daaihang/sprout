@@ -24,27 +24,18 @@ final class RuntimeOperationsCoordinatorTests: XCTestCase {
     }
 
     func testLoadSnapshotUsesReadOnlyRuntimeRepositories() async throws {
-        let fixture = makeFixture()
-        var intent = NotificationIntent(
-            kind: .dailyQuestion,
-            title: "Question",
-            body: "Body",
-            targetType: .question,
-            targetID: UUID(),
-            scheduledAt: .now
-        )
-        intent.status = .pending
-        try fixture.repository.upsertNotificationIntent(intent)
-
+        let repository = RuntimeSnapshotRepository()
         let coordinator = RuntimeOperationsCoordinator(
             backgroundOperationOrchestrator: .noop,
             notificationOrchestrator: .localDelivery,
             remotePushSyncService: RuntimePushService()
         )
 
-        let snapshot = try await coordinator.loadSnapshot(repository: fixture.repository)
+        let snapshot = try await coordinator.loadSnapshot(repository: repository)
 
-        XCTAssertEqual(snapshot.notifications.queueIntents.map(\.id), [intent.id])
+        XCTAssertTrue(snapshot.notifications.queueIntents.isEmpty)
+        XCTAssertTrue(snapshot.backgroundRuns.isEmpty)
+        XCTAssertTrue(snapshot.jobQueue.jobs.isEmpty)
         XCTAssertFalse(snapshot.push.hasAPNSToken)
     }
 
@@ -61,6 +52,69 @@ final class RuntimeOperationsCoordinatorTests: XCTestCase {
 
 private struct RuntimeFixture {
     let repository: MoryMemoryRepository
+}
+
+private final class RuntimeSnapshotRepository: RuntimeOperationsRepositorying {
+    var runs: [BackgroundOperationRun] = []
+    var events: [BackgroundOperationEvent] = []
+    var jobs: [IntelligenceJob] = []
+    var graphDeltas: [GraphDelta] = []
+    var pipelineStatuses: [PipelineStatusSummary] = []
+    var notificationIntents: [NotificationIntent] = []
+    var notificationEvents: [NotificationManagementEvent] = []
+
+    func fetchBackgroundOperationRuns(status: BackgroundOperationStatus?, limit: Int?) throws -> [BackgroundOperationRun] {
+        apply(limit: limit, to: runs.filter { status == nil || $0.status == status })
+    }
+
+    func fetchBackgroundOperationEvents(runID: UUID?, limit: Int?) throws -> [BackgroundOperationEvent] {
+        apply(limit: limit, to: events.filter { runID == nil || $0.runID == runID })
+    }
+
+    func upsertBackgroundOperationRun(_ run: BackgroundOperationRun) throws {
+        runs.removeAll { $0.id == run.id }
+        runs.append(run)
+    }
+
+    func upsertBackgroundOperationEvent(_ event: BackgroundOperationEvent) throws {
+        events.removeAll { $0.id == event.id }
+        events.append(event)
+    }
+
+    func fetchNotificationIntents(status: NotificationIntentStatus?, limit: Int?) throws -> [NotificationIntent] {
+        apply(limit: limit, to: notificationIntents.filter { status == nil || $0.status == status })
+    }
+
+    func upsertNotificationIntent(_ intent: NotificationIntent) throws {
+        notificationIntents.removeAll { $0.id == intent.id }
+        notificationIntents.append(intent)
+    }
+
+    func fetchNotificationManagementEvents(kind: NotificationManagementEventKind?, limit: Int?) throws -> [NotificationManagementEvent] {
+        apply(limit: limit, to: notificationEvents.filter { kind == nil || $0.eventKind == kind })
+    }
+
+    func upsertNotificationManagementEvent(_ event: NotificationManagementEvent) throws {
+        notificationEvents.removeAll { $0.id == event.id }
+        notificationEvents.append(event)
+    }
+
+    func fetchIntelligenceJobs(status: IntelligenceJobStatus?, limit: Int?) throws -> [IntelligenceJob] {
+        apply(limit: limit, to: jobs.filter { status == nil || $0.status == status })
+    }
+
+    func fetchGraphDeltas(applied: Bool?, limit: Int?) throws -> [GraphDelta] {
+        apply(limit: limit, to: graphDeltas.filter { applied == nil || ($0.appliedAt != nil) == applied })
+    }
+
+    func fetchPipelineStatusSummaries(limit: Int?) throws -> [PipelineStatusSummary] {
+        apply(limit: limit, to: pipelineStatuses)
+    }
+
+    private func apply<T>(limit: Int?, to values: [T]) -> [T] {
+        guard let limit else { return values }
+        return Array(values.prefix(limit))
+    }
 }
 
 private final class RuntimePushService: RemotePushSyncing {
@@ -82,7 +136,7 @@ private final class RuntimePushService: RemotePushSyncing {
         )
     }
     func writeBackInteraction(_ event: NotificationInteractionEvent) async {}
-    func fetchDebugSnapshot(repository: any MoryMemoryRepositorying) async -> RemotePushDebugSnapshot {
+    func fetchDebugSnapshot(repository: any NotificationIntentRepositorying) async -> RemotePushDebugSnapshot {
         RemotePushDebugSnapshot(
             ownerID: nil,
             deviceID: "runtime-test-device",

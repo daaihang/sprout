@@ -141,7 +141,7 @@ private final class RouterTestRemotePushService: RemotePushSyncing {
         throw RouterTestError.unsupported
     }
     func writeBackInteraction(_ event: NotificationInteractionEvent) async {}
-    func fetchDebugSnapshot(repository: any MoryMemoryRepositorying) async -> RemotePushDebugSnapshot {
+    func fetchDebugSnapshot(repository: any NotificationIntentRepositorying) async -> RemotePushDebugSnapshot {
         RemotePushDebugSnapshot(
             ownerID: nil, deviceID: "test", timezone: "UTC",
             hasAPNSToken: false, apnsTokenPreview: nil,

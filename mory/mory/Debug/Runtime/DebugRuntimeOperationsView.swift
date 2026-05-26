@@ -215,7 +215,11 @@ struct DebugRuntimeOperationsView: View {
     @MainActor
     private func reload() async {
         do {
-            snapshot = try await coordinator.loadSnapshot(repository: memoryRepository)
+            guard let runtimeRepository = memoryRepository as? any RuntimeOperationsRepositorying else {
+                resultMessage = "Reload failed: runtime repository unavailable."
+                return
+            }
+            snapshot = try await coordinator.loadSnapshot(repository: runtimeRepository)
             if resultMessage == nil {
                 resultMessage = "Loaded runtime snapshot."
             }

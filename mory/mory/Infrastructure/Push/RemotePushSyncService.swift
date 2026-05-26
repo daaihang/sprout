@@ -301,7 +301,7 @@ final class RemotePushSyncService: RemotePushSyncing {
         }
     }
 
-    func fetchDebugSnapshot(repository: any MoryMemoryRepositorying) async -> RemotePushDebugSnapshot {
+    func fetchDebugSnapshot(repository: any NotificationIntentRepositorying) async -> RemotePushDebugSnapshot {
         let intents = (try? repository.fetchNotificationIntents(status: nil, limit: nil)) ?? []
         let apnsToken = PushDeviceRegistrationStore.currentAPNSToken()
         return RemotePushDebugSnapshot(

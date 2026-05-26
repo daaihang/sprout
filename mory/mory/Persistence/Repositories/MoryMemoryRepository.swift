@@ -2257,7 +2257,8 @@ final class MoryMemoryRepository: MoryMemoryRepositorying {
     }
 
     func upsert(notificationIntent: NotificationIntent) throws {
-        let descriptor = FetchDescriptor<NotificationIntentStore>(predicate: #Predicate { $0.id == notificationIntent.id })
+        let intentID = notificationIntent.id
+        let descriptor = FetchDescriptor<NotificationIntentStore>(predicate: #Predicate { $0.id == intentID })
         if let existing = try modelContext.fetch(descriptor).first {
             existing.apply(domainModel: notificationIntent)
         } else {

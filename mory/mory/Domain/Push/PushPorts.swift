@@ -25,6 +25,6 @@ protocol RemotePushSyncing: PushNotificationEnqueuing {
     func registerSystemRemoteNotificationsIfNeeded(repository: any MoryMemoryRepositorying)
     func syncRegistrationIfPossible(repository: any MoryMemoryRepositorying, force: Bool) async
     func writeBackInteraction(_ event: NotificationInteractionEvent) async
-    func fetchDebugSnapshot(repository: any MoryMemoryRepositorying) async -> RemotePushDebugSnapshot
+    func fetchDebugSnapshot(repository: any NotificationIntentRepositorying) async -> RemotePushDebugSnapshot
     func fetchServerMetricsText() async throws -> String
 }
