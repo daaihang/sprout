@@ -112,8 +112,11 @@
 关键文件：
 
 - `AnalysisExecutor.swift`
-- `AnalysisModels.swift`
-- `AnalysisModels.swift` (`AnalysisResponseMapper`)
+- `AnalysisRequestBuilder.swift`
+- `AnalysisRequestPayload.swift`
+- `AnalysisResponseEnvelope.swift`
+- `AnalysisResponseMapper.swift`
+- `RecordAnalysisSnapshotMapper.swift`
 - `AnalysisContextPackBuilder.swift`
 - `GraphUpdater.swift`
 - `PlaceProfileResolver.swift`
@@ -123,12 +126,12 @@
 问题：
 
 - Pipeline 已通过 ports 与 SwiftData 分离；repository 仍承担生产 adapter 和 use case facade。
-- `AnalysisModels.swift` 同时容纳 request、response、mapper、capabilities，文件较大。
+- Analysis request、payload、response envelope 和 mapper 已拆到 focused files；`AnalysisModels.swift` 仅保留兼容入口注释。
 
 解决方案：
 
 - Pipeline 改为依赖 query/persist ports。
-- Analysis 拆成 request、response、mapper、quality/capabilities 文件。
+- Analysis 已拆成 request、response、mapper、quality/capabilities 文件；`RecordAnalysisSnapshotMapper` 是当前 `/api/analyze` envelope 的 `analysis` 子对象 mapper，不是旧 v6 pipeline。
 
 ## 4. Infrastructure / Context
 

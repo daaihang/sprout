@@ -118,12 +118,12 @@ flowchart TD
 
 问题：
 
-- iOS `AnalysisModels.swift` 文件较大。
+- iOS `AnalysisModels.swift` 已拆分为 request payload、response envelope、response mapper 和 record snapshot mapper。
 - server analysis types 中仍存在 deterministic proposal normalization helper，容易让人误解为 AI 原生 proposal 已完全独立。
 
 解决方案：
 
-- iOS 拆 request/response/mapper/capabilities。
+- iOS 已拆 request/response/mapper/capabilities，并以 `RecordAnalysisSnapshotMapper` 明确服务当前 `/api/analyze` response envelope。
 - server 文档明确：当前 native v7 contract 已是主路径，但部分 deterministic proposal builder 仍是 compatibility bridge。
 
 ## 5. Entity Resolution

@@ -30,9 +30,9 @@ struct EntityEnrichmentService: Sendable {
             profile.kind = person.kind
             profile.displayName = person.displayName
             profile.canonicalName = person.canonicalName
-            profile.aliases = stableUnion(profile.aliases, person.aliases)
-            profile.commonContextLabels = stableUnion(profile.commonContextLabels, themeLabels)
-            profile.sourceRecordIDs = stableUnion(profile.sourceRecordIDs, person.provenanceRecordIDs + [record.id])
+            profile.aliases = OrderedCollections.stableUnion(profile.aliases, person.aliases)
+            profile.commonContextLabels = OrderedCollections.stableUnion(profile.commonContextLabels, themeLabels)
+            profile.sourceRecordIDs = OrderedCollections.stableUnion(profile.sourceRecordIDs, person.provenanceRecordIDs + [record.id])
             profile.mentionCount = max(profile.mentionCount, profile.sourceRecordIDs.count)
             profile.firstMentionedAt = minDate(profile.firstMentionedAt, record.updatedAt)
             profile.lastMentionedAt = maxDate(profile.lastMentionedAt, record.updatedAt)
@@ -40,15 +40,6 @@ struct EntityEnrichmentService: Sendable {
             profile.updatedAt = record.updatedAt
             return profile
         }
-    }
-
-    private func stableUnion<T: Hashable>(_ lhs: [T], _ rhs: [T]) -> [T] {
-        var seen = Set<T>()
-        var result: [T] = []
-        for value in lhs + rhs where seen.insert(value).inserted {
-            result.append(value)
-        }
-        return result
     }
 
     private func minDate(_ lhs: Date?, _ rhs: Date?) -> Date? {

@@ -34,7 +34,7 @@ struct MemoryMutationUseCase {
         guard let recordStore = try repository.modelContext.fetch(
             FetchDescriptor<RecordShellStore>(predicate: #Predicate { $0.id == recordID })
         ).first else {
-            throw CocoaError(.fileNoSuchFile)
+            throw MemoryRepositoryError.recordNotFound(recordID)
         }
 
         let now = Date.now
@@ -84,10 +84,10 @@ struct MemoryMutationUseCase {
         var normalizedUpdatedArtifacts: [Artifact] = []
         for var artifact in mutation.updatedArtifacts {
             guard artifact.recordID == recordID else {
-                throw CocoaError(.fileNoSuchFile)
+                throw MemoryRepositoryError.artifactDoesNotBelongToRecord(artifactID: artifact.id, recordID: recordID)
             }
             guard try repository.fetchArtifact(id: artifact.id)?.recordID == recordID else {
-                throw CocoaError(.fileNoSuchFile)
+                throw MemoryRepositoryError.artifactNotFound(artifact.id)
             }
             artifact.updatedAt = now
             normalizedUpdatedArtifacts.append(artifact)
@@ -103,7 +103,7 @@ struct MemoryMutationUseCase {
                 belongsToRecord = try repository.fetchArtifact(id: artifactID)?.recordID == recordID
             }
             guard belongsToRecord else {
-                throw CocoaError(.fileNoSuchFile)
+                throw MemoryRepositoryError.artifactDoesNotBelongToRecord(artifactID: artifactID, recordID: recordID)
             }
         }
 
@@ -118,7 +118,7 @@ struct MemoryMutationUseCase {
             let requestedSet = Set(uniqueRequestedOrder)
             let knownSet = Set(artifactIDs)
             guard requestedSet.isSubset(of: knownSet) else {
-                throw CocoaError(.fileNoSuchFile)
+                throw MemoryRepositoryError.invalidArtifactOrder(recordID: recordID)
             }
             let remaining = artifactIDs.filter { !requestedSet.contains($0) }
             artifactIDs = uniqueRequestedOrder + remaining
@@ -260,7 +260,7 @@ struct MemoryMutationUseCase {
 
     func refreshMemoryPipeline(recordID: UUID) async throws {
         guard let record = try repository.fetchRecordShell(id: recordID) else {
-            throw CocoaError(.fileNoSuchFile)
+            throw MemoryRepositoryError.recordNotFound(recordID)
         }
         let artifacts = try repository.fetchArtifacts(recordID: recordID)
         let attemptAt = Date.now

@@ -23,7 +23,7 @@ struct ExternalCaptureImportUseCase {
 
     func dismissExternalCaptureInboxItem(_ id: UUID) throws {
         guard var item = try repository.externalCaptureInboxStore.fetch(id: id) else {
-            throw CocoaError(.fileNoSuchFile)
+            throw MemoryRepositoryError.externalCaptureInboxItemNotFound(id)
         }
         item.status = .dismissed
         item.dismissedAt = .now
@@ -33,7 +33,7 @@ struct ExternalCaptureImportUseCase {
 
     func markExternalCaptureInboxItemImported(_ id: UUID, recordID: UUID) throws {
         guard var item = try repository.externalCaptureInboxStore.fetch(id: id) else {
-            throw CocoaError(.fileNoSuchFile)
+            throw MemoryRepositoryError.externalCaptureInboxItemNotFound(id)
         }
         item.status = .imported
         item.importedRecordID = recordID
@@ -43,7 +43,7 @@ struct ExternalCaptureImportUseCase {
 
     func createMemoryFromExternalCaptureInboxItem(_ id: UUID) async throws -> MemorySummary {
         guard let item = try repository.externalCaptureInboxStore.fetch(id: id) else {
-            throw CocoaError(.fileNoSuchFile)
+            throw MemoryRepositoryError.externalCaptureInboxItemNotFound(id)
         }
         guard item.status == .pending else {
             throw ExternalCaptureInboxError.itemIsNotPending

@@ -66,8 +66,8 @@ Relevant code:
 
 Relevant code:
 
-- `mory/mory/Domain/Capture/RecordShell.swift`
-- `mory/mory/Infrastructure/Analysis/Pipeline/AnalysisRecordResponseMapper.swift`
+- `mory/mory/Domain/Memory/RecordShell.swift`
+- `mory/mory/Infrastructure/Analysis/Pipeline/RecordAnalysisSnapshotMapper.swift`
 
 ## 6. Questions And Feedback
 

@@ -72,6 +72,24 @@ final class MoryShellNavigationTests: XCTestCase {
         XCTAssertTrue(routes.contains(.appearanceLanguage))
     }
 
+    @MainActor
+    func testNavigationRouteCoordinatorRoutesDeepLinksThroughSingleBoundary() {
+        let coordinator = NavigationRouteCoordinator()
+        let memoryID = UUID()
+        let reflectionID = UUID()
+
+        coordinator.apply(.memories(.memory(memoryID)))
+        XCTAssertEqual(coordinator.selectedTab, .memories)
+        XCTAssertEqual(coordinator.memoriesRoute, .memory(memoryID))
+
+        coordinator.apply(.insights(.reflection(reflectionID)))
+        XCTAssertEqual(coordinator.selectedTab, .insights)
+        XCTAssertEqual(coordinator.insightsRoute, .reflection(reflectionID))
+
+        coordinator.apply(.search)
+        XCTAssertEqual(coordinator.selectedTab, .search)
+    }
+
     func testDefaultUserSettingsPreferenceHasSyncReadyMetadata() {
         let preference = UserSettingsPreference.defaults
 

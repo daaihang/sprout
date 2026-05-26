@@ -8,10 +8,10 @@ extension Notification.Name {
 }
 
 enum PushDeviceRegistrationStore {
-    private static let apnsTokenKey = "mory.apnsTokenHex"
-    private static let registrationDigestKey = "mory.remotePush.lastRegistrationDigest"
-    private static let pendingWritebacksKey = "mory.remotePush.pendingWritebacks"
-    private static let activeOwnerKey = "mory.remotePush.activeLocalOwnerID"
+    private static let apnsTokenKey = MoryUserDefaultsKeys.RemotePush.legacyAPNSTokenHex
+    private static let registrationDigestKey = MoryUserDefaultsKeys.RemotePush.lastRegistrationDigest
+    private static let pendingWritebacksKey = MoryUserDefaultsKeys.RemotePush.pendingWritebacks
+    private static let activeOwnerKey = MoryUserDefaultsKeys.RemotePush.activeLocalOwnerID
     private static let fallbackOwnerID = "device"
 
     static func configureOwner(_ ownerID: String) {

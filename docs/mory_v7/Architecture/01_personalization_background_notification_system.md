@@ -84,8 +84,8 @@ Code:
 
 Code:
 
-- `/Users/z14/Documents/sprout/mory/mory/Domain/Capture/RecordShell.swift`
-- `/Users/z14/Documents/sprout/mory/mory/Infrastructure/Analysis/Pipeline/AnalysisRecordResponseMapper.swift`
+- `/Users/z14/Documents/sprout/mory/mory/Domain/Memory/RecordShell.swift`
+- `/Users/z14/Documents/sprout/mory/mory/Infrastructure/Analysis/Pipeline/RecordAnalysisSnapshotMapper.swift`
 
 ### 2.7 Daily Question Answer UX Is Limited
 

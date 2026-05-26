@@ -44,10 +44,10 @@ nonisolated struct AffectSnapshot: Identifiable, Codable, Hashable, Sendable {
         self.arousal = arousal.map(Self.clamped01)
         self.dominance = dominance.map(Self.clamped01)
         self.intensity = intensity.map(Self.clamped01)
-        self.labels = Array(Self.orderedUnique(labels))
-        self.toneHints = Array(Self.orderedUnique(toneHints))
+        self.labels = Array(OrderedCollections.unique(labels))
+        self.toneHints = Array(OrderedCollections.unique(toneHints))
         self.appraisal = appraisal
-        self.sources = Array(Self.orderedUnique(sources))
+        self.sources = Array(OrderedCollections.unique(sources))
         self.confidence = confidence.map(Self.clamped01)
         self.evidence = evidence
         self.userConfirmed = userConfirmed
@@ -73,15 +73,6 @@ nonisolated struct AffectSnapshot: Identifiable, Codable, Hashable, Sendable {
         min(1, max(0, value))
     }
 
-    private static func orderedUnique<T: Hashable>(_ values: [T]) -> [T] {
-        var seen = Set<T>()
-        var result: [T] = []
-        for value in values where !seen.contains(value) {
-            seen.insert(value)
-            result.append(value)
-        }
-        return result
-    }
 }
 
 nonisolated struct AffectSnapshotDraft: Codable, Hashable, Sendable {
@@ -268,7 +259,7 @@ nonisolated struct AffectSnapshotMapper: Sendable {
         dominance: Double? = nil,
         intensity: Double? = nil
     ) -> AffectSnapshotDraft {
-        let normalizedLabels = orderedUnique((allLabels.isEmpty ? [label] : allLabels).compactMap(nonisolatedTrimmedOrNil))
+        let normalizedLabels = OrderedCollections.unique((allLabels.isEmpty ? [label] : allLabels).compactMap(nonisolatedTrimmedOrNil))
         let rawMood = nonisolatedTrimmedOrNil(normalizedLabels.joined(separator: ", ")) ?? label
         var base = draft(
             rawMood: rawMood,
@@ -366,7 +357,7 @@ nonisolated struct AffectSnapshotMapper: Sendable {
         if contains(normalized, ["stressed", "stress", "压力"]) { labels.append(.stressed) }
         if contains(normalized, ["playful", "玩", "开玩笑"]) { labels.append(.playful) }
         if contains(normalized, ["uncertain", "不确定", "说不清"]) { labels.append(.uncertain) }
-        return labels.isEmpty ? [.uncertain] : orderedUnique(labels)
+            return labels.isEmpty ? [.uncertain] : OrderedCollections.unique(labels)
     }
 
     private func toneHints(for normalized: String) -> [ToneHint] {
@@ -379,7 +370,7 @@ nonisolated struct AffectSnapshotMapper: Sendable {
         if contains(normalized, ["tender", "温柔", "亲近"]) { hints.append(.tender) }
         if contains(normalized, ["exhausted", "疲惫", "累"]) { hints.append(.exhausted) }
         if contains(normalized, ["uncertain", "不确定", "说不清"]) { hints.append(.uncertain) }
-        return orderedUnique(hints)
+            return OrderedCollections.unique(hints)
     }
 
     private func vector(
@@ -477,13 +468,4 @@ nonisolated struct AffectSnapshotMapper: Sendable {
         return trimmed.isEmpty ? nil : trimmed
     }
 
-    private func orderedUnique<T: Hashable>(_ values: [T]) -> [T] {
-        var seen = Set<T>()
-        var result: [T] = []
-        for value in values where !seen.contains(value) {
-            seen.insert(value)
-            result.append(value)
-        }
-        return result
-    }
 }

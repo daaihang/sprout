@@ -4,16 +4,6 @@
     "" : {
 
     },
-    "%@ (%lld)" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@ (%2$lld)"
-          }
-        }
-      }
-    },
     "%@ • %@" : {
       "localizations" : {
         "en" : {
@@ -102,7 +92,6 @@
       }
     },
     "Active vault" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -113,7 +102,6 @@
       }
     },
     "Add" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -135,7 +123,6 @@
       }
     },
     "Add first suggestion to board" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -146,6 +133,9 @@
       }
     },
     "Adds text or a link to Mory's external capture handoff path." : {
+
+    },
+    "Affect Corrections" : {
 
     },
     "Affect History" : {
@@ -193,7 +183,16 @@
         }
       }
     },
+    "Analysis is now the production pipeline; legacy Analyze controls are deprecated." : {
+
+    },
+    "Analysis is the production memory analysis path. This debug view inspects the context pack, request payload, response proposals, and mapper output used by that path." : {
+
+    },
     "Analysis ready" : {
+
+    },
+    "Analysis response" : {
 
     },
     "Analysis Review" : {
@@ -210,6 +209,9 @@
       }
     },
     "Answer: %@" : {
+
+    },
+    "Answered (%lld)" : {
 
     },
     "APNs" : {
@@ -234,7 +236,6 @@
       }
     },
     "Appearance" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -245,7 +246,6 @@
       }
     },
     "Appearance Lab" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -275,7 +275,6 @@
 
     },
     "Arc min records: %lld" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -490,7 +489,6 @@
       }
     },
     "Arc/reflection results" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -568,7 +566,6 @@
 
     },
     "Atmosphere" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -639,7 +636,6 @@
 
     },
     "Backfill as %@" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -650,7 +646,6 @@
       }
     },
     "Backfill missing captureOrigin?" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -661,7 +656,6 @@
       }
     },
     "Backfill missing origins" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -672,7 +666,6 @@
       }
     },
     "Backfill value" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -683,7 +676,6 @@
       }
     },
     "Backfilling" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -696,16 +688,16 @@
     "Background" : {
 
     },
-    "Background Operations" : {
-
-    },
     "Blocked" : {
 
     },
-    "Blocked: %@" : {
+    "Body" : {
 
     },
-    "Body" : {
+    "Budget" : {
+
+    },
+    "Build context pack for latest memory" : {
 
     },
     "Build Draft Preview" : {
@@ -728,6 +720,12 @@
         }
       }
     },
+    "Building context pack" : {
+
+    },
+    "Bulk controls" : {
+
+    },
     "Cancel" : {
       "localizations" : {
         "zh-Hans" : {
@@ -742,7 +740,6 @@
 
     },
     "Caption hint" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -753,7 +750,6 @@
       }
     },
     "Capture Card Lab" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -1205,6 +1201,22 @@
         }
       }
     },
+    "capture.card.kind.affect" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mood"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "心情"
+          }
+        }
+      }
+    },
     "capture.card.kind.audio" : {
       "localizations" : {
         "en" : {
@@ -1233,6 +1245,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "链接"
+          }
+        }
+      }
+    },
+    "capture.card.kind.livePhoto" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Live Photo"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Live Photo"
           }
         }
       }
@@ -1286,6 +1314,22 @@
         }
       }
     },
+    "capture.card.kind.person" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Person"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "人物"
+          }
+        }
+      }
+    },
     "capture.card.kind.photos" : {
       "localizations" : {
         "en" : {
@@ -1314,6 +1358,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "地点"
+          }
+        }
+      }
+    },
+    "capture.card.kind.prompt" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prompt"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "问题"
+          }
+        }
+      }
+    },
+    "capture.card.kind.journalingSuggestion" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Journal Suggestion"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "手记建议"
           }
         }
       }
@@ -1362,6 +1438,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "任务"
+          }
+        }
+      }
+    },
+    "capture.card.kind.video" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Video"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "视频"
           }
         }
       }
@@ -3921,11 +4013,16 @@
         }
       }
     },
+    "Clarification Questions" : {
+
+    },
+    "clarificationQuestions" : {
+
+    },
     "Classification (e.g. pleasant)" : {
 
     },
     "Clear Lab Data" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -3935,8 +4032,10 @@
         }
       }
     },
+    "Cloud intelligence" : {
+
+    },
     "Cloud Intelligence" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -3945,6 +4044,12 @@
           }
         }
       }
+    },
+    "cloudChapterSuggestions" : {
+
+    },
+    "cloudQuestionSuggestions" : {
+
     },
     "common.attachmentCount %lld" : {
       "extractionState" : "manual",
@@ -4348,7 +4453,6 @@
       }
     },
     "Compare the same origin fixtures in production, debug, and hidden source label modes." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -4357,6 +4461,9 @@
           }
         }
       }
+    },
+    "Comparison" : {
+
     },
     "Completed" : {
 
@@ -4395,11 +4502,13 @@
         }
       }
     },
+    "Context Pack" : {
+
+    },
     "Contexts: %@" : {
 
     },
     "Contrast" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -4410,7 +4519,6 @@
       }
     },
     "Controls" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -4431,7 +4539,6 @@
       }
     },
     "Copy" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -4459,7 +4566,6 @@
       }
     },
     "Copy All Reports" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -4487,7 +4593,6 @@
       }
     },
     "Copy Full Report" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -4498,7 +4603,6 @@
       }
     },
     "Copy rule report" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -4509,7 +4613,6 @@
       }
     },
     "Core Batch runs strict, balanced, and experimental profiles over the high-signal input and history scenarios." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -4523,7 +4626,6 @@
 
     },
     "Custom body override" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -4534,7 +4636,6 @@
       }
     },
     "Custom Content" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -4545,7 +4646,6 @@
       }
     },
     "Custom context override" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -4556,7 +4656,6 @@
       }
     },
     "Custom mood override" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -4567,7 +4666,6 @@
       }
     },
     "Custom title override" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -4587,8 +4685,13 @@
         }
       }
     },
+    "Daily questions" : {
+
+    },
+    "dailyQuestions" : {
+
+    },
     "Data Repair" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -4597,6 +4700,9 @@
           }
         }
       }
+    },
+    "Daylight" : {
+
     },
     "Debug" : {
       "extractionState" : "manual",
@@ -4624,9 +4730,6 @@
           }
         }
       }
-    },
-    "Debug tools are unavailable in this build." : {
-
     },
     "debug.action.analysis" : {
       "extractionState" : "manual",
@@ -5632,7 +5735,6 @@
       }
     },
     "debug.captureCardLab.allTypes.subtitle" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5649,7 +5751,6 @@
       }
     },
     "debug.captureCardLab.allTypes.title" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5666,7 +5767,6 @@
       }
     },
     "debug.captureCardLab.appearance.dark" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5683,7 +5783,6 @@
       }
     },
     "debug.captureCardLab.appearance.light" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5700,7 +5799,6 @@
       }
     },
     "debug.captureCardLab.contrast.high" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5717,7 +5815,6 @@
       }
     },
     "debug.captureCardLab.contrast.standard" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5798,7 +5895,6 @@
       }
     },
     "debug.captureCardLab.edgeCases.subtitle" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5815,7 +5911,6 @@
       }
     },
     "debug.captureCardLab.edgeCases.title" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6008,7 +6103,6 @@
       }
     },
     "debug.captureCardLab.intensity.balanced" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6025,7 +6119,6 @@
       }
     },
     "debug.captureCardLab.intensity.calm" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6042,7 +6135,6 @@
       }
     },
     "debug.captureCardLab.intensity.vivid" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6059,7 +6151,6 @@
       }
     },
     "debug.captureCardLab.music.chooseResult" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6076,7 +6167,6 @@
       }
     },
     "debug.captureCardLab.music.loadedNowPlaying" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6093,7 +6183,6 @@
       }
     },
     "debug.captureCardLab.music.loadingNowPlaying" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6110,7 +6199,6 @@
       }
     },
     "debug.captureCardLab.music.loadNowPlaying" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6127,7 +6215,6 @@
       }
     },
     "debug.captureCardLab.music.noCardGenerated" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6144,7 +6231,6 @@
       }
     },
     "debug.captureCardLab.music.noContentCard" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6161,7 +6247,6 @@
       }
     },
     "debug.captureCardLab.music.noCurrentSong.detail" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6178,7 +6263,6 @@
       }
     },
     "debug.captureCardLab.music.noCurrentSong.title" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6195,7 +6279,6 @@
       }
     },
     "debug.captureCardLab.music.noSongsOrAuthorization" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6244,7 +6327,6 @@
       }
     },
     "debug.captureCardLab.music.searching" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6261,7 +6343,6 @@
       }
     },
     "debug.captureCardLab.music.searchPreview" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6278,7 +6359,6 @@
       }
     },
     "debug.captureCardLab.music.stopped.detail" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6295,7 +6375,6 @@
       }
     },
     "debug.captureCardLab.music.unavailable.detail" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6344,7 +6423,6 @@
       }
     },
     "debug.captureCardLab.palette.default.detail" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6361,7 +6439,6 @@
       }
     },
     "debug.captureCardLab.palette.default.title" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6378,7 +6455,6 @@
       }
     },
     "debug.captureCardLab.palette.music.detail" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6395,7 +6471,6 @@
       }
     },
     "debug.captureCardLab.palette.music.title" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6412,7 +6487,6 @@
       }
     },
     "debug.captureCardLab.palette.photo.detail" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6429,7 +6503,6 @@
       }
     },
     "debug.captureCardLab.palette.photo.title" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6446,7 +6519,6 @@
       }
     },
     "debug.captureCardLab.palette.subtitle" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6463,7 +6535,6 @@
       }
     },
     "debug.captureCardLab.palette.title" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6480,7 +6551,6 @@
       }
     },
     "debug.captureCardLab.palette.weather.detail" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6625,7 +6695,6 @@
       }
     },
     "debug.captureCardLab.photoGroups.subtitle" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6642,7 +6711,6 @@
       }
     },
     "debug.captureCardLab.photoGroups.title" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6691,7 +6759,6 @@
       }
     },
     "debug.captureCardLab.place.generateSnapshot" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6708,7 +6775,6 @@
       }
     },
     "debug.captureCardLab.place.generatingMap" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6901,7 +6967,6 @@
       }
     },
     "debug.captureCardLab.place.privacy" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6966,7 +7031,6 @@
       }
     },
     "debug.captureCardLab.place.snapshotFailed" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6983,7 +7047,6 @@
       }
     },
     "debug.captureCardLab.place.snapshotGenerated" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7240,7 +7303,6 @@
       }
     },
     "debug.captureCardLab.states.subtitle" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7257,7 +7319,6 @@
       }
     },
     "debug.captureCardLab.states.title" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7386,7 +7447,6 @@
       }
     },
     "debug.captureCardLab.status.subtitle" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7403,7 +7463,6 @@
       }
     },
     "debug.captureCardLab.status.title" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7452,7 +7511,6 @@
       }
     },
     "debug.captureCardLab.type.subtitle" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7469,7 +7527,6 @@
       }
     },
     "debug.captureCardLab.weather.temperature.format" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -11497,12 +11554,6 @@
         }
       }
     },
-    "Dedupe" : {
-
-    },
-    "dedupeKey=%@" : {
-
-    },
     "Default layout" : {
       "localizations" : {
         "zh-Hans" : {
@@ -11514,7 +11565,6 @@
       }
     },
     "Delete Core Spotlight index" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -11546,7 +11596,6 @@
       }
     },
     "Device-scoped keys may persist across sign-out. Owner-scoped keys are namespaced by the active local data owner. Debug keys are development controls and do not store user memory content." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -11556,8 +11605,10 @@
         }
       }
     },
+    "Diagnostics" : {
+
+    },
     "Disable tuning runtime" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -11568,7 +11619,6 @@
       }
     },
     "Disabled" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -11589,6 +11639,9 @@
       }
     },
     "Dismissed" : {
+
+    },
+    "Dismissed (%lld)" : {
 
     },
     "Display name" : {
@@ -11612,7 +11665,6 @@
 
     },
     "Each run creates real local memories and calls the configured Go API through the normal pipeline." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -11626,6 +11678,12 @@
 
     },
     "Editable Fields" : {
+
+    },
+    "Effective gate status" : {
+
+    },
+    "Effective gates" : {
 
     },
     "empty.action.addFirstMemory" : {
@@ -12070,8 +12128,19 @@
         }
       }
     },
+    "Enable all V6 flags" : {
+
+    },
+    "Enable cloud-first strongest policy" : {
+
+    },
+    "Enable semantic search" : {
+
+    },
+    "Enable semantic search + rebuild index" : {
+
+    },
     "Enabled" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -12135,7 +12204,6 @@
       }
     },
     "Entity results" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -12281,8 +12349,10 @@
         }
       }
     },
+    "entityProfiles" : {
+
+    },
     "Error" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -12292,9 +12362,6 @@
         }
       }
     },
-    "Errors" : {
-
-    },
     "Events" : {
 
     },
@@ -12302,7 +12369,6 @@
 
     },
     "Execution" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -12313,7 +12379,6 @@
       }
     },
     "Expectation: %@" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -12384,11 +12449,13 @@
         }
       }
     },
+    "Feature gates" : {
+
+    },
     "Field evidence" : {
 
     },
     "Filtered" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -12420,7 +12487,6 @@
       }
     },
     "Fixture" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -12479,14 +12545,13 @@
     "GraphDelta Review" : {
 
     },
+    "GraphDelta Status" : {
+
+    },
     "Handoff Recovery" : {
 
     },
-    "History" : {
-
-    },
     "Home Board Debug" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -12497,7 +12562,6 @@
       }
     },
     "Home Board Rules" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -12506,6 +12570,9 @@
           }
         }
       }
+    },
+    "Home suggestions" : {
+
     },
     "home.board.action.dismiss" : {
       "extractionState" : "manual",
@@ -13034,6 +13101,9 @@
         }
       }
     },
+    "homeGrid" : {
+
+    },
     "ID" : {
 
     },
@@ -13050,7 +13120,6 @@
 
     },
     "Inputs" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -13468,6 +13537,15 @@
         }
       }
     },
+    "Intelligence Jobs" : {
+
+    },
+    "Intelligence preferences" : {
+
+    },
+    "intelligenceJobs" : {
+
+    },
     "Intensity" : {
 
     },
@@ -13531,6 +13609,7 @@
       }
     },
     "Job Queue" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -13563,6 +13642,16 @@
     "Kind (daily mood / momentary emotion)" : {
 
     },
+    "Kind: %@ · Sensitivity: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Kind: %1$@ · Sensitivity: %2$@"
+          }
+        }
+      }
+    },
     "Label (e.g. calm, relieved)" : {
 
     },
@@ -13581,7 +13670,6 @@
       }
     },
     "Last result" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -13592,7 +13680,6 @@
       }
     },
     "Last transport trace" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -13613,7 +13700,6 @@
       }
     },
     "Leave fields empty to use the selected preset." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -13627,7 +13713,6 @@
 
     },
     "Legacy has user data" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -13638,7 +13723,6 @@
       }
     },
     "Legacy owner" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -13649,7 +13733,6 @@
       }
     },
     "Less" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -13660,7 +13743,6 @@
       }
     },
     "Limit: %lld" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -13681,7 +13763,6 @@
       }
     },
     "Live and search previews only update this debug page. They do not save memories." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -13772,7 +13853,6 @@
       }
     },
     "Local Data Vault" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -13783,7 +13863,6 @@
       }
     },
     "Local Gate Overrides" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -13792,6 +13871,9 @@
           }
         }
       }
+    },
+    "Local intelligence" : {
+
     },
     "Local owner" : {
       "extractionState" : "stale",
@@ -13805,7 +13887,6 @@
       }
     },
     "Local preferences" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -13814,6 +13895,9 @@
           }
         }
       }
+    },
+    "localNotifications" : {
+
     },
     "Location memories will appear here after Mory resolves them into saved places." : {
       "localizations" : {
@@ -13848,7 +13932,6 @@
 
     },
     "Map snapshots are static images. Cards fall back to a lightweight map texture when no snapshot is available." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -13857,6 +13940,9 @@
           }
         }
       }
+    },
+    "Mapped local proposals" : {
+
     },
     "memories.empty.description" : {
       "extractionState" : "manual",
@@ -14314,7 +14400,6 @@
 
     },
     "Memory results" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -14364,6 +14449,326 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "重试中…"
+          }
+        }
+      }
+    },
+    "memory.detail.artifact.audio" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audio"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音频"
+          }
+        }
+      }
+    },
+    "memory.detail.artifact.link" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Link"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "链接"
+          }
+        }
+      }
+    },
+    "memory.detail.empty.article.message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Analysis has not produced an article view for this memory yet."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这条记忆还没有生成文章视图。"
+          }
+        }
+      }
+    },
+    "memory.detail.empty.article.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No article yet"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无文章"
+          }
+        }
+      }
+    },
+    "memory.detail.empty.audio.message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audio attachments will appear here after capture."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "录入音频后会显示在这里。"
+          }
+        }
+      }
+    },
+    "memory.detail.empty.audio.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No audio"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无音频"
+          }
+        }
+      }
+    },
+    "memory.detail.empty.gallery.message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Photos, videos, and Live Photos will appear here."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "照片、视频和 Live Photo 会显示在这里。"
+          }
+        }
+      }
+    },
+    "memory.detail.empty.gallery.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No media"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无媒体"
+          }
+        }
+      }
+    },
+    "memory.detail.empty.link.message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saved links will appear here."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保存的链接会显示在这里。"
+          }
+        }
+      }
+    },
+    "memory.detail.empty.link.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No links"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无链接"
+          }
+        }
+      }
+    },
+    "memory.detail.mode.article" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Article"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文章"
+          }
+        }
+      }
+    },
+    "memory.detail.mode.audio" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audio"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音频"
+          }
+        }
+      }
+    },
+    "memory.detail.mode.checkIn" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check-in"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "签到"
+          }
+        }
+      }
+    },
+    "memory.detail.mode.gallery" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gallery"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "图库"
+          }
+        }
+      }
+    },
+    "memory.detail.mode.link" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Links"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "链接"
+          }
+        }
+      }
+    },
+    "memory.detail.mode.story" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Story"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "故事"
+          }
+        }
+      }
+    },
+    "memory.detail.mode.text" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文字"
+          }
+        }
+      }
+    },
+    "memory.detail.strategy.aiAutomatic" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI automatic"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI 自动"
+          }
+        }
+      }
+    },
+    "memory.detail.strategy.automatic" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatic"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动"
+          }
+        }
+      }
+    },
+    "memory.detail.strategy.fixed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fixed"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "固定"
           }
         }
       }
@@ -15000,7 +15405,6 @@
       }
     },
     "Missing by kind" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15017,7 +15421,6 @@
 
     },
     "More" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15044,6 +15447,9 @@
         }
       }
     },
+    "multimediaViews" : {
+
+    },
     "Music" : {
       "localizations" : {
         "zh-Hans" : {
@@ -15055,7 +15461,6 @@
       }
     },
     "Music Lab" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15110,7 +15515,6 @@
       }
     },
     "No active local data diagnostics." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15120,6 +15524,12 @@
         }
       }
     },
+    "No affect correction events." : {
+
+    },
+    "No affect snapshots yet." : {
+
+    },
     "No affect snapshots." : {
 
     },
@@ -15127,7 +15537,6 @@
 
     },
     "No arc/reflection results" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15160,14 +15569,13 @@
     "No background runs." : {
 
     },
-    "No dedupe hits." : {
+    "No dedupe hits or notification errors." : {
 
     },
     "No delivered, opened, or dismissed notification events." : {
 
     },
     "No entity results" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15191,8 +15599,10 @@
         }
       }
     },
+    "No jobs." : {
+
+    },
     "No memory results" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15226,10 +15636,13 @@
     "No pending graph deltas." : {
 
     },
-    "No pending, scheduled, in-app-only, or blocked notification intents." : {
+    "No pending questions" : {
 
     },
     "No person profile yet." : {
+
+    },
+    "No person profiles" : {
 
     },
     "No places" : {
@@ -15242,11 +15655,7 @@
         }
       }
     },
-    "No policy, delivery, or route errors." : {
-
-    },
     "No preview loaded." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15256,11 +15665,25 @@
         }
       }
     },
+    "No privacy decisions" : {
+
+    },
+    "No queued notification intents." : {
+
+    },
     "No rejected graph deltas." : {
 
     },
+    "No related memories" : {
+
+    },
+    "No related profiles" : {
+
+    },
+    "No self brief" : {
+
+    },
     "No suggestion cards" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15271,7 +15694,6 @@
       }
     },
     "No user board cards" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15282,7 +15704,6 @@
       }
     },
     "No visible cards" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15327,6 +15748,12 @@
         }
       }
     },
+    "Notification Dedupe And Errors" : {
+
+    },
+    "Notification History" : {
+
+    },
     "Notification intent counts" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -15338,10 +15765,10 @@
         }
       }
     },
-    "Notification Management" : {
+    "Notifications" : {
 
     },
-    "Notification preferences are kept here so Settings and Debug use the same controls." : {
+    "Notifications Queue" : {
 
     },
     "OCR: %@" : {
@@ -15575,7 +16002,6 @@
 
     },
     "Origin" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15597,7 +16023,6 @@
       }
     },
     "Origins" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15625,7 +16050,6 @@
       }
     },
     "Owner" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15645,10 +16069,16 @@
         }
       }
     },
+    "Payload preview" : {
+
+    },
     "pending" : {
 
     },
     "Pending" : {
+
+    },
+    "Pending (%lld)" : {
 
     },
     "Pending intents" : {
@@ -15661,9 +16091,6 @@
           }
         }
       }
-    },
-    "Pending jobs" : {
-
     },
     "Pending Proposals" : {
 
@@ -15865,6 +16292,9 @@
     "Person profile not found" : {
 
     },
+    "Person Profiles" : {
+
+    },
     "person.nav.title" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -15916,8 +16346,10 @@
         }
       }
     },
+    "Phase 3 uses local deterministic refresh. Cloud portrait proposals are part of the Analysis contract phase." : {
+
+    },
     "Photo labels" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15945,7 +16377,6 @@
       }
     },
     "Photo OCR" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15956,7 +16387,6 @@
       }
     },
     "Pin" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -16109,7 +16539,6 @@
 
     },
     "Place Lab" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -16136,7 +16565,6 @@
 
     },
     "Playback" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -16147,7 +16575,6 @@
       }
     },
     "Prefer less first suggestion" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -16158,7 +16585,6 @@
       }
     },
     "Prefer more first suggestion" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -16169,7 +16595,6 @@
       }
     },
     "Preference counters" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -16180,7 +16605,6 @@
       }
     },
     "Preference: %@ · schema %lld · %@" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -16196,9 +16620,6 @@
         }
       }
     },
-    "Preferences" : {
-
-    },
     "Preview" : {
       "localizations" : {
         "zh-Hans" : {
@@ -16210,7 +16631,6 @@
       }
     },
     "Preview motion states" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -16220,8 +16640,10 @@
         }
       }
     },
+    "Preview skeuomorphic card styles using fixture data. Toggle surface mode to compare with standard cards." : {
+
+    },
     "Preview the same card system across light, dark, high contrast, and reduced motion environments." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -16235,7 +16657,6 @@
 
     },
     "priority %@" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -16246,7 +16667,6 @@
       }
     },
     "Privacy blur" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -16255,6 +16675,9 @@
           }
         }
       }
+    },
+    "Privacy decisions" : {
+
     },
     "Process due jobs now" : {
       "extractionState" : "stale",
@@ -16290,8 +16713,10 @@
         }
       }
     },
+    "Profiles" : {
+
+    },
     "Prompt profile" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -16301,11 +16726,10 @@
         }
       }
     },
-    "Push digest" : {
+    "Push" : {
 
     },
     "Quality Tuning Lab" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -16316,7 +16740,6 @@
       }
     },
     "Query" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -16325,6 +16748,9 @@
           }
         }
       }
+    },
+    "Question tone" : {
+
     },
     "Questions" : {
       "localizations" : {
@@ -16335,9 +16761,6 @@
           }
         }
       }
-    },
-    "Queue" : {
-
     },
     "Queue As Handoff Test Item" : {
 
@@ -17570,7 +17993,6 @@
 
     },
     "Raw Response" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -17584,7 +18006,6 @@
 
     },
     "Raw transcript" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -17601,7 +18022,6 @@
 
     },
     "Rebuild Core Spotlight index" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -17611,7 +18031,10 @@
         }
       }
     },
-    "Recent events" : {
+    "Recent Background Events" : {
+
+    },
+    "Recent Background Runs" : {
 
     },
     "Recent jobs" : {
@@ -17625,6 +18048,9 @@
         }
       }
     },
+    "Recent Jobs" : {
+
+    },
     "Recent notification intents" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -17635,9 +18061,6 @@
           }
         }
       }
-    },
-    "Recent runs" : {
-
     },
     "Record" : {
       "extractionState" : "stale",
@@ -17662,7 +18085,6 @@
       }
     },
     "Records: %@" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -17684,7 +18106,6 @@
       }
     },
     "Reduce Motion" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -17695,7 +18116,6 @@
       }
     },
     "Reflection evidence chars: %lld" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -17984,7 +18404,6 @@
       }
     },
     "Refresh Home Board debug snapshot" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -17993,6 +18412,12 @@
           }
         }
       }
+    },
+    "Refresh person profiles" : {
+
+    },
+    "Refresh portraits for all person entities" : {
+
     },
     "Refresh Preview" : {
       "extractionState" : "stale",
@@ -18028,7 +18453,6 @@
       }
     },
     "Refresh repair preview" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18039,7 +18463,6 @@
       }
     },
     "Refresh rule snapshot" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18049,8 +18472,10 @@
         }
       }
     },
+    "Refresh V6 controls" : {
+
+    },
     "Refreshing" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18087,7 +18512,7 @@
         }
       }
     },
-    "Related pages" : {
+    "Related memories" : {
 
     },
     "Relationship" : {
@@ -18099,6 +18524,9 @@
           }
         }
       }
+    },
+    "Reload affect snapshots" : {
+
     },
     "Reload platform capture diagnostics" : {
 
@@ -18180,7 +18608,6 @@
       }
     },
     "Repair" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18191,7 +18618,6 @@
       }
     },
     "Request" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18215,7 +18641,6 @@
 
     },
     "Reset defaults" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18224,6 +18649,15 @@
           }
         }
       }
+    },
+    "Reset intelligence preferences to defaults" : {
+
+    },
+    "Reset V6 flags to defaults" : {
+
+    },
+    "Result" : {
+
     },
     "Results" : {
       "extractionState" : "stale",
@@ -18279,7 +18713,6 @@
 
     },
     "Rule inputs" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18293,7 +18726,6 @@
 
     },
     "Run All Presets" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18306,9 +18738,6 @@
     "Run app launch recovery" : {
 
     },
-    "Run background trigger" : {
-
-    },
     "Run BG processing simulation" : {
 
     },
@@ -18316,7 +18745,6 @@
 
     },
     "Run chapter/stage suggest" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18327,7 +18755,6 @@
       }
     },
     "Run Core Batch" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18338,7 +18765,6 @@
       }
     },
     "Run daily question suggest" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18352,7 +18778,6 @@
 
     },
     "Run exact local search" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18363,7 +18788,6 @@
       }
     },
     "Run History" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18385,7 +18809,6 @@
       }
     },
     "Run photo semantic placeholder" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18396,7 +18819,6 @@
       }
     },
     "Run provider eval" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18407,7 +18829,6 @@
       }
     },
     "Run Selected Scenario" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18418,7 +18839,6 @@
       }
     },
     "Run semantic-first search" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18432,7 +18852,6 @@
 
     },
     "Run Strict + Balanced Matrix" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18443,7 +18862,6 @@
       }
     },
     "Run transcript refine" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18454,7 +18872,6 @@
       }
     },
     "Running..." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18468,7 +18885,6 @@
 
     },
     "Runs use the real memory repository and will appear in Home, Timeline, Search, Arcs, and Reflections." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18478,8 +18894,10 @@
         }
       }
     },
+    "Runtime Operations" : {
+
+    },
     "Runtime override" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18500,7 +18918,6 @@
       }
     },
     "Save Local Preference" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18521,7 +18938,6 @@
       }
     },
     "Scenario" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18543,7 +18959,6 @@
       }
     },
     "Scope" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18565,7 +18980,6 @@
       }
     },
     "Search Apple Music" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18608,7 +19022,6 @@
       }
     },
     "Search summary" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18872,6 +19285,9 @@
         }
       }
     },
+    "Seed journaling StateOfMind draft" : {
+
+    },
     "Seed Share-style Test Item" : {
 
     },
@@ -18895,6 +19311,9 @@
         }
       }
     },
+    "Self brief" : {
+
+    },
     "Semantic index" : {
       "localizations" : {
         "zh-Hans" : {
@@ -18904,6 +19323,9 @@
           }
         }
       }
+    },
+    "Semantic search" : {
+
     },
     "Semantic Search" : {
       "localizations" : {
@@ -18916,7 +19338,6 @@
       }
     },
     "Semantic search is local/system-backed through Core Spotlight. Request ID is not applicable unless this later routes through a cloud retrieval service." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18925,6 +19346,18 @@
           }
         }
       }
+    },
+    "semanticSearch" : {
+
+    },
+    "Send Analysis for latest memory" : {
+
+    },
+    "Sending Analysis" : {
+
+    },
+    "Sensitive topic policy" : {
+
     },
     "Sensitivity" : {
 
@@ -21212,6 +21645,15 @@
         }
       }
     },
+    "Show field audit" : {
+
+    },
+    "Show layout guides" : {
+
+    },
+    "Side-by-side comparison of standard vs. skeuomorphic rendering for each supported type." : {
+
+    },
     "signin.guest" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -21246,6 +21688,15 @@
         }
       }
     },
+    "Skeuomorphic Card Lab" : {
+
+    },
+    "Snapshot appearance" : {
+
+    },
+    "Snapshots" : {
+
+    },
     "Song" : {
 
     },
@@ -21253,7 +21704,6 @@
 
     },
     "Source labels" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21352,7 +21802,6 @@
       }
     },
     "Store" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21363,7 +21812,6 @@
       }
     },
     "Stored" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21377,7 +21825,6 @@
 
     },
     "Style" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21388,7 +21835,6 @@
       }
     },
     "Suggestion cards" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21408,8 +21854,10 @@
         }
       }
     },
+    "Surface Mode" : {
+
+    },
     "Symbol motion" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21418,9 +21866,6 @@
           }
         }
       }
-    },
-    "Sync APNs registration" : {
-
     },
     "tab.arcs" : {
       "extractionState" : "manual",
@@ -21619,6 +22064,12 @@
     "Text" : {
 
     },
+    "These controls are internal gates only. They do not request system permissions such as notifications." : {
+
+    },
+    "These requests call the same cloud intelligence client used by capture, daily questions, chapter suggestions, and photo semantics. Notifications are generated only by the local NotificationOrchestrator." : {
+
+    },
     "These requests call the same cloud intelligence client used by capture, daily questions, chapter suggestions, photo semantics, and notification intent generation." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -21631,7 +22082,6 @@
       }
     },
     "This lab uses fixture-only data. It does not request permissions, save memories, or alter the production composer." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21642,7 +22092,6 @@
       }
     },
     "This mutates local debug data. Existing captureOrigin values will not be overwritten." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21653,7 +22102,6 @@
       }
     },
     "This page calls the same repository and HomeBoardRuleEngine used by Today, then exposes the rule inputs, local preferences, and final visible cards." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21664,7 +22112,6 @@
       }
     },
     "This page exposes the home memory desktop rule inputs, visible cards, user-controlled cards, suggestions, and preference actions before the formal UI polish pass." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21696,7 +22143,6 @@
       }
     },
     "This tool only updates artifacts that do not already have metadata.captureOrigin. Runtime readers do not infer fallback values." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21843,9 +22289,6 @@
         }
       }
     },
-    "Trigger" : {
-
-    },
     "unapplied" : {
       "localizations" : {
         "zh-Hans" : {
@@ -21860,7 +22303,6 @@
 
     },
     "Unpin" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21879,6 +22321,9 @@
           }
         }
       }
+    },
+    "Updated %@" : {
+
     },
     "URL" : {
       "localizations" : {
@@ -21902,7 +22347,6 @@
       }
     },
     "Use Manual for user-added legacy artifacts, Context for auto-collected legacy context artifacts, Imported for imports, or Inferred for pipeline-generated content." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21930,7 +22374,6 @@
       }
     },
     "User board cards" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21944,7 +22387,6 @@
 
     },
     "UserDefaults scopes" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21971,11 +22413,16 @@
         }
       }
     },
+    "V6 Controls" : {
+
+    },
+    "V6 feature flags" : {
+
+    },
     "Valence" : {
 
     },
     "Visible cards" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21996,11 +22443,13 @@
         }
       }
     },
+    "Voice refinement" : {
+
+    },
     "Warning" : {
 
     },
     "Weather cards keep kind=weather. Origin remains debug data; production cards hide source labels." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -22011,7 +22460,6 @@
       }
     },
     "Weather Lab" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -22020,6 +22468,9 @@
           }
         }
       }
+    },
+    "WeatherKit condition" : {
+
     },
     "With errors" : {
 
@@ -22034,6 +22485,9 @@
           }
         }
       }
+    },
+    "Working on person profiles" : {
+
     },
     "한국어" : {
       "localizations" : {

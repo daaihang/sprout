@@ -13,6 +13,7 @@
 | Batch 5: ExternalCaptureShared Pure Contract | completed | `ExternalCaptureWireModels.swift` 已拆成 shared container、attachment models/store、evidence models、Journaling bundle、request 和 inbox models；类型名和 Codable 形状保持不变 | I4 `MoryAPIClient` endpoint split、Batch 6 Go server split、C2 use case extraction 仍未开始 |
 | Batch 6 + I4 + C2: Server/API/Use Case Split | completed | Go server handlers/db/provider operation 文件已按 route/store/operation family 拆分；`MoryAPIClient` 已拆成 Auth/Analyze/Notifications/Push/Eval endpoint extensions；memory creation/mutation/entity mutation/external import 已抽成 SwiftData-backed use case services，repository 对外保持 facade | Debug 大文件拆分、proposal review UX、contact-to-person review flow、完整 composer view model 仍未开始 |
 | Batch 7: Unified Background Domain | completed | `BackgroundOperationOrchestrator` 已成为 app launch、scene foreground、Home foreground、BGTask、silent push、pipeline completed、APNs token、notification preference、background URLSession 和 Debug manual 的统一后台入口；run/event 记录进入 owner-scoped diagnostics store；BGTask/URLSession adapter 留在 `Infrastructure/Background`，job worker/recovery 已回归 `Infrastructure/Intelligence/Jobs` 并通过 Background ports 接入 | 真机 BGTask/APNs/silent-push soak、retry/quota/cancellation 策略和普通用户可见状态仍未完成 |
+| Batch 8: Architecture Hygiene + Sentry Repair | completed | Sentry SwiftPM 8.58.2 解析已通过临时 clone/cache repair 验证；Analysis request/response/mapper、capture card models、memory detail modes、home helper views、repository helpers、Journaling adapter helper 和 intelligence job handlers 已拆分；Root pending routes 已替换为 `NavigationRouteCoordinator`；shared ordered collection/UserDefaults keys/domain errors 已落位 | `MoryMemoryRepository+EntityMutationHelpers.swift` 与 `MoryMemoryRepository+MaintenanceHelpers.swift` 仍偏大，完整 composer view model 和正式 UI polish 仍属后续 |
 
 ## 1. Critical
 
@@ -43,10 +44,10 @@
 
 | ID | 问题 | 影响 | 解决方案 | 验证 |
 | --- | --- | --- | --- | --- |
-| CL1 | Sentry upload script每次 build 运行 | 构建噪音和耗时 | 调整 run script dependency 或仅 archive/release 上传 | build log |
+| CL1 | Sentry SwiftPM 缺包/上传脚本噪音 | Xcode 可能误报 `Missing package product 'Sentry'`，普通 build 仍有上传脚本提示 | completed：保留 `sentry-cocoa` 8.58.2 与 `productName = Sentry`，清理项目相关 SwiftPM/Xcode cache 后用临时 clone 解析通过；上传脚本仅提示跳过本地 build | package resolve + build log |
 | CL2 | v7 docs 已多次追加状态 | 文档查找成本上升 | 保留 handbook 作为当前架构入口，v7 docs 作为历史 phase 记录 | docs link check |
 | CL3 | Debug/Settings 入口较多 | 产品/内部功能边界模糊 | runtimeEnvironment gate + route grouping | debug visibility tests |
-| CL4 | Analyzer compatibility types 未完全分离 | 新人误解 legacy/v7 边界 | 文件名和注释标清 legacy bridge | contract tests |
+| CL4 | Analyzer compatibility naming caused v6/v7 confusion | 新人误解当前 `/api/analyze` production path | completed：record snapshot mapper 已明确命名为 `RecordAnalysisSnapshotMapper`；`AnalysisRequestBuilder` 明确是 production v7 request builder；旧 `/api/analyze/v7` 不再作为生产入口 | rg audit + analysis tests build |
 
 ## 4. 推荐重构路线
 

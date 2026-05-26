@@ -54,9 +54,9 @@ enum QualityTuningPromptProfile: String, Codable, CaseIterable, Identifiable, Se
 }
 
 enum QualityTuningRuntime {
-    private static let enabledKey = "mory.debug.qualityTuning.enabled"
-    private static let thresholdsKey = "mory.debug.qualityTuning.thresholds"
-    private static let promptProfileKey = "mory.debug.qualityTuning.promptProfile"
+    private static let enabledKey = MoryUserDefaultsKeys.DebugQualityTuning.enabled
+    private static let thresholdsKey = MoryUserDefaultsKeys.DebugQualityTuning.thresholds
+    private static let promptProfileKey = MoryUserDefaultsKeys.DebugQualityTuning.promptProfile
     private static let lock = NSLock()
     private nonisolated(unsafe) static var recordScope: Set<UUID>?
 

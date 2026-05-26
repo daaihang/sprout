@@ -451,8 +451,8 @@ struct ContextPackBuilder {
                     averageValence: average(values.compactMap(\.valence)),
                     averageArousal: average(values.compactMap(\.arousal)),
                     averageDominance: average(values.compactMap(\.dominance)),
-                    toneHints: orderedUnique(values.flatMap(\.toneHints)),
-                    sources: orderedUnique(values.flatMap(\.sources))
+                    toneHints: OrderedCollections.unique(values.flatMap(\.toneHints)),
+                    sources: OrderedCollections.unique(values.flatMap(\.sources))
                 )
             }
             .sorted { lhs, rhs in
@@ -487,16 +487,6 @@ struct ContextPackBuilder {
     private func average(_ values: [Double]) -> Double? {
         guard !values.isEmpty else { return nil }
         return values.reduce(0, +) / Double(values.count)
-    }
-
-    private func orderedUnique<T: Hashable>(_ values: [T]) -> [T] {
-        var seen = Set<T>()
-        var result: [T] = []
-        for value in values where !seen.contains(value) {
-            seen.insert(value)
-            result.append(value)
-        }
-        return result
     }
 
     private static func queryText(for target: MemoryDetailSnapshot) -> String {

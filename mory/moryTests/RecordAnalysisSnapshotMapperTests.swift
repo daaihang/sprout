@@ -2,7 +2,7 @@ import XCTest
 import UIKit
 @testable import mory
 
-final class AnalysisRecordResponseMapperTests: XCTestCase {
+final class RecordAnalysisSnapshotMapperTests: XCTestCase {
     func testDecodeAndMapServerResponseWithoutThemesField() throws {
         let json = """
         {
@@ -58,7 +58,7 @@ final class AnalysisRecordResponseMapperTests: XCTestCase {
         """
 
         let envelope = try JSONDecoder().decode(AnalysisRecordResponse.self, from: Data(json.utf8))
-        let snapshot = AnalysisRecordResponseMapper().map(
+        let snapshot = RecordAnalysisSnapshotMapper().map(
             recordID: UUID(uuidString: "44444444-4444-4444-4444-444444444444")!,
             response: envelope,
             createdAt: Date(timeIntervalSince1970: 1_715_000_100)
@@ -95,7 +95,7 @@ final class AnalysisRecordResponseMapperTests: XCTestCase {
         """
 
         let envelope = try JSONDecoder().decode(AnalysisRecordResponse.self, from: Data(json.utf8))
-        let snapshot = AnalysisRecordResponseMapper().map(
+        let snapshot = RecordAnalysisSnapshotMapper().map(
             recordID: UUID(uuidString: "55555555-5555-5555-5555-555555555555")!,
             response: envelope,
             createdAt: Date(timeIntervalSince1970: 1_715_000_200)
@@ -133,7 +133,7 @@ final class AnalysisRecordResponseMapperTests: XCTestCase {
         """
 
         let envelope = try JSONDecoder().decode(AnalysisRecordResponse.self, from: Data(json.utf8))
-        let snapshot = AnalysisRecordResponseMapper().map(recordID: UUID(), response: envelope)
+        let snapshot = RecordAnalysisSnapshotMapper().map(recordID: UUID(), response: envelope)
 
         let person = try XCTUnwrap(snapshot.entityMentions.first)
         XCTAssertEqual(person.name, "Alex Chen")
@@ -168,7 +168,7 @@ final class AnalysisRecordResponseMapperTests: XCTestCase {
         """
 
         let envelope = try JSONDecoder().decode(AnalysisRecordResponse.self, from: Data(json.utf8))
-        let snapshot = AnalysisRecordResponseMapper().map(recordID: UUID(), response: envelope)
+        let snapshot = RecordAnalysisSnapshotMapper().map(recordID: UUID(), response: envelope)
 
         XCTAssertEqual(Set(snapshot.entityMentions.map(\.name)), Set(["planning rhythm", "Linh"]))
         XCTAssertEqual(snapshot.candidateEdges.count, 1)
@@ -202,7 +202,7 @@ final class AnalysisRecordResponseMapperTests: XCTestCase {
         """
 
         let envelope = try JSONDecoder().decode(AnalysisRecordResponse.self, from: Data(json.utf8))
-        let snapshot = AnalysisRecordResponseMapper().map(recordID: UUID(), response: envelope)
+        let snapshot = RecordAnalysisSnapshotMapper().map(recordID: UUID(), response: envelope)
 
         XCTAssertEqual(snapshot.entityMentions.map(\.name), ["pottery class"])
         XCTAssertTrue(snapshot.candidateEdges.isEmpty)
@@ -406,7 +406,7 @@ final class AnalysisRecordResponseMapperTests: XCTestCase {
         """
 
         let envelope = try JSONDecoder().decode(AnalysisRecordResponse.self, from: Data(json.utf8))
-        let snapshot = AnalysisRecordResponseMapper().map(recordID: UUID(), response: envelope)
+        let snapshot = RecordAnalysisSnapshotMapper().map(recordID: UUID(), response: envelope)
 
         XCTAssertTrue(snapshot.entityMentions.isEmpty)
         XCTAssertEqual(snapshot.themes, ["planning", "reflection"])

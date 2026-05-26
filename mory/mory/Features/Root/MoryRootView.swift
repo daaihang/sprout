@@ -18,14 +18,11 @@ struct MoryRootView: View {
     @AppStorage(MoryOnboardingStep.completionStorageKey) private var hasCompletedOnboarding = false
     @StateObject private var notificationInbox = NotificationInteractionInbox.shared
     @StateObject private var audioRecorder = AudioRecorderModel()
-    @State private var selectedTab: MoryAppTab = .today
+    @StateObject private var navigationCoordinator = NavigationRouteCoordinator()
     @State private var isPresentingVoiceSheet = false
     @State private var isPresentingSettings = false
     @State private var unifiedCaptureSeed: UnifiedCaptureSeed?
     @State private var tabRefreshID = UUID()
-    @State private var pendingHomeRoute: HomeRoute?
-    @State private var pendingMemoriesRoute: MemoriesRoute?
-    @State private var pendingInsightsRoute: InsightsRoute?
     @State private var didRunStartupRecovery = false
     @State private var isEditingHomeBoard = false
     @State private var isPresentingMemoriesFilters = false
@@ -45,7 +42,7 @@ struct MoryRootView: View {
     }
 
     var body: some View {
-        TabView(selection: $selectedTab) {
+        TabView(selection: $navigationCoordinator.selectedTab) {
             Tab(
                 LocalizedStringKey(MoryAppTab.today.titleKey),
                 systemImage: MoryAppTab.today.systemImage,
@@ -54,7 +51,7 @@ struct MoryRootView: View {
                 tabRoot(for: .today) {
                     HomeScreen(
                         surface: .home,
-                        requestedRoute: $pendingHomeRoute,
+                        requestedRoute: $navigationCoordinator.homeRoute,
                         isEditingHomeBoard: $isEditingHomeBoard
                     )
                 }
@@ -68,7 +65,7 @@ struct MoryRootView: View {
             ) {
                 tabRoot(for: .memories) {
                     MemoriesRootScreen(
-                        requestedRoute: $pendingMemoriesRoute,
+                        requestedRoute: $navigationCoordinator.memoriesRoute,
                         isPresentingFilterSheet: $isPresentingMemoriesFilters
                     )
                 }
@@ -81,7 +78,7 @@ struct MoryRootView: View {
                 value: MoryAppTab.insights
             ) {
                 tabRoot(for: .insights) {
-                    InsightsRootScreen(requestedRoute: $pendingInsightsRoute)
+                    InsightsRootScreen(requestedRoute: $navigationCoordinator.insightsRoute)
                 }
                 .id(tabRefreshID)
             }
@@ -159,7 +156,7 @@ struct MoryRootView: View {
             externalCaptureTask?.cancel()
             externalCaptureTask = Task { await handlePendingExternalCaptureURLIfNeeded() }
         }
-        .onChange(of: selectedTab) { _, tab in
+        .onChange(of: navigationCoordinator.selectedTab) { _, tab in
             if tab != .today {
                 isEditingHomeBoard = false
             }
@@ -189,7 +186,7 @@ struct MoryRootView: View {
             let draft = try ExternalCaptureInboxCodec().makeDraft(from: item)
             pendingExternalCaptureURL = nil
             unifiedCaptureSeed = .externalDraft(draft, inboxItemID: item.id)
-            selectedTab = .memories
+            navigationCoordinator.selectedTab = .memories
         } catch {
             pendingExternalCaptureURL = nil
             return
@@ -206,7 +203,7 @@ struct MoryRootView: View {
             }
             let draft = try ExternalCaptureInboxCodec().makeDraft(from: item)
             unifiedCaptureSeed = .externalDraft(draft, inboxItemID: item.id)
-            selectedTab = .memories
+            navigationCoordinator.selectedTab = .memories
         } catch {
             return
         }
@@ -426,39 +423,7 @@ struct MoryRootView: View {
     }
 
     private func apply(_ route: NotificationInteractionRoute) {
-        if let deepLink = route.deepLink {
-            apply(deepLink)
-            return
-        }
-
-        switch route.destination {
-        case .home:
-            selectedTab = .today
-        case .memories:
-            selectedTab = .memories
-        case .insights:
-            selectedTab = .insights
-        case .search:
-            selectedTab = .search
-        }
-    }
-
-    private func apply(_ deepLink: MoryDeepLinkRoute) {
-        switch deepLink {
-        case .homeRoot:
-            selectedTab = .today
-        case let .home(route):
-            selectedTab = .today
-            pendingHomeRoute = route
-        case let .memories(route):
-            selectedTab = .memories
-            pendingMemoriesRoute = route
-        case let .insights(route):
-            selectedTab = .insights
-            pendingInsightsRoute = route
-        case .search:
-            selectedTab = .search
-        }
+        navigationCoordinator.apply(route)
     }
 
     private func recoverStartupIntelligenceIfNeeded() async {

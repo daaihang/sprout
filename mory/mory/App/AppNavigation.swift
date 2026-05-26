@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 
 enum MoryAppTab: String, CaseIterable, Hashable, Identifiable, Sendable {
@@ -92,6 +93,53 @@ enum MoryDeepLinkRoute: Hashable, Sendable {
 
         default:
             return nil
+        }
+    }
+}
+
+@MainActor
+final class NavigationRouteCoordinator: ObservableObject {
+    @Published var selectedTab: MoryAppTab = .today
+    @Published var homeRoute: HomeRoute?
+    @Published var memoriesRoute: MemoriesRoute?
+    @Published var insightsRoute: InsightsRoute?
+
+    func apply(_ route: NotificationInteractionRoute) {
+        if let deepLink = route.deepLink {
+            apply(deepLink)
+            return
+        }
+
+        switch route.destination {
+        case .home:
+            selectedTab = .today
+        case .memories:
+            selectedTab = .memories
+        case .insights:
+            selectedTab = .insights
+        case .search:
+            selectedTab = .search
+        }
+    }
+
+    func apply(_ deepLink: MoryDeepLinkRoute) {
+        switch deepLink {
+        case .homeRoot:
+            selectedTab = .today
+        case let .home(route):
+            selectedTab = .today
+            homeRoute = nil
+            homeRoute = route
+        case let .memories(route):
+            selectedTab = .memories
+            memoriesRoute = nil
+            memoriesRoute = route
+        case let .insights(route):
+            selectedTab = .insights
+            insightsRoute = nil
+            insightsRoute = route
+        case .search:
+            selectedTab = .search
         }
     }
 }

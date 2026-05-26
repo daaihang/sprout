@@ -55,4 +55,15 @@ final class IntelligenceDomainTests: XCTestCase {
         XCTAssertEqual(question.candidateAnswers.first?.value, EntityRelationshipToUser.coworker.rawValue)
         XCTAssertFalse(question.reason.isEmpty)
     }
+
+    func testOrderedCollectionsPreserveFirstSeenOrder() {
+        XCTAssertEqual(
+            OrderedCollections.unique(["a", "b", "a", "c", "b"]),
+            ["a", "b", "c"]
+        )
+        XCTAssertEqual(
+            OrderedCollections.stableUnion(["a", "b"], ["b", "c", "a", "d"]),
+            ["a", "b", "c", "d"]
+        )
+    }
 }

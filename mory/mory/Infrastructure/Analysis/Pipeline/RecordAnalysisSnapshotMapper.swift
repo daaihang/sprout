@@ -1,6 +1,6 @@
 import Foundation
 
-struct AnalysisRecordResponseMapper {
+struct RecordAnalysisSnapshotMapper {
     private let entityQualityPolicy = EntityQualityPolicy()
 
     func map(recordID: UUID, response: AnalysisRecordResponse, createdAt: Date = .now) -> RecordAnalysisSnapshot {

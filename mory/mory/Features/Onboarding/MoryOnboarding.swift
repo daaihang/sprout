@@ -6,7 +6,7 @@ enum MoryOnboardingStep: String, CaseIterable, Equatable, Identifiable, Sendable
     case quickCapture
     case optionalPermissions
 
-    static let completionStorageKey = "mory.onboarding.v1.completed"
+    static let completionStorageKey = MoryUserDefaultsKeys.Onboarding.completedV1
 
     var id: String { rawValue }
 
