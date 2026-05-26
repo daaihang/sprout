@@ -119,6 +119,10 @@ struct CaptureCardView: View {
         switch item.payload {
         case let .photo(payload):
             PhotoCaptureCardContent(common: common, payload: payload, accent: accent, highContrast: highContrast)
+        case let .video(payload):
+            VideoCaptureCardContent(common: common, payload: payload, accent: accent, highContrast: highContrast)
+        case let .livePhoto(payload):
+            LivePhotoCaptureCardContent(common: common, payload: payload, accent: accent, highContrast: highContrast)
         case let .audio(payload):
             AudioCaptureCardContent(common: common, payload: payload, accent: accent)
         case let .place(payload):
@@ -162,6 +166,8 @@ struct CaptureCardView: View {
             StatusCaptureCardContent(common: common, payload: CaptureStatusCardPayload(), accent: accent)
         case .affect:
             StatusCaptureCardContent(common: common, payload: CaptureStatusCardPayload(), accent: accent)
+        case let .journalingSuggestion(payload):
+            JournalingSuggestionCaptureCardContent(common: common, payload: payload, accent: accent, highContrast: highContrast)
         case let .status(payload):
             StatusCaptureCardContent(common: common, payload: payload, accent: accent)
         }

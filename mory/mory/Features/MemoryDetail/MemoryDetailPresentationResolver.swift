@@ -13,7 +13,7 @@ struct MemoryDetailPresentationResolver {
         let contentArtifacts = snapshot.artifacts
             .filter { !contextIDs.contains($0.id) && $0.kind != .text }
             .sorted { $0.createdAt < $1.createdAt }
-        let photoArtifacts = contentArtifacts.filter { $0.kind == .photo }
+        let photoArtifacts = contentArtifacts.filter { $0.kind == .photo || $0.kind == .livePhoto }
         let audioArtifacts = contentArtifacts.filter { $0.kind == .audio }
         let linkArtifacts = contentArtifacts.filter { $0.kind == .link }
 

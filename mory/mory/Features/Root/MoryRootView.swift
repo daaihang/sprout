@@ -118,7 +118,7 @@ struct MoryRootView: View {
                 runtimeEnvironment: runtimeEnvironment
             )
         }
-        .sheet(item: $unifiedCaptureSeed) { seed in
+        .fullScreenCover(item: $unifiedCaptureSeed) { seed in
             UnifiedCaptureComposerView(seed: seed) {
                 tabRefreshID = UUID()
             }

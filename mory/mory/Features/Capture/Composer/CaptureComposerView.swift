@@ -315,7 +315,8 @@ struct CaptureComposerView: View {
             )]
         case .location:
             guard let selectedLocationDraft else { return [] }
-            guard case let .location(placeTitle, placeSummary, latitude, longitude, _, _) = selectedLocationDraft else { return [] }
+            guard case let .location(c) = selectedLocationDraft.content else { return [] }
+            let placeTitle = c.title; let placeSummary = c.summary; let latitude = c.latitude; let longitude = c.longitude
             return [.location(
                 title: normalizedTitle ?? placeTitle,
                 summary: bodyText.trimmedOrNil ?? placeSummary,
@@ -346,8 +347,8 @@ struct CaptureComposerView: View {
         guard selectedType != .link, let metadata = autoDetectedLinkMetadata else { return [] }
         let detectedURL = metadata.url.trimmedOrNil
         let existingURLs = (stagedArtifactDrafts + currentArtifactDrafts).compactMap { draft -> String? in
-            guard case let .link(_, url, _, _, _, _, _, _) = draft else { return nil }
-            return url.trimmedOrNil
+            guard case let .link(c) = draft.content else { return nil }
+            return c.url.trimmedOrNil
         }
         guard let detectedURL, !existingURLs.contains(detectedURL) else { return [] }
 
@@ -371,11 +372,11 @@ struct CaptureComposerView: View {
         userArtifactDrafts + selectedContextDrafts
     }
 
-    private var resolvedCaptureSource: CaptureSource {
+    private var resolvedProvenanceSourceKind: CaptureProvenanceSourceKind {
         guard stagedArtifactDrafts.isEmpty, currentArtifactDrafts.count == 1 else {
             return .composer
         }
-        return selectedType.captureSource
+        return selectedType.provenanceSourceKind
     }
 
     private func save() async {
@@ -395,7 +396,10 @@ struct CaptureComposerView: View {
                 rawText: rawText,
                 mood: mood.trimmedOrNil,
                 inputContext: inputContext.trimmedOrNil,
-                captureSource: resolvedCaptureSource,
+                provenance: CaptureProvenance(
+                    originCategory: .userInput,
+                    sourceKind: resolvedProvenanceSourceKind
+                ),
                 artifacts: drafts
             )
 
@@ -551,14 +555,20 @@ private enum CaptureInputType: String, CaseIterable, Identifiable {
         }
     }
 
-    var captureSource: CaptureSource {
+    var provenanceSourceKind: CaptureProvenanceSourceKind {
         switch self {
-        case .text, .link, .todo, .location:
+        case .text:
             return .composer
+        case .link:
+            return .linkComposer
+        case .todo:
+            return .todoComposer
+        case .location:
+            return .locationPicker
         case .photo:
-            return .photo
+            return .photoLibrary
         case .audio:
-            return .audio
+            return .audioRecorder
         }
     }
 }

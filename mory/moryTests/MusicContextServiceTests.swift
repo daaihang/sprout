@@ -24,17 +24,17 @@ final class MusicContextServiceTests: XCTestCase {
 
         let draft = MusicContextService.makeDraft(from: snapshot, origin: .context)
 
-        guard case let .music(trackName, artistName, albumName, durationSeconds, artworkURL, artworkData, artworkPalette, origin, _) = draft else {
+        guard let draft, case let .music(content) = draft.content else {
             return XCTFail("Expected music draft.")
         }
-        XCTAssertEqual(trackName, "A song without identifiers")
-        XCTAssertEqual(artistName, "Unknown Artist")
-        XCTAssertEqual(albumName, "")
-        XCTAssertEqual(durationSeconds, 181)
-        XCTAssertNil(artworkURL)
-        XCTAssertNil(artworkData)
-        XCTAssertNil(artworkPalette)
-        XCTAssertEqual(origin, .context)
+        XCTAssertEqual(content.trackName, "A song without identifiers")
+        XCTAssertEqual(content.artistName, "Unknown Artist")
+        XCTAssertEqual(content.albumName, "")
+        XCTAssertEqual(content.durationSeconds, 181)
+        XCTAssertNil(content.artworkURL)
+        XCTAssertNil(content.artworkData)
+        XCTAssertNil(content.artworkPalette)
+        XCTAssertEqual(draft.origin, .context)
     }
 
     func testNowPlayingSnapshotDraftPersistsArtworkPayload() {
@@ -55,12 +55,12 @@ final class MusicContextServiceTests: XCTestCase {
 
         let draft = MusicContextService.makeDraft(from: snapshot, origin: .manual)
 
-        guard case let .music(_, _, _, _, _, draftArtworkData, artworkPalette, origin, _) = draft else {
+        guard let draft, case let .music(content) = draft.content else {
             return XCTFail("Expected music draft.")
         }
-        XCTAssertEqual(draftArtworkData, artworkData)
-        XCTAssertEqual(artworkPalette, palette)
-        XCTAssertEqual(origin, .manual)
+        XCTAssertEqual(content.artworkData, artworkData)
+        XCTAssertEqual(content.artworkPalette, palette)
+        XCTAssertEqual(draft.origin, .manual)
     }
 
     func testCaptureCurrentItemAllowsPausedButAutomaticContextRequiresPlaying() {

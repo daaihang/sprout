@@ -212,9 +212,9 @@ struct LocationPickerView: View {
     }
 
     private func focusMap(on draft: CaptureArtifactDraft?) {
-        guard case let .location(_, _, latitude, longitude, _, _) = draft,
-              let latitude,
-              let longitude else { return }
+        guard case let .location(c) = draft?.content,
+              let latitude = c.latitude,
+              let longitude = c.longitude else { return }
         let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
         selectedMapCoordinate = coordinate
         mapCameraPosition = .region(MKCoordinateRegion(

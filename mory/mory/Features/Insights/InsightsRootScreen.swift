@@ -223,7 +223,7 @@ struct InsightsRootScreen: View {
         .onChange(of: requestedRoute) { _, _ in
             consumeRequestedRouteIfNeeded()
         }
-        .sheet(isPresented: $isPresentingComposer) {
+        .fullScreenCover(isPresented: $isPresentingComposer) {
             UnifiedCaptureComposerView(seed: .empty) {
                 Task { await load() }
             }

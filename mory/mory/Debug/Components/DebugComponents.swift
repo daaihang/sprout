@@ -198,11 +198,12 @@ extension Optional where Wrapped == String {
 
 extension CaptureArtifactDraft {
     var debugKindLabel: String {
-        switch self {
+        switch content {
         case .text: String(localized: "capture.type.text")
         case .photo: String(localized: "capture.type.photo")
         case .audio: String(localized: "capture.type.audio")
         case .video: "Video"
+        case .livePhoto: "Live Photo"
         case .location: String(localized: "capture.type.location")
         case .link: String(localized: "capture.type.link")
         case .todo: String(localized: "capture.type.todo")

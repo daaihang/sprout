@@ -85,15 +85,18 @@ struct AppleJournalingSuggestionAdapter: Sendable {
             bundle.photoVideos.append(JournalingPhotoVideoEvidence(id: id, kind: .video, startedAt: video.date, attachmentID: attachment?.id))
         }
         for livePhoto in resolvedLivePhotos {
-            let imageID = UUID()
-            let imageAttachment = copyAsset(url: livePhoto.image, kind: .image, role: .primaryMedia, referenceID: imageID, summary: "Journaling Live Photo image", diagnostics: &diagnostics)
-            bundle.attachments.append(contentsOf: [imageAttachment].compactMap { $0 })
-            bundle.photoVideos.append(JournalingPhotoVideoEvidence(id: imageID, kind: .livePhotoImage, startedAt: livePhoto.date, attachmentID: imageAttachment?.id))
-
-            let videoID = UUID()
-            let videoAttachment = copyAsset(url: livePhoto.video, kind: .video, role: .primaryMedia, referenceID: videoID, summary: "Journaling Live Photo video", diagnostics: &diagnostics)
+            let id = UUID()
+            let imageAttachment = copyAsset(url: livePhoto.image, kind: .image, role: .primaryMedia, referenceID: id, summary: "Journaling Live Photo still", diagnostics: &diagnostics)
+            let videoAttachment = copyAsset(url: livePhoto.video, kind: .video, role: .primaryMedia, referenceID: id, summary: "Journaling Live Photo video", diagnostics: &diagnostics)
             bundle.attachments.append(contentsOf: [videoAttachment].compactMap { $0 })
-            bundle.photoVideos.append(JournalingPhotoVideoEvidence(id: videoID, kind: .livePhotoVideo, startedAt: livePhoto.date, attachmentID: videoAttachment?.id))
+            bundle.attachments.append(contentsOf: [imageAttachment].compactMap { $0 })
+            bundle.photoVideos.append(JournalingPhotoVideoEvidence(
+                id: id,
+                kind: .livePhoto,
+                startedAt: livePhoto.date,
+                attachmentID: imageAttachment?.id,
+                pairedVideoAttachmentID: videoAttachment?.id
+            ))
         }
 
         for song in resolvedSongs {

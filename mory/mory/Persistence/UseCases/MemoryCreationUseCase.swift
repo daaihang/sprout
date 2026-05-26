@@ -3,18 +3,19 @@ import Foundation
 @MainActor
 struct MemoryCreationUseCase {
     let repository: MoryMemoryRepository
+    let artifactBuilder: MemoryCaptureArtifactBuilder
 
     func createMemory(from draft: MemoryCaptureDraft) async throws -> MemorySummary {
         let now = Date.now
         let recordID = UUID()
-        let captureArtifacts = repository.captureArtifactBuilder.buildArtifacts(from: draft, recordID: recordID, createdAt: now)
-        let normalizedText = repository.captureArtifactBuilder.resolvedRecordRawText(from: draft, artifacts: captureArtifacts)
+        let captureArtifacts = artifactBuilder.buildArtifacts(from: draft, recordID: recordID, createdAt: now)
+        let normalizedText = artifactBuilder.resolvedRecordRawText(from: draft, artifacts: captureArtifacts)
 
         let recordShell = RecordShell(
             id: recordID,
             createdAt: now,
             updatedAt: now,
-            captureSource: draft.captureSource,
+            captureSource: draft.provenance.derivedCaptureSource,
             rawText: normalizedText,
             userMood: draft.mood?.trimmedOrNil,
             userIntensity: nil,

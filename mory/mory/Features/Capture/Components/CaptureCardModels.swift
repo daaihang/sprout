@@ -16,6 +16,8 @@ nonisolated func captureWeatherMetadata(humidity: Double, windSpeedKmh: Double, 
 
 enum CaptureCardKind: String, CaseIterable, Hashable, Sendable {
     case photo
+    case video
+    case livePhoto
     case audio
     case place
     case weather
@@ -25,11 +27,14 @@ enum CaptureCardKind: String, CaseIterable, Hashable, Sendable {
     case prompt
     case person
     case affect
+    case journalingSuggestion
     case status
 
     var label: String {
         switch self {
         case .photo: return String(localized: "capture.card.kind.photo")
+        case .video: return "Video"
+        case .livePhoto: return "Live Photo"
         case .audio: return String(localized: "capture.card.kind.audio")
         case .place: return String(localized: "capture.card.kind.place")
         case .weather: return String(localized: "capture.card.kind.weather")
@@ -39,6 +44,7 @@ enum CaptureCardKind: String, CaseIterable, Hashable, Sendable {
         case .prompt: return "Prompt"
         case .person: return "Person"
         case .affect: return "Mood"
+        case .journalingSuggestion: return "Journaling Suggestion"
         case .status: return String(localized: "capture.card.kind.status")
         }
     }
@@ -46,6 +52,8 @@ enum CaptureCardKind: String, CaseIterable, Hashable, Sendable {
     var iconName: String {
         switch self {
         case .photo: return "photo.fill"
+        case .video: return "video.fill"
+        case .livePhoto: return "livephoto"
         case .audio: return "waveform"
         case .place: return "mappin.and.ellipse"
         case .weather: return "cloud.sun.fill"
@@ -55,6 +63,7 @@ enum CaptureCardKind: String, CaseIterable, Hashable, Sendable {
         case .prompt: return "questionmark.bubble"
         case .person: return "person.crop.circle"
         case .affect: return "heart.text.square"
+        case .journalingSuggestion: return "sparkles.rectangle.stack.fill"
         case .status: return "hourglass"
         }
     }
@@ -489,6 +498,8 @@ enum CapturePhotoGroupStyle: String, CaseIterable, Hashable, Sendable, Identifia
 
 enum CaptureCardPayload: Hashable, Sendable {
     case photo(CapturePhotoCardPayload)
+    case video(CaptureVideoCardPayload)
+    case livePhoto(CaptureLivePhotoCardPayload)
     case audio(CaptureAudioCardPayload)
     case place(CapturePlaceCardPayload)
     case weather(CaptureWeatherCardPayload)
@@ -498,12 +509,17 @@ enum CaptureCardPayload: Hashable, Sendable {
     case prompt(CapturePromptCardPayload)
     case person(CapturePersonContextCardPayload)
     case affect(CaptureAffectCardPayload)
+    case journalingSuggestion(CaptureJournalingSuggestionCardPayload)
     case status(CaptureStatusCardPayload)
 
     var kind: CaptureCardKind {
         switch self {
         case .photo:
             return .photo
+        case .video:
+            return .video
+        case .livePhoto:
+            return .livePhoto
         case .audio:
             return .audio
         case .place:
@@ -522,6 +538,8 @@ enum CaptureCardPayload: Hashable, Sendable {
             return .person
         case .affect:
             return .affect
+        case .journalingSuggestion:
+            return .journalingSuggestion
         case .status:
             return .status
         }
@@ -533,6 +551,16 @@ struct CapturePhotoCardPayload: Hashable, Sendable {
     var thumbnailData: Data? = nil
     var photoCount: Int = 1
     var groupStyle: CapturePhotoGroupStyle? = nil
+}
+
+struct CaptureVideoCardPayload: Hashable, Sendable {
+    var thumbnailData: Data? = nil
+    var durationSeconds: Int? = nil
+}
+
+struct CaptureLivePhotoCardPayload: Hashable, Sendable {
+    var thumbnailData: Data? = nil
+    var pairedVideoByteCount: Int? = nil
 }
 
 struct CaptureAudioCardPayload: Hashable, Sendable {
@@ -582,6 +610,18 @@ struct CapturePersonContextCardPayload: Hashable, Sendable {
 struct CaptureAffectCardPayload: Hashable, Sendable {
     var valence: Double? = nil
     var sourceDescription: String? = nil
+}
+
+struct CaptureJournalingSuggestionCardPayload: Hashable, Sendable {
+    var artifactCount: Int
+    var affectCount: Int
+    var photoCount: Int = 0
+    var videoCount: Int = 0
+    var livePhotoCount: Int = 0
+    var locationCount: Int = 0
+    var musicCount: Int = 0
+    var promptCount: Int = 0
+    var thumbnailData: Data? = nil
 }
 
 struct CaptureStatusCardPayload: Hashable, Sendable {}

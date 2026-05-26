@@ -33,8 +33,6 @@ struct JournalingSuggestionContextService: Sendable {
     }
 
     func makeCaptureDraft(from suggestion: JournalingSuggestionDraft) -> MemoryCaptureDraft {
-        var draft = ExternalCaptureDraftFactory().makeDraft(from: suggestion)
-        draft.captureSource = .composer
-        return draft
+        ExternalCaptureDraftFactory().makeDraft(from: suggestion)
     }
 }

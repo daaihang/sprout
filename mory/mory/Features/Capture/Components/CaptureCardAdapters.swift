@@ -33,6 +33,43 @@ extension CaptureCardItem {
                 metadata: artifact.mediaRef?.filename.trimmedOrNil,
                 isRemovable: false
             )
+        case .video:
+            self.init(
+                id: "artifact-\(artifact.id.uuidString)",
+                payload: .video(CaptureVideoCardPayload(
+                    thumbnailData: artifact.previewPayload,
+                    durationSeconds: artifact.metadata["durationSeconds"].flatMap(Int.init)
+                )),
+                origin: artifact.captureCardOrigin,
+                provenance: artifact.captureProvenance,
+                state: state,
+                title: artifact.title.trimmedOrNil ?? "Video",
+                detail: captureCardModelSnippet(artifact.summary)
+                    ?? captureCardModelSnippet(artifact.textContent)
+                    ?? artifact.mediaRef?.filename
+                    ?? "Video attached",
+                metadata: artifact.mediaRef?.filename.trimmedOrNil,
+                isRemovable: false
+            )
+        case .livePhoto:
+            self.init(
+                id: "artifact-\(artifact.id.uuidString)",
+                payload: .livePhoto(CaptureLivePhotoCardPayload(
+                    thumbnailData: artifact.previewPayload,
+                    pairedVideoByteCount: artifact.metadata["pairedVideoByteCount"].flatMap(Int.init)
+                )),
+                origin: artifact.captureCardOrigin,
+                provenance: artifact.captureProvenance,
+                state: state,
+                title: artifact.title.trimmedOrNil ?? "Live Photo",
+                detail: captureCardModelSnippet(artifact.summary)
+                    ?? captureCardModelSnippet(artifact.textContent)
+                    ?? artifact.mediaRef?.filename
+                    ?? "Live Photo attached",
+                metadata: artifact.metadata["videoFilename"]?.trimmedOrNil
+                    ?? artifact.mediaRef?.filename.trimmedOrNil,
+                isRemovable: false
+            )
         case .audio:
             self.init(
                 id: "artifact-\(artifact.id.uuidString)",
@@ -202,21 +239,6 @@ extension CaptureCardItem {
                 metadata: artifact.mediaRef?.filename.trimmedOrNil,
                 isRemovable: false
             )
-        case .video:
-            self.init(
-                id: "artifact-\(artifact.id.uuidString)",
-                payload: .status(CaptureStatusCardPayload()),
-                origin: artifact.captureCardOrigin,
-                provenance: artifact.captureProvenance,
-                state: state,
-                title: artifact.title.trimmedOrNil ?? (artifact.kind == .video ? "Video" : String(localized: "capture.card.kind.status")),
-                detail: captureCardModelSnippet(artifact.summary)
-                    ?? captureCardModelSnippet(artifact.textContent)
-                    ?? artifact.mediaRef?.filename
-                    ?? String(localized: "capture.card.kind.status"),
-                metadata: artifact.mediaRef?.filename.trimmedOrNil,
-                isRemovable: false
-            )
         }
     }
 
@@ -226,158 +248,181 @@ extension CaptureCardItem {
         state: CaptureCardState = .normal,
         musicPlaybackState: CaptureMusicPlaybackState? = nil
     ) {
-        switch draft {
-        case let .text(title, body, origin, provenance):
+        let origin = draft.origin
+        let provenance = draft.provenance
+        let isRemovable = origin == .manual || origin == .context
+        let resolvedID = id ?? "draft-\(draft.id)"
+
+        switch draft.content {
+        case let .text(c):
             self.init(
-                id: id ?? "draft-\(draft.id)",
+                id: resolvedID,
                 payload: .status(CaptureStatusCardPayload()),
                 origin: origin,
                 provenance: provenance,
                 state: state,
-                title: title ?? String(localized: "capture.card.kind.text"),
-                detail: captureCardModelSnippet(body) ?? String(localized: "capture.card.kind.text")
+                title: c.title ?? String(localized: "capture.card.kind.text"),
+                detail: captureCardModelSnippet(c.body) ?? String(localized: "capture.card.kind.text")
             )
-        case let .photo(title, summary, filename, _, thumbnailData, ocrText, _, origin, provenance):
+        case let .photo(c):
             self.init(
-                id: id ?? "draft-\(draft.id)",
-                payload: .photo(CapturePhotoCardPayload(thumbnailData: thumbnailData)),
+                id: resolvedID,
+                payload: .photo(CapturePhotoCardPayload(thumbnailData: c.thumbnailData)),
                 origin: origin,
                 provenance: provenance,
                 state: state,
-                title: title,
-                detail: [captureCardModelSnippet(summary), captureCardModelSnippet(ocrText), filename.trimmedOrNil].compactMap { $0 }.first ?? String(localized: "capture.card.photo.attached"),
-                metadata: filename.trimmedOrNil,
-                isRemovable: origin == .manual || origin == .context
+                title: c.title,
+                detail: [captureCardModelSnippet(c.summary), captureCardModelSnippet(c.ocrText), c.filename.trimmedOrNil].compactMap { $0 }.first ?? String(localized: "capture.card.photo.attached"),
+                metadata: c.filename.trimmedOrNil,
+                isRemovable: isRemovable
             )
-        case let .audio(title, summary, filename, _, transcriptionText, origin, provenance):
+        case let .audio(c):
             self.init(
-                id: id ?? "draft-\(draft.id)",
+                id: resolvedID,
                 payload: .audio(CaptureAudioCardPayload()),
                 origin: origin,
                 provenance: provenance,
                 state: state,
-                title: title ?? String(localized: "capture.card.kind.audio"),
-                detail: captureCardModelSnippet(transcriptionText) ?? captureCardModelSnippet(summary) ?? String(localized: "capture.card.audio.attached"),
-                metadata: filename.trimmedOrNil,
-                isRemovable: origin == .manual || origin == .context
+                title: c.title ?? String(localized: "capture.card.kind.audio"),
+                detail: captureCardModelSnippet(c.transcriptionText) ?? captureCardModelSnippet(c.summary) ?? String(localized: "capture.card.audio.attached"),
+                metadata: c.filename.trimmedOrNil,
+                isRemovable: isRemovable
             )
-        case let .video(title, summary, filename, _, thumbnailData, _, origin, provenance):
+        case let .video(c):
             self.init(
-                id: id ?? "draft-\(draft.id)",
-                payload: thumbnailData == nil ? .status(CaptureStatusCardPayload()) : .photo(CapturePhotoCardPayload(thumbnailData: thumbnailData)),
-                origin: origin,
-                provenance: provenance,
-                state: state,
-                title: title ?? "Video",
-                detail: captureCardModelSnippet(summary) ?? filename.trimmedOrNil ?? "Video attached",
-                metadata: filename.trimmedOrNil,
-                isRemovable: origin == .manual || origin == .context
-            )
-        case let .location(title, summary, latitude, longitude, origin, provenance):
-            self.init(
-                id: id ?? "draft-\(draft.id)",
-                payload: .place(CapturePlaceCardPayload(latitude: latitude, longitude: longitude)),
-                origin: origin,
-                provenance: provenance,
-                state: state,
-                title: title ?? String(localized: "capture.card.kind.place"),
-                detail: captureCardModelSnippet(summary) ?? String(localized: "capture.card.place.attached"),
-                metadata: nil,
-                isSelected: false,
-                isRemovable: origin == .manual || origin == .context
-            )
-        case let .link(title, url, note, summary, _, thumbnailData, origin, provenance):
-            self.init(
-                id: id ?? "draft-\(draft.id)",
-                payload: .link(CaptureLinkCardPayload(thumbnailData: thumbnailData)),
-                origin: origin,
-                provenance: provenance,
-                state: state,
-                title: title ?? String(localized: "capture.card.kind.link"),
-                detail: summary.flatMap(captureCardModelSnippet) ?? note.flatMap(captureCardModelSnippet) ?? captureCardModelSnippet(url) ?? String(localized: "capture.card.link.attached"),
-                metadata: URL(string: url)?.host() ?? url,
-                isRemovable: origin == .manual || origin == .context
-            )
-        case let .todo(title, note, origin, provenance):
-            self.init(
-                id: id ?? "draft-\(draft.id)",
-                payload: .todo(CaptureTodoCardPayload()),
-                origin: origin,
-                provenance: provenance,
-                state: state,
-                title: title,
-                detail: note.flatMap(captureCardModelSnippet) ?? String(localized: "capture.card.kind.todo"),
-                metadata: String(localized: "capture.card.kind.todo"),
-                isRemovable: origin == .manual || origin == .context
-            )
-        case let .promptAnswer(prompt, answer, source, origin, provenance):
-            self.init(
-                id: id ?? "draft-\(draft.id)",
-                payload: .prompt(CapturePromptCardPayload(prompt: prompt, answer: answer)),
-                origin: origin,
-                provenance: provenance,
-                state: state,
-                title: "Reflection prompt",
-                detail: answer?.trimmedOrNil ?? prompt,
-                metadata: source,
-                isRemovable: origin == .manual || origin == .context
-            )
-        case let .personContext(name, note, photoData, _, origin, provenance):
-            self.init(
-                id: id ?? "draft-\(draft.id)",
-                payload: .person(CapturePersonContextCardPayload(name: name, photoData: photoData)),
-                origin: origin,
-                provenance: provenance,
-                state: state,
-                title: name,
-                detail: note?.trimmedOrNil ?? "Person context",
-                metadata: "Person context",
-                isRemovable: origin == .manual || origin == .context
-            )
-        case let .weather(condition, temp, humidity, windSpeed, uvIndex, latitude, longitude, conditionCode, symbolName, isDaylight, origin, provenance):
-            self.init(
-                id: id ?? "draft-\(draft.id)",
-                payload: .weather(CaptureWeatherCardPayload(
-                    latitude: latitude,
-                    longitude: longitude,
-                    style: .resolve(
-                        conditionCode: conditionCode,
-                        condition: condition,
-                        temperatureCelsius: temp,
-                        windSpeedKmh: windSpeed,
-                        isDaylight: isDaylight
-                    ),
-                    conditionCode: conditionCode,
-                    symbolName: symbolName,
-                    isDaylight: isDaylight
+                id: resolvedID,
+                payload: .video(CaptureVideoCardPayload(
+                    thumbnailData: c.thumbnailData,
+                    durationSeconds: c.videoMetadata["durationSeconds"].flatMap(Int.init)
                 )),
                 origin: origin,
                 provenance: provenance,
                 state: state,
-                title: captureWeatherTemperatureTitle(temp),
-                detail: condition,
-                metadata: captureWeatherMetadata(humidity: humidity, windSpeedKmh: windSpeed, uvIndex: uvIndex),
-                isSelected: false,
-                isRemovable: origin == .manual || origin == .context
+                title: c.title ?? "Video",
+                detail: captureCardModelSnippet(c.summary) ?? c.filename.trimmedOrNil ?? "Video attached",
+                metadata: c.filename.trimmedOrNil,
+                isRemovable: isRemovable
             )
-        case let .music(trackName, artistName, albumName, durationSeconds, artworkURL, artworkData, artworkPalette, origin, provenance):
+        case let .livePhoto(c):
             self.init(
-                id: id ?? "draft-\(draft.id)",
+                id: resolvedID,
+                payload: .livePhoto(CaptureLivePhotoCardPayload(
+                    thumbnailData: c.thumbnailData ?? c.stillImageData,
+                    pairedVideoByteCount: c.pairedVideoData?.count
+                )),
+                origin: origin,
+                provenance: provenance,
+                state: state,
+                title: c.title ?? "Live Photo",
+                detail: captureCardModelSnippet(c.summary) ?? c.stillFilename.trimmedOrNil ?? "Live Photo attached",
+                metadata: c.videoFilename.trimmedOrNil,
+                isRemovable: isRemovable
+            )
+        case let .location(c):
+            self.init(
+                id: resolvedID,
+                payload: .place(CapturePlaceCardPayload(latitude: c.latitude, longitude: c.longitude)),
+                origin: origin,
+                provenance: provenance,
+                state: state,
+                title: c.title ?? String(localized: "capture.card.kind.place"),
+                detail: captureCardModelSnippet(c.summary) ?? String(localized: "capture.card.place.attached"),
+                metadata: nil,
+                isSelected: false,
+                isRemovable: isRemovable
+            )
+        case let .link(c):
+            self.init(
+                id: resolvedID,
+                payload: .link(CaptureLinkCardPayload(thumbnailData: c.thumbnailData)),
+                origin: origin,
+                provenance: provenance,
+                state: state,
+                title: c.title ?? String(localized: "capture.card.kind.link"),
+                detail: c.summary.flatMap(captureCardModelSnippet) ?? c.note.flatMap(captureCardModelSnippet) ?? captureCardModelSnippet(c.url) ?? String(localized: "capture.card.link.attached"),
+                metadata: URL(string: c.url)?.host() ?? c.url,
+                isRemovable: isRemovable
+            )
+        case let .todo(c):
+            self.init(
+                id: resolvedID,
+                payload: .todo(CaptureTodoCardPayload()),
+                origin: origin,
+                provenance: provenance,
+                state: state,
+                title: c.title,
+                detail: c.note.flatMap(captureCardModelSnippet) ?? String(localized: "capture.card.kind.todo"),
+                metadata: String(localized: "capture.card.kind.todo"),
+                isRemovable: isRemovable
+            )
+        case let .promptAnswer(c):
+            self.init(
+                id: resolvedID,
+                payload: .prompt(CapturePromptCardPayload(prompt: c.prompt, answer: c.answer)),
+                origin: origin,
+                provenance: provenance,
+                state: state,
+                title: "Reflection prompt",
+                detail: c.answer?.trimmedOrNil ?? c.prompt,
+                metadata: c.source,
+                isRemovable: isRemovable
+            )
+        case let .personContext(c):
+            self.init(
+                id: resolvedID,
+                payload: .person(CapturePersonContextCardPayload(name: c.name, photoData: c.photoData)),
+                origin: origin,
+                provenance: provenance,
+                state: state,
+                title: c.name,
+                detail: c.note?.trimmedOrNil ?? "Person context",
+                metadata: "Person context",
+                isRemovable: isRemovable
+            )
+        case let .weather(c):
+            self.init(
+                id: resolvedID,
+                payload: .weather(CaptureWeatherCardPayload(
+                    latitude: c.latitude,
+                    longitude: c.longitude,
+                    style: .resolve(
+                        conditionCode: c.conditionCode,
+                        condition: c.condition,
+                        temperatureCelsius: c.temperatureCelsius,
+                        windSpeedKmh: c.windSpeedKmh,
+                        isDaylight: c.isDaylight
+                    ),
+                    conditionCode: c.conditionCode,
+                    symbolName: c.symbolName,
+                    isDaylight: c.isDaylight
+                )),
+                origin: origin,
+                provenance: provenance,
+                state: state,
+                title: captureWeatherTemperatureTitle(c.temperatureCelsius),
+                detail: c.condition,
+                metadata: captureWeatherMetadata(humidity: c.humidity, windSpeedKmh: c.windSpeedKmh, uvIndex: c.uvIndex),
+                isSelected: false,
+                isRemovable: isRemovable
+            )
+        case let .music(c):
+            self.init(
+                id: resolvedID,
                 payload: .music(CaptureMusicCardPayload(
-                    artworkURL: artworkURL,
-                    artworkData: artworkData,
-                    artworkPalette: artworkPalette,
-                    durationSeconds: durationSeconds,
+                    artworkURL: c.artworkURL,
+                    artworkData: c.artworkData,
+                    artworkPalette: c.artworkPalette,
+                    durationSeconds: c.durationSeconds,
                     playbackState: musicPlaybackState
                 )),
                 origin: origin,
                 provenance: provenance,
                 state: state,
-                title: trackName,
-                detail: [artistName.trimmedOrNil, albumName.trimmedOrNil].compactMap { $0 }.joined(separator: " · "),
+                title: c.trackName,
+                detail: [c.artistName.trimmedOrNil, c.albumName.trimmedOrNil].compactMap { $0 }.joined(separator: " · "),
                 metadata: nil,
                 isSelected: false,
-                isRemovable: origin == .manual || origin == .context
+                isRemovable: isRemovable
             )
         }
     }

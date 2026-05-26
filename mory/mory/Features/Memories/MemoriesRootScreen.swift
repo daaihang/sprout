@@ -103,7 +103,7 @@ struct MemoriesRootScreen: View {
         .onChange(of: requestedRoute) { _, _ in
             consumeRequestedRouteIfNeeded()
         }
-        .sheet(isPresented: $isPresentingComposer) {
+        .fullScreenCover(isPresented: $isPresentingComposer) {
             UnifiedCaptureComposerView(seed: .empty) {
                 Task { await load() }
             }
@@ -322,6 +322,7 @@ private struct MemoryLibraryFilterBar: View {
         case .photo: return String(localized: "capture.type.photo")
         case .audio: return String(localized: "capture.type.audio")
         case .video: return "Video"
+        case .livePhoto: return "Live Photo"
         case .music: return String(localized: "capture.type.music")
         case .link: return String(localized: "capture.type.link")
         case .location: return String(localized: "capture.type.location")
@@ -405,6 +406,7 @@ private struct MemoryLibraryRowView: View {
         case .photo: return "photo"
         case .audio: return "waveform"
         case .video: return "video"
+        case .livePhoto: return "livephoto"
         case .music: return "music.note"
         case .link: return "link"
         case .location: return "mappin.and.ellipse"
@@ -422,6 +424,7 @@ private extension ArtifactKind {
         case .photo: return String(localized: "capture.type.photo")
         case .audio: return String(localized: "capture.type.audio")
         case .video: return "Video"
+        case .livePhoto: return "Live Photo"
         case .music: return String(localized: "capture.type.music")
         case .link: return String(localized: "capture.type.link")
         case .location: return String(localized: "capture.type.location")

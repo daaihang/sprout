@@ -106,14 +106,34 @@ struct UnifiedCaptureComposerView: View {
         if isCollectingContext {
             items.append(.processing(id: "context", detail: String(localized: "capture.context.collecting")))
         }
+
+        let groupedSessionIDs = journalingSuggestionSessionIDs
+        items.append(contentsOf: groupedSessionIDs.map { sessionID in
+            CaptureComposerAttachmentItem.journalingSuggestion(
+                importSessionID: sessionID,
+                artifacts: stagedArtifactDrafts.filter { $0.isJournalingSuggestion(in: sessionID) },
+                affects: affectDrafts.filter { $0.isJournalingSuggestion(in: sessionID) }
+            )
+        })
         items.append(contentsOf: stagedArtifactDrafts.indices.map { index in
-            .staged(index: index, draft: stagedArtifactDrafts[index])
-        })
+            let draft = stagedArtifactDrafts[index]
+            guard draft.journalingSuggestionSessionID == nil else { return nil }
+            return .staged(index: index, draft: draft)
+        }.compactMap { $0 })
         items.append(contentsOf: affectDrafts.indices.map { index in
-            .affect(index: index, draft: affectDrafts[index])
-        })
+            let draft = affectDrafts[index]
+            guard draft.journalingSuggestionSessionID == nil else { return nil }
+            return .affect(index: index, draft: draft)
+        }.compactMap { $0 })
         items.append(contentsOf: contextCandidates.map(CaptureComposerAttachmentItem.context))
         return items
+    }
+
+    @MainActor
+    private var journalingSuggestionSessionIDs: [UUID] {
+        let artifactSessionIDs = stagedArtifactDrafts.compactMap(\.journalingSuggestionSessionID)
+        let affectSessionIDs = affectDrafts.compactMap(\.journalingSuggestionSessionID)
+        return Array(Set(artifactSessionIDs + affectSessionIDs)).sorted { $0.uuidString < $1.uuidString }
     }
 
     var body: some View {
@@ -125,7 +145,8 @@ struct UnifiedCaptureComposerView: View {
 	                            items: attachmentItems,
 	                            onRemoveStagedArtifact: removeStagedArtifact(at:),
 	                            onRemoveContextCandidate: removeContextCandidate(id:),
-	                            onRemoveAffectDraft: removeAffectDraft(at:)
+	                            onRemoveAffectDraft: removeAffectDraft(at:),
+	                            onRemoveJournalingSuggestion: removeJournalingSuggestion(importSessionID:)
 	                        )
 
                         CaptureBodyEditorView(
@@ -329,21 +350,23 @@ struct UnifiedCaptureComposerView: View {
         }
 
         guard let index = stagedArtifactDrafts.firstIndex(where: { draft in
-            if case let .audio(_, _, filename, _, _, _, _) = draft {
-                return filename == voice.filename
+            if case let .audio(c) = draft.content {
+                return c.filename == voice.filename
             }
             return false
         }) else { return }
 
-        if case let .audio(existingTitle, _, filename, audioData, _, origin, provenance) = stagedArtifactDrafts[index] {
+        if case let .audio(c) = stagedArtifactDrafts[index].content {
+            var updated = c
+            updated.transcriptionText = refinement.transcript
             stagedArtifactDrafts[index] = .audio(
-                title: existingTitle,
+                title: updated.title,
                 summary: String(localized: "quickCapture.voice.defaultSummary"),
-                filename: filename,
-                audioData: audioData,
-                transcriptionText: refinement.transcript,
-                origin: origin,
-                provenance: provenance
+                filename: updated.filename,
+                audioData: updated.audioData,
+                transcriptionText: updated.transcriptionText,
+                origin: stagedArtifactDrafts[index].origin,
+                provenance: stagedArtifactDrafts[index].provenance
             )
         }
     }
@@ -376,10 +399,15 @@ struct UnifiedCaptureComposerView: View {
             selectedPhotoItems = []
         }
 
+        let processor = MediaArtifactProcessor()
         for item in items {
             do {
-                guard let data = try await item.loadTransferable(type: Data.self) else { continue }
-                await addPhotoData(data, filename: "photo_\(Int(Date().timeIntervalSince1970)).jpg")
+                let draft = try await processor.process(
+                    item: item,
+                    origin: .manual,
+                    provenance: manualProvenance(.photoLibrary)
+                )
+                stagedArtifactDrafts.append(draft)
             } catch {
                 errorMessage = error.localizedDescription
             }
@@ -426,7 +454,6 @@ struct UnifiedCaptureComposerView: View {
                 rawText: rawText,
                 mood: mood.trimmedOrNil,
                 inputContext: inputContext.trimmedOrNil,
-                captureSource: draftProvenance.sourceKind.legacyCaptureSource ?? resolvedCaptureSource,
                 provenance: draftProvenance,
                 artifacts: allArtifactDrafts,
                 affectSnapshots: affectDrafts
@@ -461,6 +488,15 @@ struct UnifiedCaptureComposerView: View {
     private func removeContextCandidate(id: UUID) {
         guard let index = contextCandidates.firstIndex(where: { $0.id == id }) else { return }
         contextCandidates.remove(at: index)
+    }
+
+    @MainActor
+    private func removeJournalingSuggestion(importSessionID: UUID) {
+        stagedArtifactDrafts.removeAll { $0.isJournalingSuggestion(in: importSessionID) }
+        affectDrafts.removeAll { $0.isJournalingSuggestion(in: importSessionID) }
+        mood = affectDrafts.first?.labels.first?.rawValue
+            ?? affectDrafts.first?.rawInput?.trimmedOrNil
+            ?? ""
     }
 
     @MainActor
@@ -520,7 +556,7 @@ struct UnifiedCaptureComposerView: View {
             }
         }
         let nonTextArtifacts = draft.artifacts.filter { artifact in
-            if case .text = artifact { return false }
+            if case .text = artifact.content { return false }
             return true
         }
         stagedArtifactDrafts.append(contentsOf: nonTextArtifacts)
@@ -546,40 +582,29 @@ struct UnifiedCaptureComposerView: View {
             ?? String(localized: "capture.memory.untitled")
     }
 
-    private var resolvedCaptureSource: CaptureSource {
-        if allArtifactDrafts.contains(where: { draft in
-            if case .audio = draft { return true }
-            return false
-        }) {
-            return .audio
-        }
-        if allArtifactDrafts.contains(where: { draft in
-            if case .photo = draft { return true }
-            return false
-        }) {
-            return .photo
-        }
-        return .composer
-    }
-
     private func manualProvenance(_ sourceKind: CaptureProvenanceSourceKind) -> CaptureProvenance {
         CaptureProvenance(originCategory: .userInput, sourceKind: sourceKind)
     }
 }
 
-private extension CaptureProvenanceSourceKind {
-    var legacyCaptureSource: CaptureSource? {
-        switch self {
-        case .voice, .audioRecorder:
-            return .audio
-        case .camera, .photoLibrary:
-            return .photo
-        case .shareSheet, .appIntent, .shortcut, .widget:
-            return .importFile
-        case .composer, .linkComposer, .musicPicker, .locationPicker, .todoComposer, .moodPicker, .journalingSuggestion, .autoContext, .health, .fitness:
-            return .composer
-        case .aiAnalysis, .debugFixture, .unknown:
-            return nil
-        }
+private extension CaptureArtifactDraft {
+    var journalingSuggestionSessionID: UUID? {
+        guard provenance?.sourceKind == .journalingSuggestion else { return nil }
+        return provenance?.importSessionID
+    }
+
+    func isJournalingSuggestion(in importSessionID: UUID) -> Bool {
+        journalingSuggestionSessionID == importSessionID
+    }
+}
+
+private extension AffectSnapshotDraft {
+    var journalingSuggestionSessionID: UUID? {
+        guard provenance?.sourceKind == .journalingSuggestion else { return nil }
+        return provenance?.importSessionID
+    }
+
+    func isJournalingSuggestion(in importSessionID: UUID) -> Bool {
+        journalingSuggestionSessionID == importSessionID
     }
 }

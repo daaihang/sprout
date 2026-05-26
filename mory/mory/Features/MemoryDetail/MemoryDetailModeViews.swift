@@ -1,4 +1,5 @@
 import AVFoundation
+import PhotosUI
 import SwiftUI
 import UIKit
 
@@ -78,7 +79,7 @@ private struct MemoryGalleryModeView: View {
             if presentation.bodyText.trimmedOrNil != nil {
                 MemoryDetailBodyText(text: presentation.bodyText)
             }
-            MemoryDetailAttachmentCarousel(artifacts: presentation.contentArtifacts.filter { $0.kind != .photo })
+            MemoryDetailAttachmentCarousel(artifacts: presentation.contentArtifacts.filter { $0.kind != .photo && $0.kind != .livePhoto })
             MemoryContextSection(artifacts: presentation.contextArtifacts)
         }
     }
@@ -201,14 +202,14 @@ private struct MemoryPhotoGallery: View {
 
     var body: some View {
         if artifacts.count == 1, let artifact = artifacts.first {
-            MemoryPhotoView(artifact: artifact)
+            MemoryMediaStillView(artifact: artifact)
                 .aspectRatio(4 / 3, contentMode: .fit)
                 .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                 .padding(.horizontal, 20)
         } else if !artifacts.isEmpty {
             LazyVGrid(columns: columns, spacing: 8) {
                 ForEach(artifacts) { artifact in
-                    MemoryPhotoView(artifact: artifact)
+                    MemoryMediaStillView(artifact: artifact)
                         .aspectRatio(artifact.id.uuidString.hashValue.isMultiple(of: 2) ? 0.82 : 1.18, contentMode: .fill)
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
@@ -218,12 +219,14 @@ private struct MemoryPhotoGallery: View {
     }
 }
 
-private struct MemoryPhotoView: View {
+private struct MemoryMediaStillView: View {
     let artifact: Artifact
 
     var body: some View {
         Group {
-            if let data = artifact.binaryPayload, let image = UIImage(data: data) {
+            if artifact.kind == .livePhoto {
+                MemoryLivePhotoView(artifact: artifact)
+            } else if let data = artifact.binaryPayload, let image = UIImage(data: data) {
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFill()
@@ -243,6 +246,111 @@ private struct MemoryPhotoView: View {
         }
         .clipped()
         .accessibilityLabel(Text(artifact.memoryDetailSummary))
+    }
+}
+
+private struct MemoryLivePhotoView: View {
+    let artifact: Artifact
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            if let stillData = artifact.previewPayload,
+               let pairedVideoData = artifact.binaryPayload,
+               let placeholder = UIImage(data: stillData) {
+                LivePhotoResourceView(
+                    stillData: stillData,
+                    pairedVideoData: pairedVideoData,
+                    placeholder: placeholder
+                )
+            } else if let data = artifact.previewPayload, let image = UIImage(data: data) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                ZStack {
+                    Rectangle()
+                        .fill(Color.secondary.opacity(0.12))
+                    Image(systemName: "livephoto")
+                        .font(.title)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Label("Live Photo", systemImage: "livephoto")
+                .font(.caption2.weight(.semibold))
+                .labelStyle(.iconOnly)
+                .padding(7)
+                .background(.ultraThinMaterial, in: Circle())
+                .padding(8)
+        }
+    }
+}
+
+private struct LivePhotoResourceView: UIViewRepresentable {
+    let stillData: Data
+    let pairedVideoData: Data
+    let placeholder: UIImage
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    func makeUIView(context: Context) -> PHLivePhotoView {
+        let view = PHLivePhotoView()
+        view.contentMode = .scaleAspectFill
+        view.isMuted = true
+        return view
+    }
+
+    func updateUIView(_ uiView: PHLivePhotoView, context: Context) {
+        context.coordinator.load(
+            stillData: stillData,
+            pairedVideoData: pairedVideoData,
+            placeholder: placeholder
+        ) { livePhoto in
+            uiView.livePhoto = livePhoto
+        }
+    }
+
+    final class Coordinator {
+        private var temporaryURLs: [URL] = []
+        private var loadKey: Int?
+
+        deinit {
+            temporaryURLs.forEach { try? FileManager.default.removeItem(at: $0) }
+        }
+
+        func load(
+            stillData: Data,
+            pairedVideoData: Data,
+            placeholder: UIImage,
+            completion: @escaping (PHLivePhoto?) -> Void
+        ) {
+            let key = stillData.count ^ pairedVideoData.count
+            guard loadKey != key else { return }
+            loadKey = key
+            temporaryURLs.forEach { try? FileManager.default.removeItem(at: $0) }
+            temporaryURLs = []
+
+            let baseURL = FileManager.default.temporaryDirectory.appendingPathComponent("mory_live_photo_\(UUID().uuidString)")
+            let stillURL = baseURL.appendingPathExtension("jpg")
+            let videoURL = baseURL.appendingPathExtension("mov")
+            do {
+                try stillData.write(to: stillURL, options: .atomic)
+                try pairedVideoData.write(to: videoURL, options: .atomic)
+                temporaryURLs = [stillURL, videoURL]
+                PHLivePhoto.request(
+                    withResourceFileURLs: temporaryURLs,
+                    placeholderImage: placeholder,
+                    targetSize: .zero,
+                    contentMode: .aspectFill
+                ) { livePhoto, _ in
+                    completion(livePhoto)
+                }
+            } catch {
+                completion(nil)
+            }
+        }
     }
 }
 
@@ -367,8 +475,8 @@ private struct MemoryArticleArtifactView: View {
 
     var body: some View {
         switch artifact.kind {
-        case .photo:
-            MemoryPhotoView(artifact: artifact)
+        case .photo, .livePhoto:
+            MemoryMediaStillView(artifact: artifact)
                 .aspectRatio(4 / 3, contentMode: .fit)
                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         case .audio:
@@ -539,6 +647,7 @@ private extension ArtifactKind {
         case .photo: return "Photo"
         case .audio: return "Audio"
         case .video: return "Video"
+        case .livePhoto: return "Live Photo"
         case .music: return "Music"
         case .link: return "Link"
         case .location: return "Place"
@@ -554,6 +663,7 @@ private extension ArtifactKind {
         case .photo: return "photo"
         case .audio: return "waveform"
         case .video: return "video"
+        case .livePhoto: return "livephoto"
         case .music: return "music.note"
         case .link: return "link"
         case .location: return "mappin.and.ellipse"

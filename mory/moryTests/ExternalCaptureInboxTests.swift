@@ -110,7 +110,7 @@ final class ExternalCaptureInboxTests: XCTestCase {
                 && $0.provenance?.externalInboxItemID == item.id
         })
         XCTAssertTrue(draft.artifacts.contains { artifact in
-            guard case .promptAnswer = artifact else { return false }
+            guard case .promptAnswer = artifact.content else { return false }
             return true
         })
     }
@@ -154,7 +154,7 @@ final class ExternalCaptureInboxTests: XCTestCase {
         XCTAssertEqual(draft.title, "Shared screenshot")
         XCTAssertEqual(draft.provenance.sourceKind, .shareSheet)
         XCTAssertTrue(draft.artifacts.contains { artifact in
-            if case .photo = artifact { return true }
+            if case .photo = artifact.content { return true }
             return false
         })
         XCTAssertTrue(draft.artifacts.allSatisfy { $0.provenance?.sourceKind == .shareSheet })
@@ -270,11 +270,11 @@ final class ExternalCaptureInboxTests: XCTestCase {
         )
 
         XCTAssertTrue(draft.artifacts.contains { artifact in
-            if case .photo = artifact { return true }
+            if case .photo = artifact.content { return true }
             return false
         })
         XCTAssertTrue(draft.artifacts.contains { artifact in
-            if case .video = artifact { return true }
+            if case .video = artifact.content { return true }
             return false
         })
         let affect = try XCTUnwrap(draft.affectSnapshots.first)
@@ -287,6 +287,60 @@ final class ExternalCaptureInboxTests: XCTestCase {
         XCTAssertTrue(affect.evidenceSummary?.contains("associations=friends,health") == true)
         XCTAssertTrue(affect.evidenceSummary?.contains("classification=pleasant") == true)
         XCTAssertTrue(affect.evidenceSummary?.contains("kind=daily mood") == true)
+    }
+
+    func testJournalingLivePhotoEvidenceCreatesSingleLivePhotoDraft() throws {
+        let service = JournalingSuggestionContextService()
+        let livePhotoID = UUID()
+        let stillAttachment = ExternalCaptureAttachmentDraft(
+            id: UUID(),
+            kind: .image,
+            role: .primaryMedia,
+            referenceID: livePhotoID,
+            filename: "live-still.heic",
+            contentType: "image/heic",
+            summary: "Live Photo still"
+        )
+        let pairedVideoAttachment = ExternalCaptureAttachmentDraft(
+            id: UUID(),
+            kind: .video,
+            role: .primaryMedia,
+            referenceID: livePhotoID,
+            filename: "live-motion.mov",
+            contentType: "video/quicktime",
+            summary: "Live Photo motion"
+        )
+
+        let draft = service.makeCaptureDraft(
+            from: JournalingSuggestionDraft(
+                title: "Live suggestion",
+                bundle: JournalingEvidenceBundle(
+                    photoVideos: [
+                        JournalingPhotoVideoEvidence(
+                            id: livePhotoID,
+                            kind: .livePhoto,
+                            attachmentID: stillAttachment.id,
+                            pairedVideoAttachmentID: pairedVideoAttachment.id
+                        )
+                    ],
+                    attachments: [stillAttachment, pairedVideoAttachment]
+                )
+            )
+        )
+
+        let livePhotos = draft.artifacts.filter { artifact in
+            if case .livePhoto = artifact.content { return true }
+            return false
+        }
+        XCTAssertEqual(livePhotos.count, 1)
+        XCTAssertFalse(draft.artifacts.contains { artifact in
+            if case .photo = artifact.content { return true }
+            return false
+        })
+        XCTAssertFalse(draft.artifacts.contains { artifact in
+            if case .video = artifact.content { return true }
+            return false
+        })
     }
 
     func testExternalCaptureInboxWriterUsesActiveOwnerScope() throws {

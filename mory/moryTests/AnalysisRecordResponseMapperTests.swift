@@ -628,7 +628,7 @@ final class AnalysisRecordResponseMapperTests: XCTestCase {
         XCTAssertTrue(titles.contains("Recurring career history"))
         XCTAssertTrue(scenarios.contains { $0.captureSource == .audio })
         XCTAssertTrue(scenarios.contains { $0.artifacts.contains { artifact in
-            if case .link = artifact { return true }
+            if case .link = artifact.content { return true }
             return false
         }})
         XCTAssertTrue(scenarios.contains { $0.expectation == .arcExpected })

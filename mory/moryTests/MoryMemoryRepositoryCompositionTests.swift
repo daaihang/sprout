@@ -58,6 +58,35 @@ final class AppRuntimeEnvironmentTests: XCTestCase {
 
 @MainActor
 final class MoryMemoryRepositoryCompositionTests: XCTestCase {
+    func testCreateMemoryDerivesCaptureSourceFromProvenance() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
+        )
+
+        let importSessionID = UUID()
+        let provenance = CaptureProvenance.external(
+            sourceKind: .shareSheet,
+            importSessionID: importSessionID,
+            sourceDisplayName: "Share Sheet",
+            createdAt: Date(timeIntervalSince1970: 1_800_000_000)
+        )
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Shared article",
+                rawText: "Shared from Safari",
+                provenance: provenance,
+                artifacts: [.link(title: "Shared article", url: "https://example.com", origin: .imported, provenance: provenance)]
+            )
+        )
+
+        XCTAssertEqual(memory.record.captureSource, .importFile)
+        XCTAssertEqual(memory.record.captureProvenance, provenance)
+    }
+
     func testUserSettingsPreferenceDefaultsPersistAndSurviveLocalDataClear() throws {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(

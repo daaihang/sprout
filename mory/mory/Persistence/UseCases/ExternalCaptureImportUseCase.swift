@@ -3,6 +3,7 @@ import Foundation
 @MainActor
 struct ExternalCaptureImportUseCase {
     let repository: MoryMemoryRepository
+    let artifactBuilder: MemoryCaptureArtifactBuilder
 
     func enqueueExternalCapture(_ request: ExternalCaptureRequest, receivedAt: Date = .now) throws -> ExternalCaptureInboxItem {
         let item = try ExternalCaptureInboxCodec().makeItem(from: request, now: receivedAt)
@@ -49,7 +50,10 @@ struct ExternalCaptureImportUseCase {
         }
 
         let draft = try ExternalCaptureInboxCodec().makeDraft(from: item)
-        let memory = try await MemoryCreationUseCase(repository: repository).createMemory(from: draft)
+        let memory = try await MemoryCreationUseCase(
+            repository: repository,
+            artifactBuilder: artifactBuilder
+        ).createMemory(from: draft)
 
         try markExternalCaptureInboxItemImported(item.id, recordID: memory.record.id)
         return memory

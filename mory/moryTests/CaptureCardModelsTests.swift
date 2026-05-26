@@ -119,6 +119,64 @@ final class CaptureCardModelsTests: XCTestCase {
         XCTAssertFalse(card.isRemovable)
     }
 
+    func testSavedVideoArtifactMapsToVideoCardWithPreview() {
+        let thumbnail = makeImageData(color: .systemBlue)
+        let artifact = Artifact(
+            recordID: UUID(),
+            kind: .video,
+            title: "Clip",
+            summary: "Walking by the river",
+            mediaRef: ArtifactMediaRef(filename: "clip.mov", mimeType: "video/quicktime"),
+            metadata: [
+                "captureOrigin": CaptureArtifactOrigin.manual.rawValue,
+                "durationSeconds": "18"
+            ],
+            previewPayload: thumbnail,
+            createdAt: .now,
+            updatedAt: .now
+        )
+
+        let card = CaptureCardItem(artifact: artifact)
+
+        XCTAssertEqual(card.kind, .video)
+        XCTAssertEqual(card.title, "Clip")
+        XCTAssertEqual(card.detail, "Walking by the river")
+        guard case let .video(payload) = card.payload else {
+            return XCTFail("Expected video payload.")
+        }
+        XCTAssertEqual(payload.thumbnailData, thumbnail)
+        XCTAssertEqual(payload.durationSeconds, 18)
+    }
+
+    func testSavedLivePhotoArtifactMapsToLivePhotoCard() {
+        let thumbnail = makeImageData(color: .systemCyan)
+        let artifact = Artifact(
+            recordID: UUID(),
+            kind: .livePhoto,
+            title: "Live Photo",
+            summary: "Motion still",
+            mediaRef: ArtifactMediaRef(filename: "live.heic", mimeType: "image/heic"),
+            metadata: [
+                "captureOrigin": CaptureArtifactOrigin.imported.rawValue,
+                "pairedVideoByteCount": "4096",
+                "videoFilename": "live.mov"
+            ],
+            previewPayload: thumbnail,
+            createdAt: .now,
+            updatedAt: .now
+        )
+
+        let card = CaptureCardItem(artifact: artifact)
+
+        XCTAssertEqual(card.kind, .livePhoto)
+        XCTAssertEqual(card.origin, .imported)
+        guard case let .livePhoto(payload) = card.payload else {
+            return XCTFail("Expected live photo payload.")
+        }
+        XCTAssertEqual(payload.thumbnailData, thumbnail)
+        XCTAssertEqual(payload.pairedVideoByteCount, 4096)
+    }
+
     func testSavedWeatherArtifactMapsStableConditionFields() {
         let artifact = Artifact(
             recordID: UUID(),
@@ -206,6 +264,49 @@ final class CaptureCardModelsTests: XCTestCase {
         XCTAssertEqual(audio.kind, .audio)
         XCTAssertEqual(audio.state, .loading)
         XCTAssertEqual(audio.title, CaptureCardKind.audio.label)
+    }
+
+    func testJournalingSuggestionAttachmentAggregatesArtifactsAndAffects() {
+        let sessionID = UUID()
+        let provenance = CaptureProvenance.external(sourceKind: .journalingSuggestion, importSessionID: sessionID)
+        let artifacts: [CaptureArtifactDraft] = [
+            .photo(summary: "Photo", filename: "photo.jpg", thumbnailData: Data([1]), provenance: provenance),
+            .video(summary: "Video", filename: "video.mov", thumbnailData: Data([2]), provenance: provenance),
+            .livePhoto(
+                summary: "Live",
+                stillFilename: "live.heic",
+                videoFilename: "live.mov",
+                thumbnailData: Data([3]),
+                provenance: provenance
+            ),
+            .location(summary: "Place", latitude: 1, longitude: 2, provenance: provenance)
+        ]
+        let affects = [
+            AffectSnapshotDraft(
+                labels: [.calm],
+                sources: [.journalSuggestionStateOfMind],
+                provenance: provenance
+            )
+        ]
+
+        let item = CaptureComposerAttachmentItem.journalingSuggestion(
+            importSessionID: sessionID,
+            artifacts: artifacts,
+            affects: affects
+        )
+
+        XCTAssertEqual(item.source, .journalingSuggestion(importSessionID: sessionID))
+        XCTAssertEqual(item.card.kind, .journalingSuggestion)
+        XCTAssertTrue(item.card.isRemovable)
+        guard case let .journalingSuggestion(payload) = item.card.payload else {
+            return XCTFail("Expected journaling suggestion payload.")
+        }
+        XCTAssertEqual(payload.artifactCount, 4)
+        XCTAssertEqual(payload.affectCount, 1)
+        XCTAssertEqual(payload.photoCount, 1)
+        XCTAssertEqual(payload.videoCount, 1)
+        XCTAssertEqual(payload.livePhotoCount, 1)
+        XCTAssertEqual(payload.locationCount, 1)
     }
 
     func testOnlyNormalCardsDisplaySelection() {
@@ -435,7 +536,7 @@ final class CaptureCardModelsTests: XCTestCase {
     func testFixturesCoverAllConcreteArtifactKindsWithoutAutoContextKind() {
         let fixtureKinds = Set(CaptureCardLabFixtures.allTypes.map(\.kind))
 
-        XCTAssertTrue(fixtureKinds.isSuperset(of: [.photo, .audio, .place, .weather, .music, .link, .todo]))
+        XCTAssertTrue(fixtureKinds.isSuperset(of: [.photo, .video, .livePhoto, .audio, .place, .weather, .music, .link, .todo, .journalingSuggestion]))
         XCTAssertFalse(CaptureCardKind.allCases.contains { $0.rawValue == "autoContext" })
     }
 

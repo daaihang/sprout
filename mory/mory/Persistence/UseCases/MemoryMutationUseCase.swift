@@ -4,6 +4,7 @@ import SwiftData
 @MainActor
 struct MemoryMutationUseCase {
     let repository: MoryMemoryRepository
+    let artifactBuilder: MemoryCaptureArtifactBuilder
 
     func applyMemoryMutation(
         recordID: UUID,
@@ -73,7 +74,7 @@ struct MemoryMutationUseCase {
 
         let addedArtifacts = mutation.addedArtifacts.isEmpty
             ? []
-            : repository.captureArtifactBuilder.buildArtifacts(
+            : artifactBuilder.buildArtifacts(
                 from: MemoryCaptureDraft(rawText: "", artifacts: mutation.addedArtifacts),
                 recordID: recordID,
                 createdAt: now

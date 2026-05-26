@@ -96,7 +96,7 @@ struct HomeScreen: View {
         .refreshable {
             await reload()
         }
-        .sheet(isPresented: $isPresentingComposer) {
+        .fullScreenCover(isPresented: $isPresentingComposer) {
             UnifiedCaptureComposerView(seed: .empty) {
                 Task { await reload() }
             }

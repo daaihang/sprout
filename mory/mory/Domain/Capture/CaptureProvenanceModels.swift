@@ -92,6 +92,32 @@ enum CaptureProvenanceSourceKind: String, Codable, Hashable, Sendable, CaseItera
             return "Unknown"
         }
     }
+
+    var derivedCaptureSource: CaptureSource {
+        switch self {
+        case .voice:
+            return .voice
+        case .audioRecorder:
+            return .audio
+        case .camera, .photoLibrary:
+            return .photo
+        case .shareSheet, .appIntent, .shortcut, .widget:
+            return .importFile
+        case .composer,
+             .linkComposer,
+             .musicPicker,
+             .locationPicker,
+             .todoComposer,
+             .moodPicker,
+             .autoContext,
+             .journalingSuggestion,
+             .health,
+             .fitness:
+            return .composer
+        case .aiAnalysis, .debugFixture, .unknown:
+            return .manual
+        }
+    }
 }
 
 struct CaptureProvenance: Identifiable, Codable, Hashable, Sendable {
@@ -186,6 +212,10 @@ struct CaptureProvenance: Identifiable, Codable, Hashable, Sendable {
         originCategory.artifactOrigin
     }
 
+    var derivedCaptureSource: CaptureSource {
+        sourceKind.derivedCaptureSource
+    }
+
     var displayLabel: String {
         sourceDisplayName?.trimmedOrNil ?? sourceKind.displayLabel
     }
@@ -216,5 +246,42 @@ struct CaptureProvenance: Identifiable, Codable, Hashable, Sendable {
         if let sourceDisplayName = sourceDisplayName?.trimmedOrNil { metadata["captureSourceDisplayName"] = sourceDisplayName }
         if let attachmentRole = attachmentRole?.trimmedOrNil { metadata["captureAttachmentRole"] = attachmentRole }
         return metadata
+    }
+}
+
+extension CaptureSource {
+    var defaultProvenance: CaptureProvenance {
+        CaptureProvenance(
+            originCategory: defaultOriginCategory,
+            sourceKind: defaultProvenanceSourceKind
+        )
+    }
+
+    var defaultOriginCategory: CaptureOriginCategory {
+        switch self {
+        case .importFile:
+            return .externalImport
+        case .manual:
+            return .debug
+        case .composer, .voice, .photo, .audio:
+            return .userInput
+        }
+    }
+
+    var defaultProvenanceSourceKind: CaptureProvenanceSourceKind {
+        switch self {
+        case .composer:
+            return .composer
+        case .voice:
+            return .voice
+        case .photo:
+            return .photoLibrary
+        case .audio:
+            return .audioRecorder
+        case .importFile:
+            return .shareSheet
+        case .manual:
+            return .unknown
+        }
     }
 }

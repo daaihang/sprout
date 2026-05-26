@@ -1,4 +1,8 @@
 import Foundation
+import OSLog
+import Sentry
+
+private let captureLog = Logger(subsystem: "com.mory", category: "capture")
 
 /// Orchestrates the capture flow: persists the final snapshot and triggers pipeline.
 @MainActor
@@ -16,7 +20,12 @@ struct CaptureOrchestrator {
         let memory = try await memoryRepository.createMemory(from: draft)
 
         Task {
-            try? await memoryRepository.refreshMemoryPipeline(recordID: memory.record.id)
+            do {
+                try await memoryRepository.refreshMemoryPipeline(recordID: memory.record.id)
+            } catch {
+                captureLog.error("Pipeline trigger failed for record \(memory.record.id.uuidString, privacy: .public): \(String(describing: error), privacy: .public)")
+                SentrySDK.capture(error: error)
+            }
         }
 
         return memory

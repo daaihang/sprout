@@ -5,6 +5,7 @@ struct CaptureComposerAttachmentItem: Identifiable {
         case stagedArtifact(index: Int)
         case contextCandidate(id: UUID)
         case affect(index: Int)
+        case journalingSuggestion(importSessionID: UUID)
         case processing(id: String)
     }
 
@@ -76,6 +77,44 @@ struct CaptureComposerAttachmentItem: Identifiable {
         )
     }
 
+    static func journalingSuggestion(importSessionID: UUID, artifacts: [CaptureArtifactDraft], affects: [AffectSnapshotDraft]) -> CaptureComposerAttachmentItem {
+        let payload = CaptureJournalingSuggestionCardPayload(
+            artifactCount: artifacts.count,
+            affectCount: affects.count,
+            photoCount: artifacts.filter(\.isPhotoContent).count,
+            videoCount: artifacts.filter(\.isVideoContent).count,
+            livePhotoCount: artifacts.filter(\.isLivePhotoContent).count,
+            locationCount: artifacts.filter(\.isLocationContent).count,
+            musicCount: artifacts.filter(\.isMusicContent).count,
+            promptCount: artifacts.filter(\.isPromptAnswerContent).count,
+            thumbnailData: artifacts.compactMap(\.journalingPreviewData).first
+        )
+        let itemID = "journaling-\(importSessionID.uuidString)"
+        let detail = [
+            artifacts.isEmpty ? nil : "\(artifacts.count) items",
+            affects.isEmpty ? nil : "\(affects.count) moods",
+        ]
+        .compactMap { $0 }
+        .joined(separator: " · ")
+        .trimmedOrNil ?? "Journaling suggestion"
+
+        return CaptureComposerAttachmentItem(
+            id: itemID,
+            source: .journalingSuggestion(importSessionID: importSessionID),
+            card: CaptureCardItem(
+                id: itemID,
+                payload: .journalingSuggestion(payload),
+                origin: .imported,
+                provenance: artifacts.first?.provenance ?? affects.first?.provenance,
+                state: .normal,
+                title: "Journaling Suggestion",
+                detail: detail,
+                metadata: "Journaling",
+                isRemovable: true
+            )
+        )
+    }
+
     static func processing(id: String, kind: CaptureCardKind = .status, detail: String) -> CaptureComposerAttachmentItem {
         let itemID = "processing-\(id)"
         return CaptureComposerAttachmentItem(
@@ -97,6 +136,10 @@ struct CaptureComposerAttachmentItem: Identifiable {
         switch kind {
         case .photo:
             return .photo(CapturePhotoCardPayload())
+        case .video:
+            return .video(CaptureVideoCardPayload())
+        case .livePhoto:
+            return .livePhoto(CaptureLivePhotoCardPayload())
         case .audio:
             return .audio(CaptureAudioCardPayload())
         case .place:
@@ -115,8 +158,59 @@ struct CaptureComposerAttachmentItem: Identifiable {
             return .person(CapturePersonContextCardPayload(name: ""))
         case .affect:
             return .affect(CaptureAffectCardPayload())
+        case .journalingSuggestion:
+            return .journalingSuggestion(CaptureJournalingSuggestionCardPayload(artifactCount: 0, affectCount: 0))
         case .status:
             return .status(CaptureStatusCardPayload())
         }
+    }
+}
+
+private extension CaptureArtifactDraft {
+    var journalingPreviewData: Data? {
+        switch content {
+        case let .photo(content):
+            return content.thumbnailData ?? content.imageData
+        case let .video(content):
+            return content.thumbnailData
+        case let .livePhoto(content):
+            return content.thumbnailData ?? content.stillImageData
+        case let .music(content):
+            return content.artworkData
+        case let .personContext(content):
+            return content.photoData
+        case .text, .audio, .location, .link, .todo, .promptAnswer, .weather:
+            return nil
+        }
+    }
+
+    var isPhotoContent: Bool {
+        if case .photo = content { return true }
+        return false
+    }
+
+    var isVideoContent: Bool {
+        if case .video = content { return true }
+        return false
+    }
+
+    var isLivePhotoContent: Bool {
+        if case .livePhoto = content { return true }
+        return false
+    }
+
+    var isLocationContent: Bool {
+        if case .location = content { return true }
+        return false
+    }
+
+    var isMusicContent: Bool {
+        if case .music = content { return true }
+        return false
+    }
+
+    var isPromptAnswerContent: Bool {
+        if case .promptAnswer = content { return true }
+        return false
     }
 }

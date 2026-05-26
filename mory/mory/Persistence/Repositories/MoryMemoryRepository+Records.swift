@@ -5,7 +5,10 @@ extension MoryMemoryRepository {
     // MARK: - Records & Artifacts
 
     func createMemory(from draft: MemoryCaptureDraft) async throws -> MemorySummary {
-        try await MemoryCreationUseCase(repository: self).createMemory(from: draft)
+        try await MemoryCreationUseCase(
+            repository: self,
+            artifactBuilder: captureArtifactBuilder
+        ).createMemory(from: draft)
     }
 
     func applyMemoryMutation(
@@ -13,7 +16,7 @@ extension MoryMemoryRepository {
         mutation: MemoryMutationDraft,
         refreshPolicy: MemoryMutationRefreshPolicy
     ) async throws -> MemoryMutationResult {
-        try await MemoryMutationUseCase(repository: self).applyMemoryMutation(
+        try await memoryMutationUseCase.applyMemoryMutation(
             recordID: recordID,
             mutation: mutation,
             refreshPolicy: refreshPolicy
@@ -21,19 +24,26 @@ extension MoryMemoryRepository {
     }
 
     func appendArtifacts(recordID: UUID, drafts: [CaptureArtifactDraft]) async throws -> MemorySummary? {
-        try await MemoryMutationUseCase(repository: self).appendArtifacts(recordID: recordID, drafts: drafts)
+        try await memoryMutationUseCase.appendArtifacts(recordID: recordID, drafts: drafts)
     }
 
     func deleteMemory(recordID: UUID) throws {
-        try MemoryMutationUseCase(repository: self).deleteMemory(recordID: recordID)
+        try memoryMutationUseCase.deleteMemory(recordID: recordID)
     }
 
     func updateMemory(recordID: UUID, draft: MemoryEditDraft) async throws -> MemoryDetailSnapshot? {
-        try await MemoryMutationUseCase(repository: self).updateMemory(recordID: recordID, draft: draft)
+        try await memoryMutationUseCase.updateMemory(recordID: recordID, draft: draft)
     }
 
     func refreshMemoryPipeline(recordID: UUID) async throws {
-        try await MemoryMutationUseCase(repository: self).refreshMemoryPipeline(recordID: recordID)
+        try await memoryMutationUseCase.refreshMemoryPipeline(recordID: recordID)
+    }
+
+    private var memoryMutationUseCase: MemoryMutationUseCase {
+        MemoryMutationUseCase(
+            repository: self,
+            artifactBuilder: captureArtifactBuilder
+        )
     }
 
     func fetchRecordShells() throws -> [RecordShell] {

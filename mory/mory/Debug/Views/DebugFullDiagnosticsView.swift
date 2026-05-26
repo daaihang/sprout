@@ -850,7 +850,7 @@ struct DebugFullDiagnosticsView: View {
                 rawText: body,
                 mood: customMood.trimmedOrNil,
                 inputContext: inputContext,
-                captureSource: .composer,
+                provenance: CaptureProvenance(originCategory: .debug, sourceKind: .debugFixture),
                 artifacts: [.text(title: customTitle.trimmedOrNil, body: body)] + contextDrafts
             )
             let memory = try await memoryRepository.createMemory(from: draft)
@@ -1384,11 +1384,12 @@ struct DebugChainRow: View {
 
 private extension CaptureArtifactDraft {
     var debugIconName: String {
-        switch self {
+        switch content {
         case .text: "text.alignleft"
         case .photo: "photo"
         case .audio: "waveform"
         case .video: "video"
+        case .livePhoto: "livephoto"
         case .location: "mappin.and.ellipse"
         case .link: "link"
         case .todo: "checklist"

@@ -7,7 +7,7 @@ This matrix maps features from user input to local persistence, API, AI output, 
 | Step | Object | Notes |
 | --- | --- | --- |
 | User input | `UnifiedCaptureComposerView` state | Body, staged artifacts, affect drafts, context candidates. |
-| Draft | `MemoryCaptureDraft` | Title, rawText, mood, inputContext, captureSource, artifacts, affectSnapshots. |
+| Draft | `MemoryCaptureDraft` | Title, rawText, mood, inputContext, provenance, artifacts, affectSnapshots. |
 | Artifact conversion | `MemoryCaptureArtifactBuilder` | Creates `Artifact` records and metadata. |
 | Record persistence | `RecordShellStore` | Primary capture shell. |
 | Artifact persistence | `ArtifactStore` | Text/media/metadata payloads. |
@@ -34,7 +34,7 @@ This matrix maps features from user input to local persistence, API, AI output, 
 | Location | `locations` | `.location` | `ArtifactKind.location` |
 | LocationGroup | `locationGroups` | multiple `.location` | `ArtifactKind.location` |
 | Song/Podcast/GenericMedia | `media` | `.music` | `ArtifactKind.music` |
-| Photo/Video/LivePhoto | `photoVideos` + attachments | `.photo` / `.video` | `ArtifactKind.photo` / `ArtifactKind.video` |
+| Photo/Video/LivePhoto | `photoVideos` + attachments | `.photo` / `.video` / `.livePhoto` | `ArtifactKind.photo` / `ArtifactKind.video` / `ArtifactKind.livePhoto` |
 | Workout/MotionActivity | `activities` | body/context evidence | text/context plus metadata |
 | Contact | `contacts` | `.personContext` | `ArtifactKind.document` |
 | Reflection | `reflections` | `.promptAnswer` | `ArtifactKind.document` |
@@ -53,7 +53,6 @@ This matrix maps features from user input to local persistence, API, AI output, 
 
 ## Current Data Flow Gaps
 
-1. Journaling and external capture need a durable import session concept across artifacts and affect snapshots.
-2. Workout, motion activity, and event poster evidence are not first-class capture card types.
-3. AI proposal provenance is inspectable but not yet user-friendly.
-4. Billing/entitlement state is not part of capture or analyze request gating.
+1. Workout, motion activity, and event poster evidence are not first-class capture card types.
+2. AI proposal provenance is inspectable but not yet user-friendly.
+3. Billing/entitlement state is not part of capture or analyze request gating.
