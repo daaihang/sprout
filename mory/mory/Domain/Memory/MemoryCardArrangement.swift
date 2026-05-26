@@ -154,6 +154,15 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
         self.nodes = nodes
     }
 
+    static func artifactCards(for artifactDrafts: [CaptureArtifactDraft]) -> MemoryCardArrangementDraft? {
+        guard !artifactDrafts.isEmpty else { return nil }
+        var arrangement = MemoryCardArrangementDraft()
+        for draft in artifactDrafts {
+            arrangement.appendArtifactDraft(draft)
+        }
+        return arrangement
+    }
+
     mutating func ensureRecordBodyNode() {
         guard !nodes.contains(where: { $0.contentRef == .recordBody }) else { return }
         nodes.insert(

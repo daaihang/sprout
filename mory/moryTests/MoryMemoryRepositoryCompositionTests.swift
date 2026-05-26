@@ -2425,6 +2425,93 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertTrue(detail.artifacts.contains(where: { $0.kind == .music && $0.metadata["artworkURL"] == "https://example.com/art.jpg" }))
     }
 
+    func testAppendArtifactsBuildsArrangementDraftForAddedCards() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
+        )
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Append arranged cards",
+                rawText: "A regular capture that should keep appended card placement.",
+                captureSource: .composer,
+                artifacts: [.text(title: "Append arranged cards", body: "A regular capture that should keep appended card placement.")]
+            )
+        )
+
+        let photoDraftID = UUID(uuidString: "DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD")!
+        let audioDraftID = UUID(uuidString: "EEEEEEEE-EEEE-EEEE-EEEE-EEEEEEEEEEEE")!
+        let photoDraft = CaptureArtifactDraft(
+            draftID: photoDraftID,
+            origin: .manual,
+            content: .photo(
+                PhotoArtifactContent(
+                    title: "Desk photo",
+                    summary: "Receipt on the desk",
+                    filename: "receipt.jpg",
+                    ocrText: "Cafe 12.50",
+                    photoMetadata: ["localIdentifier": "asset-photo-1"]
+                )
+            )
+        )
+        let audioDraft = CaptureArtifactDraft(
+            draftID: audioDraftID,
+            origin: .manual,
+            content: .audio(
+                AudioArtifactContent(
+                    title: "Voice note",
+                    summary: "Follow up after lunch",
+                    filename: "voice.m4a",
+                    transcriptionText: "Send the lunch follow up",
+                    languageCode: "en",
+                    transcriptionConfidence: 0.82,
+                    durationSeconds: 7.5
+                )
+            )
+        )
+
+        let updated = try await repository.appendArtifacts(
+            recordID: memory.record.id,
+            drafts: [photoDraft, audioDraft]
+        )
+
+        XCTAssertEqual(updated?.artifactCount, 3)
+        XCTAssertEqual(updated?.pipelineStatus?.stage, .notScheduled)
+
+        let detail = try XCTUnwrap(repository.fetchMemoryDetail(recordID: memory.record.id))
+        let photoArtifact = try XCTUnwrap(detail.artifacts.first(where: { $0.kind == .photo }))
+        let audioArtifact = try XCTUnwrap(detail.artifacts.first(where: { $0.kind == .audio }))
+        XCTAssertNotEqual(photoArtifact.id, photoDraftID)
+        XCTAssertNotEqual(audioArtifact.id, audioDraftID)
+
+        let digestArtifactIDs = Set(detail.artifactSemanticDigests.map(\.artifactID))
+        XCTAssertTrue(digestArtifactIDs.contains(photoArtifact.id))
+        XCTAssertTrue(digestArtifactIDs.contains(audioArtifact.id))
+
+        let arrangement = try XCTUnwrap(detail.cardArrangement)
+        let nodeByArtifactID = Dictionary(uniqueKeysWithValues: arrangement.nodes.compactMap { node -> (UUID, MemoryCardNode)? in
+            guard case let .artifact(artifactID) = node.contentRef else { return nil }
+            return (artifactID, node)
+        })
+        XCTAssertEqual(nodeByArtifactID[photoArtifact.id]?.visualRecipe, .polaroid)
+        XCTAssertEqual(nodeByArtifactID[photoArtifact.id]?.layout.size, .hero)
+        XCTAssertEqual(nodeByArtifactID[audioArtifact.id]?.visualRecipe, .cassette)
+        XCTAssertEqual(nodeByArtifactID[audioArtifact.id]?.layout.size, .wide)
+        XCTAssertFalse(arrangement.nodes.contains { node in
+            switch node.contentRef {
+            case let .artifact(id):
+                return id == photoDraftID || id == audioDraftID
+            case let .artifactGroup(ids, _):
+                return ids.contains(photoDraftID) || ids.contains(audioDraftID)
+            case .recordBody, .affect, .journalingSuggestion:
+                return false
+            }
+        })
+    }
+
     func testCreateMemoryPersistsSelectedContextInInitialSnapshot() async throws {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(

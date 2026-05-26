@@ -256,7 +256,10 @@ struct MemoryMutationUseCase {
 
         let result = try await applyMemoryMutation(
             recordID: recordID,
-            mutation: MemoryMutationDraft(addedArtifacts: drafts),
+            mutation: MemoryMutationDraft(
+                addedArtifacts: drafts,
+                addedCardArrangement: MemoryCardArrangementDraft.artifactCards(for: drafts)
+            ),
             refreshPolicy: .saveOnly
         )
         guard let detail = result.detail else { return nil }
@@ -324,7 +327,8 @@ struct MemoryMutationUseCase {
                     userMood: .set(draft.userMood),
                     inputContext: .set(draft.inputContext)
                 ),
-                addedArtifacts: addedArtifacts
+                addedArtifacts: addedArtifacts,
+                addedCardArrangement: MemoryCardArrangementDraft.artifactCards(for: addedArtifacts)
             ),
             refreshPolicy: .saveOnly
         )
