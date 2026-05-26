@@ -76,9 +76,9 @@ final class AnalysisContractTests: XCTestCase {
             inputContract: contract,
             contextPack: makeContextPack(targetRecordID: recordID, sensitiveID: UUID(), builtAt: now)
         )
-        XCTAssertEqual(payload.semanticDigests.first?.artifactID, artifactID.uuidString)
-        XCTAssertEqual(payload.semanticDigests.first?.ocrText, "note")
-        XCTAssertEqual(payload.arrangementExclusion?.excludedCardArrangementID, arrangement.id.uuidString)
+        let encodedPayload = String(data: try JSONEncoder().encode(payload), encoding: .utf8) ?? ""
+        XCTAssertFalse(encodedPayload.contains("semantic_digests"))
+        XCTAssertFalse(encodedPayload.contains("arrangement_exclusion"))
     }
 
     func testRequestBuilderIncludesContextPackMoodEvidenceAndPrivacyBudget() throws {

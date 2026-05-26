@@ -189,6 +189,14 @@ final class MemoryCaptureArtifactBuilderTests: XCTestCase {
                         thumbnailData: Data([9]),
                         videoMetadata: ["durationSeconds": "12.5"]
                     ),
+                    .audio(
+                        title: "Voice",
+                        summary: "Voice memo",
+                        filename: "voice.caf",
+                        audioData: Data([8, 9]),
+                        transcriptionText: "protect mornings for writing",
+                        durationSeconds: 42
+                    ),
                     .livePhoto(
                         title: "Live",
                         summary: "garden | Text: afternoon wind",
@@ -226,6 +234,11 @@ final class MemoryCaptureArtifactBuilderTests: XCTestCase {
         XCTAssertEqual(videoDigest.durationSeconds, 12.5)
         XCTAssertTrue(videoDigest.technicalNotes.contains("mimeType=video/quicktime"))
         XCTAssertTrue(videoDigest.technicalNotes.contains("byteCount=3"))
+
+        let audioDigest = try XCTUnwrap(digests.first(where: { $0.artifactKind == .audio }))
+        XCTAssertEqual(audioDigest.source, .localCapture)
+        XCTAssertEqual(audioDigest.transcript, "protect mornings for writing")
+        XCTAssertEqual(audioDigest.durationSeconds, 42)
 
         let livePhotoDigest = try XCTUnwrap(digests.first(where: { $0.artifactKind == .livePhoto }))
         XCTAssertEqual(livePhotoDigest.source, .localMedia)

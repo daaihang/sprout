@@ -4,8 +4,6 @@ struct AnalysisRequestPayload: Codable, Sendable {
     var clientRequestID: String
     var recordShell: AnalysisRecordPayload.RecordShellPayload
     var artifacts: [AnalysisRecordPayload.ArtifactPayload]
-    var semanticDigests: [SemanticDigestPayload]
-    var arrangementExclusion: ArrangementExclusionPayload?
     var knownEntities: [AnalysisRecordPayload.KnownEntityPayload]
     var moodEvidence: [MoodEvidencePayload]
     var contextPack: ContextPackPayload
@@ -16,63 +14,11 @@ struct AnalysisRequestPayload: Codable, Sendable {
         case clientRequestID = "client_request_id"
         case recordShell = "record_shell"
         case artifacts
-        case semanticDigests = "semantic_digests"
-        case arrangementExclusion = "arrangement_exclusion"
         case knownEntities = "known_entities"
         case moodEvidence = "mood_evidence"
         case contextPack = "context_pack"
         case clientCapabilities = "client_capabilities"
         case debugOptions = "debug_options"
-    }
-
-    struct SemanticDigestPayload: Codable, Sendable, Equatable {
-        var id: String
-        var recordID: String
-        var artifactID: String
-        var artifactKind: String
-        var source: String
-        var summary: String?
-        var caption: String?
-        var ocrText: String?
-        var visualLabels: [String]
-        var transcript: String?
-        var languageCode: String?
-        var durationSeconds: Double?
-        var width: Int?
-        var height: Int?
-        var captureDate: String?
-        var localIdentifier: String?
-        var technicalNotes: [String]
-
-        enum CodingKeys: String, CodingKey {
-            case id
-            case recordID = "record_id"
-            case artifactID = "artifact_id"
-            case artifactKind = "artifact_kind"
-            case source
-            case summary
-            case caption
-            case ocrText = "ocr_text"
-            case visualLabels = "visual_labels"
-            case transcript
-            case languageCode = "language_code"
-            case durationSeconds = "duration_seconds"
-            case width
-            case height
-            case captureDate = "capture_date"
-            case localIdentifier = "local_identifier"
-            case technicalNotes = "technical_notes"
-        }
-    }
-
-    struct ArrangementExclusionPayload: Codable, Sendable, Equatable {
-        var excludedCardArrangementID: String?
-        var reason: String
-
-        enum CodingKeys: String, CodingKey {
-            case excludedCardArrangementID = "excluded_card_arrangement_id"
-            case reason
-        }
     }
 
     struct MoodEvidencePayload: Codable, Sendable {

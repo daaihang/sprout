@@ -79,6 +79,7 @@ struct AudioArtifactContent: Hashable, Sendable {
     var filename: String
     var audioData: Data?
     var transcriptionText: String = ""
+    var durationSeconds: Double?
 }
 
 struct VideoArtifactContent: Hashable, Sendable {
@@ -319,8 +320,8 @@ extension CaptureArtifactDraft {
         CaptureArtifactDraft(origin: origin, provenance: provenance, content: .photo(PhotoArtifactContent(title: title, summary: summary, filename: filename, imageData: imageData, thumbnailData: thumbnailData, ocrText: ocrText, photoMetadata: photoMetadata)))
     }
 
-    static func audio(title: String? = nil, summary: String, filename: String, audioData: Data? = nil, transcriptionText: String = "", origin: CaptureArtifactOrigin = .manual, provenance: CaptureProvenance? = nil) -> CaptureArtifactDraft {
-        CaptureArtifactDraft(origin: origin, provenance: provenance, content: .audio(AudioArtifactContent(title: title, summary: summary, filename: filename, audioData: audioData, transcriptionText: transcriptionText)))
+    static func audio(title: String? = nil, summary: String, filename: String, audioData: Data? = nil, transcriptionText: String = "", durationSeconds: Double? = nil, origin: CaptureArtifactOrigin = .manual, provenance: CaptureProvenance? = nil) -> CaptureArtifactDraft {
+        CaptureArtifactDraft(origin: origin, provenance: provenance, content: .audio(AudioArtifactContent(title: title, summary: summary, filename: filename, audioData: audioData, transcriptionText: transcriptionText, durationSeconds: durationSeconds)))
     }
 
     static func video(title: String? = nil, summary: String, filename: String, videoData: Data? = nil, thumbnailData: Data? = nil, videoMetadata: [String: String] = [:], origin: CaptureArtifactOrigin = .manual, provenance: CaptureProvenance? = nil) -> CaptureArtifactDraft {

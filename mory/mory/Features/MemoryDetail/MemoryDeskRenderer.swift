@@ -3,17 +3,8 @@ import SwiftUI
 struct MemoryDeskRenderer: View {
     let snapshot: MemoryDetailSnapshot
 
-    private var arrangement: MemoryCardArrangement {
-        snapshot.cardArrangement
-            ?? MemoryCardArrangement.defaultArrangement(
-                record: snapshot.record,
-                artifacts: snapshot.artifacts,
-                createdAt: snapshot.record.createdAt
-            )
-    }
-
     private var resolvedNodes: [ResolvedMemoryDeskNode] {
-        arrangement.nodes.compactMap(resolveNode(_:)).sorted { lhs, rhs in
+        MemoryDeskRenderPlan.nodes(for: snapshot).compactMap(resolveNode(_:)).sorted { lhs, rhs in
             if lhs.layout.order == rhs.layout.order {
                 return lhs.id.uuidString < rhs.id.uuidString
             }
@@ -182,6 +173,40 @@ struct MemoryDeskRenderer: View {
             startPoint: .top,
             endPoint: .bottom
         )
+    }
+}
+
+struct MemoryDeskRenderPlan {
+    static func nodes(for snapshot: MemoryDetailSnapshot) -> [MemoryCardNode] {
+        let arrangement = snapshot.cardArrangement
+            ?? MemoryCardArrangement.defaultArrangement(
+                record: snapshot.record,
+                artifacts: snapshot.artifacts,
+                createdAt: snapshot.record.createdAt
+            )
+        return arrangement.nodes
+            .filter { isResolvable($0, snapshot: snapshot) }
+            .sorted { lhs, rhs in
+                if lhs.layout.order == rhs.layout.order {
+                    return lhs.id.uuidString < rhs.id.uuidString
+                }
+                return lhs.layout.order < rhs.layout.order
+            }
+    }
+
+    private static func isResolvable(_ node: MemoryCardNode, snapshot: MemoryDetailSnapshot) -> Bool {
+        switch node.contentRef {
+        case .recordBody:
+            return snapshot.record.rawText.trimmedOrNil != nil
+        case let .artifact(id):
+            return snapshot.artifacts.contains { $0.id == id }
+        case let .artifactGroup(ids, _):
+            return ids.contains { id in snapshot.artifacts.contains { $0.id == id } }
+        case .affect:
+            return false
+        case let .journalingSuggestion(importSessionID):
+            return snapshot.artifacts.contains { $0.captureProvenance?.importSessionID == importSessionID }
+        }
     }
 }
 

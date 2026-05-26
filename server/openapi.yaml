@@ -373,13 +373,6 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ArtifactInput"
-        semantic_digests:
-          type: array
-          description: Structured local semantic summaries for media and context artifacts. This is part of the record fact layer and does not include user visual layout.
-          items:
-            $ref: "#/components/schemas/ArtifactSemanticDigestInput"
-        arrangement_exclusion:
-          $ref: "#/components/schemas/ArrangementExclusionInput"
         known_entities:
           type: array
           items:
@@ -424,55 +417,6 @@ components:
           type: object
           additionalProperties:
             type: string
-    ArtifactSemanticDigestInput:
-      type: object
-      properties:
-        id:
-          type: string
-        record_id:
-          type: string
-        artifact_id:
-          type: string
-        artifact_kind:
-          type: string
-        source:
-          type: string
-        summary:
-          type: string
-        caption:
-          type: string
-        ocr_text:
-          type: string
-        visual_labels:
-          type: array
-          items:
-            type: string
-        transcript:
-          type: string
-        language_code:
-          type: string
-        duration_seconds:
-          type: number
-        width:
-          type: integer
-        height:
-          type: integer
-        capture_date:
-          type: string
-        local_identifier:
-          type: string
-        technical_notes:
-          type: array
-          items:
-            type: string
-    ArrangementExclusionInput:
-      type: object
-      description: Documents that MemoryCardArrangement was intentionally excluded from semantic analysis because it is a user-authored visual layout.
-      properties:
-        excluded_card_arrangement_id:
-          type: string
-        reason:
-          type: string
     KnownEntityInput:
       type: object
       required: [kind, name]

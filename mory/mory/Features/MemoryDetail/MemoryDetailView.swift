@@ -213,7 +213,7 @@ struct MemoryDetailView: View {
                     artifactOrder: mutationArtifactOrder,
                     cardArrangement: draftCardArrangement
                 ),
-                refreshPolicy: .runImmediately
+                refreshPolicy: .markPending
             )
             snapshot = result.detail
             isEditing = false

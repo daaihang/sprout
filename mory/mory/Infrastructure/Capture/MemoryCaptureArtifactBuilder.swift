@@ -175,6 +175,9 @@ struct MemoryCaptureArtifactBuilder {
             if let transcript = c.transcriptionText.trimmedOrNil {
                 metadata["transcriptionText"] = transcript
             }
+            if let durationSeconds = c.durationSeconds {
+                metadata["durationSeconds"] = String(durationSeconds)
+            }
             metadata = metadataForOrigin(of: draft, base: metadata)
             let mediaRef = ArtifactMediaRef(filename: c.filename, mimeType: mimeType, byteCount: c.audioData?.count)
             return Artifact(

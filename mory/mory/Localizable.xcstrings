@@ -14830,13 +14830,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Deleting or reordering attachments will rerun memory analysis after saving."
+            "value" : "Deleting, resizing, stacking, or reordering cards updates the saved memory layout."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "删除或调整附件顺序后，保存会重新分析这条记忆。"
+            "value" : "删除、调整大小、堆叠或重排卡片后，会更新这条记忆的保存布局。"
           }
         }
       }
@@ -15017,13 +15017,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Correct text, mood, context, or add one more supporting note before rerunning analysis."
+            "value" : "Correct text, mood, context, or card layout before saving the memory."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在重新解析前，可以修改文本、心情、背景信息，或补充一条附注。"
+            "value" : "保存前可以修改文本、心情、背景信息或卡片排布。"
           }
         }
       }
