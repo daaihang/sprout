@@ -81,7 +81,8 @@ sequenceDiagram
 
     UI->>Repo: createMemory(MemoryCaptureDraft)
     Repo->>Builder: build artifacts
-    Repo->>Repo: persist RecordShell, Artifact, AffectSnapshot, PipelineStatus.pending
+    Repo->>Builder: build local semantic digests
+    Repo->>Repo: persist RecordShell, Artifact, ArtifactSemanticDigest, MemoryCardArrangement, AffectSnapshot, PipelineStatus.pending
     Repo->>Pipe: runArchitecturePipeline
     Pipe->>Repo: build AnalysisContextPack
     Pipe->>Server: analyzeMemory(payload)
@@ -102,6 +103,8 @@ sequenceDiagram
 
 - `RecordShell`
 - `Artifact`
+- `ArtifactSemanticDigest`
+- `MemoryCardArrangement`
 - `AffectSnapshot`
 - `RecordAnalysisSnapshot`
 - `EntityNode` / `EntityEdge` / `ArtifactEntityLink`

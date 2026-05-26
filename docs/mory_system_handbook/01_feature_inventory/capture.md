@@ -48,10 +48,12 @@ flowchart LR
     B --> C["MemoryCaptureArtifactBuilder"]
     C --> D["RecordShellStore"]
     C --> E["ArtifactStore"]
-    B --> F["AffectSnapshotStore"]
-    D --> G["MemoryPipelineStatusStore pending"]
-    G --> H["CaptureOrchestrator starts refreshMemoryPipeline in Task"]
-    H --> I["Analysis pipeline"]
+    C --> F["ArtifactSemanticDigestStore"]
+    B --> G["MemoryCardArrangementStore"]
+    B --> H["AffectSnapshotStore"]
+    D --> I["MemoryPipelineStatusStore pending"]
+    I --> J["CaptureOrchestrator starts refreshMemoryPipeline in Task"]
+    J --> K["Analysis pipeline"]
 ```
 
 ## Persistence Fields
@@ -61,6 +63,8 @@ flowchart LR
 - `RecordShell.userMood`: legacy mood summary.
 - `RecordShell.inputContext`: freeform context lines such as Journaling version or source.
 - `Artifact.metadata.captureOrigin`: manual, context, imported, inferred.
+- `ArtifactSemanticDigest`: media meaning such as OCR, local visual labels, caption, transcript, dimensions, duration, and local identifiers. This is the structured semantic bridge for future analysis.
+- `MemoryCardArrangement`: user-authored card layout for composer/detail/today desk. It is visual presentation state and is not part of default AI analysis input.
 - `AffectSnapshot.sources`: userSelected, journalSuggestionStateOfMind, aiInferredText, userCorrected, and related sources.
 
 ## AI Intervention Points

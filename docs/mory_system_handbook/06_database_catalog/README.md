@@ -8,6 +8,8 @@ This catalog summarizes local SwiftData stores and server SQLite tables relevant
 | --- | --- | --- |
 | `RecordShellStore` | Captured memory shell | Personal |
 | `ArtifactStore` | Text/media/context artifacts | Personal, may contain sensitive media/text |
+| `ArtifactSemanticDigestStore` | Local semantic digest for media/text-derived evidence such as OCR, caption, labels, transcript, duration, and media dimensions | Personal, may contain sensitive derived text |
+| `MemoryCardArrangementStore` | User-authored card layout for composer/detail/today desk rendering | Product state/personal presentation |
 | `RecordAnalysisSnapshotStore` | AI analysis summary/themes/entities | Personal/AI-derived |
 | `MemoryPipelineStatusStore` | Analysis request/status/error traces | Debug-sensitive |
 | `SelfProfileStore` | User's own profile | Highly sensitive |

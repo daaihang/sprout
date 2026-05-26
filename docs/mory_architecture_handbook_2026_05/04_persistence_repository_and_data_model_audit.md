@@ -104,8 +104,11 @@ sequenceDiagram
 
     Feature->>Repo: createMemory(draft)
     Repo->>Builder: buildArtifacts
+    Repo->>Builder: buildSemanticDigests
     Repo->>Store: upsert RecordShellStore
     Repo->>Store: upsert ArtifactStore
+    Repo->>Store: upsert ArtifactSemanticDigestStore
+    Repo->>Store: upsert MemoryCardArrangementStore
     Repo->>Store: upsert AffectSnapshotStore
     Repo->>Store: upsert PipelineStatus pending
     Repo->>Pipe: runArchitecturePipeline
