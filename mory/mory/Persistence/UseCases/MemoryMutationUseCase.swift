@@ -230,7 +230,7 @@ struct MemoryMutationUseCase {
         let result = try await applyMemoryMutation(
             recordID: recordID,
             mutation: MemoryMutationDraft(addedArtifacts: drafts),
-            refreshPolicy: .markPending
+            refreshPolicy: .saveOnly
         )
         guard let detail = result.detail else { return nil }
         return repository.makeMemorySummary(
@@ -299,7 +299,7 @@ struct MemoryMutationUseCase {
                 ),
                 addedArtifacts: addedArtifacts
             ),
-            refreshPolicy: .markPending
+            refreshPolicy: .saveOnly
         )
         return result.detail
     }

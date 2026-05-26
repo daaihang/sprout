@@ -268,7 +268,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
                 deletedArtifactIDs: [videoID],
                 artifactOrder: [photoID]
             ),
-            refreshPolicy: .markPending
+            refreshPolicy: .saveOnly
         )
 
         let detail = try XCTUnwrap(result.detail)
@@ -1844,7 +1844,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
                     inputContext: .set(nil)
                 )
             ),
-            refreshPolicy: .markPending
+            refreshPolicy: .saveOnly
         )
 
         let detail = try XCTUnwrap(result.detail)
@@ -1884,7 +1884,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
                     .link(title: "Reference", url: "https://example.com/recap", note: "Source material")
                 ]
             ),
-            refreshPolicy: .markPending
+            refreshPolicy: .saveOnly
         )
 
         let record = try XCTUnwrap(try repository.fetchRecordShell(id: memory.record.id))
@@ -1951,7 +1951,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
                 artifactOrder: [photoID, audioID, todoID],
                 cardArrangement: userArrangement
             ),
-            refreshPolicy: .markPending
+            refreshPolicy: .saveOnly
         )
 
         let result = try await repository.applyMemoryMutation(
@@ -1960,7 +1960,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
                 recordPatch: MemoryMutationRecordPatch(rawText: .set("A memory with preserved user arrangement.")),
                 artifactOrder: [todoID, audioID, photoID]
             ),
-            refreshPolicy: .markPending
+            refreshPolicy: .saveOnly
         )
 
         let detail = try XCTUnwrap(result.detail)
@@ -2049,7 +2049,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
                 deletedArtifactIDs: [photo.id],
                 artifactOrder: [todo.id, text.id]
             ),
-            refreshPolicy: .markPending
+            refreshPolicy: .saveOnly
         )
 
         XCTAssertEqual(result.updatedArtifactIDs, [text.id])

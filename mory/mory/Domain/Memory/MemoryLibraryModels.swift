@@ -133,7 +133,7 @@ struct MemoryMutationDraft: Hashable, Sendable {
 }
 
 enum MemoryMutationRefreshPolicy: Hashable, Sendable {
-    case markPending
+    case saveOnly
     case runImmediately
 }
 

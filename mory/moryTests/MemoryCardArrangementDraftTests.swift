@@ -96,4 +96,61 @@ final class MemoryCardArrangementDraftTests: XCTestCase {
         XCTAssertEqual(node?.visualRecipe, .linkNote)
         XCTAssertEqual(node?.layout.size, .medium)
     }
+
+    func testPersistedArrangementSyncRestoresRemainingGroupArtifactRecipe() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let recordID = UUID(uuidString: "88888888-8888-8888-8888-888888888888")!
+        let photoID = UUID(uuidString: "99999999-9999-9999-9999-999999999999")!
+        let videoID = UUID(uuidString: "AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE")!
+        let record = RecordShell(
+            id: recordID,
+            createdAt: now,
+            updatedAt: now,
+            captureSource: .composer,
+            rawText: "Keep the remaining card identity.",
+            artifactIDs: [videoID]
+        )
+        let video = Artifact(
+            id: videoID,
+            recordID: recordID,
+            kind: .video,
+            title: "Clip",
+            summary: "Video summary",
+            textContent: "Video summary",
+            createdAt: now,
+            updatedAt: now
+        )
+        let arrangement = MemoryCardArrangement(
+            recordID: recordID,
+            nodes: [
+                MemoryCardNode(
+                    contentRef: .artifactGroup([photoID, videoID], kind: .mediaStack),
+                    visualRecipe: .bundlePacket,
+                    layout: MemoryCardLayoutToken(order: 0, size: .stack)
+                )
+            ],
+            createdAt: now,
+            updatedAt: now
+        )
+
+        let synchronized = arrangement.synchronized(
+            record: record,
+            artifacts: [video],
+            artifactOrder: [videoID],
+            updatedAt: now
+        )
+
+        let node = synchronized.nodes.first
+        XCTAssertEqual(synchronized.nodes.count, 2)
+        XCTAssertTrue(synchronized.nodes.contains { $0.contentRef == .recordBody })
+        XCTAssertEqual(node?.contentRef, .recordBody)
+        let videoNode = synchronized.nodes.first { node in
+            if case let .artifact(id) = node.contentRef {
+                return id == videoID
+            }
+            return false
+        }
+        XCTAssertEqual(videoNode?.visualRecipe, .filmFrame)
+        XCTAssertEqual(videoNode?.layout.size, .hero)
+    }
 }
