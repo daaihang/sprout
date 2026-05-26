@@ -238,7 +238,6 @@ struct NotificationOrchestrator {
                 report.blockedIntentIDs.append(failedIntent.id)
             }
 
-            return report
         }
 
         return report

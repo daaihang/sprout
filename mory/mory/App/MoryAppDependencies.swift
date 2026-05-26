@@ -23,6 +23,11 @@ private struct NotificationOrchestratorKey: EnvironmentKey {
     static let defaultValue = NotificationOrchestrator(policy: NotificationPolicy())
 }
 
+private struct BackgroundTriggerDispatcherKey: EnvironmentKey {
+    @MainActor
+    static let defaultValue: any BackgroundTriggerDispatching = BackgroundOperationOrchestrator.noop
+}
+
 private struct BackgroundOperationOrchestratorKey: EnvironmentKey {
     @MainActor
     static let defaultValue = BackgroundOperationOrchestrator.noop
@@ -51,6 +56,11 @@ extension EnvironmentValues {
     var notificationOrchestrator: NotificationOrchestrator {
         get { self[NotificationOrchestratorKey.self] }
         set { self[NotificationOrchestratorKey.self] = newValue }
+    }
+
+    var backgroundTriggerDispatcher: any BackgroundTriggerDispatching {
+        get { self[BackgroundTriggerDispatcherKey.self] }
+        set { self[BackgroundTriggerDispatcherKey.self] = newValue }
     }
 
     var backgroundOperationOrchestrator: BackgroundOperationOrchestrator {
@@ -136,6 +146,7 @@ private final class MissingMemoryRepository: MoryMemoryRepositorying {
     func fetchEntityProfile(entityID: UUID) throws -> EntityProfile? { fail() }
     func fetchEntityProfiles(kind: EntityKind?, limit: Int?) throws -> [EntityProfile] { fail() }
     func upsertEntityProfile(_ profile: EntityProfile) throws { let _: Void = fail() }
+    func upsertEntityNode(_ entityNode: EntityNode) throws { let _: Void = fail() }
     func fetchPersonProfile(entityID: UUID) throws -> PersonProfile? { fail() }
     func fetchPersonProfiles(limit: Int?) throws -> [PersonProfile] { fail() }
     func upsertPersonProfile(_ profile: PersonProfile) throws { let _: Void = fail() }

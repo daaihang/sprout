@@ -15,6 +15,11 @@ struct RuntimeOperationResult: Hashable, Sendable {
     var message: String
 }
 
+struct RuntimeNotificationInteractionResult: Hashable, Sendable {
+    var route: NotificationInteractionRoute?
+    var message: String
+}
+
 @MainActor
 protocol RuntimeOperationsRepositorying:
     AnyObject,
@@ -131,6 +136,23 @@ struct RuntimeOperationsCoordinator {
         RuntimeOperationResult(
             label: "pushServerMetrics",
             message: try await remotePushSyncService.fetchServerMetricsText()
+        )
+    }
+
+    func handleNotificationInteraction(
+        _ event: NotificationInteractionEvent,
+        repository: any MoryMemoryRepositorying,
+        now: Date = .now
+    ) async throws -> RuntimeNotificationInteractionResult {
+        let interaction = try NotificationInteractionService().handle(
+            event: event,
+            repository: repository,
+            now: now
+        )
+        await remotePushSyncService.writeBackInteraction(event)
+        return RuntimeNotificationInteractionResult(
+            route: interaction.route,
+            message: "handled=\(event.action.rawValue) route=\(interaction.route != nil)"
         )
     }
 }

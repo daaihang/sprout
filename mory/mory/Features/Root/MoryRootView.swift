@@ -13,6 +13,7 @@ struct MoryRootView: View {
 
     @Environment(\.memoryRepository) private var memoryRepository
     @Environment(\.remotePushSyncService) private var remotePushSyncService
+    @Environment(\.notificationOrchestrator) private var notificationOrchestrator
     @Environment(\.backgroundOperationOrchestrator) private var backgroundOperationOrchestrator
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage(MoryOnboardingStep.completionStorageKey) private var hasCompletedOnboarding = false
@@ -33,7 +34,14 @@ struct MoryRootView: View {
     @State private var notificationTask: Task<Void, Never>?
     @State private var pushSyncTask: Task<Void, Never>?
     @State private var externalCaptureTask: Task<Void, Never>?
-    private let notificationInteractionService = NotificationInteractionService()
+
+    private var runtimeOperationsCoordinator: RuntimeOperationsCoordinator {
+        RuntimeOperationsCoordinator(
+            backgroundOperationOrchestrator: backgroundOperationOrchestrator,
+            notificationOrchestrator: notificationOrchestrator,
+            remotePushSyncService: remotePushSyncService
+        )
+    }
 
     init(
         authManager: AuthSessionManager? = nil,
@@ -137,13 +145,13 @@ struct MoryRootView: View {
         .onReceive(NotificationCenter.default.publisher(for: .moryAPNSTokenDidUpdate)) { _ in
             pushSyncTask?.cancel()
             pushSyncTask = Task {
-                await runBackground(trigger: BackgroundTrigger(kind: .apnsTokenUpdated, source: "NotificationCenter"))
+                await runBackground(kind: .apnsTokenUpdated, source: "NotificationCenter")
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .moryNotificationPreferencesDidChange)) { _ in
             pushSyncTask?.cancel()
             pushSyncTask = Task {
-                await runBackground(trigger: BackgroundTrigger(kind: .notificationPreferencesChanged, source: "NotificationCenter"))
+                await runBackground(kind: .notificationPreferencesChanged, source: "NotificationCenter")
             }
         }
         .task {
@@ -169,7 +177,7 @@ struct MoryRootView: View {
             guard phase == .active else { return }
             externalCaptureTask?.cancel()
             externalCaptureTask = Task {
-                await runBackground(trigger: BackgroundTrigger(kind: .sceneForeground, source: "scenePhase"))
+                await runBackground(kind: .sceneForeground, source: "scenePhase")
                 await handlePendingExternalCaptureHandoffIfNeeded()
             }
         }
@@ -355,10 +363,11 @@ struct MoryRootView: View {
     }
 
     @MainActor
-    private func runBackground(trigger: BackgroundTrigger) async {
-        _ = await backgroundOperationOrchestrator.handle(
-            trigger: trigger,
-            repository: memoryRepository,
+    private func runBackground(kind: BackgroundTriggerKind, source: String) async {
+        _ = await runtimeOperationsCoordinator.runBackground(
+            kind: kind,
+            source: source,
+            repository: memoryRepository
         )
     }
 
@@ -412,11 +421,10 @@ struct MoryRootView: View {
         }
 
         do {
-            let result = try notificationInteractionService.handle(
-                event: event,
+            let result = try await runtimeOperationsCoordinator.handleNotificationInteraction(
+                event,
                 repository: memoryRepository
             )
-            await remotePushSyncService.writeBackInteraction(event)
             guard let route = result.route else { return }
             apply(route)
         } catch {
@@ -465,7 +473,7 @@ struct MoryRootView: View {
         guard !didRunStartupRecovery else { return }
         didRunStartupRecovery = true
 
-        await runBackground(trigger: BackgroundTrigger(kind: .appLaunch, source: "MoryRootView.task"))
+        await runBackground(kind: .appLaunch, source: "MoryRootView.task")
     }
 }
 

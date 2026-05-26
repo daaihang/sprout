@@ -220,6 +220,78 @@ final class NotificationOrchestratorTests: XCTestCase {
         XCTAssertEqual(stored.deepLink, "mory://memories/record/\(seededMemory.record.id.uuidString)")
     }
 
+    func testBackgroundRefreshSchedulesAllEligibleSystemCandidates() async throws {
+        let fixture = makeRepositoryFixture()
+        let repository = fixture.repository
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        try enableNotificationLoop(on: repository, now: now)
+
+        var preferences = try repository.fetchIntelligencePreferences()
+        preferences.notificationPreferences.analysisReadyEnabled = true
+        preferences.notificationPreferences.reflectionReadyEnabled = true
+        preferences.notificationPreferences.dailyQuestionEnabled = false
+        preferences.notificationPreferences.frequencyStrategy = .custom
+        preferences.notificationPreferences.minimumMinutesBetweenNotifications = 0
+        preferences.notificationPreferences.maxPerDay = 4
+        preferences.updatedAt = now
+        try repository.saveIntelligencePreferences(preferences)
+
+        let seededMemory = try seedMemory(
+            in: repository,
+            title: "Notebook sync",
+            body: "Synced notes and reviewed the timeline.",
+            createdAt: now.addingTimeInterval(-1_900),
+            artifactKind: .text
+        )
+        try repository.upsertPipelineStatus(
+            MemoryPipelineStatusSnapshot(
+                recordID: seededMemory.record.id,
+                stage: .completed,
+                requestID: "request-multi-1",
+                lastError: nil,
+                requestBody: nil,
+                responseBody: nil,
+                rawErrorBody: nil,
+                lastHTTPStatusCode: 200,
+                failedStage: nil,
+                lastAttemptAt: now.addingTimeInterval(-120),
+                completedAt: now.addingTimeInterval(-60),
+                updatedAt: now.addingTimeInterval(-60)
+            )
+        )
+        try repository.upsert(reflection: ReflectionSnapshot(
+            type: .phase,
+            title: "Work Rhythm",
+            body: "A reflection is ready.",
+            evidenceSummary: "The same pattern appeared twice.",
+            confidence: 0.82,
+            status: .suggested,
+            linkedTemporalArcID: nil,
+            sourceRecordIDs: [seededMemory.record.id],
+            sourceArtifactIDs: [seededMemory.artifact.id],
+            createdAt: now.addingTimeInterval(-30)
+        ))
+        try repository.save()
+
+        let center = MockLocalNotificationCenter(state: .authorized)
+        let orchestrator = NotificationOrchestrator(
+            localScheduler: LocalNotificationScheduler(
+                notificationCenter: center
+            )
+        )
+
+        let report = try await orchestrator.orchestrate(
+            trigger: .backgroundRefresh,
+            repository: repository,
+            now: now
+        )
+
+        XCTAssertEqual(report.scheduledIntentIDs.count, 2)
+        XCTAssertEqual(center.requests.count, 2)
+        let scheduledKinds = Set(try repository.fetchNotificationIntents(status: .scheduled, limit: nil).map(\.kind))
+        XCTAssertEqual(scheduledKinds, [.analysisReady, .reflectionReady])
+    }
+
     func testPipelineCompletedPrefersReflectionReadyForMatchingRecord() async throws {
         let fixture = makeRepositoryFixture()
         let repository = fixture.repository

@@ -185,6 +185,11 @@ protocol IntelligenceRecoveryRepositorying: MemorySettingsRepositorying {
 }
 
 @MainActor
+protocol EntityNodePersisting {
+    func upsertEntityNode(_ entityNode: EntityNode) throws
+}
+
+@MainActor
 protocol IntelligenceJobRepositorying:
     MemoryCaptureRepositorying,
     MemoryLibraryRepositorying,
@@ -192,7 +197,8 @@ protocol IntelligenceJobRepositorying:
     MemoryIntelligenceRepositorying,
     MemorySettingsRepositorying,
     DailyQuestionRepositorying,
-    NotificationPreparationRepositorying {}
+    NotificationPreparationRepositorying,
+    EntityNodePersisting {}
 
 @MainActor
 protocol MoryMemoryRepositorying:

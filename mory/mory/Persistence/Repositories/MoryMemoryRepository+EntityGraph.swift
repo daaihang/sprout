@@ -196,4 +196,9 @@ extension MoryMemoryRepository {
         )
     }
 
+    func upsertEntityNode(_ entityNode: EntityNode) throws {
+        try upsert(entityNode: entityNode)
+        try save()
+    }
+
 }

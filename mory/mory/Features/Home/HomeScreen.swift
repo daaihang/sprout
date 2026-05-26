@@ -40,7 +40,6 @@ struct HomeScreen: View {
     }
 
     @Environment(\.memoryRepository) private var memoryRepository
-    @Environment(\.backgroundOperationOrchestrator) private var backgroundOperationOrchestrator
 
     let surface: Surface
 
@@ -48,7 +47,6 @@ struct HomeScreen: View {
     @State private var homeBoard: HomeBoardSnapshot?
     @State private var isPresentingComposer = false
     @State private var isReloading = false
-    @State private var dailyQuestionPreparationEvidenceSignature: String?
     @State private var errorMessage: String?
     @State private var selectedRoute: HomeRoute?
     @State private var homeBoardActionContext: HomeBoardActionContext?
@@ -237,7 +235,6 @@ struct HomeScreen: View {
 
         do {
             if surface == .home {
-                await prepareDailyQuestionIfNeeded()
                 homeBoard = try memoryRepository.fetchHomeBoard(for: .now, limit: 8)
             } else {
                 memories = try memoryRepository.fetchRecentMemories(limit: nil)
@@ -245,35 +242,6 @@ struct HomeScreen: View {
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
-        }
-    }
-
-    @MainActor
-    private func prepareDailyQuestionIfNeeded() async {
-        do {
-            let memorySignature = try memoryRepository.fetchRecentMemories(limit: 6)
-                .map { $0.id.uuidString }
-                .joined(separator: ",")
-            guard !memorySignature.isEmpty else { return }
-
-            let preferences = try memoryRepository.fetchIntelligencePreferences()
-            let flags = try memoryRepository.fetchV6FeatureFlags()
-            let evidenceSignature = [
-                memorySignature,
-                String(preferences.updatedAt.timeIntervalSince1970),
-                String(flags.updatedAt.timeIntervalSince1970),
-            ].joined(separator: "|")
-            guard evidenceSignature != dailyQuestionPreparationEvidenceSignature else {
-                return
-            }
-            dailyQuestionPreparationEvidenceSignature = evidenceSignature
-
-            _ = await backgroundOperationOrchestrator.handle(
-                trigger: BackgroundTrigger(kind: .homeForegroundRefresh, source: "HomeScreen.reload"),
-                repository: memoryRepository,
-            )
-        } catch {
-            // Home remains usable when intelligence preparation or scheduling is unavailable.
         }
     }
 

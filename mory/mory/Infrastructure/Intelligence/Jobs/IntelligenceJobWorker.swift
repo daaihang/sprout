@@ -311,9 +311,8 @@ struct IntelligenceJobWorker {
         if let profile = result.profile {
             try repository.upsertEntityProfile(profile)
         }
-        if let entityNode = result.entityNode, let concreteRepository = repository as? MoryMemoryRepository {
-            try concreteRepository.upsert(entityNode: entityNode)
-            try concreteRepository.save()
+        if let entityNode = result.entityNode {
+            try repository.upsertEntityNode(entityNode)
         }
 
         try repository.markGraphDeltaApplied(delta.id, appliedAt: now)

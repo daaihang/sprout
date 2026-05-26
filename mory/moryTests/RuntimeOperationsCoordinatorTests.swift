@@ -39,6 +39,56 @@ final class RuntimeOperationsCoordinatorTests: XCTestCase {
         XCTAssertFalse(snapshot.push.hasAPNSToken)
     }
 
+    func testHandleNotificationInteractionDelegatesToInteractionServiceAndPushWriteback() async throws {
+        let fixture = makeFixture()
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let pushService = RuntimePushService()
+        let coordinator = RuntimeOperationsCoordinator(
+            backgroundOperationOrchestrator: .noop,
+            notificationOrchestrator: .localDelivery,
+            remotePushSyncService: pushService
+        )
+
+        let targetID = UUID()
+        let intent = NotificationIntent(
+            kind: .debugTest,
+            title: "Mory",
+            body: "Runtime interaction test.",
+            targetType: .record,
+            targetID: targetID,
+            scheduledAt: now,
+            deliveryChannel: .local,
+            deepLink: "mory://home",
+            sourceTrigger: .debugManual,
+            createdBy: .debug,
+            createdAt: now
+        )
+        try fixture.repository.upsertNotificationIntent(intent)
+        let event = NotificationInteractionEvent(
+            action: .opened,
+            payload: LocalNotificationPayload(
+                intentID: intent.id,
+                kind: intent.kind,
+                targetType: intent.targetType,
+                targetID: intent.targetID,
+                deepLink: intent.deepLink
+            ),
+            receivedAt: now
+        )
+
+        let result = try await coordinator.handleNotificationInteraction(
+            event,
+            repository: fixture.repository,
+            now: now
+        )
+
+        XCTAssertEqual(result.route?.destination, .home)
+        XCTAssertEqual(pushService.writeBackEventIDs, [event.id])
+        let stored = try XCTUnwrap(fixture.repository.fetchNotificationIntents(status: nil, limit: nil).first(where: { $0.id == intent.id }))
+        XCTAssertEqual(stored.status, .delivered)
+        XCTAssertEqual(stored.openedAt, now)
+    }
+
     private func makeFixture() -> RuntimeFixture {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
@@ -119,6 +169,7 @@ private final class RuntimeSnapshotRepository: RuntimeOperationsRepositorying {
 
 private final class RuntimePushService: RemotePushSyncing {
     var hasAPNSToken: Bool { false }
+    private(set) var writeBackEventIDs: [UUID] = []
 
     func prepareForLocalDataOwner(_ ownerID: String) {}
     func registerSystemRemoteNotificationsIfNeeded(repository: any MoryMemoryRepositorying) {}
@@ -135,7 +186,9 @@ private final class RuntimePushService: RemotePushSyncing {
             permanentFailedCount: 0
         )
     }
-    func writeBackInteraction(_ event: NotificationInteractionEvent) async {}
+    func writeBackInteraction(_ event: NotificationInteractionEvent) async {
+        writeBackEventIDs.append(event.id)
+    }
     func fetchDebugSnapshot(repository: any NotificationIntentRepositorying) async -> RemotePushDebugSnapshot {
         RemotePushDebugSnapshot(
             ownerID: nil,

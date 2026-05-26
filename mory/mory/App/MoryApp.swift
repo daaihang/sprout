@@ -167,6 +167,7 @@ struct MoryApp: App {
                 .environment(\.cloudIntelligenceService, cloudIntelligenceService)
                 .environment(\.remotePushSyncService, remotePushSyncService)
                 .environment(\.notificationOrchestrator, notificationOrchestrator)
+                .environment(\.backgroundTriggerDispatcher, backgroundOperationOrchestrator)
                 .environment(\.backgroundOperationOrchestrator, backgroundOperationOrchestrator)
                 .environment(\.localDataDiagnostics, localDataSession.diagnostics)
                 .modelContainer(localDataSession.modelContainer)
