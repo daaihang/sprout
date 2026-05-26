@@ -100,6 +100,71 @@ final class NotificationOrchestratorTests: XCTestCase {
         XCTAssertTrue(events.contains { $0.eventKind == .inAppOnly && $0.intentID == stored.id })
     }
 
+    func testAppLaunchRecoveryProcessesAllInAppOnlyCandidates() async throws {
+        let fixture = makeRepositoryFixture()
+        let repository = fixture.repository
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        try enableNotificationLoop(on: repository, now: now)
+
+        let seededMemory = try seedMemory(
+            in: repository,
+            title: "Project review",
+            body: "Reviewed the notification path and analysis output.",
+            createdAt: now.addingTimeInterval(-1_800),
+            artifactKind: .text
+        )
+        try repository.upsertPipelineStatus(
+            MemoryPipelineStatusSnapshot(
+                recordID: seededMemory.record.id,
+                stage: .completed,
+                requestID: "request-1",
+                lastError: nil,
+                requestBody: nil,
+                responseBody: nil,
+                rawErrorBody: nil,
+                lastHTTPStatusCode: 200,
+                failedStage: nil,
+                lastAttemptAt: now.addingTimeInterval(-90),
+                completedAt: now.addingTimeInterval(-60),
+                updatedAt: now.addingTimeInterval(-60)
+            )
+        )
+        try repository.upsert(reflection: ReflectionSnapshot(
+            type: .phase,
+            title: "Review Rhythm",
+            body: "A reflection is ready.",
+            evidenceSummary: "The same work pattern appeared again.",
+            confidence: 0.87,
+            status: .suggested,
+            linkedTemporalArcID: nil,
+            sourceRecordIDs: [seededMemory.record.id],
+            sourceArtifactIDs: [seededMemory.artifact.id],
+            createdAt: now.addingTimeInterval(-30)
+        ))
+        let question = ClarificationQuestion(
+            kind: .dailyReflection,
+            prompt: "What changed after the review?",
+            targetType: .record,
+            targetID: seededMemory.record.id,
+            priority: 0.9,
+            reason: "Daily question prepared.",
+            createdAt: now
+        )
+        try repository.upsertClarificationQuestion(question)
+        try repository.save()
+
+        let report = try await NotificationOrchestrator().orchestrate(
+            trigger: .appLaunchRecovery,
+            repository: repository,
+            now: now
+        )
+
+        XCTAssertEqual(report.inAppOnlyIntentIDs.count, 3)
+        let stored = try repository.fetchNotificationIntents(status: .inAppOnly, limit: nil)
+        XCTAssertEqual(stored.count, 3)
+        XCTAssertEqual(Set(stored.map(\.kind)), [.dailyQuestion, .reflectionReady, .analysisReady])
+    }
+
     func testBackgroundRefreshSchedulesAnalysisReadyForCompletedPipeline() async throws {
         let fixture = makeRepositoryFixture()
         let repository = fixture.repository

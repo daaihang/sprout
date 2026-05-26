@@ -113,7 +113,7 @@ struct NotificationOrchestrator {
                     now: now
                 ))
                 report.dedupedIntentIDs.append(activeIntent.id)
-                return report
+                continue
             }
 
             var intent = candidate.intent
@@ -143,7 +143,7 @@ struct NotificationOrchestrator {
                     now: now
                 ))
                 report.blockedIntentIDs.append(intent.id)
-                return report
+                continue
             }
 
             if !trigger.deliversSystemNotification {
@@ -158,7 +158,7 @@ struct NotificationOrchestrator {
                     now: now
                 ))
                 report.inAppOnlyIntentIDs.append(intent.id)
-                return report
+                continue
             }
 
             let policyExistingIntents = existingIntents.filter { $0.id != intent.id && $0.status != .blocked }
@@ -183,7 +183,7 @@ struct NotificationOrchestrator {
                     now: now
                 ))
                 report.blockedIntentIDs.append(intent.id)
-                return report
+                continue
             }
 
             approvedIntent.dedupeKey = intent.dedupeKey
