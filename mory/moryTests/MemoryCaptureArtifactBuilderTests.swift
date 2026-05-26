@@ -221,6 +221,21 @@ final class MemoryCaptureArtifactBuilderTests: XCTestCase {
 
         let digests = builder.buildSemanticDigests(from: artifacts, createdAt: createdAt)
 
+        for artifact in artifacts {
+            XCTAssertNil(artifact.metadata["cardArrangement"])
+            XCTAssertNil(artifact.metadata["arrangement"])
+            XCTAssertNil(artifact.metadata["semanticDigest"])
+            XCTAssertNil(artifact.metadata["artifactSemanticDigest"])
+        }
+
+        let photoArtifact = try XCTUnwrap(artifacts.first(where: { $0.kind == .photo }))
+        XCTAssertNil(photoArtifact.metadata["caption"])
+        XCTAssertNil(photoArtifact.metadata["ocrText"])
+        XCTAssertNil(photoArtifact.metadata["visualLabels"])
+
+        let audioArtifact = try XCTUnwrap(artifacts.first(where: { $0.kind == .audio }))
+        XCTAssertNil(audioArtifact.metadata["transcript"])
+
         let photoDigest = try XCTUnwrap(digests.first(where: { $0.artifactKind == .photo }))
         XCTAssertEqual(photoDigest.source, .localVision)
         XCTAssertEqual(photoDigest.caption, "whiteboard, notes")
