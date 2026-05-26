@@ -101,6 +101,7 @@ struct MemoryMutationRecordPatch: Hashable, Sendable {
 struct MemoryMutationDraft: Hashable, Sendable {
     var recordPatch: MemoryMutationRecordPatch
     var addedArtifacts: [CaptureArtifactDraft]
+    var addedCardArrangement: MemoryCardArrangementDraft?
     var updatedArtifacts: [Artifact]
     var deletedArtifactIDs: [UUID]
     var artifactOrder: [UUID]?
@@ -109,6 +110,7 @@ struct MemoryMutationDraft: Hashable, Sendable {
     init(
         recordPatch: MemoryMutationRecordPatch = MemoryMutationRecordPatch(),
         addedArtifacts: [CaptureArtifactDraft] = [],
+        addedCardArrangement: MemoryCardArrangementDraft? = nil,
         updatedArtifacts: [Artifact] = [],
         deletedArtifactIDs: [UUID] = [],
         artifactOrder: [UUID]? = nil,
@@ -116,6 +118,7 @@ struct MemoryMutationDraft: Hashable, Sendable {
     ) {
         self.recordPatch = recordPatch
         self.addedArtifacts = addedArtifacts
+        self.addedCardArrangement = addedCardArrangement
         self.updatedArtifacts = updatedArtifacts
         self.deletedArtifactIDs = deletedArtifactIDs
         self.artifactOrder = artifactOrder
@@ -125,6 +128,7 @@ struct MemoryMutationDraft: Hashable, Sendable {
     var hasChanges: Bool {
         recordPatch.hasChanges
             || !addedArtifacts.isEmpty
+            || addedCardArrangement != nil
             || !updatedArtifacts.isEmpty
             || !deletedArtifactIDs.isEmpty
             || artifactOrder != nil

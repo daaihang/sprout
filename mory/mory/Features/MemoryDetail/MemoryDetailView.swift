@@ -15,6 +15,7 @@ struct MemoryDetailView: View {
     @State private var draftCardArrangement: MemoryCardArrangement?
     @State private var draftDeletedArtifactIDs: Set<UUID> = []
     @State private var draftNewArtifactKind: MemoryDetailNewArtifactKind = .note
+    @State private var draftNewArtifactID = UUID()
     @State private var draftNewArtifactTitle = ""
     @State private var draftNewArtifactURL = ""
     @State private var draftNewArtifactText = ""
@@ -199,6 +200,7 @@ struct MemoryDetailView: View {
         draftCardArrangement = editBaseArrangement(for: snapshot)
         draftDeletedArtifactIDs = []
         draftNewArtifactKind = .note
+        draftNewArtifactID = UUID()
         draftNewArtifactTitle = ""
         draftNewArtifactURL = ""
         draftNewArtifactText = ""
@@ -230,6 +232,7 @@ struct MemoryDetailView: View {
                         rawText: .set(draftRawText)
                     ),
                     addedArtifacts: addedArtifactsForEditedDraft(),
+                    addedCardArrangement: addedCardArrangementForEditedDraft(),
                     updatedArtifacts: updatedTextArtifactsForEditedBody(),
                     deletedArtifactIDs: Array(draftDeletedArtifactIDs),
                     artifactOrder: mutationArtifactOrder,
@@ -287,37 +290,59 @@ struct MemoryDetailView: View {
         pendingNewArtifactDraft().map { [$0] } ?? []
     }
 
+    private func addedCardArrangementForEditedDraft() -> MemoryCardArrangementDraft? {
+        guard let draft = pendingNewArtifactDraft() else { return nil }
+        var arrangement = MemoryCardArrangementDraft()
+        arrangement.appendArtifactDraft(draft)
+        return arrangement
+    }
+
     private func pendingNewArtifactDraft() -> CaptureArtifactDraft? {
         switch draftNewArtifactKind {
         case .note:
             guard let note = draftNewArtifactText.trimmedOrNil else { return nil }
-            return .promptAnswer(
-                prompt: String(localized: "memory.edit.addAttachment"),
-                answer: note,
-                source: "detail_edit",
+            return CaptureArtifactDraft(
+                draftID: draftNewArtifactID,
                 origin: .manual,
-                provenance: .manualComposer
+                provenance: .manualComposer,
+                content: .promptAnswer(
+                    PromptAnswerArtifactContent(
+                        prompt: String(localized: "memory.edit.addAttachment"),
+                        answer: note,
+                        source: "detail_edit"
+                    )
+                )
             )
         case .link:
             guard let url = draftNewArtifactURL.trimmedOrNil else { return nil }
-            return .link(
-                title: draftNewArtifactTitle.trimmedOrNil,
-                url: url,
-                note: draftNewArtifactText.trimmedOrNil,
-                summary: draftNewArtifactText.trimmedOrNil,
+            return CaptureArtifactDraft(
+                draftID: draftNewArtifactID,
                 origin: .manual,
-                provenance: .manualComposer
+                provenance: .manualComposer,
+                content: .link(
+                    LinkArtifactContent(
+                        title: draftNewArtifactTitle.trimmedOrNil,
+                        url: url,
+                        note: draftNewArtifactText.trimmedOrNil,
+                        summary: draftNewArtifactText.trimmedOrNil
+                    )
+                )
             )
         case .todo:
             guard let title = draftNewArtifactTitle.trimmedOrNil
                 ?? draftNewArtifactText.firstMeaningfulLine else {
                 return nil
             }
-            return .todo(
-                title: title,
-                note: draftNewArtifactText.trimmedOrNil,
+            return CaptureArtifactDraft(
+                draftID: draftNewArtifactID,
                 origin: .manual,
-                provenance: .manualComposer
+                provenance: .manualComposer,
+                content: .todo(
+                    TodoArtifactContent(
+                        title: title,
+                        note: draftNewArtifactText.trimmedOrNil
+                    )
+                )
             )
         }
     }

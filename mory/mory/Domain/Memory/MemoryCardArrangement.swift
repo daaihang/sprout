@@ -456,6 +456,42 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
         )
     }
 
+    func resolveArtifactNodes(
+        artifacts: [Artifact],
+        artifactIDByDraftID: [UUID: UUID]
+    ) -> [MemoryCardNode] {
+        let artifactByID = Dictionary(uniqueKeysWithValues: artifacts.map { ($0.id, $0) })
+        return nodes
+            .sorted { $0.layout.order < $1.layout.order }
+            .compactMap { node -> MemoryCardNode? in
+                switch node.contentRef {
+                case let .artifactDraft(draftID):
+                    guard let artifactID = artifactIDByDraftID[draftID],
+                          artifactByID[artifactID]?.kind != .text else {
+                        return nil
+                    }
+                    return MemoryCardNode(
+                        id: node.id,
+                        contentRef: .artifact(artifactID),
+                        visualRecipe: node.visualRecipe,
+                        layout: node.layout
+                    )
+                case let .artifactDraftGroup(draftIDs, kind):
+                    let artifactIDs = draftIDs.compactMap { artifactIDByDraftID[$0] }
+                        .filter { artifactByID[$0]?.kind != .text }
+                    guard !artifactIDs.isEmpty else { return nil }
+                    return MemoryCardNode(
+                        id: node.id,
+                        contentRef: .artifactGroup(artifactIDs, kind: kind),
+                        visualRecipe: node.visualRecipe,
+                        layout: node.layout
+                    )
+                case .recordBody, .affectDraft, .journalingSuggestion:
+                    return nil
+                }
+            }
+    }
+
     private func containsArtifactDraft(_ draftID: UUID) -> Bool {
         nodes.contains { node in artifactDraftIDs(in: node).contains(draftID) }
     }
@@ -760,6 +796,25 @@ extension MemoryCardArrangement {
     func unstackingContainingArtifactID(_ artifactID: UUID, artifacts: [Artifact], updatedAt: Date) -> MemoryCardArrangement {
         guard let node = nodes.first(where: { $0.containsArtifactID(artifactID) }) else { return self }
         return unstacking(nodeID: node.id, artifacts: artifacts, updatedAt: updatedAt)
+    }
+
+    func appendingArtifactNodes(_ nodesToAppend: [MemoryCardNode], updatedAt: Date) -> MemoryCardArrangement {
+        guard !nodesToAppend.isEmpty else { return self }
+        var knownArtifactIDs = Set(nodes.flatMap(\.artifactIDs))
+        var appendedNodes: [MemoryCardNode] = []
+
+        for node in nodesToAppend.sorted(by: { $0.layout.order < $1.layout.order }) {
+            let artifactIDs = node.artifactIDs
+            guard !artifactIDs.isEmpty,
+                  artifactIDs.allSatisfy({ !knownArtifactIDs.contains($0) }) else {
+                continue
+            }
+            appendedNodes.append(node)
+            knownArtifactIDs.formUnion(artifactIDs)
+        }
+
+        guard !appendedNodes.isEmpty else { return self }
+        return replacing(nodes: nodes + appendedNodes, updatedAt: updatedAt)
     }
 
     private func replacing(nodes: [MemoryCardNode], updatedAt: Date) -> MemoryCardArrangement {

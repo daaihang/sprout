@@ -82,6 +82,10 @@ struct MemoryMutationUseCase {
             )
         let addedArtifacts = addedArtifactResult.artifacts
         let addedSemanticDigests = artifactBuilder.buildSemanticDigests(from: addedArtifacts, createdAt: now)
+        let addedArrangementNodes = mutation.addedCardArrangement?.resolveArtifactNodes(
+            artifacts: addedArtifacts,
+            artifactIDByDraftID: addedArtifactResult.artifactIDByDraftID
+        ) ?? []
 
         var updatedArtifactIDs: [UUID] = []
         var normalizedUpdatedArtifacts: [Artifact] = []
@@ -182,13 +186,14 @@ struct MemoryMutationUseCase {
             recordStore.apply(domainModel: updatedRecord)
         }
         let arrangementArtifacts = try repository.fetchArtifacts(recordID: recordID)
-        if recordingFactsChanged || mutation.cardArrangement != nil {
+        if recordingFactsChanged || mutation.cardArrangement != nil || !addedArrangementNodes.isEmpty {
             let existingArrangement = try repository.fetchMemoryCardArrangement(recordID: recordID)
             let baseArrangement = mutation.cardArrangement
                 ?? existingArrangement
                 ?? MemoryCardArrangement.defaultArrangement(record: updatedRecord, artifacts: arrangementArtifacts, createdAt: now)
+            let arrangementWithAddedNodes = baseArrangement.appendingArtifactNodes(addedArrangementNodes, updatedAt: now)
             try repository.upsert(
-                memoryCardArrangement: baseArrangement.synchronized(
+                memoryCardArrangement: arrangementWithAddedNodes.synchronized(
                     record: updatedRecord,
                     artifacts: arrangementArtifacts,
                     artifactOrder: mutation.artifactOrder,

@@ -1914,6 +1914,81 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertTrue(Set(result.addedArtifactIDs).isSubset(of: Set(arrangedArtifactIDs)))
     }
 
+    func testApplyMemoryMutationRemapsAddedArtifactArrangementDraft() async throws {
+        let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
+        let repository = MoryMemoryRepository(
+            modelContext: container.mainContext,
+            analysisService: StubRecordAnalysisService(),
+            cloudIntelligenceService: StubCompositionCloudService()
+        )
+
+        let memory = try await repository.createMemory(
+            from: MemoryCaptureDraft(
+                title: "Edit add arrangement",
+                rawText: "A memory that will receive an arranged edit artifact.",
+                captureSource: .composer,
+                artifacts: [.text(title: "Edit add arrangement", body: "A memory that will receive an arranged edit artifact.")]
+            )
+        )
+
+        let draftID = UUID(uuidString: "CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC")!
+        let linkDraft = CaptureArtifactDraft(
+            draftID: draftID,
+            origin: .manual,
+            provenance: .manualComposer,
+            content: .link(
+                LinkArtifactContent(
+                    title: "Reference",
+                    url: "https://example.com/edit",
+                    note: "Preserve the user's edit placement.",
+                    summary: "Preserve the user's edit placement."
+                )
+            )
+        )
+        let addedArrangement = MemoryCardArrangementDraft(nodes: [
+            MemoryCardDraftNode(
+                contentRef: .artifactDraft(draftID),
+                visualRecipe: .linkNote,
+                layout: MemoryCardLayoutToken(order: 0, size: .wide, rotationDegrees: 2)
+            )
+        ])
+
+        let result = try await repository.applyMemoryMutation(
+            recordID: memory.record.id,
+            mutation: MemoryMutationDraft(
+                addedArtifacts: [linkDraft],
+                addedCardArrangement: addedArrangement
+            ),
+            refreshPolicy: .saveOnly
+        )
+
+        let addedArtifactID = try XCTUnwrap(result.addedArtifactIDs.first)
+        XCTAssertNotEqual(addedArtifactID, draftID)
+
+        let detail = try XCTUnwrap(result.detail)
+        XCTAssertNotNil(detail.artifactSemanticDigests.first(where: { $0.artifactID == addedArtifactID }))
+
+        let arrangement = try XCTUnwrap(detail.cardArrangement)
+        let linkNode = try XCTUnwrap(arrangement.nodes.first { node in
+            if case let .artifact(id) = node.contentRef {
+                return id == addedArtifactID
+            }
+            return false
+        })
+        XCTAssertEqual(linkNode.visualRecipe, .linkNote)
+        XCTAssertEqual(linkNode.layout.size, .wide)
+        XCTAssertFalse(arrangement.nodes.contains { node in
+            switch node.contentRef {
+            case let .artifact(id):
+                return id == draftID
+            case let .artifactGroup(ids, _):
+                return ids.contains(draftID)
+            case .recordBody, .affect, .journalingSuggestion:
+                return false
+            }
+        })
+    }
+
     func testApplyMemoryMutationPreservesUserArrangementSizeAndStack() async throws {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
