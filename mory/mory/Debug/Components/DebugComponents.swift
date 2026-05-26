@@ -1,4 +1,3 @@
-#if DEBUG
 import SwiftUI
 import SwiftData
 
@@ -227,4 +226,3 @@ func prettyJSON(_ raw: String) -> String {
     }
     return result
 }
-#endif

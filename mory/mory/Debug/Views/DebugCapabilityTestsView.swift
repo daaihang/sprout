@@ -1,4 +1,3 @@
-#if DEBUG
 import SwiftUI
 import SwiftData
 import PhotosUI
@@ -585,4 +584,3 @@ struct DebugLinkTestView: View {
         }
     }
 }
-#endif

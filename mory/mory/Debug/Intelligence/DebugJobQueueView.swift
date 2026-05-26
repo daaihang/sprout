@@ -1,17 +1,14 @@
-#if DEBUG
 import SwiftUI
-import BackgroundTasks
 
 struct DebugJobQueueView: View {
     @Environment(\.memoryRepository) private var memoryRepository
-    @Environment(\.cloudIntelligenceService) private var cloudIntelligenceService
+    @Environment(\.backgroundOperationOrchestrator) private var backgroundOperationOrchestrator
 
     @State private var snapshot: DebugJobQueueSnapshot?
     @State private var flags: V6FeatureFlags?
     @State private var isWorking = false
     @State private var resultMessage: String?
     @State private var selectedJobKind: DebugEnqueueableJobKind = .dailyQuestion
-    @State private var bgTaskResult: String?
 
     var body: some View {
         List {
@@ -71,21 +68,12 @@ struct DebugJobQueueView: View {
             } header: {
                 Text("Actions")
             } footer: {
-                Text("This page uses the same repository job stores and IntelligenceJobWorker used during launch recovery and background intelligence preparation.")
+                Text("Job execution and launch recovery are routed through the unified BackgroundOperationOrchestrator. This page only inspects and enqueues debug jobs directly.")
             }
 
-            Section("Background Tasks") {
-                Button("Schedule BGProcessingTask") {
-                    submitBGTask(identifier: BackgroundTaskIdentifier.process, isProcessing: true)
-                }
-                Button("Schedule BGAppRefreshTask") {
-                    submitBGTask(identifier: BackgroundTaskIdentifier.refresh, isProcessing: false)
-                }
-                if let bgTaskResult {
-                    Text(bgTaskResult)
-                        .font(.caption.monospaced())
-                        .foregroundStyle(.secondary)
-                        .textSelection(.enabled)
+            Section("Background") {
+                NavigationLink("Open unified background operations") {
+                    BackgroundManagementView()
                 }
             }
 
@@ -186,17 +174,14 @@ struct DebugJobQueueView: View {
     private func processDueJobs() async {
         isWorking = true
         defer { isWorking = false }
-        let report = await IntelligenceJobWorker().processDueJobs(
+        let report = await backgroundOperationOrchestrator.handle(
+            trigger: BackgroundTrigger(kind: .bgProcessingTask, source: "DebugJobQueueView"),
             repository: memoryRepository,
-            cloudIntelligenceService: cloudIntelligenceService,
-            now: .now
         )
         resultMessage = [
-            "completed=\(report.completedJobIDs.count)",
-            "failed=\(report.failedJobIDs.count)",
-            "unsupported=\(report.unsupportedJobIDs.count)",
-            "questions=\(report.preparedQuestionCount)",
-            "scheduled_notifications=\(report.scheduledNotificationCount)",
+            "trigger=\(report.triggerKind.rawValue)",
+            "events=\(report.operationEvents.count)",
+            "errors=\(report.errors.count)",
         ].joined(separator: ", ")
         refresh()
     }
@@ -205,16 +190,13 @@ struct DebugJobQueueView: View {
     private func recoverJobs() async {
         isWorking = true
         defer { isWorking = false }
-        let report = await AppIntelligenceRecoveryService().recoverAfterLaunch(
+        let report = await backgroundOperationOrchestrator.handle(
+            trigger: BackgroundTrigger(kind: .appLaunch, source: "DebugJobQueueView"),
             repository: memoryRepository,
-            cloudIntelligenceService: cloudIntelligenceService,
-            now: .now
         )
         resultMessage = [
-            "resumed=\(report.resumedRunningJobIDs.count)",
-            "retried=\(report.retriedFailedJobIDs.count)",
-            "abandoned=\(report.abandonedFailedJobIDs.count)",
-            "worker_completed=\(report.workerReport.completedJobIDs.count)",
+            "trigger=\(report.triggerKind.rawValue)",
+            "events=\(report.operationEvents.count)",
             "errors=\(report.errors.count)",
         ].joined(separator: ", ")
         refresh()
@@ -289,24 +271,6 @@ struct DebugJobQueueView: View {
         refresh()
     }
 
-    private func submitBGTask(identifier: String, isProcessing: Bool) {
-        do {
-            if isProcessing {
-                let request = BGProcessingTaskRequest(identifier: identifier)
-                request.requiresNetworkConnectivity = true
-                request.earliestBeginDate = nil
-                try BGTaskScheduler.shared.submit(request)
-            } else {
-                let request = BGAppRefreshTaskRequest(identifier: identifier)
-                request.earliestBeginDate = nil
-                try BGTaskScheduler.shared.submit(request)
-            }
-            bgTaskResult = "Submitted \(identifier)"
-        } catch {
-            bgTaskResult = "Submit failed: \(error.localizedDescription)"
-        }
-    }
-
     private func buildReport(_ snapshot: DebugJobQueueSnapshot) -> String {
         var lines = [
             "=== Mory Job Queue Debug ===",
@@ -374,4 +338,3 @@ private struct DebugGraphDeltaRow: View {
         .padding(.vertical, 4)
     }
 }
-#endif

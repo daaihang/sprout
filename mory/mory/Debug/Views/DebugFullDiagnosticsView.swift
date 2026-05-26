@@ -1,4 +1,3 @@
-#if DEBUG
 import SwiftUI
 import SwiftData
 
@@ -1400,4 +1399,3 @@ private extension CaptureArtifactDraft {
         }
     }
 }
-#endif

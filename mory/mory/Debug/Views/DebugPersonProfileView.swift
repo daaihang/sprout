@@ -1,4 +1,3 @@
-#if DEBUG
 import Foundation
 import SwiftUI
 
@@ -34,7 +33,7 @@ struct DebugPersonProfileView: View {
             } header: {
                 Text("Actions")
             } footer: {
-                Text("Phase 3 uses local deterministic refresh. Cloud portrait proposals are part of the v7 Analyze contract phase.")
+                Text("Phase 3 uses local deterministic refresh. Cloud portrait proposals are part of the Analysis contract phase.")
             }
 
             Section("Profiles") {
@@ -157,4 +156,3 @@ private struct DebugPersonProfileBlock: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
-#endif

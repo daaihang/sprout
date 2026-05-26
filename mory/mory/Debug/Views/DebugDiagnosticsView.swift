@@ -1,4 +1,3 @@
-#if DEBUG
 import SwiftUI
 import SwiftData
 import PhotosUI
@@ -76,6 +75,16 @@ struct DebugDiagnosticsView: View {
                 }
 
                 NavigationLink {
+                    BackgroundManagementView()
+                } label: {
+                    DebugMenuRow(
+                        icon: "clock.arrow.circlepath",
+                        title: "Background Operations",
+                        subtitle: "Inspect unified background triggers, operation runs, notification handoffs, and debug simulations"
+                    )
+                }
+
+                NavigationLink {
                     DebugJobQueueView()
                 } label: {
                     DebugMenuRow(
@@ -101,7 +110,7 @@ struct DebugDiagnosticsView: View {
                     DebugMenuRow(
                         icon: "rectangle.stack.badge.person.crop",
                         title: "Analysis Context Pack",
-                        subtitle: "Build the v7 local context pack for the latest memory and inspect budget, privacy, and evidence"
+                        subtitle: "Build the Analysis context pack for the latest memory and inspect budget, privacy, and evidence"
                     )
                 }
 
@@ -111,7 +120,7 @@ struct DebugDiagnosticsView: View {
                     DebugMenuRow(
                         icon: "person.crop.rectangle.stack",
                         title: "Person Profiles",
-                        subtitle: "Inspect v7 PersonProfile, portrait evidence, refresh behavior, and cloud-safe brief redaction"
+                        subtitle: "Inspect Analysis PersonProfile, portrait evidence, refresh behavior, and cloud-safe brief redaction"
                     )
                 }
 
@@ -121,7 +130,7 @@ struct DebugDiagnosticsView: View {
                     DebugMenuRow(
                         icon: "waveform.path.ecg.rectangle",
                         title: "Affect Snapshots",
-                        subtitle: "Inspect v7 structured mood, correction events, and Journaling Suggestions fallback state"
+                        subtitle: "Inspect structured mood, correction events, and Journaling Suggestions fallback state"
                     )
                 }
 
@@ -260,7 +269,6 @@ struct DebugDiagnosticsView: View {
         .navigationTitle("debug.title")
     }
 }
-
 private struct DebugLocalDataVaultView: View {
     @Environment(\.localDataDiagnostics) private var diagnostics
 
@@ -862,5 +870,3 @@ struct DebugStorageIntegrityView: View {
         }
     }
 }
-
-#endif
