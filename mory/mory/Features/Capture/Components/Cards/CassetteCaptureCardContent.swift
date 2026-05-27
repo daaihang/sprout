@@ -5,6 +5,7 @@ struct CassetteCaptureCardContent: View {
     let payload: CaptureAudioCardPayload
     var sizeToken: MemoryCardSizeToken = .tape
     var density: MemoryCardContentDensity = .regular
+    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .cassette, sizeToken: .tape)
 
     var body: some View {
         switch normalizedSize {
@@ -30,7 +31,7 @@ struct CassetteCaptureCardContent: View {
                 Text(titleText)
                     .font(.system(size: 12, weight: .bold, design: .rounded))
                     .foregroundStyle(Color(white: 0.16))
-                    .lineLimit(1)
+                    .lineLimit(metrics.titleLineLimit)
 
                 Text(durationOrKind)
                     .font(.system(size: 9, weight: .semibold, design: .monospaced))
@@ -40,9 +41,8 @@ struct CassetteCaptureCardContent: View {
 
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .frame(width: 168, height: 64)
+        .padding(metrics.padding.edgeInsets)
+        .frame(width: metrics.preferredSize.width, height: metrics.preferredSize.height)
         .background(cassetteShell(cornerRadius: 10))
         .overlay(alignment: .trailing) {
             RoundedRectangle(cornerRadius: 2, style: .continuous)
@@ -70,7 +70,8 @@ struct CassetteCaptureCardContent: View {
                     .padding(.bottom, 10)
             }
         }
-        .frame(width: 232, height: 136)
+        .frame(width: metrics.preferredSize.width, height: metrics.preferredSize.height)
+        .frame(width: metrics.preferredSize.width, height: metrics.preferredSize.height, alignment: .center)
         .cassetteShadow()
     }
 
@@ -109,14 +110,14 @@ struct CassetteCaptureCardContent: View {
             Text(detailText)
                 .font(.system(size: 12, weight: .medium, design: .serif))
                 .foregroundStyle(Color(white: 0.18))
-                .lineLimit(4)
+                .lineLimit(metrics.detailLineLimit)
 
             Spacer(minLength: 0)
 
             Text(metadataText)
                 .font(.system(size: 8, weight: .semibold, design: .monospaced))
                 .foregroundStyle(Color(white: 0.44))
-                .lineLimit(1)
+                .lineLimit(metrics.metadataLineLimit)
         }
         .padding(12)
         .background(Color(red: 0.97, green: 0.95, blue: 0.87), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
@@ -131,7 +132,7 @@ struct CassetteCaptureCardContent: View {
         VStack(spacing: 3) {
             Text(titleText)
                 .font(.system(size: 12, weight: .bold, design: .rounded))
-                .lineLimit(1)
+                .lineLimit(metrics.titleLineLimit)
                 .foregroundStyle(Color(white: 0.15))
 
             HStack(spacing: 6) {
@@ -142,14 +143,14 @@ struct CassetteCaptureCardContent: View {
                 Text(detailText)
                     .font(.system(size: 9, weight: .medium))
                     .foregroundStyle(Color(white: 0.36))
-                    .lineLimit(lineLimit)
+                    .lineLimit(min(lineLimit, metrics.detailLineLimit))
             }
 
             if showsMetadata {
                 Text(metadataText)
                     .font(.system(size: 8, weight: .semibold, design: .monospaced))
                     .foregroundStyle(Color(white: 0.46))
-                    .lineLimit(1)
+                    .lineLimit(metrics.metadataLineLimit)
             }
         }
         .padding(.horizontal, 10)

@@ -590,6 +590,32 @@ final class CaptureCardModelsTests: XCTestCase {
         }
     }
 
+    func testCardDebugCatalogCoversEverySupportedRecipeSize() {
+        let expected = Set(MemoryCardVisualRecipe.allCases.flatMap { recipe in
+            MemoryCardRecipeLayoutPolicy.supportedSizes(for: recipe).map { "\(recipe.rawValue).\($0.rawValue)" }
+        })
+        let actual = Set(CardDebugCatalog.recipeSizeFixtures.map { "\($0.fixture.recipe.rawValue).\($0.size.rawValue)" })
+
+        XCTAssertEqual(actual, expected)
+        for fixture in CardDebugCatalog.recipeSizeFixtures {
+            let metrics = fixture.metrics
+            let presentation = CaptureCardPresentation(
+                item: fixture.fixture.item,
+                role: .debugLab,
+                provenanceDisplayMode: .debug,
+                surfaceMode: .skeuomorphic,
+                visualRecipe: fixture.fixture.recipe,
+                sizeToken: fixture.size
+            )
+
+            XCTAssertEqual(presentation.sizeToken, fixture.size)
+            XCTAssertEqual(metrics.recipe, fixture.fixture.recipe)
+            XCTAssertEqual(metrics.sizeToken, fixture.size)
+            XCTAssertGreaterThan(metrics.preferredSize.width, 0)
+            XCTAssertGreaterThan(metrics.preferredSize.height, 0)
+        }
+    }
+
     func testOriginFixturesKeepKindStableAcrossAllOrigins() {
         let origins = Set(CaptureCardLabFixtures.origins.compactMap(\.origin))
         let kinds = Set(CaptureCardLabFixtures.origins.map(\.kind))

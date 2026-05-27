@@ -5,27 +5,28 @@ struct PersonContextCaptureCardContent: View {
     let common: CaptureCardCommonDisplay
     let payload: CapturePersonContextCardPayload
     let accent: Color
+    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .personCard, sizeToken: .card)
 
     var body: some View {
-        VStack(spacing: 9) {
+        VStack(spacing: metrics.sizeToken == .strip ? 0 : 9) {
             portrait
-                .frame(width: 102, height: 98)
+                .frame(width: portraitSize.width, height: portraitSize.height)
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             VStack(spacing: 3) {
                 Text(payload.name.trimmedOrNil ?? common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.person"))
                     .font(.system(size: 14, weight: .bold, design: .rounded))
                     .foregroundStyle(Color(white: 0.18))
-                    .lineLimit(1)
+                    .lineLimit(metrics.titleLineLimit)
 
                 Text(common.detail)
                     .font(.system(size: 10, weight: .medium, design: .rounded))
                     .foregroundStyle(Color(white: 0.42))
-                    .lineLimit(2)
+                    .lineLimit(metrics.detailLineLimit)
             }
         }
-        .padding(11)
-        .frame(width: 136, height: 184)
+        .padding(metrics.padding.edgeInsets)
+        .frame(width: metrics.preferredSize.width, height: metrics.preferredSize.height)
         .background(Color.white, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .overlay(alignment: .bottomTrailing) {
             Image(systemName: "person.text.rectangle")
@@ -35,6 +36,12 @@ struct PersonContextCaptureCardContent: View {
         }
         .shadow(color: .black.opacity(0.1), radius: 1, y: 1)
         .shadow(color: .black.opacity(0.06), radius: 8, y: 4)
+    }
+
+    private var portraitSize: CGSize {
+        metrics.sizeToken == .strip
+            ? CGSize(width: 54, height: 46)
+            : CGSize(width: 102, height: 98)
     }
 
     @ViewBuilder
@@ -63,6 +70,7 @@ struct BundlePacketCaptureCardContent: View {
     let thumbnailData: Data?
     let itemCount: Int?
     let accent: Color
+    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .bundlePacket, sizeToken: .card)
 
     var body: some View {
         ZStack(alignment: .bottomLeading) {
@@ -70,7 +78,7 @@ struct BundlePacketCaptureCardContent: View {
             packetLayer(offset: CGSize(width: 9, height: -5), rotation: -3, opacity: 0.78)
             envelope
         }
-        .frame(width: 220, height: 150)
+        .frame(width: metrics.preferredSize.width, height: metrics.preferredSize.height)
     }
 
     private var envelope: some View {
@@ -89,21 +97,21 @@ struct BundlePacketCaptureCardContent: View {
                 Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.journalingSuggestion"))
                     .font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundStyle(Color(white: 0.2))
-                    .lineLimit(1)
+                    .lineLimit(metrics.titleLineLimit)
 
                 Text(common.detail)
                     .font(.system(size: 10, weight: .medium, design: .rounded))
                     .foregroundStyle(Color(white: 0.36))
-                    .lineLimit(2)
+                    .lineLimit(metrics.detailLineLimit)
 
                 Text(countText)
                     .font(.system(size: 9, weight: .bold, design: .monospaced))
                     .foregroundStyle(accent.opacity(0.8))
                     .padding(.top, 2)
             }
-            .padding(14)
+            .padding(metrics.padding.edgeInsets)
         }
-        .frame(width: 196, height: 122)
+        .frame(width: metrics.preferredSize.width - 24, height: metrics.preferredSize.height - 28)
         .shadow(color: .black.opacity(0.1), radius: 2, y: 1)
         .shadow(color: .black.opacity(0.06), radius: 8, y: 4)
     }
@@ -125,7 +133,7 @@ struct BundlePacketCaptureCardContent: View {
                     .foregroundStyle(accent.opacity(0.42))
             }
         }
-        .frame(width: 92, height: 84)
+        .frame(width: metrics.sizeToken == .square ? 112 : 92, height: metrics.sizeToken == .square ? 104 : 84)
         .offset(offset)
         .rotationEffect(.degrees(rotation))
     }
@@ -155,25 +163,26 @@ struct MoodSwatchCaptureCardContent: View {
     let accent: Color
     var sizeToken: MemoryCardSizeToken = .stamp
     var density: MemoryCardContentDensity = .compact
+    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .affectCard, sizeToken: .stamp)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             swatch
-                .frame(height: density == .compact ? 42 : 54)
+                .frame(height: metrics.sizeToken == .stamp ? 42 : 50)
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.affect"))
                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                 .foregroundStyle(Color(white: 0.18))
-                .lineLimit(1)
+                .lineLimit(metrics.titleLineLimit)
 
             Text(common.detail)
                 .font(.system(size: 10, weight: .medium, design: .rounded))
                 .foregroundStyle(Color(white: 0.4))
-                .lineLimit(density == .compact ? 1 : 2)
+                .lineLimit(metrics.detailLineLimit)
         }
-        .padding(12)
-        .frame(width: density == .compact ? 120 : 154, height: density == .compact ? 112 : 132, alignment: .leading)
+        .padding(metrics.padding.edgeInsets)
+        .frame(width: metrics.preferredSize.width, height: metrics.preferredSize.height, alignment: .leading)
         .background(Color(red: 0.96, green: 0.96, blue: 0.92), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -215,6 +224,7 @@ struct MoodSwatchCaptureCardContent: View {
 struct PlainSystemNoteCaptureCardContent: View {
     let common: CaptureCardCommonDisplay
     let accent: Color
+    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .statusNote, sizeToken: .stamp)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -225,16 +235,16 @@ struct PlainSystemNoteCaptureCardContent: View {
                 Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.status"))
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
                     .foregroundStyle(Color(white: 0.18))
-                    .lineLimit(1)
+                    .lineLimit(metrics.titleLineLimit)
             }
 
             Text(common.detail)
                 .font(.system(size: 10, weight: .medium, design: .monospaced))
                 .foregroundStyle(Color(white: 0.42))
-                .lineLimit(4)
+                .lineLimit(metrics.detailLineLimit)
         }
-        .padding(12)
-        .frame(width: 170, height: 116, alignment: .topLeading)
+        .padding(metrics.padding.edgeInsets)
+        .frame(width: metrics.preferredSize.width, height: metrics.preferredSize.height, alignment: .topLeading)
         .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 8, style: .continuous)

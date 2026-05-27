@@ -6,6 +6,7 @@ struct PolaroidCaptureCardContent: View {
     let payload: CapturePhotoCardPayload
     var sizeToken: MemoryCardSizeToken = .square
     var density: MemoryCardContentDensity = .regular
+    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .polaroid, sizeToken: .square)
 
     var body: some View {
         VStack(spacing: 0) {
@@ -45,13 +46,13 @@ struct PolaroidCaptureCardContent: View {
             if let title = common.title?.trimmedOrNil {
                 Text(title)
                     .font(.system(size: 11, design: .serif))
-                    .lineLimit(density == .expanded ? 2 : 1)
+                    .lineLimit(metrics.titleLineLimit)
             }
-            if density != .compact, let metadata = common.metadata?.trimmedOrNil {
+            if metrics.density != .compact, let metadata = common.metadata?.trimmedOrNil {
                 Text(metadata)
                     .font(.system(size: 9, design: .serif))
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                    .lineLimit(metrics.metadataLineLimit)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -66,22 +67,15 @@ struct PolaroidCaptureCardContent: View {
     }
 
     private var photoLength: CGFloat {
-        switch density {
-        case .compact:
-            return 124
-        case .regular:
-            return 148
-        case .expanded:
-            return 214
-        }
+        min(metrics.preferredSize.width - (paperInset * 2), metrics.preferredSize.height - labelHeight - paperInset - 4)
     }
 
     private var labelHeight: CGFloat {
-        density == .expanded ? 58 : 44
+        metrics.density == .expanded ? 58 : 44
     }
 
     private var paperInset: CGFloat {
-        density == .expanded ? 12 : 10
+        metrics.padding.top
     }
 
     private var tiltAngle: Double {

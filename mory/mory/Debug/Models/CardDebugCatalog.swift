@@ -22,6 +22,16 @@ struct CardDebugTypeCatalogEntry: Identifiable, Hashable {
     let arrangementLayer: String
 }
 
+struct CardDebugRecipeSizeFixture: Identifiable, Hashable {
+    var id: String { "\(fixture.recipe.rawValue)-\(size.rawValue)" }
+    let fixture: CardDebugRecipeFixture
+    let size: MemoryCardSizeToken
+
+    var metrics: MemoryCardObjectMetrics {
+        MemoryCardObjectMetrics.resolve(recipe: fixture.recipe, sizeToken: size)
+    }
+}
+
 enum CardDebugCatalog {
     static let recipeFixtures: [CardDebugRecipeFixture] = [
         CardDebugRecipeFixture(
@@ -220,6 +230,14 @@ enum CardDebugCatalog {
                 digestLayer: digestLayer(for: fixture.recipe),
                 arrangementLayer: "MemoryCardNode(contentRef, visualRecipe=\(fixture.recipe.rawValue), size=\(fixture.preferredSize.rawValue), grid=\(box.columnSpan)x\(box.rowSpan), density=\(density.rawValue))"
             )
+        }
+    }
+
+    static var recipeSizeFixtures: [CardDebugRecipeSizeFixture] {
+        recipeFixtures.flatMap { fixture in
+            fixture.supportedSizes.map { size in
+                CardDebugRecipeSizeFixture(fixture: fixture, size: size)
+            }
         }
     }
 

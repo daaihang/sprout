@@ -153,4 +153,40 @@ final class MemoryCardArrangementDraftTests: XCTestCase {
         XCTAssertEqual(videoNode?.visualRecipe, .filmFrame)
         XCTAssertEqual(videoNode?.layout.size, .tape)
     }
+
+    func testSizeChangeAndReorderRepackDraftGridPlacements() {
+        let photoID = UUID(uuidString: "BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB")!
+        let audioID = UUID(uuidString: "CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC")!
+        let linkID = UUID(uuidString: "DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD")!
+        let drafts = [
+            CaptureArtifactDraft(
+                draftID: photoID,
+                origin: .manual,
+                content: .photo(PhotoArtifactContent(title: "Photo", summary: "photo", filename: "photo.jpg"))
+            ),
+            CaptureArtifactDraft(
+                draftID: audioID,
+                origin: .manual,
+                content: .audio(AudioArtifactContent(title: "Audio", summary: "audio", filename: "audio.caf"))
+            ),
+            CaptureArtifactDraft(
+                draftID: linkID,
+                origin: .manual,
+                content: .link(LinkArtifactContent(title: "Link", url: "https://example.com"))
+            )
+        ]
+        var arrangement = MemoryCardArrangementDraft()
+        drafts.forEach { arrangement.appendArtifactDraft($0) }
+
+        arrangement.setSize(.banner, forDraftID: photoID)
+        arrangement.reorderArtifactDraft(from: linkID, to: audioID)
+
+        XCTAssertEqual(arrangement.nodes.map(\.layout.order), [0, 1, 2])
+        XCTAssertTrue(arrangement.nodes.allSatisfy { $0.layout.gridPlacement != nil })
+        let photoNode = arrangement.nodes.first { node in
+            if case let .artifactDraft(id) = node.contentRef { return id == photoID }
+            return false
+        }
+        XCTAssertEqual(photoNode?.layout.size, .banner)
+    }
 }

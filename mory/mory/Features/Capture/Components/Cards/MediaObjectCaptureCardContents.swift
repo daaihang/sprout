@@ -5,6 +5,7 @@ struct FilmFrameCaptureCardContent: View {
     let common: CaptureCardCommonDisplay
     let payload: CaptureVideoCardPayload
     let accent: Color
+    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .filmFrame, sizeToken: .tape)
 
     var body: some View {
         VStack(spacing: 0) {
@@ -12,7 +13,8 @@ struct FilmFrameCaptureCardContent: View {
             frameBody
             perforatedStrip
         }
-        .padding(7)
+        .padding(metrics.density == .expanded ? 9 : 7)
+        .frame(width: metrics.preferredSize.width, height: metrics.preferredSize.height)
         .background(Color(white: 0.08), in: RoundedRectangle(cornerRadius: 5, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 5, style: .continuous)
@@ -25,7 +27,7 @@ struct FilmFrameCaptureCardContent: View {
     private var frameBody: some View {
         ZStack(alignment: .bottomLeading) {
             thumbnail
-                .frame(width: 214, height: 118)
+                .frame(width: frameWidth, height: frameHeight)
                 .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
 
             playBadge
@@ -34,11 +36,11 @@ struct FilmFrameCaptureCardContent: View {
                 Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.video"))
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white)
-                    .lineLimit(1)
+                    .lineLimit(metrics.titleLineLimit)
                 Text(common.detail)
                     .font(.system(size: 9, weight: .medium, design: .rounded))
                     .foregroundStyle(.white.opacity(0.74))
-                    .lineLimit(1)
+                    .lineLimit(metrics.detailLineLimit)
             }
             .padding(8)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -82,7 +84,7 @@ struct FilmFrameCaptureCardContent: View {
                     .foregroundStyle(.white)
                     .offset(x: 1)
             }
-            .frame(width: 214, height: 118)
+            .frame(width: frameWidth, height: frameHeight)
     }
 
     private var perforatedStrip: some View {
@@ -93,7 +95,15 @@ struct FilmFrameCaptureCardContent: View {
                     .frame(width: 12, height: 6)
             }
         }
-        .frame(width: 214, height: 12)
+        .frame(width: frameWidth, height: 12)
+    }
+
+    private var frameWidth: CGFloat {
+        metrics.preferredSize.width - (metrics.density == .expanded ? 18 : 14)
+    }
+
+    private var frameHeight: CGFloat {
+        metrics.preferredSize.height - 38
     }
 }
 
@@ -101,6 +111,7 @@ struct LivePhotoPrintCaptureCardContent: View {
     let common: CaptureCardCommonDisplay
     let payload: CaptureLivePhotoCardPayload
     let accent: Color
+    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .livePhotoPrint, sizeToken: .square)
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -117,24 +128,25 @@ struct LivePhotoPrintCaptureCardContent: View {
                 .background(.white.opacity(0.88), in: Circle())
                 .padding(12)
         }
+        .frame(width: metrics.preferredSize.width, height: metrics.preferredSize.height)
     }
 
     private var frontPrint: some View {
         VStack(spacing: 0) {
             thumbnail
-                .frame(width: 152, height: 152)
+                .frame(width: imageLength, height: imageLength)
                 .clipped()
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.livePhoto"))
                     .font(.system(size: 11, weight: .medium, design: .serif))
-                    .lineLimit(1)
+                    .lineLimit(metrics.titleLineLimit)
                 Text(common.detail)
                     .font(.system(size: 9, design: .serif))
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                    .lineLimit(metrics.detailLineLimit)
             }
-            .frame(width: 152, height: 40, alignment: .leading)
+            .frame(width: imageLength, height: metrics.density == .expanded ? 58 : 40, alignment: .leading)
             .padding(.horizontal, 4)
         }
         .padding(EdgeInsets(top: 9, leading: 9, bottom: 5, trailing: 9))
@@ -147,8 +159,12 @@ struct LivePhotoPrintCaptureCardContent: View {
     private var backPrint: some View {
         RoundedRectangle(cornerRadius: 4, style: .continuous)
             .fill(Color(red: 0.88, green: 0.90, blue: 0.92))
-            .frame(width: 170, height: 206)
+            .frame(width: metrics.preferredSize.width - 8, height: metrics.preferredSize.height - 12)
             .shadow(color: .black.opacity(0.06), radius: 6, y: 3)
+    }
+
+    private var imageLength: CGFloat {
+        metrics.preferredSize.width - 26
     }
 
     @ViewBuilder

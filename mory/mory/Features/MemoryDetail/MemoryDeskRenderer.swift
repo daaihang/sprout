@@ -18,7 +18,7 @@ struct MemoryDeskRenderer: View {
         measuredContainerWidth > 0 ? measuredContainerWidth : 390
     }
 
-    private var layoutPlan: MemoryDeskBoardLayoutPlan {
+    private var layoutPlan: MemoryDeskBoardLayoutPlan<UUID> {
         MemoryDeskBoardLayoutPlan.make(
             nodes: resolvedNodes.map { MemoryDeskBoardInputNode(id: $0.id, layout: $0.layout) },
             containerWidth: containerWidth,
@@ -242,94 +242,6 @@ private struct ResolvedMemoryDeskSlot: Identifiable {
         self.id = node.id
         self.node = node
         self.frame = frame
-    }
-}
-
-struct MemoryDeskBoardMetrics: Hashable, Sendable {
-    var columns: Int
-    var horizontalPadding: CGFloat
-    var verticalPadding: CGFloat
-    var columnSpacing: CGFloat
-    var rowSpacing: CGFloat
-    var rowHeight: CGFloat
-    var minimumCellWidth: CGFloat
-
-    static let `default` = MemoryDeskBoardMetrics(
-        columns: MemoryCardRecipeLayoutPolicy.columnCount,
-        horizontalPadding: 16,
-        verticalPadding: 18,
-        columnSpacing: 10,
-        rowSpacing: 12,
-        rowHeight: 82,
-        minimumCellWidth: 42
-    )
-
-    func cellWidth(for containerWidth: CGFloat) -> CGFloat {
-        let clampedColumns = max(1, columns)
-        let usableWidth = max(containerWidth - (horizontalPadding * 2), minimumCellWidth * CGFloat(clampedColumns))
-        let totalSpacing = columnSpacing * CGFloat(clampedColumns - 1)
-        return max(minimumCellWidth, floor((usableWidth - totalSpacing) / CGFloat(clampedColumns)))
-    }
-}
-
-struct MemoryDeskBoardInputNode: Hashable, Sendable {
-    let id: UUID
-    let layout: MemoryCardLayoutToken
-}
-
-struct MemoryDeskBoardLayoutSlot: Identifiable, Hashable, Sendable {
-    let id: UUID
-    let layout: MemoryCardLayoutToken
-    let frame: CGRect
-}
-
-struct MemoryDeskBoardLayoutPlan: Hashable, Sendable {
-    let slots: [MemoryDeskBoardLayoutSlot]
-    let boardHeight: CGFloat
-
-    static func make(
-        nodes: [MemoryDeskBoardInputNode],
-        containerWidth: CGFloat,
-        metrics: MemoryDeskBoardMetrics = .default
-    ) -> MemoryDeskBoardLayoutPlan {
-        let ordered = nodes.enumerated().map { index, node in
-            (index: index, node: node)
-        }
-        let frames = ordered.map { entry in
-            frame(for: entry.node.layout, containerWidth: containerWidth, metrics: metrics, fallbackOrder: entry.index)
-        }
-        let slots = zip(ordered, frames).map { entry, frame in
-            MemoryDeskBoardLayoutSlot(id: entry.node.id, layout: entry.node.layout, frame: frame)
-        }
-        let maxY = frames.map(\.maxY).max() ?? 0
-        let minHeight = metrics.verticalPadding * 2 + metrics.rowHeight
-        return MemoryDeskBoardLayoutPlan(
-            slots: slots,
-            boardHeight: max(minHeight, maxY + metrics.verticalPadding)
-        )
-    }
-
-    private static func frame(
-        for layout: MemoryCardLayoutToken,
-        containerWidth: CGFloat,
-        metrics: MemoryDeskBoardMetrics,
-        fallbackOrder: Int
-    ) -> CGRect {
-        let columns = max(1, min(metrics.columns, MemoryCardRecipeLayoutPolicy.columnCount))
-        let cellWidth = metrics.cellWidth(for: containerWidth)
-        let box = MemoryCardRecipeLayoutPolicy.gridBox(for: layout.size)
-        let fallbackPlacement = MemoryCardGridPlacement(
-            column: max(0, fallbackOrder % columns),
-            row: max(0, fallbackOrder / columns)
-        )
-        let placement = layout.gridPlacement ?? fallbackPlacement
-
-        let x = metrics.horizontalPadding + CGFloat(placement.column) * (cellWidth + metrics.columnSpacing)
-        let y = metrics.verticalPadding + CGFloat(placement.row) * (metrics.rowHeight + metrics.rowSpacing)
-        let width = CGFloat(box.columnSpan) * cellWidth + CGFloat(max(0, box.columnSpan - 1)) * metrics.columnSpacing
-        let height = CGFloat(box.rowSpan) * metrics.rowHeight + CGFloat(max(0, box.rowSpan - 1)) * metrics.rowSpacing
-
-        return CGRect(x: x, y: y, width: width, height: height)
     }
 }
 

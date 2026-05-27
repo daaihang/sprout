@@ -172,6 +172,14 @@ private struct CardDebugTypeDetailView: View {
             }
 
             Section("Checks") {
+                let metrics = MemoryCardObjectMetrics.resolve(
+                    recipe: entry.fixture.recipe,
+                    sizeToken: entry.fixture.preferredSize
+                )
+                DebugValueRow(
+                    title: "Object metrics",
+                    value: "\(Int(metrics.preferredSize.width))x\(Int(metrics.preferredSize.height)) · padding \(Int(metrics.padding.top))/\(Int(metrics.padding.leading)) · lines \(metrics.titleLineLimit)/\(metrics.detailLineLimit)/\(metrics.metadataLineLimit)"
+                )
                 ForEach(entry.fixture.layerNotes, id: \.self) { note in
                     Label(note, systemImage: "checkmark.circle")
                         .font(.caption)
@@ -235,21 +243,30 @@ private struct CardDebugVisualRecipesView: View {
         List {
             ForEach(CardDebugCatalog.recipeFixtures) { fixture in
                 Section {
-                    HStack {
-                        Spacer()
-                        CaptureCardView(
-                            presentation: CaptureCardPresentation(
-                                item: fixture.item,
-                                role: .debugLab,
-                                provenanceDisplayMode: .debug,
-                                surfaceMode: .skeuomorphic,
-                                visualRecipe: fixture.recipe,
-                                sizeToken: fixture.preferredSize
-                            )
-                        )
-                        Spacer()
+                    ForEach(fixture.supportedSizes) { size in
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Spacer()
+                                CaptureCardView(
+                                    presentation: CaptureCardPresentation(
+                                        item: fixture.item,
+                                        role: .debugLab,
+                                        provenanceDisplayMode: .debug,
+                                        surfaceMode: .skeuomorphic,
+                                        visualRecipe: fixture.recipe,
+                                        sizeToken: size
+                                    )
+                                )
+                                Spacer()
+                            }
+                            let box = MemoryCardRecipeLayoutPolicy.gridBox(for: size)
+                            let metrics = MemoryCardObjectMetrics.resolve(recipe: fixture.recipe, sizeToken: size)
+                            Text("\(size.rawValue) · grid \(box.columnSpan)x\(box.rowSpan) · object \(Int(metrics.preferredSize.width))x\(Int(metrics.preferredSize.height)) · lines \(metrics.titleLineLimit)/\(metrics.detailLineLimit)/\(metrics.metadataLineLimit)")
+                                .font(.caption.monospaced())
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.vertical, 12)
                     }
-                    .padding(.vertical, 12)
 
                     DebugValueRow(title: "Recipe", value: fixture.recipe.rawValue)
                     DebugValueRow(title: "Preferred size", value: fixture.preferredSize.rawValue)
@@ -307,10 +324,22 @@ private struct CardDebugLayoutPolicyView: View {
                     }
                     .padding(.vertical, 10)
                     .overlay(alignment: .topLeading) {
-                        Text(size.rawValue)
+                        let metrics = MemoryCardObjectMetrics.resolve(recipe: .cassette, sizeToken: size)
+                        Text("\(size.rawValue) object \(Int(metrics.preferredSize.width))x\(Int(metrics.preferredSize.height))")
                             .font(.caption.monospaced())
                             .foregroundStyle(.secondary)
                     }
+                }
+            }
+
+            Section("Object Metrics") {
+                ForEach(CardDebugCatalog.recipeFixtures) { fixture in
+                    let size = fixture.preferredSize
+                    let metrics = MemoryCardObjectMetrics.resolve(recipe: fixture.recipe, sizeToken: size)
+                    DebugValueRow(
+                        title: "\(fixture.recipe.rawValue).\(size.rawValue)",
+                        value: "\(Int(metrics.preferredSize.width))x\(Int(metrics.preferredSize.height)) · padding \(Int(metrics.padding.top)) · lines \(metrics.titleLineLimit)/\(metrics.detailLineLimit)/\(metrics.metadataLineLimit)"
+                    )
                 }
             }
         }

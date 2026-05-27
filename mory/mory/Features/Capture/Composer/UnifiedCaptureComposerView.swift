@@ -142,24 +142,25 @@ struct UnifiedCaptureComposerView: View {
             GeometryReader { proxy in
                 ScrollView {
                     VStack(spacing: 0) {
-                        CaptureAttachmentCarouselView(
+                        CaptureAttachmentCompactBoardView(
                             items: attachmentItems,
                             onRemoveStagedArtifact: removeStagedArtifact(at:),
                             onRemoveContextCandidate: removeContextCandidate(id:),
                             onRemoveAffectDraft: removeAffectDraft(at:),
                             onRemoveJournalingSuggestion: removeJournalingSuggestion(importSessionID:),
-                            onReorderStagedArtifact: reorderStagedArtifact(from:to:),
+                            onReorderItems: reorderAttachmentItem(from:to:),
                             onSetSize: setArrangementSize(for:size:),
                             onStackWithPrevious: stackArrangementNodeWithPrevious(item:),
                             onUnstack: unstackArrangementNode(item:),
                             presentationForItem: presentationForAttachmentItem(_:),
+                            layoutForItem: layoutForAttachmentItem(_:),
                             supportedSizesForItem: supportedSizesForAttachmentItem(_:)
                         )
 
                         CaptureBodyEditorView(
                             text: $bodyText,
                             focus: $isBodyFocused,
-                            minHeight: max(proxy.size.height - (attachmentItems.isEmpty ? 0 : 132), 360)
+                            minHeight: max(proxy.size.height - (attachmentItems.isEmpty ? 0 : 220), 360)
                         )
                     }
                     .frame(maxWidth: .infinity, minHeight: proxy.size.height, alignment: .top)
@@ -526,6 +527,11 @@ struct UnifiedCaptureComposerView: View {
     }
 
     @MainActor
+    private func layoutForAttachmentItem(_ item: CaptureComposerAttachmentItem) -> MemoryCardLayoutToken? {
+        arrangementNode(for: item)?.layout
+    }
+
+    @MainActor
     private func arrangementNode(for item: CaptureComposerAttachmentItem) -> MemoryCardDraftNode? {
         guard let draftID = arrangementDraftID(for: item) else { return nil }
         return cardArrangementDraft.nodes.first { node in
@@ -550,6 +556,23 @@ struct UnifiedCaptureComposerView: View {
     private func unstackArrangementNode(item: CaptureComposerAttachmentItem) {
         guard let draftID = arrangementDraftID(for: item) else { return }
         cardArrangementDraft.unstackContainingDraft(draftID, artifactDrafts: arrangementArtifactDrafts)
+    }
+
+    @MainActor
+    private func reorderAttachmentItem(from source: CaptureComposerAttachmentItem, to target: CaptureComposerAttachmentItem) {
+        if case let .stagedArtifact(sourceIndex) = source.source,
+           case let .stagedArtifact(targetIndex) = target.source {
+            reorderStagedArtifact(from: sourceIndex, to: targetIndex)
+            return
+        }
+        guard let sourceDraftID = arrangementDraftID(for: source),
+              let targetDraftID = arrangementDraftID(for: target),
+              sourceDraftID != targetDraftID else {
+            return
+        }
+        withAnimation(.snappy(duration: 0.2)) {
+            cardArrangementDraft.reorderArtifactDraft(from: sourceDraftID, to: targetDraftID)
+        }
     }
 
     @MainActor

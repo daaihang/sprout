@@ -5,6 +5,7 @@ struct MapTicketCaptureCardContent: View {
     let common: CaptureCardCommonDisplay
     let payload: CapturePlaceCardPayload
     let accent: Color
+    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .mapTicket, sizeToken: .card)
 
     var body: some View {
         HStack(spacing: 0) {
@@ -20,22 +21,22 @@ struct MapTicketCaptureCardContent: View {
                 Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.place"))
                     .font(.system(size: 15, weight: .semibold, design: .rounded))
                     .foregroundStyle(Color(white: 0.18))
-                    .lineLimit(2)
+                    .lineLimit(metrics.titleLineLimit)
 
                 Text(common.detail)
                     .font(.system(size: 10, weight: .medium, design: .rounded))
                     .foregroundStyle(Color(white: 0.38))
-                    .lineLimit(2)
+                    .lineLimit(metrics.detailLineLimit)
 
                 Spacer(minLength: 0)
 
                 Text(coordinateText)
                     .font(.system(size: 8, weight: .semibold, design: .monospaced))
                     .foregroundStyle(Color(white: 0.42))
-                    .lineLimit(1)
+                    .lineLimit(metrics.metadataLineLimit)
             }
-            .padding(12)
-            .frame(width: 142, height: 128, alignment: .leading)
+            .padding(metrics.padding.edgeInsets)
+            .frame(width: metrics.preferredSize.width - 92, height: metrics.preferredSize.height, alignment: .leading)
         }
         .background(ticketPaper, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
         .overlay(alignment: .leading) {
@@ -116,6 +117,7 @@ struct WeatherStampCaptureCardContent: View {
     let accent: Color
     var sizeToken: MemoryCardSizeToken = .stamp
     var density: MemoryCardContentDensity = .compact
+    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .weatherStamp, sizeToken: .stamp)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
@@ -136,9 +138,9 @@ struct WeatherStampCaptureCardContent: View {
             Text(common.detail)
                 .font(.system(size: 12, weight: .semibold, design: .rounded))
                 .foregroundStyle(stampInk.opacity(0.78))
-                .lineLimit(density == .compact ? 1 : 2)
+                .lineLimit(metrics.detailLineLimit)
 
-            if density != .compact {
+            if metrics.density != .compact {
                 HStack(spacing: 5) {
                     ForEach(metricTokens, id: \.self) { token in
                         Text(token)
@@ -151,8 +153,8 @@ struct WeatherStampCaptureCardContent: View {
                 }
             }
         }
-        .padding(13)
-        .frame(width: density == .compact ? 132 : 178, height: density == .compact ? 116 : 132, alignment: .leading)
+        .padding(metrics.padding.edgeInsets)
+        .frame(width: metrics.preferredSize.width, height: metrics.preferredSize.height, alignment: .leading)
         .background(stampPaper, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
@@ -203,6 +205,7 @@ struct LinkNoteCaptureCardContent: View {
     let accent: Color
     var sizeToken: MemoryCardSizeToken = .card
     var density: MemoryCardContentDensity = .regular
+    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .linkNote, sizeToken: .card)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -218,25 +221,25 @@ struct LinkNoteCaptureCardContent: View {
             Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.link"))
                 .font(.system(size: 15, weight: .semibold, design: .rounded))
                 .foregroundStyle(Color(white: 0.18))
-                .lineLimit(2)
+                .lineLimit(metrics.titleLineLimit)
 
             Text(common.detail)
                 .font(.system(size: 10, weight: .medium, design: .rounded))
                 .foregroundStyle(Color(white: 0.38))
-                .lineLimit(density == .expanded ? 5 : 3)
+                .lineLimit(metrics.detailLineLimit)
 
             Spacer(minLength: 0)
 
             Text(common.metadata?.trimmedOrNil ?? hostText)
                 .font(.system(size: 8, weight: .medium, design: .monospaced))
                 .foregroundStyle(Color(white: 0.45))
-                .lineLimit(1)
+                .lineLimit(metrics.metadataLineLimit)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 4)
                 .background(Color.white.opacity(0.62), in: RoundedRectangle(cornerRadius: 4, style: .continuous))
         }
-        .padding(13)
-        .frame(width: density == .expanded ? 294 : 214, height: density == .expanded ? 178 : 148, alignment: .leading)
+        .padding(metrics.padding.edgeInsets)
+        .frame(width: metrics.preferredSize.width, height: metrics.preferredSize.height, alignment: .leading)
         .background(notePaper, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
         .overlay(alignment: .top) {
             Rectangle()
@@ -275,6 +278,7 @@ struct TaskNoteCaptureCardContent: View {
     let common: CaptureCardCommonDisplay
     let payload: CaptureTodoCardPayload
     let accent: Color
+    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .taskNote, sizeToken: .strip)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
@@ -286,19 +290,19 @@ struct TaskNoteCaptureCardContent: View {
                 Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.todo"))
                     .font(.system(size: 15, weight: .semibold, design: .rounded))
                     .foregroundStyle(Color(white: 0.18))
-                    .lineLimit(2)
+                    .lineLimit(metrics.titleLineLimit)
                     .strikethrough(common.isSelected, color: Color(white: 0.35))
             }
 
             Text(common.detail)
                 .font(.system(size: 11, weight: .medium, design: .rounded))
                 .foregroundStyle(Color(white: 0.38))
-                .lineLimit(4)
+                .lineLimit(metrics.detailLineLimit)
 
             Spacer(minLength: 0)
         }
-        .padding(13)
-        .frame(width: 174, height: 136, alignment: .leading)
+        .padding(metrics.padding.edgeInsets)
+        .frame(width: metrics.preferredSize.width, height: metrics.preferredSize.height, alignment: .leading)
         .background(checklistPaper, in: TornSlipShape())
         .overlay {
             TornSlipShape()
