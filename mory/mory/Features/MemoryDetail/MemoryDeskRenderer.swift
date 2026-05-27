@@ -15,7 +15,7 @@ struct MemoryDeskRenderer: View {
     }
 
     private var containerWidth: CGFloat {
-        measuredContainerWidth > 0 ? measuredContainerWidth : UIScreen.main.bounds.width
+        measuredContainerWidth > 0 ? measuredContainerWidth : 390
     }
 
     private var layoutPlan: MemoryDeskBoardLayoutPlan {

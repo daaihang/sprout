@@ -640,7 +640,7 @@ extension MemoryCardArrangement {
         return result
     }
 
-    static func defaultVisualRecipe(for artifact: Artifact) -> MemoryCardVisualRecipe {
+    nonisolated static func defaultVisualRecipe(for artifact: Artifact) -> MemoryCardVisualRecipe {
         switch artifact.kind {
         case .text:
             return .notebook
@@ -670,7 +670,7 @@ extension MemoryCardArrangement {
         }
     }
 
-    static func defaultSize(for artifact: Artifact) -> MemoryCardSizeToken {
+    nonisolated static func defaultSize(for artifact: Artifact) -> MemoryCardSizeToken {
         switch artifact.kind {
         case .photo, .livePhoto:
             return .square
@@ -687,7 +687,7 @@ extension MemoryCardArrangement {
         }
     }
 
-    static func defaultRotation(for id: UUID) -> Double {
+    nonisolated static func defaultRotation(for id: UUID) -> Double {
         let value = abs(id.uuidString.hashValue % 7)
         return Double(value - 3)
     }
