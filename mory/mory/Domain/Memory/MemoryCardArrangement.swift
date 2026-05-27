@@ -47,6 +47,11 @@ enum MemoryCardSizeToken: String, Codable, CaseIterable, Identifiable, Sendable 
     var id: String { rawValue }
 }
 
+enum MemoryCardBoardRowMoveDirection: Hashable, Sendable {
+    case up
+    case down
+}
+
 struct MemoryCardLayoutToken: Codable, Hashable, Sendable {
     var order: Int
     var size: MemoryCardSizeToken
@@ -822,6 +827,65 @@ extension MemoryCardArrangement {
         return unstacking(nodeID: node.id, artifacts: artifacts, updatedAt: updatedAt)
     }
 
+    func autoArranged(updatedAt: Date) -> MemoryCardArrangement {
+        replacing(nodes: nodes.sortedForArrangementEditing(), updatedAt: updatedAt)
+    }
+
+    func movingArtifact(artifactID: UUID, by offset: Int, updatedAt: Date) -> MemoryCardArrangement {
+        guard offset != 0 else { return self }
+        var nodes = nodes.sortedForArrangementEditing()
+        guard let sourceIndex = nodes.firstIndex(where: { $0.containsArtifactID(artifactID) }) else {
+            return self
+        }
+        let targetIndex = sourceIndex + offset
+        guard nodes.indices.contains(targetIndex) else { return self }
+
+        let moved = nodes.remove(at: sourceIndex)
+        nodes.insert(moved, at: targetIndex)
+        return replacing(nodes: nodes, updatedAt: updatedAt)
+    }
+
+    func movingArtifactToAdjacentBoardRow(
+        artifactID: UUID,
+        direction: MemoryCardBoardRowMoveDirection,
+        updatedAt: Date
+    ) -> MemoryCardArrangement {
+        var nodes = nodes.sortedForArrangementEditing().normalizedLayoutOrder()
+        guard let sourceIndex = nodes.firstIndex(where: { $0.containsArtifactID(artifactID) }),
+              let currentRow = nodes[sourceIndex].layout.gridPlacement?.row else {
+            return self
+        }
+
+        let candidateRows = Set(nodes.compactMap { $0.layout.gridPlacement?.row }).sorted()
+        let targetRow: Int?
+        switch direction {
+        case .up:
+            targetRow = candidateRows.last { $0 < currentRow }
+        case .down:
+            targetRow = candidateRows.first { $0 > currentRow }
+        }
+        guard let targetRow else { return self }
+
+        let targetIndices = nodes.indices.filter { nodes[$0].layout.gridPlacement?.row == targetRow }
+        guard let firstTargetIndex = targetIndices.first,
+              let lastTargetIndex = targetIndices.last else {
+            return self
+        }
+
+        let moved = nodes.remove(at: sourceIndex)
+        let insertionIndex: Int
+        switch direction {
+        case .up:
+            insertionIndex = firstTargetIndex
+        case .down:
+            insertionIndex = sourceIndex < lastTargetIndex
+                ? min(lastTargetIndex, nodes.endIndex)
+                : min(lastTargetIndex + 1, nodes.endIndex)
+        }
+        nodes.insert(moved, at: insertionIndex)
+        return replacing(nodes: nodes, updatedAt: updatedAt)
+    }
+
     func appendingArtifactNodes(_ nodesToAppend: [MemoryCardNode], updatedAt: Date) -> MemoryCardArrangement {
         guard !nodesToAppend.isEmpty else { return self }
         var knownArtifactIDs = Set(nodes.flatMap(\.artifactIDs))
@@ -889,6 +953,15 @@ private extension MemoryCardNode {
 }
 
 private extension Array where Element == MemoryCardNode {
+    func sortedForArrangementEditing() -> [MemoryCardNode] {
+        sorted { lhs, rhs in
+            if lhs.layout.order == rhs.layout.order {
+                return lhs.id.uuidString < rhs.id.uuidString
+            }
+            return lhs.layout.order < rhs.layout.order
+        }
+    }
+
     func normalizedLayoutOrder() -> [MemoryCardNode] {
         var ordered = enumerated().map { index, element in
             var node = element

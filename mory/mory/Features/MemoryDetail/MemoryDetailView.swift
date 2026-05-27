@@ -37,17 +37,18 @@ struct MemoryDetailView: View {
                         artifacts: draftEditableArtifacts,
                         cardArrangement: draftCardArrangement,
                         errorMessage: errorMessage,
-                        onDeleteArtifact: { artifactID in
+                        onDeleteArtifacts: { artifactIDs in
                             withAnimation(.snappy(duration: 0.2)) {
-                                _ = draftDeletedArtifactIDs.insert(artifactID)
+                                draftDeletedArtifactIDs.formUnion(artifactIDs)
                                 syncDraftCardArrangement()
                             }
                         },
                         onMoveArtifact: moveDraftArtifact(_:by:),
-                        onReorderArtifact: reorderDraftArtifact(_:near:),
+                        onMoveArtifactToAdjacentRow: moveDraftArtifactToAdjacentRow(_:direction:),
                         onSetArtifactSize: setDraftArtifactSize(_:size:),
                         onStackArtifactWithPrevious: stackDraftArtifactWithPrevious(_:),
-                        onUnstackArtifact: unstackDraftArtifact(_:)
+                        onUnstackArtifact: unstackDraftArtifact(_:),
+                        onAutoArrange: autoArrangeDraftCards
                     )
                 } else {
                     ScrollView {
@@ -375,20 +376,9 @@ struct MemoryDetailView: View {
     }
 
     private func moveDraftArtifact(_ id: UUID, by offset: Int) {
-        let visibleOrder = visibleDraftAttachmentIDs
-        guard let visibleIndex = visibleOrder.firstIndex(of: id) else { return }
-        let targetVisibleIndex = visibleIndex + offset
-        guard visibleOrder.indices.contains(targetVisibleIndex) else { return }
-
-        let targetID = visibleOrder[targetVisibleIndex]
-        guard let sourceIndex = draftArtifactOrder.firstIndex(of: id),
-              let targetIndex = draftArtifactOrder.firstIndex(of: targetID) else {
-            return
-        }
-
+        guard let arrangement = draftCardArrangement else { return }
         withAnimation(.snappy(duration: 0.18)) {
-            draftArtifactOrder.swapAt(sourceIndex, targetIndex)
-            syncDraftCardArrangement()
+            applyDraftCardArrangement(arrangement.movingArtifact(artifactID: id, by: offset, updatedAt: Date.now))
         }
     }
 
@@ -414,20 +404,43 @@ struct MemoryDetailView: View {
     }
 
     private func setDraftArtifactSize(_ artifactID: UUID, size: MemoryCardSizeToken) {
-        draftCardArrangement = draftCardArrangement?.settingSize(size, forArtifactID: artifactID, updatedAt: Date.now)
+        guard let arrangement = draftCardArrangement else { return }
+        applyDraftCardArrangement(arrangement.settingSize(size, forArtifactID: artifactID, updatedAt: Date.now))
     }
 
     private func stackDraftArtifactWithPrevious(_ artifactID: UUID) {
-        draftCardArrangement = draftCardArrangement?.stackingWithPrevious(artifactID: artifactID, updatedAt: Date.now)
+        guard let arrangement = draftCardArrangement else { return }
+        applyDraftCardArrangement(arrangement.stackingWithPrevious(artifactID: artifactID, updatedAt: Date.now))
     }
 
     private func unstackDraftArtifact(_ artifactID: UUID) {
         guard let snapshot else { return }
-        draftCardArrangement = draftCardArrangement?.unstackingContainingArtifactID(
+        guard let arrangement = draftCardArrangement else { return }
+        applyDraftCardArrangement(arrangement.unstackingContainingArtifactID(
             artifactID,
             artifacts: snapshot.artifacts,
             updatedAt: Date.now
-        )
+        ))
+    }
+
+    private func moveDraftArtifactToAdjacentRow(_ artifactID: UUID, direction: MemoryCardBoardRowMoveDirection) {
+        guard let arrangement = draftCardArrangement else { return }
+        withAnimation(.snappy(duration: 0.2)) {
+            applyDraftCardArrangement(
+                arrangement.movingArtifactToAdjacentBoardRow(
+                    artifactID: artifactID,
+                    direction: direction,
+                    updatedAt: Date.now
+                )
+            )
+        }
+    }
+
+    private func autoArrangeDraftCards() {
+        guard let arrangement = draftCardArrangement else { return }
+        withAnimation(.snappy(duration: 0.22)) {
+            applyDraftCardArrangement(arrangement.autoArranged(updatedAt: Date.now))
+        }
     }
 
     private func syncDraftCardArrangement() {
@@ -436,12 +449,31 @@ struct MemoryDetailView: View {
         updatedRecord.rawText = draftRawText
         updatedRecord.artifactIDs = draftArtifactOrder.filter { !draftDeletedArtifactIDs.contains($0) }
         let artifacts = snapshot.artifacts.filter { !draftDeletedArtifactIDs.contains($0.id) }
-        draftCardArrangement = arrangement.synchronized(
+        applyDraftCardArrangement(arrangement.synchronized(
             record: updatedRecord,
             artifacts: artifacts,
             artifactOrder: updatedRecord.artifactIDs,
             updatedAt: Date.now
-        )
+        ))
+    }
+
+    private func applyDraftCardArrangement(_ arrangement: MemoryCardArrangement) {
+        draftCardArrangement = arrangement
+        syncDraftArtifactOrder(with: arrangement)
+    }
+
+    private func syncDraftArtifactOrder(with arrangement: MemoryCardArrangement) {
+        let arrangedIDs = arrangement.nodes
+            .sorted { lhs, rhs in
+                if lhs.layout.order == rhs.layout.order {
+                    return lhs.id.uuidString < rhs.id.uuidString
+                }
+                return lhs.layout.order < rhs.layout.order
+            }
+            .flatMap(\.detailEditingArtifactIDs)
+        let arrangedSet = Set(arrangedIDs)
+        let remainingIDs = draftArtifactOrder.filter { !arrangedSet.contains($0) }
+        draftArtifactOrder = arrangedIDs + remainingIDs
     }
 
     private var visibleDraftAttachmentIDs: [UUID] {
@@ -464,12 +496,13 @@ private struct MemoryDetailEditingView: View {
     let artifacts: [Artifact]
     let cardArrangement: MemoryCardArrangement?
     let errorMessage: String?
-    var onDeleteArtifact: (UUID) -> Void
+    var onDeleteArtifacts: ([UUID]) -> Void
     var onMoveArtifact: (UUID, Int) -> Void
-    var onReorderArtifact: (UUID, UUID) -> Void
+    var onMoveArtifactToAdjacentRow: (UUID, MemoryCardBoardRowMoveDirection) -> Void
     var onSetArtifactSize: (UUID, MemoryCardSizeToken) -> Void
     var onStackArtifactWithPrevious: (UUID) -> Void
     var onUnstackArtifact: (UUID) -> Void
+    var onAutoArrange: () -> Void
 
     @FocusState private var isBodyFocused: Bool
 
@@ -477,7 +510,17 @@ private struct MemoryDetailEditingView: View {
         GeometryReader { proxy in
             ScrollView {
                 VStack(spacing: 0) {
-                    artifactCarousel
+                    MemoryDetailEditingBoardView(
+                        artifacts: artifacts,
+                        cardArrangement: cardArrangement,
+                        onDeleteArtifacts: onDeleteArtifacts,
+                        onMoveArtifact: onMoveArtifact,
+                        onMoveArtifactToAdjacentRow: onMoveArtifactToAdjacentRow,
+                        onSetArtifactSize: onSetArtifactSize,
+                        onStackArtifactWithPrevious: onStackArtifactWithPrevious,
+                        onUnstackArtifact: onUnstackArtifact,
+                        onAutoArrange: onAutoArrange
+                    )
 
                     supportingArtifactEditor
                         .padding(.horizontal, 20)
@@ -532,45 +575,6 @@ private struct MemoryDetailEditingView: View {
     }
 
     @ViewBuilder
-    private var artifactCarousel: some View {
-        if !artifacts.isEmpty {
-            ScrollView(.horizontal) {
-                LazyHStack(spacing: 10) {
-                    ForEach(Array(artifacts.enumerated()), id: \.element.id) { index, artifact in
-                        MemoryDetailEditingArtifactCard(
-                            artifact: artifact,
-                            arrangementNode: arrangementNode(for: artifact.id),
-                            canMoveEarlier: index > 0,
-                            canMoveLater: index < artifacts.count - 1,
-                            onDelete: { onDeleteArtifact(artifact.id) },
-                            onMoveEarlier: { onMoveArtifact(artifact.id, -1) },
-                            onMoveLater: { onMoveArtifact(artifact.id, 1) },
-                            onSetSize: { size in onSetArtifactSize(artifact.id, size) },
-                            onStackWithPrevious: { onStackArtifactWithPrevious(artifact.id) },
-                            onUnstack: { onUnstackArtifact(artifact.id) }
-                        )
-                        .draggable(artifact.id.uuidString)
-                        .dropDestination(for: String.self) { droppedIDs, _ in
-                            guard let rawID = droppedIDs.first,
-                                  let sourceID = UUID(uuidString: rawID) else {
-                                return false
-                            }
-                            onReorderArtifact(sourceID, artifact.id)
-                            return true
-                        }
-                    }
-                }
-                .scrollTargetLayout()
-            }
-            .scrollIndicators(.hidden)
-            .scrollTargetBehavior(.viewAligned)
-            .contentMargins(.horizontal, 20, for: .scrollContent)
-            .frame(height: 148)
-            .padding(.top, 4)
-        }
-    }
-
-    @ViewBuilder
     private var statusSection: some View {
         if let errorMessage {
             Text(errorMessage)
@@ -582,28 +586,162 @@ private struct MemoryDetailEditingView: View {
         }
     }
 
-    private func arrangementNode(for artifactID: UUID) -> MemoryCardNode? {
-        cardArrangement?.nodes.first { node in
-            switch node.contentRef {
-            case let .artifact(id):
-                return id == artifactID
-            case let .artifactGroup(ids, _):
-                return ids.contains(artifactID)
-            case .recordBody, .affect, .journalingSuggestion:
-                return false
+}
+
+private struct MemoryDetailEditingBoardView: View {
+    let artifacts: [Artifact]
+    let cardArrangement: MemoryCardArrangement?
+    var onDeleteArtifacts: ([UUID]) -> Void
+    var onMoveArtifact: (UUID, Int) -> Void
+    var onMoveArtifactToAdjacentRow: (UUID, MemoryCardBoardRowMoveDirection) -> Void
+    var onSetArtifactSize: (UUID, MemoryCardSizeToken) -> Void
+    var onStackArtifactWithPrevious: (UUID) -> Void
+    var onUnstackArtifact: (UUID) -> Void
+    var onAutoArrange: () -> Void
+
+    @State private var measuredContainerWidth: CGFloat = 0
+    private let metrics = MemoryDeskBoardMetrics.default
+
+    private var containerWidth: CGFloat {
+        measuredContainerWidth > 0 ? measuredContainerWidth : 390
+    }
+
+    private var boardNodes: [MemoryDetailEditingBoardNode] {
+        guard let cardArrangement else { return [] }
+        let artifactByID = Dictionary(uniqueKeysWithValues: artifacts.map { ($0.id, $0) })
+        return cardArrangement.nodes
+            .sorted { lhs, rhs in
+                if lhs.layout.order == rhs.layout.order {
+                    return lhs.id.uuidString < rhs.id.uuidString
+                }
+                return lhs.layout.order < rhs.layout.order
             }
+            .compactMap { node in
+                MemoryDetailEditingBoardNode(node: node, artifactByID: artifactByID)
+            }
+    }
+
+    private var layoutPlan: MemoryDeskBoardLayoutPlan<UUID> {
+        MemoryDeskBoardLayoutPlan.make(
+            nodes: boardNodes.map { MemoryDeskBoardInputNode(id: $0.id, layout: $0.layout) },
+            containerWidth: containerWidth,
+            metrics: metrics
+        )
+    }
+
+    private var resolvedSlots: [MemoryDetailEditingBoardSlot] {
+        let nodeByID = Dictionary(uniqueKeysWithValues: boardNodes.map { ($0.id, $0) })
+        return layoutPlan.slots.compactMap { slot in
+            guard let node = nodeByID[slot.id] else { return nil }
+            return MemoryDetailEditingBoardSlot(node: node, frame: slot.frame)
+        }
+    }
+
+    var body: some View {
+        if !boardNodes.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 10) {
+                    Text("Arrangement")
+                        .font(.headline)
+                    Spacer()
+                    Button {
+                        onAutoArrange()
+                    } label: {
+                        Label("Auto Arrange", systemImage: "wand.and.stars")
+                    }
+                    .font(.caption.weight(.semibold))
+                    .buttonStyle(.bordered)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
+
+                ZStack(alignment: .topLeading) {
+                    ForEach(resolvedSlots) { slot in
+                        MemoryDetailEditingBoardCard(
+                            node: slot.node,
+                            canMoveEarlier: canMove(slot.node, by: -1),
+                            canMoveLater: canMove(slot.node, by: 1),
+                            canMoveRowUp: canMoveRow(slot.node, direction: .up),
+                            canMoveRowDown: canMoveRow(slot.node, direction: .down),
+                            onDelete: { onDeleteArtifacts(slot.node.artifactIDs) },
+                            onMoveEarlier: { onMoveArtifact(slot.node.primaryArtifactID, -1) },
+                            onMoveLater: { onMoveArtifact(slot.node.primaryArtifactID, 1) },
+                            onMoveRowUp: { onMoveArtifactToAdjacentRow(slot.node.primaryArtifactID, .up) },
+                            onMoveRowDown: { onMoveArtifactToAdjacentRow(slot.node.primaryArtifactID, .down) },
+                            onSetSize: { size in onSetArtifactSize(slot.node.primaryArtifactID, size) },
+                            onStackWithPrevious: { onStackArtifactWithPrevious(slot.node.primaryArtifactID) },
+                            onUnstack: { onUnstackArtifact(slot.node.primaryArtifactID) }
+                        )
+                        .frame(width: slot.frame.width, height: slot.frame.height, alignment: .center)
+                        .position(
+                            x: slot.frame.midX + slot.node.layout.xNudge,
+                            y: slot.frame.midY + slot.node.layout.yNudge
+                        )
+                        .rotationEffect(.degrees(slot.node.layout.rotationDegrees))
+                        .zIndex(Double(slot.node.layout.zIndex))
+                    }
+                }
+                .frame(maxWidth: .infinity, minHeight: layoutPlan.boardHeight, maxHeight: layoutPlan.boardHeight, alignment: .topLeading)
+                .background(boardBackground)
+                .background {
+                    GeometryReader { proxy in
+                        Color.clear
+                            .onAppear {
+                                updateMeasuredWidth(proxy.size.width)
+                            }
+                            .onChange(of: proxy.size.width) { _, newWidth in
+                                updateMeasuredWidth(newWidth)
+                            }
+                    }
+                }
+            }
+        }
+    }
+
+    private var boardBackground: some View {
+        LinearGradient(
+            colors: [
+                Color(.secondarySystemBackground).opacity(0.34),
+                Color(.systemBackground).opacity(0.05)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
+    private func updateMeasuredWidth(_ width: CGFloat) {
+        guard width.isFinite, width > 0, abs(width - measuredContainerWidth) > 0.5 else { return }
+        measuredContainerWidth = width
+    }
+
+    private func canMove(_ node: MemoryDetailEditingBoardNode, by offset: Int) -> Bool {
+        guard let index = boardNodes.firstIndex(where: { $0.id == node.id }) else { return false }
+        return boardNodes.indices.contains(index + offset)
+    }
+
+    private func canMoveRow(_ node: MemoryDetailEditingBoardNode, direction: MemoryCardBoardRowMoveDirection) -> Bool {
+        guard let row = node.layout.gridPlacement?.row else { return false }
+        let rows = Set(boardNodes.compactMap { $0.layout.gridPlacement?.row })
+        switch direction {
+        case .up:
+            return rows.contains { $0 < row }
+        case .down:
+            return rows.contains { $0 > row }
         }
     }
 }
 
-private struct MemoryDetailEditingArtifactCard: View {
-    let artifact: Artifact
-    let arrangementNode: MemoryCardNode?
+private struct MemoryDetailEditingBoardCard: View {
+    let node: MemoryDetailEditingBoardNode
     let canMoveEarlier: Bool
     let canMoveLater: Bool
+    let canMoveRowUp: Bool
+    let canMoveRowDown: Bool
     var onDelete: () -> Void
     var onMoveEarlier: () -> Void
     var onMoveLater: () -> Void
+    var onMoveRowUp: () -> Void
+    var onMoveRowDown: () -> Void
     var onSetSize: (MemoryCardSizeToken) -> Void
     var onStackWithPrevious: () -> Void
     var onUnstack: () -> Void
@@ -611,10 +749,13 @@ private struct MemoryDetailEditingArtifactCard: View {
     var body: some View {
         ZStack(alignment: .topTrailing) {
             CaptureCardView(
-                presentation: .detailEditing(
-                    artifact,
-                    visualRecipe: arrangementNode?.visualRecipe,
-                    sizeToken: arrangementNode?.layout.size ?? MemoryCardArrangement.defaultSize(for: artifact)
+                presentation: CaptureCardPresentation(
+                    item: node.item,
+                    role: .detailEditing,
+                    provenanceDisplayMode: .production,
+                    surfaceMode: .skeuomorphic,
+                    visualRecipe: node.visualRecipe,
+                    sizeToken: node.layout.size
                 )
             )
 
@@ -632,6 +773,22 @@ private struct MemoryDetailEditingArtifactCard: View {
                     Label("memory.edit.moveAttachmentDown", systemImage: "arrow.down")
                 }
                 .disabled(!canMoveLater)
+
+                Divider()
+
+                Button {
+                    onMoveRowUp()
+                } label: {
+                    Label("Move Up Row", systemImage: "arrow.up.to.line.compact")
+                }
+                .disabled(!canMoveRowUp)
+
+                Button {
+                    onMoveRowDown()
+                } label: {
+                    Label("Move Down Row", systemImage: "arrow.down.to.line.compact")
+                }
+                .disabled(!canMoveRowDown)
 
                 Divider()
 
@@ -676,14 +833,85 @@ private struct MemoryDetailEditingArtifactCard: View {
     }
 
     private var supportedSizes: [MemoryCardSizeToken] {
-        let recipe = arrangementNode?.visualRecipe ?? MemoryCardArrangement.defaultVisualRecipe(for: artifact)
-        return MemoryCardRecipeLayoutPolicy.supportedSizes(for: recipe)
+        MemoryCardRecipeLayoutPolicy.supportedSizes(for: node.visualRecipe)
+    }
+}
+
+private struct MemoryDetailEditingBoardNode: Identifiable {
+    let id: UUID
+    let artifactIDs: [UUID]
+    let item: CaptureCardItem
+    let visualRecipe: MemoryCardVisualRecipe
+    let layout: MemoryCardLayoutToken
+
+    var primaryArtifactID: UUID {
+        artifactIDs[0]
+    }
+
+    init?(node: MemoryCardNode, artifactByID: [UUID: Artifact]) {
+        let artifacts: [Artifact]
+        switch node.contentRef {
+        case let .artifact(id):
+            guard let artifact = artifactByID[id] else { return nil }
+            artifacts = [artifact]
+        case let .artifactGroup(ids, _):
+            artifacts = ids.compactMap { artifactByID[$0] }
+            guard !artifacts.isEmpty else { return nil }
+        case .recordBody, .affect, .journalingSuggestion:
+            return nil
+        }
+
+        self.id = node.id
+        self.artifactIDs = artifacts.map(\.id)
+        self.item = artifacts.count == 1
+            ? CaptureCardItem(artifact: artifacts[0])
+            : Self.groupItem(nodeID: node.id, artifacts: artifacts)
+        self.visualRecipe = node.visualRecipe
+        self.layout = node.layout
+    }
+
+    private static func groupItem(nodeID: UUID, artifacts: [Artifact]) -> CaptureCardItem {
+        let thumbnail = artifacts.compactMap { $0.previewPayload ?? $0.binaryPayload }.first
+        return CaptureCardItem(
+            id: "edit-group-\(nodeID.uuidString)",
+            payload: .photo(CapturePhotoCardPayload(thumbnailData: thumbnail, photoCount: artifacts.count, groupStyle: .stack)),
+            origin: artifacts.first?.captureProvenance?.artifactOrigin,
+            provenance: artifacts.first?.captureProvenance,
+            title: "Stack",
+            detail: artifacts.map(\.title).compactMap(\.trimmedOrNil).prefix(3).joined(separator: " · "),
+            metadata: "\(artifacts.count)"
+        )
+    }
+}
+
+private struct MemoryDetailEditingBoardSlot: Identifiable {
+    let id: UUID
+    let node: MemoryDetailEditingBoardNode
+    let frame: CGRect
+
+    init(node: MemoryDetailEditingBoardNode, frame: CGRect) {
+        self.id = node.id
+        self.node = node
+        self.frame = frame
     }
 }
 
 private extension Artifact {
     var isVisibleMemoryDetailAttachment: Bool {
         kind != .text
+    }
+}
+
+private extension MemoryCardNode {
+    var detailEditingArtifactIDs: [UUID] {
+        switch contentRef {
+        case let .artifact(id):
+            return [id]
+        case let .artifactGroup(ids, _):
+            return ids
+        case .recordBody, .affect, .journalingSuggestion:
+            return []
+        }
     }
 }
 

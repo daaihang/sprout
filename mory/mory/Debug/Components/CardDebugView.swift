@@ -155,13 +155,26 @@ private struct CardDebugTypeDetailView: View {
 
     var body: some View {
         List {
-            Section("Rendered Object") {
-                HStack {
-                    Spacer()
-                    CaptureCardView(presentation: presentation)
-                    Spacer()
+            Section("Rendered Sizes") {
+                ForEach(entry.fixture.supportedSizes) { size in
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Spacer()
+                            CaptureCardView(presentation: presentation(size: size))
+                            Spacer()
+                        }
+                        let box = MemoryCardRecipeLayoutPolicy.gridBox(for: size)
+                        let metrics = MemoryCardObjectMetrics.resolve(
+                            recipe: entry.fixture.recipe,
+                            sizeToken: size
+                        )
+                        Text("\(size.rawValue) · grid \(box.columnSpan)x\(box.rowSpan) · object \(Int(metrics.preferredSize.width))x\(Int(metrics.preferredSize.height)) · density \(metrics.density.rawValue)")
+                            .font(.caption.monospaced())
+                            .foregroundStyle(.secondary)
+                            .textSelection(.enabled)
+                    }
+                    .padding(.vertical, 12)
                 }
-                .padding(.vertical, 12)
             }
 
             Section("Four-layer Path") {
@@ -191,20 +204,26 @@ private struct CardDebugTypeDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    private var presentation: CaptureCardPresentation {
+    private func presentation(size: MemoryCardSizeToken) -> CaptureCardPresentation {
         CaptureCardPresentation(
             item: entry.fixture.item,
             role: .debugLab,
             provenanceDisplayMode: .debug,
             surfaceMode: .skeuomorphic,
             visualRecipe: entry.fixture.recipe,
-            sizeToken: entry.fixture.preferredSize
+            sizeToken: size
         )
     }
 }
 
 private struct CardDebugArrangementPlaygroundView: View {
     private let snapshot = CardDebugCatalog.arrangementPlaygroundSnapshot()
+    private var nodes: [MemoryCardNode] {
+        MemoryDeskRenderPlan.nodes(for: snapshot)
+    }
+    private var report: CardDebugArrangementReport {
+        CardDebugArrangementReport.make(nodes: nodes)
+    }
 
     var body: some View {
         ScrollView {
@@ -218,11 +237,20 @@ private struct CardDebugArrangementPlaygroundView: View {
                 MemoryDeskRenderer(snapshot: snapshot)
 
                 VStack(alignment: .leading, spacing: 8) {
-                    let boardPlan = MemoryDeskBoardLayoutPlan.make(
-                        nodes: MemoryDeskRenderPlan.nodes(for: snapshot).map { MemoryDeskBoardInputNode(id: $0.id, layout: $0.layout) },
-                        containerWidth: 390
-                    )
-                    ForEach(boardPlan.slots) { slot in
+                    Text("Occupancy")
+                        .font(.headline)
+                    DebugValueRow(title: "Rows", value: "\(report.rowCount)")
+                    DebugValueRow(title: "Cells", value: "\(report.occupiedCells)/\(report.totalCells)")
+                    DebugValueRow(title: "Density", value: report.densityLabel)
+                    DebugValueRow(title: "Overlaps", value: "\(report.overlapCount)")
+                    DebugValueRow(title: "Overflowing objects", value: "\(report.slots.filter(\.hasOverflow).count)")
+                }
+                .padding(.horizontal, 20)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Slots")
+                        .font(.headline)
+                    ForEach(report.slots) { slot in
                         Text(slot.debugLine)
                             .font(.caption.monospaced())
                             .foregroundStyle(.secondary)
@@ -243,7 +271,8 @@ private struct CardDebugVisualRecipesView: View {
         List {
             ForEach(CardDebugCatalog.recipeFixtures) { fixture in
                 Section {
-                    ForEach(fixture.supportedSizes) { size in
+                    ForEach(CardDebugCatalog.recipeSizeFixtures.filter { $0.fixture.recipe == fixture.recipe }) { recipeSizeFixture in
+                        let size = recipeSizeFixture.size
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
                                 Spacer()
@@ -260,7 +289,7 @@ private struct CardDebugVisualRecipesView: View {
                                 Spacer()
                             }
                             let box = MemoryCardRecipeLayoutPolicy.gridBox(for: size)
-                            let metrics = MemoryCardObjectMetrics.resolve(recipe: fixture.recipe, sizeToken: size)
+                            let metrics = recipeSizeFixture.metrics
                             Text("\(size.rawValue) · grid \(box.columnSpan)x\(box.rowSpan) · object \(Int(metrics.preferredSize.width))x\(Int(metrics.preferredSize.height)) · lines \(metrics.titleLineLimit)/\(metrics.detailLineLimit)/\(metrics.metadataLineLimit)")
                                 .font(.caption.monospaced())
                                 .foregroundStyle(.secondary)

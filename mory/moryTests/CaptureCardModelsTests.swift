@@ -616,6 +616,23 @@ final class CaptureCardModelsTests: XCTestCase {
         }
     }
 
+    func testCardDebugArrangementReportCoversOccupancyPlacementAndOverflowState() {
+        let snapshot = CardDebugCatalog.arrangementPlaygroundSnapshot()
+        let nodes = MemoryDeskRenderPlan.nodes(for: snapshot)
+        let report = CardDebugArrangementReport.make(nodes: nodes)
+
+        XCTAssertEqual(report.slots.count, nodes.count)
+        XCTAssertGreaterThan(report.rowCount, 0)
+        XCTAssertGreaterThan(report.occupiedCells, 0)
+        XCTAssertGreaterThan(report.totalCells, 0)
+        XCTAssertGreaterThanOrEqual(report.density, 0)
+        XCTAssertLessThanOrEqual(report.density, 1)
+        XCTAssertEqual(report.overlapCount, 0)
+        XCTAssertTrue(report.slots.allSatisfy { $0.placement != nil })
+        XCTAssertTrue(report.slots.allSatisfy { $0.frame.width > 0 && $0.frame.height > 0 })
+        XCTAssertTrue(report.slots.allSatisfy { !$0.debugLine.isEmpty })
+    }
+
     func testOriginFixturesKeepKindStableAcrossAllOrigins() {
         let origins = Set(CaptureCardLabFixtures.origins.compactMap(\.origin))
         let kinds = Set(CaptureCardLabFixtures.origins.map(\.kind))
