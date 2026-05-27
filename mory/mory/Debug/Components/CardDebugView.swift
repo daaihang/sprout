@@ -31,6 +31,16 @@ struct CardDebugView: View {
                 }
 
                 NavigationLink {
+                    CardDebugLayoutPolicyView()
+                } label: {
+                    DebugMenuRow(
+                        icon: "square.grid.3x3",
+                        title: "Layout Policy",
+                        subtitle: "Inspect 6-column grid tokens, supported recipe sizes, and cassette strip/tape/banner fixtures"
+                    )
+                }
+
+                NavigationLink {
                     CardDebugVisualRecipesView()
                 } label: {
                     DebugMenuRow(
@@ -123,10 +133,11 @@ private struct CardDebugTypeCatalogView: View {
                     NavigationLink {
                         CardDebugTypeDetailView(entry: entry)
                     } label: {
+                        let supported = entry.fixture.supportedSizes.map(\.rawValue).joined(separator: ", ")
                         DebugMenuRow(
                             icon: entry.fixture.recipe.symbolName,
                             title: entry.contentType,
-                            subtitle: "recipe=\(entry.fixture.recipe.rawValue) · size=\(entry.fixture.preferredSize.rawValue)"
+                            subtitle: "recipe=\(entry.fixture.recipe.rawValue) · default=\(entry.fixture.preferredSize.rawValue) · supported=\(supported)"
                         )
                     }
                 }
@@ -178,7 +189,8 @@ private struct CardDebugTypeDetailView: View {
             role: .debugLab,
             provenanceDisplayMode: .debug,
             surfaceMode: .skeuomorphic,
-            visualRecipe: entry.fixture.recipe
+            visualRecipe: entry.fixture.recipe,
+            sizeToken: entry.fixture.preferredSize
         )
     }
 }
@@ -198,8 +210,12 @@ private struct CardDebugArrangementPlaygroundView: View {
                 MemoryDeskRenderer(snapshot: snapshot)
 
                 VStack(alignment: .leading, spacing: 8) {
-                    ForEach(MemoryDeskRenderPlan.nodes(for: snapshot)) { node in
-                        Text(node.debugLine)
+                    let boardPlan = MemoryDeskBoardLayoutPlan.make(
+                        nodes: MemoryDeskRenderPlan.nodes(for: snapshot).map { MemoryDeskBoardInputNode(id: $0.id, layout: $0.layout) },
+                        containerWidth: 390
+                    )
+                    ForEach(boardPlan.slots) { slot in
+                        Text(slot.debugLine)
                             .font(.caption.monospaced())
                             .foregroundStyle(.secondary)
                             .textSelection(.enabled)
@@ -227,7 +243,8 @@ private struct CardDebugVisualRecipesView: View {
                                 role: .debugLab,
                                 provenanceDisplayMode: .debug,
                                 surfaceMode: .skeuomorphic,
-                                visualRecipe: fixture.recipe
+                                visualRecipe: fixture.recipe,
+                                sizeToken: fixture.preferredSize
                             )
                         )
                         Spacer()
@@ -236,6 +253,7 @@ private struct CardDebugVisualRecipesView: View {
 
                     DebugValueRow(title: "Recipe", value: fixture.recipe.rawValue)
                     DebugValueRow(title: "Preferred size", value: fixture.preferredSize.rawValue)
+                    DebugValueRow(title: "Supported sizes", value: fixture.supportedSizes.map(\.rawValue).joined(separator: ", "))
                     DebugValueRow(title: "Kind", value: fixture.item.kind.rawValue)
                 } header: {
                     Text(fixture.recipe.rawValue)
@@ -243,6 +261,60 @@ private struct CardDebugVisualRecipesView: View {
             }
         }
         .navigationTitle("Visual Recipes")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct CardDebugLayoutPolicyView: View {
+    private let cassetteFixture = CardDebugCatalog.fixture(for: .cassette)
+
+    var body: some View {
+        List {
+            Section("Grid Tokens") {
+                ForEach(MemoryCardSizeToken.allCases) { size in
+                    let box = MemoryCardRecipeLayoutPolicy.gridBox(for: size)
+                    DebugValueRow(
+                        title: size.rawValue,
+                        value: "\(box.columnSpan)x\(box.rowSpan) · \(MemoryCardRecipeLayoutPolicy.contentDensity(for: size).rawValue)"
+                    )
+                }
+            }
+
+            Section("Recipe Support") {
+                ForEach(MemoryCardVisualRecipe.allCases) { recipe in
+                    DebugValueRow(
+                        title: recipe.rawValue,
+                        value: MemoryCardRecipeLayoutPolicy.supportedSizes(for: recipe).map(\.rawValue).joined(separator: ", ")
+                    )
+                }
+            }
+
+            Section("Cassette Fixtures") {
+                ForEach(cassetteFixture.supportedSizes) { size in
+                    HStack {
+                        Spacer()
+                        CaptureCardView(
+                            presentation: CaptureCardPresentation(
+                                item: cassetteFixture.item,
+                                role: .debugLab,
+                                provenanceDisplayMode: .debug,
+                                surfaceMode: .skeuomorphic,
+                                visualRecipe: .cassette,
+                                sizeToken: size
+                            )
+                        )
+                        Spacer()
+                    }
+                    .padding(.vertical, 10)
+                    .overlay(alignment: .topLeading) {
+                        Text(size.rawValue)
+                            .font(.caption.monospaced())
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
+        .navigationTitle("Layout Policy")
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -284,7 +356,15 @@ private extension MemoryCardVisualRecipe {
 
 private extension MemoryCardNode {
     var debugLine: String {
-        "order=\(layout.order) size=\(layout.size.rawValue) recipe=\(visualRecipe.rawValue) z=\(layout.zIndex) ref=\(contentRef.debugLabel)"
+        let placement = layout.gridPlacement.map { "c\($0.column)r\($0.row)" } ?? "nil"
+        return "order=\(layout.order) size=\(layout.size.rawValue) grid=\(placement) recipe=\(visualRecipe.rawValue) z=\(layout.zIndex) ref=\(contentRef.debugLabel)"
+    }
+}
+
+private extension MemoryDeskBoardLayoutSlot {
+    var debugLine: String {
+        let placement = layout.gridPlacement.map { "c\($0.column)r\($0.row)" } ?? "nil"
+        return "order=\(layout.order) size=\(layout.size.rawValue) grid=\(placement) frame=(\(Int(frame.origin.x)),\(Int(frame.origin.y))) \(Int(frame.width))x\(Int(frame.height))"
     }
 }
 

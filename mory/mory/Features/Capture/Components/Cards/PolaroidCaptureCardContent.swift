@@ -4,17 +4,19 @@ import UIKit
 struct PolaroidCaptureCardContent: View {
     let common: CaptureCardCommonDisplay
     let payload: CapturePhotoCardPayload
+    var sizeToken: MemoryCardSizeToken = .square
+    var density: MemoryCardContentDensity = .regular
 
     var body: some View {
         VStack(spacing: 0) {
             photoArea
-                .frame(width: 148, height: 148)
+                .frame(width: photoLength, height: photoLength)
                 .clipped()
 
             bottomLabel
-                .frame(width: 148, height: 44)
+                .frame(width: photoLength, height: labelHeight)
         }
-        .padding(EdgeInsets(top: 10, leading: 10, bottom: 4, trailing: 10))
+        .padding(EdgeInsets(top: paperInset, leading: paperInset, bottom: 4, trailing: paperInset))
         .background(paperColor)
         .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
         .shadow(color: .black.opacity(0.12), radius: 1, y: 1)
@@ -43,9 +45,9 @@ struct PolaroidCaptureCardContent: View {
             if let title = common.title?.trimmedOrNil {
                 Text(title)
                     .font(.system(size: 11, design: .serif))
-                    .lineLimit(1)
+                    .lineLimit(density == .expanded ? 2 : 1)
             }
-            if let metadata = common.metadata?.trimmedOrNil {
+            if density != .compact, let metadata = common.metadata?.trimmedOrNil {
                 Text(metadata)
                     .font(.system(size: 9, design: .serif))
                     .foregroundStyle(.secondary)
@@ -61,6 +63,25 @@ struct PolaroidCaptureCardContent: View {
 
     private var paperColor: Color {
         colorScheme == .dark ? Color(white: 0.88) : .white
+    }
+
+    private var photoLength: CGFloat {
+        switch density {
+        case .compact:
+            return 124
+        case .regular:
+            return 148
+        case .expanded:
+            return 214
+        }
+    }
+
+    private var labelHeight: CGFloat {
+        density == .expanded ? 58 : 44
+    }
+
+    private var paperInset: CGFloat {
+        density == .expanded ? 12 : 10
     }
 
     private var tiltAngle: Double {

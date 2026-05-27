@@ -151,7 +151,9 @@ struct UnifiedCaptureComposerView: View {
                             onReorderStagedArtifact: reorderStagedArtifact(from:to:),
                             onSetSize: setArrangementSize(for:size:),
                             onStackWithPrevious: stackArrangementNodeWithPrevious(item:),
-                            onUnstack: unstackArrangementNode(item:)
+                            onUnstack: unstackArrangementNode(item:),
+                            presentationForItem: presentationForAttachmentItem(_:),
+                            supportedSizesForItem: supportedSizesForAttachmentItem(_:)
                         )
 
                         CaptureBodyEditorView(
@@ -494,6 +496,51 @@ struct UnifiedCaptureComposerView: View {
     }
 
     @MainActor
+    private func presentationForAttachmentItem(_ item: CaptureComposerAttachmentItem) -> CaptureCardPresentation {
+        guard let node = arrangementNode(for: item) else {
+            if let fallbackRecipe = fallbackRecipe(for: item) {
+                return .composerAttachment(
+                    item,
+                    visualRecipe: fallbackRecipe,
+                    sizeToken: MemoryCardRecipeLayoutPolicy.defaultSize(for: fallbackRecipe)
+                )
+            }
+            return .composerAttachment(item)
+        }
+        return .composerAttachment(
+            item,
+            visualRecipe: node.visualRecipe,
+            sizeToken: node.layout.size
+        )
+    }
+
+    @MainActor
+    private func supportedSizesForAttachmentItem(_ item: CaptureComposerAttachmentItem) -> [MemoryCardSizeToken] {
+        guard let node = arrangementNode(for: item) else {
+            if let fallbackRecipe = fallbackRecipe(for: item) {
+                return MemoryCardRecipeLayoutPolicy.supportedSizes(for: fallbackRecipe)
+            }
+            return MemoryCardRecipeLayoutPolicy.supportedSizes(for: .statusNote)
+        }
+        return MemoryCardRecipeLayoutPolicy.supportedSizes(for: node.visualRecipe)
+    }
+
+    @MainActor
+    private func arrangementNode(for item: CaptureComposerAttachmentItem) -> MemoryCardDraftNode? {
+        guard let draftID = arrangementDraftID(for: item) else { return nil }
+        return cardArrangementDraft.nodes.first { node in
+            switch node.contentRef {
+            case let .artifactDraft(id):
+                return id == draftID
+            case let .artifactDraftGroup(ids, _):
+                return ids.contains(draftID)
+            case .recordBody, .affectDraft, .journalingSuggestion:
+                return false
+            }
+        }
+    }
+
+    @MainActor
     private func stackArrangementNodeWithPrevious(item: CaptureComposerAttachmentItem) {
         guard let draftID = arrangementDraftID(for: item) else { return }
         cardArrangementDraft.toggleStackWithPrevious(draftID: draftID)
@@ -520,6 +567,39 @@ struct UnifiedCaptureComposerView: View {
             }?.draftID
         case .affect, .processing:
             return nil
+        }
+    }
+
+    private func fallbackRecipe(for item: CaptureComposerAttachmentItem) -> MemoryCardVisualRecipe? {
+        switch item.card.payload {
+        case .photo:
+            return .polaroid
+        case .video:
+            return .filmFrame
+        case .livePhoto:
+            return .livePhotoPrint
+        case .audio:
+            return .cassette
+        case .music:
+            return .vinyl
+        case .link:
+            return .linkNote
+        case .place:
+            return .mapTicket
+        case .weather:
+            return .weatherStamp
+        case .todo:
+            return .taskNote
+        case .prompt:
+            return .notebook
+        case .person:
+            return .personCard
+        case .affect:
+            return .affectCard
+        case .journalingSuggestion:
+            return .bundlePacket
+        case .status:
+            return .statusNote
         }
     }
 

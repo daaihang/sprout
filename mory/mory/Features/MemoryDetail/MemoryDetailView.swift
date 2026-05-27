@@ -35,6 +35,7 @@ struct MemoryDetailView: View {
                         newArtifactURL: $draftNewArtifactURL,
                         newArtifactText: $draftNewArtifactText,
                         artifacts: draftEditableArtifacts,
+                        cardArrangement: draftCardArrangement,
                         errorMessage: errorMessage,
                         onDeleteArtifact: { artifactID in
                             withAnimation(.snappy(duration: 0.2)) {
@@ -461,6 +462,7 @@ private struct MemoryDetailEditingView: View {
     @Binding var newArtifactText: String
 
     let artifacts: [Artifact]
+    let cardArrangement: MemoryCardArrangement?
     let errorMessage: String?
     var onDeleteArtifact: (UUID) -> Void
     var onMoveArtifact: (UUID, Int) -> Void
@@ -537,6 +539,7 @@ private struct MemoryDetailEditingView: View {
                     ForEach(Array(artifacts.enumerated()), id: \.element.id) { index, artifact in
                         MemoryDetailEditingArtifactCard(
                             artifact: artifact,
+                            arrangementNode: arrangementNode(for: artifact.id),
                             canMoveEarlier: index > 0,
                             canMoveLater: index < artifacts.count - 1,
                             onDelete: { onDeleteArtifact(artifact.id) },
@@ -578,10 +581,24 @@ private struct MemoryDetailEditingView: View {
                 .background(Color.red.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
     }
+
+    private func arrangementNode(for artifactID: UUID) -> MemoryCardNode? {
+        cardArrangement?.nodes.first { node in
+            switch node.contentRef {
+            case let .artifact(id):
+                return id == artifactID
+            case let .artifactGroup(ids, _):
+                return ids.contains(artifactID)
+            case .recordBody, .affect, .journalingSuggestion:
+                return false
+            }
+        }
+    }
 }
 
 private struct MemoryDetailEditingArtifactCard: View {
     let artifact: Artifact
+    let arrangementNode: MemoryCardNode?
     let canMoveEarlier: Bool
     let canMoveLater: Bool
     var onDelete: () -> Void
@@ -593,7 +610,13 @@ private struct MemoryDetailEditingArtifactCard: View {
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            CaptureCardView(presentation: .detailEditing(artifact))
+            CaptureCardView(
+                presentation: .detailEditing(
+                    artifact,
+                    visualRecipe: arrangementNode?.visualRecipe,
+                    sizeToken: arrangementNode?.layout.size ?? MemoryCardArrangement.defaultSize(for: artifact)
+                )
+            )
 
             Menu {
                 Button {
@@ -613,7 +636,7 @@ private struct MemoryDetailEditingArtifactCard: View {
                 Divider()
 
                 Menu("memory.arrangement.size") {
-                    ForEach(MemoryCardSizeToken.allCases) { size in
+                    ForEach(supportedSizes) { size in
                         Button(size.rawValue) {
                             onSetSize(size)
                         }
@@ -650,6 +673,11 @@ private struct MemoryDetailEditingArtifactCard: View {
             .buttonStyle(.plain)
             .accessibilityLabel("common.more")
         }
+    }
+
+    private var supportedSizes: [MemoryCardSizeToken] {
+        let recipe = arrangementNode?.visualRecipe ?? MemoryCardArrangement.defaultVisualRecipe(for: artifact)
+        return MemoryCardRecipeLayoutPolicy.supportedSizes(for: recipe)
     }
 }
 

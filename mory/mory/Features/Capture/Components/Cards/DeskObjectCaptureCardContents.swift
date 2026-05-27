@@ -114,12 +114,14 @@ struct WeatherStampCaptureCardContent: View {
     let common: CaptureCardCommonDisplay
     let payload: CaptureWeatherCardPayload
     let accent: Color
+    var sizeToken: MemoryCardSizeToken = .stamp
+    var density: MemoryCardContentDensity = .compact
 
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
             HStack(alignment: .top, spacing: 8) {
                 Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.weather"))
-                    .font(.system(size: 33, weight: .black, design: .rounded))
+                    .font(.system(size: density == .compact ? 29 : 33, weight: .black, design: .rounded))
                     .foregroundStyle(stampInk)
                     .lineLimit(1)
                     .minimumScaleFactor(0.68)
@@ -134,21 +136,23 @@ struct WeatherStampCaptureCardContent: View {
             Text(common.detail)
                 .font(.system(size: 12, weight: .semibold, design: .rounded))
                 .foregroundStyle(stampInk.opacity(0.78))
-                .lineLimit(2)
+                .lineLimit(density == .compact ? 1 : 2)
 
-            HStack(spacing: 5) {
-                ForEach(metricTokens, id: \.self) { token in
-                    Text(token)
-                        .font(.system(size: 8, weight: .bold, design: .monospaced))
-                        .foregroundStyle(stampInk.opacity(0.75))
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 3)
-                        .background(stampInk.opacity(0.08), in: Capsule())
+            if density != .compact {
+                HStack(spacing: 5) {
+                    ForEach(metricTokens, id: \.self) { token in
+                        Text(token)
+                            .font(.system(size: 8, weight: .bold, design: .monospaced))
+                            .foregroundStyle(stampInk.opacity(0.75))
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 3)
+                            .background(stampInk.opacity(0.08), in: Capsule())
+                    }
                 }
             }
         }
         .padding(13)
-        .frame(width: 178, height: 132, alignment: .leading)
+        .frame(width: density == .compact ? 132 : 178, height: density == .compact ? 116 : 132, alignment: .leading)
         .background(stampPaper, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
@@ -197,6 +201,8 @@ struct LinkNoteCaptureCardContent: View {
     let common: CaptureCardCommonDisplay
     let payload: CaptureLinkCardPayload
     let accent: Color
+    var sizeToken: MemoryCardSizeToken = .card
+    var density: MemoryCardContentDensity = .regular
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -217,7 +223,7 @@ struct LinkNoteCaptureCardContent: View {
             Text(common.detail)
                 .font(.system(size: 10, weight: .medium, design: .rounded))
                 .foregroundStyle(Color(white: 0.38))
-                .lineLimit(3)
+                .lineLimit(density == .expanded ? 5 : 3)
 
             Spacer(minLength: 0)
 
@@ -230,7 +236,7 @@ struct LinkNoteCaptureCardContent: View {
                 .background(Color.white.opacity(0.62), in: RoundedRectangle(cornerRadius: 4, style: .continuous))
         }
         .padding(13)
-        .frame(width: 214, height: 148, alignment: .leading)
+        .frame(width: density == .expanded ? 294 : 214, height: density == .expanded ? 178 : 148, alignment: .leading)
         .background(notePaper, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
         .overlay(alignment: .top) {
             Rectangle()

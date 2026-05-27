@@ -153,11 +153,13 @@ struct MoodSwatchCaptureCardContent: View {
     let common: CaptureCardCommonDisplay
     let payload: CaptureAffectCardPayload?
     let accent: Color
+    var sizeToken: MemoryCardSizeToken = .stamp
+    var density: MemoryCardContentDensity = .compact
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             swatch
-                .frame(height: 54)
+                .frame(height: density == .compact ? 42 : 54)
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.affect"))
@@ -168,10 +170,10 @@ struct MoodSwatchCaptureCardContent: View {
             Text(common.detail)
                 .font(.system(size: 10, weight: .medium, design: .rounded))
                 .foregroundStyle(Color(white: 0.4))
-                .lineLimit(2)
+                .lineLimit(density == .compact ? 1 : 2)
         }
         .padding(12)
-        .frame(width: 154, height: 132, alignment: .leading)
+        .frame(width: density == .compact ? 120 : 154, height: density == .compact ? 112 : 132, alignment: .leading)
         .background(Color(red: 0.96, green: 0.96, blue: 0.92), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 8, style: .continuous)

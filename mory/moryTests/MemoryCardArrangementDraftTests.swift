@@ -36,11 +36,11 @@ final class MemoryCardArrangementDraftTests: XCTestCase {
             return (id, node)
         })
         XCTAssertEqual(nodesByDraftID[photoID]?.visualRecipe, .polaroid)
-        XCTAssertEqual(nodesByDraftID[photoID]?.layout.size, .hero)
+        XCTAssertEqual(nodesByDraftID[photoID]?.layout.size, .square)
         XCTAssertEqual(nodesByDraftID[videoID]?.visualRecipe, .filmFrame)
-        XCTAssertEqual(nodesByDraftID[videoID]?.layout.size, .hero)
+        XCTAssertEqual(nodesByDraftID[videoID]?.layout.size, .tape)
         XCTAssertEqual(nodesByDraftID[audioID]?.visualRecipe, .cassette)
-        XCTAssertEqual(nodesByDraftID[audioID]?.layout.size, .wide)
+        XCTAssertEqual(nodesByDraftID[audioID]?.layout.size, .tape)
     }
 
     func testRemovingDraftFromGroupRestoresRemainingContentRecipe() {
@@ -68,7 +68,7 @@ final class MemoryCardArrangementDraftTests: XCTestCase {
         XCTAssertEqual(arrangement.nodes.count, 1)
         XCTAssertEqual(node?.contentRef, .artifactDraft(videoID))
         XCTAssertEqual(node?.visualRecipe, .filmFrame)
-        XCTAssertEqual(node?.layout.size, .hero)
+        XCTAssertEqual(node?.layout.size, .tape)
     }
 
     func testSyncRestoresSingleRemainingGroupRecipeFromCurrentDrafts() {
@@ -84,7 +84,7 @@ final class MemoryCardArrangementDraftTests: XCTestCase {
             MemoryCardDraftNode(
                 contentRef: .artifactDraftGroup([musicID, linkID], kind: .mediaStack),
                 visualRecipe: .bundlePacket,
-                layout: MemoryCardLayoutToken(order: 0, size: .stack)
+                layout: MemoryCardLayoutToken(order: 0, size: .card)
             )
         ])
 
@@ -94,7 +94,7 @@ final class MemoryCardArrangementDraftTests: XCTestCase {
         XCTAssertEqual(arrangement.nodes.count, 1)
         XCTAssertEqual(node?.contentRef, .artifactDraft(linkID))
         XCTAssertEqual(node?.visualRecipe, .linkNote)
-        XCTAssertEqual(node?.layout.size, .medium)
+        XCTAssertEqual(node?.layout.size, .card)
     }
 
     func testPersistedArrangementSyncRestoresRemainingGroupArtifactRecipe() {
@@ -126,7 +126,7 @@ final class MemoryCardArrangementDraftTests: XCTestCase {
                 MemoryCardNode(
                     contentRef: .artifactGroup([photoID, videoID], kind: .mediaStack),
                     visualRecipe: .bundlePacket,
-                    layout: MemoryCardLayoutToken(order: 0, size: .stack)
+                    layout: MemoryCardLayoutToken(order: 0, size: .card)
                 )
             ],
             createdAt: now,
@@ -151,6 +151,6 @@ final class MemoryCardArrangementDraftTests: XCTestCase {
             return false
         }
         XCTAssertEqual(videoNode?.visualRecipe, .filmFrame)
-        XCTAssertEqual(videoNode?.layout.size, .hero)
+        XCTAssertEqual(videoNode?.layout.size, .tape)
     }
 }

@@ -10,6 +10,12 @@ struct CaptureAttachmentCarouselView: View {
     var onSetSize: (CaptureComposerAttachmentItem, MemoryCardSizeToken) -> Void = { _, _ in }
     var onStackWithPrevious: (CaptureComposerAttachmentItem) -> Void = { _ in }
     var onUnstack: (CaptureComposerAttachmentItem) -> Void = { _ in }
+    var presentationForItem: (CaptureComposerAttachmentItem) -> CaptureCardPresentation = {
+        .composerAttachment($0)
+    }
+    var supportedSizesForItem: (CaptureComposerAttachmentItem) -> [MemoryCardSizeToken] = { _ in
+        MemoryCardSizeToken.allCases
+    }
 
     var body: some View {
         if !items.isEmpty {
@@ -17,7 +23,7 @@ struct CaptureAttachmentCarouselView: View {
                 LazyHStack(spacing: 10) {
                     ForEach(items) { item in
                         CaptureCardView(
-                            presentation: .composerAttachment(item),
+                            presentation: presentationForItem(item),
                             onRemove: { remove(item) }
                         )
                         .scrollTransition(.animated, axis: .horizontal) { content, phase in
@@ -40,7 +46,7 @@ struct CaptureAttachmentCarouselView: View {
                         .contextMenu {
                             if item.supportsArrangementEditing {
                                 Menu("memory.arrangement.size") {
-                                    ForEach(MemoryCardSizeToken.allCases) { size in
+                                    ForEach(supportedSizesForItem(item)) { size in
                                         Button(size.rawValue) {
                                             onSetSize(item, size)
                                         }

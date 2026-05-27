@@ -2,6 +2,8 @@ import SwiftUI
 
 struct MemoryDeskRenderer: View {
     let snapshot: MemoryDetailSnapshot
+    @State private var measuredContainerWidth: CGFloat = 0
+    private let metrics = MemoryDeskBoardMetrics.default
 
     private var resolvedNodes: [ResolvedMemoryDeskNode] {
         MemoryDeskRenderPlan.nodes(for: snapshot).compactMap(resolveNode(_:)).sorted { lhs, rhs in
@@ -12,16 +14,52 @@ struct MemoryDeskRenderer: View {
         }
     }
 
+    private var containerWidth: CGFloat {
+        measuredContainerWidth > 0 ? measuredContainerWidth : UIScreen.main.bounds.width
+    }
+
+    private var layoutPlan: MemoryDeskBoardLayoutPlan {
+        MemoryDeskBoardLayoutPlan.make(
+            nodes: resolvedNodes.map { MemoryDeskBoardInputNode(id: $0.id, layout: $0.layout) },
+            containerWidth: containerWidth,
+            metrics: metrics
+        )
+    }
+
+    private var resolvedSlots: [ResolvedMemoryDeskSlot] {
+        let nodesByID = Dictionary(uniqueKeysWithValues: resolvedNodes.map { ($0.id, $0) })
+        return layoutPlan.slots.compactMap { slot in
+            guard let node = nodesByID[slot.id] else { return nil }
+            return ResolvedMemoryDeskSlot(node: node, frame: slot.frame)
+        }
+    }
+
     var body: some View {
-        LazyVStack(alignment: .center, spacing: 18) {
-            ForEach(resolvedNodes) { node in
-                deskCard(node)
+        ZStack(alignment: .topLeading) {
+            ForEach(resolvedSlots) { slot in
+                deskCard(slot.node)
+                    .frame(width: slot.frame.width, height: slot.frame.height, alignment: .center)
+                    .position(
+                        x: slot.frame.midX + slot.node.layout.xNudge,
+                        y: slot.frame.midY + slot.node.layout.yNudge
+                    )
+                    .rotationEffect(.degrees(slot.node.layout.rotationDegrees))
+                    .zIndex(Double(slot.node.layout.zIndex))
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 22)
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, minHeight: layoutPlan.boardHeight, maxHeight: layoutPlan.boardHeight, alignment: .topLeading)
         .background(deskBackground)
+        .background {
+            GeometryReader { proxy in
+                Color.clear
+                    .onAppear {
+                        updateMeasuredWidth(proxy.size.width)
+                    }
+                    .onChange(of: proxy.size.width) { _, newWidth in
+                        updateMeasuredWidth(newWidth)
+                    }
+            }
+        }
     }
 
     private func deskCard(_ node: ResolvedMemoryDeskNode) -> some View {
@@ -33,14 +71,15 @@ struct MemoryDeskRenderer: View {
                 musicCardStyle: .auto,
                 placeCardStyle: .auto,
                 surfaceMode: .skeuomorphic,
-                visualRecipe: node.visualRecipe
+                visualRecipe: node.visualRecipe,
+                sizeToken: node.layout.size
             )
         )
-        .frame(width: width(for: node.layout.size), alignment: .center)
-        .rotationEffect(.degrees(node.layout.rotationDegrees))
-        .offset(x: node.layout.xNudge, y: node.layout.yNudge)
-        .zIndex(Double(node.layout.zIndex))
-        .frame(maxWidth: .infinity, alignment: alignment(for: node.layout.order))
+    }
+
+    private func updateMeasuredWidth(_ width: CGFloat) {
+        guard width.isFinite, width > 0, abs(width - measuredContainerWidth) > 0.5 else { return }
+        measuredContainerWidth = width
     }
 
     private func resolveNode(_ node: MemoryCardNode) -> ResolvedMemoryDeskNode? {
@@ -140,30 +179,6 @@ struct MemoryDeskRenderer: View {
         )
     }
 
-    private func width(for size: MemoryCardSizeToken) -> CGFloat? {
-        switch size {
-        case .small:
-            return 180
-        case .medium:
-            return 220
-        case .wide:
-            return 300
-        case .hero, .stack:
-            return 330
-        }
-    }
-
-    private func alignment(for order: Int) -> Alignment {
-        switch order % 3 {
-        case 0:
-            return .leading
-        case 1:
-            return .trailing
-        default:
-            return .center
-        }
-    }
-
     private var deskBackground: some View {
         LinearGradient(
             colors: [
@@ -218,6 +233,106 @@ private struct ResolvedMemoryDeskNode: Identifiable {
     var layout: MemoryCardLayoutToken
 }
 
+private struct ResolvedMemoryDeskSlot: Identifiable {
+    let id: UUID
+    let node: ResolvedMemoryDeskNode
+    let frame: CGRect
+
+    init(node: ResolvedMemoryDeskNode, frame: CGRect) {
+        self.id = node.id
+        self.node = node
+        self.frame = frame
+    }
+}
+
+struct MemoryDeskBoardMetrics: Hashable, Sendable {
+    var columns: Int
+    var horizontalPadding: CGFloat
+    var verticalPadding: CGFloat
+    var columnSpacing: CGFloat
+    var rowSpacing: CGFloat
+    var rowHeight: CGFloat
+    var minimumCellWidth: CGFloat
+
+    static let `default` = MemoryDeskBoardMetrics(
+        columns: MemoryCardRecipeLayoutPolicy.columnCount,
+        horizontalPadding: 16,
+        verticalPadding: 18,
+        columnSpacing: 10,
+        rowSpacing: 12,
+        rowHeight: 82,
+        minimumCellWidth: 42
+    )
+
+    func cellWidth(for containerWidth: CGFloat) -> CGFloat {
+        let clampedColumns = max(1, columns)
+        let usableWidth = max(containerWidth - (horizontalPadding * 2), minimumCellWidth * CGFloat(clampedColumns))
+        let totalSpacing = columnSpacing * CGFloat(clampedColumns - 1)
+        return max(minimumCellWidth, floor((usableWidth - totalSpacing) / CGFloat(clampedColumns)))
+    }
+}
+
+struct MemoryDeskBoardInputNode: Hashable, Sendable {
+    let id: UUID
+    let layout: MemoryCardLayoutToken
+}
+
+struct MemoryDeskBoardLayoutSlot: Identifiable, Hashable, Sendable {
+    let id: UUID
+    let layout: MemoryCardLayoutToken
+    let frame: CGRect
+}
+
+struct MemoryDeskBoardLayoutPlan: Hashable, Sendable {
+    let slots: [MemoryDeskBoardLayoutSlot]
+    let boardHeight: CGFloat
+
+    static func make(
+        nodes: [MemoryDeskBoardInputNode],
+        containerWidth: CGFloat,
+        metrics: MemoryDeskBoardMetrics = .default
+    ) -> MemoryDeskBoardLayoutPlan {
+        let ordered = nodes.enumerated().map { index, node in
+            (index: index, node: node)
+        }
+        let frames = ordered.map { entry in
+            frame(for: entry.node.layout, containerWidth: containerWidth, metrics: metrics, fallbackOrder: entry.index)
+        }
+        let slots = zip(ordered, frames).map { entry, frame in
+            MemoryDeskBoardLayoutSlot(id: entry.node.id, layout: entry.node.layout, frame: frame)
+        }
+        let maxY = frames.map(\.maxY).max() ?? 0
+        let minHeight = metrics.verticalPadding * 2 + metrics.rowHeight
+        return MemoryDeskBoardLayoutPlan(
+            slots: slots,
+            boardHeight: max(minHeight, maxY + metrics.verticalPadding)
+        )
+    }
+
+    private static func frame(
+        for layout: MemoryCardLayoutToken,
+        containerWidth: CGFloat,
+        metrics: MemoryDeskBoardMetrics,
+        fallbackOrder: Int
+    ) -> CGRect {
+        let columns = max(1, min(metrics.columns, MemoryCardRecipeLayoutPolicy.columnCount))
+        let cellWidth = metrics.cellWidth(for: containerWidth)
+        let box = MemoryCardRecipeLayoutPolicy.gridBox(for: layout.size)
+        let fallbackPlacement = MemoryCardGridPlacement(
+            column: max(0, fallbackOrder % columns),
+            row: max(0, fallbackOrder / columns)
+        )
+        let placement = layout.gridPlacement ?? fallbackPlacement
+
+        let x = metrics.horizontalPadding + CGFloat(placement.column) * (cellWidth + metrics.columnSpacing)
+        let y = metrics.verticalPadding + CGFloat(placement.row) * (metrics.rowHeight + metrics.rowSpacing)
+        let width = CGFloat(box.columnSpan) * cellWidth + CGFloat(max(0, box.columnSpan - 1)) * metrics.columnSpacing
+        let height = CGFloat(box.rowSpan) * metrics.rowHeight + CGFloat(max(0, box.rowSpan - 1)) * metrics.rowSpacing
+
+        return CGRect(x: x, y: y, width: width, height: height)
+    }
+}
+
 private extension RecordShell {
     var titleForDesk: String {
         rawText.firstMeaningfulLine ?? "Untitled Memory"
@@ -228,48 +343,5 @@ private extension Artifact {
     var deskCaptureOrigin: CaptureArtifactOrigin? {
         captureProvenance?.artifactOrigin
             ?? metadata["captureOrigin"].flatMap(CaptureArtifactOrigin.init(rawValue:))
-    }
-}
-
-private extension MemoryCardArrangement {
-    static func defaultVisualRecipeForRendering(_ artifact: Artifact) -> MemoryCardVisualRecipe {
-        switch artifact.kind {
-        case .text:
-            return .notebook
-        case .photo:
-            return .polaroid
-        case .video:
-            return .filmFrame
-        case .livePhoto:
-            return .livePhotoPrint
-        case .audio:
-            return .cassette
-        case .music:
-            return .vinyl
-        case .link:
-            return .linkNote
-        case .location:
-            return .mapTicket
-        case .weather:
-            return .weatherStamp
-        case .todo:
-            return .taskNote
-        case .document:
-            if artifact.metadata["documentType"] == "personContext" {
-                return .personCard
-            }
-            return .notebook
-        }
-    }
-
-    static func defaultSizeForRendering(_ artifact: Artifact) -> MemoryCardSizeToken {
-        switch artifact.kind {
-        case .photo, .video, .livePhoto:
-            return .hero
-        case .music, .audio:
-            return .wide
-        case .location, .weather, .text, .link, .todo, .document:
-            return .medium
-        }
     }
 }

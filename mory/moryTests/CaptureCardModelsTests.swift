@@ -553,11 +553,18 @@ final class CaptureCardModelsTests: XCTestCase {
                 role: .debugLab,
                 provenanceDisplayMode: .debug,
                 surfaceMode: .skeuomorphic,
-                visualRecipe: fixture.recipe
+                visualRecipe: fixture.recipe,
+                sizeToken: fixture.preferredSize
             )
 
             XCTAssertEqual(presentation.surfaceMode, .skeuomorphic)
             XCTAssertEqual(presentation.visualRecipe, fixture.recipe)
+            XCTAssertTrue(fixture.supportedSizes.contains(fixture.preferredSize))
+            XCTAssertEqual(presentation.sizeToken, fixture.preferredSize)
+            XCTAssertEqual(
+                presentation.contentDensity,
+                MemoryCardRecipeLayoutPolicy.contentDensity(for: fixture.preferredSize)
+            )
             XCTAssertFalse(fixture.layerNotes.isEmpty)
         }
     }
@@ -569,6 +576,18 @@ final class CaptureCardModelsTests: XCTestCase {
         XCTAssertEqual(Set(recipes), Set(MemoryCardVisualRecipe.allCases))
         XCTAssertEqual(recipes.count, Set(recipes).count)
         XCTAssertTrue(entries.allSatisfy { !$0.draftLayer.isEmpty && !$0.artifactLayer.isEmpty && !$0.digestLayer.isEmpty && !$0.arrangementLayer.isEmpty })
+    }
+
+    func testCardDebugCatalogPreferredSizesRespectLayoutPolicy() {
+        for fixture in CardDebugCatalog.recipeFixtures {
+            XCTAssertTrue(
+                MemoryCardRecipeLayoutPolicy.supportedSizes(for: fixture.recipe).contains(fixture.preferredSize)
+            )
+            XCTAssertEqual(
+                Set(fixture.supportedSizes),
+                Set(MemoryCardRecipeLayoutPolicy.supportedSizes(for: fixture.recipe))
+            )
+        }
     }
 
     func testOriginFixturesKeepKindStableAcrossAllOrigins() {

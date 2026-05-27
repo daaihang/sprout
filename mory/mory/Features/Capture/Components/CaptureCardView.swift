@@ -111,7 +111,7 @@ struct CaptureCardView: View {
         switch visualRecipe {
         case .polaroid:
             if case let .photo(payload) = item.payload {
-                PolaroidCaptureCardContent(common: common, payload: payload)
+                PolaroidCaptureCardContent(common: common, payload: payload, sizeToken: presentation.sizeToken, density: presentation.contentDensity)
             } else {
                 notebookSkeuomorphicCard
             }
@@ -129,7 +129,7 @@ struct CaptureCardView: View {
             }
         case .cassette:
             if case let .audio(payload) = item.payload {
-                CassetteCaptureCardContent(common: common, payload: payload)
+                CassetteCaptureCardContent(common: common, payload: payload, sizeToken: presentation.sizeToken, density: presentation.contentDensity)
             } else {
                 notebookSkeuomorphicCard
             }
@@ -149,13 +149,13 @@ struct CaptureCardView: View {
             }
         case .weatherStamp:
             if case let .weather(payload) = item.payload {
-                WeatherStampCaptureCardContent(common: common, payload: payload, accent: accent)
+                WeatherStampCaptureCardContent(common: common, payload: payload, accent: accent, sizeToken: presentation.sizeToken, density: presentation.contentDensity)
             } else {
                 notebookSkeuomorphicCard
             }
         case .linkNote:
             if case let .link(payload) = item.payload {
-                LinkNoteCaptureCardContent(common: common, payload: payload, accent: accent)
+                LinkNoteCaptureCardContent(common: common, payload: payload, accent: accent, sizeToken: presentation.sizeToken, density: presentation.contentDensity)
             } else {
                 notebookSkeuomorphicCard
             }
@@ -173,9 +173,9 @@ struct CaptureCardView: View {
             }
         case .affectCard:
             if case let .affect(payload) = item.payload {
-                MoodSwatchCaptureCardContent(common: common, payload: payload, accent: accent)
+                MoodSwatchCaptureCardContent(common: common, payload: payload, accent: accent, sizeToken: presentation.sizeToken, density: presentation.contentDensity)
             } else {
-                MoodSwatchCaptureCardContent(common: common, payload: nil, accent: accent)
+                MoodSwatchCaptureCardContent(common: common, payload: nil, accent: accent, sizeToken: presentation.sizeToken, density: presentation.contentDensity)
             }
         case .bundlePacket:
             bundlePacketSkeuomorphicCard
@@ -188,27 +188,27 @@ struct CaptureCardView: View {
     private var skeuomorphicCardBodyForPayload: some View {
         switch item.payload {
         case let .photo(payload):
-            PolaroidCaptureCardContent(common: common, payload: payload)
+            PolaroidCaptureCardContent(common: common, payload: payload, sizeToken: presentation.sizeToken, density: presentation.contentDensity)
         case let .video(payload):
             FilmFrameCaptureCardContent(common: common, payload: payload, accent: accent)
         case let .livePhoto(payload):
             LivePhotoPrintCaptureCardContent(common: common, payload: payload, accent: accent)
         case let .audio(payload):
-            CassetteCaptureCardContent(common: common, payload: payload)
+            CassetteCaptureCardContent(common: common, payload: payload, sizeToken: presentation.sizeToken, density: presentation.contentDensity)
         case let .music(payload):
             VinylRecordCaptureCardContent(common: common, payload: payload, accent: accent)
         case let .todo(payload):
             TaskNoteCaptureCardContent(common: common, payload: payload, accent: accent)
         case let .link(payload):
-            LinkNoteCaptureCardContent(common: common, payload: payload, accent: accent)
+            LinkNoteCaptureCardContent(common: common, payload: payload, accent: accent, sizeToken: presentation.sizeToken, density: presentation.contentDensity)
         case .prompt:
             notebookSkeuomorphicCard
         case let .person(payload):
             PersonContextCaptureCardContent(common: common, payload: payload, accent: accent)
         case let .affect(payload):
-            MoodSwatchCaptureCardContent(common: common, payload: payload, accent: accent)
+            MoodSwatchCaptureCardContent(common: common, payload: payload, accent: accent, sizeToken: presentation.sizeToken, density: presentation.contentDensity)
         case let .weather(payload):
-            WeatherStampCaptureCardContent(common: common, payload: payload, accent: accent)
+            WeatherStampCaptureCardContent(common: common, payload: payload, accent: accent, sizeToken: presentation.sizeToken, density: presentation.contentDensity)
         case let .place(payload):
             MapTicketCaptureCardContent(common: common, payload: payload, accent: accent)
         case .journalingSuggestion:
