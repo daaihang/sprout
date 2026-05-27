@@ -220,6 +220,63 @@ final class NotificationOrchestratorTests: XCTestCase {
         XCTAssertEqual(stored.deepLink, "mory://memories/record/\(seededMemory.record.id.uuidString)")
     }
 
+    func testBackgroundRefreshSchedulesAllEligibleSystemCandidates() async throws {
+        let fixture = makeRepositoryFixture()
+        let repository = fixture.repository
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        try enableNotificationLoop(on: repository, now: now)
+        try allowDenseSystemNotifications(on: repository, now: now, maxPerDay: 4)
+        try seedCompletedPipelineAndReflection(in: repository, now: now)
+
+        let center = MockLocalNotificationCenter(state: .authorized)
+        let orchestrator = NotificationOrchestrator(
+            localScheduler: LocalNotificationScheduler(
+                notificationCenter: center
+            )
+        )
+
+        let report = try await orchestrator.orchestrate(
+            trigger: .backgroundRefresh,
+            repository: repository,
+            now: now
+        )
+
+        XCTAssertEqual(report.scheduledIntentIDs.count, 2)
+        XCTAssertTrue(report.remoteEnqueuedIntentIDs.isEmpty)
+        XCTAssertEqual(center.requests.count, 2)
+        let scheduledKinds = Set(try repository.fetchNotificationIntents(status: .scheduled, limit: nil).map(\.kind))
+        XCTAssertEqual(scheduledKinds, [.analysisReady, .reflectionReady])
+    }
+
+    func testBackgroundRefreshAppliesDailyLimitAcrossSameRunCandidates() async throws {
+        let fixture = makeRepositoryFixture()
+        let repository = fixture.repository
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        try enableNotificationLoop(on: repository, now: now)
+        try allowDenseSystemNotifications(on: repository, now: now, maxPerDay: 1)
+        try seedCompletedPipelineAndReflection(in: repository, now: now)
+
+        let center = MockLocalNotificationCenter(state: .authorized)
+        let orchestrator = NotificationOrchestrator(
+            localScheduler: LocalNotificationScheduler(
+                notificationCenter: center
+            )
+        )
+
+        let report = try await orchestrator.orchestrate(
+            trigger: .backgroundRefresh,
+            repository: repository,
+            now: now
+        )
+
+        XCTAssertEqual(report.scheduledIntentIDs.count, 1)
+        XCTAssertEqual(report.blockedIntentIDs.count, 1)
+        XCTAssertEqual(center.requests.count, 1)
+        let blocked = try XCTUnwrap(repository.fetchNotificationIntents(status: .blocked, limit: nil).first)
+        XCTAssertEqual(blocked.kind, .analysisReady)
+        XCTAssertEqual(blocked.blockedReasons, [NotificationPolicyBlockReason.maxPerDayReached.rawValue])
+    }
+
     func testPipelineCompletedPrefersReflectionReadyForMatchingRecord() async throws {
         let fixture = makeRepositoryFixture()
         let repository = fixture.repository
@@ -399,6 +456,22 @@ final class NotificationOrchestratorTests: XCTestCase {
         try repository.saveV6FeatureFlags(flags)
     }
 
+    private func allowDenseSystemNotifications(
+        on repository: MoryMemoryRepository,
+        now: Date,
+        maxPerDay: Int
+    ) throws {
+        var preferences = try repository.fetchIntelligencePreferences()
+        preferences.notificationPreferences.analysisReadyEnabled = true
+        preferences.notificationPreferences.reflectionReadyEnabled = true
+        preferences.notificationPreferences.dailyQuestionEnabled = false
+        preferences.notificationPreferences.frequencyStrategy = .custom
+        preferences.notificationPreferences.minimumMinutesBetweenNotifications = 0
+        preferences.notificationPreferences.maxPerDay = maxPerDay
+        preferences.updatedAt = now
+        try repository.saveIntelligencePreferences(preferences)
+    }
+
     private func seedMemory(
         in repository: MoryMemoryRepository,
         title: String,
@@ -427,6 +500,50 @@ final class NotificationOrchestratorTests: XCTestCase {
         try repository.upsert(artifact: artifact)
         try repository.save()
         return (record, artifact)
+    }
+
+    @discardableResult
+    private func seedCompletedPipelineAndReflection(
+        in repository: MoryMemoryRepository,
+        now: Date
+    ) throws -> (record: RecordShell, artifact: Artifact) {
+        let seededMemory = try seedMemory(
+            in: repository,
+            title: "Notebook sync",
+            body: "Synced notes and reviewed the timeline.",
+            createdAt: now.addingTimeInterval(-1_900),
+            artifactKind: .text
+        )
+        try repository.upsertPipelineStatus(
+            MemoryPipelineStatusSnapshot(
+                recordID: seededMemory.record.id,
+                stage: .completed,
+                requestID: "request-multi-1",
+                lastError: nil,
+                requestBody: nil,
+                responseBody: nil,
+                rawErrorBody: nil,
+                lastHTTPStatusCode: 200,
+                failedStage: nil,
+                lastAttemptAt: now.addingTimeInterval(-120),
+                completedAt: now.addingTimeInterval(-60),
+                updatedAt: now.addingTimeInterval(-60)
+            )
+        )
+        try repository.upsert(reflection: ReflectionSnapshot(
+            type: .phase,
+            title: "Work Rhythm",
+            body: "A reflection is ready.",
+            evidenceSummary: "The same pattern appeared twice.",
+            confidence: 0.82,
+            status: .suggested,
+            linkedTemporalArcID: nil,
+            sourceRecordIDs: [seededMemory.record.id],
+            sourceArtifactIDs: [seededMemory.artifact.id],
+            createdAt: now.addingTimeInterval(-30)
+        ))
+        try repository.save()
+        return seededMemory
     }
 }
 

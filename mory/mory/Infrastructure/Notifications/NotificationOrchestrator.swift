@@ -88,9 +88,17 @@ struct NotificationOrchestrator {
         now: Date = .now
     ) async throws -> NotificationOrchestrationReport {
         var report = NotificationOrchestrationReport()
-        let existingIntents = try repository.fetchNotificationIntents(status: nil, limit: nil)
+        var knownIntents = try repository.fetchNotificationIntents(status: nil, limit: nil)
         let preferences = try repository.fetchIntelligencePreferences()
         let flags = try repository.fetchV6FeatureFlags()
+
+        func remember(_ intent: NotificationIntent) {
+            if let index = knownIntents.firstIndex(where: { $0.id == intent.id }) {
+                knownIntents[index] = intent
+            } else {
+                knownIntents.append(intent)
+            }
+        }
 
         let candidates = try buildCandidates(
             trigger: trigger,
@@ -99,10 +107,10 @@ struct NotificationOrchestrator {
         )
 
         for candidate in candidates {
-            let existingBlocked = existingIntents.first {
+            let existingBlocked = knownIntents.first {
                 $0.dedupeKey == candidate.intent.dedupeKey && $0.status == .blocked
             }
-            if let activeIntent = existingIntents.first(where: {
+            if let activeIntent = knownIntents.first(where: {
                 $0.dedupeKey == candidate.intent.dedupeKey && $0.status != .blocked
             }) {
                 try repository.upsertNotificationManagementEvent(event(
@@ -135,6 +143,7 @@ struct NotificationOrchestrator {
                 intent.status = .blocked
                 intent.blockedReasons = [NotificationPolicyBlockReason.noResolvableRoute.rawValue]
                 try repository.upsertNotificationIntent(intent)
+                remember(intent)
                 try repository.upsertNotificationManagementEvent(event(
                     .routeError,
                     intent: intent,
@@ -150,6 +159,7 @@ struct NotificationOrchestrator {
                 intent.status = .inAppOnly
                 intent.blockedReasons = []
                 try repository.upsertNotificationIntent(intent)
+                remember(intent)
                 try repository.upsertNotificationManagementEvent(event(
                     .inAppOnly,
                     intent: intent,
@@ -161,7 +171,7 @@ struct NotificationOrchestrator {
                 continue
             }
 
-            let policyExistingIntents = existingIntents.filter { $0.id != intent.id && $0.status != .blocked }
+            let policyExistingIntents = knownIntents.filter { $0.id != intent.id && $0.status != .blocked }
             let decision = policy.evaluate(
                 intent: intent,
                 existingIntents: policyExistingIntents,
@@ -175,6 +185,7 @@ struct NotificationOrchestrator {
                 intent.status = .blocked
                 intent.blockedReasons = decision.blockReasons.map(\.rawValue)
                 try repository.upsertNotificationIntent(intent)
+                remember(intent)
                 try repository.upsertNotificationManagementEvent(event(
                     .policyBlocked,
                     intent: intent,
@@ -205,6 +216,7 @@ struct NotificationOrchestrator {
                     if deliveredIntent.deliveryChannel == .remote {
                         report.remoteEnqueuedIntentIDs.append(deliveredIntent.id)
                     }
+                    remember(deliveredIntent)
                     try repository.upsertNotificationManagementEvent(event(
                         .scheduled,
                         intent: deliveredIntent,
@@ -220,6 +232,7 @@ struct NotificationOrchestrator {
                         message: "Delivery did not schedule: \(deliveredIntent.blockedReasons.joined(separator: ", ")).",
                         now: now
                     ))
+                    remember(deliveredIntent)
                     report.blockedIntentIDs.append(deliveredIntent.id)
                 }
             } catch {
@@ -228,6 +241,7 @@ struct NotificationOrchestrator {
                 failedIntent.status = .blocked
                 failedIntent.blockedReasons = ["delivery_error"]
                 try repository.upsertNotificationIntent(failedIntent)
+                remember(failedIntent)
                 try repository.upsertNotificationManagementEvent(event(
                     .deliveryError,
                     intent: failedIntent,
@@ -237,8 +251,6 @@ struct NotificationOrchestrator {
                 ))
                 report.blockedIntentIDs.append(failedIntent.id)
             }
-
-            return report
         }
 
         return report
