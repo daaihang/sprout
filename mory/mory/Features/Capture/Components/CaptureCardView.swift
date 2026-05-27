@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 
 struct CaptureCardView: View {
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
@@ -118,13 +117,13 @@ struct CaptureCardView: View {
             }
         case .filmFrame:
             if case let .video(payload) = item.payload {
-                deskMediaSkeuomorphicCard(thumbnailData: payload.thumbnailData, symbolName: "play.fill", badge: String(localized: "capture.card.kind.video"))
+                FilmFrameCaptureCardContent(common: common, payload: payload, accent: accent)
             } else {
                 notebookSkeuomorphicCard
             }
         case .livePhotoPrint:
             if case let .livePhoto(payload) = item.payload {
-                deskMediaSkeuomorphicCard(thumbnailData: payload.thumbnailData, symbolName: "livephoto", badge: String(localized: "capture.card.kind.livePhoto"))
+                LivePhotoPrintCaptureCardContent(common: common, payload: payload, accent: accent)
             } else {
                 notebookSkeuomorphicCard
             }
@@ -140,8 +139,48 @@ struct CaptureCardView: View {
             } else {
                 notebookSkeuomorphicCard
             }
-        case .notebook, .mapTicket, .weatherStamp, .linkNote, .taskNote, .personCard, .affectCard, .bundlePacket, .statusNote:
+        case .notebook:
             notebookSkeuomorphicCard
+        case .mapTicket:
+            if case let .place(payload) = item.payload {
+                MapTicketCaptureCardContent(common: common, payload: payload, accent: accent)
+            } else {
+                notebookSkeuomorphicCard
+            }
+        case .weatherStamp:
+            if case let .weather(payload) = item.payload {
+                WeatherStampCaptureCardContent(common: common, payload: payload, accent: accent)
+            } else {
+                notebookSkeuomorphicCard
+            }
+        case .linkNote:
+            if case let .link(payload) = item.payload {
+                LinkNoteCaptureCardContent(common: common, payload: payload, accent: accent)
+            } else {
+                notebookSkeuomorphicCard
+            }
+        case .taskNote:
+            if case let .todo(payload) = item.payload {
+                TaskNoteCaptureCardContent(common: common, payload: payload, accent: accent)
+            } else {
+                notebookSkeuomorphicCard
+            }
+        case .personCard:
+            if case let .person(payload) = item.payload {
+                PersonContextCaptureCardContent(common: common, payload: payload, accent: accent)
+            } else {
+                notebookSkeuomorphicCard
+            }
+        case .affectCard:
+            if case let .affect(payload) = item.payload {
+                MoodSwatchCaptureCardContent(common: common, payload: payload, accent: accent)
+            } else {
+                MoodSwatchCaptureCardContent(common: common, payload: nil, accent: accent)
+            }
+        case .bundlePacket:
+            bundlePacketSkeuomorphicCard
+        case .statusNote:
+            PlainSystemNoteCaptureCardContent(common: common, accent: accent)
         }
     }
 
@@ -151,15 +190,31 @@ struct CaptureCardView: View {
         case let .photo(payload):
             PolaroidCaptureCardContent(common: common, payload: payload)
         case let .video(payload):
-            deskMediaSkeuomorphicCard(thumbnailData: payload.thumbnailData, symbolName: "play.fill", badge: String(localized: "capture.card.kind.video"))
+            FilmFrameCaptureCardContent(common: common, payload: payload, accent: accent)
         case let .livePhoto(payload):
-            deskMediaSkeuomorphicCard(thumbnailData: payload.thumbnailData, symbolName: "livephoto", badge: String(localized: "capture.card.kind.livePhoto"))
+            LivePhotoPrintCaptureCardContent(common: common, payload: payload, accent: accent)
         case let .audio(payload):
             CassetteCaptureCardContent(common: common, payload: payload)
         case let .music(payload):
             VinylRecordCaptureCardContent(common: common, payload: payload, accent: accent)
-        case .todo, .link, .prompt, .person, .affect, .weather, .place, .journalingSuggestion, .status:
+        case let .todo(payload):
+            TaskNoteCaptureCardContent(common: common, payload: payload, accent: accent)
+        case let .link(payload):
+            LinkNoteCaptureCardContent(common: common, payload: payload, accent: accent)
+        case .prompt:
             notebookSkeuomorphicCard
+        case let .person(payload):
+            PersonContextCaptureCardContent(common: common, payload: payload, accent: accent)
+        case let .affect(payload):
+            MoodSwatchCaptureCardContent(common: common, payload: payload, accent: accent)
+        case let .weather(payload):
+            WeatherStampCaptureCardContent(common: common, payload: payload, accent: accent)
+        case let .place(payload):
+            MapTicketCaptureCardContent(common: common, payload: payload, accent: accent)
+        case .journalingSuggestion:
+            bundlePacketSkeuomorphicCard
+        case .status:
+            PlainSystemNoteCaptureCardContent(common: common, accent: accent)
         }
     }
 
@@ -167,14 +222,31 @@ struct CaptureCardView: View {
         NotebookCaptureCardContent(common: common, item: item, accent: accent)
     }
 
-    private func deskMediaSkeuomorphicCard(thumbnailData: Data?, symbolName: String, badge: String) -> some View {
-        DeskMediaCaptureCardContent(
-            common: common,
-            thumbnailData: thumbnailData,
-            symbolName: symbolName,
-            badge: badge,
-            accent: accent
-        )
+    @ViewBuilder
+    private var bundlePacketSkeuomorphicCard: some View {
+        switch item.payload {
+        case let .journalingSuggestion(payload):
+            BundlePacketCaptureCardContent(
+                common: common,
+                thumbnailData: payload.thumbnailData,
+                itemCount: payload.artifactCount,
+                accent: accent
+            )
+        case let .photo(payload):
+            BundlePacketCaptureCardContent(
+                common: common,
+                thumbnailData: payload.thumbnailData,
+                itemCount: payload.photoCount,
+                accent: accent
+            )
+        default:
+            BundlePacketCaptureCardContent(
+                common: common,
+                thumbnailData: nil,
+                itemCount: nil,
+                accent: accent
+            )
+        }
     }
 
     @ViewBuilder
@@ -473,75 +545,5 @@ struct CaptureCardView: View {
             condition: [item.title, item.detail].compactMap { $0 }.joined(separator: " "),
             isDaylight: weatherPayloadForAudit?.isDaylight
         )
-    }
-}
-
-private struct DeskMediaCaptureCardContent: View {
-    let common: CaptureCardCommonDisplay
-    let thumbnailData: Data?
-    let symbolName: String
-    let badge: String
-    let accent: Color
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 5, style: .continuous)
-                    .fill(Color(white: 0.10))
-
-                if let thumbnailData, let image = UIImage(data: thumbnailData) {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFill()
-                } else {
-                    LinearGradient(
-                        colors: [accent.opacity(0.45), Color.black.opacity(0.82)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                    Image(systemName: symbolName)
-                        .font(.system(size: 30, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.9))
-                }
-
-                Circle()
-                    .fill(.ultraThinMaterial)
-                    .frame(width: 42, height: 42)
-                    .overlay {
-                        Image(systemName: symbolName)
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(.white)
-                    }
-                    .shadow(color: .black.opacity(0.28), radius: 8, y: 4)
-            }
-            .frame(width: 190, height: 138)
-            .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(common.title?.trimmedOrNil ?? badge)
-                    .font(.system(size: 13, weight: .semibold, design: .serif))
-                    .foregroundStyle(Color(white: 0.18))
-                    .lineLimit(1)
-
-                Text(common.detail)
-                    .font(.system(size: 10, design: .serif))
-                    .foregroundStyle(Color(white: 0.36))
-                    .lineLimit(2)
-
-                Text(badge.uppercased())
-                    .font(.system(size: 8, weight: .bold, design: .monospaced))
-                    .foregroundStyle(accent.opacity(0.8))
-                    .padding(.top, 1)
-            }
-            .padding(.horizontal, 4)
-        }
-        .padding(10)
-        .background(Color(red: 0.96, green: 0.94, blue: 0.88), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .strokeBorder(Color.brown.opacity(0.16), lineWidth: 0.6)
-        }
-        .shadow(color: .black.opacity(0.08), radius: 2, y: 1)
-        .shadow(color: .black.opacity(0.05), radius: 8, y: 4)
     }
 }

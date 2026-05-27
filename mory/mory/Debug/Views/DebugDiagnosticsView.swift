@@ -165,22 +165,12 @@ struct DebugDiagnosticsView: View {
                 }
 
                 NavigationLink {
-                    CaptureCardLabView()
-                } label: {
-                    DebugMenuRow(
-                        icon: "rectangle.stack",
-                        title: "Capture Card Lab",
-                        subtitle: "Preview capture attachment card styles, origins, states, and motion fixtures"
-                    )
-                }
-
-                NavigationLink {
-                    SkeuomorphicCardLabView()
+                    CardDebugView()
                 } label: {
                     DebugMenuRow(
                         icon: "rectangle.on.rectangle.angled",
-                        title: "Skeuomorphic Card Lab",
-                        subtitle: "Preview immersive card styles: Polaroid, Cassette, Notebook, Vinyl"
+                        title: "Card Debug",
+                        subtitle: "Inspect four-layer card data, visual recipes, arrangement, and fixture stress labs"
                     )
                 }
 

@@ -94,4 +94,17 @@ final class MemoryDeskRendererTests: XCTestCase {
         XCTAssertEqual(presentation.surfaceMode, .skeuomorphic)
         XCTAssertEqual(presentation.visualRecipe, .cassette)
     }
+
+    func testArrangementPlaygroundPreservesRecipeSizeOrderAndStack() {
+        let snapshot = CardDebugCatalog.arrangementPlaygroundSnapshot()
+        let nodes = MemoryDeskRenderPlan.nodes(for: snapshot)
+
+        XCTAssertEqual(nodes.map(\.layout.order), Array(0..<nodes.count))
+        XCTAssertTrue(nodes.contains { $0.visualRecipe == .weatherStamp && $0.layout.size == .small })
+        XCTAssertTrue(nodes.contains { $0.visualRecipe == .mapTicket && $0.layout.size == .medium })
+        XCTAssertTrue(nodes.contains { node in
+            guard case .artifactGroup = node.contentRef else { return false }
+            return node.visualRecipe == .bundlePacket && node.layout.size == .stack
+        })
+    }
 }

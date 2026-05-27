@@ -540,6 +540,37 @@ final class CaptureCardModelsTests: XCTestCase {
         XCTAssertFalse(CaptureCardKind.allCases.contains { $0.rawValue == "autoContext" })
     }
 
+    func testCardDebugRecipeCatalogCoversEveryVisualRecipe() {
+        let fixtures = CardDebugCatalog.recipeFixtures
+        let fixtureRecipes = Set(fixtures.map(\.recipe))
+
+        XCTAssertEqual(fixtureRecipes, Set(MemoryCardVisualRecipe.allCases))
+        XCTAssertEqual(fixtures.count, MemoryCardVisualRecipe.allCases.count)
+
+        for fixture in fixtures {
+            let presentation = CaptureCardPresentation(
+                item: fixture.item,
+                role: .debugLab,
+                provenanceDisplayMode: .debug,
+                surfaceMode: .skeuomorphic,
+                visualRecipe: fixture.recipe
+            )
+
+            XCTAssertEqual(presentation.surfaceMode, .skeuomorphic)
+            XCTAssertEqual(presentation.visualRecipe, fixture.recipe)
+            XCTAssertFalse(fixture.layerNotes.isEmpty)
+        }
+    }
+
+    func testCardDebugTypeCatalogCoversEveryRecipeOnce() {
+        let entries = CardDebugCatalog.typeCatalogEntries
+        let recipes = entries.map(\.fixture.recipe)
+
+        XCTAssertEqual(Set(recipes), Set(MemoryCardVisualRecipe.allCases))
+        XCTAssertEqual(recipes.count, Set(recipes).count)
+        XCTAssertTrue(entries.allSatisfy { !$0.draftLayer.isEmpty && !$0.artifactLayer.isEmpty && !$0.digestLayer.isEmpty && !$0.arrangementLayer.isEmpty })
+    }
+
     func testOriginFixturesKeepKindStableAcrossAllOrigins() {
         let origins = Set(CaptureCardLabFixtures.origins.compactMap(\.origin))
         let kinds = Set(CaptureCardLabFixtures.origins.map(\.kind))

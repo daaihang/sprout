@@ -6,7 +6,7 @@ This section lists user-facing and near-user-facing Mory features. Each feature 
 
 | Feature | Current Status | Product Entry | Debug/Diagnostics | Main Next Step |
 | --- | --- | --- | --- | --- |
-| Unified capture composer | `usable` | Global capture / composer | Capture Card Lab | Make source/provenance clearer. |
+| Unified capture composer | `usable` | Global capture / composer | Card Debug | Make source/provenance clearer. |
 | Text capture | `stable` | Composer body | Diagnostics fixtures | Keep as baseline. |
 | Photo capture | `usable` | PhotosPicker/camera | Photo capability test | Clarify local processing vs cloud analysis. |
 | Video capture | `wired` | Imported/Journaling | Artifact diagnostics | Improve card/player presentation. |
