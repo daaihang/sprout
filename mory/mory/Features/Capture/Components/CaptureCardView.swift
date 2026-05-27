@@ -100,32 +100,81 @@ struct CaptureCardView: View {
 
     @ViewBuilder
     private var skeuomorphicCardBody: some View {
+        if let visualRecipe = presentation.visualRecipe {
+            skeuomorphicCardBody(for: visualRecipe)
+        } else {
+            skeuomorphicCardBodyForPayload
+        }
+    }
+
+    @ViewBuilder
+    private func skeuomorphicCardBody(for visualRecipe: MemoryCardVisualRecipe) -> some View {
+        switch visualRecipe {
+        case .polaroid:
+            if case let .photo(payload) = item.payload {
+                PolaroidCaptureCardContent(common: common, payload: payload)
+            } else {
+                notebookSkeuomorphicCard
+            }
+        case .filmFrame:
+            if case let .video(payload) = item.payload {
+                deskMediaSkeuomorphicCard(thumbnailData: payload.thumbnailData, symbolName: "play.fill", badge: String(localized: "capture.card.kind.video"))
+            } else {
+                notebookSkeuomorphicCard
+            }
+        case .livePhotoPrint:
+            if case let .livePhoto(payload) = item.payload {
+                deskMediaSkeuomorphicCard(thumbnailData: payload.thumbnailData, symbolName: "livephoto", badge: String(localized: "capture.card.kind.livePhoto"))
+            } else {
+                notebookSkeuomorphicCard
+            }
+        case .cassette:
+            if case let .audio(payload) = item.payload {
+                CassetteCaptureCardContent(common: common, payload: payload)
+            } else {
+                notebookSkeuomorphicCard
+            }
+        case .vinyl:
+            if case let .music(payload) = item.payload {
+                VinylRecordCaptureCardContent(common: common, payload: payload, accent: accent)
+            } else {
+                notebookSkeuomorphicCard
+            }
+        case .notebook, .mapTicket, .weatherStamp, .linkNote, .taskNote, .personCard, .affectCard, .bundlePacket, .statusNote:
+            notebookSkeuomorphicCard
+        }
+    }
+
+    @ViewBuilder
+    private var skeuomorphicCardBodyForPayload: some View {
         switch item.payload {
         case let .photo(payload):
             PolaroidCaptureCardContent(common: common, payload: payload)
         case let .video(payload):
-            DeskMediaCaptureCardContent(
-                common: common,
-                thumbnailData: payload.thumbnailData,
-                symbolName: "play.fill",
-                badge: String(localized: "capture.card.kind.video"),
-                accent: accent
-            )
+            deskMediaSkeuomorphicCard(thumbnailData: payload.thumbnailData, symbolName: "play.fill", badge: String(localized: "capture.card.kind.video"))
         case let .livePhoto(payload):
-            DeskMediaCaptureCardContent(
-                common: common,
-                thumbnailData: payload.thumbnailData,
-                symbolName: "livephoto",
-                badge: String(localized: "capture.card.kind.livePhoto"),
-                accent: accent
-            )
+            deskMediaSkeuomorphicCard(thumbnailData: payload.thumbnailData, symbolName: "livephoto", badge: String(localized: "capture.card.kind.livePhoto"))
         case let .audio(payload):
             CassetteCaptureCardContent(common: common, payload: payload)
         case let .music(payload):
             VinylRecordCaptureCardContent(common: common, payload: payload, accent: accent)
         case .todo, .link, .prompt, .person, .affect, .weather, .place, .journalingSuggestion, .status:
-            NotebookCaptureCardContent(common: common, item: item, accent: accent)
+            notebookSkeuomorphicCard
         }
+    }
+
+    private var notebookSkeuomorphicCard: some View {
+        NotebookCaptureCardContent(common: common, item: item, accent: accent)
+    }
+
+    private func deskMediaSkeuomorphicCard(thumbnailData: Data?, symbolName: String, badge: String) -> some View {
+        DeskMediaCaptureCardContent(
+            common: common,
+            thumbnailData: thumbnailData,
+            symbolName: symbolName,
+            badge: badge,
+            accent: accent
+        )
     }
 
     @ViewBuilder

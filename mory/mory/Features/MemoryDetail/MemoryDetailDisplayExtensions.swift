@@ -58,7 +58,7 @@ extension Artifact {
             }
             return summaryOrTitle
         case .audio:
-            return metadata["transcriptionText"]?.trimmedOrNil
+            return textContent.trimmedOrNil
                 ?? summary.trimmedOrNil
                 ?? mediaRef?.filename
                 ?? String(localized: "memory.detail.artifact.audio")

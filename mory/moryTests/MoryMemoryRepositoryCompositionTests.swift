@@ -2314,7 +2314,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertEqual(detail.pipelineStatus?.stage, .notScheduled)
     }
 
-    func testVoiceComposerDraftKeepsTranscriptInTextArtifactAndAudioMetadata() async throws {
+    func testVoiceComposerDraftKeepsTranscriptOutOfAudioMetadata() async throws {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
@@ -2351,8 +2351,12 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertTrue(textArtifact.title.hasSuffix("..."))
         XCTAssertLessThanOrEqual(textArtifact.title.count, 51)
         XCTAssertEqual(audioArtifact.summary, "Audio capture")
-        XCTAssertEqual(audioArtifact.textContent, "")
-        XCTAssertEqual(audioArtifact.metadata["transcriptionText"], transcript)
+        XCTAssertEqual(audioArtifact.textContent, transcript)
+        XCTAssertNil(audioArtifact.metadata["transcriptionText"])
+        XCTAssertNil(audioArtifact.metadata["languageCode"])
+        XCTAssertNil(audioArtifact.metadata["transcriptionConfidence"])
+        let audioDigest = try XCTUnwrap(detail.artifactSemanticDigests.first(where: { $0.artifactID == audioArtifact.id }))
+        XCTAssertEqual(audioDigest.transcript, transcript)
     }
 
     func testQuickVoiceCaptureDraftCanPersistAudioWithoutTranscript() async throws {
@@ -2490,6 +2494,13 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let digestArtifactIDs = Set(detail.artifactSemanticDigests.map(\.artifactID))
         XCTAssertTrue(digestArtifactIDs.contains(photoArtifact.id))
         XCTAssertTrue(digestArtifactIDs.contains(audioArtifact.id))
+        XCTAssertNil(audioArtifact.metadata["transcriptionText"])
+        XCTAssertNil(audioArtifact.metadata["languageCode"])
+        XCTAssertNil(audioArtifact.metadata["transcriptionConfidence"])
+        let audioDigest = try XCTUnwrap(detail.artifactSemanticDigests.first(where: { $0.artifactID == audioArtifact.id }))
+        XCTAssertEqual(audioDigest.transcript, "Send the lunch follow up")
+        XCTAssertEqual(audioDigest.languageCode, "en")
+        XCTAssertEqual(audioDigest.confidence, 0.82)
 
         let arrangement = try XCTUnwrap(detail.cardArrangement)
         let nodeByArtifactID = Dictionary(uniqueKeysWithValues: arrangement.nodes.compactMap { node -> (UUID, MemoryCardNode)? in

@@ -78,8 +78,7 @@ extension CaptureCardItem {
                 provenance: artifact.captureProvenance,
                 state: state,
                 title: artifact.title.trimmedOrNil ?? String(localized: "capture.card.kind.audio"),
-                detail: artifact.metadata["transcriptionText"].flatMap(captureCardModelSnippet)
-                    ?? captureCardModelSnippet(artifact.textContent)
+                detail: captureCardModelSnippet(artifact.textContent)
                     ?? captureCardModelSnippet(artifact.summary)
                     ?? String(localized: "capture.card.audio.attached"),
                 metadata: artifact.mediaRef?.filename.trimmedOrNil,

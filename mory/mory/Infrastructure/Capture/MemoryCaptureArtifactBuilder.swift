@@ -3,6 +3,14 @@ import Foundation
 struct MemoryCaptureArtifactBuildResult: Hashable, Sendable {
     var artifacts: [Artifact]
     var artifactIDByDraftID: [UUID: UUID]
+    var semanticDigestHintsByArtifactID: [UUID: ArtifactSemanticDigestHint] = [:]
+}
+
+struct ArtifactSemanticDigestHint: Hashable, Sendable {
+    var transcript: String?
+    var languageCode: String?
+    var confidence: Double?
+    var durationSeconds: Double?
 }
 
 struct MemoryCaptureArtifactBuilder {
@@ -11,23 +19,22 @@ struct MemoryCaptureArtifactBuilder {
     }
 
     func buildArtifactResult(from draft: MemoryCaptureDraft, recordID: UUID, createdAt: Date) -> MemoryCaptureArtifactBuildResult {
-        let hasTextArtifact = draft.artifacts.contains { artifactDraft in
-            if case .text = artifactDraft.content {
-                return true
-            }
-            return false
-        }
         let explicitPairs = draft.artifacts.map { artifactDraft in
             let artifact = makeArtifact(
                 from: artifactDraft,
                 fallbackTitle: draft.title?.generatedMemoryTitle(),
-                suppressAudioTranscriptText: hasTextArtifact,
                 recordID: recordID,
                 createdAt: createdAt
             )
             return (artifactDraft.draftID, artifact)
         }
         let explicitArtifacts = explicitPairs.map(\.1)
+        let semanticDigestHints = Dictionary(
+            uniqueKeysWithValues: zip(draft.artifacts, explicitArtifacts).compactMap { pair in
+                let (draft, artifact) = pair
+                return semanticDigestHint(from: draft, artifact: artifact).map { (artifact.id, $0) }
+            }
+        )
 
         if explicitArtifacts.isEmpty {
             return MemoryCaptureArtifactBuildResult(
@@ -38,13 +45,27 @@ struct MemoryCaptureArtifactBuilder {
 
         return MemoryCaptureArtifactBuildResult(
             artifacts: explicitArtifacts,
-            artifactIDByDraftID: Dictionary(uniqueKeysWithValues: explicitPairs.map { ($0.0, $0.1.id) })
+            artifactIDByDraftID: Dictionary(uniqueKeysWithValues: explicitPairs.map { ($0.0, $0.1.id) }),
+            semanticDigestHintsByArtifactID: semanticDigestHints
         )
     }
 
     func buildSemanticDigests(from artifacts: [Artifact], createdAt: Date) -> [ArtifactSemanticDigest] {
         artifacts.compactMap { artifact in
             makeSemanticDigest(from: artifact, createdAt: createdAt)
+        }
+    }
+
+    func buildSemanticDigests(from result: MemoryCaptureArtifactBuildResult, createdAt: Date) -> [ArtifactSemanticDigest] {
+        result.artifacts.compactMap { artifact in
+            guard var digest = makeSemanticDigest(from: artifact, createdAt: createdAt) else { return nil }
+            if let hint = result.semanticDigestHintsByArtifactID[artifact.id] {
+                digest.transcript = hint.transcript ?? digest.transcript
+                digest.languageCode = hint.languageCode ?? digest.languageCode
+                digest.confidence = hint.confidence ?? digest.confidence
+                digest.durationSeconds = hint.durationSeconds ?? digest.durationSeconds
+            }
+            return digest
         }
     }
 
@@ -114,7 +135,6 @@ struct MemoryCaptureArtifactBuilder {
     private func makeArtifact(
         from draft: CaptureArtifactDraft,
         fallbackTitle: String?,
-        suppressAudioTranscriptText: Bool,
         recordID: UUID,
         createdAt: Date
     ) -> Artifact {
@@ -163,24 +183,13 @@ struct MemoryCaptureArtifactBuilder {
         case let .audio(c):
             let resolvedSummary = c.summary.trimmedOrNil ?? "Audio capture"
             let textContent: String
-            if suppressAudioTranscriptText {
-                textContent = ""
-            } else if let transcript = c.transcriptionText.trimmedOrNil {
+            if let transcript = c.transcriptionText.trimmedOrNil {
                 textContent = transcript
             } else {
                 textContent = resolvedSummary
             }
             let mimeType = c.filename.lowercased().hasSuffix(".caf") ? "audio/x-caf" : "audio/m4a"
             var metadata: [String: String] = [:]
-            if let transcript = c.transcriptionText.trimmedOrNil {
-                metadata["transcriptionText"] = transcript
-            }
-            if let languageCode = c.languageCode?.trimmedOrNil {
-                metadata["languageCode"] = languageCode
-            }
-            if let transcriptionConfidence = c.transcriptionConfidence {
-                metadata["transcriptionConfidence"] = String(transcriptionConfidence)
-            }
             if let durationSeconds = c.durationSeconds {
                 metadata["durationSeconds"] = String(durationSeconds)
             }
@@ -422,6 +431,16 @@ struct MemoryCaptureArtifactBuilder {
         }
     }
 
+    private func semanticDigestHint(from draft: CaptureArtifactDraft, artifact: Artifact) -> ArtifactSemanticDigestHint? {
+        guard case let .audio(content) = draft.content else { return nil }
+        return ArtifactSemanticDigestHint(
+            transcript: content.transcriptionText.trimmedOrNil,
+            languageCode: content.languageCode?.trimmedOrNil,
+            confidence: content.transcriptionConfidence,
+            durationSeconds: content.durationSeconds
+        )
+    }
+
     private func metadataForOrigin(of draft: CaptureArtifactDraft, base: [String: String]) -> [String: String] {
         var metadata = base
         metadata["captureOrigin"] = draft.origin.rawValue
@@ -496,9 +515,7 @@ struct MemoryCaptureArtifactBuilder {
                 artifactKind: artifact.kind,
                 source: .localCapture,
                 summary: artifact.summary.trimmedOrNil,
-                transcript: artifact.metadata["transcriptionText"]?.trimmedOrNil ?? artifact.textContent.trimmedOrNil,
-                languageCode: artifact.metadata["languageCode"]?.trimmedOrNil,
-                confidence: artifact.metadata["transcriptionConfidence"].flatMap(Double.init),
+                transcript: transcriptCandidate(for: artifact),
                 durationSeconds: artifact.metadata["durationSeconds"].flatMap(Double.init),
                 localIdentifier: artifact.mediaRef?.localIdentifier ?? artifact.metadata["localIdentifier"],
                 createdAt: createdAt,
@@ -570,6 +587,11 @@ struct MemoryCaptureArtifactBuilder {
         case .text, .photo, .audio, .video, .livePhoto:
             return []
         }
+    }
+
+    private func transcriptCandidate(for artifact: Artifact) -> String? {
+        guard artifact.kind == .audio, let text = artifact.textContent.trimmedOrNil else { return nil }
+        return text == artifact.summary.trimmedOrNil ? nil : text
     }
 
     private func compactTechnicalNotes(from metadata: [String: String], keys: [String]) -> [String] {

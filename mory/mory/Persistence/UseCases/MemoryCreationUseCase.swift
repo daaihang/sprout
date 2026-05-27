@@ -10,7 +10,7 @@ struct MemoryCreationUseCase {
         let recordID = UUID()
         let artifactResult = artifactBuilder.buildArtifactResult(from: draft, recordID: recordID, createdAt: now)
         let captureArtifacts = artifactResult.artifacts
-        let semanticDigests = artifactBuilder.buildSemanticDigests(from: captureArtifacts, createdAt: now)
+        let semanticDigests = artifactBuilder.buildSemanticDigests(from: artifactResult, createdAt: now)
         let normalizedText = artifactBuilder.resolvedRecordRawText(from: draft, artifacts: captureArtifacts)
 
         let recordShell = RecordShell(

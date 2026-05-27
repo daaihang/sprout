@@ -32,7 +32,8 @@ struct MemoryDeskRenderer: View {
                 provenanceDisplayMode: .production,
                 musicCardStyle: .auto,
                 placeCardStyle: .auto,
-                surfaceMode: .skeuomorphic
+                surfaceMode: .skeuomorphic,
+                visualRecipe: node.visualRecipe
             )
         )
         .frame(width: width(for: node.layout.size), alignment: .center)

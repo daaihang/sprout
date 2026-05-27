@@ -107,6 +107,7 @@ struct CaptureCardPresentation: Hashable, Sendable {
     var showsLayoutGuides: Bool
     var showsFieldAudit: Bool
     var surfaceMode: CaptureCardSurfaceMode
+    var visualRecipe: MemoryCardVisualRecipe?
 
     init(
         item: CaptureCardItem,
@@ -121,7 +122,8 @@ struct CaptureCardPresentation: Hashable, Sendable {
         placeCardStyle: CapturePlaceCardStyle = .auto,
         showsLayoutGuides: Bool = false,
         showsFieldAudit: Bool = false,
-        surfaceMode: CaptureCardSurfaceMode = .standard
+        surfaceMode: CaptureCardSurfaceMode = .standard,
+        visualRecipe: MemoryCardVisualRecipe? = nil
     ) {
         self.item = item
         self.role = role
@@ -136,6 +138,7 @@ struct CaptureCardPresentation: Hashable, Sendable {
         self.showsLayoutGuides = showsLayoutGuides
         self.showsFieldAudit = showsFieldAudit
         self.surfaceMode = surfaceMode
+        self.visualRecipe = visualRecipe
     }
 
     static func composerAttachment(_ attachment: CaptureComposerAttachmentItem) -> CaptureCardPresentation {

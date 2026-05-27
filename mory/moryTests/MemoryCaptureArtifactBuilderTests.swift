@@ -166,7 +166,7 @@ final class MemoryCaptureArtifactBuilderTests: XCTestCase {
         let builder = MemoryCaptureArtifactBuilder()
         let recordID = UUID()
         let createdAt = Date(timeIntervalSince1970: 1_800_000_000)
-        let artifacts = builder.buildArtifacts(
+        let result = builder.buildArtifactResult(
             from: MemoryCaptureDraft(
                 rawText: "A day with media",
                 artifacts: [
@@ -218,8 +218,9 @@ final class MemoryCaptureArtifactBuilderTests: XCTestCase {
             recordID: recordID,
             createdAt: createdAt
         )
+        let artifacts = result.artifacts
 
-        let digests = builder.buildSemanticDigests(from: artifacts, createdAt: createdAt)
+        let digests = builder.buildSemanticDigests(from: result, createdAt: createdAt)
 
         for artifact in artifacts {
             XCTAssertNil(artifact.metadata["cardArrangement"])
@@ -235,6 +236,9 @@ final class MemoryCaptureArtifactBuilderTests: XCTestCase {
 
         let audioArtifact = try XCTUnwrap(artifacts.first(where: { $0.kind == .audio }))
         XCTAssertNil(audioArtifact.metadata["transcript"])
+        XCTAssertNil(audioArtifact.metadata["transcriptionText"])
+        XCTAssertNil(audioArtifact.metadata["languageCode"])
+        XCTAssertNil(audioArtifact.metadata["transcriptionConfidence"])
 
         let photoDigest = try XCTUnwrap(digests.first(where: { $0.artifactKind == .photo }))
         XCTAssertEqual(photoDigest.source, .localVision)

@@ -67,8 +67,31 @@ final class MemoryDeskRendererTests: XCTestCase {
         )
 
         let contentRefs = MemoryDeskRenderPlan.nodes(for: snapshot).map(\.contentRef)
+        let visualRecipes = MemoryDeskRenderPlan.nodes(for: snapshot).map(\.visualRecipe)
 
         XCTAssertEqual(contentRefs, [.recordBody, .artifact(audioID)])
+        XCTAssertEqual(visualRecipes, [.notebook, .cassette])
         XCTAssertFalse(contentRefs.contains(.artifact(photoID)))
+    }
+
+    func testDetailPresentationCarriesArrangementVisualRecipe() {
+        let item = CaptureCardItem(
+            id: "audio",
+            payload: .audio(CaptureAudioCardPayload()),
+            origin: .manual,
+            title: "Audio",
+            detail: "Transcript"
+        )
+
+        let presentation = CaptureCardPresentation(
+            item: item,
+            role: .detailViewing,
+            provenanceDisplayMode: .production,
+            surfaceMode: .skeuomorphic,
+            visualRecipe: .cassette
+        )
+
+        XCTAssertEqual(presentation.surfaceMode, .skeuomorphic)
+        XCTAssertEqual(presentation.visualRecipe, .cassette)
     }
 }

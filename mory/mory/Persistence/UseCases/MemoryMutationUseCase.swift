@@ -81,7 +81,7 @@ struct MemoryMutationUseCase {
                 createdAt: now
             )
         let addedArtifacts = addedArtifactResult.artifacts
-        let addedSemanticDigests = artifactBuilder.buildSemanticDigests(from: addedArtifacts, createdAt: now)
+        let addedSemanticDigests = artifactBuilder.buildSemanticDigests(from: addedArtifactResult, createdAt: now)
         let addedArrangementNodes = mutation.addedCardArrangement?.resolveArtifactNodes(
             artifacts: addedArtifacts,
             artifactIDByDraftID: addedArtifactResult.artifactIDByDraftID
