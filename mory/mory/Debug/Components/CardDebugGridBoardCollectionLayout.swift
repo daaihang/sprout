@@ -29,7 +29,7 @@ final class CardDebugGridBoardCollectionLayout: UICollectionViewLayout {
         allAttributes = slots.enumerated().map { index, slot in
             let indexPath = IndexPath(item: index, section: 0)
             let attributes = UICollectionViewLayoutAttributes(forCellWith: indexPath)
-            attributes.frame = slot.frame
+            attributes.frame = slot.renderFrame
             attributes.zIndex = slot.item.id == activeDragItemID ? 10_000 : Int(slot.layout.zIndex)
             attributesByIndexPath[indexPath] = attributes
             return attributes

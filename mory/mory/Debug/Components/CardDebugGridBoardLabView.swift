@@ -65,7 +65,7 @@ struct CardDebugGridBoardLabView: View {
     }
 
     private var boardHeight: CGFloat {
-        let maxY = slots.map(\.frame.maxY).max() ?? metrics.verticalPadding + metrics.rowHeight
+        let maxY = slots.map(\.renderFrame.maxY).max() ?? metrics.verticalPadding + metrics.rowHeight
         return max(metrics.verticalPadding * 2 + metrics.rowHeight, maxY + metrics.verticalPadding)
     }
 
@@ -352,6 +352,40 @@ struct CardDebugGridBoardPlaceholderCard: View {
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
+    }
+}
+
+struct CardDebugGridBoardRenderedCellHost: View {
+    let slot: CardDebugGridBoardLabSlot
+    let isProblematic: Bool
+    let isDragging: Bool
+    let isInteractive: Bool
+    var onDelete: () -> Void
+    var onMoveEarlier: () -> Void
+    var onMoveLater: () -> Void
+    var onSetSize: (MemoryCardSizeToken) -> Void
+    var onTogglePinned: () -> Void
+    var onToggleUserAdjusted: () -> Void
+
+    var body: some View {
+        let insets = slot.contentInsetsInRenderFrame
+        ZStack(alignment: .topLeading) {
+            CardDebugGridBoardPlaceholderCard(
+                slot: slot,
+                isProblematic: isProblematic,
+                isDragging: isDragging,
+                isInteractive: isInteractive,
+                onDelete: onDelete,
+                onMoveEarlier: onMoveEarlier,
+                onMoveLater: onMoveLater,
+                onSetSize: onSetSize,
+                onTogglePinned: onTogglePinned,
+                onToggleUserAdjusted: onToggleUserAdjusted
+            )
+            .frame(width: slot.gridFrame.width, height: slot.gridFrame.height, alignment: .topLeading)
+            .offset(x: insets.leading, y: insets.top)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
 

@@ -52,7 +52,7 @@ enum CardDebugGridBoardLabModel {
         in slots: [CardDebugGridBoardLabSlot]
     ) -> UUID? {
         slots.enumerated()
-            .filter { _, slot in slot.frame.contains(point) }
+            .filter { _, slot in slot.hitFrame.contains(point) }
             .sorted { lhs, rhs in
                 let lhsZIndex = lhs.element.layout.zIndex
                 let rhsZIndex = rhs.element.layout.zIndex
@@ -81,7 +81,8 @@ enum CardDebugGridBoardLabModel {
             itemID: itemID,
             itemSize: slot.item.size,
             geometry: CardDebugGridDragGeometry(
-                originalFrame: slot.frame,
+                renderFrame: slot.renderFrame,
+                gridFrame: slot.gridFrame,
                 touchLocation: point
             )
         )

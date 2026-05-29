@@ -85,6 +85,30 @@ final class CardDebugGridBoardLabTests: XCTestCase {
         XCTAssertEqual(geometry.gridAnchorLocation(for: movedTouch), liftedFrame.origin)
     }
 
+    func testSlotRenderFrameExpandsGridFrameForOverflowAndSnapshotRoom() throws {
+        let item = gridItem("banner", size: .banner, column: 0, row: 0)
+        let boardWidth = MemoryDeskBoardMetrics.debugBoardWidth(for: 390)
+        let metrics = MemoryDeskBoardMetrics.debugSquare(availableWidth: 390)
+        let slot = try XCTUnwrap(
+            CardDebugGridBoardLabModel.slots(
+                for: [item],
+                mode: .storedPlacement,
+                containerWidth: boardWidth,
+                metrics: metrics
+            )
+            .first
+        )
+
+        XCTAssertEqual(slot.frame, slot.gridFrame)
+        XCTAssertTrue(slot.renderFrame.contains(slot.gridFrame))
+        XCTAssertEqual(slot.hitFrame, slot.gridFrame)
+        XCTAssertGreaterThan(slot.renderFrame.width, slot.gridFrame.width)
+        XCTAssertGreaterThan(slot.renderFrame.height, slot.gridFrame.height)
+        XCTAssertGreaterThan(slot.contentInsetsInRenderFrame.leading, 0)
+        XCTAssertTrue(slot.debugLine.contains("grid="))
+        XCTAssertTrue(slot.debugLine.contains("render="))
+    }
+
     func testHitTestingUsesTopmostFrameNotLastCard() {
         let lower = gridItem("lower", size: .strip, column: 0, row: 0)
         let top = gridItem("top", size: .strip, column: 0, row: 0)
@@ -99,6 +123,28 @@ final class CardDebugGridBoardLabTests: XCTestCase {
 
         XCTAssertEqual(hitID, top.id)
         XCTAssertNotEqual(hitID, lastButLower.id)
+    }
+
+    func testHitTestingIgnoresRenderOverflowOutsideGridFrame() {
+        let item = gridItem("overflow", size: .banner, column: 0, row: 0)
+        let gridFrame = CGRect(x: 50, y: 30, width: 120, height: 80)
+        let slot = CardDebugGridBoardLabSlot(
+            id: item.id,
+            item: item,
+            layout: MemoryCardLayoutToken(
+                order: 0,
+                size: item.size,
+                gridPlacement: item.placement,
+                zIndex: 0
+            ),
+            gridFrame: gridFrame,
+            renderFrame: gridFrame.insetBy(dx: -24, dy: -24),
+            hitFrame: gridFrame
+        )
+
+        XCTAssertTrue(slot.renderFrame.contains(CGPoint(x: 32, y: 40)))
+        XCTAssertFalse(slot.hitFrame.contains(CGPoint(x: 32, y: 40)))
+        XCTAssertNil(CardDebugGridBoardLabModel.hitItemID(at: CGPoint(x: 32, y: 40), in: [slot]))
     }
 
     func testBeginDragCapturesTheTouchedSlotAndGrabOffset() throws {
@@ -117,7 +163,16 @@ final class CardDebugGridBoardLabTests: XCTestCase {
         let session = try XCTUnwrap(CardDebugGridBoardLabModel.beginDrag(at: touch, in: slots))
 
         XCTAssertEqual(session.itemID, item.id)
-        XCTAssertEqual(session.geometry.grabOffset, CGPoint(x: 21, y: 15))
+        XCTAssertEqual(session.geometry.originalFrame, slot.renderFrame)
+        XCTAssertEqual(session.geometry.originalGridFrame, slot.gridFrame)
+        XCTAssertEqual(
+            session.geometry.grabOffset,
+            CGPoint(
+                x: touch.x - slot.renderFrame.minX,
+                y: touch.y - slot.renderFrame.minY
+            )
+        )
+        XCTAssertEqual(session.geometry.gridAnchorLocation(for: touch), slot.gridFrame.origin)
     }
 
     func testDragToEmptyCellMovesDraggedOrderAndKeepsOtherPlacements() {
@@ -302,7 +357,7 @@ final class CardDebugGridBoardLabTests: XCTestCase {
             containerWidth: boardWidth,
             metrics: metrics
         )
-        let boardHeight = (slots.map(\.frame.maxY).max() ?? 0) + metrics.verticalPadding
+        let boardHeight = (slots.map(\.renderFrame.maxY).max() ?? 0) + metrics.verticalPadding
         let layout = CardDebugGridBoardCollectionLayout()
 
         layout.configure(
@@ -315,7 +370,7 @@ final class CardDebugGridBoardLabTests: XCTestCase {
         XCTAssertEqual(layout.collectionViewContentSize, CGSize(width: boardWidth, height: boardHeight))
         for (index, slot) in slots.enumerated() {
             let attributes = layout.layoutAttributesForItem(at: IndexPath(item: index, section: 0))
-            XCTAssertEqual(attributes?.frame, slot.frame)
+            XCTAssertEqual(attributes?.frame, slot.renderFrame)
             if index == 0 {
                 XCTAssertEqual(attributes?.zIndex, 10_000)
             }
@@ -343,6 +398,10 @@ final class CardDebugGridBoardLabTests: XCTestCase {
         XCTAssertFalse(uiKitSource.contains("onPreviewChanged"))
         XCTAssertFalse(uiKitSource.contains("+ collectionView.contentOffset"))
         XCTAssertTrue(uiKitSource.contains("snapshotView(afterScreenUpdates: false)"))
+        XCTAssertTrue(uiKitSource.contains("collectionView.clipsToBounds = false"))
+        XCTAssertTrue(uiKitSource.contains("cell.clipsToBounds = false"))
+        XCTAssertTrue(uiKitSource.contains("UIView.animate"))
+        XCTAssertTrue(uiKitSource.contains(".renderFrame"))
         XCTAssertFalse(engineSource.contains("minimumDisturbance"))
         XCTAssertFalse(engineSource.contains("displacedPreview"))
         XCTAssertFalse(engineSource.contains("maxIterations"))

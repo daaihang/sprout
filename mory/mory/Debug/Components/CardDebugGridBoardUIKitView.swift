@@ -33,7 +33,8 @@ struct CardDebugGridBoardUIKitView: UIViewRepresentable {
         let collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
         collectionView.backgroundColor = UIColor.secondarySystemBackground.withAlphaComponent(0.18)
         collectionView.layer.cornerRadius = 14
-        collectionView.clipsToBounds = true
+        collectionView.clipsToBounds = false
+        collectionView.layer.masksToBounds = false
         collectionView.alwaysBounceVertical = true
         collectionView.showsVerticalScrollIndicator = true
         collectionView.delaysContentTouches = false
@@ -128,11 +129,7 @@ struct CardDebugGridBoardUIKitView: UIViewRepresentable {
                 itemIDs = nextIDs
                 collectionView.reloadData()
             } else {
-                performWithoutAnimation(in: collectionView) {
-                    collectionView.collectionViewLayout.invalidateLayout()
-                    collectionView.layoutIfNeeded()
-                    configureVisibleCells(in: collectionView)
-                }
+                refreshLayout(in: collectionView, animated: false)
             }
 
             let maxOffsetY = max(0, activeBoardHeight - collectionView.bounds.height)
@@ -195,8 +192,9 @@ struct CardDebugGridBoardUIKitView: UIViewRepresentable {
                     metrics: parent.metrics,
                     in: parent.storedItems
                 )
-                finishDrag(in: collectionView)
-                parent.onDragEnded(preview)
+                finishDrag(in: collectionView, preview: preview) { [weak self] in
+                    self?.parent.onDragEnded(preview)
+                }
 
             case .cancelled, .failed:
                 cancelDrag(in: collectionView)
@@ -229,7 +227,7 @@ struct CardDebugGridBoardUIKitView: UIViewRepresentable {
                 return
             }
 
-            snapshotView.frame = session.geometry.originalFrame
+            placeSnapshot(snapshotView, at: session.geometry.originalFrame)
             snapshotView.layer.shadowColor = UIColor.black.cgColor
             snapshotView.layer.shadowOpacity = 0.16
             snapshotView.layer.shadowRadius = 12
@@ -248,6 +246,7 @@ struct CardDebugGridBoardUIKitView: UIViewRepresentable {
                 in: collectionView,
                 forcePreview: true
             )
+            animateLift(snapshotView)
         }
 
         private func updateDrag(
@@ -257,17 +256,7 @@ struct CardDebugGridBoardUIKitView: UIViewRepresentable {
             forcePreview: Bool
         ) {
             guard let context = dragContext else { return }
-            context.snapshotView.frame = session.geometry.liftedFrame(for: contentLocation)
-
-            let targetPlacement = CardDebugGridBoardLabModel.targetPlacement(
-                for: session.geometry.gridAnchorLocation(for: contentLocation),
-                itemSize: session.itemSize,
-                boardWidth: parent.containerWidth,
-                metrics: parent.metrics
-            )
-            guard forcePreview || targetPlacement != context.lastTargetPlacement else {
-                return
-            }
+            placeSnapshot(context.snapshotView, at: session.geometry.liftedFrame(for: contentLocation))
 
             let preview = CardDebugGridBoardLabModel.dragPreview(
                 for: session,
@@ -278,29 +267,87 @@ struct CardDebugGridBoardUIKitView: UIViewRepresentable {
             )
             context.lastTargetPlacement = preview.targetPlacement
             context.latestPreview = preview
+            overlayView?.configure(
+                boardHeight: boardHeight(for: currentSlots),
+                metrics: parent.metrics,
+                targetPlacement: preview.targetPlacement,
+                targetSize: session.itemSize
+            )
+            guard forcePreview || preview.insertionIndex != context.lastInsertionIndex else {
+                return
+            }
+            context.lastInsertionIndex = preview.insertionIndex
             previewSlots = CardDebugGridBoardLabModel.slots(
                 for: preview.items,
                 mode: .storedPlacement,
                 containerWidth: parent.containerWidth,
                 metrics: parent.metrics
             )
-            applyCurrentLayout(to: collectionView)
+            applyCurrentLayout(to: collectionView, animated: true)
         }
 
-        private func finishDrag(in collectionView: UICollectionView) {
+        private func finishDrag(
+            in collectionView: UICollectionView,
+            preview: CardDebugGridDragPreview? = nil,
+            completion: (() -> Void)? = nil
+        ) {
+            guard let context = dragContext else {
+                completion?()
+                return
+            }
+
+            let finalFrame = preview.flatMap { preview in
+                CardDebugGridBoardLabModel.slots(
+                    for: preview.items,
+                    mode: .storedPlacement,
+                    containerWidth: parent.containerWidth,
+                    metrics: parent.metrics
+                )
+                .first(where: { $0.item.id == preview.itemID })?
+                .renderFrame
+            }
+
+            let cleanup = { [weak self] in
+                context.snapshotView.removeFromSuperview()
+                context.hiddenCell?.isHidden = false
+                self?.dragContext = nil
+                self?.previewSlots = nil
+                collectionView.isScrollEnabled = true
+                completion?()
+            }
+
+            guard let finalFrame else {
+                cleanup()
+                return
+            }
+
+            UIView.animate(
+                withDuration: 0.16,
+                delay: 0,
+                options: [.curveEaseOut, .allowUserInteraction, .beginFromCurrentState],
+                animations: {
+                    self.placeSnapshot(context.snapshotView, at: finalFrame)
+                    context.snapshotView.transform = .identity
+                    context.snapshotView.layer.shadowOpacity = 0.12
+                    context.snapshotView.layer.shadowRadius = 8
+                    context.snapshotView.layer.shadowOffset = CGSize(width: 0, height: 4)
+                },
+                completion: { _ in
+                    cleanup()
+                }
+            )
+        }
+
+        private func cancelDrag(in collectionView: UICollectionView) {
             dragContext?.snapshotView.removeFromSuperview()
             dragContext?.hiddenCell?.isHidden = false
             dragContext = nil
             previewSlots = nil
             collectionView.isScrollEnabled = true
-            applyCurrentLayout(to: collectionView)
+            applyCurrentLayout(to: collectionView, animated: false)
         }
 
-        private func cancelDrag(in collectionView: UICollectionView) {
-            finishDrag(in: collectionView)
-        }
-
-        private func applyCurrentLayout(to collectionView: UICollectionView) {
+        private func applyCurrentLayout(to collectionView: UICollectionView, animated: Bool) {
             guard let layout = collectionView.collectionViewLayout as? CardDebugGridBoardCollectionLayout else {
                 return
             }
@@ -327,11 +374,7 @@ struct CardDebugGridBoardUIKitView: UIViewRepresentable {
                 width: parent.containerWidth,
                 height: activeBoardHeight
             )
-            performWithoutAnimation(in: collectionView) {
-                collectionView.collectionViewLayout.invalidateLayout()
-                collectionView.layoutIfNeeded()
-                configureVisibleCells(in: collectionView)
-            }
+            refreshLayout(in: collectionView, animated: animated)
         }
 
         private func configureVisibleCells(in collectionView: UICollectionView) {
@@ -348,9 +391,13 @@ struct CardDebugGridBoardUIKitView: UIViewRepresentable {
             guard currentSlots.indices.contains(indexPath.item) else { return }
             let slot = currentSlots[indexPath.item]
             cell.backgroundColor = .clear
+            cell.clipsToBounds = false
+            cell.layer.masksToBounds = false
+            cell.contentView.clipsToBounds = false
+            cell.contentView.layer.masksToBounds = false
             cell.isHidden = dragContext?.session.itemID == slot.item.id
             cell.contentConfiguration = UIHostingConfiguration {
-                CardDebugGridBoardPlaceholderCard(
+                CardDebugGridBoardRenderedCellHost(
                     slot: slot,
                     isProblematic: parent.overlapCount > 0,
                     isDragging: parent.activeDragItemID == slot.item.id,
@@ -379,15 +426,18 @@ struct CardDebugGridBoardUIKitView: UIViewRepresentable {
         }
 
         private func boardHeight(for slots: [CardDebugGridBoardLabSlot]) -> CGFloat {
-            let maxY = slots.map(\.frame.maxY).max() ?? parent.metrics.verticalPadding + parent.metrics.rowHeight
+            let maxY = slots.map(\.renderFrame.maxY).max() ?? parent.metrics.verticalPadding + parent.metrics.rowHeight
             return max(parent.boardHeight, maxY + parent.metrics.verticalPadding)
         }
 
-        private func performWithoutAnimation(
-            in collectionView: UICollectionView,
-            _ updates: () -> Void
-        ) {
-            UIView.performWithoutAnimation {
+        private func refreshLayout(in collectionView: UICollectionView, animated: Bool) {
+            let updates = {
+                collectionView.collectionViewLayout.invalidateLayout()
+                collectionView.layoutIfNeeded()
+                self.configureVisibleCells(in: collectionView)
+            }
+
+            guard animated else {
                 let animationsEnabled = UIView.areAnimationsEnabled
                 UIView.setAnimationsEnabled(false)
                 CATransaction.begin()
@@ -396,7 +446,34 @@ struct CardDebugGridBoardUIKitView: UIViewRepresentable {
                 CATransaction.commit()
                 UIView.setAnimationsEnabled(animationsEnabled)
                 collectionView.layoutIfNeeded()
+                return
             }
+
+            UIView.animate(
+                withDuration: 0.18,
+                delay: 0,
+                options: [.curveEaseInOut, .allowUserInteraction, .beginFromCurrentState],
+                animations: updates
+            )
+        }
+
+        private func placeSnapshot(_ snapshotView: UIView, at frame: CGRect) {
+            snapshotView.bounds = CGRect(origin: .zero, size: frame.size)
+            snapshotView.center = CGPoint(x: frame.midX, y: frame.midY)
+        }
+
+        private func animateLift(_ snapshotView: UIView) {
+            UIView.animate(
+                withDuration: 0.14,
+                delay: 0,
+                options: [.curveEaseOut, .allowUserInteraction, .beginFromCurrentState],
+                animations: {
+                    snapshotView.transform = CGAffineTransform(scaleX: 1.03, y: 1.03)
+                    snapshotView.layer.shadowOpacity = 0.24
+                    snapshotView.layer.shadowRadius = 18
+                    snapshotView.layer.shadowOffset = CGSize(width: 0, height: 10)
+                }
+            )
         }
     }
 }
@@ -406,6 +483,7 @@ private final class CardDebugGridUIKitDragContext {
     let snapshotView: UIView
     weak var hiddenCell: UICollectionViewCell?
     var lastTargetPlacement: MemoryCardGridPlacement?
+    var lastInsertionIndex: Int?
     var latestPreview: CardDebugGridDragPreview?
 
     init(

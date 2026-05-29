@@ -22,7 +22,54 @@ struct CardDebugGridBoardLabSlot: Identifiable, Hashable {
     let id: UUID
     let item: CardDebugGridBoardLabItem
     let layout: MemoryCardLayoutToken
-    let frame: CGRect
+    let gridFrame: CGRect
+    let renderFrame: CGRect
+    let hitFrame: CGRect
+
+    init(
+        id: UUID,
+        item: CardDebugGridBoardLabItem,
+        layout: MemoryCardLayoutToken,
+        frame: CGRect
+    ) {
+        self.init(
+            id: id,
+            item: item,
+            layout: layout,
+            gridFrame: frame,
+            renderFrame: Self.renderFrame(for: frame, size: layout.size),
+            hitFrame: frame
+        )
+    }
+
+    init(
+        id: UUID,
+        item: CardDebugGridBoardLabItem,
+        layout: MemoryCardLayoutToken,
+        gridFrame: CGRect,
+        renderFrame: CGRect,
+        hitFrame: CGRect
+    ) {
+        self.id = id
+        self.item = item
+        self.layout = layout
+        self.gridFrame = gridFrame
+        self.renderFrame = renderFrame
+        self.hitFrame = hitFrame
+    }
+
+    var frame: CGRect {
+        gridFrame
+    }
+
+    var contentInsetsInRenderFrame: EdgeInsets {
+        EdgeInsets(
+            top: max(0, gridFrame.minY - renderFrame.minY),
+            leading: max(0, gridFrame.minX - renderFrame.minX),
+            bottom: max(0, renderFrame.maxY - gridFrame.maxY),
+            trailing: max(0, renderFrame.maxX - gridFrame.maxX)
+        )
+    }
 
     var gridBox: MemoryCardGridBox {
         MemoryCardRecipeLayoutPolicy.gridBox(for: layout.size)
@@ -46,7 +93,26 @@ struct CardDebugGridBoardLabSlot: Identifiable, Hashable {
 
     var debugLine: String {
         let placement = layout.gridPlacement.map { "c\($0.column)r\($0.row)" } ?? "nil"
-        return "\(item.title) \(layout.size.rawValue) \(placement) \(gridBox.columnSpan)x\(gridBox.rowSpan) frame=\(Int(frame.width))x\(Int(frame.height))"
+        return "\(item.title) \(layout.size.rawValue) \(placement) \(gridBox.columnSpan)x\(gridBox.rowSpan) grid=\(Int(gridFrame.width))x\(Int(gridFrame.height)) render=\(Int(renderFrame.width))x\(Int(renderFrame.height))"
+    }
+
+    private static func renderFrame(for gridFrame: CGRect, size: MemoryCardSizeToken) -> CGRect {
+        gridFrame.insetBy(dx: -renderOverflowMargin(for: size), dy: -renderOverflowMargin(for: size))
+    }
+
+    private static func renderOverflowMargin(for size: MemoryCardSizeToken) -> CGFloat {
+        switch size {
+        case .stamp:
+            return 8
+        case .strip:
+            return 10
+        case .card, .square:
+            return 12
+        case .tape:
+            return 14
+        case .banner:
+            return 16
+        }
     }
 }
 
@@ -97,13 +163,23 @@ struct CardDebugGridDragPreview: Hashable {
 
 struct CardDebugGridDragGeometry: Hashable {
     let originalFrame: CGRect
+    let originalGridFrame: CGRect
     let grabOffset: CGPoint
 
     init(originalFrame: CGRect, touchLocation: CGPoint) {
-        self.originalFrame = originalFrame
+        self.init(
+            renderFrame: originalFrame,
+            gridFrame: originalFrame,
+            touchLocation: touchLocation
+        )
+    }
+
+    init(renderFrame: CGRect, gridFrame: CGRect, touchLocation: CGPoint) {
+        self.originalFrame = renderFrame
+        self.originalGridFrame = gridFrame
         self.grabOffset = CGPoint(
-            x: touchLocation.x - originalFrame.minX,
-            y: touchLocation.y - originalFrame.minY
+            x: touchLocation.x - renderFrame.minX,
+            y: touchLocation.y - renderFrame.minY
         )
     }
 
@@ -117,9 +193,10 @@ struct CardDebugGridDragGeometry: Hashable {
     }
 
     func gridAnchorLocation(for touchLocation: CGPoint) -> CGPoint {
-        CGPoint(
-            x: touchLocation.x - grabOffset.x,
-            y: touchLocation.y - grabOffset.y
+        let liftedFrame = liftedFrame(for: touchLocation)
+        return CGPoint(
+            x: liftedFrame.minX + originalGridFrame.minX - originalFrame.minX,
+            y: liftedFrame.minY + originalGridFrame.minY - originalFrame.minY
         )
     }
 }
