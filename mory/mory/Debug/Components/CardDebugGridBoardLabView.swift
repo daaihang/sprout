@@ -78,6 +78,7 @@ struct CardDebugGridDragPreview: Hashable {
 
 enum CardDebugGridDragState: Hashable {
     case inactive
+    case pressing(UUID)
     case dragging(CardDebugGridDragPreview)
 
     var previewItems: [CardDebugGridBoardLabItem]? {
@@ -86,13 +87,23 @@ enum CardDebugGridDragState: Hashable {
     }
 
     var activeItemID: UUID? {
-        guard case .dragging(let preview) = self else { return nil }
-        return preview.itemID
+        switch self {
+        case .inactive:
+            return nil
+        case .pressing(let id):
+            return id
+        case .dragging(let preview):
+            return preview.itemID
+        }
     }
 
     var targetPlacement: MemoryCardGridPlacement? {
         guard case .dragging(let preview) = self else { return nil }
         return preview.targetPlacement
+    }
+
+    var isActive: Bool {
+        activeItemID != nil
     }
 }
 
@@ -726,6 +737,7 @@ struct CardDebugGridBoardLabView: View {
             .onChange(of: proxy.size.width) { _, newWidth in
                 updateMeasuredWidth(newWidth - 32)
             }
+            .scrollDisabled(dragState.isActive)
         }
         .navigationTitle("Grid Board Lab")
         .navigationBarTitleDisplayMode(.inline)
@@ -737,7 +749,7 @@ struct CardDebugGridBoardLabView: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
 
-            Text("Scroll normally anywhere on the page. Drag the card grip to move a card; other cards keep their positions unless they collide. Auto Pack is the explicit full tidy action.")
+            Text("Scroll normally by moving before the hold resolves. Long press a card to lift it, then drag to a grid cell; other cards keep their positions unless they collide. Auto Pack is the explicit full tidy action.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -802,9 +814,8 @@ struct CardDebugGridBoardLabView: View {
                 .frame(width: slot.frame.width, height: slot.frame.height)
                 .position(x: slot.frame.midX, y: slot.frame.midY)
                 .zIndex(activeDragItemID == slot.item.id ? 10_000 : Double(slot.layout.zIndex))
-                .overlay(alignment: .bottomTrailing) {
-                    dragHandle(for: slot)
-                }
+                .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .simultaneousGesture(longPressDragGesture(for: slot), including: .all)
                 .animation(.spring(response: 0.28, dampingFraction: 0.86), value: slots)
             }
         }
@@ -814,23 +825,6 @@ struct CardDebugGridBoardLabView: View {
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .frame(maxWidth: .infinity, alignment: .center)
         .padding(.horizontal, 16)
-    }
-
-    private func dragHandle(for slot: CardDebugGridBoardLabSlot) -> some View {
-        Image(systemName: "arrow.up.and.down.and.arrow.left.and.right")
-            .font(.caption.weight(.bold))
-            .foregroundStyle(activeDragItemID == slot.item.id ? Color.accentColor : Color.secondary)
-            .padding(9)
-            .background(.thinMaterial, in: Circle())
-            .overlay {
-                Circle()
-                    .strokeBorder(Color.primary.opacity(0.14), lineWidth: 1)
-            }
-            .padding(8)
-            .frame(width: 44, height: 44)
-            .contentShape(Rectangle())
-            .accessibilityLabel("Drag card")
-            .gesture(layoutDragGesture(for: slot))
     }
 
     private var reportSection: some View {
@@ -876,13 +870,24 @@ struct CardDebugGridBoardLabView: View {
         measuredContainerWidth = width
     }
 
-    private func layoutDragGesture(for slot: CardDebugGridBoardLabSlot) -> some Gesture {
-        DragGesture(minimumDistance: 9, coordinateSpace: .named(boardCoordinateSpace))
+    private func longPressDragGesture(for slot: CardDebugGridBoardLabSlot) -> some Gesture {
+        LongPressGesture(minimumDuration: 0.28, maximumDistance: 16)
+            .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .named(boardCoordinateSpace)))
             .updating($dragState) { value, state, _ in
-                state = .dragging(dragPreview(for: slot, at: value.location))
+                switch value {
+                case .first(true):
+                    state = .pressing(slot.item.id)
+                case .second(true, let drag?):
+                    state = .dragging(dragPreview(for: slot, at: drag.location))
+                default:
+                    state = .inactive
+                }
             }
             .onEnded { value in
-                let preview = dragPreview(for: slot, at: value.location)
+                guard case .second(true, let drag?) = value else {
+                    return
+                }
+                let preview = dragPreview(for: slot, at: drag.location)
                 items = CardDebugGridBoardLabModel.commitPreview(preview.items)
             }
     }

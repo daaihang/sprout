@@ -72,6 +72,25 @@ final class CardDebugGridBoardLabTests: XCTestCase {
         XCTAssertEqual(bannerTarget.column, 0)
     }
 
+    func testDragStateSeparatesPressingFromDraggingPreview() {
+        let id = UUID()
+        let item = gridItem("dragged", size: .strip, column: 0, row: 0)
+        let preview = CardDebugGridDragPreview(
+            itemID: item.id,
+            targetPlacement: MemoryCardGridPlacement(column: 2, row: 1),
+            items: [item]
+        )
+
+        XCTAssertFalse(CardDebugGridDragState.inactive.isActive)
+        XCTAssertNil(CardDebugGridDragState.inactive.activeItemID)
+        XCTAssertEqual(CardDebugGridDragState.pressing(id).activeItemID, id)
+        XCTAssertTrue(CardDebugGridDragState.pressing(id).isActive)
+        XCTAssertNil(CardDebugGridDragState.pressing(id).previewItems)
+        XCTAssertEqual(CardDebugGridDragState.dragging(preview).activeItemID, item.id)
+        XCTAssertEqual(CardDebugGridDragState.dragging(preview).targetPlacement, preview.targetPlacement)
+        XCTAssertEqual(CardDebugGridDragState.dragging(preview).previewItems, preview.items)
+    }
+
     func testDragPreviewDerivesTargetPlacementFromBoardCoordinates() throws {
         let dragged = gridItem("dragged", size: .strip, column: 4, row: 0)
         let anchor = gridItem("anchor", size: .strip, column: 0, row: 0)
