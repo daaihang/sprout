@@ -72,6 +72,97 @@ final class CardDebugGridBoardLabTests: XCTestCase {
         XCTAssertEqual(bannerTarget.column, 0)
     }
 
+    func testDragPreviewDerivesTargetPlacementFromBoardCoordinates() throws {
+        let dragged = gridItem("dragged", size: .strip, column: 4, row: 0)
+        let anchor = gridItem("anchor", size: .strip, column: 0, row: 0)
+        let rowFiller = gridItem("rowFiller", size: .strip, column: 0, row: 1)
+        let items = [dragged, anchor, rowFiller]
+        let boardWidth = MemoryDeskBoardMetrics.debugBoardWidth(for: 390)
+        let metrics = MemoryDeskBoardMetrics.debugSquare(availableWidth: 390)
+        let cellSize = metrics.cellWidth(for: boardWidth)
+        let location = CGPoint(
+            x: metrics.horizontalPadding + CGFloat(4) * (cellSize + metrics.columnSpacing),
+            y: metrics.verticalPadding + CGFloat(2) * (metrics.rowHeight + metrics.rowSpacing)
+        )
+
+        let preview = CardDebugGridBoardLabModel.dragPreview(
+            dragging: dragged.id,
+            at: location,
+            itemSize: dragged.size,
+            boardWidth: boardWidth,
+            metrics: metrics,
+            in: items
+        )
+
+        XCTAssertEqual(preview.itemID, dragged.id)
+        XCTAssertEqual(preview.targetPlacement, MemoryCardGridPlacement(column: 4, row: 2))
+        XCTAssertEqual(preview.items.first(where: { $0.id == dragged.id })?.placement, preview.targetPlacement)
+    }
+
+    func testDragPreviewDoesNotMutateStoredItems() {
+        let dragged = gridItem("dragged", size: .strip, column: 0, row: 0)
+        let blocker = gridItem("blocker", size: .strip, column: 2, row: 0)
+        let items = [dragged, blocker]
+        let boardWidth = MemoryDeskBoardMetrics.debugBoardWidth(for: 390)
+        let metrics = MemoryDeskBoardMetrics.debugSquare(availableWidth: 390)
+        let originalItems = items
+
+        _ = CardDebugGridBoardLabModel.dragPreview(
+            dragging: dragged.id,
+            at: CGPoint(x: metrics.horizontalPadding + 200, y: metrics.verticalPadding),
+            itemSize: dragged.size,
+            boardWidth: boardWidth,
+            metrics: metrics,
+            in: items
+        )
+
+        XCTAssertEqual(items, originalItems)
+    }
+
+    func testDragPreviewCommitPersistsPlacementsWithoutOverlap() {
+        let dragged = gridItem("dragged", size: .tape, column: 0, row: 0)
+        let blocker = gridItem("blocker", size: .strip, column: 2, row: 0)
+        let bystander = gridItem("bystander", size: .square, column: 0, row: 2)
+        let items = [dragged, blocker, bystander]
+        let boardWidth = MemoryDeskBoardMetrics.debugBoardWidth(for: 390)
+        let metrics = MemoryDeskBoardMetrics.debugSquare(availableWidth: 390)
+        let location = CGPoint(
+            x: metrics.horizontalPadding + CGFloat(2) * (metrics.cellWidth(for: boardWidth) + metrics.columnSpacing),
+            y: metrics.verticalPadding
+        )
+
+        let preview = CardDebugGridBoardLabModel.dragPreview(
+            dragging: dragged.id,
+            at: location,
+            itemSize: dragged.size,
+            boardWidth: boardWidth,
+            metrics: metrics,
+            in: items
+        )
+        let committed = CardDebugGridBoardLabModel.commitPreview(preview.items)
+        let report = CardDebugGridBoardLabModel.report(for: committed, mode: .storedPlacement)
+
+        XCTAssertTrue(committed.allSatisfy { $0.placement != nil })
+        XCTAssertEqual(report.overlapCount, 0)
+    }
+
+    func testDragPreviewClampsLargeCardsWithinSixColumns() {
+        let banner = gridItem("banner", size: .banner, column: 0, row: 0)
+        let boardWidth = MemoryDeskBoardMetrics.debugBoardWidth(for: 390)
+        let metrics = MemoryDeskBoardMetrics.debugSquare(availableWidth: 390)
+
+        let preview = CardDebugGridBoardLabModel.dragPreview(
+            dragging: banner.id,
+            at: CGPoint(x: 10_000, y: metrics.verticalPadding),
+            itemSize: banner.size,
+            boardWidth: boardWidth,
+            metrics: metrics,
+            in: [banner]
+        )
+
+        XCTAssertEqual(preview.targetPlacement.column, 0)
+    }
+
     func testPreviewDragToEmptyGridCellPreservesOtherStoredPlacements() throws {
         let dragged = gridItem("dragged", size: .strip, column: 0, row: 0)
         let right = gridItem("right", size: .strip, column: 2, row: 0)
