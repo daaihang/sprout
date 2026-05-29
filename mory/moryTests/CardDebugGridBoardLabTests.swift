@@ -61,19 +61,21 @@ final class CardDebugGridBoardLabTests: XCTestCase {
     }
 
     func testPreviewDragToEmptyGridCellPreservesOtherStoredPlacements() throws {
-        let items = CardDebugGridBoardLabModel.defaultItems()
-        let draggingID = try XCTUnwrap(items.first(where: { $0.size == .stamp })?.id)
-        let target = MemoryCardGridPlacement(column: 0, row: 10)
+        let dragged = gridItem("dragged", size: .strip, column: 0, row: 0)
+        let right = gridItem("right", size: .strip, column: 2, row: 0)
+        let farRight = gridItem("farRight", size: .strip, column: 4, row: 0)
+        let items = [dragged, right, farRight]
+        let target = MemoryCardGridPlacement(column: 0, row: 1)
 
         let preview = CardDebugGridBoardLabModel.previewItems(
-            dragging: draggingID,
+            dragging: dragged.id,
             to: target,
             in: items
         )
         let report = CardDebugGridBoardLabModel.report(for: preview, mode: .storedPlacement)
 
-        XCTAssertEqual(preview.first(where: { $0.id == draggingID })?.placement, target)
-        for item in preview where item.id != draggingID {
+        XCTAssertEqual(preview.first(where: { $0.id == dragged.id })?.placement, target)
+        for item in preview where item.id != dragged.id {
             XCTAssertEqual(item.placement, items.first(where: { $0.id == item.id })?.placement)
         }
         XCTAssertEqual(report.overlapCount, 0)
@@ -81,27 +83,9 @@ final class CardDebugGridBoardLabTests: XCTestCase {
     }
 
     func testPreviewDragOnlyMovesCollidingCards() throws {
-        let pinned = CardDebugGridBoardLabItem(
-            id: UUID(),
-            title: "pinned",
-            size: .strip,
-            recipe: .taskNote,
-            placement: MemoryCardGridPlacement(column: 0, row: 0)
-        )
-        let blocker = CardDebugGridBoardLabItem(
-            id: UUID(),
-            title: "blocker",
-            size: .strip,
-            recipe: .taskNote,
-            placement: MemoryCardGridPlacement(column: 2, row: 0)
-        )
-        let bystander = CardDebugGridBoardLabItem(
-            id: UUID(),
-            title: "bystander",
-            size: .strip,
-            recipe: .taskNote,
-            placement: MemoryCardGridPlacement(column: 4, row: 0)
-        )
+        let pinned = gridItem("pinned", size: .strip, column: 0, row: 0)
+        let blocker = gridItem("blocker", size: .strip, column: 2, row: 0)
+        let bystander = gridItem("bystander", size: .strip, column: 4, row: 0)
         let items = [pinned, blocker, bystander]
 
         let preview = CardDebugGridBoardLabModel.previewItems(
@@ -114,6 +98,25 @@ final class CardDebugGridBoardLabTests: XCTestCase {
         XCTAssertEqual(preview.first(where: { $0.id == pinned.id })?.placement, MemoryCardGridPlacement(column: 2, row: 0))
         XCTAssertEqual(preview.first(where: { $0.id == blocker.id })?.placement, MemoryCardGridPlacement(column: 2, row: 1))
         XCTAssertEqual(preview.first(where: { $0.id == bystander.id })?.placement, bystander.placement)
+        XCTAssertEqual(report.overlapCount, 0)
+    }
+
+    func testCollisionResolutionChoosesNearestAvailableCandidateIncludingUpwardMoves() {
+        let anchor = gridItem("anchor", size: .strip, column: 0, row: 0)
+        let dragged = gridItem("dragged", size: .strip, column: 4, row: 0)
+        let blocker = gridItem("blocker", size: .strip, column: 2, row: 2)
+        let items = [anchor, dragged, blocker]
+
+        let preview = CardDebugGridBoardLabModel.previewItems(
+            dragging: dragged.id,
+            to: MemoryCardGridPlacement(column: 2, row: 2),
+            in: items
+        )
+        let report = CardDebugGridBoardLabModel.report(for: preview, mode: .storedPlacement)
+
+        XCTAssertEqual(preview.first(where: { $0.id == dragged.id })?.placement, MemoryCardGridPlacement(column: 2, row: 2))
+        XCTAssertEqual(preview.first(where: { $0.id == blocker.id })?.placement, MemoryCardGridPlacement(column: 2, row: 1))
+        XCTAssertEqual(preview.first(where: { $0.id == anchor.id })?.placement, anchor.placement)
         XCTAssertEqual(report.overlapCount, 0)
     }
 
@@ -131,6 +134,47 @@ final class CardDebugGridBoardLabTests: XCTestCase {
         XCTAssertEqual(committed.map(\.id), preview.map(\.id))
         XCTAssertEqual(committed.count, preview.count)
         XCTAssertTrue(committed.allSatisfy { $0.placement != nil })
+    }
+
+    func testCompactEmptyRowsMovesLowerContentUpButDoesNotFillPartialHoles() {
+        let right = gridItem("right", size: .strip, column: 4, row: 0)
+        let lower = gridItem("lower", size: .strip, column: 2, row: 2)
+
+        let compacted = CardDebugGridBoardLabModel.compactEmptyRows([right, lower])
+
+        XCTAssertEqual(compacted.first(where: { $0.id == right.id })?.placement, MemoryCardGridPlacement(column: 4, row: 0))
+        XCTAssertEqual(compacted.first(where: { $0.id == lower.id })?.placement, MemoryCardGridPlacement(column: 2, row: 1))
+    }
+
+    func testResizeGrowsAtSameAnchorAndOnlyPushesCollidingCards() {
+        var hero = gridItem("hero", size: .strip, column: 0, row: 0)
+        hero.size = .banner
+        hero.recipe = CardDebugGridBoardLabModel.recipe(for: .banner)
+        let blocker = gridItem("blocker", size: .strip, column: 4, row: 0)
+        let bystander = gridItem("bystander", size: .strip, column: 0, row: 3)
+        let items = [hero, blocker, bystander]
+
+        let resolved = CardDebugGridBoardLabModel.collisionResolvedItems(
+            items,
+            pinnedID: hero.id,
+            pinnedPlacement: hero.placement
+        )
+        let report = CardDebugGridBoardLabModel.report(for: resolved, mode: .storedPlacement)
+
+        XCTAssertEqual(resolved.first(where: { $0.id == hero.id })?.placement, MemoryCardGridPlacement(column: 0, row: 0))
+        XCTAssertEqual(resolved.first(where: { $0.id == blocker.id })?.placement, MemoryCardGridPlacement(column: 4, row: 3))
+        XCTAssertEqual(resolved.first(where: { $0.id == bystander.id })?.placement, bystander.placement)
+        XCTAssertEqual(report.overlapCount, 0)
+    }
+
+    func testAutoPackIsTheOnlyFullFirstFitTidyAction() {
+        let item = gridItem("right", size: .strip, column: 4, row: 0)
+
+        let locallyCompacted = CardDebugGridBoardLabModel.compactEmptyRows([item])
+        let autoPacked = CardDebugGridBoardLabModel.autoPacked([item])
+
+        XCTAssertEqual(locallyCompacted.first?.placement, MemoryCardGridPlacement(column: 4, row: 0))
+        XCTAssertEqual(autoPacked.first?.placement, MemoryCardGridPlacement(column: 0, row: 0))
     }
 
     func testAddDeleteSizeChangeAndAutoPackKeepGridNonOverlapping() {
@@ -153,5 +197,20 @@ final class CardDebugGridBoardLabTests: XCTestCase {
         XCTAssertEqual(report.overlapCount, 0)
         XCTAssertTrue(report.slots.allSatisfy { $0.layout.gridPlacement != nil })
         XCTAssertGreaterThan(report.rowCount, 0)
+    }
+
+    private func gridItem(
+        _ title: String,
+        size: MemoryCardSizeToken,
+        column: Int,
+        row: Int
+    ) -> CardDebugGridBoardLabItem {
+        CardDebugGridBoardLabItem(
+            id: UUID(),
+            title: title,
+            size: size,
+            recipe: CardDebugGridBoardLabModel.recipe(for: size),
+            placement: MemoryCardGridPlacement(column: column, row: row)
+        )
     }
 }
