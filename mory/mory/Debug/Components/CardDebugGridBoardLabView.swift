@@ -371,6 +371,7 @@ struct CardDebugGridBoardLabView: View {
         }
         .navigationTitle("Grid Board Lab")
         .navigationBarTitleDisplayMode(.inline)
+        .scrollDisabled(activeDragItemID != nil)
         .onChange(of: placementMode) { _, _ in
             resetDragState()
         }
@@ -445,7 +446,7 @@ struct CardDebugGridBoardLabView: View {
                 .frame(width: slot.frame.width, height: slot.frame.height)
                 .position(x: slot.frame.midX, y: slot.frame.midY)
                 .zIndex(activeDragItemID == slot.item.id ? 10_000 : Double(slot.layout.zIndex))
-                .gesture(layoutDragGesture(for: slot))
+                .simultaneousGesture(layoutDragGesture(for: slot))
                 .animation(.spring(response: 0.28, dampingFraction: 0.86), value: slots)
             }
         }
