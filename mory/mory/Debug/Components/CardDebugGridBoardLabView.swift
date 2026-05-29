@@ -49,6 +49,10 @@ struct CardDebugGridBoardLabSlot: Identifiable, Hashable {
 }
 
 struct CardDebugGridBoardLabReport: Hashable {
+    let projectionMode: CardDebugGridBoardPlacementMode
+    let boardWidth: CGFloat
+    let cellSize: CGFloat
+    let activeDragTarget: MemoryCardGridPlacement?
     let rowCount: Int
     let occupiedCells: Int
     let totalCells: Int
@@ -59,6 +63,10 @@ struct CardDebugGridBoardLabReport: Hashable {
 
     var densityLabel: String {
         "\(Int((density * 100).rounded()))%"
+    }
+
+    var activeDragTargetLabel: String {
+        activeDragTarget.map { "c\($0.column) r\($0.row)" } ?? "none"
     }
 }
 
@@ -84,6 +92,58 @@ enum CardDebugGridBoardLabModel {
             item.placement = placements[safe: index]
             return item
         }
+    }
+
+    static func targetPlacement(
+        for location: CGPoint,
+        itemSize: MemoryCardSizeToken,
+        boardWidth: CGFloat,
+        metrics: MemoryDeskBoardMetrics
+    ) -> MemoryCardGridPlacement {
+        let cellSize = metrics.cellWidth(for: boardWidth)
+        let columnStep = cellSize + metrics.columnSpacing
+        let rowStep = metrics.rowHeight + metrics.rowSpacing
+        let box = MemoryCardRecipeLayoutPolicy.gridBox(for: itemSize)
+        let maxColumn = max(0, MemoryCardRecipeLayoutPolicy.columnCount - box.columnSpan)
+        let rawColumn = Int(round((location.x - metrics.horizontalPadding) / max(CGFloat(1), columnStep)))
+        let rawRow = Int(round((location.y - metrics.verticalPadding) / max(CGFloat(1), rowStep)))
+        return MemoryCardGridPlacement(
+            column: min(max(0, rawColumn), maxColumn),
+            row: max(0, rawRow)
+        )
+    }
+
+    static func previewItems(
+        dragging id: UUID,
+        to placement: MemoryCardGridPlacement,
+        in items: [CardDebugGridBoardLabItem]
+    ) -> [CardDebugGridBoardLabItem] {
+        guard let pinnedIndex = items.firstIndex(where: { $0.id == id }) else { return items }
+        let placements = MemoryCardGridPacking.placements(
+            for: items.map(\.size),
+            pinned: [pinnedIndex: placement]
+        )
+        return items.enumerated().map { index, item in
+            var item = item
+            item.placement = placements[safe: index]
+            return item
+        }
+    }
+
+    static func commitPreview(_ items: [CardDebugGridBoardLabItem]) -> [CardDebugGridBoardLabItem] {
+        items.enumerated()
+            .sorted { lhs, rhs in
+                let lhsPlacement = lhs.element.placement ?? MemoryCardGridPlacement(column: 0, row: lhs.offset)
+                let rhsPlacement = rhs.element.placement ?? MemoryCardGridPlacement(column: 0, row: rhs.offset)
+                if lhsPlacement.row != rhsPlacement.row {
+                    return lhsPlacement.row < rhsPlacement.row
+                }
+                if lhsPlacement.column != rhsPlacement.column {
+                    return lhsPlacement.column < rhsPlacement.column
+                }
+                return lhs.offset < rhs.offset
+            }
+            .map(\.element)
     }
 
     static func slots(
@@ -120,7 +180,8 @@ enum CardDebugGridBoardLabModel {
         for items: [CardDebugGridBoardLabItem],
         mode: CardDebugGridBoardPlacementMode,
         containerWidth: CGFloat = 390,
-        metrics: MemoryDeskBoardMetrics = .default
+        metrics: MemoryDeskBoardMetrics = .default,
+        activeDragTarget: MemoryCardGridPlacement? = nil
     ) -> CardDebugGridBoardLabReport {
         let slots = slots(for: items, mode: mode, containerWidth: containerWidth, metrics: metrics)
         var occupied = Set<CardDebugGridCell>()
@@ -142,6 +203,10 @@ enum CardDebugGridBoardLabModel {
         let totalCells = rowCount * MemoryCardRecipeLayoutPolicy.columnCount
         let density = totalCells == 0 ? 0 : Double(occupied.count) / Double(totalCells)
         return CardDebugGridBoardLabReport(
+            projectionMode: mode,
+            boardWidth: containerWidth,
+            cellSize: metrics.cellWidth(for: containerWidth),
+            activeDragTarget: activeDragTarget,
             rowCount: rowCount,
             occupiedCells: occupied.count,
             totalCells: totalCells,
@@ -235,16 +300,35 @@ struct CardDebugGridBoardLabView: View {
     @State private var items = CardDebugGridBoardLabModel.defaultItems()
     @State private var placementMode: CardDebugGridBoardPlacementMode = .storedPlacement
     @State private var measuredContainerWidth: CGFloat = 0
+    @State private var activeDragItemID: UUID?
+    @State private var previewItems: [CardDebugGridBoardLabItem]?
+    @State private var dragTargetPlacement: MemoryCardGridPlacement?
 
-    private let metrics = MemoryDeskBoardMetrics.default
+    private let boardCoordinateSpace = "CardDebugGridBoardLab.board"
+
+    private var availableBoardWidth: CGFloat {
+        measuredContainerWidth > 0 ? measuredContainerWidth : 390
+    }
 
     private var containerWidth: CGFloat {
-        measuredContainerWidth > 0 ? measuredContainerWidth : 390
+        MemoryDeskBoardMetrics.debugBoardWidth(for: availableBoardWidth)
+    }
+
+    private var metrics: MemoryDeskBoardMetrics {
+        MemoryDeskBoardMetrics.debugSquare(availableWidth: availableBoardWidth)
+    }
+
+    private var isStoredModeInteractive: Bool {
+        placementMode == .storedPlacement
+    }
+
+    private var displayedItems: [CardDebugGridBoardLabItem] {
+        isStoredModeInteractive ? (previewItems ?? items) : items
     }
 
     private var slots: [CardDebugGridBoardLabSlot] {
         CardDebugGridBoardLabModel.slots(
-            for: items,
+            for: displayedItems,
             mode: placementMode,
             containerWidth: containerWidth,
             metrics: metrics
@@ -253,16 +337,22 @@ struct CardDebugGridBoardLabView: View {
 
     private var report: CardDebugGridBoardLabReport {
         CardDebugGridBoardLabModel.report(
-            for: items,
+            for: displayedItems,
             mode: placementMode,
             containerWidth: containerWidth,
-            metrics: metrics
+            metrics: metrics,
+            activeDragTarget: dragTargetPlacement
         )
     }
 
     private var boardHeight: CGFloat {
         let maxY = slots.map(\.frame.maxY).max() ?? metrics.verticalPadding + metrics.rowHeight
         return max(metrics.verticalPadding * 2 + metrics.rowHeight, maxY + metrics.verticalPadding)
+    }
+
+    private var dragTargetSize: MemoryCardSizeToken? {
+        guard let activeDragItemID else { return nil }
+        return displayedItems.first(where: { $0.id == activeDragItemID })?.size
     }
 
     var body: some View {
@@ -281,6 +371,9 @@ struct CardDebugGridBoardLabView: View {
         }
         .navigationTitle("Grid Board Lab")
         .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: placementMode) { _, _ in
+            resetDragState()
+        }
     }
 
     private var controls: some View {
@@ -331,12 +424,19 @@ struct CardDebugGridBoardLabView: View {
 
     private var board: some View {
         ZStack(alignment: .topLeading) {
-            CardDebugGridOverlay(boardHeight: boardHeight, metrics: metrics)
+            CardDebugGridOverlay(
+                boardHeight: boardHeight,
+                metrics: metrics,
+                targetPlacement: dragTargetPlacement,
+                targetSize: dragTargetSize
+            )
 
             ForEach(slots) { slot in
                 CardDebugGridBoardPlaceholderCard(
                     slot: slot,
                     isProblematic: report.overlapCount > 0 && placementMode == .nilPlacementFallback,
+                    isDragging: activeDragItemID == slot.item.id,
+                    isInteractive: isStoredModeInteractive,
                     onDelete: { delete(slot.item.id) },
                     onMoveEarlier: { move(slot.item.id, by: -1) },
                     onMoveLater: { move(slot.item.id, by: 1) },
@@ -344,22 +444,16 @@ struct CardDebugGridBoardLabView: View {
                 )
                 .frame(width: slot.frame.width, height: slot.frame.height)
                 .position(x: slot.frame.midX, y: slot.frame.midY)
-                .zIndex(Double(slot.layout.zIndex))
-                .draggable(slot.item.id.uuidString)
-                .dropDestination(for: String.self) { droppedIDs, _ in
-                    guard let rawID = droppedIDs.first,
-                          let sourceID = UUID(uuidString: rawID),
-                          sourceID != slot.item.id else {
-                        return false
-                    }
-                    reorder(sourceID, before: slot.item.id)
-                    return true
-                }
+                .zIndex(activeDragItemID == slot.item.id ? 10_000 : Double(slot.layout.zIndex))
+                .gesture(layoutDragGesture(for: slot))
+                .animation(.spring(response: 0.28, dampingFraction: 0.86), value: slots)
             }
         }
-        .frame(maxWidth: .infinity, minHeight: boardHeight, maxHeight: boardHeight, alignment: .topLeading)
+        .coordinateSpace(name: boardCoordinateSpace)
+        .frame(width: containerWidth, height: boardHeight, alignment: .topLeading)
         .background(Color(.secondarySystemBackground).opacity(0.18))
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .frame(maxWidth: .infinity, alignment: .center)
         .padding(.horizontal, 16)
         .background {
             GeometryReader { proxy in
@@ -378,7 +472,10 @@ struct CardDebugGridBoardLabView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Occupancy")
                 .font(.headline)
-            DebugValueRow(title: "Mode", value: placementMode.rawValue)
+            DebugValueRow(title: "Mode", value: report.projectionMode.rawValue)
+            DebugValueRow(title: "Board width", value: "\(Int(report.boardWidth.rounded()))")
+            DebugValueRow(title: "Cell size", value: "\(Int(report.cellSize.rounded()))")
+            DebugValueRow(title: "Drag target", value: report.activeDragTargetLabel)
             DebugValueRow(title: "Rows", value: "\(report.rowCount)")
             DebugValueRow(title: "Cells", value: "\(report.occupiedCells)/\(report.totalCells)")
             DebugValueRow(title: "Density", value: report.densityLabel)
@@ -401,7 +498,70 @@ struct CardDebugGridBoardLabView: View {
         measuredContainerWidth = width
     }
 
+    private func layoutDragGesture(for slot: CardDebugGridBoardLabSlot) -> some Gesture {
+        LongPressGesture(minimumDuration: 0.22)
+            .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .named(boardCoordinateSpace)))
+            .onChanged { value in
+                guard isStoredModeInteractive else { return }
+                switch value {
+                case .first(true):
+                    beginDrag(slot)
+                case .second(true, let drag?):
+                    updateDrag(slot, at: drag.location)
+                default:
+                    break
+                }
+            }
+            .onEnded { _ in
+                guard isStoredModeInteractive else { return }
+                commitDrag()
+            }
+    }
+
+    private func beginDrag(_ slot: CardDebugGridBoardLabSlot) {
+        guard activeDragItemID != slot.item.id else { return }
+        activeDragItemID = slot.item.id
+        let placement = slot.layout.gridPlacement ?? slot.item.placement ?? MemoryCardGridPlacement(column: 0, row: slot.layout.order)
+        dragTargetPlacement = placement
+        previewItems = CardDebugGridBoardLabModel.previewItems(
+            dragging: slot.item.id,
+            to: placement,
+            in: items
+        )
+    }
+
+    private func updateDrag(_ slot: CardDebugGridBoardLabSlot, at location: CGPoint) {
+        guard activeDragItemID == slot.item.id else { return }
+        let placement = CardDebugGridBoardLabModel.targetPlacement(
+            for: location,
+            itemSize: slot.item.size,
+            boardWidth: containerWidth,
+            metrics: metrics
+        )
+        guard placement != dragTargetPlacement else { return }
+        dragTargetPlacement = placement
+        previewItems = CardDebugGridBoardLabModel.previewItems(
+            dragging: slot.item.id,
+            to: placement,
+            in: items
+        )
+    }
+
+    private func commitDrag() {
+        if let previewItems {
+            items = CardDebugGridBoardLabModel.commitPreview(previewItems)
+        }
+        resetDragState()
+    }
+
+    private func resetDragState() {
+        activeDragItemID = nil
+        previewItems = nil
+        dragTargetPlacement = nil
+    }
+
     private func add(_ size: MemoryCardSizeToken) {
+        resetDragState()
         var next = CardDebugGridBoardLabItem(
             id: UUID(),
             title: size.rawValue,
@@ -417,11 +577,13 @@ struct CardDebugGridBoardLabView: View {
     }
 
     private func delete(_ id: UUID) {
+        resetDragState()
         items.removeAll { $0.id == id }
         items = CardDebugGridBoardLabModel.autoPacked(items)
     }
 
     private func move(_ id: UUID, by offset: Int) {
+        resetDragState()
         guard let sourceIndex = items.firstIndex(where: { $0.id == id }) else { return }
         let targetIndex = sourceIndex + offset
         guard items.indices.contains(targetIndex) else { return }
@@ -430,6 +592,7 @@ struct CardDebugGridBoardLabView: View {
     }
 
     private func reorder(_ sourceID: UUID, before targetID: UUID) {
+        resetDragState()
         guard let sourceIndex = items.firstIndex(where: { $0.id == sourceID }),
               let targetIndex = items.firstIndex(where: { $0.id == targetID }) else {
             return
@@ -441,6 +604,7 @@ struct CardDebugGridBoardLabView: View {
     }
 
     private func setSize(_ size: MemoryCardSizeToken, for id: UUID) {
+        resetDragState()
         guard let index = items.firstIndex(where: { $0.id == id }) else { return }
         items[index].size = size
         items[index].recipe = CardDebugGridBoardLabModel.recipe(for: size)
@@ -449,6 +613,7 @@ struct CardDebugGridBoardLabView: View {
     }
 
     private func autoPack() {
+        resetDragState()
         items = CardDebugGridBoardLabModel.autoPacked(items)
     }
 }
@@ -456,6 +621,8 @@ struct CardDebugGridBoardLabView: View {
 private struct CardDebugGridOverlay: View {
     let boardHeight: CGFloat
     let metrics: MemoryDeskBoardMetrics
+    let targetPlacement: MemoryCardGridPlacement?
+    let targetSize: MemoryCardSizeToken?
 
     private var rowCount: Int {
         max(1, Int(ceil((boardHeight - metrics.verticalPadding * 2) / (metrics.rowHeight + metrics.rowSpacing))))
@@ -480,15 +647,38 @@ private struct CardDebugGridOverlay: View {
                             )
                     }
                 }
+
+                if let targetFrame = targetFrame(cellWidth: cellWidth) {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(Color.accentColor.opacity(0.16))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .strokeBorder(Color.accentColor.opacity(0.72), style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
+                        }
+                        .frame(width: targetFrame.width, height: targetFrame.height)
+                        .position(x: targetFrame.midX, y: targetFrame.midY)
+                }
             }
         }
         .allowsHitTesting(false)
+    }
+
+    private func targetFrame(cellWidth: CGFloat) -> CGRect? {
+        guard let targetPlacement, let targetSize else { return nil }
+        let box = MemoryCardRecipeLayoutPolicy.gridBox(for: targetSize)
+        let x = metrics.horizontalPadding + CGFloat(targetPlacement.column) * (cellWidth + metrics.columnSpacing)
+        let y = metrics.verticalPadding + CGFloat(targetPlacement.row) * (metrics.rowHeight + metrics.rowSpacing)
+        let width = CGFloat(box.columnSpan) * cellWidth + CGFloat(max(0, box.columnSpan - 1)) * metrics.columnSpacing
+        let height = CGFloat(box.rowSpan) * metrics.rowHeight + CGFloat(max(0, box.rowSpan - 1)) * metrics.rowSpacing
+        return CGRect(x: x, y: y, width: width, height: height)
     }
 }
 
 private struct CardDebugGridBoardPlaceholderCard: View {
     let slot: CardDebugGridBoardLabSlot
     let isProblematic: Bool
+    let isDragging: Bool
+    let isInteractive: Bool
     var onDelete: () -> Void
     var onMoveEarlier: () -> Void
     var onMoveLater: () -> Void
@@ -510,6 +700,12 @@ private struct CardDebugGridBoardPlaceholderCard: View {
                 .font(.caption2.monospaced())
                 .foregroundStyle(.secondary)
 
+            if !isInteractive {
+                Text("read-only projection")
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(.secondary)
+            }
+
             Spacer(minLength: 0)
         }
         .padding(10)
@@ -519,6 +715,8 @@ private struct CardDebugGridBoardPlaceholderCard: View {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .strokeBorder(isProblematic ? Color.red.opacity(0.75) : Color.primary.opacity(0.16), lineWidth: isProblematic ? 2 : 1)
         }
+        .scaleEffect(isDragging ? 1.025 : 1)
+        .opacity(isDragging ? 0.82 : 1)
         .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
         .contextMenu {
             Button("Move Earlier", action: onMoveEarlier)

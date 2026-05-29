@@ -119,6 +119,29 @@ enum MemoryCardGridPacking {
         )
     }
 
+    static func placements(
+        for sizes: [MemoryCardSizeToken],
+        pinned: [Int: MemoryCardGridPlacement]
+    ) -> [MemoryCardGridPlacement] {
+        var occupiedRows: [[Bool]] = []
+        var placements = Array<MemoryCardGridPlacement?>(repeating: nil, count: sizes.count)
+
+        for index in pinned.keys.sorted() {
+            guard sizes.indices.contains(index), let placement = pinned[index] else { continue }
+            let box = MemoryCardRecipeLayoutPolicy.gridBox(for: sizes[index])
+            ensureRows(upTo: placement.row + box.rowSpan, rows: &occupiedRows)
+            mark(box: box, placement: placement, rows: &occupiedRows)
+            placements[index] = placement
+        }
+
+        for (index, size) in sizes.enumerated() where placements[index] == nil {
+            let box = MemoryCardRecipeLayoutPolicy.gridBox(for: size)
+            placements[index] = firstAvailablePlacement(for: box, rows: &occupiedRows)
+        }
+
+        return placements.compactMap { $0 }
+    }
+
     static func effectivePlacements(for layouts: [MemoryCardLayoutToken]) -> [MemoryCardGridPlacement] {
         var occupiedRows: [[Bool]] = []
         var placements: [MemoryCardGridPlacement] = []

@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct MemoryDeskBoardMetrics: Hashable, Sendable {
+    static let debugMaxBoardWidth: CGFloat = 620
+
     var columns: Int
     var horizontalPadding: CGFloat
     var verticalPadding: CGFloat
@@ -28,6 +30,35 @@ struct MemoryDeskBoardMetrics: Hashable, Sendable {
         rowHeight: 64,
         minimumCellWidth: 34
     )
+
+    static func debugBoardWidth(for availableWidth: CGFloat) -> CGFloat {
+        min(max(availableWidth, 0), debugMaxBoardWidth)
+    }
+
+    static func debugSquare(availableWidth: CGFloat) -> MemoryDeskBoardMetrics {
+        let horizontalPadding: CGFloat = 16
+        let columnSpacing: CGFloat = 8
+        let minimumCellWidth: CGFloat = 34
+        let boardWidth = debugBoardWidth(for: availableWidth)
+        let usableWidth = max(
+            boardWidth - (horizontalPadding * 2),
+            minimumCellWidth * CGFloat(MemoryCardRecipeLayoutPolicy.columnCount)
+        )
+        let totalSpacing = columnSpacing * CGFloat(MemoryCardRecipeLayoutPolicy.columnCount - 1)
+        let cellSize = max(
+            minimumCellWidth,
+            floor((usableWidth - totalSpacing) / CGFloat(MemoryCardRecipeLayoutPolicy.columnCount))
+        )
+        return MemoryDeskBoardMetrics(
+            columns: MemoryCardRecipeLayoutPolicy.columnCount,
+            horizontalPadding: horizontalPadding,
+            verticalPadding: 18,
+            columnSpacing: columnSpacing,
+            rowSpacing: columnSpacing,
+            rowHeight: cellSize,
+            minimumCellWidth: minimumCellWidth
+        )
+    }
 
     func cellWidth(for containerWidth: CGFloat) -> CGFloat {
         let clampedColumns = max(1, columns)
