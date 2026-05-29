@@ -2,17 +2,17 @@ import SwiftUI
 
 enum CardDebugGridBoardLabModel {
     static func defaultItems() -> [CardDebugGridBoardLabItem] {
-        let sizes = MemoryCardSizeToken.allCases
-        let placements = MemoryCardGridPacking.placements(for: sizes)
-        return sizes.enumerated().map { index, size in
-            CardDebugGridBoardLabItem(
-                id: UUID(),
-                title: size.rawValue,
-                size: size,
-                recipe: recipe(for: size),
-                placement: placements[safe: index]
-            )
-        }
+        orderedSparsePack(
+            MemoryCardSizeToken.allCases.map { size in
+                CardDebugGridBoardLabItem(
+                    id: UUID(),
+                    title: size.rawValue,
+                    size: size,
+                    recipe: recipe(for: size),
+                    placement: nil
+                )
+            }
+        )
     }
 
     static func autoPacked(_ items: [CardDebugGridBoardLabItem]) -> [CardDebugGridBoardLabItem] {
@@ -22,6 +22,10 @@ enum CardDebugGridBoardLabModel {
             item.placement = placements[safe: index]
             return item
         }
+    }
+
+    static func orderedSparsePack(_ items: [CardDebugGridBoardLabItem]) -> [CardDebugGridBoardLabItem] {
+        orderedSparsePack(items, prefixCount: 0, preferredAnchor: nil)
     }
 
     static func targetPlacement(
@@ -96,7 +100,7 @@ enum CardDebugGridBoardLabModel {
             boardWidth: boardWidth,
             metrics: metrics
         )
-        return previewItemsWithoutCompaction(
+        return previewItems(
             dragging: session.itemID,
             to: target,
             in: items
@@ -108,7 +112,7 @@ enum CardDebugGridBoardLabModel {
         to placement: MemoryCardGridPlacement,
         in items: [CardDebugGridBoardLabItem]
     ) -> CardDebugGridDragPreview {
-        minimumDisturbancePreview(dragging: id, to: placement, in: items)
+        itemsAfterDropping(dragging: id, targetPlacement: placement, in: items)
     }
 
     static func previewItemsWithoutCompaction(
@@ -116,11 +120,48 @@ enum CardDebugGridBoardLabModel {
         to placement: MemoryCardGridPlacement,
         in items: [CardDebugGridBoardLabItem]
     ) -> CardDebugGridDragPreview {
-        minimumDisturbancePreview(dragging: id, to: placement, in: items)
+        previewItems(dragging: id, to: placement, in: items)
+    }
+
+    static func itemsAfterDropping(
+        dragging id: UUID,
+        targetPlacement placement: MemoryCardGridPlacement,
+        in items: [CardDebugGridBoardLabItem]
+    ) -> CardDebugGridDragPreview {
+        guard let sourceIndex = items.firstIndex(where: { $0.id == id }) else {
+            return CardDebugGridDragPreview(
+                itemID: id,
+                targetPlacement: placement,
+                insertionIndex: items.count,
+                movedRange: nil,
+                items: items
+            )
+        }
+
+        let dragged = items[sourceIndex]
+        let target = clampedPlacement(placement, for: dragged.size)
+        var remaining = items
+        remaining.remove(at: sourceIndex)
+        let insertionIndex = targetInsertionIndex(for: target, draggedSize: dragged.size, in: remaining)
+        var reordered = remaining
+        reordered.insert(dragged, at: insertionIndex)
+
+        let packed = orderedSparsePack(
+            reordered,
+            prefixCount: insertionIndex,
+            preferredAnchor: (index: insertionIndex, placement: target)
+        )
+        return CardDebugGridDragPreview(
+            itemID: id,
+            targetPlacement: target,
+            insertionIndex: insertionIndex,
+            movedRange: changedRange(from: items, to: packed),
+            items: packed
+        )
     }
 
     static func commitPreview(_ items: [CardDebugGridBoardLabItem]) -> [CardDebugGridBoardLabItem] {
-        compactEmptyRows(items)
+        items
     }
 
     static func appendPlacement(
@@ -140,9 +181,8 @@ enum CardDebugGridBoardLabModel {
         size: MemoryCardSizeToken,
         to items: [CardDebugGridBoardLabItem]
     ) -> [CardDebugGridBoardLabItem] {
-        let id = UUID()
         let next = CardDebugGridBoardLabItem(
-            id: id,
+            id: UUID(),
             title: size.rawValue,
             size: size,
             recipe: recipe(for: size),
@@ -164,13 +204,23 @@ enum CardDebugGridBoardLabModel {
         in items: [CardDebugGridBoardLabItem]
     ) -> [CardDebugGridBoardLabItem] {
         guard let index = items.firstIndex(where: { $0.id == id }) else { return items }
+        let oldBox = MemoryCardRecipeLayoutPolicy.gridBox(for: items[index].size)
+        let newBox = MemoryCardRecipeLayoutPolicy.gridBox(for: size)
         var next = items
         next[index].size = size
         next[index].recipe = recipe(for: size)
         next[index].title = size.rawValue
-        let placement = next[index].placement ?? MemoryCardGridPlacement(column: 0, row: index)
-        let preview = minimumDisturbancePreview(dragging: id, to: placement, in: next)
-        return commitPreview(preview.items)
+
+        if newBox.columnSpan <= oldBox.columnSpan, newBox.rowSpan <= oldBox.rowSpan {
+            return compactEmptyRows(next)
+        }
+
+        let anchor = next[index].placement ?? MemoryCardGridPlacement(column: 0, row: index)
+        return orderedSparsePack(
+            next,
+            prefixCount: index,
+            preferredAnchor: (index: index, placement: clampedPlacement(anchor, for: size))
+        )
     }
 
     static func itemsAfterMoving(
@@ -182,8 +232,9 @@ enum CardDebugGridBoardLabModel {
         let targetIndex = sourceIndex + offset
         guard items.indices.contains(targetIndex) else { return items }
         var next = items
-        next.swapAt(sourceIndex, targetIndex)
-        return next
+        let moved = next.remove(at: sourceIndex)
+        next.insert(moved, at: targetIndex)
+        return orderedSparsePack(next)
     }
 
     static func itemsAfterTogglingPinned(
@@ -250,14 +301,13 @@ enum CardDebugGridBoardLabModel {
         containerWidth: CGFloat = 390,
         metrics: MemoryDeskBoardMetrics = .default,
         activeDragTarget: MemoryCardGridPlacement? = nil,
-        affectedItemIDs: [UUID] = [],
-        solverCost: CardDebugGridLayoutCost? = nil,
-        solverUsedFallback: Bool = false
+        lastInsertionIndex: Int? = nil,
+        movedRange: ClosedRange<Int>? = nil
     ) -> CardDebugGridBoardLabReport {
-        let slots = slots(for: items, mode: mode, containerWidth: containerWidth, metrics: metrics)
+        let currentSlots = slots(for: items, mode: mode, containerWidth: containerWidth, metrics: metrics)
         var occupied = Set<CardDebugGridCell>()
         var overlapCount = 0
-        for slot in slots {
+        for slot in currentSlots {
             for cell in slot.cells {
                 if occupied.contains(cell) {
                     overlapCount += 1
@@ -267,27 +317,39 @@ enum CardDebugGridBoardLabModel {
             }
         }
 
-        let rowCount = max(1, slots.map { slot in
+        let rowCount = max(1, currentSlots.map { slot in
             guard let placement = slot.layout.gridPlacement else { return 0 }
             return placement.row + slot.gridBox.rowSpan
         }.max() ?? 0)
         let totalCells = rowCount * MemoryCardRecipeLayoutPolicy.columnCount
         let density = totalCells == 0 ? 0 : Double(occupied.count) / Double(totalCells)
+        let currentHolesCount = max(0, totalCells - occupied.count)
+        let autoPackHoles = mode == .storedPlacement
+            ? holeCount(
+                in: slots(
+                    for: autoPacked(items),
+                    mode: .storedPlacement,
+                    containerWidth: containerWidth,
+                    metrics: metrics
+                )
+            )
+            : currentHolesCount
         return CardDebugGridBoardLabReport(
             projectionMode: mode,
             boardWidth: containerWidth,
             cellSize: metrics.cellWidth(for: containerWidth),
             activeDragTarget: activeDragTarget,
-            affectedItemIDs: affectedItemIDs,
+            lastInsertionIndex: lastInsertionIndex,
+            movedRange: movedRange,
             rowCount: rowCount,
             occupiedCells: occupied.count,
             totalCells: totalCells,
+            holesCount: currentHolesCount,
+            autoPackRecoverableHoles: max(0, currentHolesCount - autoPackHoles),
             density: density,
             overlapCount: overlapCount,
-            gridOverflowCount: slots.filter(\.gridOverflow).count,
-            solverCost: solverCost,
-            solverUsedFallback: solverUsedFallback,
-            slots: slots
+            gridOverflowCount: currentSlots.filter(\.gridOverflow).count,
+            slots: currentSlots
         )
     }
 
@@ -308,446 +370,80 @@ enum CardDebugGridBoardLabModel {
         }
     }
 
-    private static func minimumDisturbancePreview(
-        dragging id: UUID,
-        to placement: MemoryCardGridPlacement,
-        in items: [CardDebugGridBoardLabItem]
-    ) -> CardDebugGridDragPreview {
-        guard let dragged = items.first(where: { $0.id == id }) else {
-            return CardDebugGridDragPreview(itemID: id, targetPlacement: placement, items: items, affectedItemIDs: [])
-        }
+    private static func orderedSparsePack(
+        _ items: [CardDebugGridBoardLabItem],
+        prefixCount: Int,
+        preferredAnchor: (index: Int, placement: MemoryCardGridPlacement)?
+    ) -> [CardDebugGridBoardLabItem] {
+        guard !items.isEmpty else { return [] }
+        let prefixLimit = min(max(0, prefixCount), items.count)
+        var occupied = [CardDebugGridOccupiedBox]()
+        var next = items
 
-        let target = clampedPlacement(placement, for: dragged.size)
-        let originalPlacements = normalizedPlacements(for: items)
-        var initialPlacements = originalPlacements
-        initialPlacements[id] = target
-
-        let result = solveMinimumDisturbance(
-            dragging: id,
-            items: items,
-            originalPlacements: originalPlacements,
-            initialState: CardDebugGridLayoutState(placementsByID: initialPlacements)
-        )
-
-        let next = items.map { item -> CardDebugGridBoardLabItem in
-            var item = item
-            if let placement = result.state.placementsByID[item.id] {
-                item.placement = placement
-            }
-            return item
-        }
-        let movedIDs = items.compactMap { item -> UUID? in
-            guard item.id != id,
-                  result.state.placementsByID[item.id] != originalPlacements[item.id]
-            else {
-                return nil
-            }
-            return item.id
-        }
-        return CardDebugGridDragPreview(
-            itemID: id,
-            targetPlacement: target,
-            items: next,
-            affectedItemIDs: [id] + movedIDs,
-            solverCost: result.cost,
-            usedFallback: result.usedFallback
-        )
-    }
-
-    private static func solveMinimumDisturbance(
-        dragging id: UUID,
-        items: [CardDebugGridBoardLabItem],
-        originalPlacements: [UUID: MemoryCardGridPlacement],
-        initialState: CardDebugGridLayoutState
-    ) -> CardDebugGridLayoutSolverResult {
-        let maxIterations = 3_500
-        var frontier = [initialState]
-        var visited = Set([stateSignature(initialState, items: items)])
-
-        for _ in 0..<maxIterations where !frontier.isEmpty {
-            frontier.sort { lhs, rhs in
-                let lhsCost = cost(
-                    for: lhs,
-                    dragging: id,
-                    items: items,
-                    originalPlacements: originalPlacements
-                )
-                let rhsCost = cost(
-                    for: rhs,
-                    dragging: id,
-                    items: items,
-                    originalPlacements: originalPlacements
-                )
-                if lhsCost != rhsCost {
-                    return lhsCost < rhsCost
-                }
-                return collisionCount(in: lhs, items: items) < collisionCount(in: rhs, items: items)
-            }
-
-            let state = frontier.removeFirst()
-            let collisions = collisions(in: state, items: items)
-            if collisions.isEmpty {
-                return CardDebugGridLayoutSolverResult(
-                    state: state,
-                    cost: cost(
-                        for: state,
-                        dragging: id,
-                        items: items,
-                        originalPlacements: originalPlacements
-                    ),
-                    usedFallback: false
-                )
-            }
-
-            let collision = collisions[0]
-            for itemID in movableItemIDs(for: collision, dragging: id, items: items) {
-                guard let item = items.first(where: { $0.id == itemID }) else { continue }
-                let candidates = candidatePlacements(
-                    for: item,
-                    in: state,
-                    items: items,
-                    originalPlacements: originalPlacements,
-                    dragging: id
-                )
-                for candidate in candidates {
-                    guard candidate != state.placementsByID[itemID] else { continue }
-                    var nextState = state
-                    nextState.placementsByID[itemID] = candidate
-                    let signature = stateSignature(nextState, items: items)
-                    guard !visited.contains(signature) else { continue }
-                    visited.insert(signature)
-                    frontier.append(nextState)
-                }
-            }
-        }
-
-        return fallbackResult(
-            dragging: id,
-            items: items,
-            originalPlacements: originalPlacements,
-            initialState: initialState
-        )
-    }
-
-    private static func candidatePlacements(
-        for item: CardDebugGridBoardLabItem,
-        in state: CardDebugGridLayoutState,
-        items: [CardDebugGridBoardLabItem],
-        originalPlacements: [UUID: MemoryCardGridPlacement],
-        dragging id: UUID
-    ) -> [MemoryCardGridPlacement] {
-        let box = MemoryCardRecipeLayoutPolicy.gridBox(for: item.size)
-        let maxColumn = max(0, MemoryCardRecipeLayoutPolicy.columnCount - box.columnSpan)
-        let original = originalPlacements[item.id] ?? MemoryCardGridPlacement(column: 0, row: 0)
-        let currentBottom = boardBottomRow(state: state, items: items)
-        let originalBottom = boardBottomRow(placements: originalPlacements, items: items)
-        let maxRow = max(currentBottom, originalBottom) + 4
-        let draggedPlacement = state.placementsByID[id]
-        let draggedBox = items.first(where: { $0.id == id }).map { MemoryCardRecipeLayoutPolicy.gridBox(for: $0.size) }
-
-        let candidates = (0...maxRow).flatMap { row in
-            (0...maxColumn).map { column in
-                MemoryCardGridPlacement(column: column, row: row)
-            }
-        }
-        .filter { placement in
-            guard let draggedPlacement, let draggedBox else { return true }
-            return !gridRectsIntersect(
-                lhsPlacement: placement,
-                lhsBox: box,
-                rhsPlacement: draggedPlacement,
-                rhsBox: draggedBox
+        for index in 0..<prefixLimit {
+            let placement = clampedPlacement(
+                next[index].placement ?? MemoryCardGridPlacement(column: 0, row: index),
+                for: next[index].size
             )
-        }
-        .sorted { lhs, rhs in
-            let lhsScore = candidateScore(lhs, original: original)
-            let rhsScore = candidateScore(rhs, original: original)
-            if lhsScore != rhsScore {
-                return lhsScore < rhsScore
-            }
-            if lhs.row != rhs.row {
-                return lhs.row < rhs.row
-            }
-            return lhs.column < rhs.column
+            next[index].placement = placement
+            occupied.append(CardDebugGridOccupiedBox(placement: placement, box: MemoryCardRecipeLayoutPolicy.gridBox(for: next[index].size)))
         }
 
-        return Array(candidates.prefix(24))
-    }
-
-    private static func candidateScore(
-        _ placement: MemoryCardGridPlacement,
-        original: MemoryCardGridPlacement
-    ) -> Int {
-        let rowDelta = abs(placement.row - original.row)
-        let columnDelta = abs(placement.column - original.column)
-        let sameRowBonus = placement.row == original.row ? 0 : 1
-        let sameColumnBonus = placement.column == original.column ? 0 : 1
-        return (rowDelta + columnDelta) * 100 + rowDelta * 10 + columnDelta * 4 + sameRowBonus * 2 + sameColumnBonus
-    }
-
-    private static func fallbackResult(
-        dragging id: UUID,
-        items: [CardDebugGridBoardLabItem],
-        originalPlacements: [UUID: MemoryCardGridPlacement],
-        initialState: CardDebugGridLayoutState
-    ) -> CardDebugGridLayoutSolverResult {
-        var state = initialState
-        var guardCount = 0
-        while let collision = collisions(in: state, items: items).first, guardCount < 80 {
-            guardCount += 1
-            guard let itemID = movableItemIDs(for: collision, dragging: id, items: items).first,
-                  let item = items.first(where: { $0.id == itemID })
-            else {
-                break
-            }
-            let occupied = items.compactMap { other -> CardDebugGridOccupiedBox? in
-                guard other.id != itemID,
-                      let placement = state.placementsByID[other.id]
-                else {
-                    return nil
-                }
-                return CardDebugGridOccupiedBox(
-                    placement: placement,
-                    box: MemoryCardRecipeLayoutPolicy.gridBox(for: other.size)
-                )
-            }
-            let bottomRow = occupied.map { $0.placement.row + $0.box.rowSpan }.max() ?? 0
-            state.placementsByID[itemID] = firstAvailablePlacement(
-                for: item.size,
-                from: MemoryCardGridPlacement(column: 0, row: bottomRow),
+        var cursor = nextCursor(afterPrefix: occupied)
+        var startIndex = prefixLimit
+        if let preferredAnchor, next.indices.contains(preferredAnchor.index) {
+            let size = next[preferredAnchor.index].size
+            let placement = firstAvailablePlacement(
+                for: size,
+                from: preferredAnchor.placement,
                 occupied: occupied
             )
+            next[preferredAnchor.index].placement = placement
+            occupied.append(CardDebugGridOccupiedBox(placement: placement, box: MemoryCardRecipeLayoutPolicy.gridBox(for: size)))
+            cursor = nextCursor(after: placement, size: size)
+            startIndex = preferredAnchor.index + 1
         }
-        return CardDebugGridLayoutSolverResult(
-            state: state,
-            cost: cost(
-                for: state,
-                dragging: id,
-                items: items,
-                originalPlacements: originalPlacements
-            ),
-            usedFallback: true
-        )
+
+        guard startIndex < next.count else { return next }
+        for index in startIndex..<next.count {
+            let placement = firstAvailablePlacement(for: next[index].size, from: cursor, occupied: occupied)
+            next[index].placement = placement
+            occupied.append(CardDebugGridOccupiedBox(placement: placement, box: MemoryCardRecipeLayoutPolicy.gridBox(for: next[index].size)))
+            cursor = nextCursor(after: placement, size: next[index].size)
+        }
+        return next
     }
 
-    private static func normalizedPlacements(for items: [CardDebugGridBoardLabItem]) -> [UUID: MemoryCardGridPlacement] {
-        Dictionary(
-            uniqueKeysWithValues: items.enumerated().map { index, item in
-                (
-                    item.id,
-                    clampedPlacement(
-                        item.placement ?? MemoryCardGridPlacement(column: 0, row: index),
-                        for: item.size
-                    )
-                )
-            }
-        )
-    }
-
-    private static func collisions(
-        in state: CardDebugGridLayoutState,
-        items: [CardDebugGridBoardLabItem]
-    ) -> [CardDebugGridCollision] {
-        let placed = items.compactMap { item -> (item: CardDebugGridBoardLabItem, placement: MemoryCardGridPlacement)? in
-            guard let placement = state.placementsByID[item.id] else { return nil }
-            return (item, clampedPlacement(placement, for: item.size))
-        }
-        var collisions: [CardDebugGridCollision] = []
-        for lhsIndex in placed.indices {
-            for rhsIndex in placed.indices where rhsIndex > lhsIndex {
-                let lhs = placed[lhsIndex]
-                let rhs = placed[rhsIndex]
-                if gridRectsIntersect(
-                    lhsPlacement: lhs.placement,
-                    lhsBox: MemoryCardRecipeLayoutPolicy.gridBox(for: lhs.item.size),
-                    rhsPlacement: rhs.placement,
-                    rhsBox: MemoryCardRecipeLayoutPolicy.gridBox(for: rhs.item.size)
-                ) {
-                    collisions.append(CardDebugGridCollision(lhsID: lhs.item.id, rhsID: rhs.item.id))
-                }
-            }
-        }
-        return collisions
-    }
-
-    private static func collisionCount(
-        in state: CardDebugGridLayoutState,
-        items: [CardDebugGridBoardLabItem]
+    private static func targetInsertionIndex(
+        for target: MemoryCardGridPlacement,
+        draggedSize: MemoryCardSizeToken,
+        in items: [CardDebugGridBoardLabItem]
     ) -> Int {
-        collisions(in: state, items: items).count
-    }
-
-    private static func movableItemIDs(
-        for collision: CardDebugGridCollision,
-        dragging id: UUID,
-        items: [CardDebugGridBoardLabItem]
-    ) -> [UUID] {
-        if collision.lhsID == id {
-            return [collision.rhsID]
-        }
-        if collision.rhsID == id {
-            return [collision.lhsID]
-        }
-        return [collision.lhsID, collision.rhsID].sorted { lhs, rhs in
-            let lhsItem = items.first { $0.id == lhs }
-            let rhsItem = items.first { $0.id == rhs }
-            let lhsProtection = movementProtectionScore(lhsItem)
-            let rhsProtection = movementProtectionScore(rhsItem)
-            if lhsProtection != rhsProtection {
-                return lhsProtection < rhsProtection
+        let targetBox = MemoryCardRecipeLayoutPolicy.gridBox(for: draggedSize)
+        for (index, item) in items.enumerated() {
+            guard let itemPlacement = item.placement else { continue }
+            let placement = clampedPlacement(itemPlacement, for: item.size)
+            let box = MemoryCardRecipeLayoutPolicy.gridBox(for: item.size)
+            if gridRectsIntersect(lhsPlacement: target, lhsBox: targetBox, rhsPlacement: placement, rhsBox: box) {
+                return index
             }
-            return lhs.uuidString < rhs.uuidString
-        }
-    }
-
-    private static func movementProtectionScore(_ item: CardDebugGridBoardLabItem?) -> Int {
-        guard let item else { return 0 }
-        return (item.isPinned ? 2 : 0) + (item.isUserAdjusted ? 1 : 0)
-    }
-
-    private static func cost(
-        for state: CardDebugGridLayoutState,
-        dragging id: UUID,
-        items: [CardDebugGridBoardLabItem],
-        originalPlacements: [UUID: MemoryCardGridPlacement]
-    ) -> CardDebugGridLayoutCost {
-        var movedItemCount = 0
-        var pinnedMovedCount = 0
-        var userAdjustedMovedCount = 0
-        var totalManhattanDistance = 0
-        var totalRowDelta = 0
-        var totalColumnDelta = 0
-
-        for item in items where item.id != id {
-            guard
-                let original = originalPlacements[item.id],
-                let placement = state.placementsByID[item.id]
-            else {
-                continue
-            }
-            let rowDelta = abs(placement.row - original.row)
-            let columnDelta = abs(placement.column - original.column)
-            guard rowDelta > 0 || columnDelta > 0 else { continue }
-            movedItemCount += 1
-            pinnedMovedCount += item.isPinned ? 1 : 0
-            userAdjustedMovedCount += item.isUserAdjusted ? 1 : 0
-            totalManhattanDistance += rowDelta + columnDelta
-            totalRowDelta += rowDelta
-            totalColumnDelta += columnDelta
-        }
-
-        let boardHeightGrowth = max(
-            0,
-            boardBottomRow(state: state, items: items)
-                - boardBottomRow(placements: originalPlacements, items: items)
-        )
-        let visualOrderInversionCount = visualOrderInversionCount(
-            state: state,
-            dragging: id,
-            items: items,
-            originalPlacements: originalPlacements
-        )
-        let tieBreakSignature = items.map { item in
-            let placement = state.placementsByID[item.id] ?? MemoryCardGridPlacement(column: 0, row: 0)
-            return "\(placement.row):\(placement.column):\(item.id.uuidString)"
-        }
-        .joined(separator: "|")
-
-        return CardDebugGridLayoutCost(
-            movedItemCount: movedItemCount,
-            pinnedMovedCount: pinnedMovedCount,
-            userAdjustedMovedCount: userAdjustedMovedCount,
-            totalManhattanDistance: totalManhattanDistance,
-            totalRowDelta: totalRowDelta,
-            totalColumnDelta: totalColumnDelta,
-            visualOrderInversionCount: visualOrderInversionCount,
-            boardHeightGrowth: boardHeightGrowth,
-            tieBreakSignature: tieBreakSignature
-        )
-    }
-
-    private static func visualOrderInversionCount(
-        state: CardDebugGridLayoutState,
-        dragging id: UUID,
-        items: [CardDebugGridBoardLabItem],
-        originalPlacements: [UUID: MemoryCardGridPlacement]
-    ) -> Int {
-        let nonDraggedItems = items.filter { $0.id != id }
-        let originalOrder = nonDraggedItems.sorted { lhs, rhs in
-            visualOrderSort(
-                lhsID: lhs.id,
-                lhsPlacement: originalPlacements[lhs.id],
-                rhsID: rhs.id,
-                rhsPlacement: originalPlacements[rhs.id]
-            )
-        }
-        let finalOrder = nonDraggedItems.sorted { lhs, rhs in
-            visualOrderSort(
-                lhsID: lhs.id,
-                lhsPlacement: state.placementsByID[lhs.id],
-                rhsID: rhs.id,
-                rhsPlacement: state.placementsByID[rhs.id]
-            )
-        }
-        let originalIndex = Dictionary(uniqueKeysWithValues: originalOrder.enumerated().map { ($0.element.id, $0.offset) })
-        var inversions = 0
-        for lhsIndex in finalOrder.indices {
-            for rhsIndex in finalOrder.indices where rhsIndex > lhsIndex {
-                let lhsID = finalOrder[lhsIndex].id
-                let rhsID = finalOrder[rhsIndex].id
-                if (originalIndex[lhsID] ?? 0) > (originalIndex[rhsID] ?? 0) {
-                    inversions += 1
-                }
+            if isRowMajor(placement, atOrAfter: target) {
+                return index
             }
         }
-        return inversions
+        return items.count
     }
 
-    private static func visualOrderSort(
-        lhsID: UUID,
-        lhsPlacement: MemoryCardGridPlacement?,
-        rhsID: UUID,
-        rhsPlacement: MemoryCardGridPlacement?
-    ) -> Bool {
-        let lhsPlacement = lhsPlacement ?? MemoryCardGridPlacement(column: 0, row: 0)
-        let rhsPlacement = rhsPlacement ?? MemoryCardGridPlacement(column: 0, row: 0)
-        if lhsPlacement.row != rhsPlacement.row {
-            return lhsPlacement.row < rhsPlacement.row
+    private static func changedRange(
+        from original: [CardDebugGridBoardLabItem],
+        to next: [CardDebugGridBoardLabItem]
+    ) -> ClosedRange<Int>? {
+        let maxCount = max(original.count, next.count)
+        let changed = (0..<maxCount).filter { index in
+            original[safe: index] != next[safe: index]
         }
-        if lhsPlacement.column != rhsPlacement.column {
-            return lhsPlacement.column < rhsPlacement.column
-        }
-        return lhsID.uuidString < rhsID.uuidString
-    }
-
-    private static func boardBottomRow(
-        state: CardDebugGridLayoutState,
-        items: [CardDebugGridBoardLabItem]
-    ) -> Int {
-        boardBottomRow(placements: state.placementsByID, items: items)
-    }
-
-    private static func boardBottomRow(
-        placements: [UUID: MemoryCardGridPlacement],
-        items: [CardDebugGridBoardLabItem]
-    ) -> Int {
-        items.compactMap { item in
-            placements[item.id].map { placement in
-                placement.row + MemoryCardRecipeLayoutPolicy.gridBox(for: item.size).rowSpan
-            }
-        }
-        .max() ?? 0
-    }
-
-    private static func stateSignature(
-        _ state: CardDebugGridLayoutState,
-        items: [CardDebugGridBoardLabItem]
-    ) -> String {
-        items.map { item in
-            let placement = state.placementsByID[item.id] ?? MemoryCardGridPlacement(column: 0, row: 0)
-            return "\(item.id.uuidString):\(placement.column),\(placement.row)"
-        }
-        .joined(separator: "|")
+        guard let first = changed.first, let last = changed.last else { return nil }
+        return first...last
     }
 
     private static func plannedSlots(
@@ -769,6 +465,20 @@ enum CardDebugGridBoardLabModel {
             guard let item = itemByID[slot.id] else { return nil }
             return CardDebugGridBoardLabSlot(id: item.id, item: item, layout: slot.layout, frame: slot.frame)
         }
+    }
+
+    private static func holeCount(in slots: [CardDebugGridBoardLabSlot]) -> Int {
+        var occupied = Set<CardDebugGridCell>()
+        for slot in slots {
+            for cell in slot.cells {
+                occupied.insert(cell)
+            }
+        }
+        let rowCount = max(1, slots.map { slot in
+            guard let placement = slot.layout.gridPlacement else { return 0 }
+            return placement.row + slot.gridBox.rowSpan
+        }.max() ?? 0)
+        return max(0, rowCount * MemoryCardRecipeLayoutPolicy.columnCount - occupied.count)
     }
 
     private static func legacyFallbackSlots(
@@ -811,22 +521,6 @@ enum CardDebugGridBoardLabModel {
         return CGRect(x: x, y: y, width: width, height: height)
     }
 
-    private static func visualOrder(_ items: [CardDebugGridBoardLabItem]) -> [CardDebugGridBoardLabItem] {
-        items.enumerated()
-            .sorted { lhs, rhs in
-                let lhsPlacement = lhs.element.placement ?? MemoryCardGridPlacement(column: 0, row: lhs.offset)
-                let rhsPlacement = rhs.element.placement ?? MemoryCardGridPlacement(column: 0, row: rhs.offset)
-                if lhsPlacement.row != rhsPlacement.row {
-                    return lhsPlacement.row < rhsPlacement.row
-                }
-                if lhsPlacement.column != rhsPlacement.column {
-                    return lhsPlacement.column < rhsPlacement.column
-                }
-                return lhs.offset < rhs.offset
-            }
-            .map(\.element)
-    }
-
     private static func firstAvailablePlacement(
         for size: MemoryCardSizeToken,
         from start: MemoryCardGridPlacement,
@@ -847,6 +541,20 @@ enum CardDebugGridBoardLabModel {
             row += 1
             startColumn = 0
         }
+    }
+
+    private static func nextCursor(afterPrefix occupied: [CardDebugGridOccupiedBox]) -> MemoryCardGridPlacement {
+        guard let last = occupied.max(by: { lhs, rhs in
+            let lhsBottom = lhs.placement.row + lhs.box.rowSpan
+            let rhsBottom = rhs.placement.row + rhs.box.rowSpan
+            if lhsBottom != rhsBottom {
+                return lhsBottom < rhsBottom
+            }
+            return lhs.placement.column < rhs.placement.column
+        }) else {
+            return MemoryCardGridPlacement(column: 0, row: 0)
+        }
+        return MemoryCardGridPlacement(column: 0, row: last.placement.row + last.box.rowSpan)
     }
 
     private static func nextCursor(
@@ -908,16 +616,18 @@ enum CardDebugGridBoardLabModel {
             && lhsPlacement.row < rhsMaxRow
             && lhsMaxRow > rhsPlacement.row
     }
+
+    private static func isRowMajor(
+        _ placement: MemoryCardGridPlacement,
+        atOrAfter target: MemoryCardGridPlacement
+    ) -> Bool {
+        placement.row > target.row || (placement.row == target.row && placement.column >= target.column)
+    }
 }
 
 private struct CardDebugGridOccupiedBox {
     let placement: MemoryCardGridPlacement
     let box: MemoryCardGridBox
-}
-
-private struct CardDebugGridCollision: Hashable {
-    let lhsID: UUID
-    let rhsID: UUID
 }
 
 private extension Array where Element == CardDebugGridBoardLabItem {

@@ -28,6 +28,7 @@ final class CardDebugGridBoardLabTests: XCTestCase {
         XCTAssertEqual(Set(items.map(\.size)), Set(MemoryCardSizeToken.allCases))
         XCTAssertEqual(items.count, MemoryCardSizeToken.allCases.count)
         XCTAssertTrue(items.allSatisfy { $0.placement != nil })
+        XCTAssertEqual(CardDebugGridBoardLabModel.report(for: items, mode: .storedPlacement).overlapCount, 0)
     }
 
     func testNilDiagnosticsStillExposeLegacyOverlapAndFirstFitRepair() {
@@ -119,7 +120,7 @@ final class CardDebugGridBoardLabTests: XCTestCase {
         XCTAssertEqual(session.geometry.grabOffset, CGPoint(x: 21, y: 15))
     }
 
-    func testDragToEmptyCellMovesOnlyDraggedItem() {
+    func testDragToEmptyCellMovesDraggedOrderAndKeepsOtherPlacements() {
         let dragged = gridItem("dragged", size: .strip, column: 0, row: 0)
         let right = gridItem("right", size: .strip, column: 2, row: 0)
         let farRight = gridItem("farRight", size: .strip, column: 4, row: 0)
@@ -131,101 +132,82 @@ final class CardDebugGridBoardLabTests: XCTestCase {
             in: [dragged, right, farRight]
         )
 
+        XCTAssertEqual(preview.insertionIndex, 2)
+        XCTAssertEqual(preview.items.map(\.id), [right.id, farRight.id, dragged.id])
         XCTAssertEqual(placement(of: dragged.id, in: preview.items), target)
         XCTAssertEqual(placement(of: right.id, in: preview.items), right.placement)
         XCTAssertEqual(placement(of: farRight.id, in: preview.items), farRight.placement)
-        XCTAssertEqual(preview.affectedItemIDs, [dragged.id])
+        XCTAssertEqual(preview.movedRange, 0...2)
         XCTAssertEqual(CardDebugGridBoardLabModel.report(for: preview.items, mode: .storedPlacement).overlapCount, 0)
     }
 
-    func testDragToOccupiedCellCanMoveBlockerLeftWithMinimumDisturbance() {
+    func testDragToOccupiedCellInsertsBeforeBlockerAndFlowsLaterCards() {
         let dragged = gridItem("dragged", size: .strip, column: 0, row: 0)
         let blocker = gridItem("blocker", size: .strip, column: 2, row: 0)
         let follower = gridItem("follower", size: .strip, column: 4, row: 0)
-        let lowerBlocker = gridItem("lowerBlocker", size: .strip, column: 2, row: 1)
 
         let preview = CardDebugGridBoardLabModel.previewItems(
             dragging: dragged.id,
             to: MemoryCardGridPlacement(column: 2, row: 0),
-            in: [dragged, blocker, follower, lowerBlocker]
-        )
-
-        XCTAssertEqual(placement(of: dragged.id, in: preview.items), MemoryCardGridPlacement(column: 2, row: 0))
-        XCTAssertEqual(placement(of: blocker.id, in: preview.items), MemoryCardGridPlacement(column: 0, row: 0))
-        XCTAssertEqual(placement(of: follower.id, in: preview.items), follower.placement)
-        XCTAssertEqual(placement(of: lowerBlocker.id, in: preview.items), lowerBlocker.placement)
-        XCTAssertEqual(preview.affectedItemIDs, [dragged.id, blocker.id])
-        XCTAssertEqual(preview.solverCost?.movedItemCount, 1)
-        XCTAssertEqual(CardDebugGridBoardLabModel.report(for: preview.items, mode: .storedPlacement).overlapCount, 0)
-    }
-
-    func testDragToOccupiedCellCanMoveBlockerUpWhenThatIsCheaper() {
-        let dragged = gridItem("dragged", size: .strip, column: 4, row: 1)
-        let blocker = gridItem("blocker", size: .strip, column: 0, row: 1)
-        let follower = gridItem("follower", size: .strip, column: 2, row: 1)
-
-        let preview = CardDebugGridBoardLabModel.previewItems(
-            dragging: dragged.id,
-            to: MemoryCardGridPlacement(column: 0, row: 1),
             in: [dragged, blocker, follower]
         )
 
-        XCTAssertEqual(placement(of: dragged.id, in: preview.items), MemoryCardGridPlacement(column: 0, row: 1))
-        XCTAssertEqual(placement(of: blocker.id, in: preview.items), MemoryCardGridPlacement(column: 0, row: 0))
-        XCTAssertEqual(placement(of: follower.id, in: preview.items), follower.placement)
-        XCTAssertEqual(preview.affectedItemIDs, [dragged.id, blocker.id])
-        XCTAssertEqual(CardDebugGridBoardLabModel.report(for: preview.items, mode: .storedPlacement).overlapCount, 0)
-    }
-
-    func testLargeCardCrossRowOnlyMovesActuallyOverlappedCards() {
-        let dragged = gridItem("banner", size: .banner, column: 0, row: 4)
-        let first = gridItem("first", size: .stamp, column: 0, row: 0)
-        let second = gridItem("second", size: .strip, column: 4, row: 1)
-        let third = gridItem("third", size: .card, column: 0, row: 3)
-
-        let preview = CardDebugGridBoardLabModel.previewItems(
-            dragging: dragged.id,
-            to: MemoryCardGridPlacement(column: 0, row: 0),
-            in: [dragged, first, second, third]
-        )
-        let report = CardDebugGridBoardLabModel.report(for: preview.items, mode: .storedPlacement)
-
-        XCTAssertEqual(placement(of: dragged.id, in: preview.items), MemoryCardGridPlacement(column: 0, row: 0))
-        XCTAssertNotEqual(placement(of: first.id, in: preview.items), first.placement)
-        XCTAssertNotEqual(placement(of: second.id, in: preview.items), second.placement)
-        XCTAssertEqual(placement(of: third.id, in: preview.items), third.placement)
-        XCTAssertEqual(Set(preview.affectedItemIDs), Set([dragged.id, first.id, second.id]))
-        XCTAssertEqual(report.overlapCount, 0)
-    }
-
-    func testPinnedCardsArePreservedWhenEquivalentUnpinnedMoveExists() {
-        let pinned = gridItem("pinned", size: .strip, column: 0, row: 0, isPinned: true)
-        let blocker = gridItem("blocker", size: .strip, column: 2, row: 0)
-        let dragged = gridItem("dragged", size: .strip, column: 4, row: 0)
-        let lowerBlocker = gridItem("lowerBlocker", size: .strip, column: 2, row: 1)
-
-        let preview = CardDebugGridBoardLabModel.previewItems(
-            dragging: dragged.id,
-            to: MemoryCardGridPlacement(column: 2, row: 0),
-            in: [pinned, blocker, dragged, lowerBlocker]
-        )
-
+        XCTAssertEqual(preview.insertionIndex, 0)
+        XCTAssertEqual(preview.items.map(\.id), [dragged.id, blocker.id, follower.id])
         XCTAssertEqual(placement(of: dragged.id, in: preview.items), MemoryCardGridPlacement(column: 2, row: 0))
-        XCTAssertEqual(placement(of: pinned.id, in: preview.items), pinned.placement)
         XCTAssertEqual(placement(of: blocker.id, in: preview.items), MemoryCardGridPlacement(column: 4, row: 0))
-        XCTAssertEqual(placement(of: lowerBlocker.id, in: preview.items), lowerBlocker.placement)
-        XCTAssertEqual(preview.solverCost?.pinnedMovedCount, 0)
+        XCTAssertEqual(placement(of: follower.id, in: preview.items), MemoryCardGridPlacement(column: 0, row: 1))
         XCTAssertEqual(CardDebugGridBoardLabModel.report(for: preview.items, mode: .storedPlacement).overlapCount, 0)
     }
 
-    func testCommitCompactsOnlyCompleteEmptyRowsWithoutFillingPartialHoles() {
+    func testOrderedSparsePackSupportsEverySizeWithoutOverlapOrOverflow() {
+        let sizes: [MemoryCardSizeToken] = [.stamp, .strip, .card, .square, .tape, .banner, .stamp, .strip]
+        let items = sizes.enumerated().map { index, size in
+            CardDebugGridBoardLabItem(
+                id: UUID(),
+                title: "\(index)-\(size.rawValue)",
+                size: size,
+                recipe: CardDebugGridBoardLabModel.recipe(for: size),
+                placement: nil
+            )
+        }
+
+        let packed = CardDebugGridBoardLabModel.orderedSparsePack(items)
+        let report = CardDebugGridBoardLabModel.report(for: packed, mode: .storedPlacement)
+
+        XCTAssertEqual(Set(packed.map(\.size)), Set(sizes))
+        XCTAssertEqual(report.overlapCount, 0)
+        XCTAssertEqual(report.gridOverflowCount, 0)
+    }
+
+    func testSparseOperationsKeepPartialHolesUntilAutoPack() {
         let right = gridItem("right", size: .strip, column: 4, row: 0)
-        let lower = gridItem("lower", size: .strip, column: 2, row: 2)
+        let lowerWide = gridItem("lowerWide", size: .tape, column: 0, row: 1)
 
-        let compacted = CardDebugGridBoardLabModel.compactEmptyRows([right, lower])
+        let locallyCompacted = CardDebugGridBoardLabModel.compactEmptyRows([right, lowerWide])
+        let sparseReport = CardDebugGridBoardLabModel.report(for: locallyCompacted, mode: .storedPlacement)
+        let autoPacked = CardDebugGridBoardLabModel.autoPacked([right, lowerWide])
+        let autoReport = CardDebugGridBoardLabModel.report(for: autoPacked, mode: .storedPlacement)
 
-        XCTAssertEqual(placement(of: right.id, in: compacted), MemoryCardGridPlacement(column: 4, row: 0))
-        XCTAssertEqual(placement(of: lower.id, in: compacted), MemoryCardGridPlacement(column: 2, row: 1))
+        XCTAssertEqual(placement(of: right.id, in: locallyCompacted), MemoryCardGridPlacement(column: 4, row: 0))
+        XCTAssertEqual(placement(of: lowerWide.id, in: locallyCompacted), MemoryCardGridPlacement(column: 0, row: 1))
+        XCTAssertEqual(placement(of: right.id, in: autoPacked), MemoryCardGridPlacement(column: 0, row: 0))
+        XCTAssertGreaterThan(sparseReport.holesCount, autoReport.holesCount)
+        XCTAssertGreaterThan(sparseReport.autoPackRecoverableHoles, 0)
+    }
+
+    func testCommitPreviewDoesNotCompactDropHoles() {
+        let dragged = gridItem("dragged", size: .strip, column: 0, row: 0)
+        let right = gridItem("right", size: .strip, column: 2, row: 0)
+        let preview = CardDebugGridBoardLabModel.previewItems(
+            dragging: dragged.id,
+            to: MemoryCardGridPlacement(column: 0, row: 2),
+            in: [dragged, right]
+        )
+
+        let committed = CardDebugGridBoardLabModel.commitPreview(preview.items)
+
+        XCTAssertEqual(placement(of: dragged.id, in: committed), MemoryCardGridPlacement(column: 0, row: 2))
     }
 
     func testDeleteOnlyCompactsCompleteEmptyRows() {
@@ -242,7 +224,7 @@ final class CardDebugGridBoardLabTests: XCTestCase {
         XCTAssertEqual(placement(of: lower.id, in: remaining), MemoryCardGridPlacement(column: 2, row: 1))
     }
 
-    func testResizeGrowingCardUsesMinimumDisturbanceSolver() {
+    func testResizeGrowingCardReflowsFromResizedIndexOnward() {
         let hero = gridItem("hero", size: .strip, column: 0, row: 0)
         let blocker = gridItem("blocker", size: .strip, column: 4, row: 0)
         let follower = gridItem("follower", size: .strip, column: 0, row: 3)
@@ -254,8 +236,8 @@ final class CardDebugGridBoardLabTests: XCTestCase {
         )
 
         XCTAssertEqual(placement(of: hero.id, in: resized), MemoryCardGridPlacement(column: 0, row: 0))
-        XCTAssertNotEqual(placement(of: blocker.id, in: resized), blocker.placement)
-        XCTAssertEqual(placement(of: follower.id, in: resized), follower.placement)
+        XCTAssertEqual(placement(of: blocker.id, in: resized), MemoryCardGridPlacement(column: 0, row: 3))
+        XCTAssertEqual(placement(of: follower.id, in: resized), MemoryCardGridPlacement(column: 2, row: 3))
         XCTAssertEqual(CardDebugGridBoardLabModel.report(for: resized, mode: .storedPlacement).overlapCount, 0)
     }
 
@@ -283,14 +265,31 @@ final class CardDebugGridBoardLabTests: XCTestCase {
         XCTAssertEqual(next.last?.placement, MemoryCardGridPlacement(column: 0, row: 1))
     }
 
-    func testAutoPackIsTheOnlyFullFirstFitTidyAction() {
-        let item = gridItem("right", size: .strip, column: 4, row: 0)
+    func testPreviewForLargeDebugSetDoesNotUseSearchSolver() {
+        let sizes = MemoryCardSizeToken.allCases
+        let items = CardDebugGridBoardLabModel.orderedSparsePack(
+            (0..<100).map { index in
+                let size = sizes[index % sizes.count]
+                return CardDebugGridBoardLabItem(
+                    id: UUID(),
+                    title: "\(index)",
+                    size: size,
+                    recipe: CardDebugGridBoardLabModel.recipe(for: size),
+                    placement: nil
+                )
+            }
+        )
+        let dragged = items[50]
 
-        let locallyCompacted = CardDebugGridBoardLabModel.compactEmptyRows([item])
-        let autoPacked = CardDebugGridBoardLabModel.autoPacked([item])
-
-        XCTAssertEqual(placement(of: item.id, in: locallyCompacted), MemoryCardGridPlacement(column: 4, row: 0))
-        XCTAssertEqual(placement(of: item.id, in: autoPacked), MemoryCardGridPlacement(column: 0, row: 0))
+        measure {
+            for row in 0..<100 {
+                _ = CardDebugGridBoardLabModel.previewItems(
+                    dragging: dragged.id,
+                    to: MemoryCardGridPlacement(column: 0, row: row),
+                    in: items
+                )
+            }
+        }
     }
 
     func testCollectionLayoutAttributesMatchBoardPlanFrames() {
@@ -333,16 +332,21 @@ final class CardDebugGridBoardLabTests: XCTestCase {
         XCTAssertFalse(source.contains(".simultaneousGesture("))
     }
 
-    func testUIKitBoardUsesSnapshotDragInsteadOfInteractiveMovementOrStatePreview() throws {
-        let source = try source(named: "CardDebugGridBoardUIKitView.swift")
+    func testGridBoardImplementationDoesNotUseInteractiveMovementOrSearchSolver() throws {
+        let uiKitSource = try source(named: "CardDebugGridBoardUIKitView.swift")
+        let engineSource = try source(named: "CardDebugGridBoardLayoutEngine.swift")
 
-        XCTAssertFalse(source.contains("beginInteractiveMovementForItem"))
-        XCTAssertFalse(source.contains("updateInteractiveMovementTargetPosition"))
-        XCTAssertFalse(source.contains("endInteractiveMovement"))
-        XCTAssertFalse(source.contains("cancelInteractiveMovement"))
-        XCTAssertFalse(source.contains("onPreviewChanged"))
-        XCTAssertFalse(source.contains("+ collectionView.contentOffset"))
-        XCTAssertTrue(source.contains("snapshotView(afterScreenUpdates: false)"))
+        XCTAssertFalse(uiKitSource.contains("beginInteractiveMovementForItem"))
+        XCTAssertFalse(uiKitSource.contains("updateInteractiveMovementTargetPosition"))
+        XCTAssertFalse(uiKitSource.contains("endInteractiveMovement"))
+        XCTAssertFalse(uiKitSource.contains("cancelInteractiveMovement"))
+        XCTAssertFalse(uiKitSource.contains("onPreviewChanged"))
+        XCTAssertFalse(uiKitSource.contains("+ collectionView.contentOffset"))
+        XCTAssertTrue(uiKitSource.contains("snapshotView(afterScreenUpdates: false)"))
+        XCTAssertFalse(engineSource.contains("minimumDisturbance"))
+        XCTAssertFalse(engineSource.contains("displacedPreview"))
+        XCTAssertFalse(engineSource.contains("maxIterations"))
+        XCTAssertFalse(engineSource.contains("CardDebugGridLayoutCost"))
     }
 
     private func gridItem(

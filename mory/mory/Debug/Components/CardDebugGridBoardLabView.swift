@@ -33,9 +33,8 @@ struct CardDebugGridBoardLabView: View {
             containerWidth: containerWidth,
             metrics: metrics,
             activeDragTarget: lastPreview?.targetPlacement,
-            affectedItemIDs: lastPreview?.affectedItemIDs ?? [],
-            solverCost: lastPreview?.solverCost,
-            solverUsedFallback: lastPreview?.usedFallback ?? false
+            lastInsertionIndex: lastPreview?.insertionIndex,
+            movedRange: lastPreview?.movedRange
         )
     }
 
@@ -107,7 +106,7 @@ struct CardDebugGridBoardLabView: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
 
-            Text("UIKit owns scrolling, hit testing, reuse, and long-press lifting. Dragging uses a minimum-disturbance local solver: the lifted card pins to the target, only real collisions move, and blockers may move left, right, up, or down. Auto Pack is the only full first-fit tidy action.")
+            Text("UIKit owns scrolling, hit testing, reuse, and long-press lifting. Dragging uses an ordered sparse grid: the lifted card inserts into the visual sequence, later cards flow after it, and local holes are kept until Auto Pack.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -205,14 +204,15 @@ struct CardDebugGridBoardLabView: View {
             DebugValueRow(title: "Board width", value: "\(Int(report.boardWidth.rounded()))")
             DebugValueRow(title: "Cell size", value: "\(Int(report.cellSize.rounded()))")
             DebugValueRow(title: "Drag target", value: report.activeDragTargetLabel)
-            DebugValueRow(title: "Affected chain", value: report.affectedLabel)
+            DebugValueRow(title: "Insertion index", value: report.insertionIndexLabel)
+            DebugValueRow(title: "Moved range", value: report.movedRangeLabel)
             DebugValueRow(title: "Rows", value: "\(report.rowCount)")
             DebugValueRow(title: "Cells", value: "\(report.occupiedCells)/\(report.totalCells)")
+            DebugValueRow(title: "Holes", value: "\(report.holesCount)")
+            DebugValueRow(title: "Auto Pack recoverable", value: "\(report.autoPackRecoverableHoles)")
             DebugValueRow(title: "Density", value: report.densityLabel)
             DebugValueRow(title: "Overlaps", value: "\(report.overlapCount)")
             DebugValueRow(title: "Grid overflows", value: "\(report.gridOverflowCount)")
-            DebugValueRow(title: "Solver fallback", value: report.solverUsedFallback ? "yes" : "no")
-            DebugValueRow(title: "Solver cost", value: report.solverCostLabel)
 
             DisclosureGroup("Projection Diagnostics") {
                 VStack(alignment: .leading, spacing: 8) {
@@ -235,8 +235,8 @@ struct CardDebugGridBoardLabView: View {
                         .font(.caption.monospaced())
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
-                    if report.affectedItemIDs.contains(slot.item.id) {
-                        Text("affected")
+                    if report.movedRange?.contains(report.slots.firstIndex(where: { $0.id == slot.id }) ?? -1) == true {
+                        Text("moved")
                             .font(.caption2.weight(.bold))
                             .foregroundStyle(.tint)
                     }

@@ -55,15 +55,16 @@ struct CardDebugGridBoardLabReport: Hashable {
     let boardWidth: CGFloat
     let cellSize: CGFloat
     let activeDragTarget: MemoryCardGridPlacement?
-    let affectedItemIDs: [UUID]
+    let lastInsertionIndex: Int?
+    let movedRange: ClosedRange<Int>?
     let rowCount: Int
     let occupiedCells: Int
     let totalCells: Int
+    let holesCount: Int
+    let autoPackRecoverableHoles: Int
     let density: Double
     let overlapCount: Int
     let gridOverflowCount: Int
-    let solverCost: CardDebugGridLayoutCost?
-    let solverUsedFallback: Bool
     let slots: [CardDebugGridBoardLabSlot]
 
     var densityLabel: String {
@@ -74,94 +75,24 @@ struct CardDebugGridBoardLabReport: Hashable {
         activeDragTarget.map { "c\($0.column) r\($0.row)" } ?? "none"
     }
 
-    var affectedLabel: String {
-        affectedItemIDs.isEmpty ? "none" : "\(affectedItemIDs.count) item(s)"
+    var insertionIndexLabel: String {
+        lastInsertionIndex.map(String.init) ?? "none"
     }
 
-    var solverCostLabel: String {
-        guard let solverCost else { return "none" }
-        return "moved=\(solverCost.movedItemCount) pinned=\(solverCost.pinnedMovedCount) adjusted=\(solverCost.userAdjustedMovedCount) distance=\(solverCost.totalManhattanDistance) inversions=\(solverCost.visualOrderInversionCount)"
+    var movedRangeLabel: String {
+        guard let movedRange else { return "none" }
+        return movedRange.lowerBound == movedRange.upperBound
+            ? "\(movedRange.lowerBound)"
+            : "\(movedRange.lowerBound)...\(movedRange.upperBound)"
     }
 }
 
 struct CardDebugGridDragPreview: Hashable {
     let itemID: UUID
     let targetPlacement: MemoryCardGridPlacement
+    let insertionIndex: Int
+    let movedRange: ClosedRange<Int>?
     let items: [CardDebugGridBoardLabItem]
-    let affectedItemIDs: [UUID]
-    let solverCost: CardDebugGridLayoutCost?
-    let usedFallback: Bool
-
-    init(
-        itemID: UUID,
-        targetPlacement: MemoryCardGridPlacement,
-        items: [CardDebugGridBoardLabItem],
-        affectedItemIDs: [UUID],
-        solverCost: CardDebugGridLayoutCost? = nil,
-        usedFallback: Bool = false
-    ) {
-        self.itemID = itemID
-        self.targetPlacement = targetPlacement
-        self.items = items
-        self.affectedItemIDs = affectedItemIDs
-        self.solverCost = solverCost
-        self.usedFallback = usedFallback
-    }
-}
-
-struct CardDebugGridLayoutCandidate: Hashable {
-    let itemID: UUID
-    let placement: MemoryCardGridPlacement
-}
-
-struct CardDebugGridLayoutState: Hashable {
-    var placementsByID: [UUID: MemoryCardGridPlacement]
-}
-
-struct CardDebugGridLayoutSolverResult: Hashable {
-    let state: CardDebugGridLayoutState
-    let cost: CardDebugGridLayoutCost
-    let usedFallback: Bool
-}
-
-struct CardDebugGridLayoutCost: Hashable, Comparable {
-    let movedItemCount: Int
-    let pinnedMovedCount: Int
-    let userAdjustedMovedCount: Int
-    let totalManhattanDistance: Int
-    let totalRowDelta: Int
-    let totalColumnDelta: Int
-    let visualOrderInversionCount: Int
-    let boardHeightGrowth: Int
-    let tieBreakSignature: String
-
-    static func < (lhs: CardDebugGridLayoutCost, rhs: CardDebugGridLayoutCost) -> Bool {
-        if lhs.movedItemCount != rhs.movedItemCount {
-            return lhs.movedItemCount < rhs.movedItemCount
-        }
-        if lhs.pinnedMovedCount != rhs.pinnedMovedCount {
-            return lhs.pinnedMovedCount < rhs.pinnedMovedCount
-        }
-        if lhs.userAdjustedMovedCount != rhs.userAdjustedMovedCount {
-            return lhs.userAdjustedMovedCount < rhs.userAdjustedMovedCount
-        }
-        if lhs.totalManhattanDistance != rhs.totalManhattanDistance {
-            return lhs.totalManhattanDistance < rhs.totalManhattanDistance
-        }
-        if lhs.totalRowDelta != rhs.totalRowDelta {
-            return lhs.totalRowDelta < rhs.totalRowDelta
-        }
-        if lhs.totalColumnDelta != rhs.totalColumnDelta {
-            return lhs.totalColumnDelta < rhs.totalColumnDelta
-        }
-        if lhs.visualOrderInversionCount != rhs.visualOrderInversionCount {
-            return lhs.visualOrderInversionCount < rhs.visualOrderInversionCount
-        }
-        if lhs.boardHeightGrowth != rhs.boardHeightGrowth {
-            return lhs.boardHeightGrowth < rhs.boardHeightGrowth
-        }
-        return lhs.tieBreakSignature < rhs.tieBreakSignature
-    }
 }
 
 struct CardDebugGridDragGeometry: Hashable {
