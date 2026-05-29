@@ -10,6 +10,18 @@ final class CardDebugGridBoardLabTests: XCTestCase {
         XCTAssertEqual(metrics.cellWidth(for: boardWidth), metrics.rowHeight, accuracy: 0.1)
     }
 
+    func testDebugSquareMetricsShrinkForNarrowRotations() {
+        let narrowBoardWidth = MemoryDeskBoardMetrics.debugBoardWidth(for: 360)
+        let wideBoardWidth = MemoryDeskBoardMetrics.debugBoardWidth(for: 900)
+        let narrowMetrics = MemoryDeskBoardMetrics.debugSquare(availableWidth: 360)
+        let wideMetrics = MemoryDeskBoardMetrics.debugSquare(availableWidth: 900)
+
+        XCTAssertEqual(narrowBoardWidth, 360)
+        XCTAssertEqual(wideBoardWidth, MemoryDeskBoardMetrics.debugMaxBoardWidth)
+        XCTAssertLessThan(narrowMetrics.rowHeight, wideMetrics.rowHeight)
+        XCTAssertEqual(narrowMetrics.cellWidth(for: narrowBoardWidth), narrowMetrics.rowHeight, accuracy: 0.1)
+    }
+
     func testDefaultItemsCoverEverySizeToken() {
         let items = CardDebugGridBoardLabModel.defaultItems()
 

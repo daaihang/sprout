@@ -646,22 +646,31 @@ struct CardDebugGridBoardLabView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                controls
-                    .padding(.horizontal, 16)
-                    .padding(.top, 14)
+        GeometryReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    controls
+                        .padding(.horizontal, 16)
+                        .padding(.top, 14)
 
-                board
+                    board
 
-                reportSection
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 24)
+                    reportSection
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 24)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .scrollDisabled(activeDragItemID != nil)
+            .onAppear {
+                updateMeasuredWidth(proxy.size.width - 32)
+            }
+            .onChange(of: proxy.size.width) { _, newWidth in
+                updateMeasuredWidth(newWidth - 32)
             }
         }
         .navigationTitle("Grid Board Lab")
         .navigationBarTitleDisplayMode(.inline)
-        .scrollDisabled(activeDragItemID != nil)
     }
 
     private var controls: some View {
@@ -670,7 +679,7 @@ struct CardDebugGridBoardLabView: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
 
-            Text("Drag updates stored placement. Other cards keep their positions unless they collide; Auto Pack is the explicit full tidy action.")
+            Text("Scroll normally anywhere on the page. Hold a card grip to drag; other cards keep their positions unless they collide. Auto Pack is the explicit full tidy action.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -735,7 +744,9 @@ struct CardDebugGridBoardLabView: View {
                 .frame(width: slot.frame.width, height: slot.frame.height)
                 .position(x: slot.frame.midX, y: slot.frame.midY)
                 .zIndex(activeDragItemID == slot.item.id ? 10_000 : Double(slot.layout.zIndex))
-                .simultaneousGesture(layoutDragGesture(for: slot))
+                .overlay(alignment: .bottomTrailing) {
+                    dragHandle(for: slot)
+                }
                 .animation(.spring(response: 0.28, dampingFraction: 0.86), value: slots)
             }
         }
@@ -745,17 +756,22 @@ struct CardDebugGridBoardLabView: View {
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .frame(maxWidth: .infinity, alignment: .center)
         .padding(.horizontal, 16)
-        .background {
-            GeometryReader { proxy in
-                Color.clear
-                    .onAppear {
-                        updateMeasuredWidth(proxy.size.width - 32)
-                    }
-                    .onChange(of: proxy.size.width) { _, newWidth in
-                        updateMeasuredWidth(newWidth - 32)
-                    }
+    }
+
+    private func dragHandle(for slot: CardDebugGridBoardLabSlot) -> some View {
+        Image(systemName: "arrow.up.and.down.and.arrow.left.and.right")
+            .font(.caption.weight(.bold))
+            .foregroundStyle(activeDragItemID == slot.item.id ? Color.accentColor : Color.secondary)
+            .padding(9)
+            .background(.thinMaterial, in: Circle())
+            .overlay {
+                Circle()
+                    .strokeBorder(Color.primary.opacity(0.14), lineWidth: 1)
             }
-        }
+            .contentShape(Circle())
+            .padding(8)
+            .accessibilityLabel("Drag card")
+            .gesture(layoutDragGesture(for: slot))
     }
 
     private var reportSection: some View {
@@ -798,6 +814,9 @@ struct CardDebugGridBoardLabView: View {
 
     private func updateMeasuredWidth(_ width: CGFloat) {
         guard width.isFinite, width > 0, abs(width - measuredContainerWidth) > 0.5 else { return }
+        if activeDragItemID != nil {
+            resetDragState()
+        }
         measuredContainerWidth = width
     }
 
