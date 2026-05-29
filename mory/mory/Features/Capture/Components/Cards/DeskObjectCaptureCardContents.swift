@@ -296,10 +296,9 @@ struct WeatherStampCaptureCardContent: View {
                 .font(.system(size: 18, weight: .semibold))
                 .symbolRenderingMode(.multicolor)
             temperatureDisplay(valueFont: 21, unitFont: 10)
-            Spacer(minLength: 0)
         }
         .padding(metrics.padding.edgeInsets)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .frame(maxWidth: metrics.preferredSize.width - 12, alignment: .center)
         .background(stampInk.opacity(0.08), in: Capsule())
         .overlay {
             Capsule()
