@@ -21,6 +21,16 @@ struct CardDebugView: View {
                 }
 
                 NavigationLink {
+                    CardDebugGridBoardLabView()
+                } label: {
+                    DebugMenuRow(
+                        icon: "square.grid.3x3.topleft.filled",
+                        title: "Grid Board Lab",
+                        subtitle: "Add, delete, resize, pack, and inspect 6-column grid occupancy"
+                    )
+                }
+
+                NavigationLink {
                     CardDebugArrangementPlaygroundView()
                 } label: {
                     DebugMenuRow(

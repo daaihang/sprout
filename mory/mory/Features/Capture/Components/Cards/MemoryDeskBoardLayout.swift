@@ -60,10 +60,23 @@ struct MemoryDeskBoardLayoutPlan<ID: Hashable & Sendable>: Hashable, Sendable {
         let ordered = nodes.enumerated().map { index, node in
             (index: index, node: node)
         }
-        let frames = ordered.map { entry in
-            frame(for: entry.node.layout, containerWidth: containerWidth, metrics: metrics, fallbackOrder: entry.index)
+        let effectivePlacements = MemoryCardGridPacking.effectivePlacements(
+            for: ordered.map(\.node.layout)
+        )
+        let effectiveEntries = ordered.enumerated().map { index, entry in
+            var layout = entry.node.layout
+            if layout.gridPlacement == nil {
+                layout.gridPlacement = effectivePlacements[safe: index]
+            }
+            return (
+                index: entry.index,
+                node: MemoryDeskBoardInputNode(id: entry.node.id, layout: layout)
+            )
         }
-        let slots = zip(ordered, frames).map { entry, frame in
+        let frames = effectiveEntries.map { entry in
+            frame(for: entry.node.layout, containerWidth: containerWidth, metrics: metrics)
+        }
+        let slots = zip(effectiveEntries, frames).map { entry, frame in
             MemoryDeskBoardLayoutSlot(id: entry.node.id, layout: entry.node.layout, frame: frame)
         }
         let maxY = frames.map(\.maxY).max() ?? 0
@@ -77,17 +90,11 @@ struct MemoryDeskBoardLayoutPlan<ID: Hashable & Sendable>: Hashable, Sendable {
     private static func frame(
         for layout: MemoryCardLayoutToken,
         containerWidth: CGFloat,
-        metrics: MemoryDeskBoardMetrics,
-        fallbackOrder: Int
+        metrics: MemoryDeskBoardMetrics
     ) -> CGRect {
-        let columns = max(1, min(metrics.columns, MemoryCardRecipeLayoutPolicy.columnCount))
         let cellWidth = metrics.cellWidth(for: containerWidth)
         let box = MemoryCardRecipeLayoutPolicy.gridBox(for: layout.size)
-        let fallbackPlacement = MemoryCardGridPlacement(
-            column: max(0, fallbackOrder % columns),
-            row: max(0, fallbackOrder / columns)
-        )
-        let placement = layout.gridPlacement ?? fallbackPlacement
+        let placement = layout.gridPlacement ?? MemoryCardGridPlacement(column: 0, row: layout.order)
 
         let x = metrics.horizontalPadding + CGFloat(placement.column) * (cellWidth + metrics.columnSpacing)
         let y = metrics.verticalPadding + CGFloat(placement.row) * (metrics.rowHeight + metrics.rowSpacing)
@@ -95,5 +102,11 @@ struct MemoryDeskBoardLayoutPlan<ID: Hashable & Sendable>: Hashable, Sendable {
         let height = CGFloat(box.rowSpan) * metrics.rowHeight + CGFloat(max(0, box.rowSpan - 1)) * metrics.rowSpacing
 
         return CGRect(x: x, y: y, width: width, height: height)
+    }
+}
+
+private extension Array {
+    subscript(safe index: Int) -> Element? {
+        indices.contains(index) ? self[index] : nil
     }
 }

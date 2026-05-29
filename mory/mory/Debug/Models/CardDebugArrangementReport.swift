@@ -17,17 +17,19 @@ struct CardDebugArrangementReport: Hashable {
         containerWidth: CGFloat = 390,
         metrics: MemoryDeskBoardMetrics = .default
     ) -> CardDebugArrangementReport {
-        let effectiveNodes = nodes.withEffectiveGridPlacements()
-        let inputNodes = effectiveNodes.map { MemoryDeskBoardInputNode(id: $0.id, layout: $0.layout) }
+        let inputNodes = nodes.map { MemoryDeskBoardInputNode(id: $0.id, layout: $0.layout) }
         let plan = MemoryDeskBoardLayoutPlan.make(
             nodes: inputNodes,
             containerWidth: containerWidth,
             metrics: metrics
         )
-        let nodeByID = Dictionary(uniqueKeysWithValues: effectiveNodes.map { ($0.id, $0) })
+        let effectiveLayouts = plan.slots.map(\.layout)
+        let nodeByID = Dictionary(uniqueKeysWithValues: nodes.map { ($0.id, $0) })
         let slots = plan.slots.compactMap { slot -> CardDebugArrangementSlotReport? in
             guard let node = nodeByID[slot.id] else { return nil }
-            return CardDebugArrangementSlotReport(node: node, frame: slot.frame)
+            var effectiveNode = node
+            effectiveNode.layout = slot.layout
+            return CardDebugArrangementSlotReport(node: effectiveNode, frame: slot.frame)
         }
 
         var occupied = Set<CardDebugGridCell>()
@@ -42,7 +44,7 @@ struct CardDebugArrangementReport: Hashable {
             }
         }
 
-        let rowCount = max(1, MemoryCardGridPacking.requiredRowCount(for: effectiveNodes.map(\.layout)))
+        let rowCount = max(1, MemoryCardGridPacking.requiredRowCount(for: effectiveLayouts))
         let totalCells = rowCount * MemoryCardRecipeLayoutPolicy.columnCount
         let density = totalCells == 0 ? 0 : Double(occupied.count) / Double(totalCells)
         return CardDebugArrangementReport(
@@ -110,23 +112,4 @@ struct CardDebugArrangementSlotReport: Identifiable, Hashable {
 struct CardDebugGridCell: Hashable {
     let column: Int
     let row: Int
-}
-
-private extension Array where Element == MemoryCardNode {
-    func withEffectiveGridPlacements() -> [MemoryCardNode] {
-        let placements = MemoryCardGridPacking.placements(for: map(\.layout.size))
-        return enumerated().map { index, node in
-            var node = node
-            if node.layout.gridPlacement == nil {
-                node.layout.gridPlacement = placements[safe: index]
-            }
-            return node
-        }
-    }
-}
-
-private extension Array {
-    subscript(safe index: Int) -> Element? {
-        indices.contains(index) ? self[index] : nil
-    }
 }

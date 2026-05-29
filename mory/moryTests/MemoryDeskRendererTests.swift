@@ -146,4 +146,50 @@ final class MemoryDeskRendererTests: XCTestCase {
         XCTAssertEqual(stripSlot.frame.width, expectedStripWidth, accuracy: 0.1)
         XCTAssertGreaterThan(plan.boardHeight, stripSlot.frame.maxY)
     }
+
+    func testBoardLayoutPlanFirstFitPacksMissingGridPlacementsWithoutOverlap() {
+        let nodes = [
+            MemoryDeskBoardInputNode(id: "banner", layout: MemoryCardLayoutToken(order: 0, size: .banner)),
+            MemoryDeskBoardInputNode(id: "tape", layout: MemoryCardLayoutToken(order: 1, size: .tape)),
+            MemoryDeskBoardInputNode(id: "square", layout: MemoryCardLayoutToken(order: 2, size: .square)),
+            MemoryDeskBoardInputNode(id: "card", layout: MemoryCardLayoutToken(order: 3, size: .card))
+        ]
+
+        let plan = MemoryDeskBoardLayoutPlan.make(nodes: nodes, containerWidth: 390, metrics: .default)
+
+        XCTAssertEqual(plan.slots.map(\.id), ["banner", "tape", "square", "card"])
+        XCTAssertTrue(plan.slots.allSatisfy { $0.layout.gridPlacement != nil })
+        XCTAssertNoGridOverlap(plan.slots.map(\.layout))
+    }
+}
+
+private func XCTAssertNoGridOverlap(
+    _ layouts: [MemoryCardLayoutToken],
+    file: StaticString = #filePath,
+    line: UInt = #line
+) {
+    var occupied = Set<MemoryDeskRendererTestGridCell>()
+    for layout in layouts {
+        guard let placement = layout.gridPlacement else {
+            XCTFail("Missing grid placement", file: file, line: line)
+            continue
+        }
+        let box = MemoryCardRecipeLayoutPolicy.gridBox(for: layout.size)
+        for row in placement.row..<(placement.row + box.rowSpan) {
+            for column in placement.column..<(placement.column + box.columnSpan) {
+                let cell = MemoryDeskRendererTestGridCell(column: column, row: row)
+                XCTAssertFalse(occupied.contains(cell), "Unexpected overlap at \(cell)", file: file, line: line)
+                occupied.insert(cell)
+            }
+        }
+    }
+}
+
+private struct MemoryDeskRendererTestGridCell: Hashable, CustomStringConvertible {
+    let column: Int
+    let row: Int
+
+    var description: String {
+        "(\(column), \(row))"
+    }
 }

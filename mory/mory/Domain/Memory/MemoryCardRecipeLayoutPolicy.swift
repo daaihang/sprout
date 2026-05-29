@@ -112,45 +112,60 @@ enum MemoryCardRecipeLayoutPolicy {
 
 enum MemoryCardGridPacking {
     static func placements(for sizes: [MemoryCardSizeToken]) -> [MemoryCardGridPlacement] {
+        effectivePlacements(
+            for: sizes.enumerated().map { index, size in
+                MemoryCardLayoutToken(order: index, size: size)
+            }
+        )
+    }
+
+    static func effectivePlacements(for layouts: [MemoryCardLayoutToken]) -> [MemoryCardGridPlacement] {
         var occupiedRows: [[Bool]] = []
         var placements: [MemoryCardGridPlacement] = []
 
-        for size in sizes {
-            let box = MemoryCardRecipeLayoutPolicy.gridBox(for: size)
-            var row = 0
-            var placement: MemoryCardGridPlacement?
-
-            while placement == nil {
-                ensureRows(upTo: row + box.rowSpan, rows: &occupiedRows)
-
-                for column in 0...(MemoryCardRecipeLayoutPolicy.columnCount - box.columnSpan) {
-                    guard canPlace(box: box, atRow: row, column: column, rows: occupiedRows) else {
-                        continue
-                    }
-                    mark(box: box, atRow: row, column: column, rows: &occupiedRows)
-                    placement = MemoryCardGridPlacement(column: column, row: row)
-                    break
-                }
-
-                if placement == nil {
-                    row += 1
-                }
+        for layout in layouts {
+            let box = MemoryCardRecipeLayoutPolicy.gridBox(for: layout.size)
+            if let storedPlacement = layout.gridPlacement {
+                ensureRows(upTo: storedPlacement.row + box.rowSpan, rows: &occupiedRows)
+                mark(box: box, placement: storedPlacement, rows: &occupiedRows)
+                placements.append(storedPlacement)
+                continue
             }
 
-            if let placement {
-                placements.append(placement)
-            }
+            let placement = firstAvailablePlacement(for: box, rows: &occupiedRows)
+            placements.append(placement)
         }
 
         return placements
     }
 
     static func requiredRowCount(for layouts: [MemoryCardLayoutToken]) -> Int {
-        layouts.map { layout in
-            let placement = layout.gridPlacement ?? MemoryCardGridPlacement(column: 0, row: layout.order)
+        let placements = effectivePlacements(for: layouts)
+        return zip(layouts, placements).map { layout, placement in
             return placement.row + MemoryCardRecipeLayoutPolicy.gridBox(for: layout.size).rowSpan
         }
         .max() ?? 0
+    }
+
+    private static func firstAvailablePlacement(
+        for box: MemoryCardGridBox,
+        rows: inout [[Bool]]
+    ) -> MemoryCardGridPlacement {
+        var row = 0
+        while true {
+            ensureRows(upTo: row + box.rowSpan, rows: &rows)
+
+            for column in 0...(MemoryCardRecipeLayoutPolicy.columnCount - box.columnSpan) {
+                guard canPlace(box: box, atRow: row, column: column, rows: rows) else {
+                    continue
+                }
+                let placement = MemoryCardGridPlacement(column: column, row: row)
+                mark(box: box, placement: placement, rows: &rows)
+                return placement
+            }
+
+            row += 1
+        }
     }
 
     private static func ensureRows(upTo count: Int, rows: inout [[Bool]]) {
@@ -173,6 +188,14 @@ enum MemoryCardGridPacking {
     private static func mark(box: MemoryCardGridBox, atRow row: Int, column: Int, rows: inout [[Bool]]) {
         for rowIndex in row..<(row + box.rowSpan) {
             for columnIndex in column..<(column + box.columnSpan) {
+                rows[rowIndex][columnIndex] = true
+            }
+        }
+    }
+
+    private static func mark(box: MemoryCardGridBox, placement: MemoryCardGridPlacement, rows: inout [[Bool]]) {
+        for rowIndex in placement.row..<(placement.row + box.rowSpan) {
+            for columnIndex in placement.column..<min(MemoryCardRecipeLayoutPolicy.columnCount, placement.column + box.columnSpan) {
                 rows[rowIndex][columnIndex] = true
             }
         }
