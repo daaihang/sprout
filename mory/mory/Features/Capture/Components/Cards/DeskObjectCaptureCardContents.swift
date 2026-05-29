@@ -181,6 +181,32 @@ struct WeatherStampCaptureCardContent: View {
             ?? "--"
     }
 
+    private var temperatureValueAndUnit: (value: String, unit: String?) {
+        let token = temperatureToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !token.isEmpty else { return ("--", nil) }
+
+        let noSpace = token.replacingOccurrences(of: " ", with: "")
+        if let degreeIndex = noSpace.firstIndex(of: "°") {
+            let value = String(noSpace[..<degreeIndex])
+            let unit = String(noSpace[degreeIndex...])
+            return (value.isEmpty ? token : value, unit.isEmpty ? nil : unit)
+        }
+
+        var numberPrefix = ""
+        for character in noSpace {
+            if character.isNumber || character == "-" || character == "+" || character == "." {
+                numberPrefix.append(character)
+            } else {
+                break
+            }
+        }
+        if !numberPrefix.isEmpty {
+            let unit = String(noSpace.dropFirst(numberPrefix.count))
+            return (numberPrefix, unit.isEmpty ? nil : unit)
+        }
+        return (token, nil)
+    }
+
     private var humidityToken: String? {
         metadataToken(
             containingAny: ["humidity", "湿", "%"]
@@ -215,15 +241,10 @@ struct WeatherStampCaptureCardContent: View {
     }
 
     private var stampLayout: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.clear)
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(stampInk.opacity(0.75), lineWidth: 1.6)
-
-            stampCore
-        }
-        .padding(2)
+        stampCore
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            .padding(.horizontal, 2)
+            .shadow(color: .black.opacity(0.05), radius: 1, y: 0.5)
     }
 
     @ViewBuilder
@@ -234,20 +255,16 @@ struct WeatherStampCaptureCardContent: View {
                 .font(.system(size: 23, weight: .bold))
                 .symbolRenderingMode(.multicolor)
         case .weatherTemperature:
-            Text(temperatureToken)
-                .font(.system(size: 17, weight: .black, design: .rounded))
-                .foregroundStyle(stampInk)
-                .lineLimit(1)
-                .minimumScaleFactor(0.68)
+            temperatureDisplay(valueFont: 26, unitFont: 10)
         case .weatherHumidity:
             Text(humidityToken ?? "--")
-                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .font(.system(size: 16, weight: .bold, design: .rounded))
                 .foregroundStyle(stampInk)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
         case .weatherWind:
             Text(windToken ?? "--")
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
                 .foregroundStyle(stampInk)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
@@ -274,20 +291,12 @@ struct WeatherStampCaptureCardContent: View {
     }
 
     private var stripLayout: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 7) {
             Image(systemName: symbolName)
                 .font(.system(size: 18, weight: .semibold))
                 .symbolRenderingMode(.multicolor)
-            Text(temperatureToken)
-                .font(.system(size: 16, weight: .bold, design: .rounded))
-                .foregroundStyle(stampInk)
-                .lineLimit(1)
-                .minimumScaleFactor(0.68)
+            temperatureDisplay(valueFont: 21, unitFont: 10)
             Spacer(minLength: 0)
-            Text(common.detail.trimmedOrNil ?? "")
-                .font(.system(size: 10, weight: .semibold, design: .rounded))
-                .foregroundStyle(stampInk.opacity(0.78))
-                .lineLimit(1)
         }
         .padding(metrics.padding.edgeInsets)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
@@ -304,11 +313,7 @@ struct WeatherStampCaptureCardContent: View {
                 Image(systemName: symbolName)
                     .font(.system(size: 23, weight: .bold))
                     .symbolRenderingMode(.multicolor)
-                Text(temperatureToken)
-                    .font(.system(size: 31, weight: .black, design: .rounded))
-                    .foregroundStyle(stampInk)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.68)
+                temperatureDisplay(valueFont: 31, unitFont: 12)
                 Spacer(minLength: 0)
             }
 
@@ -348,6 +353,23 @@ struct WeatherStampCaptureCardContent: View {
             .padding(.horizontal, 6)
             .padding(.vertical, 4)
             .background(stampInk.opacity(0.09), in: Capsule())
+    }
+
+    private func temperatureDisplay(valueFont: CGFloat, unitFont: CGFloat) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 1) {
+            Text(temperatureValueAndUnit.value)
+                .font(.system(size: valueFont, weight: .black, design: .rounded))
+                .foregroundStyle(stampInk)
+                .lineLimit(1)
+                .minimumScaleFactor(0.68)
+            if let unit = temperatureValueAndUnit.unit {
+                Text(unit)
+                    .font(.system(size: unitFont, weight: .bold, design: .rounded))
+                    .foregroundStyle(stampInk.opacity(0.82))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+        }
     }
 }
 
