@@ -10,9 +10,7 @@ struct CardDebugGridBoardUIKitView: UIViewRepresentable {
     let activeDragItemID: UUID?
     let activeDragTarget: MemoryCardGridPlacement?
     let overlapCount: Int
-    var onPreviewChanged: (CardDebugGridDragPreview) -> Void
     var onDragEnded: (CardDebugGridDragPreview) -> Void
-    var onDragCancelled: () -> Void
     var onDelete: (UUID) -> Void
     var onMoveEarlier: (UUID) -> Void
     var onMoveLater: (UUID) -> Void
@@ -77,8 +75,12 @@ struct CardDebugGridBoardUIKitView: UIViewRepresentable {
         weak var longPressRecognizer: UILongPressGestureRecognizer?
 
         private var itemIDs: [UUID] = []
-        private var activeSession: CardDebugGridUIKitDragSession?
-        private var activePreview: CardDebugGridDragPreview?
+        private var dragContext: CardDebugGridUIKitDragContext?
+        private var previewSlots: [CardDebugGridBoardLabSlot]?
+
+        private var currentSlots: [CardDebugGridBoardLabSlot] {
+            previewSlots ?? parent.slots
+        }
 
         init(parent: CardDebugGridBoardUIKitView) {
             self.parent = parent
@@ -92,37 +94,46 @@ struct CardDebugGridBoardUIKitView: UIViewRepresentable {
                 return
             }
 
+            let activeSlots = currentSlots
+            let activeBoardHeight = boardHeight(for: activeSlots)
+            let activeDragItemID = dragContext?.session.itemID ?? parent.activeDragItemID
+            let activeDragTarget = dragContext?.lastTargetPlacement ?? parent.activeDragTarget
+            let activeDragSize = dragContext?.session.itemSize ?? parent.activeDragItemID.flatMap { id in
+                activeSlots.first(where: { $0.item.id == id })?.item.size
+            }
+
             layout.configure(
-                slots: parent.slots,
-                boardSize: CGSize(width: parent.containerWidth, height: parent.boardHeight),
-                activeDragItemID: parent.activeDragItemID
+                slots: activeSlots,
+                boardSize: CGSize(width: parent.containerWidth, height: activeBoardHeight),
+                activeDragItemID: activeDragItemID
             )
 
             overlayView?.configure(
-                boardHeight: parent.boardHeight,
+                boardHeight: activeBoardHeight,
                 metrics: parent.metrics,
-                targetPlacement: parent.activeDragTarget,
-                targetSize: parent.activeDragItemID.flatMap { id in
-                    parent.slots.first(where: { $0.item.id == id })?.item.size
-                }
+                targetPlacement: activeDragTarget,
+                targetSize: activeDragSize
             )
             overlayView?.frame = CGRect(
                 x: 0,
                 y: 0,
                 width: parent.containerWidth,
-                height: parent.boardHeight
+                height: activeBoardHeight
             )
 
-            let nextIDs = parent.slots.map(\.item.id)
+            let nextIDs = activeSlots.map(\.item.id)
             if nextIDs != itemIDs {
                 itemIDs = nextIDs
                 collectionView.reloadData()
             } else {
-                collectionView.collectionViewLayout.invalidateLayout()
-                configureVisibleCells(in: collectionView)
+                performWithoutAnimation(in: collectionView) {
+                    collectionView.collectionViewLayout.invalidateLayout()
+                    collectionView.layoutIfNeeded()
+                    configureVisibleCells(in: collectionView)
+                }
             }
 
-            let maxOffsetY = max(0, parent.boardHeight - collectionView.bounds.height)
+            let maxOffsetY = max(0, activeBoardHeight - collectionView.bounds.height)
             if collectionView.contentOffset.y > maxOffsetY {
                 collectionView.contentOffset.y = max(0, maxOffsetY)
             }
@@ -132,7 +143,7 @@ struct CardDebugGridBoardUIKitView: UIViewRepresentable {
             _ collectionView: UICollectionView,
             numberOfItemsInSection section: Int
         ) -> Int {
-            parent.slots.count
+            currentSlots.count
         }
 
         func collectionView(
@@ -147,21 +158,6 @@ struct CardDebugGridBoardUIKitView: UIViewRepresentable {
             return cell
         }
 
-        func collectionView(
-            _ collectionView: UICollectionView,
-            canMoveItemAt indexPath: IndexPath
-        ) -> Bool {
-            parent.slots.indices.contains(indexPath.item)
-        }
-
-        func collectionView(
-            _ collectionView: UICollectionView,
-            moveItemAt sourceIndexPath: IndexPath,
-            to destinationIndexPath: IndexPath
-        ) {
-            // The debug board persists grid placement, not collection index movement.
-        }
-
         @objc func handleLongPress(_ recognizer: UILongPressGestureRecognizer) {
             guard let collectionView = recognizer.view as? UICollectionView else { return }
             let visibleLocation = recognizer.location(in: collectionView)
@@ -172,43 +168,39 @@ struct CardDebugGridBoardUIKitView: UIViewRepresentable {
 
             switch recognizer.state {
             case .began:
-                guard let session = CardDebugGridBoardLabModel.beginDrag(at: contentLocation, in: parent.slots) else {
-                    recognizer.isEnabled = false
-                    recognizer.isEnabled = true
-                    return
-                }
-                activeSession = session
-                collectionView.isScrollEnabled = false
-                if let index = parent.slots.firstIndex(where: { $0.item.id == session.itemID }) {
-                    _ = collectionView.indexPathForItem(at: visibleLocation)
-                    collectionView.beginInteractiveMovementForItem(at: IndexPath(item: index, section: 0))
-                }
-                updatePreview(for: session, at: contentLocation, in: collectionView)
+                beginDrag(at: contentLocation, in: collectionView, recognizer: recognizer)
 
             case .changed:
-                guard let session = activeSession else { return }
-                collectionView.updateInteractiveMovementTargetPosition(visibleLocation)
-                updatePreview(for: session, at: contentLocation, in: collectionView)
+                guard let context = dragContext else { return }
+                updateDrag(
+                    for: context.session,
+                    at: contentLocation,
+                    in: collectionView,
+                    forcePreview: false
+                )
 
             case .ended:
-                guard let session = activeSession else {
+                guard let context = dragContext else {
                     cancelDrag(in: collectionView)
                     return
                 }
-                collectionView.updateInteractiveMovementTargetPosition(visibleLocation)
-                let preview = CardDebugGridBoardLabModel.dragPreview(
-                    for: session,
+                updateDrag(
+                    for: context.session,
+                    at: contentLocation,
+                    in: collectionView,
+                    forcePreview: true
+                )
+                let preview = context.latestPreview ?? CardDebugGridBoardLabModel.dragPreview(
+                    for: context.session,
                     at: contentLocation,
                     boardWidth: parent.containerWidth,
                     metrics: parent.metrics,
                     in: parent.storedItems
                 )
-                collectionView.endInteractiveMovement()
                 finishDrag(in: collectionView)
                 parent.onDragEnded(preview)
 
             case .cancelled, .failed:
-                collectionView.cancelInteractiveMovement()
                 cancelDrag(in: collectionView)
 
             default:
@@ -223,11 +215,62 @@ struct CardDebugGridBoardUIKitView: UIViewRepresentable {
             otherGestureRecognizer === (gestureRecognizer.view as? UICollectionView)?.panGestureRecognizer
         }
 
-        private func updatePreview(
+        private func beginDrag(
+            at contentLocation: CGPoint,
+            in collectionView: UICollectionView,
+            recognizer: UILongPressGestureRecognizer
+        ) {
+            guard
+                let session = CardDebugGridBoardLabModel.beginDrag(at: contentLocation, in: currentSlots),
+                let index = currentSlots.firstIndex(where: { $0.item.id == session.itemID }),
+                let cell = collectionView.cellForItem(at: IndexPath(item: index, section: 0)),
+                let snapshotView = cell.snapshotView(afterScreenUpdates: false)
+            else {
+                recognizer.isEnabled = false
+                recognizer.isEnabled = true
+                return
+            }
+
+            snapshotView.frame = session.geometry.originalFrame
+            snapshotView.layer.shadowColor = UIColor.black.cgColor
+            snapshotView.layer.shadowOpacity = 0.16
+            snapshotView.layer.shadowRadius = 12
+            snapshotView.layer.shadowOffset = CGSize(width: 0, height: 8)
+            collectionView.addSubview(snapshotView)
+            cell.isHidden = true
+            collectionView.isScrollEnabled = false
+            dragContext = CardDebugGridUIKitDragContext(
+                session: session,
+                snapshotView: snapshotView,
+                hiddenCell: cell
+            )
+            updateDrag(
+                for: session,
+                at: contentLocation,
+                in: collectionView,
+                forcePreview: true
+            )
+        }
+
+        private func updateDrag(
             for session: CardDebugGridUIKitDragSession,
             at contentLocation: CGPoint,
-            in collectionView: UICollectionView
+            in collectionView: UICollectionView,
+            forcePreview: Bool
         ) {
+            guard let context = dragContext else { return }
+            context.snapshotView.frame = session.geometry.liftedFrame(for: contentLocation)
+
+            let targetPlacement = CardDebugGridBoardLabModel.targetPlacement(
+                for: session.geometry.gridAnchorLocation(for: contentLocation),
+                itemSize: session.itemSize,
+                boardWidth: parent.containerWidth,
+                metrics: parent.metrics
+            )
+            guard forcePreview || targetPlacement != context.lastTargetPlacement else {
+                return
+            }
+
             let preview = CardDebugGridBoardLabModel.dragPreview(
                 for: session,
                 at: contentLocation,
@@ -235,20 +278,62 @@ struct CardDebugGridBoardUIKitView: UIViewRepresentable {
                 metrics: parent.metrics,
                 in: parent.storedItems
             )
-            activePreview = preview
-            parent.onPreviewChanged(preview)
-            configureVisibleCells(in: collectionView)
+            context.lastTargetPlacement = preview.targetPlacement
+            context.latestPreview = preview
+            previewSlots = CardDebugGridBoardLabModel.slots(
+                for: preview.items,
+                mode: .storedPlacement,
+                containerWidth: parent.containerWidth,
+                metrics: parent.metrics
+            )
+            applyCurrentLayout(to: collectionView)
         }
 
         private func finishDrag(in collectionView: UICollectionView) {
-            activeSession = nil
-            activePreview = nil
+            dragContext?.snapshotView.removeFromSuperview()
+            dragContext?.hiddenCell?.isHidden = false
+            dragContext = nil
+            previewSlots = nil
             collectionView.isScrollEnabled = true
+            applyCurrentLayout(to: collectionView)
         }
 
         private func cancelDrag(in collectionView: UICollectionView) {
             finishDrag(in: collectionView)
-            parent.onDragCancelled()
+        }
+
+        private func applyCurrentLayout(to collectionView: UICollectionView) {
+            guard let layout = collectionView.collectionViewLayout as? CardDebugGridBoardCollectionLayout else {
+                return
+            }
+            let activeSlots = currentSlots
+            let activeBoardHeight = boardHeight(for: activeSlots)
+            let targetPlacement = dragContext?.lastTargetPlacement ?? parent.activeDragTarget
+            let targetSize = dragContext?.session.itemSize ?? parent.activeDragItemID.flatMap { id in
+                activeSlots.first(where: { $0.item.id == id })?.item.size
+            }
+            layout.configure(
+                slots: activeSlots,
+                boardSize: CGSize(width: parent.containerWidth, height: activeBoardHeight),
+                activeDragItemID: dragContext?.session.itemID ?? parent.activeDragItemID
+            )
+            overlayView?.configure(
+                boardHeight: activeBoardHeight,
+                metrics: parent.metrics,
+                targetPlacement: targetPlacement,
+                targetSize: targetSize
+            )
+            overlayView?.frame = CGRect(
+                x: 0,
+                y: 0,
+                width: parent.containerWidth,
+                height: activeBoardHeight
+            )
+            performWithoutAnimation(in: collectionView) {
+                collectionView.collectionViewLayout.invalidateLayout()
+                collectionView.layoutIfNeeded()
+                configureVisibleCells(in: collectionView)
+            }
         }
 
         private func configureVisibleCells(in collectionView: UICollectionView) {
@@ -262,9 +347,10 @@ struct CardDebugGridBoardUIKitView: UIViewRepresentable {
             _ cell: UICollectionViewCell,
             at indexPath: IndexPath
         ) {
-            guard parent.slots.indices.contains(indexPath.item) else { return }
-            let slot = parent.slots[indexPath.item]
+            guard currentSlots.indices.contains(indexPath.item) else { return }
+            let slot = currentSlots[indexPath.item]
             cell.backgroundColor = .clear
+            cell.isHidden = dragContext?.session.itemID == slot.item.id
             cell.contentConfiguration = UIHostingConfiguration {
                 CardDebugGridBoardPlaceholderCard(
                     slot: slot,
@@ -287,6 +373,45 @@ struct CardDebugGridBoardUIKitView: UIViewRepresentable {
             }
             .margins(.all, 0)
         }
+
+        private func boardHeight(for slots: [CardDebugGridBoardLabSlot]) -> CGFloat {
+            let maxY = slots.map(\.frame.maxY).max() ?? parent.metrics.verticalPadding + parent.metrics.rowHeight
+            return max(parent.boardHeight, maxY + parent.metrics.verticalPadding)
+        }
+
+        private func performWithoutAnimation(
+            in collectionView: UICollectionView,
+            _ updates: () -> Void
+        ) {
+            UIView.performWithoutAnimation {
+                let animationsEnabled = UIView.areAnimationsEnabled
+                UIView.setAnimationsEnabled(false)
+                CATransaction.begin()
+                CATransaction.setDisableActions(true)
+                updates()
+                CATransaction.commit()
+                UIView.setAnimationsEnabled(animationsEnabled)
+                collectionView.layoutIfNeeded()
+            }
+        }
+    }
+}
+
+private final class CardDebugGridUIKitDragContext {
+    let session: CardDebugGridUIKitDragSession
+    let snapshotView: UIView
+    weak var hiddenCell: UICollectionViewCell?
+    var lastTargetPlacement: MemoryCardGridPlacement?
+    var latestPreview: CardDebugGridDragPreview?
+
+    init(
+        session: CardDebugGridUIKitDragSession,
+        snapshotView: UIView,
+        hiddenCell: UICollectionViewCell
+    ) {
+        self.session = session
+        self.snapshotView = snapshotView
+        self.hiddenCell = hiddenCell
     }
 }
 

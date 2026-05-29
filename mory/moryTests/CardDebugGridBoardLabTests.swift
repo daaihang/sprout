@@ -72,6 +72,24 @@ final class CardDebugGridBoardLabTests: XCTestCase {
         XCTAssertEqual(bannerTarget.column, 0)
     }
 
+    func testDragGeometryPreservesGrabOffsetInsteadOfCenteringCard() {
+        let frame = CGRect(x: 48, y: 72, width: 180, height: 96)
+        let initialTouch = CGPoint(x: 84, y: 100)
+        let geometry = CardDebugGridDragGeometry(
+            originalFrame: frame,
+            touchLocation: initialTouch
+        )
+
+        let movedTouch = CGPoint(x: 210, y: 190)
+        let liftedFrame = geometry.liftedFrame(for: movedTouch)
+        let liftedCenter = CGPoint(x: liftedFrame.midX, y: liftedFrame.midY)
+
+        XCTAssertEqual(geometry.grabOffset, CGPoint(x: 36, y: 28))
+        XCTAssertEqual(liftedFrame.origin, CGPoint(x: 174, y: 162))
+        XCTAssertNotEqual(liftedCenter, movedTouch)
+        XCTAssertEqual(geometry.gridAnchorLocation(for: movedTouch), liftedFrame.origin)
+    }
+
     func testDragPreviewDerivesTargetPlacementFromBoardCoordinates() throws {
         let dragged = gridItem("dragged", size: .strip, column: 4, row: 0)
         let anchor = gridItem("anchor", size: .strip, column: 0, row: 0)
@@ -97,6 +115,40 @@ final class CardDebugGridBoardLabTests: XCTestCase {
         XCTAssertEqual(preview.itemID, dragged.id)
         XCTAssertEqual(preview.targetPlacement, MemoryCardGridPlacement(column: 4, row: 2))
         XCTAssertEqual(preview.items.first(where: { $0.id == dragged.id })?.placement, preview.targetPlacement)
+    }
+
+    func testUIKitDragSessionUsesGrabOffsetForGridTarget() throws {
+        let dragged = gridItem("dragged", size: .strip, column: 0, row: 0)
+        let items = [dragged]
+        let boardWidth = MemoryDeskBoardMetrics.debugBoardWidth(for: 390)
+        let metrics = MemoryDeskBoardMetrics.debugSquare(availableWidth: 390)
+        let slots = CardDebugGridBoardLabModel.slots(
+            for: items,
+            mode: .storedPlacement,
+            containerWidth: boardWidth,
+            metrics: metrics
+        )
+        let slot = try XCTUnwrap(slots.first)
+        let touchAtPickup = CGPoint(x: slot.frame.minX + 24, y: slot.frame.minY + 18)
+        let session = try XCTUnwrap(CardDebugGridBoardLabModel.beginDrag(at: touchAtPickup, in: slots))
+        let targetOrigin = CGPoint(
+            x: metrics.horizontalPadding + 2 * (metrics.cellWidth(for: boardWidth) + metrics.columnSpacing),
+            y: metrics.verticalPadding + 3 * (metrics.rowHeight + metrics.rowSpacing)
+        )
+        let draggedTouch = CGPoint(
+            x: targetOrigin.x + session.geometry.grabOffset.x,
+            y: targetOrigin.y + session.geometry.grabOffset.y
+        )
+
+        let preview = CardDebugGridBoardLabModel.dragPreview(
+            for: session,
+            at: draggedTouch,
+            boardWidth: boardWidth,
+            metrics: metrics,
+            in: items
+        )
+
+        XCTAssertEqual(preview.targetPlacement, MemoryCardGridPlacement(column: 2, row: 3))
     }
 
     func testDragPreviewDoesNotMutateStoredItems() {
@@ -144,6 +196,20 @@ final class CardDebugGridBoardLabTests: XCTestCase {
 
         XCTAssertTrue(committed.allSatisfy { $0.placement != nil })
         XCTAssertEqual(report.overlapCount, 0)
+    }
+
+    func testActiveDragPreviewDoesNotCompactRowsUntilDropCommit() {
+        let dragged = gridItem("dragged", size: .strip, column: 0, row: 2)
+
+        let preview = CardDebugGridBoardLabModel.previewItemsWithoutCompaction(
+            dragging: dragged.id,
+            to: MemoryCardGridPlacement(column: 0, row: 4),
+            in: [dragged]
+        )
+        let committed = CardDebugGridBoardLabModel.commitPreview(preview)
+
+        XCTAssertEqual(preview.first?.placement, MemoryCardGridPlacement(column: 0, row: 4))
+        XCTAssertEqual(committed.first?.placement, MemoryCardGridPlacement(column: 0, row: 0))
     }
 
     func testDragPreviewClampsLargeCardsWithinSixColumns() {
@@ -318,7 +384,7 @@ final class CardDebugGridBoardLabTests: XCTestCase {
         XCTAssertNotEqual(hitID, lastButLower.id)
     }
 
-    func testUIKitDragSessionPreviewCommitAndCancelSemantics() throws {
+    func testUIKitDragSessionPreviewCommitSemantics() throws {
         let dragged = gridItem("dragged", size: .strip, column: 0, row: 0)
         let blocker = gridItem("blocker", size: .strip, column: 2, row: 0)
         let items = [dragged, blocker]
@@ -398,6 +464,24 @@ final class CardDebugGridBoardLabTests: XCTestCase {
         XCTAssertFalse(source.contains("scrollDisabled"))
         XCTAssertFalse(source.contains(".gesture("))
         XCTAssertFalse(source.contains(".simultaneousGesture("))
+    }
+
+    func testUIKitBoardUsesSnapshotDragInsteadOfInteractiveMovementOrStatePreview() throws {
+        let sourceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("mory")
+            .appendingPathComponent("Debug")
+            .appendingPathComponent("Components")
+            .appendingPathComponent("CardDebugGridBoardUIKitView.swift")
+        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+
+        XCTAssertFalse(source.contains("beginInteractiveMovementForItem"))
+        XCTAssertFalse(source.contains("updateInteractiveMovementTargetPosition"))
+        XCTAssertFalse(source.contains("endInteractiveMovement"))
+        XCTAssertFalse(source.contains("cancelInteractiveMovement"))
+        XCTAssertFalse(source.contains("onPreviewChanged"))
+        XCTAssertTrue(source.contains("snapshotView(afterScreenUpdates: false)"))
     }
 
     private func gridItem(

@@ -76,9 +76,39 @@ struct CardDebugGridDragPreview: Hashable {
     let items: [CardDebugGridBoardLabItem]
 }
 
-struct CardDebugGridUIKitDragSession: Hashable {
+struct CardDebugGridDragGeometry: Hashable {
+    let originalFrame: CGRect
+    let grabOffset: CGPoint
+
+    init(originalFrame: CGRect, touchLocation: CGPoint) {
+        self.originalFrame = originalFrame
+        self.grabOffset = CGPoint(
+            x: touchLocation.x - originalFrame.minX,
+            y: touchLocation.y - originalFrame.minY
+        )
+    }
+
+    func liftedFrame(for touchLocation: CGPoint) -> CGRect {
+        CGRect(
+            x: touchLocation.x - grabOffset.x,
+            y: touchLocation.y - grabOffset.y,
+            width: originalFrame.width,
+            height: originalFrame.height
+        )
+    }
+
+    func gridAnchorLocation(for touchLocation: CGPoint) -> CGPoint {
+        CGPoint(
+            x: touchLocation.x - grabOffset.x,
+            y: touchLocation.y - grabOffset.y
+        )
+    }
+}
+
+struct CardDebugGridUIKitDragSession {
     let itemID: UUID
     let itemSize: MemoryCardSizeToken
+    let geometry: CardDebugGridDragGeometry
 }
 
 enum CardDebugGridBoardLabModel {
@@ -132,6 +162,19 @@ enum CardDebugGridBoardLabModel {
         collisionResolvedItems(items, pinnedID: id, pinnedPlacement: placement)
     }
 
+    static func previewItemsWithoutCompaction(
+        dragging id: UUID,
+        to placement: MemoryCardGridPlacement,
+        in items: [CardDebugGridBoardLabItem]
+    ) -> [CardDebugGridBoardLabItem] {
+        collisionResolvedItems(
+            items,
+            pinnedID: id,
+            pinnedPlacement: placement,
+            shouldCompactEmptyRows: false
+        )
+    }
+
     static func dragPreview(
         dragging id: UUID,
         at location: CGPoint,
@@ -160,7 +203,7 @@ enum CardDebugGridBoardLabModel {
     }
 
     static func commitPreview(_ items: [CardDebugGridBoardLabItem]) -> [CardDebugGridBoardLabItem] {
-        items
+        compactEmptyRows(items)
     }
 
     static func hitItemID(
@@ -195,7 +238,11 @@ enum CardDebugGridBoardLabModel {
         }
         return CardDebugGridUIKitDragSession(
             itemID: itemID,
-            itemSize: slot.item.size
+            itemSize: slot.item.size,
+            geometry: CardDebugGridDragGeometry(
+                originalFrame: slot.frame,
+                touchLocation: point
+            )
         )
     }
 
@@ -206,13 +253,22 @@ enum CardDebugGridBoardLabModel {
         metrics: MemoryDeskBoardMetrics,
         in items: [CardDebugGridBoardLabItem]
     ) -> CardDebugGridDragPreview {
-        dragPreview(
-            dragging: session.itemID,
-            at: location,
+        let target = targetPlacement(
+            for: session.geometry.gridAnchorLocation(for: location),
             itemSize: session.itemSize,
             boardWidth: boardWidth,
-            metrics: metrics,
+            metrics: metrics
+        )
+        let preview = previewItemsWithoutCompaction(
+            dragging: session.itemID,
+            to: target,
             in: items
+        )
+        let effectiveTarget = preview.first(where: { $0.id == session.itemID })?.placement ?? target
+        return CardDebugGridDragPreview(
+            itemID: session.itemID,
+            targetPlacement: effectiveTarget,
+            items: preview
         )
     }
 
@@ -242,7 +298,8 @@ enum CardDebugGridBoardLabModel {
     static func collisionResolvedItems(
         _ items: [CardDebugGridBoardLabItem],
         pinnedID: UUID? = nil,
-        pinnedPlacement: MemoryCardGridPlacement? = nil
+        pinnedPlacement: MemoryCardGridPlacement? = nil,
+        shouldCompactEmptyRows: Bool = true
     ) -> [CardDebugGridBoardLabItem] {
         guard !items.isEmpty else { return [] }
         let pinnedIndex = pinnedID.flatMap { id in items.firstIndex(where: { $0.id == id }) }
@@ -296,12 +353,12 @@ enum CardDebugGridBoardLabModel {
                 occupied.append(CardDebugGridOccupiedBox(placement: placement, box: MemoryCardRecipeLayoutPolicy.gridBox(for: item.size)))
             }
 
-            return next.enumerated().map { index, item in
+            let resolved = next.enumerated().map { index, item in
                 var item = item
                 item.placement = resolvedPlacements[index]
                 return item
             }
-            .compactingEmptyRows()
+            return shouldCompactEmptyRows ? resolved.compactingEmptyRows() : resolved
         }
 
         let orderedIndices = collisionResolutionOrder(itemCount: items.count, pinnedIndex: pinnedIndex)
@@ -323,12 +380,12 @@ enum CardDebugGridBoardLabModel {
             occupied.append(CardDebugGridOccupiedBox(placement: placement, box: MemoryCardRecipeLayoutPolicy.gridBox(for: item.size)))
         }
 
-        return next.enumerated().map { index, item in
+        let resolved = next.enumerated().map { index, item in
             var item = item
             item.placement = resolvedPlacements[index]
             return item
         }
-        .compactingEmptyRows()
+        return shouldCompactEmptyRows ? resolved.compactingEmptyRows() : resolved
     }
 
     static func compactEmptyRows(_ items: [CardDebugGridBoardLabItem]) -> [CardDebugGridBoardLabItem] {
@@ -659,7 +716,6 @@ private extension Array where Element == CardDebugGridBoardLabItem {
 struct CardDebugGridBoardLabView: View {
     @State private var items = CardDebugGridBoardLabModel.defaultItems()
     @State private var measuredContainerWidth: CGFloat = 0
-    @State private var activeDragPreview: CardDebugGridDragPreview?
 
     private var availableBoardWidth: CGFloat {
         measuredContainerWidth > 0 ? measuredContainerWidth : 390
@@ -674,15 +730,15 @@ struct CardDebugGridBoardLabView: View {
     }
 
     private var displayedItems: [CardDebugGridBoardLabItem] {
-        activeDragPreview?.items ?? items
+        items
     }
 
     private var activeDragItemID: UUID? {
-        activeDragPreview?.itemID
+        nil
     }
 
     private var dragTargetPlacement: MemoryCardGridPlacement? {
-        activeDragPreview?.targetPlacement
+        nil
     }
 
     private var slots: [CardDebugGridBoardLabSlot] {
@@ -824,15 +880,8 @@ struct CardDebugGridBoardLabView: View {
             activeDragItemID: activeDragItemID,
             activeDragTarget: dragTargetPlacement,
             overlapCount: report.overlapCount,
-            onPreviewChanged: { preview in
-                activeDragPreview = preview
-            },
             onDragEnded: { preview in
                 items = CardDebugGridBoardLabModel.commitPreview(preview.items)
-                activeDragPreview = nil
-            },
-            onDragCancelled: {
-                activeDragPreview = nil
             },
             onDelete: { id in delete(id) },
             onMoveEarlier: { id in move(id, by: -1) },
@@ -888,7 +937,6 @@ struct CardDebugGridBoardLabView: View {
     }
 
     private func add(_ size: MemoryCardSizeToken) {
-        activeDragPreview = nil
         let id = UUID()
         let next = CardDebugGridBoardLabItem(
             id: id,
@@ -906,13 +954,11 @@ struct CardDebugGridBoardLabView: View {
     }
 
     private func delete(_ id: UUID) {
-        activeDragPreview = nil
         items.removeAll { $0.id == id }
         items = CardDebugGridBoardLabModel.compactEmptyRows(items)
     }
 
     private func move(_ id: UUID, by offset: Int) {
-        activeDragPreview = nil
         guard let sourceIndex = items.firstIndex(where: { $0.id == id }) else { return }
         let targetIndex = sourceIndex + offset
         guard items.indices.contains(targetIndex) else { return }
@@ -920,7 +966,6 @@ struct CardDebugGridBoardLabView: View {
     }
 
     private func setSize(_ size: MemoryCardSizeToken, for id: UUID) {
-        activeDragPreview = nil
         guard let index = items.firstIndex(where: { $0.id == id }) else { return }
         items[index].size = size
         items[index].recipe = CardDebugGridBoardLabModel.recipe(for: size)
@@ -934,7 +979,6 @@ struct CardDebugGridBoardLabView: View {
     }
 
     private func autoPack() {
-        activeDragPreview = nil
         items = CardDebugGridBoardLabModel.autoPacked(items)
     }
 }
