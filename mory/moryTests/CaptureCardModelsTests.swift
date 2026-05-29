@@ -633,6 +633,98 @@ final class CaptureCardModelsTests: XCTestCase {
         XCTAssertTrue(report.slots.allSatisfy { !$0.debugLine.isEmpty })
     }
 
+    func testCardDebugStatesActionsRecipesCoverEveryVisualRecipe() {
+        XCTAssertEqual(
+            Set(CardDebugStatesActionsModel.recipeOptions),
+            Set(MemoryCardVisualRecipe.allCases)
+        )
+        XCTAssertEqual(
+            CardDebugStatesActionsModel.recipeOptions.count,
+            MemoryCardVisualRecipe.allCases.count
+        )
+    }
+
+    func testCardDebugStatesActionsSizeOptionsMatchLayoutPolicy() {
+        for recipe in MemoryCardVisualRecipe.allCases {
+            XCTAssertEqual(
+                CardDebugStatesActionsModel.supportedSizes(for: recipe),
+                MemoryCardRecipeLayoutPolicy.supportedSizes(for: recipe)
+            )
+        }
+    }
+
+    func testCardDebugStatesActionsSelectedRuntimeMapsToNormalSelectedItem() {
+        let item = CardDebugStatesActionsModel.item(
+            recipe: .taskNote,
+            runtimeState: .selected
+        )
+
+        XCTAssertEqual(item.state, .normal)
+        XCTAssertTrue(item.isSelected)
+    }
+
+    func testCardDebugStatesActionsBuildsPresentationForEveryRoleAndRuntimeState() {
+        for role in CardDebugRoleOption.allCases {
+            for runtimeState in CardDebugRuntimeStateOption.allCases {
+                let presentation = CardDebugStatesActionsModel.presentation(
+                    recipe: .cassette,
+                    size: .banner,
+                    role: role,
+                    runtimeState: runtimeState
+                )
+
+                XCTAssertEqual(presentation.role, role.role)
+                XCTAssertEqual(presentation.visualRecipe, .cassette)
+                XCTAssertEqual(presentation.surfaceMode, .skeuomorphic)
+                XCTAssertEqual(presentation.item.state, runtimeState.state)
+                XCTAssertEqual(presentation.item.isSelected, runtimeState.isSelected)
+                XCTAssertEqual(presentation.sizeToken, .banner)
+                XCTAssertEqual(
+                    presentation.contentDensity,
+                    MemoryCardRecipeLayoutPolicy.contentDensity(for: .banner)
+                )
+            }
+        }
+    }
+
+    func testCardDebugStatesActionsUnsupportedSizeFallsBackThroughPolicy() {
+        let presentation = CardDebugStatesActionsModel.presentation(
+            recipe: .weatherStamp,
+            size: .banner,
+            role: .debug,
+            runtimeState: .normal
+        )
+
+        XCTAssertEqual(presentation.sizeToken, MemoryCardRecipeLayoutPolicy.defaultSize(for: .weatherStamp))
+        XCTAssertTrue(CardDebugStatesActionsModel.supportedSizes(for: .weatherStamp).contains(presentation.sizeToken))
+    }
+
+    func testCardDebugStatesActionsCapabilityRowsComeFromPresentation() {
+        let presentation = CardDebugStatesActionsModel.presentation(
+            recipe: .taskNote,
+            size: .strip,
+            role: .debug,
+            runtimeState: .selected
+        )
+        let resolved = CaptureCardCapabilities.resolve(role: .debugLab, item: presentation.item)
+        let capabilities = Dictionary(
+            uniqueKeysWithValues: CardDebugStatesActionsModel.capabilityRows(for: presentation).map { ($0.title, $0.isEnabled) }
+        )
+        let derived = Dictionary(
+            uniqueKeysWithValues: CardDebugStatesActionsModel.derivedBehaviorRows(for: presentation).map { ($0.title, $0.isEnabled) }
+        )
+
+        XCTAssertEqual(capabilities["open"], resolved.canOpen)
+        XCTAssertEqual(capabilities["remove"], resolved.canRemove)
+        XCTAssertEqual(capabilities["reorder"], resolved.canReorder)
+        XCTAssertEqual(capabilities["select"], resolved.canSelect)
+        XCTAssertEqual(capabilities["retry"], resolved.canRetry)
+        XCTAssertEqual(derived["allowsPrimaryAction"], presentation.allowsPrimaryAction)
+        XCTAssertEqual(derived["displaysRemoveControl"], presentation.displaysRemoveControl)
+        XCTAssertEqual(derived["displaysSelection"], presentation.displaysSelection)
+        XCTAssertEqual(derived["hasTrailingControl"], presentation.hasTrailingControl)
+    }
+
     func testOriginFixturesKeepKindStableAcrossAllOrigins() {
         let origins = Set(CaptureCardLabFixtures.origins.compactMap(\.origin))
         let kinds = Set(CaptureCardLabFixtures.origins.map(\.kind))

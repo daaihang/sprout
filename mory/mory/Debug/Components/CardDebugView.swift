@@ -61,6 +61,16 @@ struct CardDebugView: View {
                 }
 
                 NavigationLink {
+                    CardDebugStatesActionsView()
+                } label: {
+                    DebugMenuRow(
+                        icon: "slider.horizontal.3",
+                        title: "Card States & Actions",
+                        subtitle: "Switch recipe, size, role, runtime state, capabilities, and derived card behavior"
+                    )
+                }
+
+                NavigationLink {
                     CaptureCardLabView()
                 } label: {
                     DebugMenuRow(
