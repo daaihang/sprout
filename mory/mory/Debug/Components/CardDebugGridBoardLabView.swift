@@ -33,7 +33,9 @@ struct CardDebugGridBoardLabView: View {
             containerWidth: containerWidth,
             metrics: metrics,
             activeDragTarget: lastPreview?.targetPlacement,
-            affectedItemIDs: lastPreview?.affectedItemIDs ?? []
+            affectedItemIDs: lastPreview?.affectedItemIDs ?? [],
+            solverCost: lastPreview?.solverCost,
+            solverUsedFallback: lastPreview?.usedFallback ?? false
         )
     }
 
@@ -105,7 +107,7 @@ struct CardDebugGridBoardLabView: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
 
-            Text("UIKit owns scrolling, hit testing, reuse, and long-press lifting. Dragging uses insertion plus displacement: empty cells move only the lifted card, occupied cells push the affected chain right, then down. Auto Pack is the only full first-fit tidy action.")
+            Text("UIKit owns scrolling, hit testing, reuse, and long-press lifting. Dragging uses a minimum-disturbance local solver: the lifted card pins to the target, only real collisions move, and blockers may move left, right, up, or down. Auto Pack is the only full first-fit tidy action.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -180,6 +182,14 @@ struct CardDebugGridBoardLabView: View {
             onSetSize: { id, size in
                 items = CardDebugGridBoardLabModel.itemsAfterResizing(id: id, to: size, in: items)
                 lastPreview = nil
+            },
+            onTogglePinned: { id in
+                items = CardDebugGridBoardLabModel.itemsAfterTogglingPinned(id: id, in: items)
+                lastPreview = nil
+            },
+            onToggleUserAdjusted: { id in
+                items = CardDebugGridBoardLabModel.itemsAfterTogglingUserAdjusted(id: id, in: items)
+                lastPreview = nil
             }
         )
         .frame(width: containerWidth, height: boardViewportHeight, alignment: .topLeading)
@@ -201,6 +211,8 @@ struct CardDebugGridBoardLabView: View {
             DebugValueRow(title: "Density", value: report.densityLabel)
             DebugValueRow(title: "Overlaps", value: "\(report.overlapCount)")
             DebugValueRow(title: "Grid overflows", value: "\(report.gridOverflowCount)")
+            DebugValueRow(title: "Solver fallback", value: report.solverUsedFallback ? "yes" : "no")
+            DebugValueRow(title: "Solver cost", value: report.solverCostLabel)
 
             DisclosureGroup("Projection Diagnostics") {
                 VStack(alignment: .leading, spacing: 8) {
@@ -248,6 +260,8 @@ struct CardDebugGridBoardPlaceholderCard: View {
     var onMoveEarlier: () -> Void
     var onMoveLater: () -> Void
     var onSetSize: (MemoryCardSizeToken) -> Void
+    var onTogglePinned: () -> Void
+    var onToggleUserAdjusted: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -259,6 +273,14 @@ struct CardDebugGridBoardPlaceholderCard: View {
                 Spacer(minLength: 6)
                 Text("\(slot.gridBox.columnSpan)x\(slot.gridBox.rowSpan)")
                     .font(.caption.monospaced())
+                if slot.item.isPinned {
+                    Image(systemName: "pin.fill")
+                        .foregroundStyle(.tint)
+                }
+                if slot.item.isUserAdjusted {
+                    Image(systemName: "hand.raised.fill")
+                        .foregroundStyle(.secondary)
+                }
                 if isInteractive {
                     actionMenu
                 }
@@ -297,6 +319,8 @@ struct CardDebugGridBoardPlaceholderCard: View {
         Menu {
             Button("Move Earlier", action: onMoveEarlier)
             Button("Move Later", action: onMoveLater)
+            Button(slot.item.isPinned ? "Unpin" : "Pin", action: onTogglePinned)
+            Button(slot.item.isUserAdjusted ? "Clear User Adjusted" : "Mark User Adjusted", action: onToggleUserAdjusted)
             Menu("Size") {
                 ForEach(MemoryCardSizeToken.allCases) { size in
                     Button(size.rawValue) {

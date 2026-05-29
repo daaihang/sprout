@@ -15,6 +15,8 @@ struct CardDebugGridBoardUIKitView: UIViewRepresentable {
     var onMoveEarlier: (UUID) -> Void
     var onMoveLater: (UUID) -> Void
     var onSetSize: (UUID, MemoryCardSizeToken) -> Void
+    var onTogglePinned: (UUID) -> Void
+    var onToggleUserAdjusted: (UUID) -> Void
 
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self)
@@ -364,6 +366,12 @@ struct CardDebugGridBoardUIKitView: UIViewRepresentable {
                     },
                     onSetSize: { [weak self] size in
                         self?.parent.onSetSize(slot.item.id, size)
+                    },
+                    onTogglePinned: { [weak self] in
+                        self?.parent.onTogglePinned(slot.item.id)
+                    },
+                    onToggleUserAdjusted: { [weak self] in
+                        self?.parent.onToggleUserAdjusted(slot.item.id)
                     }
                 )
             }
