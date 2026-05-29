@@ -76,7 +76,11 @@ struct CardDebugArrangementSlotReport: Identifiable, Hashable {
         self.gridBox = MemoryCardRecipeLayoutPolicy.gridBox(for: node.layout.size)
         self.placement = node.layout.gridPlacement
         self.frame = frame
-        self.objectMetrics = MemoryCardObjectMetrics.resolve(recipe: node.visualRecipe, sizeToken: node.layout.size)
+        self.objectMetrics = MemoryCardObjectMetrics.resolve(
+            recipe: node.visualRecipe,
+            sizeToken: node.layout.size,
+            availableSize: frame.size
+        )
     }
 
     var occupiedCellCount: Int {

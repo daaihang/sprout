@@ -659,6 +659,7 @@ private struct MemoryDetailEditingBoardView: View {
                     ForEach(resolvedSlots) { slot in
                         MemoryDetailEditingBoardCard(
                             node: slot.node,
+                            availableSize: slot.frame.size,
                             canMoveEarlier: canMove(slot.node, by: -1),
                             canMoveLater: canMove(slot.node, by: 1),
                             canMoveRowUp: canMoveRow(slot.node, direction: .up),
@@ -733,6 +734,7 @@ private struct MemoryDetailEditingBoardView: View {
 
 private struct MemoryDetailEditingBoardCard: View {
     let node: MemoryDetailEditingBoardNode
+    let availableSize: CGSize
     let canMoveEarlier: Bool
     let canMoveLater: Bool
     let canMoveRowUp: Bool
@@ -757,7 +759,8 @@ private struct MemoryDetailEditingBoardCard: View {
                     visualRecipe: node.visualRecipe,
                     visualVariant: node.visualVariant,
                     sizeToken: node.layout.size
-                )
+                ),
+                objectAvailableSize: availableSize
             )
 
             Menu {

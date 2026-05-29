@@ -134,7 +134,7 @@ struct LivePhotoPrintCaptureCardContent: View {
     private var frontPrint: some View {
         VStack(spacing: 0) {
             thumbnail
-                .frame(width: imageLength, height: imageLength)
+                .frame(width: imageSize.width, height: imageSize.height)
                 .clipped()
 
             VStack(alignment: .leading, spacing: 2) {
@@ -146,7 +146,7 @@ struct LivePhotoPrintCaptureCardContent: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(metrics.detailLineLimit)
             }
-            .frame(width: imageLength, height: metrics.density == .expanded ? 58 : 40, alignment: .leading)
+            .frame(width: imageSize.width, height: labelHeight, alignment: .leading)
             .padding(.horizontal, 4)
         }
         .padding(EdgeInsets(top: 9, leading: 9, bottom: 5, trailing: 9))
@@ -163,8 +163,18 @@ struct LivePhotoPrintCaptureCardContent: View {
             .shadow(color: .black.opacity(0.06), radius: 6, y: 3)
     }
 
-    private var imageLength: CGFloat {
-        metrics.preferredSize.width - 26
+    private var imageSize: CGSize {
+        let availableWidth = max(1, metrics.preferredSize.width - 26)
+        let availableHeight = max(1, metrics.preferredSize.height - labelHeight - 14)
+        guard metrics.density == .expanded else {
+            let length = min(availableWidth, availableHeight)
+            return CGSize(width: length, height: length)
+        }
+        return CGSize(width: availableWidth, height: availableHeight)
+    }
+
+    private var labelHeight: CGFloat {
+        metrics.density == .expanded ? 58 : 40
     }
 
     @ViewBuilder

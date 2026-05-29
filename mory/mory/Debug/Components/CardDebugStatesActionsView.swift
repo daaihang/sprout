@@ -134,7 +134,7 @@ enum CardDebugStatesActionsModel {
             surfaceMode: .skeuomorphic,
             visualRecipe: recipe,
             visualVariant: variant == .automatic ? nil : variant,
-            sizeToken: normalizedSize(size, for: recipe)
+            sizeToken: size
         )
     }
 

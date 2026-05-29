@@ -38,4 +38,47 @@ final class MemoryCardObjectMetricsTests: XCTestCase {
         XCTAssertGreaterThan(metrics.preferredSize.width, 1)
         XCTAssertGreaterThan(metrics.preferredSize.height, 1)
     }
+
+    func testFittedObjectSizesStayNearGridAcrossBoardMetrics() {
+        let surfaces: [(String, CGFloat, MemoryDeskBoardMetrics)] = [
+            ("detail", 393, .default),
+            ("composer", 393, .compactComposer),
+            ("debugPhone", 393, .debugSquare(availableWidth: 393)),
+            ("debugWide", 620, .debugSquare(availableWidth: 620)),
+        ]
+
+        for recipe in MemoryCardVisualRecipe.allCases {
+            for size in MemoryCardRecipeLayoutPolicy.supportedSizes(for: recipe) {
+                for surface in surfaces {
+                    let availableSize = gridSize(for: size, containerWidth: surface.1, metrics: surface.2)
+                    let metrics = MemoryCardObjectMetrics.resolve(
+                        recipe: recipe,
+                        sizeToken: size,
+                        availableSize: availableSize
+                    )
+                    let widthRatio = metrics.preferredSize.width / availableSize.width
+                    let heightRatio = metrics.preferredSize.height / availableSize.height
+                    let label = "\(surface.0) \(recipe.rawValue).\(size.rawValue)"
+
+                    XCTAssertGreaterThanOrEqual(widthRatio, 0.70, label)
+                    XCTAssertGreaterThanOrEqual(heightRatio, 0.70, label)
+                    XCTAssertLessThanOrEqual(widthRatio, 1.33, label)
+                    XCTAssertLessThanOrEqual(heightRatio, 1.33, label)
+                }
+            }
+        }
+    }
+}
+
+private func gridSize(
+    for size: MemoryCardSizeToken,
+    containerWidth: CGFloat,
+    metrics: MemoryDeskBoardMetrics
+) -> CGSize {
+    let cellWidth = metrics.cellWidth(for: containerWidth)
+    let box = MemoryCardRecipeLayoutPolicy.gridBox(for: size)
+    return CGSize(
+        width: CGFloat(box.columnSpan) * cellWidth + CGFloat(max(0, box.columnSpan - 1)) * metrics.columnSpacing,
+        height: CGFloat(box.rowSpan) * metrics.rowHeight + CGFloat(max(0, box.rowSpan - 1)) * metrics.rowSpacing
+    )
 }

@@ -131,11 +131,15 @@ struct CaptureCardPresentation: Hashable, Sendable {
         sizeToken: MemoryCardSizeToken = .card,
         contentDensity: MemoryCardContentDensity? = nil
     ) {
+        let requestedSize = sizeToken
         let normalizedSize = visualRecipe.map {
-            MemoryCardRecipeLayoutPolicy.normalizedSize(sizeToken, for: $0)
-        } ?? sizeToken
+            MemoryCardRecipeLayoutPolicy.normalizedSize(requestedSize, for: $0)
+        } ?? requestedSize
+        let variantForResolvedSize = visualRecipe.map {
+            MemoryCardRecipeLayoutPolicy.supportedSizes(for: $0).contains(requestedSize) ? visualVariant : nil
+        } ?? visualVariant
         let normalizedVariant = visualRecipe.map {
-            MemoryCardRecipeLayoutPolicy.resolvedVariant(visualVariant, for: $0, size: normalizedSize)
+            MemoryCardRecipeLayoutPolicy.resolvedVariant(variantForResolvedSize, for: $0, size: normalizedSize)
         } ?? .automatic
         self.item = item
         self.role = role

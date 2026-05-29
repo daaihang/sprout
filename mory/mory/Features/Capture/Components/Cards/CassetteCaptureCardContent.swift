@@ -71,7 +71,6 @@ struct CassetteCaptureCardContent: View {
             }
         }
         .frame(width: metrics.preferredSize.width, height: metrics.preferredSize.height)
-        .frame(width: metrics.preferredSize.width, height: metrics.preferredSize.height, alignment: .center)
         .cassetteShadow()
     }
 
@@ -92,11 +91,12 @@ struct CassetteCaptureCardContent: View {
                         .padding(.bottom, 9)
                 }
             }
-            .frame(width: 210, height: 126)
+            .frame(width: bannerCassetteSize.width, height: bannerCassetteSize.height)
 
             transcriptSlip
-                .frame(width: 196, height: 126)
+                .frame(width: bannerSlipSize.width, height: bannerSlipSize.height)
         }
+        .frame(width: metrics.preferredSize.width, height: metrics.preferredSize.height, alignment: .center)
         .cassetteShadow()
     }
 
@@ -182,6 +182,20 @@ struct CassetteCaptureCardContent: View {
                     .fill(Color(white: 0.34))
                     .frame(width: 26, height: 4)
             }
+    }
+
+    private var bannerContentHeight: CGFloat {
+        min(220, max(96, metrics.preferredSize.height * 0.92))
+    }
+
+    private var bannerCassetteSize: CGSize {
+        let width = min(220, max(158, metrics.preferredSize.width * 0.50))
+        return CGSize(width: width, height: bannerContentHeight)
+    }
+
+    private var bannerSlipSize: CGSize {
+        let width = max(144, metrics.preferredSize.width - bannerCassetteSize.width - 12)
+        return CGSize(width: width, height: bannerContentHeight)
     }
 
     private func reelCircle(radius: CGFloat) -> some View {

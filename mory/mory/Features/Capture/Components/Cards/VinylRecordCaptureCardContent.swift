@@ -38,6 +38,7 @@ struct VinylRecordCaptureCardContent: View {
             Spacer(minLength: 0)
         }
         .padding(metrics.padding.edgeInsets)
+        .frame(width: metrics.preferredSize.width, height: metrics.preferredSize.height, alignment: .leading)
         .background(sleeveGradient, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -49,10 +50,11 @@ struct VinylRecordCaptureCardContent: View {
     private var tapeBody: some View {
         ZStack(alignment: .leading) {
             record
-                .offset(x: 54)
+                .offset(x: tapeRecordOffset)
 
             sleeve
         }
+        .frame(width: metrics.preferredSize.width, height: metrics.preferredSize.height, alignment: .leading)
     }
 
     private var sleeve: some View {
@@ -79,7 +81,7 @@ struct VinylRecordCaptureCardContent: View {
             }
             .padding(12)
         }
-        .frame(width: 140, height: 140)
+        .frame(width: sleeveLength, height: sleeveLength)
         .shadow(color: .black.opacity(0.12), radius: 8, y: 4)
     }
 
@@ -114,7 +116,18 @@ struct VinylRecordCaptureCardContent: View {
     }
 
     private var recordLength: CGFloat {
-        metrics.sizeToken == .strip ? 58 : 132
+        if metrics.sizeToken == .strip {
+            return min(58, max(42, metrics.preferredSize.height - metrics.padding.top - metrics.padding.bottom))
+        }
+        return min(sleeveLength * 0.94, max(96, metrics.preferredSize.height * 0.86))
+    }
+
+    private var sleeveLength: CGFloat {
+        min(max(118, metrics.preferredSize.height * 0.92), metrics.preferredSize.width * 0.62)
+    }
+
+    private var tapeRecordOffset: CGFloat {
+        max(sleeveLength * 0.36, metrics.preferredSize.width - recordLength - 8)
     }
 
     private var sleeveGradient: LinearGradient {

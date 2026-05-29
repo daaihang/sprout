@@ -11,13 +11,14 @@ struct PolaroidCaptureCardContent: View {
     var body: some View {
         VStack(spacing: 0) {
             photoArea
-                .frame(width: photoLength, height: photoLength)
+                .frame(width: photoSize.width, height: photoSize.height)
                 .clipped()
 
             bottomLabel
-                .frame(width: photoLength, height: labelHeight)
+                .frame(width: photoSize.width, height: labelHeight)
         }
         .padding(EdgeInsets(top: paperInset, leading: paperInset, bottom: 4, trailing: paperInset))
+        .frame(width: metrics.preferredSize.width, height: metrics.preferredSize.height)
         .background(paperColor)
         .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
         .shadow(color: .black.opacity(0.12), radius: 1, y: 1)
@@ -66,8 +67,14 @@ struct PolaroidCaptureCardContent: View {
         colorScheme == .dark ? Color(white: 0.88) : .white
     }
 
-    private var photoLength: CGFloat {
-        min(metrics.preferredSize.width - (paperInset * 2), metrics.preferredSize.height - labelHeight - paperInset - 4)
+    private var photoSize: CGSize {
+        let availableWidth = max(1, metrics.preferredSize.width - (paperInset * 2))
+        let availableHeight = max(1, metrics.preferredSize.height - labelHeight - paperInset - 4)
+        guard metrics.density == .expanded else {
+            let length = min(availableWidth, availableHeight)
+            return CGSize(width: length, height: length)
+        }
+        return CGSize(width: availableWidth, height: availableHeight)
     }
 
     private var labelHeight: CGFloat {

@@ -778,7 +778,7 @@ final class CaptureCardModelsTests: XCTestCase {
                 let actualVariants = Set(
                     CardDebugCatalog.recipeSizeFixtures
                         .filter { $0.fixture.recipe == recipe && $0.size == size }
-                        .map(\.resolvedVariant)
+                        .map { $0.variant ?? .automatic }
                 )
                 XCTAssertEqual(actualVariants, expectedVariants, "Expected fixtures for \(recipe.rawValue).\(size.rawValue)")
             }

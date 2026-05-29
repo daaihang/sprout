@@ -71,6 +71,7 @@ struct CaptureAttachmentCompactBoardView: View {
                 ForEach(resolvedSlots) { slot in
                     CaptureCardView(
                         presentation: slot.boardItem.presentation,
+                        objectAvailableSize: slot.frame.size,
                         onRemove: { remove(slot.boardItem.item) }
                     )
                     .frame(width: slot.frame.width, height: slot.frame.height, alignment: .center)

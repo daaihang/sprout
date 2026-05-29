@@ -37,7 +37,7 @@ struct MemoryDeskRenderer: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             ForEach(resolvedSlots) { slot in
-                deskCard(slot.node)
+                deskCard(slot.node, availableSize: slot.frame.size)
                     .frame(width: slot.frame.width, height: slot.frame.height, alignment: .center)
                     .position(
                         x: slot.frame.midX + slot.node.layout.xNudge,
@@ -62,7 +62,7 @@ struct MemoryDeskRenderer: View {
         }
     }
 
-    private func deskCard(_ node: ResolvedMemoryDeskNode) -> some View {
+    private func deskCard(_ node: ResolvedMemoryDeskNode, availableSize: CGSize) -> some View {
         CaptureCardView(
             presentation: CaptureCardPresentation(
                 item: node.item,
@@ -74,7 +74,8 @@ struct MemoryDeskRenderer: View {
                 visualRecipe: node.visualRecipe,
                 visualVariant: node.visualVariant,
                 sizeToken: node.layout.size
-            )
+            ),
+            objectAvailableSize: availableSize
         )
     }
 

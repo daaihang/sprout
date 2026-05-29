@@ -4,15 +4,18 @@ struct CaptureCardView: View {
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
     let presentation: CaptureCardPresentation
+    var objectAvailableSize: CGSize?
     var onTap: (() -> Void)?
     var onRemove: (() -> Void)?
 
     init(
         presentation: CaptureCardPresentation,
+        objectAvailableSize: CGSize? = nil,
         onTap: (() -> Void)? = nil,
         onRemove: (() -> Void)? = nil
     ) {
         self.presentation = presentation
+        self.objectAvailableSize = objectAvailableSize
         self.onTap = onTap
         self.onRemove = onRemove
     }
@@ -26,6 +29,7 @@ struct CaptureCardView: View {
         weatherAtmosphereIntensityScale: Double = 1,
         musicCardStyle: CaptureMusicCardStyle = .auto,
         placeCardStyle: CapturePlaceCardStyle = .auto,
+        objectAvailableSize: CGSize? = nil,
         showsLayoutGuides: Bool = false,
         showsFieldAudit: Bool = false,
         onTap: (() -> Void)? = nil,
@@ -44,6 +48,7 @@ struct CaptureCardView: View {
                 showsLayoutGuides: showsLayoutGuides,
                 showsFieldAudit: showsFieldAudit
             ),
+            objectAvailableSize: objectAvailableSize,
             onTap: onTap,
             onRemove: onRemove
         )
@@ -78,7 +83,8 @@ struct CaptureCardView: View {
         MemoryCardObjectMetrics.resolve(
             recipe: recipe,
             sizeToken: presentation.sizeToken,
-            density: presentation.contentDensity
+            density: presentation.contentDensity,
+            availableSize: objectAvailableSize
         )
     }
 

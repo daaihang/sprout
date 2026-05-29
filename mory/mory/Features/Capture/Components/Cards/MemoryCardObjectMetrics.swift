@@ -45,12 +45,44 @@ struct MemoryCardObjectMetrics: Hashable, Sendable {
     static func resolve(
         recipe: MemoryCardVisualRecipe,
         sizeToken: MemoryCardSizeToken,
-        density explicitDensity: MemoryCardContentDensity? = nil
+        density explicitDensity: MemoryCardContentDensity? = nil,
+        availableSize: CGSize? = nil
     ) -> MemoryCardObjectMetrics {
         let normalizedSize = MemoryCardRecipeLayoutPolicy.normalizedSize(sizeToken, for: recipe)
         let density = explicitDensity ?? MemoryCardRecipeLayoutPolicy.contentDensity(for: normalizedSize)
         let base = baseMetrics(for: normalizedSize, density: density)
-        return recipeOverrides(recipe: recipe, sizeToken: normalizedSize, density: density, base: base)
+        let resolved = recipeOverrides(recipe: recipe, sizeToken: normalizedSize, density: density, base: base)
+        return resolved.fitting(in: availableSize)
+    }
+
+    func fitting(in availableSize: CGSize?) -> MemoryCardObjectMetrics {
+        guard let availableSize,
+              availableSize.width.isFinite,
+              availableSize.height.isFinite,
+              availableSize.width > 1,
+              availableSize.height > 1
+        else {
+            return self
+        }
+
+        var metrics = self
+        let bounds = Self.ratioBounds(for: sizeToken)
+        let fittedWidth = preferredSize.width.clamped(
+            to: (availableSize.width * bounds.minimumWidth)...(availableSize.width * bounds.maximumWidth)
+        )
+        let fittedHeight = preferredSize.height.clamped(
+            to: (availableSize.height * bounds.minimumHeight)...(availableSize.height * bounds.maximumHeight)
+        )
+
+        if fittedWidth != preferredSize.width || fittedHeight != preferredSize.height {
+            let shrinkScale = min(fittedWidth / preferredSize.width, fittedHeight / preferredSize.height)
+            if shrinkScale < 1 {
+                metrics.padding = padding.scaled(by: max(0.58, shrinkScale))
+            }
+            metrics.preferredSize = CGSize(width: fittedWidth, height: fittedHeight)
+        }
+
+        return metrics
     }
 
     private static func baseMetrics(
@@ -226,5 +258,76 @@ struct MemoryCardObjectMetrics: Hashable, Sendable {
         }
 
         return metrics
+    }
+
+    private static func ratioBounds(for size: MemoryCardSizeToken) -> MemoryCardObjectRatioBounds {
+        switch size {
+        case .stamp:
+            return MemoryCardObjectRatioBounds(
+                minimumWidth: 0.72,
+                minimumHeight: 0.72,
+                maximumWidth: 1.32,
+                maximumHeight: 1.32
+            )
+        case .strip:
+            return MemoryCardObjectRatioBounds(
+                minimumWidth: 0.78,
+                minimumHeight: 0.76,
+                maximumWidth: 1.22,
+                maximumHeight: 1.22
+            )
+        case .card:
+            return MemoryCardObjectRatioBounds(
+                minimumWidth: 0.78,
+                minimumHeight: 0.76,
+                maximumWidth: 1.18,
+                maximumHeight: 1.18
+            )
+        case .square:
+            return MemoryCardObjectRatioBounds(
+                minimumWidth: 0.74,
+                minimumHeight: 0.74,
+                maximumWidth: 1.16,
+                maximumHeight: 1.16
+            )
+        case .tape:
+            return MemoryCardObjectRatioBounds(
+                minimumWidth: 0.74,
+                minimumHeight: 0.74,
+                maximumWidth: 1.14,
+                maximumHeight: 1.14
+            )
+        case .banner:
+            return MemoryCardObjectRatioBounds(
+                minimumWidth: 0.72,
+                minimumHeight: 0.72,
+                maximumWidth: 1.10,
+                maximumHeight: 1.16
+            )
+        }
+    }
+}
+
+private struct MemoryCardObjectRatioBounds: Hashable, Sendable {
+    var minimumWidth: CGFloat
+    var minimumHeight: CGFloat
+    var maximumWidth: CGFloat
+    var maximumHeight: CGFloat
+}
+
+private extension MemoryCardObjectPadding {
+    func scaled(by scale: CGFloat) -> MemoryCardObjectPadding {
+        MemoryCardObjectPadding(
+            top: top * scale,
+            leading: leading * scale,
+            bottom: bottom * scale,
+            trailing: trailing * scale
+        )
+    }
+}
+
+private extension CGFloat {
+    func clamped(to range: ClosedRange<CGFloat>) -> CGFloat {
+        Swift.min(Swift.max(self, range.lowerBound), range.upperBound)
     }
 }
