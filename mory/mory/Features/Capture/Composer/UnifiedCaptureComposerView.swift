@@ -511,6 +511,7 @@ struct UnifiedCaptureComposerView: View {
         return .composerAttachment(
             item,
             visualRecipe: node.visualRecipe,
+            visualVariant: node.visualVariant,
             sizeToken: node.layout.size
         )
     }

@@ -180,10 +180,23 @@ struct MemoryCardObjectMetrics: Hashable, Sendable {
         case (.mapTicket, .card):
             metrics.preferredSize = CGSize(width: 234, height: 128)
             metrics.detailLineLimit = 2
-        case (.weatherStamp, .stamp), (.affectCard, .stamp), (.statusNote, .stamp):
+        case (.weatherStamp, .stamp):
+            metrics.preferredSize = CGSize(width: 58, height: 58)
+            metrics.padding = MemoryCardObjectPadding(6)
+            metrics.titleLineLimit = 1
+            metrics.detailLineLimit = 1
+        case (.weatherStamp, .strip):
+            metrics.preferredSize = CGSize(width: 168, height: 64)
+            metrics.padding = MemoryCardObjectPadding(top: 8, leading: 12, bottom: 8, trailing: 12)
+            metrics.titleLineLimit = 1
+            metrics.detailLineLimit = 1
+        case (.weatherStamp, .card):
+            metrics.preferredSize = CGSize(width: 214, height: 148)
+            metrics.detailLineLimit = 2
+        case (.affectCard, .stamp), (.statusNote, .stamp):
             metrics.preferredSize = CGSize(width: 116, height: 110)
             metrics.detailLineLimit = 1
-        case (.weatherStamp, .strip), (.affectCard, .strip), (.statusNote, .strip):
+        case (.affectCard, .strip), (.statusNote, .strip):
             metrics.preferredSize = CGSize(width: 176, height: 112)
             metrics.detailLineLimit = 2
         case (.linkNote, .card):

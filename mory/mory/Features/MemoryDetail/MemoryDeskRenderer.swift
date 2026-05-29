@@ -72,6 +72,7 @@ struct MemoryDeskRenderer: View {
                 placeCardStyle: .auto,
                 surfaceMode: .skeuomorphic,
                 visualRecipe: node.visualRecipe,
+                visualVariant: node.visualVariant,
                 sizeToken: node.layout.size
             )
         )
@@ -98,6 +99,7 @@ struct MemoryDeskRenderer: View {
                     metadata: snapshot.record.createdAt.formatted(date: .abbreviated, time: .shortened)
                 ),
                 visualRecipe: node.visualRecipe,
+                visualVariant: node.visualVariant,
                 layout: node.layout
             )
         case let .artifact(id):
@@ -106,6 +108,7 @@ struct MemoryDeskRenderer: View {
                 id: node.id,
                 item: CaptureCardItem(artifact: artifact),
                 visualRecipe: node.visualRecipe,
+                visualVariant: node.visualVariant,
                 layout: node.layout
             )
         case let .artifactGroup(ids, kind):
@@ -115,6 +118,7 @@ struct MemoryDeskRenderer: View {
                 id: node.id,
                 item: groupedItem(artifacts: artifacts, kind: kind, nodeID: node.id),
                 visualRecipe: node.visualRecipe,
+                visualVariant: node.visualVariant,
                 layout: node.layout
             )
         case .affect:
@@ -126,6 +130,7 @@ struct MemoryDeskRenderer: View {
                 id: node.id,
                 item: journalingSuggestionItem(importSessionID: importSessionID, artifacts: artifacts),
                 visualRecipe: node.visualRecipe,
+                visualVariant: node.visualVariant,
                 layout: node.layout
             )
         }
@@ -230,6 +235,7 @@ private struct ResolvedMemoryDeskNode: Identifiable {
     let id: UUID
     var item: CaptureCardItem
     var visualRecipe: MemoryCardVisualRecipe
+    var visualVariant: MemoryCardVisualVariant?
     var layout: MemoryCardLayoutToken
 }
 

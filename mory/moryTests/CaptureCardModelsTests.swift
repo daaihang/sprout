@@ -554,6 +554,7 @@ final class CaptureCardModelsTests: XCTestCase {
                 provenanceDisplayMode: .debug,
                 surfaceMode: .skeuomorphic,
                 visualRecipe: fixture.recipe,
+                visualVariant: fixture.preferredVariant,
                 sizeToken: fixture.preferredSize
             )
 
@@ -561,6 +562,14 @@ final class CaptureCardModelsTests: XCTestCase {
             XCTAssertEqual(presentation.visualRecipe, fixture.recipe)
             XCTAssertTrue(fixture.supportedSizes.contains(fixture.preferredSize))
             XCTAssertEqual(presentation.sizeToken, fixture.preferredSize)
+            XCTAssertEqual(
+                presentation.visualVariant,
+                MemoryCardRecipeLayoutPolicy.resolvedVariant(
+                    fixture.preferredVariant,
+                    for: fixture.recipe,
+                    size: fixture.preferredSize
+                )
+            )
             XCTAssertEqual(
                 presentation.contentDensity,
                 MemoryCardRecipeLayoutPolicy.contentDensity(for: fixture.preferredSize)
@@ -605,10 +614,12 @@ final class CaptureCardModelsTests: XCTestCase {
                 provenanceDisplayMode: .debug,
                 surfaceMode: .skeuomorphic,
                 visualRecipe: fixture.fixture.recipe,
+                visualVariant: fixture.variant,
                 sizeToken: fixture.size
             )
 
             XCTAssertEqual(presentation.sizeToken, fixture.size)
+            XCTAssertEqual(presentation.visualVariant, fixture.resolvedVariant)
             XCTAssertEqual(metrics.recipe, fixture.fixture.recipe)
             XCTAssertEqual(metrics.sizeToken, fixture.size)
             XCTAssertGreaterThan(metrics.preferredSize.width, 0)
@@ -653,6 +664,17 @@ final class CaptureCardModelsTests: XCTestCase {
         }
     }
 
+    func testCardDebugStatesActionsVariantOptionsMatchLayoutPolicy() {
+        for recipe in MemoryCardVisualRecipe.allCases {
+            for size in CardDebugStatesActionsModel.supportedSizes(for: recipe) {
+                XCTAssertEqual(
+                    CardDebugStatesActionsModel.supportedVariants(for: recipe, size: size),
+                    MemoryCardRecipeLayoutPolicy.supportedVariants(for: recipe, size: size)
+                )
+            }
+        }
+    }
+
     func testCardDebugStatesActionsSelectedRuntimeMapsToNormalSelectedItem() {
         let item = CardDebugStatesActionsModel.item(
             recipe: .taskNote,
@@ -669,6 +691,7 @@ final class CaptureCardModelsTests: XCTestCase {
                 let presentation = CardDebugStatesActionsModel.presentation(
                     recipe: .cassette,
                     size: .banner,
+                    variant: .automatic,
                     role: role,
                     runtimeState: runtimeState
                 )
@@ -679,6 +702,7 @@ final class CaptureCardModelsTests: XCTestCase {
                 XCTAssertEqual(presentation.item.state, runtimeState.state)
                 XCTAssertEqual(presentation.item.isSelected, runtimeState.isSelected)
                 XCTAssertEqual(presentation.sizeToken, .banner)
+                XCTAssertEqual(presentation.visualVariant, .automatic)
                 XCTAssertEqual(
                     presentation.contentDensity,
                     MemoryCardRecipeLayoutPolicy.contentDensity(for: .banner)
@@ -691,12 +715,30 @@ final class CaptureCardModelsTests: XCTestCase {
         let presentation = CardDebugStatesActionsModel.presentation(
             recipe: .weatherStamp,
             size: .banner,
+            variant: .weatherWind,
             role: .debug,
             runtimeState: .normal
         )
 
         XCTAssertEqual(presentation.sizeToken, MemoryCardRecipeLayoutPolicy.defaultSize(for: .weatherStamp))
         XCTAssertTrue(CardDebugStatesActionsModel.supportedSizes(for: .weatherStamp).contains(presentation.sizeToken))
+        XCTAssertEqual(presentation.visualVariant, .weatherIcon)
+    }
+
+    func testCardDebugStatesActionsUnsupportedVariantFallsBackThroughPolicy() {
+        let presentation = CardDebugStatesActionsModel.presentation(
+            recipe: .weatherStamp,
+            size: .strip,
+            variant: .weatherWind,
+            role: .debug,
+            runtimeState: .normal
+        )
+
+        XCTAssertEqual(presentation.sizeToken, .strip)
+        XCTAssertEqual(presentation.visualVariant, .weatherIconTemperature)
+        XCTAssertTrue(
+            CardDebugStatesActionsModel.supportedVariants(for: .weatherStamp, size: .strip).contains(presentation.visualVariant)
+        )
     }
 
     func testCardDebugStatesActionsCapabilityRowsComeFromPresentation() {
@@ -723,6 +765,24 @@ final class CaptureCardModelsTests: XCTestCase {
         XCTAssertEqual(derived["displaysRemoveControl"], presentation.displaysRemoveControl)
         XCTAssertEqual(derived["displaysSelection"], presentation.displaysSelection)
         XCTAssertEqual(derived["hasTrailingControl"], presentation.hasTrailingControl)
+    }
+
+    func testCardDebugCatalogRecipeSizeFixturesCoverSupportedVariantMatrix() {
+        for recipe in MemoryCardVisualRecipe.allCases {
+            for size in MemoryCardRecipeLayoutPolicy.supportedSizes(for: recipe) {
+                let expectedVariants = Set(
+                    MemoryCardRecipeLayoutPolicy.supportedVariants(for: recipe, size: size).map { variant in
+                        variant == .automatic ? MemoryCardVisualVariant.automatic : variant
+                    }
+                )
+                let actualVariants = Set(
+                    CardDebugCatalog.recipeSizeFixtures
+                        .filter { $0.fixture.recipe == recipe && $0.size == size }
+                        .map(\.resolvedVariant)
+                )
+                XCTAssertEqual(actualVariants, expectedVariants, "Expected fixtures for \(recipe.rawValue).\(size.rawValue)")
+            }
+        }
     }
 
     func testOriginFixturesKeepKindStableAcrossAllOrigins() {

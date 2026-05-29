@@ -94,6 +94,25 @@ enum CardDebugStatesActionsModel {
         MemoryCardRecipeLayoutPolicy.normalizedSize(size, for: recipe)
     }
 
+    static func supportedVariants(
+        for recipe: MemoryCardVisualRecipe,
+        size: MemoryCardSizeToken
+    ) -> [MemoryCardVisualVariant] {
+        MemoryCardRecipeLayoutPolicy.supportedVariants(for: recipe, size: size)
+    }
+
+    static func normalizedVariant(
+        _ variant: MemoryCardVisualVariant,
+        for recipe: MemoryCardVisualRecipe,
+        size: MemoryCardSizeToken
+    ) -> MemoryCardVisualVariant {
+        MemoryCardRecipeLayoutPolicy.resolvedVariant(
+            variant == .automatic ? nil : variant,
+            for: recipe,
+            size: size
+        )
+    }
+
     static func item(
         recipe: MemoryCardVisualRecipe,
         runtimeState: CardDebugRuntimeStateOption
@@ -104,6 +123,7 @@ enum CardDebugStatesActionsModel {
     static func presentation(
         recipe: MemoryCardVisualRecipe,
         size: MemoryCardSizeToken,
+        variant: MemoryCardVisualVariant = .automatic,
         role: CardDebugRoleOption,
         runtimeState: CardDebugRuntimeStateOption
     ) -> CaptureCardPresentation {
@@ -113,6 +133,7 @@ enum CardDebugStatesActionsModel {
             provenanceDisplayMode: .debug,
             surfaceMode: .skeuomorphic,
             visualRecipe: recipe,
+            visualVariant: variant == .automatic ? nil : variant,
             sizeToken: normalizedSize(size, for: recipe)
         )
     }
@@ -140,6 +161,7 @@ enum CardDebugStatesActionsModel {
 struct CardDebugStatesActionsView: View {
     @State private var selectedRecipe: MemoryCardVisualRecipe = .cassette
     @State private var selectedSize: MemoryCardSizeToken = MemoryCardRecipeLayoutPolicy.defaultSize(for: .cassette)
+    @State private var selectedVariant: MemoryCardVisualVariant = .automatic
     @State private var selectedRole: CardDebugRoleOption = .composer
     @State private var selectedRuntimeState: CardDebugRuntimeStateOption = .normal
     @State private var tapCount = 0
@@ -149,10 +171,15 @@ struct CardDebugStatesActionsView: View {
         CardDebugStatesActionsModel.supportedSizes(for: selectedRecipe)
     }
 
+    private var supportedVariants: [MemoryCardVisualVariant] {
+        CardDebugStatesActionsModel.supportedVariants(for: selectedRecipe, size: selectedSize)
+    }
+
     private var presentation: CaptureCardPresentation {
         CardDebugStatesActionsModel.presentation(
             recipe: selectedRecipe,
             size: selectedSize,
+            variant: selectedVariant,
             role: selectedRole,
             runtimeState: selectedRuntimeState
         )
@@ -173,11 +200,37 @@ struct CardDebugStatesActionsView: View {
             if normalized != selectedSize {
                 selectedSize = normalized
             }
+            let normalizedVariant = CardDebugStatesActionsModel.normalizedVariant(
+                selectedVariant,
+                for: newRecipe,
+                size: normalized
+            )
+            if normalizedVariant != selectedVariant {
+                selectedVariant = normalizedVariant
+            }
         }
         .onChange(of: selectedSize) { _, newSize in
             let normalized = CardDebugStatesActionsModel.normalizedSize(newSize, for: selectedRecipe)
             if normalized != newSize {
                 selectedSize = normalized
+            }
+            let normalizedVariant = CardDebugStatesActionsModel.normalizedVariant(
+                selectedVariant,
+                for: selectedRecipe,
+                size: normalized
+            )
+            if normalizedVariant != selectedVariant {
+                selectedVariant = normalizedVariant
+            }
+        }
+        .onChange(of: selectedVariant) { _, newVariant in
+            let normalized = CardDebugStatesActionsModel.normalizedVariant(
+                newVariant,
+                for: selectedRecipe,
+                size: selectedSize
+            )
+            if normalized != newVariant {
+                selectedVariant = normalized
             }
         }
     }
@@ -193,6 +246,12 @@ struct CardDebugStatesActionsView: View {
             Picker("Size", selection: $selectedSize) {
                 ForEach(supportedSizes) { size in
                     Text(size.rawValue).tag(size)
+                }
+            }
+
+            Picker("Variant", selection: $selectedVariant) {
+                ForEach(supportedVariants) { variant in
+                    Text(variant.rawValue).tag(variant)
                 }
             }
 
@@ -238,6 +297,7 @@ struct CardDebugStatesActionsView: View {
                 DebugValueRow(title: "Runtime state", value: presentation.item.state.rawValue)
                 DebugValueRow(title: "Selected", value: presentation.item.isSelected ? "true" : "false")
                 DebugValueRow(title: "Grid box", value: "\(box.columnSpan)x\(box.rowSpan)")
+                DebugValueRow(title: "Visual variant", value: presentation.visualVariant.rawValue)
                 DebugValueRow(title: "Object metrics", value: "\(Int(metrics.preferredSize.width))x\(Int(metrics.preferredSize.height)) · \(metrics.density.rawValue)")
                 DebugValueRow(title: "Tap callback count", value: "\(tapCount)")
                 DebugValueRow(title: "Remove callback count", value: "\(removeCount)")
@@ -274,6 +334,7 @@ struct CardDebugStatesActionsView: View {
             DebugValueRow(title: "Source fixture", value: CardDebugStatesActionsModel.fixture(for: selectedRecipe).item.id)
             DebugValueRow(title: "Surface", value: presentation.surfaceMode.rawValue)
             DebugValueRow(title: "Visual recipe", value: selectedRecipe.rawValue)
+            DebugValueRow(title: "Visual variant", value: presentation.visualVariant.rawValue)
             DebugValueRow(title: "Normalized size", value: presentation.sizeToken.rawValue)
             DebugValueRow(title: "canRetry gap", value: presentation.capabilities.canRetry ? "available" : "not wired")
         }

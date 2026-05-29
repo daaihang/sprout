@@ -157,7 +157,7 @@ struct CaptureCardView: View {
             }
         case .weatherStamp:
             if case let .weather(payload) = item.payload {
-                WeatherStampCaptureCardContent(common: common, payload: payload, accent: accent, sizeToken: presentation.sizeToken, density: presentation.contentDensity, metrics: objectMetrics(for: .weatherStamp))
+                WeatherStampCaptureCardContent(common: common, payload: payload, accent: accent, sizeToken: presentation.sizeToken, density: presentation.contentDensity, variant: presentation.visualVariant, metrics: objectMetrics(for: .weatherStamp))
             } else {
                 notebookSkeuomorphicCard
             }
@@ -216,7 +216,7 @@ struct CaptureCardView: View {
         case let .affect(payload):
             MoodSwatchCaptureCardContent(common: common, payload: payload, accent: accent, sizeToken: presentation.sizeToken, density: presentation.contentDensity, metrics: objectMetrics(for: .affectCard))
         case let .weather(payload):
-            WeatherStampCaptureCardContent(common: common, payload: payload, accent: accent, sizeToken: presentation.sizeToken, density: presentation.contentDensity, metrics: objectMetrics(for: .weatherStamp))
+            WeatherStampCaptureCardContent(common: common, payload: payload, accent: accent, sizeToken: presentation.sizeToken, density: presentation.contentDensity, variant: presentation.visualVariant, metrics: objectMetrics(for: .weatherStamp))
         case let .place(payload):
             MapTicketCaptureCardContent(common: common, payload: payload, accent: accent, metrics: objectMetrics(for: .mapTicket))
         case .journalingSuggestion:

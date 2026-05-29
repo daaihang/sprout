@@ -95,6 +95,30 @@ final class MemoryDeskRendererTests: XCTestCase {
         XCTAssertEqual(presentation.visualRecipe, .cassette)
     }
 
+    func testDetailPresentationCarriesArrangementVariant() {
+        let item = CaptureCardItem(
+            id: "weather",
+            payload: .weather(CaptureWeatherCardPayload()),
+            origin: .context,
+            title: "22°C",
+            detail: "Cloudy"
+        )
+
+        let presentation = CaptureCardPresentation(
+            item: item,
+            role: .detailViewing,
+            provenanceDisplayMode: .production,
+            surfaceMode: .skeuomorphic,
+            visualRecipe: .weatherStamp,
+            visualVariant: .weatherHumidity,
+            sizeToken: .stamp
+        )
+
+        XCTAssertEqual(presentation.visualRecipe, .weatherStamp)
+        XCTAssertEqual(presentation.sizeToken, .stamp)
+        XCTAssertEqual(presentation.visualVariant, .weatherHumidity)
+    }
+
     func testArrangementPlaygroundPreservesRecipeSizeOrderAndStack() {
         let snapshot = CardDebugCatalog.arrangementPlaygroundSnapshot()
         let nodes = MemoryDeskRenderPlan.nodes(for: snapshot)
@@ -106,6 +130,58 @@ final class MemoryDeskRendererTests: XCTestCase {
             guard case .artifactGroup = node.contentRef else { return false }
             return node.visualRecipe == .bundlePacket && node.layout.size == .card
         })
+    }
+
+    func testRenderPlanPreservesVisualVariantFromArrangement() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let recordID = UUID(uuidString: "ABABABAB-ABAB-ABAB-ABAB-ABABABABABAB")!
+        let weatherID = UUID(uuidString: "CDCDCDCD-CDCD-CDCD-CDCD-CDCDCDCDCDCD")!
+        let record = RecordShell(
+            id: recordID,
+            createdAt: now,
+            updatedAt: now,
+            captureSource: .composer,
+            rawText: "Weather variant check.",
+            artifactIDs: [weatherID]
+        )
+        let weather = Artifact(
+            id: weatherID,
+            recordID: recordID,
+            kind: .weather,
+            title: "22°C",
+            summary: "Cloudy",
+            metadata: ["condition": "Cloudy", "temperatureCelsius": "22"],
+            createdAt: now,
+            updatedAt: now
+        )
+        let arrangement = MemoryCardArrangement(
+            recordID: recordID,
+            nodes: [
+                MemoryCardNode(
+                    contentRef: .artifact(weatherID),
+                    visualRecipe: .weatherStamp,
+                    visualVariant: .weatherHumidity,
+                    layout: MemoryCardLayoutToken(order: 0, size: .stamp)
+                ),
+            ],
+            createdAt: now,
+            updatedAt: now
+        )
+        let snapshot = MemoryDetailSnapshot(
+            record: record,
+            artifacts: [weather],
+            artifactSemanticDigests: [],
+            cardArrangement: arrangement,
+            analysis: nil,
+            pipelineStatus: nil,
+            entities: [],
+            edges: [],
+            arcs: [],
+            reflections: []
+        )
+
+        let nodes = MemoryDeskRenderPlan.nodes(for: snapshot)
+        XCTAssertEqual(nodes.first?.visualVariant, .weatherHumidity)
     }
 
     func testBoardLayoutPlanUsesArrangementGridPlacementAndTokenSpan() throws {

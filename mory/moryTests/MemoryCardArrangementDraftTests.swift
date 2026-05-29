@@ -189,4 +189,97 @@ final class MemoryCardArrangementDraftTests: XCTestCase {
         }
         XCTAssertEqual(photoNode?.layout.size, .banner)
     }
+
+    func testWeatherDraftDefaultsToStampVariant() {
+        let weatherDraft = CaptureArtifactDraft.weather(
+            condition: "Cloudy",
+            temperatureCelsius: 22,
+            humidity: 0.6,
+            windSpeedKmh: 8,
+            uvIndex: 3
+        )
+        var arrangement = MemoryCardArrangementDraft()
+        arrangement.appendArtifactDraft(weatherDraft)
+
+        let weatherNode = arrangement.nodes.first
+        XCTAssertEqual(weatherNode?.visualRecipe, .weatherStamp)
+        XCTAssertEqual(weatherNode?.layout.size, .stamp)
+        XCTAssertEqual(weatherNode?.visualVariant, .weatherIcon)
+    }
+
+    func testWeatherVariantNormalizesWhenChangingSize() {
+        let weatherDraft = CaptureArtifactDraft.weather(
+            condition: "Rain",
+            temperatureCelsius: 17,
+            humidity: 0.78,
+            windSpeedKmh: 19,
+            uvIndex: 1
+        )
+        var arrangement = MemoryCardArrangementDraft()
+        arrangement.appendArtifactDraft(weatherDraft)
+        arrangement.setVisualVariant(.weatherWind, forDraftID: weatherDraft.draftID)
+
+        arrangement.setSize(.strip, forDraftID: weatherDraft.draftID)
+        let stripNode = arrangement.nodes.first
+        XCTAssertEqual(stripNode?.layout.size, .strip)
+        XCTAssertEqual(stripNode?.visualVariant, .weatherIconTemperature)
+
+        arrangement.setSize(.card, forDraftID: weatherDraft.draftID)
+        let cardNode = arrangement.nodes.first
+        XCTAssertEqual(cardNode?.layout.size, .card)
+        XCTAssertEqual(cardNode?.visualVariant, .weatherFullMetrics)
+    }
+
+    func testWeatherVariantSurvivesResolveToPersistedArrangement() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let recordID = UUID(uuidString: "EFEFEFEF-EFEF-EFEF-EFEF-EFEFEFEFEFEF")!
+        let weatherDraft = CaptureArtifactDraft.weather(
+            condition: "Cloudy",
+            temperatureCelsius: 22,
+            humidity: 0.65,
+            windSpeedKmh: 12,
+            uvIndex: 2
+        )
+        var draftArrangement = MemoryCardArrangementDraft()
+        draftArrangement.appendArtifactDraft(weatherDraft)
+        draftArrangement.setVisualVariant(.weatherHumidity, forDraftID: weatherDraft.draftID)
+
+        let weatherArtifact = Artifact(
+            id: UUID(uuidString: "FAFAFAFA-FAFA-FAFA-FAFA-FAFAFAFAFAFA")!,
+            recordID: recordID,
+            kind: .weather,
+            title: "22°C",
+            summary: "Cloudy",
+            metadata: [
+                "condition": "Cloudy",
+                "temperatureCelsius": "22",
+                "humidity": "0.65",
+                "windSpeedKmh": "12",
+                "uvIndex": "2",
+            ],
+            createdAt: now,
+            updatedAt: now
+        )
+        let record = RecordShell(
+            id: recordID,
+            createdAt: now,
+            updatedAt: now,
+            captureSource: .composer,
+            rawText: "",
+            artifactIDs: [weatherArtifact.id]
+        )
+        let mapping = [weatherDraft.draftID: weatherArtifact.id]
+
+        let resolved = draftArrangement.resolve(
+            record: record,
+            artifacts: [weatherArtifact],
+            artifactIDByDraftID: mapping,
+            createdAt: now
+        )
+
+        let node = resolved.nodes.first
+        XCTAssertEqual(node?.contentRef, .artifact(weatherArtifact.id))
+        XCTAssertEqual(node?.layout.size, .stamp)
+        XCTAssertEqual(node?.visualVariant, .weatherHumidity)
+    }
 }

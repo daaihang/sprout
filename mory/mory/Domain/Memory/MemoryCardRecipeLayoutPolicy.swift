@@ -73,8 +73,10 @@ enum MemoryCardRecipeLayoutPolicy {
             return [.strip, .tape]
         case .mapTicket:
             return [.card]
-        case .weatherStamp, .affectCard, .statusNote:
+        case .affectCard, .statusNote:
             return [.stamp, .strip]
+        case .weatherStamp:
+            return [.stamp, .strip, .card]
         case .linkNote:
             return [.card, .banner]
         case .taskNote:
@@ -107,6 +109,74 @@ enum MemoryCardRecipeLayoutPolicy {
 
     static func normalizedSize(_ size: MemoryCardSizeToken, for recipe: MemoryCardVisualRecipe) -> MemoryCardSizeToken {
         supportedSizes(for: recipe).contains(size) ? size : defaultSize(for: recipe)
+    }
+
+    static func supportedVariants(
+        for recipe: MemoryCardVisualRecipe,
+        size: MemoryCardSizeToken
+    ) -> [MemoryCardVisualVariant] {
+        let normalizedSize = normalizedSize(size, for: recipe)
+        guard recipe == .weatherStamp else {
+            return [.automatic]
+        }
+
+        switch normalizedSize {
+        case .stamp:
+            return [.automatic, .weatherIcon, .weatherTemperature, .weatherHumidity, .weatherWind]
+        case .strip:
+            return [.automatic, .weatherIconTemperature]
+        case .card:
+            return [.automatic, .weatherFullMetrics]
+        case .square, .tape, .banner:
+            return [.automatic]
+        }
+    }
+
+    static func defaultVariant(
+        for recipe: MemoryCardVisualRecipe,
+        size: MemoryCardSizeToken
+    ) -> MemoryCardVisualVariant {
+        let normalizedSize = normalizedSize(size, for: recipe)
+        guard recipe == .weatherStamp else {
+            return .automatic
+        }
+
+        switch normalizedSize {
+        case .stamp:
+            return .weatherIcon
+        case .strip:
+            return .weatherIconTemperature
+        case .card:
+            return .weatherFullMetrics
+        case .square, .tape, .banner:
+            return .automatic
+        }
+    }
+
+    static func normalizedVariant(
+        _ variant: MemoryCardVisualVariant?,
+        for recipe: MemoryCardVisualRecipe,
+        size: MemoryCardSizeToken
+    ) -> MemoryCardVisualVariant? {
+        guard let variant, variant != .automatic else {
+            return nil
+        }
+        if supportedVariants(for: recipe, size: size).contains(variant) {
+            return variant
+        }
+        let fallback = defaultVariant(for: recipe, size: size)
+        return fallback == .automatic ? nil : fallback
+    }
+
+    static func resolvedVariant(
+        _ variant: MemoryCardVisualVariant?,
+        for recipe: MemoryCardVisualRecipe,
+        size: MemoryCardSizeToken
+    ) -> MemoryCardVisualVariant {
+        if let normalized = normalizedVariant(variant, for: recipe, size: size) {
+            return normalized
+        }
+        return defaultVariant(for: recipe, size: size)
     }
 }
 

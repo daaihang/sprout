@@ -5,6 +5,7 @@ struct CardDebugRecipeFixture: Identifiable, Hashable {
     let recipe: MemoryCardVisualRecipe
     let item: CaptureCardItem
     let preferredSize: MemoryCardSizeToken
+    let preferredVariant: MemoryCardVisualVariant?
     let layerNotes: [String]
 
     var supportedSizes: [MemoryCardSizeToken] {
@@ -23,12 +24,19 @@ struct CardDebugTypeCatalogEntry: Identifiable, Hashable {
 }
 
 struct CardDebugRecipeSizeFixture: Identifiable, Hashable {
-    var id: String { "\(fixture.recipe.rawValue)-\(size.rawValue)" }
+    var id: String {
+        "\(fixture.recipe.rawValue)-\(size.rawValue)-\(resolvedVariant.rawValue)"
+    }
     let fixture: CardDebugRecipeFixture
     let size: MemoryCardSizeToken
+    let variant: MemoryCardVisualVariant?
 
     var metrics: MemoryCardObjectMetrics {
         MemoryCardObjectMetrics.resolve(recipe: fixture.recipe, sizeToken: size)
+    }
+
+    var resolvedVariant: MemoryCardVisualVariant {
+        MemoryCardRecipeLayoutPolicy.resolvedVariant(variant, for: fixture.recipe, size: size)
     }
 }
 
@@ -45,6 +53,7 @@ enum CardDebugCatalog {
                 metadata: "recordBody"
             ),
             preferredSize: .banner,
+            preferredVariant: nil,
             layerNotes: ["contentRef=.recordBody", "ArtifactKind.text is folded into RecordShell.rawText", "visualRecipe=.notebook"]
         ),
         CardDebugRecipeFixture(
@@ -58,6 +67,7 @@ enum CardDebugCatalog {
                 metadata: "photo.jpg"
             ),
             preferredSize: .square,
+            preferredVariant: nil,
             layerNotes: ["CaptureArtifactContent.photo", "ArtifactKind.photo", "photo digest can carry OCR/caption/labels", "visualRecipe=.polaroid"]
         ),
         CardDebugRecipeFixture(
@@ -71,6 +81,7 @@ enum CardDebugCatalog {
                 metadata: "0:18"
             ),
             preferredSize: .tape,
+            preferredVariant: nil,
             layerNotes: ["CaptureArtifactContent.video", "ArtifactKind.video", "video digest can carry duration/first-frame notes", "visualRecipe=.filmFrame"]
         ),
         CardDebugRecipeFixture(
@@ -84,6 +95,7 @@ enum CardDebugCatalog {
                 metadata: "Live Photo"
             ),
             preferredSize: .square,
+            preferredVariant: nil,
             layerNotes: ["CaptureArtifactContent.livePhoto", "ArtifactKind.livePhoto", "digest keeps still + paired video notes", "visualRecipe=.livePhotoPrint"]
         ),
         CardDebugRecipeFixture(
@@ -97,6 +109,7 @@ enum CardDebugCatalog {
                 metadata: "1:14"
             ),
             preferredSize: .tape,
+            preferredVariant: nil,
             layerNotes: ["CaptureArtifactContent.audio", "ArtifactKind.audio", "audio digest carries transcript/language/confidence", "visualRecipe=.cassette"]
         ),
         CardDebugRecipeFixture(
@@ -110,6 +123,7 @@ enum CardDebugCatalog {
                 metadata: "Now Playing"
             ),
             preferredSize: .tape,
+            preferredVariant: nil,
             layerNotes: ["CaptureArtifactContent.music", "ArtifactKind.music", "music fact fields stay structured", "visualRecipe=.vinyl"]
         ),
         CardDebugRecipeFixture(
@@ -123,6 +137,7 @@ enum CardDebugCatalog {
                 metadata: "31.2180, 121.4460"
             ),
             preferredSize: .card,
+            preferredVariant: nil,
             layerNotes: ["CaptureArtifactContent.location", "ArtifactKind.location", "location digest keeps structured place facts", "visualRecipe=.mapTicket"]
         ),
         CardDebugRecipeFixture(
@@ -136,6 +151,7 @@ enum CardDebugCatalog {
                 metadata: "Humidity 61% · Wind 12 km/h · UV 3"
             ),
             preferredSize: .stamp,
+            preferredVariant: nil,
             layerNotes: ["CaptureArtifactContent.weather", "ArtifactKind.weather", "weather summary stays structured", "visualRecipe=.weatherStamp"]
         ),
         CardDebugRecipeFixture(
@@ -149,6 +165,7 @@ enum CardDebugCatalog {
                 metadata: "developer.apple.com"
             ),
             preferredSize: .card,
+            preferredVariant: nil,
             layerNotes: ["CaptureArtifactContent.link", "ArtifactKind.link", "URL/host remain artifact metadata facts", "visualRecipe=.linkNote"]
         ),
         CardDebugRecipeFixture(
@@ -162,6 +179,7 @@ enum CardDebugCatalog {
                 metadata: "todo"
             ),
             preferredSize: .strip,
+            preferredVariant: nil,
             layerNotes: ["CaptureArtifactContent.todo", "ArtifactKind.todo", "task text remains content fact", "visualRecipe=.taskNote"]
         ),
         CardDebugRecipeFixture(
@@ -175,6 +193,7 @@ enum CardDebugCatalog {
                 metadata: "personContext"
             ),
             preferredSize: .card,
+            preferredVariant: nil,
             layerNotes: ["CaptureArtifactContent.personContext", "ArtifactKind.document", "documentType=personContext", "visualRecipe=.personCard"]
         ),
         CardDebugRecipeFixture(
@@ -188,6 +207,7 @@ enum CardDebugCatalog {
                 metadata: "affect"
             ),
             preferredSize: .stamp,
+            preferredVariant: nil,
             layerNotes: ["AffectSnapshot", "not an Artifact", "debug/detail presentation node only", "visualRecipe=.affectCard"]
         ),
         CardDebugRecipeFixture(
@@ -201,6 +221,7 @@ enum CardDebugCatalog {
                 metadata: "Journaling"
             ),
             preferredSize: .card,
+            preferredVariant: nil,
             layerNotes: ["journalingSuggestion(importSessionID)", "can group multiple artifacts", "visualRecipe=.bundlePacket"]
         ),
         CardDebugRecipeFixture(
@@ -214,6 +235,7 @@ enum CardDebugCatalog {
                 metadata: "debug"
             ),
             preferredSize: .stamp,
+            preferredVariant: nil,
             layerNotes: ["debug/fallback only", "not a primary content fact", "visualRecipe=.statusNote"]
         ),
     ]
@@ -228,7 +250,7 @@ enum CardDebugCatalog {
                 draftLayer: draftLayer(for: fixture.recipe),
                 artifactLayer: artifactLayer(for: fixture.recipe),
                 digestLayer: digestLayer(for: fixture.recipe),
-                arrangementLayer: "MemoryCardNode(contentRef, visualRecipe=\(fixture.recipe.rawValue), size=\(fixture.preferredSize.rawValue), grid=\(box.columnSpan)x\(box.rowSpan), density=\(density.rawValue))"
+                arrangementLayer: "MemoryCardNode(contentRef, visualRecipe=\(fixture.recipe.rawValue), variant=\(MemoryCardRecipeLayoutPolicy.resolvedVariant(fixture.preferredVariant, for: fixture.recipe, size: fixture.preferredSize).rawValue), size=\(fixture.preferredSize.rawValue), grid=\(box.columnSpan)x\(box.rowSpan), density=\(density.rawValue))"
             )
         }
     }
@@ -236,8 +258,16 @@ enum CardDebugCatalog {
     static var recipeSizeFixtures: [CardDebugRecipeSizeFixture] {
         recipeFixtures.flatMap { fixture in
             fixture.supportedSizes.map { size in
-                CardDebugRecipeSizeFixture(fixture: fixture, size: size)
+                let variants = MemoryCardRecipeLayoutPolicy.supportedVariants(for: fixture.recipe, size: size)
+                return variants.map { variant in
+                    CardDebugRecipeSizeFixture(
+                        fixture: fixture,
+                        size: size,
+                        variant: variant == .automatic ? nil : variant
+                    )
+                }
             }
+            .flatMap { $0 }
         }
     }
 

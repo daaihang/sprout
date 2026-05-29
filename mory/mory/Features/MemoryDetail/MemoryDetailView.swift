@@ -755,6 +755,7 @@ private struct MemoryDetailEditingBoardCard: View {
                     provenanceDisplayMode: .production,
                     surfaceMode: .skeuomorphic,
                     visualRecipe: node.visualRecipe,
+                    visualVariant: node.visualVariant,
                     sizeToken: node.layout.size
                 )
             )
@@ -842,6 +843,7 @@ private struct MemoryDetailEditingBoardNode: Identifiable {
     let artifactIDs: [UUID]
     let item: CaptureCardItem
     let visualRecipe: MemoryCardVisualRecipe
+    let visualVariant: MemoryCardVisualVariant?
     let layout: MemoryCardLayoutToken
 
     var primaryArtifactID: UUID {
@@ -867,6 +869,7 @@ private struct MemoryDetailEditingBoardNode: Identifiable {
             ? CaptureCardItem(artifact: artifacts[0])
             : Self.groupItem(nodeID: node.id, artifacts: artifacts)
         self.visualRecipe = node.visualRecipe
+        self.visualVariant = node.visualVariant
         self.layout = node.layout
     }
 

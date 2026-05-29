@@ -177,23 +177,26 @@ private struct CardDebugTypeDetailView: View {
         List {
             Section("Rendered Sizes") {
                 ForEach(entry.fixture.supportedSizes) { size in
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Spacer()
-                            CaptureCardView(presentation: presentation(size: size))
-                            Spacer()
-                        }
-                        let box = MemoryCardRecipeLayoutPolicy.gridBox(for: size)
-                        let metrics = MemoryCardObjectMetrics.resolve(
-                            recipe: entry.fixture.recipe,
-                            sizeToken: size
-                        )
-                        Text("\(size.rawValue) · grid \(box.columnSpan)x\(box.rowSpan) · object \(Int(metrics.preferredSize.width))x\(Int(metrics.preferredSize.height)) · density \(metrics.density.rawValue)")
-                            .font(.caption.monospaced())
-                            .foregroundStyle(.secondary)
-                            .textSelection(.enabled)
+                    let sizeFixtures = CardDebugCatalog.recipeSizeFixtures.filter {
+                        $0.fixture.recipe == entry.fixture.recipe && $0.size == size
                     }
-                    .padding(.vertical, 12)
+
+                    ForEach(sizeFixtures) { fixture in
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Spacer()
+                                CaptureCardView(presentation: presentation(size: fixture.size, variant: fixture.variant))
+                                Spacer()
+                            }
+                            let box = MemoryCardRecipeLayoutPolicy.gridBox(for: fixture.size)
+                            let metrics = fixture.metrics
+                            Text("\(fixture.size.rawValue) · variant \(fixture.resolvedVariant.rawValue) · grid \(box.columnSpan)x\(box.rowSpan) · object \(Int(metrics.preferredSize.width))x\(Int(metrics.preferredSize.height)) · density \(metrics.density.rawValue)")
+                                .font(.caption.monospaced())
+                                .foregroundStyle(.secondary)
+                                .textSelection(.enabled)
+                        }
+                        .padding(.vertical, 12)
+                    }
                 }
             }
 
@@ -224,13 +227,14 @@ private struct CardDebugTypeDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    private func presentation(size: MemoryCardSizeToken) -> CaptureCardPresentation {
+    private func presentation(size: MemoryCardSizeToken, variant: MemoryCardVisualVariant?) -> CaptureCardPresentation {
         CaptureCardPresentation(
             item: entry.fixture.item,
             role: .debugLab,
             provenanceDisplayMode: .debug,
             surfaceMode: .skeuomorphic,
             visualRecipe: entry.fixture.recipe,
+            visualVariant: variant,
             sizeToken: size
         )
     }
@@ -303,6 +307,7 @@ private struct CardDebugVisualRecipesView: View {
                                         provenanceDisplayMode: .debug,
                                         surfaceMode: .skeuomorphic,
                                         visualRecipe: fixture.recipe,
+                                        visualVariant: recipeSizeFixture.variant,
                                         sizeToken: size
                                     )
                                 )
@@ -310,7 +315,7 @@ private struct CardDebugVisualRecipesView: View {
                             }
                             let box = MemoryCardRecipeLayoutPolicy.gridBox(for: size)
                             let metrics = recipeSizeFixture.metrics
-                            Text("\(size.rawValue) · grid \(box.columnSpan)x\(box.rowSpan) · object \(Int(metrics.preferredSize.width))x\(Int(metrics.preferredSize.height)) · lines \(metrics.titleLineLimit)/\(metrics.detailLineLimit)/\(metrics.metadataLineLimit)")
+                            Text("\(size.rawValue) · variant \(recipeSizeFixture.resolvedVariant.rawValue) · grid \(box.columnSpan)x\(box.rowSpan) · object \(Int(metrics.preferredSize.width))x\(Int(metrics.preferredSize.height)) · lines \(metrics.titleLineLimit)/\(metrics.detailLineLimit)/\(metrics.metadataLineLimit)")
                                 .font(.caption.monospaced())
                                 .foregroundStyle(.secondary)
                         }
@@ -319,6 +324,14 @@ private struct CardDebugVisualRecipesView: View {
 
                     DebugValueRow(title: "Recipe", value: fixture.recipe.rawValue)
                     DebugValueRow(title: "Preferred size", value: fixture.preferredSize.rawValue)
+                    DebugValueRow(
+                        title: "Preferred variant",
+                        value: MemoryCardRecipeLayoutPolicy.resolvedVariant(
+                            fixture.preferredVariant,
+                            for: fixture.recipe,
+                            size: fixture.preferredSize
+                        ).rawValue
+                    )
                     DebugValueRow(title: "Supported sizes", value: fixture.supportedSizes.map(\.rawValue).joined(separator: ", "))
                     DebugValueRow(title: "Kind", value: fixture.item.kind.rawValue)
                 } header: {

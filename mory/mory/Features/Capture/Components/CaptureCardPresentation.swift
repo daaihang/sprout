@@ -108,6 +108,7 @@ struct CaptureCardPresentation: Hashable, Sendable {
     var showsFieldAudit: Bool
     var surfaceMode: CaptureCardSurfaceMode
     var visualRecipe: MemoryCardVisualRecipe?
+    var visualVariant: MemoryCardVisualVariant
     var sizeToken: MemoryCardSizeToken
     var contentDensity: MemoryCardContentDensity
 
@@ -126,12 +127,16 @@ struct CaptureCardPresentation: Hashable, Sendable {
         showsFieldAudit: Bool = false,
         surfaceMode: CaptureCardSurfaceMode = .standard,
         visualRecipe: MemoryCardVisualRecipe? = nil,
+        visualVariant: MemoryCardVisualVariant? = nil,
         sizeToken: MemoryCardSizeToken = .card,
         contentDensity: MemoryCardContentDensity? = nil
     ) {
         let normalizedSize = visualRecipe.map {
             MemoryCardRecipeLayoutPolicy.normalizedSize(sizeToken, for: $0)
         } ?? sizeToken
+        let normalizedVariant = visualRecipe.map {
+            MemoryCardRecipeLayoutPolicy.resolvedVariant(visualVariant, for: $0, size: normalizedSize)
+        } ?? .automatic
         self.item = item
         self.role = role
         self.capabilities = capabilities ?? CaptureCardCapabilities.resolve(role: role, item: item)
@@ -146,6 +151,7 @@ struct CaptureCardPresentation: Hashable, Sendable {
         self.showsFieldAudit = showsFieldAudit
         self.surfaceMode = surfaceMode
         self.visualRecipe = visualRecipe
+        self.visualVariant = normalizedVariant
         self.sizeToken = normalizedSize
         self.contentDensity = contentDensity ?? MemoryCardRecipeLayoutPolicy.contentDensity(for: normalizedSize)
     }
@@ -153,6 +159,7 @@ struct CaptureCardPresentation: Hashable, Sendable {
     static func composerAttachment(
         _ attachment: CaptureComposerAttachmentItem,
         visualRecipe: MemoryCardVisualRecipe? = nil,
+        visualVariant: MemoryCardVisualVariant? = nil,
         sizeToken: MemoryCardSizeToken = .card
     ) -> CaptureCardPresentation {
         CaptureCardPresentation(
@@ -162,6 +169,7 @@ struct CaptureCardPresentation: Hashable, Sendable {
             musicCardStyle: .compactRow,
             placeCardStyle: .standard,
             visualRecipe: visualRecipe,
+            visualVariant: visualVariant,
             sizeToken: sizeToken
         )
     }
@@ -169,6 +177,7 @@ struct CaptureCardPresentation: Hashable, Sendable {
     static func detailArtifact(
         _ artifact: Artifact,
         visualRecipe: MemoryCardVisualRecipe? = nil,
+        visualVariant: MemoryCardVisualVariant? = nil,
         sizeToken: MemoryCardSizeToken = .card
     ) -> CaptureCardPresentation {
         CaptureCardPresentation(
@@ -178,6 +187,7 @@ struct CaptureCardPresentation: Hashable, Sendable {
             musicCardStyle: .compactRow,
             placeCardStyle: .standard,
             visualRecipe: visualRecipe,
+            visualVariant: visualVariant,
             sizeToken: sizeToken
         )
     }
@@ -185,6 +195,7 @@ struct CaptureCardPresentation: Hashable, Sendable {
     static func detailEditing(
         _ item: CaptureCardItem,
         visualRecipe: MemoryCardVisualRecipe? = nil,
+        visualVariant: MemoryCardVisualVariant? = nil,
         sizeToken: MemoryCardSizeToken = .card
     ) -> CaptureCardPresentation {
         CaptureCardPresentation(
@@ -194,6 +205,7 @@ struct CaptureCardPresentation: Hashable, Sendable {
             musicCardStyle: .compactRow,
             placeCardStyle: .standard,
             visualRecipe: visualRecipe,
+            visualVariant: visualVariant,
             sizeToken: sizeToken
         )
     }
@@ -201,9 +213,10 @@ struct CaptureCardPresentation: Hashable, Sendable {
     static func detailEditing(
         _ artifact: Artifact,
         visualRecipe: MemoryCardVisualRecipe? = nil,
+        visualVariant: MemoryCardVisualVariant? = nil,
         sizeToken: MemoryCardSizeToken = .card
     ) -> CaptureCardPresentation {
-        detailEditing(CaptureCardItem(artifact: artifact), visualRecipe: visualRecipe, sizeToken: sizeToken)
+        detailEditing(CaptureCardItem(artifact: artifact), visualRecipe: visualRecipe, visualVariant: visualVariant, sizeToken: sizeToken)
     }
 
     static func debug(
@@ -219,6 +232,7 @@ struct CaptureCardPresentation: Hashable, Sendable {
         showsFieldAudit: Bool = false,
         surfaceMode: CaptureCardSurfaceMode = .standard,
         visualRecipe: MemoryCardVisualRecipe? = nil,
+        visualVariant: MemoryCardVisualVariant? = nil,
         sizeToken: MemoryCardSizeToken = .card
     ) -> CaptureCardPresentation {
         CaptureCardPresentation(
@@ -235,6 +249,7 @@ struct CaptureCardPresentation: Hashable, Sendable {
             showsFieldAudit: showsFieldAudit,
             surfaceMode: surfaceMode,
             visualRecipe: visualRecipe,
+            visualVariant: visualVariant,
             sizeToken: sizeToken
         )
     }

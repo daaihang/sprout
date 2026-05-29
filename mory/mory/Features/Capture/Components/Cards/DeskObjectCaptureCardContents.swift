@@ -117,52 +117,23 @@ struct WeatherStampCaptureCardContent: View {
     let accent: Color
     var sizeToken: MemoryCardSizeToken = .stamp
     var density: MemoryCardContentDensity = .compact
+    var variant: MemoryCardVisualVariant?
     var metrics: MemoryCardObjectMetrics = .resolve(recipe: .weatherStamp, sizeToken: .stamp)
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            HStack(alignment: .top, spacing: 8) {
-                Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.weather"))
-                    .font(.system(size: density == .compact ? 29 : 33, weight: .black, design: .rounded))
-                    .foregroundStyle(stampInk)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.68)
-
-                Spacer(minLength: 6)
-
-                Image(systemName: payload.symbolName?.trimmedOrNil ?? weatherStyle.symbolName)
-                    .font(.system(size: 27, weight: .bold))
-                    .symbolRenderingMode(.multicolor)
-            }
-
-            Text(common.detail)
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                .foregroundStyle(stampInk.opacity(0.78))
-                .lineLimit(metrics.detailLineLimit)
-
-            if metrics.density != .compact {
-                HStack(spacing: 5) {
-                    ForEach(metricTokens, id: \.self) { token in
-                        Text(token)
-                            .font(.system(size: 8, weight: .bold, design: .monospaced))
-                            .foregroundStyle(stampInk.opacity(0.75))
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 3)
-                            .background(stampInk.opacity(0.08), in: Capsule())
-                    }
-                }
+        Group {
+            switch normalizedSize {
+            case .stamp:
+                stampLayout
+            case .strip:
+                stripLayout
+            case .card:
+                cardLayout
+            case .square, .tape, .banner:
+                cardLayout
             }
         }
-        .padding(metrics.padding.edgeInsets)
-        .frame(width: metrics.preferredSize.width, height: metrics.preferredSize.height, alignment: .leading)
-        .background(stampPaper, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(stampInk.opacity(0.36), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
-        }
-        .rotationEffect(.degrees(-2))
-        .shadow(color: .black.opacity(0.08), radius: 1, y: 1)
-        .shadow(color: .black.opacity(0.04), radius: 6, y: 3)
+        .frame(width: metrics.preferredSize.width, height: metrics.preferredSize.height, alignment: .center)
     }
 
     private var weatherStyle: CaptureWeatherVisualStyle {
@@ -188,14 +159,195 @@ struct WeatherStampCaptureCardContent: View {
         }
     }
 
-    private var stampPaper: Color {
-        Color(red: 0.95, green: 0.97, blue: 0.93)
+    private var normalizedSize: MemoryCardSizeToken {
+        MemoryCardRecipeLayoutPolicy.normalizedSize(sizeToken, for: .weatherStamp)
     }
 
-    private var metricTokens: [String] {
-        let raw = common.metadata?.trimmedOrNil
-        let parts = raw?.components(separatedBy: " · ").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) } ?? []
-        return Array((parts.isEmpty ? ["WEATHER", "LOCAL"] : parts).prefix(3))
+    private var resolvedVariant: MemoryCardVisualVariant {
+        MemoryCardRecipeLayoutPolicy.resolvedVariant(
+            variant,
+            for: .weatherStamp,
+            size: normalizedSize
+        )
+    }
+
+    private var symbolName: String {
+        payload.symbolName?.trimmedOrNil ?? weatherStyle.symbolName
+    }
+
+    private var temperatureToken: String {
+        common.title?.trimmedOrNil
+            ?? metadataTokens.first(where: { $0.contains("°") })
+            ?? "--"
+    }
+
+    private var humidityToken: String? {
+        metadataToken(
+            containingAny: ["humidity", "湿", "%"]
+        )
+    }
+
+    private var windToken: String? {
+        metadataToken(
+            containingAny: ["wind", "风", "km/h", "m/s"]
+        )
+    }
+
+    private var uvToken: String? {
+        metadataToken(containingAny: ["uv"])
+    }
+
+    private var metadataTokens: [String] {
+        let raw = common.metadata?.trimmedOrNil ?? ""
+        return raw
+            .components(separatedBy: "·")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+    }
+
+    private func metadataToken(containingAny needles: [String]) -> String? {
+        metadataTokens.first { token in
+            let normalized = token.lowercased()
+            return needles.contains { needle in
+                normalized.contains(needle.lowercased())
+            }
+        }
+    }
+
+    private var stampLayout: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.clear)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(stampInk.opacity(0.75), lineWidth: 1.6)
+
+            stampCore
+        }
+        .padding(2)
+    }
+
+    @ViewBuilder
+    private var stampCore: some View {
+        switch resolvedVariant {
+        case .weatherIcon, .automatic:
+            Image(systemName: symbolName)
+                .font(.system(size: 23, weight: .bold))
+                .symbolRenderingMode(.multicolor)
+        case .weatherTemperature:
+            Text(temperatureToken)
+                .font(.system(size: 17, weight: .black, design: .rounded))
+                .foregroundStyle(stampInk)
+                .lineLimit(1)
+                .minimumScaleFactor(0.68)
+        case .weatherHumidity:
+            Text(humidityToken ?? "--")
+                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .foregroundStyle(stampInk)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        case .weatherWind:
+            Text(windToken ?? "--")
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .foregroundStyle(stampInk)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        case .weatherIconTemperature:
+            HStack(spacing: 4) {
+                Image(systemName: symbolName)
+                    .font(.system(size: 11, weight: .semibold))
+                    .symbolRenderingMode(.multicolor)
+                Text(temperatureToken)
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundStyle(stampInk)
+            }
+        case .weatherFullMetrics:
+            VStack(spacing: 2) {
+                Text(temperatureToken)
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundStyle(stampInk)
+                Text(humidityToken ?? windToken ?? "--")
+                    .font(.system(size: 9, weight: .medium, design: .rounded))
+                    .foregroundStyle(stampInk.opacity(0.78))
+                    .lineLimit(1)
+            }
+        }
+    }
+
+    private var stripLayout: some View {
+        HStack(spacing: 8) {
+            Image(systemName: symbolName)
+                .font(.system(size: 18, weight: .semibold))
+                .symbolRenderingMode(.multicolor)
+            Text(temperatureToken)
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .foregroundStyle(stampInk)
+                .lineLimit(1)
+                .minimumScaleFactor(0.68)
+            Spacer(minLength: 0)
+            Text(common.detail.trimmedOrNil ?? "")
+                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                .foregroundStyle(stampInk.opacity(0.78))
+                .lineLimit(1)
+        }
+        .padding(metrics.padding.edgeInsets)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .background(stampInk.opacity(0.08), in: Capsule())
+        .overlay {
+            Capsule()
+                .stroke(stampInk.opacity(0.42), lineWidth: 1.2)
+        }
+    }
+
+    private var cardLayout: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: symbolName)
+                    .font(.system(size: 23, weight: .bold))
+                    .symbolRenderingMode(.multicolor)
+                Text(temperatureToken)
+                    .font(.system(size: 31, weight: .black, design: .rounded))
+                    .foregroundStyle(stampInk)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.68)
+                Spacer(minLength: 0)
+            }
+
+            Text(common.detail)
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .foregroundStyle(stampInk.opacity(0.8))
+                .lineLimit(metrics.detailLineLimit)
+
+            Spacer(minLength: 0)
+
+            HStack(spacing: 6) {
+                if let humidityToken {
+                    metricChip(humidityToken)
+                }
+                if let windToken {
+                    metricChip(windToken)
+                }
+                if let uvToken {
+                    metricChip(uvToken)
+                }
+            }
+        }
+        .padding(metrics.padding.edgeInsets)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .background(Color(red: 0.95, green: 0.97, blue: 0.93), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(stampInk.opacity(0.36), style: StrokeStyle(lineWidth: 1.3, dash: [5, 4]))
+        }
+        .shadow(color: .black.opacity(0.05), radius: 4, y: 2)
+    }
+
+    private func metricChip(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 8, weight: .bold, design: .monospaced))
+            .foregroundStyle(stampInk.opacity(0.78))
+            .padding(.horizontal, 6)
+            .padding(.vertical, 4)
+            .background(stampInk.opacity(0.09), in: Capsule())
     }
 }
 
