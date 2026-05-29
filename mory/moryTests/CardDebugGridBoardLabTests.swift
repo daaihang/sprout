@@ -481,6 +481,7 @@ final class CardDebugGridBoardLabTests: XCTestCase {
         XCTAssertFalse(source.contains("endInteractiveMovement"))
         XCTAssertFalse(source.contains("cancelInteractiveMovement"))
         XCTAssertFalse(source.contains("onPreviewChanged"))
+        XCTAssertFalse(source.contains("+ collectionView.contentOffset"))
         XCTAssertTrue(source.contains("snapshotView(afterScreenUpdates: false)"))
     }
 

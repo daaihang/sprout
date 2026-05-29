@@ -160,11 +160,7 @@ struct CardDebugGridBoardUIKitView: UIViewRepresentable {
 
         @objc func handleLongPress(_ recognizer: UILongPressGestureRecognizer) {
             guard let collectionView = recognizer.view as? UICollectionView else { return }
-            let visibleLocation = recognizer.location(in: collectionView)
-            let contentLocation = CGPoint(
-                x: visibleLocation.x + collectionView.contentOffset.x,
-                y: visibleLocation.y + collectionView.contentOffset.y
-            )
+            let contentLocation = recognizer.location(in: collectionView)
 
             switch recognizer.state {
             case .began:
