@@ -72,25 +72,6 @@ final class CardDebugGridBoardLabTests: XCTestCase {
         XCTAssertEqual(bannerTarget.column, 0)
     }
 
-    func testDragStateSeparatesPressingFromDraggingPreview() {
-        let id = UUID()
-        let item = gridItem("dragged", size: .strip, column: 0, row: 0)
-        let preview = CardDebugGridDragPreview(
-            itemID: item.id,
-            targetPlacement: MemoryCardGridPlacement(column: 2, row: 1),
-            items: [item]
-        )
-
-        XCTAssertFalse(CardDebugGridDragState.inactive.isActive)
-        XCTAssertNil(CardDebugGridDragState.inactive.activeItemID)
-        XCTAssertEqual(CardDebugGridDragState.pressing(id).activeItemID, id)
-        XCTAssertTrue(CardDebugGridDragState.pressing(id).isActive)
-        XCTAssertNil(CardDebugGridDragState.pressing(id).previewItems)
-        XCTAssertEqual(CardDebugGridDragState.dragging(preview).activeItemID, item.id)
-        XCTAssertEqual(CardDebugGridDragState.dragging(preview).targetPlacement, preview.targetPlacement)
-        XCTAssertEqual(CardDebugGridDragState.dragging(preview).previewItems, preview.items)
-    }
-
     func testDragPreviewDerivesTargetPlacementFromBoardCoordinates() throws {
         let dragged = gridItem("dragged", size: .strip, column: 4, row: 0)
         let anchor = gridItem("anchor", size: .strip, column: 0, row: 0)
@@ -321,6 +302,104 @@ final class CardDebugGridBoardLabTests: XCTestCase {
         XCTAssertGreaterThan(report.rowCount, 0)
     }
 
+    func testBoardHitTestingUsesFrameAndZIndexInsteadOfLastSlot() {
+        let lower = gridItem("lower", size: .strip, column: 0, row: 0)
+        let top = gridItem("top", size: .strip, column: 0, row: 0)
+        let lastButLower = gridItem("lastButLower", size: .strip, column: 0, row: 0)
+        let slots = [
+            slot(for: lower, frame: CGRect(x: 0, y: 0, width: 120, height: 80), zIndex: 1),
+            slot(for: top, frame: CGRect(x: 0, y: 0, width: 120, height: 80), zIndex: 10),
+            slot(for: lastButLower, frame: CGRect(x: 0, y: 0, width: 120, height: 80), zIndex: 2)
+        ]
+
+        let hitID = CardDebugGridBoardLabModel.hitItemID(at: CGPoint(x: 24, y: 24), in: slots)
+
+        XCTAssertEqual(hitID, top.id)
+        XCTAssertNotEqual(hitID, lastButLower.id)
+    }
+
+    func testUIKitDragSessionPreviewCommitAndCancelSemantics() throws {
+        let dragged = gridItem("dragged", size: .strip, column: 0, row: 0)
+        let blocker = gridItem("blocker", size: .strip, column: 2, row: 0)
+        let items = [dragged, blocker]
+        let boardWidth = MemoryDeskBoardMetrics.debugBoardWidth(for: 390)
+        let metrics = MemoryDeskBoardMetrics.debugSquare(availableWidth: 390)
+        let slots = CardDebugGridBoardLabModel.slots(
+            for: items,
+            mode: .storedPlacement,
+            containerWidth: boardWidth,
+            metrics: metrics
+        )
+        let session = try XCTUnwrap(
+            CardDebugGridBoardLabModel.beginDrag(at: CGPoint(x: 24, y: 24), in: slots)
+        )
+
+        let preview = CardDebugGridBoardLabModel.dragPreview(
+            for: session,
+            at: CGPoint(
+                x: metrics.horizontalPadding + 2 * (metrics.cellWidth(for: boardWidth) + metrics.columnSpacing),
+                y: metrics.verticalPadding
+            ),
+            boardWidth: boardWidth,
+            metrics: metrics,
+            in: items
+        )
+        let committed = CardDebugGridBoardLabModel.commitPreview(preview.items)
+        let report = CardDebugGridBoardLabModel.report(for: committed, mode: .storedPlacement)
+
+        XCTAssertEqual(session.itemID, dragged.id)
+        XCTAssertEqual(committed.first(where: { $0.id == dragged.id })?.placement, preview.targetPlacement)
+        XCTAssertEqual(report.overlapCount, 0)
+        XCTAssertEqual(items.first(where: { $0.id == dragged.id })?.placement, dragged.placement)
+    }
+
+    func testCollectionLayoutAttributesMatchBoardPlanFrames() {
+        let items = CardDebugGridBoardLabModel.defaultItems()
+        let boardWidth = MemoryDeskBoardMetrics.debugBoardWidth(for: 390)
+        let metrics = MemoryDeskBoardMetrics.debugSquare(availableWidth: 390)
+        let slots = CardDebugGridBoardLabModel.slots(
+            for: items,
+            mode: .storedPlacement,
+            containerWidth: boardWidth,
+            metrics: metrics
+        )
+        let boardHeight = (slots.map(\.frame.maxY).max() ?? 0) + metrics.verticalPadding
+        let layout = CardDebugGridBoardCollectionLayout()
+
+        layout.configure(
+            slots: slots,
+            boardSize: CGSize(width: boardWidth, height: boardHeight),
+            activeDragItemID: items.first?.id
+        )
+        layout.prepare()
+
+        XCTAssertEqual(layout.collectionViewContentSize, CGSize(width: boardWidth, height: boardHeight))
+        for (index, slot) in slots.enumerated() {
+            let attributes = layout.layoutAttributesForItem(at: IndexPath(item: index, section: 0))
+            XCTAssertEqual(attributes?.frame, slot.frame)
+            if index == 0 {
+                XCTAssertEqual(attributes?.zIndex, 10_000)
+            }
+        }
+    }
+
+    func testSwiftUILabNoLongerOwnsDragOrScrollGestureContract() throws {
+        let sourceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("mory")
+            .appendingPathComponent("Debug")
+            .appendingPathComponent("Components")
+            .appendingPathComponent("CardDebugGridBoardLabView.swift")
+        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+
+        XCTAssertFalse(source.contains("LongPressGesture"))
+        XCTAssertFalse(source.contains("DragGesture"))
+        XCTAssertFalse(source.contains("scrollDisabled"))
+        XCTAssertFalse(source.contains(".gesture("))
+        XCTAssertFalse(source.contains(".simultaneousGesture("))
+    }
+
     private func gridItem(
         _ title: String,
         size: MemoryCardSizeToken,
@@ -333,6 +412,24 @@ final class CardDebugGridBoardLabTests: XCTestCase {
             size: size,
             recipe: CardDebugGridBoardLabModel.recipe(for: size),
             placement: MemoryCardGridPlacement(column: column, row: row)
+        )
+    }
+
+    private func slot(
+        for item: CardDebugGridBoardLabItem,
+        frame: CGRect,
+        zIndex: Int
+    ) -> CardDebugGridBoardLabSlot {
+        CardDebugGridBoardLabSlot(
+            id: item.id,
+            item: item,
+            layout: MemoryCardLayoutToken(
+                order: zIndex,
+                size: item.size,
+                gridPlacement: item.placement,
+                zIndex: zIndex
+            ),
+            frame: frame
         )
     }
 }
