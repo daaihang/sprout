@@ -11,6 +11,22 @@ enum CaptureCardLabFixtures {
             isRemovable: true
         ),
         CaptureCardItem(
+            id: "fixture-video",
+            payload: .video(CaptureVideoCardPayload(durationSeconds: 18)),
+            title: "Video",
+            detail: "Gallery clip with generated first-frame preview",
+            metadata: "0:18",
+            isRemovable: true
+        ),
+        CaptureCardItem(
+            id: "fixture-live-photo",
+            payload: .livePhoto(CaptureLivePhotoCardPayload()),
+            title: "Live Photo",
+            detail: "Still image with paired motion clip",
+            metadata: "Live Photo",
+            isRemovable: true
+        ),
+        CaptureCardItem(
             id: "fixture-audio",
             payload: .audio(CaptureAudioCardPayload(durationSeconds: 74)),
             title: String(localized: "debug.captureCardLab.fixture.audio.title"),
@@ -59,6 +75,22 @@ enum CaptureCardLabFixtures {
             title: String(localized: "debug.captureCardLab.fixture.todo.title"),
             detail: String(localized: "debug.captureCardLab.fixture.todo.detail"),
             metadata: String(localized: "capture.card.kind.todo"),
+            isRemovable: true
+        ),
+        CaptureCardItem(
+            id: "fixture-journaling-suggestion",
+            payload: .journalingSuggestion(CaptureJournalingSuggestionCardPayload(
+                artifactCount: 5,
+                affectCount: 1,
+                photoCount: 2,
+                videoCount: 1,
+                livePhotoCount: 1,
+                locationCount: 1
+            )),
+            origin: .imported,
+            title: "Journaling Suggestion",
+            detail: "5 items · 1 mood",
+            metadata: "Journaling",
             isRemovable: true
         ),
     ]

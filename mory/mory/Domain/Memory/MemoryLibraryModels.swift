@@ -27,6 +27,8 @@ struct MemorySummary: Identifiable, Hashable, Sendable {
 struct MemoryDetailSnapshot: Hashable, Sendable {
     let record: RecordShell
     let artifacts: [Artifact]
+    let artifactSemanticDigests: [ArtifactSemanticDigest]
+    let cardArrangement: MemoryCardArrangement?
     let analysis: RecordAnalysisSnapshot?
     let pipelineStatus: MemoryPipelineStatusSnapshot?
     let entities: [EntityNode]
@@ -40,17 +42,20 @@ struct MemoryEditDraft: Hashable, Sendable {
     var userMood: String?
     var inputContext: String?
     var appendedArtifactText: String?
+    var addedArtifacts: [CaptureArtifactDraft]
 
     init(
         rawText: String,
         userMood: String? = nil,
         inputContext: String? = nil,
-        appendedArtifactText: String? = nil
+        appendedArtifactText: String? = nil,
+        addedArtifacts: [CaptureArtifactDraft] = []
     ) {
         self.rawText = rawText
         self.userMood = userMood
         self.inputContext = inputContext
         self.appendedArtifactText = appendedArtifactText
+        self.addedArtifacts = addedArtifacts
     }
 }
 
@@ -96,35 +101,43 @@ struct MemoryMutationRecordPatch: Hashable, Sendable {
 struct MemoryMutationDraft: Hashable, Sendable {
     var recordPatch: MemoryMutationRecordPatch
     var addedArtifacts: [CaptureArtifactDraft]
+    var addedCardArrangement: MemoryCardArrangementDraft?
     var updatedArtifacts: [Artifact]
     var deletedArtifactIDs: [UUID]
     var artifactOrder: [UUID]?
+    var cardArrangement: MemoryCardArrangement?
 
     init(
         recordPatch: MemoryMutationRecordPatch = MemoryMutationRecordPatch(),
         addedArtifacts: [CaptureArtifactDraft] = [],
+        addedCardArrangement: MemoryCardArrangementDraft? = nil,
         updatedArtifacts: [Artifact] = [],
         deletedArtifactIDs: [UUID] = [],
-        artifactOrder: [UUID]? = nil
+        artifactOrder: [UUID]? = nil,
+        cardArrangement: MemoryCardArrangement? = nil
     ) {
         self.recordPatch = recordPatch
         self.addedArtifacts = addedArtifacts
+        self.addedCardArrangement = addedCardArrangement
         self.updatedArtifacts = updatedArtifacts
         self.deletedArtifactIDs = deletedArtifactIDs
         self.artifactOrder = artifactOrder
+        self.cardArrangement = cardArrangement
     }
 
     var hasChanges: Bool {
         recordPatch.hasChanges
             || !addedArtifacts.isEmpty
+            || addedCardArrangement != nil
             || !updatedArtifacts.isEmpty
             || !deletedArtifactIDs.isEmpty
             || artifactOrder != nil
+            || cardArrangement != nil
     }
 }
 
 enum MemoryMutationRefreshPolicy: Hashable, Sendable {
-    case markPending
+    case saveOnly
     case runImmediately
 }
 
@@ -140,6 +153,7 @@ struct MemoryMutationResult: Hashable, Sendable {
 }
 
 enum MemoryPipelineStage: String, Codable, CaseIterable, Identifiable, Sendable {
+    case notScheduled
     case pending
     case running
     case completed
@@ -166,6 +180,8 @@ struct MemoryPipelineStatusSnapshot: Identifiable, Hashable, Sendable {
 
     var userLabel: String {
         switch stage {
+        case .notScheduled:
+            return String(localized: "pipeline.status.notScheduled")
         case .pending:
             return String(localized: "pipeline.status.pending")
         case .running:
@@ -179,6 +195,8 @@ struct MemoryPipelineStatusSnapshot: Identifiable, Hashable, Sendable {
 
     var explanation: String {
         switch stage {
+        case .notScheduled:
+            return String(localized: "pipeline.explain.notScheduled")
         case .pending:
             return String(localized: "pipeline.explain.pending")
         case .running:

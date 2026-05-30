@@ -23,7 +23,7 @@ struct CaptureComposerActionStrip: View {
                 actionButton(icon: "camera", title: String(localized: "capture.toolbar.camera"), action: onCamera)
                     .disabled(isProcessingPhoto)
 
-                PhotosPicker(selection: $selectedPhotoItems, maxSelectionCount: 0, matching: .images) {
+                PhotosPicker(selection: $selectedPhotoItems, maxSelectionCount: 0, matching: .any(of: [.images, .videos, .livePhotos])) {
                     actionButtonLabel(icon: "photo.on.rectangle", title: String(localized: "capture.toolbar.photo"))
                 }
                 .disabled(isProcessingPhoto)

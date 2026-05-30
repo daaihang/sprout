@@ -4,15 +4,17 @@ This handbook is the source of truth for the current Mory product and architectu
 
 ## Current Conclusion
 
-Mory currently has a functional local-first memory capture and Analysis foundation:
+Mory currently has a functional local-first memory capture, record-facts, card arrangement, and Analysis foundation:
 
 - In-app capture supports text, photo, video, audio, link, place, weather, music, todo, prompt-answer, person-context, and structured mood evidence.
 - Apple Journaling Suggestions is modeled as typed evidence, then converted into normal `MemoryCaptureDraft` artifacts and `AffectSnapshotDraft` evidence.
 - External Capture and Share use the same durable App Group envelope/recovery path and can seed the unified composer.
+- Saving a memory writes `RecordShell + Artifact[] + ArtifactSemanticDigest[] + MemoryCardArrangement + AffectSnapshot[]` first, then records `.notScheduled` unless analysis is explicitly requested.
 - Analysis is the production analysis path after memory save: context pack -> `/api/analyze` -> local proposal persistence and graph/profile updates.
+- Card rendering is arrangement-driven: composer/detail/debug share the same recipe, size token, object metrics, and 6-column logical layout vocabulary.
 - SelfProfile, EntityProfile, PersonProfile, AffectSnapshot, GraphDelta, Reflection, Arc, and clarification questions exist as separate concepts.
 
-The main product problem is visibility. Many capabilities are wired or usable, but users and product owners cannot reliably see current state, provenance, AI timing, or remaining gaps without reading code.
+The main product problem is still visibility. Many capabilities are wired or usable, and Debug now has stronger acceptance surfaces, but users and product owners still need a product-level view of current state, provenance, AI timing, and remaining actions.
 
 ## Status Vocabulary
 

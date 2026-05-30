@@ -3,6 +3,7 @@ import Foundation
 @MainActor
 struct ExternalCaptureImportUseCase {
     let repository: MoryMemoryRepository
+    let artifactBuilder: MemoryCaptureArtifactBuilder
 
     func enqueueExternalCapture(_ request: ExternalCaptureRequest, receivedAt: Date = .now) throws -> ExternalCaptureInboxItem {
         let item = try ExternalCaptureInboxCodec().makeItem(from: request, now: receivedAt)
@@ -22,7 +23,7 @@ struct ExternalCaptureImportUseCase {
 
     func dismissExternalCaptureInboxItem(_ id: UUID) throws {
         guard var item = try repository.externalCaptureInboxStore.fetch(id: id) else {
-            throw CocoaError(.fileNoSuchFile)
+            throw MemoryRepositoryError.externalCaptureInboxItemNotFound(id)
         }
         item.status = .dismissed
         item.dismissedAt = .now
@@ -32,7 +33,7 @@ struct ExternalCaptureImportUseCase {
 
     func markExternalCaptureInboxItemImported(_ id: UUID, recordID: UUID) throws {
         guard var item = try repository.externalCaptureInboxStore.fetch(id: id) else {
-            throw CocoaError(.fileNoSuchFile)
+            throw MemoryRepositoryError.externalCaptureInboxItemNotFound(id)
         }
         item.status = .imported
         item.importedRecordID = recordID
@@ -42,14 +43,17 @@ struct ExternalCaptureImportUseCase {
 
     func createMemoryFromExternalCaptureInboxItem(_ id: UUID) async throws -> MemorySummary {
         guard let item = try repository.externalCaptureInboxStore.fetch(id: id) else {
-            throw CocoaError(.fileNoSuchFile)
+            throw MemoryRepositoryError.externalCaptureInboxItemNotFound(id)
         }
         guard item.status == .pending else {
             throw ExternalCaptureInboxError.itemIsNotPending
         }
 
         let draft = try ExternalCaptureInboxCodec().makeDraft(from: item)
-        let memory = try await MemoryCreationUseCase(repository: repository).createMemory(from: draft)
+        let memory = try await MemoryCreationUseCase(
+            repository: repository,
+            artifactBuilder: artifactBuilder
+        ).createMemory(from: draft)
 
         try markExternalCaptureInboxItemImported(item.id, recordID: memory.record.id)
         return memory

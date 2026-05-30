@@ -146,7 +146,7 @@ New directories:
 
 ```text
 server/internal/intelligence/
-server/internal/notification/
+server/internal/push/
 server/internal/ratelimit/
 ```
 
@@ -171,7 +171,7 @@ mory/moryTests/HomeBoardGridLayoutTests.swift
 mory/moryTests/SpotlightIndexServiceTests.swift
 
 server/internal/intelligence/intelligence_test.go
-server/internal/notification/notification_test.go
+server/internal/push/push_delivery_worker_test.go
 server/internal/http/intelligence_handlers_test.go
 ```
 
@@ -204,4 +204,3 @@ Mory remembers the relationship.
 ```
 
 This proves v6 without touching every future system at once.
-

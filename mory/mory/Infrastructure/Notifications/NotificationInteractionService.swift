@@ -199,7 +199,7 @@ struct NotificationInteractionService {
             case .insights:
                 return .insights
             case .search:
-                return .search
+                return .memories
             }
         }
 

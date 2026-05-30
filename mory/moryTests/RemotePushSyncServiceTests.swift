@@ -166,16 +166,16 @@ final class RemotePushSyncServiceTests: XCTestCase {
         let targetID = UUID()
         let intentID = UUID()
         let scheduledAt = Date(timeIntervalSince1970: 1_800_500_200)
-        let intent = NotificationIntent(
-            id: intentID,
-            kind: .analysisReady,
+        let remotePayload = RemotePushDeliveryPayload(
+            intentID: intentID,
+            kind: NotificationIntentKind.analysisReady.rawValue,
             title: "Mory",
             body: "A decision pattern is ready.",
-            privacyLevel: .contextual,
-            targetType: .decision,
+            privacyLevel: NotificationPrivacyLevel.contextual.rawValue,
+            targetType: ClarificationTargetType.decision.rawValue,
             targetID: targetID,
-            scheduledAt: scheduledAt,
-            deliveryChannel: .remote
+            deepLink: "mory://insights/decision/\(targetID.uuidString)",
+            scheduledAt: scheduledAt
         )
 
         let expectation = expectation(description: "push enqueue called")
@@ -188,7 +188,7 @@ final class RemotePushSyncServiceTests: XCTestCase {
                 return Self.jsonResponse(
                     request: request,
                     statusCode: 200,
-                    body: #"{"accepted":true,"user_id":"guest","queued_count":1,"skipped_count":0,"sent_count":0,"failed_count":0}"#
+                    body: #"{"accepted":true,"user_id":"guest","queued_count":1,"skipped_count":0}"#
                 )
             }
             return Self.jsonResponse(
@@ -199,7 +199,7 @@ final class RemotePushSyncServiceTests: XCTestCase {
         }
 
         let service = try await makeService()
-        let response = try await service.enqueueRemoteNotificationIntent(intent)
+        let response = try await service.enqueueRemotePush(remotePayload)
         await fulfillment(of: [expectation], timeout: 2)
 
         XCTAssertEqual(response.queuedCount, 1)

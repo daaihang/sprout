@@ -2,7 +2,7 @@ package http
 
 import (
 	"sprout/server/internal/ai"
-	"sprout/server/internal/notification"
+	"sprout/server/internal/push"
 )
 
 type authAppleRequest struct {
@@ -71,28 +71,24 @@ type pushDeliveryWritebackResponse struct {
 }
 
 type pushEnqueueRequest struct {
-	IntentID     string                       `json:"intent_id"`
-	Kind         string                       `json:"kind"`
-	Title        string                       `json:"title"`
-	Body         string                       `json:"body"`
-	TargetType   string                       `json:"target_type"`
-	TargetID     string                       `json:"target_id"`
-	PrivacyLevel string                       `json:"privacy_level"`
-	DeepLink     string                       `json:"deep_link"`
-	Target       notification.DeliveryTarget  `json:"target"`
-	Payload      notification.DeliveryPayload `json:"payload"`
-	ScheduledAt  string                       `json:"scheduled_at"`
+	IntentID     string               `json:"intent_id"`
+	Kind         string               `json:"kind"`
+	Title        string               `json:"title"`
+	Body         string               `json:"body"`
+	TargetType   string               `json:"target_type"`
+	TargetID     string               `json:"target_id"`
+	PrivacyLevel string               `json:"privacy_level"`
+	DeepLink     string               `json:"deep_link"`
+	Target       push.DeliveryTarget  `json:"target"`
+	Payload      push.DeliveryPayload `json:"payload"`
+	ScheduledAt  string               `json:"scheduled_at"`
 }
 
 type pushEnqueueResponse struct {
-	Accepted             bool   `json:"accepted"`
-	UserID               string `json:"user_id"`
-	QueuedCount          int    `json:"queued_count"`
-	SkippedCount         int    `json:"skipped_count"`
-	SentCount            int    `json:"sent_count"`
-	FailedCount          int    `json:"failed_count"`
-	RetriedCount         int    `json:"retried_count"`
-	PermanentFailedCount int    `json:"permanent_failed_count"`
+	Accepted     bool   `json:"accepted"`
+	UserID       string `json:"user_id"`
+	QueuedCount  int    `json:"queued_count"`
+	SkippedCount int    `json:"skipped_count"`
 }
 
 type analyzeMemoryResponseEnvelope struct {

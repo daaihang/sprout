@@ -36,6 +36,36 @@ struct CaptureCardPalette {
                 )
             }
             return fallback(kind: item.kind, highContrast: highContrast)
+        case let .video(payload):
+            if let hex = payload.thumbnailData.flatMap(sampleHexColor(from:)) {
+                return fromHex(
+                    source: .photoSample,
+                    backgroundHex: hex,
+                    fallbackAccent: fallbackAccent(for: item.kind),
+                    highContrast: highContrast
+                )
+            }
+            return fallback(kind: item.kind, highContrast: highContrast)
+        case let .livePhoto(payload):
+            if let hex = payload.thumbnailData.flatMap(sampleHexColor(from:)) {
+                return fromHex(
+                    source: .photoSample,
+                    backgroundHex: hex,
+                    fallbackAccent: fallbackAccent(for: item.kind),
+                    highContrast: highContrast
+                )
+            }
+            return fallback(kind: item.kind, highContrast: highContrast)
+        case let .journalingSuggestion(payload):
+            if let hex = payload.thumbnailData.flatMap(sampleHexColor(from:)) {
+                return fromHex(
+                    source: .photoSample,
+                    backgroundHex: hex,
+                    fallbackAccent: fallbackAccent(for: item.kind),
+                    highContrast: highContrast
+                )
+            }
+            return fallback(kind: item.kind, highContrast: highContrast)
         case .place:
             return place(mapLegibility: mapLegibility, highContrast: highContrast)
         case let .weather(payload):
@@ -207,6 +237,8 @@ struct CaptureCardPalette {
     private static func fallbackAccent(for kind: CaptureCardKind) -> Color {
         switch kind {
         case .photo: return .pink
+        case .video: return .blue
+        case .livePhoto: return .cyan
         case .audio: return .red
         case .place: return .green
         case .weather: return .cyan
@@ -216,6 +248,7 @@ struct CaptureCardPalette {
         case .prompt: return .purple
         case .person: return .teal
         case .affect: return .pink
+        case .journalingSuggestion: return .indigo
         case .status: return .secondary
         }
     }

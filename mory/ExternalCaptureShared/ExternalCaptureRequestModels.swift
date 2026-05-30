@@ -74,7 +74,7 @@ struct ExternalCaptureRequest: Codable, Hashable, Sendable {
 }
 
 struct JournalingSuggestionDraft: Codable, Hashable, Sendable {
-    static let currentVersion = 3
+    static let currentVersion = 4
 
     var version: Int
     var title: String?

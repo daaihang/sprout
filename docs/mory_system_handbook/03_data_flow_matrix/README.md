@@ -7,13 +7,17 @@ This matrix maps features from user input to local persistence, API, AI output, 
 | Step | Object | Notes |
 | --- | --- | --- |
 | User input | `UnifiedCaptureComposerView` state | Body, staged artifacts, affect drafts, context candidates. |
-| Draft | `MemoryCaptureDraft` | Title, rawText, mood, inputContext, captureSource, artifacts, affectSnapshots. |
+| Draft | `MemoryCaptureDraft` | Title, rawText, mood, inputContext, provenance, artifacts, affectSnapshots, cardArrangement. |
 | Artifact conversion | `MemoryCaptureArtifactBuilder` | Creates `Artifact` records and metadata. |
 | Record persistence | `RecordShellStore` | Primary capture shell. |
 | Artifact persistence | `ArtifactStore` | Text/media/metadata payloads. |
+| Digest persistence | `ArtifactSemanticDigestStore` | Structured media/text-derived meaning for future analysis. |
+| Arrangement persistence | `MemoryCardArrangementStore` | User-authored visual card layout with 6-column size tokens (`stamp/strip/card/square/tape/banner`) and optional `gridPlacement(column,row)`; excluded from default AI analysis input. |
 | Mood persistence | `AffectSnapshotStore` | Structured affect evidence. |
-| Pipeline status | `MemoryPipelineStatusStore` | pending -> running -> completed/failed. |
+| Pipeline status | `MemoryPipelineStatusStore` | Save-only path writes `notScheduled`; explicit analysis moves to pending/running/completed/failed. |
 | Search | Spotlight index | Indexed after save and after analysis completion. |
+
+Render-time card object metrics are derived from recipe + size + density and are not persisted. This keeps the visual object ratio separate from the stored grid occupancy and prevents UI sizing from becoming semantic fact.
 
 ## Analysis Path
 
@@ -34,7 +38,7 @@ This matrix maps features from user input to local persistence, API, AI output, 
 | Location | `locations` | `.location` | `ArtifactKind.location` |
 | LocationGroup | `locationGroups` | multiple `.location` | `ArtifactKind.location` |
 | Song/Podcast/GenericMedia | `media` | `.music` | `ArtifactKind.music` |
-| Photo/Video/LivePhoto | `photoVideos` + attachments | `.photo` / `.video` | `ArtifactKind.photo` / `ArtifactKind.video` |
+| Photo/Video/LivePhoto | `photoVideos` + attachments | `.photo` / `.video` / `.livePhoto` | `ArtifactKind.photo` / `ArtifactKind.video` / `ArtifactKind.livePhoto` |
 | Workout/MotionActivity | `activities` | body/context evidence | text/context plus metadata |
 | Contact | `contacts` | `.personContext` | `ArtifactKind.document` |
 | Reflection | `reflections` | `.promptAnswer` | `ArtifactKind.document` |
@@ -53,7 +57,6 @@ This matrix maps features from user input to local persistence, API, AI output, 
 
 ## Current Data Flow Gaps
 
-1. Journaling and external capture need a durable import session concept across artifacts and affect snapshots.
-2. Workout, motion activity, and event poster evidence are not first-class capture card types.
-3. AI proposal provenance is inspectable but not yet user-friendly.
-4. Billing/entitlement state is not part of capture or analyze request gating.
+1. Workout, motion activity, and event poster evidence are not first-class capture card types.
+2. AI proposal provenance is inspectable but not yet user-friendly.
+3. Billing/entitlement state is not part of capture or analyze request gating.

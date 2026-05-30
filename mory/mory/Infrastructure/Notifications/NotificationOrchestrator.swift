@@ -78,7 +78,7 @@ struct NotificationOrchestrator {
 
     static func live(remotePushSyncService: any RemotePushSyncing) -> NotificationOrchestrator {
         NotificationOrchestrator(
-            deliveryRouter: NotificationDeliveryRouter(remotePushSyncService: remotePushSyncService)
+            deliveryRouter: NotificationDeliveryRouter(pushEnqueuer: remotePushSyncService)
         )
     }
 

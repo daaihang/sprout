@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | 输入文字 | 能用 | 用户直接写正文，保存后进入普通分析链路。 |
 | 添加照片 | 能用 | 照片会成为记忆附件，可参与本地处理和后续 AI 分析。 |
-| 添加视频 | 已接入 | 可以作为媒体保存，但视频理解和播放器体验还需要继续做。 |
+| 添加视频 | 已接入 | 可以从图库导入并作为媒体保存，记录卡片已有首帧预览；视频理解和播放器体验还需要继续做。 |
 | 添加语音 | 已接入 | 语音可转文字，后续需要更明确区分原文、转写、AI 润色。 |
 | 添加链接 | 能用 | 链接作为附件保存，可用于后续分析。 |
 | 添加地点 | 能用 | 地点可来自用户选择、上下文采集或手记建议。 |
@@ -18,6 +18,17 @@
 | 添加心情 | 已接入 | 已有结构化 mood/affect，但可视化和纠错还不完整。 |
 | 添加问答 | 已接入 | Reflection prompt 可以变成问答卡，用于更结构化记录。 |
 | 添加人物上下文 | 已接入 | 联系人和人物上下文可以保存，但不会自动合并为真实人物实体。 |
+| 卡片排布 | 可用 | 新建页和详情页使用同一套 arrangement 语义：visual recipe、size token、order、stack/group、grid placement、rotation/nudge/zIndex。 |
+
+## 卡片和排布
+
+卡片不是新的事实模型，而是用户表达层。当前规则是：
+
+- `MemoryCardArrangement` 保存视觉排布，不写进 `Artifact.metadata`。
+- size token 固定为 `stamp / strip / card / square / tape / banner`。
+- 底层是 6 列逻辑网格，格子表示占位，不强迫卡片物件填满盒子。
+- `MemoryCardObjectMetrics` 只在渲染时从 recipe + size + density 派生物件尺寸和文本详略，不持久化。
+- `Card Debug` 用来验收类型、尺寸、布局、状态和动作，不等同于正式 UI。
 
 ## Apple Journaling Suggestions
 
@@ -30,7 +41,7 @@ Journaling Suggestions 不是一种新的记忆类型。它是系统给 Mory 的
 | Podcast / 媒体 | 转成媒体上下文 | 已接入 |
 | 照片 | 转成图片附件 | 可用 |
 | 视频 | 转成视频附件 | 已接入 |
-| Live Photo | 拆成图片/视频证据 | 已接入 |
+| Live Photo | 作为单个 Live Photo artifact，内部保留 still + paired video | 已接入，仍需真机验证 |
 | 运动 / 活动 | 转成活动上下文或文档证据 | 已接入，展示不完整 |
 | 联系人 | 转成人物上下文证据 | 已接入，不自动合并人物 |
 | Reflection prompt | 转成问答卡 | 已接入 |

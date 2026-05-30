@@ -76,7 +76,7 @@ extension MoryMemoryRepository {
                 rawText: "Fixture \(index + 1) with Linh and a planning note.",
                 mood: "reflective",
                 inputContext: "debug fixture seed",
-                captureSource: .manual
+                provenance: CaptureProvenance(originCategory: .debug, sourceKind: .debugFixture)
             )
             let memory = try await createMemory(from: draft)
             try await refreshMemoryPipeline(recordID: memory.record.id)
@@ -124,6 +124,8 @@ extension MoryMemoryRepository {
         try deleteAll(ReflectionSnapshotStore.self)
         try deleteAll(TemporalArcStore.self)
         try deleteAll(MemoryDetailPresentationPreferenceStore.self)
+        try deleteAll(MemoryCardArrangementStore.self)
+        try deleteAll(ArtifactSemanticDigestStore.self)
         try deleteAll(ArtifactStore.self)
         try deleteAll(RecordShellStore.self)
         latestReflectionTrace = nil
@@ -240,7 +242,10 @@ extension MoryMemoryRepository {
                     "quality tuning lab: \(scenario.id.rawValue)",
                     context.trimmedOrNil
                 ].compactMap { $0 }.joined(separator: "\n"),
-                captureSource: source,
+                provenance: CaptureProvenance(
+                    originCategory: .debug,
+                    sourceKind: source.defaultProvenanceSourceKind
+                ),
                 artifacts: artifacts.isEmpty ? [.text(title: title, body: body)] : artifacts
             )
         }
@@ -348,7 +353,7 @@ extension MoryMemoryRepository {
             rawText: "Missed the express home after dinner with Linh and ended up walking twenty minutes in the rain. It felt frustrating at first, but the walk made the next quarter plan click into place.",
             mood: "reflective",
             inputContext: "post-dinner voice memo transcribed to text",
-            captureSource: .manual
+            provenance: CaptureProvenance(originCategory: .debug, sourceKind: .debugFixture)
         )
         let memory = try await createMemory(from: draft)
 

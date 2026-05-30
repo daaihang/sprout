@@ -21,14 +21,14 @@ final class ContextAutoCollectorTests: XCTestCase {
 
         XCTAssertEqual(locationProvider.requestCount, 1)
         XCTAssertEqual(result.drafts.count, 3)
-        XCTAssertTrue(result.drafts.contains { draft in
-            guard case let .location(_, _, latitude, longitude, _, _) = draft else { return false }
-            return latitude == location.latitude && longitude == location.longitude
-        })
-        XCTAssertTrue(result.drafts.contains { draft in
-            guard case let .weather(_, _, _, _, _, latitude, longitude, _, _, _, _, _) = draft else { return false }
-            return latitude == location.latitude && longitude == location.longitude
-        })
+        XCTAssertTrue(result.drafts.contains(where: { draft in
+            guard case let .location(content) = draft.content else { return false }
+            return content.latitude == location.latitude && content.longitude == location.longitude
+        }))
+        XCTAssertTrue(result.drafts.contains(where: { draft in
+            guard case let .weather(content) = draft.content else { return false }
+            return content.latitude == location.latitude && content.longitude == location.longitude
+        }))
         XCTAssertEqual(result.diagnostics.first(where: { $0.component == .location })?.status, .success)
         XCTAssertEqual(result.diagnostics.first(where: { $0.component == .weather })?.status, .success)
     }
@@ -48,14 +48,14 @@ final class ContextAutoCollectorTests: XCTestCase {
 
         let result = await collector.collectContext(policy: .locationWeatherOnly)
 
-        XCTAssertTrue(result.drafts.contains { draft in
-            guard case .location = draft else { return false }
+        XCTAssertTrue(result.drafts.contains(where: { draft in
+            guard case .location = draft.content else { return false }
             return true
-        })
-        XCTAssertFalse(result.drafts.contains { draft in
-            guard case .weather = draft else { return false }
+        }))
+        XCTAssertFalse(result.drafts.contains(where: { draft in
+            guard case .weather = draft.content else { return false }
             return true
-        })
+        }))
         XCTAssertEqual(result.diagnostics.first(where: { $0.component == .weather })?.status, .failed)
         XCTAssertEqual(result.diagnostics.first(where: { $0.component == .music })?.status, .skipped)
     }
@@ -108,10 +108,10 @@ final class ContextAutoCollectorTests: XCTestCase {
         let result = await collector.collectContext(policy: .locationWeatherOnly)
 
         XCTAssertEqual(musicProvider.requestCount, 0)
-        XCTAssertFalse(result.drafts.contains { draft in
-            guard case .music = draft else { return false }
+        XCTAssertFalse(result.drafts.contains(where: { draft in
+            guard case .music = draft.content else { return false }
             return true
-        })
+        }))
         XCTAssertEqual(result.diagnostics.first(where: { $0.component == .music })?.status, .skipped)
     }
 

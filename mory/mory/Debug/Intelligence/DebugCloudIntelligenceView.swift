@@ -1,4 +1,3 @@
-#if DEBUG
 import SwiftUI
 
 struct DebugCloudIntelligenceView: View {
@@ -352,4 +351,3 @@ struct DebugCloudIntelligenceView: View {
         ([summary.headline] + summary.metaLines + ["", summary.result]).joined(separator: "\n")
     }
 }
-#endif

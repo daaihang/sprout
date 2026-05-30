@@ -107,7 +107,7 @@ Jobs can output:
 
 ## 9. Integration With Existing Pipeline
 
-Do not add V6 logic directly into `ArchitecturePipelineExecutor`.
+Do not add V6 logic directly into `AnalysisExecutor`.
 
 Preferred integration point:
 

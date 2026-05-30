@@ -12,30 +12,23 @@ struct MoryRootView: View {
     @Binding private var pendingExternalCaptureURL: URL?
 
     @Environment(\.memoryRepository) private var memoryRepository
-    @Environment(\.cloudIntelligenceService) private var cloudIntelligenceService
     @Environment(\.remotePushSyncService) private var remotePushSyncService
-    @Environment(\.notificationOrchestrator) private var notificationOrchestrator
+    @Environment(\.backgroundTriggerDispatcher) private var backgroundTriggerDispatcher
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage(MoryOnboardingStep.completionStorageKey) private var hasCompletedOnboarding = false
     @StateObject private var notificationInbox = NotificationInteractionInbox.shared
     @StateObject private var audioRecorder = AudioRecorderModel()
-    @State private var selectedTab: MoryAppTab = .today
+    @StateObject private var navigationCoordinator = NavigationRouteCoordinator()
     @State private var isPresentingVoiceSheet = false
     @State private var isPresentingSettings = false
     @State private var unifiedCaptureSeed: UnifiedCaptureSeed?
     @State private var tabRefreshID = UUID()
-    @State private var pendingHomeRoute: HomeRoute?
-    @State private var pendingMemoriesRoute: MemoriesRoute?
-    @State private var pendingInsightsRoute: InsightsRoute?
     @State private var didRunStartupRecovery = false
     @State private var isEditingHomeBoard = false
     @State private var isPresentingMemoriesFilters = false
-    @State private var searchQuery = ""
     @State private var notificationTask: Task<Void, Never>?
     @State private var pushSyncTask: Task<Void, Never>?
     @State private var externalCaptureTask: Task<Void, Never>?
-    private let notificationInteractionService = NotificationInteractionService()
-    private let startupRecoveryService = AppIntelligenceRecoveryService()
 
     init(
         authManager: AuthSessionManager? = nil,
@@ -48,7 +41,7 @@ struct MoryRootView: View {
     }
 
     var body: some View {
-        TabView(selection: $selectedTab) {
+        TabView(selection: $navigationCoordinator.selectedTab) {
             Tab(
                 LocalizedStringKey(MoryAppTab.today.titleKey),
                 systemImage: MoryAppTab.today.systemImage,
@@ -57,7 +50,7 @@ struct MoryRootView: View {
                 tabRoot(for: .today) {
                     HomeScreen(
                         surface: .home,
-                        requestedRoute: $pendingHomeRoute,
+                        requestedRoute: $navigationCoordinator.homeRoute,
                         isEditingHomeBoard: $isEditingHomeBoard
                     )
                 }
@@ -71,7 +64,7 @@ struct MoryRootView: View {
             ) {
                 tabRoot(for: .memories) {
                     MemoriesRootScreen(
-                        requestedRoute: $pendingMemoriesRoute,
+                        requestedRoute: $navigationCoordinator.memoriesRoute,
                         isPresentingFilterSheet: $isPresentingMemoriesFilters
                     )
                 }
@@ -84,19 +77,12 @@ struct MoryRootView: View {
                 value: MoryAppTab.insights
             ) {
                 tabRoot(for: .insights) {
-                    InsightsRootScreen(requestedRoute: $pendingInsightsRoute)
+                    InsightsRootScreen(requestedRoute: $navigationCoordinator.insightsRoute)
                 }
                 .id(tabRefreshID)
             }
 
-            Tab(value: MoryAppTab.search, role: .search) {
-                tabRoot(for: .search) {
-                    SearchScreen(query: $searchQuery)
-                }
-                .id(tabRefreshID)
-            }
         }
-        .tabViewSearchActivation(.searchTabSelection)
         .tabBarMinimizeBehavior(.onScrollDown)
         .sheet(isPresented: $isPresentingVoiceSheet) {
             VoiceRecordingSheetView(
@@ -121,7 +107,7 @@ struct MoryRootView: View {
                 runtimeEnvironment: runtimeEnvironment
             )
         }
-        .sheet(item: $unifiedCaptureSeed) { seed in
+        .fullScreenCover(item: $unifiedCaptureSeed) { seed in
             UnifiedCaptureComposerView(seed: seed) {
                 tabRefreshID = UUID()
             }
@@ -139,15 +125,14 @@ struct MoryRootView: View {
         .onReceive(NotificationCenter.default.publisher(for: .moryAPNSTokenDidUpdate)) { _ in
             pushSyncTask?.cancel()
             pushSyncTask = Task {
-                await remotePushSyncService.syncRegistrationIfPossible(
-                    repository: memoryRepository,
-                    force: true
-                )
+                await runBackground(kind: .apnsTokenUpdated, source: "NotificationCenter")
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .moryNotificationPreferencesDidChange)) { _ in
             pushSyncTask?.cancel()
-            pushSyncTask = Task { await syncRemotePushRegistration(force: true) }
+            pushSyncTask = Task {
+                await runBackground(kind: .notificationPreferencesChanged, source: "NotificationCenter")
+            }
         }
         .task {
             await recoverStartupIntelligenceIfNeeded()
@@ -163,7 +148,7 @@ struct MoryRootView: View {
             externalCaptureTask?.cancel()
             externalCaptureTask = Task { await handlePendingExternalCaptureURLIfNeeded() }
         }
-        .onChange(of: selectedTab) { _, tab in
+        .onChange(of: navigationCoordinator.selectedTab) { _, tab in
             if tab != .today {
                 isEditingHomeBoard = false
             }
@@ -171,7 +156,10 @@ struct MoryRootView: View {
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active else { return }
             externalCaptureTask?.cancel()
-            externalCaptureTask = Task { await handlePendingExternalCaptureHandoffIfNeeded() }
+            externalCaptureTask = Task {
+                await runBackground(kind: .sceneForeground, source: "scenePhase")
+                await handlePendingExternalCaptureHandoffIfNeeded()
+            }
         }
     }
 
@@ -190,7 +178,7 @@ struct MoryRootView: View {
             let draft = try ExternalCaptureInboxCodec().makeDraft(from: item)
             pendingExternalCaptureURL = nil
             unifiedCaptureSeed = .externalDraft(draft, inboxItemID: item.id)
-            selectedTab = .memories
+            navigationCoordinator.selectedTab = .memories
         } catch {
             pendingExternalCaptureURL = nil
             return
@@ -207,7 +195,7 @@ struct MoryRootView: View {
             }
             let draft = try ExternalCaptureInboxCodec().makeDraft(from: item)
             unifiedCaptureSeed = .externalDraft(draft, inboxItemID: item.id)
-            selectedTab = .memories
+            navigationCoordinator.selectedTab = .memories
         } catch {
             return
         }
@@ -231,12 +219,7 @@ struct MoryRootView: View {
         for tab: MoryAppTab,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        if tab == .search {
-            tabNavigationStack(for: tab, content: content)
-                .searchable(text: $searchQuery, prompt: "search.prompt")
-        } else {
-            tabNavigationStack(for: tab, content: content)
-        }
+        tabNavigationStack(for: tab, content: content)
     }
 
     private func tabNavigationStack<Content: View>(
@@ -315,7 +298,7 @@ struct MoryRootView: View {
                 }
                 .accessibilityLabel(Text("timeline.nav.title"))
             }
-        case .insights, .search:
+        case .insights:
             ToolbarItem(placement: .topBarTrailing) {
                 settingsButton
             }
@@ -352,6 +335,15 @@ struct MoryRootView: View {
         DispatchQueue.main.async {
             unifiedCaptureSeed = .empty
         }
+    }
+
+    @MainActor
+    private func runBackground(kind: BackgroundTriggerKind, source: String) async {
+        _ = await backgroundTriggerDispatcher.handle(
+            trigger: BackgroundTrigger(kind: kind, source: source),
+            repository: memoryRepository,
+            now: .now
+        )
     }
 
     private func startVoiceCapture() {
@@ -404,7 +396,7 @@ struct MoryRootView: View {
         }
 
         do {
-            let result = try notificationInteractionService.handle(
+            let result = try NotificationInteractionService().handle(
                 event: event,
                 repository: memoryRepository
             )
@@ -418,61 +410,14 @@ struct MoryRootView: View {
     }
 
     private func apply(_ route: NotificationInteractionRoute) {
-        if let deepLink = route.deepLink {
-            apply(deepLink)
-            return
-        }
-
-        switch route.destination {
-        case .home:
-            selectedTab = .today
-        case .memories:
-            selectedTab = .memories
-        case .insights:
-            selectedTab = .insights
-        case .search:
-            selectedTab = .search
-        }
-    }
-
-    private func apply(_ deepLink: MoryDeepLinkRoute) {
-        switch deepLink {
-        case .homeRoot:
-            selectedTab = .today
-        case let .home(route):
-            selectedTab = .today
-            pendingHomeRoute = route
-        case let .memories(route):
-            selectedTab = .memories
-            pendingMemoriesRoute = route
-        case let .insights(route):
-            selectedTab = .insights
-            pendingInsightsRoute = route
-        case .search:
-            selectedTab = .search
-        }
+        navigationCoordinator.apply(route)
     }
 
     private func recoverStartupIntelligenceIfNeeded() async {
         guard !didRunStartupRecovery else { return }
         didRunStartupRecovery = true
 
-        _ = await startupRecoveryService.recoverAfterLaunch(
-            repository: memoryRepository,
-            cloudIntelligenceService: cloudIntelligenceService,
-            remotePushSyncService: remotePushSyncService,
-            notificationOrchestrator: notificationOrchestrator
-        )
-        remotePushSyncService.registerSystemRemoteNotificationsIfNeeded(repository: memoryRepository)
-        await syncRemotePushRegistration(force: true)
-    }
-
-    private func syncRemotePushRegistration(force: Bool) async {
-        remotePushSyncService.registerSystemRemoteNotificationsIfNeeded(repository: memoryRepository)
-        await remotePushSyncService.syncRegistrationIfPossible(
-            repository: memoryRepository,
-            force: force
-        )
+        await runBackground(kind: .appLaunch, source: "MoryRootView.task")
     }
 }
 

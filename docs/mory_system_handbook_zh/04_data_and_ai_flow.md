@@ -36,9 +36,11 @@ Mory 的记忆可以来自这些入口：
 
 | 数据 | 用途 |
 | --- | --- |
-| 记忆记录 | 这条记忆本身，包含时间、正文、状态。 |
-| 附件 | 图片、视频、音频、链接、音乐、地点等内容。 |
-| 情绪快照 | 用户或系统提供的心情和语气证据。 |
+| `RecordShell` | 这条记忆本身，包含时间、正文、来源、上下文和 artifact IDs。 |
+| `Artifact[]` | 图片、视频、音频、链接、音乐、地点、天气、todo、文档等内容事实。 |
+| `ArtifactSemanticDigest[]` | OCR、caption、label、transcript、duration、dimensions、local identifier 等结构化媒体语义。 |
+| `MemoryCardArrangement` | 用户视觉排布，包括 visual recipe、size、order、stack/group、grid placement、rotation/nudge/zIndex。 |
+| `AffectSnapshot[]` | 用户或系统提供的心情和语气证据。 |
 | 人物/地点/主题实体 | Mory 从内容里识别出的长期对象。 |
 | 用户自己的档案 | 关于“我”的长期信息、偏好、目标、边界。 |
 | 人物画像 | 关于某个人和用户关系的长期信息。 |
@@ -51,22 +53,27 @@ Mory 的记忆可以来自这些入口：
 | --- | --- | --- |
 | 导入图片后 | 本地提取图片相关线索，后续参与云端分析 | 不应该挡住保存 |
 | 录音结束后 | 转写、可能润色或结构化 | 可能影响正文，需要保护用户编辑 |
-| 保存记忆后 | 构造上下文并调用 Analysis | 不应该挡住保存 |
+| 保存记忆后 | 默认只写入 `.notScheduled`，不自动代表 AI 已启动 | 不挡住保存 |
+| 显式触发分析后 | 构造上下文并调用 Analysis | 不应该挡住保存 |
 | 分析完成后 | 保存分析结果、proposal、问题、反思 | 不应该静默覆盖用户确认内容 |
 | 每日问题 | 根据近期记忆和画像生成问题 | 不应该过度打扰 |
 | 通知准备 | 决定是否提醒用户回顾或回答 | 需要明确节奏 |
 
 ## Analysis 做什么
 
-保存一条记忆后，Mory 不只是把这条记录发给 AI。它会先构造一个上下文包，包含：
+显式触发分析后，Mory 不只是把这条记录发给 AI。它会先构造一个上下文包，包含：
 
 - 当前这条记忆。
+- 这条记忆的 ordered artifacts。
+- 这条记忆的 ordered semantic digests。
 - 用户自己的档案。
 - 相关人物、地点、主题。
 - 相关历史记忆。
 - 相关 Arc 和 Reflection。
 - 过去的纠错和用户确认。
 - 隐私和预算限制。
+
+`MemoryCardArrangement` 不进入 Analysis 输入。它是用户视觉表达，不是语义事实。
 
 然后调用服务端 `/api/analyze`。返回结果再被拆成：
 

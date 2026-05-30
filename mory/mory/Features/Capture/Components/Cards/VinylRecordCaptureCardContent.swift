@@ -4,15 +4,57 @@ struct VinylRecordCaptureCardContent: View {
     let common: CaptureCardCommonDisplay
     let payload: CaptureMusicCardPayload
     let accent: Color
+    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .vinyl, sizeToken: .tape)
 
     var body: some View {
+        Group {
+            if metrics.sizeToken == .strip {
+                stripBody
+            } else {
+                tapeBody
+            }
+        }
+        .frame(width: metrics.preferredSize.width, height: metrics.preferredSize.height)
+    }
+
+    private var stripBody: some View {
+        HStack(spacing: 10) {
+            record
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.music"))
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .lineLimit(metrics.titleLineLimit)
+
+                if let artist = common.detail.trimmedOrNil {
+                    Text(artist)
+                        .font(.system(size: 9, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.76))
+                        .lineLimit(metrics.detailLineLimit)
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(metrics.padding.edgeInsets)
+        .frame(width: metrics.preferredSize.width, height: metrics.preferredSize.height, alignment: .leading)
+        .background(sleeveGradient, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .strokeBorder(.white.opacity(0.2), lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.12), radius: 6, y: 3)
+    }
+
+    private var tapeBody: some View {
         ZStack(alignment: .leading) {
             record
-                .offset(x: 54)
+                .offset(x: tapeRecordOffset)
 
             sleeve
         }
-        .frame(width: 230, height: 150)
+        .frame(width: metrics.preferredSize.width, height: metrics.preferredSize.height, alignment: .leading)
     }
 
     private var sleeve: some View {
@@ -27,19 +69,19 @@ struct VinylRecordCaptureCardContent: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.music"))
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .lineLimit(2)
+                    .lineLimit(metrics.titleLineLimit)
                     .foregroundStyle(.white)
 
                 if let artist = common.detail.trimmedOrNil {
                     Text(artist)
                         .font(.system(size: 10, weight: .medium, design: .rounded))
-                        .lineLimit(1)
+                        .lineLimit(metrics.detailLineLimit)
                         .foregroundStyle(.white.opacity(0.78))
                 }
             }
             .padding(12)
         }
-        .frame(width: 140, height: 140)
+        .frame(width: sleeveLength, height: sleeveLength)
         .shadow(color: .black.opacity(0.12), radius: 8, y: 4)
     }
 
@@ -69,8 +111,23 @@ struct VinylRecordCaptureCardContent: View {
                 .fill(.black.opacity(0.72))
                 .frame(width: 8, height: 8)
         }
-        .frame(width: 132, height: 132)
+        .frame(width: recordLength, height: recordLength)
         .shadow(color: .black.opacity(0.18), radius: 7, y: 3)
+    }
+
+    private var recordLength: CGFloat {
+        if metrics.sizeToken == .strip {
+            return min(58, max(42, metrics.preferredSize.height - metrics.padding.top - metrics.padding.bottom))
+        }
+        return min(sleeveLength * 0.94, max(96, metrics.preferredSize.height * 0.86))
+    }
+
+    private var sleeveLength: CGFloat {
+        min(max(118, metrics.preferredSize.height * 0.92), metrics.preferredSize.width * 0.62)
+    }
+
+    private var tapeRecordOffset: CGFloat {
+        max(sleeveLength * 0.36, metrics.preferredSize.width - recordLength - 8)
     }
 
     private var sleeveGradient: LinearGradient {

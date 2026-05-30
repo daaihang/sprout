@@ -162,6 +162,8 @@ final class MemoryDetailPresentationResolverTests: XCTestCase {
                 artifactIDs: artifacts.map(\.id)
             ),
             artifacts: artifacts,
+            artifactSemanticDigests: [],
+            cardArrangement: nil,
             analysis: nil,
             pipelineStatus: nil,
             entities: [],

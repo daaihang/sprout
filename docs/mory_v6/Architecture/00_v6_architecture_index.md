@@ -17,7 +17,7 @@ Relevant existing files:
 - Repository implementation: `/Users/z14/Documents/sprout/mory/mory/Persistence/Repositories/MoryMemoryRepository.swift`
 - SwiftData stores: `/Users/z14/Documents/sprout/mory/mory/Persistence/Models/MoryStoreModels.swift`
 - SwiftData schema: `/Users/z14/Documents/sprout/mory/mory/Persistence/Stack/MoryPersistenceStack.swift`
-- Analysis pipeline: `/Users/z14/Documents/sprout/mory/mory/Infrastructure/Analysis/Pipeline/ArchitecturePipelineExecutor.swift`
+- Analysis pipeline: `/Users/z14/Documents/sprout/mory/mory/Infrastructure/Analysis/Pipeline/AnalysisExecutor.swift`
 - Home board rules: `/Users/z14/Documents/sprout/mory/mory/Domain/Composition/HomeBoardRuleEngine.swift`
 - Search service: `/Users/z14/Documents/sprout/mory/mory/Infrastructure/Analysis/Graph/MemorySearchService.swift`
 - Go API routes: `/Users/z14/Documents/sprout/server/internal/http/server.go`

@@ -1,4 +1,3 @@
-#if DEBUG
 import SwiftUI
 
 struct DebugHomeBoardDiagnosticsView: View {
@@ -212,4 +211,3 @@ private struct DebugHomeBoardItemDiagnosticsRow: View {
         .padding(.vertical, 4)
     }
 }
-#endif

@@ -70,7 +70,6 @@ struct SettingsScreen: View {
         case .appearanceLanguage:
             SettingsAppearanceLanguageSection(memoryRepository: memoryRepository)
         case .diagnostics:
-            #if DEBUG
             if runtimeEnvironment.allowsDebugTools {
                 DebugDiagnosticsView(
                     authManager: authManager,
@@ -83,13 +82,6 @@ struct SettingsScreen: View {
                     systemImage: "stethoscope"
                 )
             }
-            #else
-            SettingsPlaceholderSection(
-                title: "settings.diagnostics.title",
-                message: "settings.diagnostics.unavailable",
-                systemImage: "stethoscope"
-            )
-            #endif
         }
     }
 }

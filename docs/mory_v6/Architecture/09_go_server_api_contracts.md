@@ -302,7 +302,7 @@ Rules:
 POST /api/push/enqueue
 ```
 
-This endpoint queues a remote notification delivery for the authenticated user and attempts due delivery through the configured APNs client. It is intentionally a light delivery contract: the caller supplies generic notification copy and target metadata, not raw memory content.
+This endpoint queues a remote notification delivery for the authenticated user. Delivery is asynchronous and handled by the scheduled push delivery worker. It is intentionally a light delivery contract: the caller supplies generic notification copy and target metadata, not raw memory content.
 
 Request:
 
@@ -351,9 +351,7 @@ Response:
   "accepted": true,
   "user_id": "string",
   "queued_count": 1,
-  "skipped_count": 0,
-  "sent_count": 1,
-  "failed_count": 0
+  "skipped_count": 0
 }
 ```
 

@@ -1,6 +1,6 @@
 # 05. AI Intelligence Architecture Audit
 
-本文审计 Mory v7 的长期智能层：SelfProfile、AnalysisContextPack、Analyze v7、Entity Resolution、GraphDelta、PersonProfile、AffectSnapshot、Arc/Reflection 和 background intelligence jobs。
+本文审计 Mory v7 的长期智能层：SelfProfile、AnalysisContextPack、Analysis、Entity Resolution、GraphDelta、PersonProfile、AffectSnapshot、Arc/Reflection 和 background intelligence jobs。
 
 ## 1. 当前智能层总流
 
@@ -9,9 +9,9 @@ flowchart TD
     A["New or changed memory"] --> B["Context preprocessing"]
     B --> C["SelfProfile + related profiles"]
     C --> D["AnalysisContextPack"]
-    D --> E["AnalyzeV7Request"]
+    D --> E["AnalysisRequestPayload"]
     E --> F["Go server / AI provider"]
-    F --> G["AnalyzeV7Response"]
+    F --> G["AnalysisResponseEnvelope"]
     G --> H["RecordAnalysisSnapshot"]
     G --> I["Affect proposals"]
     G --> J["GraphDelta proposals"]
@@ -94,12 +94,12 @@ flowchart TD
 - context builder 依赖 `ContextPackSourceRepositorying` 小端口。
 - 将 ranking feature 以可解释字段输出到 debug/eval。
 
-## 4. Analyze v7
+## 4. Analysis
 
 职责：
 
-- iOS 构造 v7 payload。
-- Go server 走 v7-native prompt/parser/provider path。
+- iOS 构造 Analysis payload。
+- Go server 走 Analysis prompt/parser/provider path。
 - 返回 analysis + proposals + quality。
 
 输入：
@@ -112,18 +112,18 @@ flowchart TD
 
 输出：
 
-- `AnalyzeV7ResponseEnvelope`
+- `AnalysisResponseEnvelope`
 - `RecordAnalysisSnapshot`
 - proposals。
 
 问题：
 
-- iOS `AnalyzeV7Models.swift` 文件较大。
-- server v7 types 中仍存在从 legacy analysis 构造 v7 proposal 的 helper，容易让人误解为 AI 原生 proposal 已完全独立。
+- iOS `AnalysisModels.swift` 已拆分为 request payload、response envelope、response mapper 和 record snapshot mapper。
+- server analysis types 中仍存在 deterministic proposal normalization helper，容易让人误解为 AI 原生 proposal 已完全独立。
 
 解决方案：
 
-- iOS 拆 request/response/mapper/capabilities。
+- iOS 已拆 request/response/mapper/capabilities，并以 `RecordAnalysisSnapshotMapper` 明确服务当前 `/api/analyze` response envelope。
 - server 文档明确：当前 native v7 contract 已是主路径，但部分 deterministic proposal builder 仍是 compatibility bridge。
 
 ## 5. Entity Resolution
@@ -174,7 +174,7 @@ flowchart TD
 
 输入：
 
-- Analyze v7 proposal。
+- Analysis proposal。
 - clarification answer。
 - debug/manual action。
 
@@ -239,7 +239,7 @@ flowchart TD
 
 - StructuredMoodPicker。
 - Journaling `StateOfMind`。
-- Analyze v7 affect proposal。
+- Analysis affect proposal。
 - AffectCorrection。
 
 输出：
@@ -263,7 +263,7 @@ flowchart TD
 职责：
 
 - 将多条记忆聚合成时间线/阶段/反思。
-- 既接收 Analyze v7 candidates，也保留本地 deterministic promotion。
+- 既接收 Analysis candidates，也保留本地 deterministic promotion。
 
 输入：
 

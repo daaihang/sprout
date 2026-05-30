@@ -108,6 +108,116 @@ extension ArtifactStore {
 }
 
 @MainActor
+extension ArtifactSemanticDigestStore {
+    convenience init(domainModel: ArtifactSemanticDigest) {
+        self.init(
+            id: domainModel.id,
+            recordID: domainModel.recordID,
+            artifactID: domainModel.artifactID,
+            artifactKindRawValue: domainModel.artifactKind.rawValue,
+            schemaVersion: domainModel.schemaVersion,
+            sourceRawValue: domainModel.source.rawValue,
+            summary: domainModel.summary,
+            caption: domainModel.caption,
+            ocrText: domainModel.ocrText,
+            visualLabels: domainModel.visualLabels,
+            transcript: domainModel.transcript,
+            languageCode: domainModel.languageCode,
+            confidence: domainModel.confidence,
+            durationSeconds: domainModel.durationSeconds,
+            dimensionsData: PersistenceCoding.encode(domainModel.dimensions),
+            captureDate: domainModel.captureDate,
+            localIdentifier: domainModel.localIdentifier,
+            technicalNotes: domainModel.technicalNotes,
+            createdAt: domainModel.createdAt,
+            updatedAt: domainModel.updatedAt
+        )
+    }
+
+    var domainModel: ArtifactSemanticDigest {
+        ArtifactSemanticDigest(
+            id: id,
+            recordID: recordID,
+            artifactID: artifactID,
+            artifactKind: ArtifactKind(rawValue: artifactKindRawValue) ?? .document,
+            schemaVersion: schemaVersion,
+            source: ArtifactSemanticDigestSource(rawValue: sourceRawValue) ?? .localCapture,
+            summary: summary,
+            caption: caption,
+            ocrText: ocrText,
+            visualLabels: visualLabels,
+            transcript: transcript,
+            languageCode: languageCode,
+            confidence: confidence,
+            durationSeconds: durationSeconds,
+            dimensions: PersistenceCoding.decode(ArtifactMediaDimensions.self, from: dimensionsData),
+            captureDate: captureDate,
+            localIdentifier: localIdentifier,
+            technicalNotes: technicalNotes,
+            createdAt: createdAt,
+            updatedAt: updatedAt
+        )
+    }
+
+    func apply(domainModel: ArtifactSemanticDigest) {
+        id = domainModel.id
+        recordID = domainModel.recordID
+        artifactID = domainModel.artifactID
+        artifactKindRawValue = domainModel.artifactKind.rawValue
+        schemaVersion = domainModel.schemaVersion
+        sourceRawValue = domainModel.source.rawValue
+        summary = domainModel.summary
+        caption = domainModel.caption
+        ocrText = domainModel.ocrText
+        visualLabels = domainModel.visualLabels
+        transcript = domainModel.transcript
+        languageCode = domainModel.languageCode
+        confidence = domainModel.confidence
+        durationSeconds = domainModel.durationSeconds
+        dimensionsData = PersistenceCoding.encode(domainModel.dimensions)
+        captureDate = domainModel.captureDate
+        localIdentifier = domainModel.localIdentifier
+        technicalNotes = domainModel.technicalNotes
+        createdAt = domainModel.createdAt
+        updatedAt = domainModel.updatedAt
+    }
+}
+
+@MainActor
+extension MemoryCardArrangementStore {
+    convenience init(domainModel: MemoryCardArrangement) {
+        self.init(
+            id: domainModel.id,
+            recordID: domainModel.recordID,
+            schemaVersion: domainModel.schemaVersion,
+            nodesData: PersistenceCoding.encode(domainModel.nodes),
+            createdAt: domainModel.createdAt,
+            updatedAt: domainModel.updatedAt
+        )
+    }
+
+    var domainModel: MemoryCardArrangement {
+        MemoryCardArrangement(
+            id: id,
+            recordID: recordID,
+            schemaVersion: schemaVersion,
+            nodes: PersistenceCoding.decode([MemoryCardNode].self, from: nodesData) ?? [],
+            createdAt: createdAt,
+            updatedAt: updatedAt
+        )
+    }
+
+    func apply(domainModel: MemoryCardArrangement) {
+        id = domainModel.id
+        recordID = domainModel.recordID
+        schemaVersion = domainModel.schemaVersion
+        nodesData = PersistenceCoding.encode(domainModel.nodes)
+        createdAt = domainModel.createdAt
+        updatedAt = domainModel.updatedAt
+    }
+}
+
+@MainActor
 extension RecordAnalysisSnapshotStore {
     convenience init(domainModel: RecordAnalysisSnapshot) {
         self.init(
@@ -181,7 +291,7 @@ extension MemoryPipelineStatusStore {
     var domainModel: MemoryPipelineStatusSnapshot {
         MemoryPipelineStatusSnapshot(
             recordID: recordID,
-            stage: MemoryPipelineStage(rawValue: stageRawValue) ?? .pending,
+            stage: MemoryPipelineStage(rawValue: stageRawValue) ?? .notScheduled,
             requestID: requestID,
             lastError: lastError,
             requestBody: requestBody,

@@ -113,5 +113,5 @@ All controls write `CorrectionEvent`, not just UI state.
 - “我/自己/我的...” references resolve before generic entity creation.
 - Role labels tied to user do not become concrete people without evidence.
 - Self profile can be inspected and edited in debug UI before public UI polish.
-- Analyze v7 receives a bounded `self_context_brief`, not the raw full profile.
+- Analysis receives a bounded `self_context_brief`, not the raw full profile.
 - User correction prevents repeated self-reference mistakes.

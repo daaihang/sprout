@@ -1,12 +1,12 @@
+import Combine
 import Foundation
 
 enum MoryAppTab: String, CaseIterable, Hashable, Identifiable, Sendable {
     case today
     case memories
     case insights
-    case search
 
-    static let publicTabs: [MoryAppTab] = [.today, .memories, .insights, .search]
+    static let publicTabs: [MoryAppTab] = [.today, .memories, .insights]
 
     var id: String { rawValue }
 
@@ -15,7 +15,6 @@ enum MoryAppTab: String, CaseIterable, Hashable, Identifiable, Sendable {
         case .today: "tab.today"
         case .memories: "tab.memories"
         case .insights: "tab.insights"
-        case .search: "search.nav.title"
         }
     }
 
@@ -24,7 +23,6 @@ enum MoryAppTab: String, CaseIterable, Hashable, Identifiable, Sendable {
         case .today: "house.fill"
         case .memories: "archivebox.fill"
         case .insights: "chart.line.uptrend.xyaxis"
-        case .search: "magnifyingglass"
         }
     }
 }
@@ -92,6 +90,53 @@ enum MoryDeepLinkRoute: Hashable, Sendable {
 
         default:
             return nil
+        }
+    }
+}
+
+@MainActor
+final class NavigationRouteCoordinator: ObservableObject {
+    @Published var selectedTab: MoryAppTab = .today
+    @Published var homeRoute: HomeRoute?
+    @Published var memoriesRoute: MemoriesRoute?
+    @Published var insightsRoute: InsightsRoute?
+
+    func apply(_ route: NotificationInteractionRoute) {
+        if let deepLink = route.deepLink {
+            apply(deepLink)
+            return
+        }
+
+        switch route.destination {
+        case .home:
+            selectedTab = .today
+        case .memories:
+            selectedTab = .memories
+        case .insights:
+            selectedTab = .insights
+        case .search:
+            selectedTab = .memories
+        }
+    }
+
+    func apply(_ deepLink: MoryDeepLinkRoute) {
+        switch deepLink {
+        case .homeRoot:
+            selectedTab = .today
+        case let .home(route):
+            selectedTab = .today
+            homeRoute = nil
+            homeRoute = route
+        case let .memories(route):
+            selectedTab = .memories
+            memoriesRoute = nil
+            memoriesRoute = route
+        case let .insights(route):
+            selectedTab = .insights
+            insightsRoute = nil
+            insightsRoute = route
+        case .search:
+            selectedTab = .memories
         }
     }
 }

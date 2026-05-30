@@ -6,7 +6,7 @@ This section lists user-facing and near-user-facing Mory features. Each feature 
 
 | Feature | Current Status | Product Entry | Debug/Diagnostics | Main Next Step |
 | --- | --- | --- | --- | --- |
-| Unified capture composer | `usable` | Global capture / composer | Capture Card Lab | Make source/provenance clearer. |
+| Unified capture composer | `usable` | Global capture / composer | Card Debug | Make source/provenance clearer. |
 | Text capture | `stable` | Composer body | Diagnostics fixtures | Keep as baseline. |
 | Photo capture | `usable` | PhotosPicker/camera | Photo capability test | Clarify local processing vs cloud analysis. |
 | Video capture | `wired` | Imported/Journaling | Artifact diagnostics | Improve card/player presentation. |
@@ -17,7 +17,7 @@ This section lists user-facing and near-user-facing Mory features. Each feature 
 | Journaling Suggestions | `wired` | Composer toolbar | Platform diagnostics/fallback | Add stronger provenance and real-device checklist results. |
 | External Capture / Share | `wired` | Share extension/AppIntent | External draft review/inbox | Make handoff outcome visible. |
 | Self and people profiles | `wired` | People screens | Person profile debug | Add My Profile surface and evidence viewer. |
-| GraphDelta review | `wired` | Insights review | Debug review | Add reject reason and undo clarity. |
+| GraphDelta review | `wired` | Settings / Memory Intelligence | Debug review | Keep review out of the main Insights tab until the product review model is clearer. |
 | Notifications | `wired` | Settings/notification permissions | Remote push diagnostics | Validate real-device timing and APNs delivery. |
 | Subscription/paywall | `backend_only` | None | Server subscription verify | Define and enforce entitlement boundaries. |
 

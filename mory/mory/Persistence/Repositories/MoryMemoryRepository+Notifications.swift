@@ -68,27 +68,33 @@ extension MoryMemoryRepository {
     }
 
     func enqueueExternalCapture(_ request: ExternalCaptureRequest, receivedAt: Date = .now) throws -> ExternalCaptureInboxItem {
-        try ExternalCaptureImportUseCase(repository: self).enqueueExternalCapture(request, receivedAt: receivedAt)
+        try externalCaptureImportUseCase.enqueueExternalCapture(request, receivedAt: receivedAt)
     }
 
     func enqueueJournalingSuggestion(_ suggestion: JournalingSuggestionDraft, receivedAt: Date = .now) throws -> ExternalCaptureInboxItem {
-        try ExternalCaptureImportUseCase(repository: self).enqueueJournalingSuggestion(suggestion, receivedAt: receivedAt)
+        try externalCaptureImportUseCase.enqueueJournalingSuggestion(suggestion, receivedAt: receivedAt)
     }
 
     func fetchExternalCaptureInbox(status: ExternalCaptureInboxStatus?, limit: Int?) throws -> [ExternalCaptureInboxItem] {
-        try ExternalCaptureImportUseCase(repository: self).fetchExternalCaptureInbox(status: status, limit: limit)
+        try externalCaptureImportUseCase.fetchExternalCaptureInbox(status: status, limit: limit)
     }
 
     func dismissExternalCaptureInboxItem(_ id: UUID) throws {
-        try ExternalCaptureImportUseCase(repository: self).dismissExternalCaptureInboxItem(id)
+        try externalCaptureImportUseCase.dismissExternalCaptureInboxItem(id)
     }
 
     func markExternalCaptureInboxItemImported(_ id: UUID, recordID: UUID) throws {
-        try ExternalCaptureImportUseCase(repository: self).markExternalCaptureInboxItemImported(id, recordID: recordID)
+        try externalCaptureImportUseCase.markExternalCaptureInboxItemImported(id, recordID: recordID)
     }
 
     func createMemoryFromExternalCaptureInboxItem(_ id: UUID) async throws -> MemorySummary {
-        try await ExternalCaptureImportUseCase(repository: self).createMemoryFromExternalCaptureInboxItem(id)
+        try await externalCaptureImportUseCase.createMemoryFromExternalCaptureInboxItem(id)
     }
 
+    private var externalCaptureImportUseCase: ExternalCaptureImportUseCase {
+        ExternalCaptureImportUseCase(
+            repository: self,
+            artifactBuilder: captureArtifactBuilder
+        )
+    }
 }

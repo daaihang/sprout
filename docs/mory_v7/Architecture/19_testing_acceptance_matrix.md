@@ -23,7 +23,7 @@ v7 needs tests before prompt tuning and UI polish. This matrix defines minimum c
 
 | Flow | Expected outcome |
 | --- | --- |
-| create memory -> build context pack -> Analyze v7 | payload has bounded evidence and provenance |
+| create memory -> build context pack -> Analysis | payload has bounded evidence and provenance |
 | answer relationship question -> future Analyze | profile/correction signal appears in context |
 | merge two people -> search/profile/arc update | stale references rewritten or invalidated |
 | split role label -> clarification question | ambiguous bucket preserved |
@@ -77,7 +77,7 @@ Each Phase PR must update:
 | Phase 2 | identity correction and person merge/split work at repository level |
 | Phase 3 | person profile portrait job produces evidence-backed proposals |
 | Phase 4 | affect snapshot and Journaling evidence are persisted |
-| Phase 5 | production new-memory pipeline uses Analyze v7 context pack and persists proposals safely |
+| Phase 5 | production new-memory pipeline uses Analysis context pack and persists proposals safely |
 | Phase 6 | background/notification loop has policy, writeback, and debug traces |
 | Phase 7 | eval fixtures, debug surfaces, and privacy/budget gates can measure regressions before production rollout |
 
@@ -89,9 +89,10 @@ v7 acceptance coverage is now in place for the architecture baseline:
 - context/retrieval/privacy tests: `AnalysisContextPackTests`;
 - identity/correction tests: `EntityResolutionServiceTests`;
 - structured mood tests: `AffectSnapshotTests`;
-- background tests: `BackgroundTaskCoordinatorTests`;
+- background/runtime tests: `BackgroundOperationOrchestratorTests`, `BackgroundTaskCoordinatorTests`, `RuntimeOperationsCoordinatorTests`;
 - notification trigger/routing/policy/writeback tests: `NotificationOrchestratorTests`, `NotificationDeliveryRouterTests`, `LocalNotificationSchedulerTests`, `NotificationSettingsServiceTests`, `NotificationInteractionServiceTests`;
-- cloud contract tests: `AnalyzeV7ContractTests`.
+- push tests: `RemotePushSyncServiceTests` plus Go `server/internal/push` tests;
+- cloud contract tests: `AnalysisContractTests`.
 
 The remaining production tasks are real-device APNs/background soak, real-user telemetry, App Store capability checks, and polished user-facing UI.
 

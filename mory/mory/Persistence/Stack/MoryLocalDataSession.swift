@@ -3,8 +3,8 @@ import SwiftData
 
 @MainActor
 final class LocalDataOwnerRegistry {
-    private static let legacyOwnerDefaultsKey = "mory.localData.legacyOwnerID.v1"
-    static let activeOwnerDefaultsKey = "mory.localData.lastPreparedOwnerID.v1"
+    private static let legacyOwnerDefaultsKey = MoryUserDefaultsKeys.LocalData.legacyOwnerID
+    static let activeOwnerDefaultsKey = MoryUserDefaultsKeys.LocalData.activeOwnerID
 
     private let defaults: UserDefaults
     private let baseDirectory: URL?
@@ -83,7 +83,7 @@ final class MoryLocalDataSession {
         ownerID: String,
         analysisService: any ReflectionAnalysisServing,
         cloudIntelligenceService: (any CloudIntelligenceServing)? = nil,
-        notificationOrchestrator: NotificationOrchestrator? = nil
+        backgroundTriggerDispatcher: (any BackgroundTriggerDispatching)? = nil
     ) {
         let baseDirectory = Self.testingBaseDirectoryIfNeeded()
         let registry = LocalDataOwnerRegistry(baseDirectory: baseDirectory)
@@ -91,7 +91,7 @@ final class MoryLocalDataSession {
             ownerID: ownerID,
             analysisService: analysisService,
             cloudIntelligenceService: cloudIntelligenceService,
-            notificationOrchestrator: notificationOrchestrator,
+            backgroundTriggerDispatcher: backgroundTriggerDispatcher,
             scope: registry.scope(for: ownerID),
             baseDirectory: baseDirectory
         )
@@ -101,7 +101,7 @@ final class MoryLocalDataSession {
         ownerID: String,
         analysisService: any ReflectionAnalysisServing,
         cloudIntelligenceService: (any CloudIntelligenceServing)? = nil,
-        notificationOrchestrator: NotificationOrchestrator? = nil,
+        backgroundTriggerDispatcher: (any BackgroundTriggerDispatching)? = nil,
         registry: LocalDataOwnerRegistry
     ) {
         self.ownerID = ownerID
@@ -112,7 +112,7 @@ final class MoryLocalDataSession {
             analysisService: analysisService,
             cloudIntelligenceService: cloudIntelligenceService,
             localDataOwnerID: ownerID,
-            notificationOrchestrator: notificationOrchestrator
+            backgroundTriggerDispatcher: backgroundTriggerDispatcher
         )
         self.diagnostics = Self.makeDiagnostics(
             ownerID: ownerID,
@@ -126,7 +126,7 @@ final class MoryLocalDataSession {
         ownerID: String,
         analysisService: any ReflectionAnalysisServing,
         cloudIntelligenceService: (any CloudIntelligenceServing)? = nil,
-        notificationOrchestrator: NotificationOrchestrator? = nil,
+        backgroundTriggerDispatcher: (any BackgroundTriggerDispatching)? = nil,
         scope: MoryLocalDataScope,
         baseDirectory: URL?
     ) {
@@ -141,7 +141,7 @@ final class MoryLocalDataSession {
             analysisService: analysisService,
             cloudIntelligenceService: cloudIntelligenceService,
             localDataOwnerID: ownerID,
-            notificationOrchestrator: notificationOrchestrator
+            backgroundTriggerDispatcher: backgroundTriggerDispatcher
         )
         self.diagnostics = Self.makeDiagnostics(
             ownerID: ownerID,
@@ -179,32 +179,32 @@ final class MoryLocalDataSession {
     private static func userDefaultsScopes(ownerID: String) -> [MoryUserDefaultsScopeEntry] {
         [
             MoryUserDefaultsScopeEntry(
-                key: "mory.apnsTokenHex",
+                key: MoryUserDefaultsKeys.RemotePush.legacyAPNSTokenHex,
                 scope: .device,
                 note: "APNs token is issued per app install/device and shared by all local owners."
             ),
             MoryUserDefaultsScopeEntry(
-                key: "mory.remotePush.lastRegistrationDigest.<owner>",
+                key: "\(MoryUserDefaultsKeys.RemotePush.lastRegistrationDigest).<owner>",
                 scope: .owner,
                 note: "Remote push registration digest is namespaced to \(ownerID)."
             ),
             MoryUserDefaultsScopeEntry(
-                key: "mory.remotePush.pendingWritebacks.<owner>",
+                key: "\(MoryUserDefaultsKeys.RemotePush.pendingWritebacks).<owner>",
                 scope: .owner,
                 note: "Delivery writeback retry queue is namespaced to \(ownerID)."
             ),
             MoryUserDefaultsScopeEntry(
-                key: "mory.onboarding.v1.completed",
+                key: MoryUserDefaultsKeys.Onboarding.completedV1,
                 scope: .device,
                 note: "Current onboarding completion is device-scoped; no memory data is stored here."
             ),
             MoryUserDefaultsScopeEntry(
-                key: "mory.debug.qualityTuning.*",
+                key: MoryUserDefaultsKeys.DebugQualityTuning.wildcard,
                 scope: .debug,
                 note: "Runtime tuning switches are debug/device-scoped; persisted quality preferences live in the owner SwiftData vault."
             ),
             MoryUserDefaultsScopeEntry(
-                key: "mory.localData.legacyOwnerID.v1",
+                key: MoryUserDefaultsKeys.LocalData.legacyOwnerID,
                 scope: .device,
                 note: "Device-level migration marker assigning the old global SwiftData store to one non-guest owner."
             ),

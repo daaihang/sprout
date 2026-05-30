@@ -125,6 +125,7 @@ struct PipelineStatusBadge: View {
 
     private var statusColor: Color {
         switch status.stage {
+        case .notScheduled: return .secondary
         case .pending: return .gray
         case .running: return .blue
         case .completed: return .green

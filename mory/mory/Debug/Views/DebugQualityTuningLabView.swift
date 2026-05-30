@@ -1,4 +1,3 @@
-#if DEBUG
 import SwiftUI
 import SwiftData
 
@@ -506,4 +505,3 @@ struct DebugQualityTuningReportBody: View {
         .padding(.vertical, 4)
     }
 }
-#endif

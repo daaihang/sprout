@@ -5,6 +5,7 @@ enum ArtifactKind: String, Codable, CaseIterable, Identifiable, Sendable {
     case photo
     case audio
     case video
+    case livePhoto
     case music
     case link
     case location

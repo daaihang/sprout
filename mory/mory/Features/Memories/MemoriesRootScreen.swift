@@ -13,6 +13,7 @@ struct MemoriesRootScreen: View {
     @State private var isPresentingComposer = false
     @State private var errorMessage: String?
     @State private var selectedRoute: MemoriesRoute?
+    @State private var searchQuery = ""
 
     init(
         requestedRoute: Binding<MemoriesRoute?> = .constant(nil),
@@ -32,6 +33,76 @@ struct MemoriesRootScreen: View {
     }
 
     var body: some View {
+        Group {
+            if searchQuery.trimmedOrNil != nil {
+                SearchScreen(
+                    query: $searchQuery,
+                    presentation: .embeddedInMemories
+                )
+            } else {
+                memoryLibraryContent
+            }
+        }
+        .navigationTitle("tab.memories")
+        .searchable(text: $searchQuery, prompt: "search.prompt")
+        .navigationDestination(item: $selectedRoute) { route in
+            switch route {
+            case let .memory(recordID):
+                MemoryDetailView(recordID: recordID)
+                    .moryHidesTabChrome()
+            }
+        }
+        .task {
+            await load()
+        }
+        .refreshable {
+            await load()
+        }
+        .onChange(of: selectedArtifactKind) { _, _ in Task { await load() } }
+        .onChange(of: selectedPipelineStage) { _, _ in Task { await load() } }
+        .onChange(of: selectedContext) { _, _ in Task { await load() } }
+        .onChange(of: selectedInsight) { _, _ in Task { await load() } }
+        .onAppear {
+            consumeRequestedRouteIfNeeded()
+        }
+        .onChange(of: requestedRoute) { _, _ in
+            consumeRequestedRouteIfNeeded()
+        }
+        .fullScreenCover(isPresented: $isPresentingComposer) {
+            UnifiedCaptureComposerView(seed: .empty) {
+                Task { await load() }
+            }
+        }
+        .sheet(isPresented: $isPresentingFilterSheet) {
+            NavigationStack {
+                Form {
+                    Section {
+                        MemoryLibraryFilterBar(
+                            selectedArtifactKind: $selectedArtifactKind,
+                            selectedPipelineStage: $selectedPipelineStage,
+                            selectedContext: $selectedContext,
+                            selectedInsight: $selectedInsight,
+                            snapshot: snapshot,
+                            onClear: clearFilters
+                        )
+                    }
+                }
+                .navigationTitle("memories.filters.title")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("common.done") {
+                            isPresentingFilterSheet = false
+                        }
+                    }
+                }
+            }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
+    }
+
+    private var memoryLibraryContent: some View {
         List {
             if let errorMessage {
                 Section {
@@ -78,62 +149,6 @@ struct MemoriesRootScreen: View {
                         .frame(maxWidth: .infinity)
                 }
             }
-        }
-        .navigationTitle("tab.memories")
-        .navigationDestination(item: $selectedRoute) { route in
-            switch route {
-            case let .memory(recordID):
-                MemoryDetailView(recordID: recordID)
-                    .moryHidesTabChrome()
-            }
-        }
-        .task {
-            await load()
-        }
-        .refreshable {
-            await load()
-        }
-        .onChange(of: selectedArtifactKind) { _, _ in Task { await load() } }
-        .onChange(of: selectedPipelineStage) { _, _ in Task { await load() } }
-        .onChange(of: selectedContext) { _, _ in Task { await load() } }
-        .onChange(of: selectedInsight) { _, _ in Task { await load() } }
-        .onAppear {
-            consumeRequestedRouteIfNeeded()
-        }
-        .onChange(of: requestedRoute) { _, _ in
-            consumeRequestedRouteIfNeeded()
-        }
-        .sheet(isPresented: $isPresentingComposer) {
-            UnifiedCaptureComposerView(seed: .empty) {
-                Task { await load() }
-            }
-        }
-        .sheet(isPresented: $isPresentingFilterSheet) {
-            NavigationStack {
-                Form {
-                    Section {
-                        MemoryLibraryFilterBar(
-                            selectedArtifactKind: $selectedArtifactKind,
-                            selectedPipelineStage: $selectedPipelineStage,
-                            selectedContext: $selectedContext,
-                            selectedInsight: $selectedInsight,
-                            snapshot: snapshot,
-                            onClear: clearFilters
-                        )
-                    }
-                }
-                .navigationTitle("memories.filters.title")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button("common.done") {
-                            isPresentingFilterSheet = false
-                        }
-                    }
-                }
-            }
-            .presentationDetents([.medium, .large])
-            .presentationDragIndicator(.visible)
         }
     }
 
@@ -322,6 +337,7 @@ private struct MemoryLibraryFilterBar: View {
         case .photo: return String(localized: "capture.type.photo")
         case .audio: return String(localized: "capture.type.audio")
         case .video: return "Video"
+        case .livePhoto: return "Live Photo"
         case .music: return String(localized: "capture.type.music")
         case .link: return String(localized: "capture.type.link")
         case .location: return String(localized: "capture.type.location")
@@ -333,6 +349,7 @@ private struct MemoryLibraryFilterBar: View {
 
     private func stageLabel(_ stage: MemoryPipelineStage) -> String {
         switch stage {
+        case .notScheduled: return String(localized: "pipeline.status.notScheduled")
         case .pending: return String(localized: "pipeline.status.pending")
         case .running: return String(localized: "pipeline.status.running")
         case .completed: return String(localized: "pipeline.status.completed")
@@ -405,6 +422,7 @@ private struct MemoryLibraryRowView: View {
         case .photo: return "photo"
         case .audio: return "waveform"
         case .video: return "video"
+        case .livePhoto: return "livephoto"
         case .music: return "music.note"
         case .link: return "link"
         case .location: return "mappin.and.ellipse"
@@ -422,6 +440,7 @@ private extension ArtifactKind {
         case .photo: return String(localized: "capture.type.photo")
         case .audio: return String(localized: "capture.type.audio")
         case .video: return "Video"
+        case .livePhoto: return "Live Photo"
         case .music: return String(localized: "capture.type.music")
         case .link: return String(localized: "capture.type.link")
         case .location: return String(localized: "capture.type.location")

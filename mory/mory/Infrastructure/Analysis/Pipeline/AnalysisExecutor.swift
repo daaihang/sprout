@@ -15,6 +15,7 @@ struct AnalysisExecutor {
     func run(
         record: RecordShell,
         artifacts: [Artifact],
+        inputContract: AnalysisInputContract? = nil,
         dependencies: AnalysisPipelineDependencies
     ) async throws {
         // Step 1: Fetch known entities for compact compatibility context.
@@ -38,8 +39,11 @@ struct AnalysisExecutor {
         let contextPack = try await dependencies.contextProvider.buildContextPack(targetRecordID: record.id)
         let affectSnapshots = (try? dependencies.contextProvider.fetchAffectSnapshots(recordID: record.id, limit: 10)) ?? []
         let payload = AnalysisRequestBuilder().build(
-            record: record,
-            artifacts: artifacts,
+            inputContract: inputContract ?? AnalysisInputContract(
+                record: record,
+                artifacts: artifacts,
+                semanticDigests: []
+            ),
             knownEntities: Array(knownEntities),
             contextPack: contextPack,
             affectSnapshots: affectSnapshots

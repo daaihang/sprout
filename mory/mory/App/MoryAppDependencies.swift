@@ -23,6 +23,16 @@ private struct NotificationOrchestratorKey: EnvironmentKey {
     static let defaultValue = NotificationOrchestrator(policy: NotificationPolicy())
 }
 
+private struct BackgroundTriggerDispatcherKey: EnvironmentKey {
+    @MainActor
+    static let defaultValue: any BackgroundTriggerDispatching = BackgroundOperationOrchestrator.noop
+}
+
+private struct BackgroundOperationOrchestratorKey: EnvironmentKey {
+    @MainActor
+    static let defaultValue = BackgroundOperationOrchestrator.noop
+}
+
 private struct LocalDataDiagnosticsKey: EnvironmentKey {
     static let defaultValue: MoryLocalDataDiagnostics? = nil
 }
@@ -46,6 +56,16 @@ extension EnvironmentValues {
     var notificationOrchestrator: NotificationOrchestrator {
         get { self[NotificationOrchestratorKey.self] }
         set { self[NotificationOrchestratorKey.self] = newValue }
+    }
+
+    var backgroundTriggerDispatcher: any BackgroundTriggerDispatching {
+        get { self[BackgroundTriggerDispatcherKey.self] }
+        set { self[BackgroundTriggerDispatcherKey.self] = newValue }
+    }
+
+    var backgroundOperationOrchestrator: BackgroundOperationOrchestrator {
+        get { self[BackgroundOperationOrchestratorKey.self] }
+        set { self[BackgroundOperationOrchestratorKey.self] = newValue }
     }
 
     var localDataDiagnostics: MoryLocalDataDiagnostics? {
@@ -126,6 +146,7 @@ private final class MissingMemoryRepository: MoryMemoryRepositorying {
     func fetchEntityProfile(entityID: UUID) throws -> EntityProfile? { fail() }
     func fetchEntityProfiles(kind: EntityKind?, limit: Int?) throws -> [EntityProfile] { fail() }
     func upsertEntityProfile(_ profile: EntityProfile) throws { let _: Void = fail() }
+    func upsertEntityNode(_ entityNode: EntityNode) throws { let _: Void = fail() }
     func fetchPersonProfile(entityID: UUID) throws -> PersonProfile? { fail() }
     func fetchPersonProfiles(limit: Int?) throws -> [PersonProfile] { fail() }
     func upsertPersonProfile(_ profile: PersonProfile) throws { let _: Void = fail() }
@@ -163,6 +184,10 @@ private final class MissingMemoryRepository: MoryMemoryRepositorying {
     func dismissExternalCaptureInboxItem(_ id: UUID) throws { let _: Void = fail() }
     func markExternalCaptureInboxItemImported(_ id: UUID, recordID: UUID) throws { let _: Void = fail() }
     func createMemoryFromExternalCaptureInboxItem(_ id: UUID) async throws -> MemorySummary { fail() }
+    func fetchBackgroundOperationRuns(status: BackgroundOperationStatus?, limit: Int?) throws -> [BackgroundOperationRun] { fail() }
+    func fetchBackgroundOperationEvents(runID: UUID?, limit: Int?) throws -> [BackgroundOperationEvent] { fail() }
+    func upsertBackgroundOperationRun(_ run: BackgroundOperationRun) throws { let _: Void = fail() }
+    func upsertBackgroundOperationEvent(_ event: BackgroundOperationEvent) throws { let _: Void = fail() }
     func fetchIntelligenceJobs(status: IntelligenceJobStatus?, limit: Int?) throws -> [IntelligenceJob] { fail() }
     func upsertIntelligenceJob(_ job: IntelligenceJob) throws { let _: Void = fail() }
     func fetchGraphDeltas(applied: Bool?, limit: Int?) throws -> [GraphDelta] { fail() }
@@ -194,16 +219,18 @@ private struct MissingCloudIntelligenceService: CloudIntelligenceServing {
 
 @MainActor
 private final class MissingRemotePushSyncService: RemotePushSyncing {
+    var hasAPNSToken: Bool { false }
+
     func registerSystemRemoteNotificationsIfNeeded(repository: any MoryMemoryRepositorying) {}
     func syncRegistrationIfPossible(repository: any MoryMemoryRepositorying, force: Bool) async {}
-    func enqueueRemoteNotificationIntent(_ intent: NotificationIntent) async throws -> MoryAPIClient.PushEnqueueResponse {
+    func enqueueRemotePush(_ payload: RemotePushDeliveryPayload) async throws -> MoryAPIClient.PushEnqueueResponse {
         let msg = "Remote push sync dependency was not injected."
         diLog.critical("\(msg)")
         SentrySDK.capture(error: NSError(domain: "MoryDI", code: -3, userInfo: [NSLocalizedDescriptionKey: msg]))
         fatalError(msg)
     }
     func writeBackInteraction(_ event: NotificationInteractionEvent) async {}
-    func fetchDebugSnapshot(repository: any MoryMemoryRepositorying) async -> RemotePushDebugSnapshot {
+    func fetchDebugSnapshot(intentCounts: RemotePushDebugIntentCounts) async -> RemotePushDebugSnapshot {
         RemotePushDebugSnapshot(
             ownerID: nil,
             deviceID: "",

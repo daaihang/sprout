@@ -14,7 +14,6 @@ final class NotificationSettingsServiceTests: XCTestCase {
         let result = try await service.setNotificationsEnabled(
             true,
             repository: repository,
-            notificationOrchestrator: .localDelivery,
             requestSystemAuthorization: true
         )
 
@@ -36,8 +35,7 @@ final class NotificationSettingsServiceTests: XCTestCase {
         let service = NotificationSettingsService(notificationCenter: center)
 
         _ = try await service.updatePreferences(
-            repository: repository,
-            notificationOrchestrator: .localDelivery
+            repository: repository
         ) { preferences in
             preferences.notificationPreferences.dailyQuestionEnabled = false
             preferences.notificationPreferences.maxPerDay = 4
@@ -62,7 +60,6 @@ final class NotificationSettingsServiceTests: XCTestCase {
         let result = try await service.setNotificationsEnabled(
             false,
             repository: repository,
-            notificationOrchestrator: .localDelivery,
             requestSystemAuthorization: false,
             now: now
         )

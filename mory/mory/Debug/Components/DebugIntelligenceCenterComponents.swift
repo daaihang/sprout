@@ -1,4 +1,3 @@
-#if DEBUG
 import SwiftUI
 import UIKit
 
@@ -213,4 +212,3 @@ enum DebugEnqueueableJobKind: String, CaseIterable, Identifiable {
         }
     }
 }
-#endif

@@ -58,8 +58,7 @@ struct JournalingPhotoVideoEvidence: Identifiable, Codable, Hashable, Sendable {
     enum Kind: String, Codable, CaseIterable, Identifiable, Sendable {
         case photo
         case video
-        case livePhotoImage
-        case livePhotoVideo
+        case livePhoto
 
         var id: String { rawValue }
     }
@@ -68,13 +67,15 @@ struct JournalingPhotoVideoEvidence: Identifiable, Codable, Hashable, Sendable {
     var kind: Kind
     var startedAt: Date?
     var attachmentID: UUID?
+    var pairedVideoAttachmentID: UUID?
     var metadata: [String: String]
 
-    init(id: UUID = UUID(), kind: Kind, startedAt: Date? = nil, attachmentID: UUID? = nil, metadata: [String: String] = [:]) {
+    init(id: UUID = UUID(), kind: Kind, startedAt: Date? = nil, attachmentID: UUID? = nil, pairedVideoAttachmentID: UUID? = nil, metadata: [String: String] = [:]) {
         self.id = id
         self.kind = kind
         self.startedAt = startedAt
         self.attachmentID = attachmentID
+        self.pairedVideoAttachmentID = pairedVideoAttachmentID
         self.metadata = metadata
     }
 }
@@ -238,7 +239,10 @@ struct JournalingEvidenceBundle: Codable, Hashable, Sendable {
                 kind: $0.kind.externalEvidenceKind,
                 title: $0.kind.rawValue,
                 startedAt: $0.startedAt,
-                metadata: $0.metadata.merging(["attachmentID": $0.attachmentID?.uuidString ?? ""].filter { !$0.value.isEmpty }) { _, new in new }
+                metadata: $0.metadata.merging([
+                    "attachmentID": $0.attachmentID?.uuidString ?? "",
+                    "pairedVideoAttachmentID": $0.pairedVideoAttachmentID?.uuidString ?? ""
+                ].filter { !$0.value.isEmpty }) { _, new in new }
             )
         }
         items += activities.map {
@@ -298,7 +302,7 @@ private extension JournalingPhotoVideoEvidence.Kind {
         switch self {
         case .photo: return .photo
         case .video: return .video
-        case .livePhotoImage, .livePhotoVideo: return .livePhoto
+        case .livePhoto: return .livePhoto
         }
     }
 }

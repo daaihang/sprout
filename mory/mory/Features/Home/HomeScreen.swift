@@ -40,8 +40,6 @@ struct HomeScreen: View {
     }
 
     @Environment(\.memoryRepository) private var memoryRepository
-    @Environment(\.cloudIntelligenceService) private var cloudIntelligenceService
-    @Environment(\.notificationOrchestrator) private var notificationOrchestrator
 
     let surface: Surface
 
@@ -49,7 +47,6 @@ struct HomeScreen: View {
     @State private var homeBoard: HomeBoardSnapshot?
     @State private var isPresentingComposer = false
     @State private var isReloading = false
-    @State private var dailyQuestionPreparationEvidenceSignature: String?
     @State private var errorMessage: String?
     @State private var selectedRoute: HomeRoute?
     @State private var homeBoardActionContext: HomeBoardActionContext?
@@ -99,7 +96,7 @@ struct HomeScreen: View {
         .refreshable {
             await reload()
         }
-        .sheet(isPresented: $isPresentingComposer) {
+        .fullScreenCover(isPresented: $isPresentingComposer) {
             UnifiedCaptureComposerView(seed: .empty) {
                 Task { await reload() }
             }
@@ -238,7 +235,6 @@ struct HomeScreen: View {
 
         do {
             if surface == .home {
-                await prepareDailyQuestionIfNeeded()
                 homeBoard = try memoryRepository.fetchHomeBoard(for: .now, limit: 8)
             } else {
                 memories = try memoryRepository.fetchRecentMemories(limit: nil)
@@ -246,39 +242,6 @@ struct HomeScreen: View {
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
-        }
-    }
-
-    @MainActor
-    private func prepareDailyQuestionIfNeeded() async {
-        do {
-            let memorySignature = try memoryRepository.fetchRecentMemories(limit: 6)
-                .map { $0.id.uuidString }
-                .joined(separator: ",")
-            guard !memorySignature.isEmpty else { return }
-
-            let preferences = try memoryRepository.fetchIntelligencePreferences()
-            let flags = try memoryRepository.fetchV6FeatureFlags()
-            let evidenceSignature = [
-                memorySignature,
-                String(preferences.updatedAt.timeIntervalSince1970),
-                String(flags.updatedAt.timeIntervalSince1970),
-            ].joined(separator: "|")
-            guard evidenceSignature != dailyQuestionPreparationEvidenceSignature else {
-                return
-            }
-            dailyQuestionPreparationEvidenceSignature = evidenceSignature
-
-            _ = try? await DailyQuestionSuggestionService(
-                cloudIntelligenceService: cloudIntelligenceService
-            )
-            .prepareIfNeeded(repository: memoryRepository)
-            _ = try? await notificationOrchestrator.orchestrate(
-                trigger: .homeForegroundRefresh,
-                repository: memoryRepository
-            )
-        } catch {
-            // Home remains usable when intelligence preparation or scheduling is unavailable.
         }
     }
 
@@ -493,270 +456,5 @@ struct HomeScreen: View {
         guard let requestedRoute else { return }
         selectedRoute = requestedRoute
         self.requestedRoute = nil
-    }
-}
-
-enum HomeRoute: Hashable, Identifiable, Sendable {
-    case memory(UUID)
-    case arc(UUID)
-    case reflection(UUID)
-    case question(UUID)
-
-    var id: String {
-        switch self {
-        case let .memory(id): return "memory-\(id.uuidString)"
-        case let .arc(id): return "arc-\(id.uuidString)"
-        case let .reflection(id): return "reflection-\(id.uuidString)"
-        case let .question(id): return "question-\(id.uuidString)"
-        }
-    }
-}
-
-struct ClarificationQuestionDetailView: View {
-    @Environment(\.memoryRepository) private var memoryRepository
-
-    let questionID: UUID
-
-    @State private var question: ClarificationQuestion?
-    @State private var profile: EntityProfile?
-    @State private var errorMessage: String?
-
-    var body: some View {
-        List {
-            if let errorMessage {
-                Section {
-                    Text(errorMessage)
-                        .foregroundStyle(.red)
-                }
-            }
-
-            if let question {
-                Section {
-                    if question.status == .pending {
-                        ClarificationQuestionCard(
-                            question: question,
-                            profile: profile,
-                            onAnswer: answerQuestion,
-                            onDismiss: dismissQuestion
-                        )
-                    } else {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(question.prompt)
-                                .font(.headline)
-                            Text(question.status.displayLabel)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            if let answer = question.answer {
-                                Text(answer.freeformText ?? answer.value)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                }
-            } else if errorMessage == nil {
-                Section {
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
-                }
-            }
-        }
-        .navigationTitle("Daily question")
-        .moryHidesTabChrome()
-        .task {
-            load()
-        }
-        .refreshable {
-            load()
-        }
-    }
-
-    private func load() {
-        do {
-            let questions = try memoryRepository.fetchClarificationQuestions(status: nil, limit: nil)
-            question = questions.first { $0.id == questionID }
-            if let question, question.targetType == .entity {
-                profile = try memoryRepository.fetchEntityProfile(entityID: question.targetID)
-            } else {
-                profile = nil
-            }
-            errorMessage = question == nil ? "Question is no longer available." : nil
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
-    private func answerQuestion(_ answer: ClarificationAnswer) {
-        do {
-            try memoryRepository.answerClarificationQuestion(questionID, answer: answer)
-            load()
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
-    private func dismissQuestion() {
-        do {
-            try memoryRepository.dismissClarificationQuestion(questionID)
-            load()
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-}
-
-private struct MemoryRow: View {
-    let summary: MemorySummary
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(summary.title)
-                .font(.headline)
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
-
-            Text(summary.summaryText)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .lineLimit(3)
-                .fixedSize(horizontal: false, vertical: true)
-
-            ViewThatFits(in: .horizontal) {
-                metadataRow
-                VStack(alignment: .leading, spacing: MorySpacing.xSmall) {
-                    metadataRow
-                }
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
-        }
-    }
-
-    private var metadataRow: some View {
-        HStack(spacing: 10) {
-            Text(summary.record.captureSource.presentationLabel)
-            if let mood = summary.record.userMood?.trimmedOrNil {
-                Text(mood)
-            }
-            Text("memory.row.attachments \(summary.artifactCount)")
-            if let pipelineStatus = summary.pipelineStatus {
-                Text(pipelineStatus.userLabel)
-            }
-            Text(summary.record.updatedAt.formatted(date: .abbreviated, time: .shortened))
-        }
-    }
-}
-
-private extension CaptureSource {
-    var presentationLabel: String {
-        switch self {
-        case .composer: return String(localized: "capture.source.composer")
-        case .voice: return String(localized: "capture.source.voice")
-        case .photo: return String(localized: "capture.source.photo")
-        case .audio: return String(localized: "capture.source.audio")
-        case .importFile: return String(localized: "capture.source.importFile")
-        case .manual: return String(localized: "capture.source.manual")
-        }
-    }
-}
-
-private struct HomeBoardSection: View {
-    let board: HomeBoardSnapshot
-    let isEditing: Bool
-    let onSelect: (HomeRoute) -> Void
-    let onPreference: (HomeBoardItemSnapshot, HomeBoardPreferenceAction) -> Void
-    let onShowActions: (HomeBoardItemSnapshot) -> Void
-    let onReorder: ([HomeBoardOrderUpdate]) -> Void
-    let onAnswerQuestion: (ClarificationQuestion, ClarificationAnswer) -> Void
-    let onDismissQuestion: (ClarificationQuestion) -> Void
-    let onSystemAction: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: MorySpacing.large) {
-            if !board.userBoardItems.isEmpty {
-                HomeBoardGrid(
-                    items: board.userBoardItems,
-                    isEditing: isEditing,
-                    onSelect: onSelect,
-                    onPreference: onPreference,
-                    onShowActions: onShowActions,
-                    onReorder: onReorder,
-                    onAnswerQuestion: onAnswerQuestion,
-                    onDismissQuestion: onDismissQuestion,
-                    onSystemAction: onSystemAction
-                )
-            }
-
-            if !board.suggestionItems.isEmpty {
-                VStack(alignment: .leading, spacing: MorySpacing.small) {
-                    Text(verbatim: "Suggestions")
-                        .font(.headline)
-                    HomeBoardGrid(
-                        items: board.suggestionItems,
-                        isEditing: isEditing,
-                        onSelect: onSelect,
-                        onPreference: onPreference,
-                        onShowActions: onShowActions,
-                        onReorder: onReorder,
-                        onAnswerQuestion: onAnswerQuestion,
-                        onDismissQuestion: onDismissQuestion,
-                        onSystemAction: onSystemAction
-                    )
-                }
-                .accessibilityElement(children: .contain)
-            }
-        }
-    }
-}
-
-private struct HomeBoardGrid: View {
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-
-    let items: [HomeBoardItemSnapshot]
-    let isEditing: Bool
-    let onSelect: (HomeRoute) -> Void
-    let onPreference: (HomeBoardItemSnapshot, HomeBoardPreferenceAction) -> Void
-    let onShowActions: (HomeBoardItemSnapshot) -> Void
-    let onReorder: ([HomeBoardOrderUpdate]) -> Void
-    let onAnswerQuestion: (ClarificationQuestion, ClarificationAnswer) -> Void
-    let onDismissQuestion: (ClarificationQuestion) -> Void
-    let onSystemAction: () -> Void
-
-    var body: some View {
-        HomeBoardGridLayout(metrics: metrics) {
-            ForEach(items) { item in
-                HomeBoardCard(
-                    item: item,
-                    isEditing: isEditing,
-                    orderControls: orderControls(for: item),
-                    onSelect: onSelect,
-                    onPreference: onPreference,
-                    onShowActions: onShowActions,
-                    onAnswerQuestion: onAnswerQuestion,
-                    onDismissQuestion: onDismissQuestion,
-                    onSystemAction: onSystemAction
-                )
-                .layoutValue(key: HomeBoardSpanKey.self, value: item.layout.span)
-                .zIndex(Double(item.compositionItem.zIndex))
-            }
-        }
-        .animation(.spring(response: 0.34, dampingFraction: 0.86), value: items.map(\.compositionItem.itemKey))
-    }
-
-    private var metrics: HomeBoardGridMetrics {
-        HomeBoardGridMetrics(columns: horizontalSizeClass == .regular ? 8 : 4)
-    }
-
-    private func orderControls(for item: HomeBoardItemSnapshot) -> HomeBoardOrderControls? {
-        guard isEditing, item.layout.layer == .userBoard else { return nil }
-        return HomeBoardOrderControls(
-            canMoveEarlier: HomeBoardOrdering.canMove(item: item, in: items, direction: .earlier),
-            canMoveLater: HomeBoardOrdering.canMove(item: item, in: items, direction: .later),
-            moveEarlier: {
-                onReorder(HomeBoardOrdering.updatesForMove(items: items, moving: item, direction: .earlier))
-            },
-            moveLater: {
-                onReorder(HomeBoardOrdering.updatesForMove(items: items, moving: item, direction: .later))
-            }
-        )
     }
 }

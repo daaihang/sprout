@@ -119,6 +119,64 @@ final class CaptureCardModelsTests: XCTestCase {
         XCTAssertFalse(card.isRemovable)
     }
 
+    func testSavedVideoArtifactMapsToVideoCardWithPreview() {
+        let thumbnail = makeImageData(color: .systemBlue)
+        let artifact = Artifact(
+            recordID: UUID(),
+            kind: .video,
+            title: "Clip",
+            summary: "Walking by the river",
+            mediaRef: ArtifactMediaRef(filename: "clip.mov", mimeType: "video/quicktime"),
+            metadata: [
+                "captureOrigin": CaptureArtifactOrigin.manual.rawValue,
+                "durationSeconds": "18"
+            ],
+            previewPayload: thumbnail,
+            createdAt: .now,
+            updatedAt: .now
+        )
+
+        let card = CaptureCardItem(artifact: artifact)
+
+        XCTAssertEqual(card.kind, .video)
+        XCTAssertEqual(card.title, "Clip")
+        XCTAssertEqual(card.detail, "Walking by the river")
+        guard case let .video(payload) = card.payload else {
+            return XCTFail("Expected video payload.")
+        }
+        XCTAssertEqual(payload.thumbnailData, thumbnail)
+        XCTAssertEqual(payload.durationSeconds, 18)
+    }
+
+    func testSavedLivePhotoArtifactMapsToLivePhotoCard() {
+        let thumbnail = makeImageData(color: .systemCyan)
+        let artifact = Artifact(
+            recordID: UUID(),
+            kind: .livePhoto,
+            title: "Live Photo",
+            summary: "Motion still",
+            mediaRef: ArtifactMediaRef(filename: "live.heic", mimeType: "image/heic"),
+            metadata: [
+                "captureOrigin": CaptureArtifactOrigin.imported.rawValue,
+                "pairedVideoByteCount": "4096",
+                "videoFilename": "live.mov"
+            ],
+            previewPayload: thumbnail,
+            createdAt: .now,
+            updatedAt: .now
+        )
+
+        let card = CaptureCardItem(artifact: artifact)
+
+        XCTAssertEqual(card.kind, .livePhoto)
+        XCTAssertEqual(card.origin, .imported)
+        guard case let .livePhoto(payload) = card.payload else {
+            return XCTFail("Expected live photo payload.")
+        }
+        XCTAssertEqual(payload.thumbnailData, thumbnail)
+        XCTAssertEqual(payload.pairedVideoByteCount, 4096)
+    }
+
     func testSavedWeatherArtifactMapsStableConditionFields() {
         let artifact = Artifact(
             recordID: UUID(),
@@ -206,6 +264,49 @@ final class CaptureCardModelsTests: XCTestCase {
         XCTAssertEqual(audio.kind, .audio)
         XCTAssertEqual(audio.state, .loading)
         XCTAssertEqual(audio.title, CaptureCardKind.audio.label)
+    }
+
+    func testJournalingSuggestionAttachmentAggregatesArtifactsAndAffects() {
+        let sessionID = UUID()
+        let provenance = CaptureProvenance.external(sourceKind: .journalingSuggestion, importSessionID: sessionID)
+        let artifacts: [CaptureArtifactDraft] = [
+            .photo(summary: "Photo", filename: "photo.jpg", thumbnailData: Data([1]), provenance: provenance),
+            .video(summary: "Video", filename: "video.mov", thumbnailData: Data([2]), provenance: provenance),
+            .livePhoto(
+                summary: "Live",
+                stillFilename: "live.heic",
+                videoFilename: "live.mov",
+                thumbnailData: Data([3]),
+                provenance: provenance
+            ),
+            .location(summary: "Place", latitude: 1, longitude: 2, provenance: provenance)
+        ]
+        let affects = [
+            AffectSnapshotDraft(
+                labels: [.calm],
+                sources: [.journalSuggestionStateOfMind],
+                provenance: provenance
+            )
+        ]
+
+        let item = CaptureComposerAttachmentItem.journalingSuggestion(
+            importSessionID: sessionID,
+            artifacts: artifacts,
+            affects: affects
+        )
+
+        XCTAssertEqual(item.source, .journalingSuggestion(importSessionID: sessionID))
+        XCTAssertEqual(item.card.kind, .journalingSuggestion)
+        XCTAssertTrue(item.card.isRemovable)
+        guard case let .journalingSuggestion(payload) = item.card.payload else {
+            return XCTFail("Expected journaling suggestion payload.")
+        }
+        XCTAssertEqual(payload.artifactCount, 4)
+        XCTAssertEqual(payload.affectCount, 1)
+        XCTAssertEqual(payload.photoCount, 1)
+        XCTAssertEqual(payload.videoCount, 1)
+        XCTAssertEqual(payload.livePhotoCount, 1)
+        XCTAssertEqual(payload.locationCount, 1)
     }
 
     func testOnlyNormalCardsDisplaySelection() {
@@ -435,8 +536,253 @@ final class CaptureCardModelsTests: XCTestCase {
     func testFixturesCoverAllConcreteArtifactKindsWithoutAutoContextKind() {
         let fixtureKinds = Set(CaptureCardLabFixtures.allTypes.map(\.kind))
 
-        XCTAssertTrue(fixtureKinds.isSuperset(of: [.photo, .audio, .place, .weather, .music, .link, .todo]))
+        XCTAssertTrue(fixtureKinds.isSuperset(of: [.photo, .video, .livePhoto, .audio, .place, .weather, .music, .link, .todo, .journalingSuggestion]))
         XCTAssertFalse(CaptureCardKind.allCases.contains { $0.rawValue == "autoContext" })
+    }
+
+    func testCardDebugRecipeCatalogCoversEveryVisualRecipe() {
+        let fixtures = CardDebugCatalog.recipeFixtures
+        let fixtureRecipes = Set(fixtures.map(\.recipe))
+
+        XCTAssertEqual(fixtureRecipes, Set(MemoryCardVisualRecipe.allCases))
+        XCTAssertEqual(fixtures.count, MemoryCardVisualRecipe.allCases.count)
+
+        for fixture in fixtures {
+            let presentation = CaptureCardPresentation(
+                item: fixture.item,
+                role: .debugLab,
+                provenanceDisplayMode: .debug,
+                surfaceMode: .skeuomorphic,
+                visualRecipe: fixture.recipe,
+                visualVariant: fixture.preferredVariant,
+                sizeToken: fixture.preferredSize
+            )
+
+            XCTAssertEqual(presentation.surfaceMode, .skeuomorphic)
+            XCTAssertEqual(presentation.visualRecipe, fixture.recipe)
+            XCTAssertTrue(fixture.supportedSizes.contains(fixture.preferredSize))
+            XCTAssertEqual(presentation.sizeToken, fixture.preferredSize)
+            XCTAssertEqual(
+                presentation.visualVariant,
+                MemoryCardRecipeLayoutPolicy.resolvedVariant(
+                    fixture.preferredVariant,
+                    for: fixture.recipe,
+                    size: fixture.preferredSize
+                )
+            )
+            XCTAssertEqual(
+                presentation.contentDensity,
+                MemoryCardRecipeLayoutPolicy.contentDensity(for: fixture.preferredSize)
+            )
+            XCTAssertFalse(fixture.layerNotes.isEmpty)
+        }
+    }
+
+    func testCardDebugTypeCatalogCoversEveryRecipeOnce() {
+        let entries = CardDebugCatalog.typeCatalogEntries
+        let recipes = entries.map(\.fixture.recipe)
+
+        XCTAssertEqual(Set(recipes), Set(MemoryCardVisualRecipe.allCases))
+        XCTAssertEqual(recipes.count, Set(recipes).count)
+        XCTAssertTrue(entries.allSatisfy { !$0.draftLayer.isEmpty && !$0.artifactLayer.isEmpty && !$0.digestLayer.isEmpty && !$0.arrangementLayer.isEmpty })
+    }
+
+    func testCardDebugCatalogPreferredSizesRespectLayoutPolicy() {
+        for fixture in CardDebugCatalog.recipeFixtures {
+            XCTAssertTrue(
+                MemoryCardRecipeLayoutPolicy.supportedSizes(for: fixture.recipe).contains(fixture.preferredSize)
+            )
+            XCTAssertEqual(
+                Set(fixture.supportedSizes),
+                Set(MemoryCardRecipeLayoutPolicy.supportedSizes(for: fixture.recipe))
+            )
+        }
+    }
+
+    func testCardDebugCatalogCoversEverySupportedRecipeSize() {
+        let expected = Set(MemoryCardVisualRecipe.allCases.flatMap { recipe in
+            MemoryCardRecipeLayoutPolicy.supportedSizes(for: recipe).map { "\(recipe.rawValue).\($0.rawValue)" }
+        })
+        let actual = Set(CardDebugCatalog.recipeSizeFixtures.map { "\($0.fixture.recipe.rawValue).\($0.size.rawValue)" })
+
+        XCTAssertEqual(actual, expected)
+        for fixture in CardDebugCatalog.recipeSizeFixtures {
+            let metrics = fixture.metrics
+            let presentation = CaptureCardPresentation(
+                item: fixture.fixture.item,
+                role: .debugLab,
+                provenanceDisplayMode: .debug,
+                surfaceMode: .skeuomorphic,
+                visualRecipe: fixture.fixture.recipe,
+                visualVariant: fixture.variant,
+                sizeToken: fixture.size
+            )
+
+            XCTAssertEqual(presentation.sizeToken, fixture.size)
+            XCTAssertEqual(presentation.visualVariant, fixture.resolvedVariant)
+            XCTAssertEqual(metrics.recipe, fixture.fixture.recipe)
+            XCTAssertEqual(metrics.sizeToken, fixture.size)
+            XCTAssertGreaterThan(metrics.preferredSize.width, 0)
+            XCTAssertGreaterThan(metrics.preferredSize.height, 0)
+        }
+    }
+
+    func testCardDebugArrangementReportCoversOccupancyPlacementAndOverflowState() {
+        let snapshot = CardDebugCatalog.arrangementPlaygroundSnapshot()
+        let nodes = MemoryDeskRenderPlan.nodes(for: snapshot)
+        let report = CardDebugArrangementReport.make(nodes: nodes)
+
+        XCTAssertEqual(report.slots.count, nodes.count)
+        XCTAssertGreaterThan(report.rowCount, 0)
+        XCTAssertGreaterThan(report.occupiedCells, 0)
+        XCTAssertGreaterThan(report.totalCells, 0)
+        XCTAssertGreaterThanOrEqual(report.density, 0)
+        XCTAssertLessThanOrEqual(report.density, 1)
+        XCTAssertEqual(report.overlapCount, 0)
+        XCTAssertTrue(report.slots.allSatisfy { $0.placement != nil })
+        XCTAssertTrue(report.slots.allSatisfy { $0.frame.width > 0 && $0.frame.height > 0 })
+        XCTAssertTrue(report.slots.allSatisfy { !$0.debugLine.isEmpty })
+    }
+
+    func testCardDebugStatesActionsRecipesCoverEveryVisualRecipe() {
+        XCTAssertEqual(
+            Set(CardDebugStatesActionsModel.recipeOptions),
+            Set(MemoryCardVisualRecipe.allCases)
+        )
+        XCTAssertEqual(
+            CardDebugStatesActionsModel.recipeOptions.count,
+            MemoryCardVisualRecipe.allCases.count
+        )
+    }
+
+    func testCardDebugStatesActionsSizeOptionsMatchLayoutPolicy() {
+        for recipe in MemoryCardVisualRecipe.allCases {
+            XCTAssertEqual(
+                CardDebugStatesActionsModel.supportedSizes(for: recipe),
+                MemoryCardRecipeLayoutPolicy.supportedSizes(for: recipe)
+            )
+        }
+    }
+
+    func testCardDebugStatesActionsVariantOptionsMatchLayoutPolicy() {
+        for recipe in MemoryCardVisualRecipe.allCases {
+            for size in CardDebugStatesActionsModel.supportedSizes(for: recipe) {
+                XCTAssertEqual(
+                    CardDebugStatesActionsModel.supportedVariants(for: recipe, size: size),
+                    MemoryCardRecipeLayoutPolicy.supportedVariants(for: recipe, size: size)
+                )
+            }
+        }
+    }
+
+    func testCardDebugStatesActionsSelectedRuntimeMapsToNormalSelectedItem() {
+        let item = CardDebugStatesActionsModel.item(
+            recipe: .taskNote,
+            runtimeState: .selected
+        )
+
+        XCTAssertEqual(item.state, .normal)
+        XCTAssertTrue(item.isSelected)
+    }
+
+    func testCardDebugStatesActionsBuildsPresentationForEveryRoleAndRuntimeState() {
+        for role in CardDebugRoleOption.allCases {
+            for runtimeState in CardDebugRuntimeStateOption.allCases {
+                let presentation = CardDebugStatesActionsModel.presentation(
+                    recipe: .cassette,
+                    size: .banner,
+                    variant: .automatic,
+                    role: role,
+                    runtimeState: runtimeState
+                )
+
+                XCTAssertEqual(presentation.role, role.role)
+                XCTAssertEqual(presentation.visualRecipe, .cassette)
+                XCTAssertEqual(presentation.surfaceMode, .skeuomorphic)
+                XCTAssertEqual(presentation.item.state, runtimeState.state)
+                XCTAssertEqual(presentation.item.isSelected, runtimeState.isSelected)
+                XCTAssertEqual(presentation.sizeToken, .banner)
+                XCTAssertEqual(presentation.visualVariant, .automatic)
+                XCTAssertEqual(
+                    presentation.contentDensity,
+                    MemoryCardRecipeLayoutPolicy.contentDensity(for: .banner)
+                )
+            }
+        }
+    }
+
+    func testCardDebugStatesActionsUnsupportedSizeFallsBackThroughPolicy() {
+        let presentation = CardDebugStatesActionsModel.presentation(
+            recipe: .weatherStamp,
+            size: .banner,
+            variant: .weatherWind,
+            role: .debug,
+            runtimeState: .normal
+        )
+
+        XCTAssertEqual(presentation.sizeToken, MemoryCardRecipeLayoutPolicy.defaultSize(for: .weatherStamp))
+        XCTAssertTrue(CardDebugStatesActionsModel.supportedSizes(for: .weatherStamp).contains(presentation.sizeToken))
+        XCTAssertEqual(presentation.visualVariant, .weatherIcon)
+    }
+
+    func testCardDebugStatesActionsUnsupportedVariantFallsBackThroughPolicy() {
+        let presentation = CardDebugStatesActionsModel.presentation(
+            recipe: .weatherStamp,
+            size: .strip,
+            variant: .weatherWind,
+            role: .debug,
+            runtimeState: .normal
+        )
+
+        XCTAssertEqual(presentation.sizeToken, .strip)
+        XCTAssertEqual(presentation.visualVariant, .weatherIconTemperature)
+        XCTAssertTrue(
+            CardDebugStatesActionsModel.supportedVariants(for: .weatherStamp, size: .strip).contains(presentation.visualVariant)
+        )
+    }
+
+    func testCardDebugStatesActionsCapabilityRowsComeFromPresentation() {
+        let presentation = CardDebugStatesActionsModel.presentation(
+            recipe: .taskNote,
+            size: .strip,
+            role: .debug,
+            runtimeState: .selected
+        )
+        let resolved = CaptureCardCapabilities.resolve(role: .debugLab, item: presentation.item)
+        let capabilities = Dictionary(
+            uniqueKeysWithValues: CardDebugStatesActionsModel.capabilityRows(for: presentation).map { ($0.title, $0.isEnabled) }
+        )
+        let derived = Dictionary(
+            uniqueKeysWithValues: CardDebugStatesActionsModel.derivedBehaviorRows(for: presentation).map { ($0.title, $0.isEnabled) }
+        )
+
+        XCTAssertEqual(capabilities["open"], resolved.canOpen)
+        XCTAssertEqual(capabilities["remove"], resolved.canRemove)
+        XCTAssertEqual(capabilities["reorder"], resolved.canReorder)
+        XCTAssertEqual(capabilities["select"], resolved.canSelect)
+        XCTAssertEqual(capabilities["retry"], resolved.canRetry)
+        XCTAssertEqual(derived["allowsPrimaryAction"], presentation.allowsPrimaryAction)
+        XCTAssertEqual(derived["displaysRemoveControl"], presentation.displaysRemoveControl)
+        XCTAssertEqual(derived["displaysSelection"], presentation.displaysSelection)
+        XCTAssertEqual(derived["hasTrailingControl"], presentation.hasTrailingControl)
+    }
+
+    func testCardDebugCatalogRecipeSizeFixturesCoverSupportedVariantMatrix() {
+        for recipe in MemoryCardVisualRecipe.allCases {
+            for size in MemoryCardRecipeLayoutPolicy.supportedSizes(for: recipe) {
+                let expectedVariants = Set(
+                    MemoryCardRecipeLayoutPolicy.supportedVariants(for: recipe, size: size).map { variant in
+                        variant == .automatic ? MemoryCardVisualVariant.automatic : variant
+                    }
+                )
+                let actualVariants = Set(
+                    CardDebugCatalog.recipeSizeFixtures
+                        .filter { $0.fixture.recipe == recipe && $0.size == size }
+                        .map { $0.variant ?? .automatic }
+                )
+                XCTAssertEqual(actualVariants, expectedVariants, "Expected fixtures for \(recipe.rawValue).\(size.rawValue)")
+            }
+        }
     }
 
     func testOriginFixturesKeepKindStableAcrossAllOrigins() {

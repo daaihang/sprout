@@ -4,17 +4,21 @@ import UIKit
 struct PolaroidCaptureCardContent: View {
     let common: CaptureCardCommonDisplay
     let payload: CapturePhotoCardPayload
+    var sizeToken: MemoryCardSizeToken = .square
+    var density: MemoryCardContentDensity = .regular
+    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .polaroid, sizeToken: .square)
 
     var body: some View {
         VStack(spacing: 0) {
             photoArea
-                .frame(width: 148, height: 148)
+                .frame(width: photoSize.width, height: photoSize.height)
                 .clipped()
 
             bottomLabel
-                .frame(width: 148, height: 44)
+                .frame(width: photoSize.width, height: labelHeight)
         }
-        .padding(EdgeInsets(top: 10, leading: 10, bottom: 4, trailing: 10))
+        .padding(EdgeInsets(top: paperInset, leading: paperInset, bottom: 4, trailing: paperInset))
+        .frame(width: metrics.preferredSize.width, height: metrics.preferredSize.height)
         .background(paperColor)
         .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
         .shadow(color: .black.opacity(0.12), radius: 1, y: 1)
@@ -43,13 +47,13 @@ struct PolaroidCaptureCardContent: View {
             if let title = common.title?.trimmedOrNil {
                 Text(title)
                     .font(.system(size: 11, design: .serif))
-                    .lineLimit(1)
+                    .lineLimit(metrics.titleLineLimit)
             }
-            if let metadata = common.metadata?.trimmedOrNil {
+            if metrics.density != .compact, let metadata = common.metadata?.trimmedOrNil {
                 Text(metadata)
                     .font(.system(size: 9, design: .serif))
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                    .lineLimit(metrics.metadataLineLimit)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -61,6 +65,24 @@ struct PolaroidCaptureCardContent: View {
 
     private var paperColor: Color {
         colorScheme == .dark ? Color(white: 0.88) : .white
+    }
+
+    private var photoSize: CGSize {
+        let availableWidth = max(1, metrics.preferredSize.width - (paperInset * 2))
+        let availableHeight = max(1, metrics.preferredSize.height - labelHeight - paperInset - 4)
+        guard metrics.density == .expanded else {
+            let length = min(availableWidth, availableHeight)
+            return CGSize(width: length, height: length)
+        }
+        return CGSize(width: availableWidth, height: availableHeight)
+    }
+
+    private var labelHeight: CGFloat {
+        metrics.density == .expanded ? 58 : 44
+    }
+
+    private var paperInset: CGFloat {
+        metrics.padding.top
     }
 
     private var tiltAngle: Double {

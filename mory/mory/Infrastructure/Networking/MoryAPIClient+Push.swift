@@ -165,20 +165,12 @@ extension MoryAPIClient {
         let userID: String
         let queuedCount: Int
         let skippedCount: Int
-        let sentCount: Int
-        let failedCount: Int
-        let retriedCount: Int?
-        let permanentFailedCount: Int?
 
         enum CodingKeys: String, CodingKey {
             case accepted
             case userID = "user_id"
             case queuedCount = "queued_count"
             case skippedCount = "skipped_count"
-            case sentCount = "sent_count"
-            case failedCount = "failed_count"
-            case retriedCount = "retried_count"
-            case permanentFailedCount = "permanent_failed_count"
         }
     }
 

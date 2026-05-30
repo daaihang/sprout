@@ -17,8 +17,8 @@ This document maps the current v6 code and docs into v7 implementation gaps. It 
 
 Relevant code:
 
-- `mory/mory/Infrastructure/Analysis/Pipeline/AnalyzeRequestBuilder.swift`
-- `mory/mory/Infrastructure/Analysis/Pipeline/ArchitecturePipelineExecutor.swift`
+- `mory/mory/Infrastructure/Analysis/Pipeline/AnalysisRecordPayloadBuilder.swift`
+- `mory/mory/Infrastructure/Analysis/Pipeline/AnalysisExecutor.swift`
 - `mory/mory/Persistence/Repositories/MoryMemoryRepository.swift`
 - `server/internal/ai/types.go`
 
@@ -66,8 +66,8 @@ Relevant code:
 
 Relevant code:
 
-- `mory/mory/Domain/Capture/RecordShell.swift`
-- `mory/mory/Infrastructure/Analysis/Pipeline/AnalyzeResponseMapper.swift`
+- `mory/mory/Domain/Memory/RecordShell.swift`
+- `mory/mory/Infrastructure/Analysis/Pipeline/RecordAnalysisSnapshotMapper.swift`
 
 ## 6. Questions And Feedback
 
@@ -90,16 +90,19 @@ Relevant code:
 | --- | --- | --- |
 | launch/home recovery is primary; BGTask missing | ✅ resolved | `BackgroundTaskCoordinator` registers `BGProcessingTask` + `BGAppRefreshTask`; `MoryAppDelegate` handles expiry callbacks |
 | no background URLSession pipeline | ✅ resolved | `BackgroundURLSessionInfrastructure` provides `BackgroundURLSessionCompletionStore`, `BackgroundURLSessionDelegate`, `MoryAPIClient.backgroundSession` |
-| APNs not fully connected to proactive intent production | ✅ resolved | `NotificationDeliveryRouter` routes intents to remote (APNS) or local channel based on token presence |
-| local notifications exist; no unified local/remote router | ✅ resolved | `NotificationDeliveryRouter` upserts intent + routes to remote push service or `LocalNotificationScheduler` |
-| daily question weak outside foreground | ✅ resolved | `BGAppRefreshTask` triggers `IntelligenceJobWorker`; silent push handler schedules pending local intents |
+| APNs not fully connected to proactive intent production | ✅ resolved | `NotificationDeliveryRouter` routes intents to remote (APNS) or local channel through the Push domain `PushNotificationEnqueuing` port |
+| local notifications exist; no unified local/remote router | ✅ resolved | `NotificationDeliveryRouter` upserts intent + routes to the Push enqueuer or `LocalNotificationScheduler` |
+| daily question weak outside foreground | ✅ resolved | `BGAppRefreshTask` and foreground refresh enter `BackgroundOperationOrchestrator`, which prepares daily questions when cloud intelligence is available |
 
 Relevant code:
 
-- `mory/mory/Infrastructure/Intelligence/BackgroundTaskCoordinator.swift`
-- `mory/mory/Infrastructure/Networking/BackgroundURLSessionInfrastructure.swift`
+- `mory/mory/Infrastructure/Background/BackgroundOperationOrchestrator.swift`
+- `mory/mory/Infrastructure/Background/BackgroundTaskCoordinator.swift`
+- `mory/mory/Infrastructure/Background/BackgroundURLSessionInfrastructure.swift`
+- `mory/mory/Infrastructure/Intelligence/Jobs/IntelligenceJobWorker.swift`
+- `mory/mory/Infrastructure/Intelligence/Jobs/IntelligenceJobRecoveryService.swift`
 - `mory/mory/Infrastructure/Notifications/NotificationDeliveryRouter.swift`
-- `mory/mory/Infrastructure/Notifications/RemotePushSyncService.swift`
+- `mory/mory/Infrastructure/Push/RemotePushSyncService.swift`
 - `mory/mory/App/MoryAppDelegate.swift`
 
 ## 8. Multimodal Context
@@ -134,7 +137,7 @@ Relevant code:
 3. Person merge/split and GraphDelta v2.
 4. `PersonProfile` + portrait job.
 5. `AffectSnapshot` and tone correction.
-6. Analyze v7 cloud contract.
+6. Analysis cloud contract.
 7. BGTask/background URLSession/APNs orchestration.
 8. Eval/debug/privacy audit.
 
@@ -144,11 +147,12 @@ The gaps above were the implementation source of truth for v7. As of v7 foundati
 
 | Area | Status | Boundary |
 | --- | --- | --- |
-| Self profile and context pack | ✅ complete | consumed by the production Analyze v7 path for new memories |
+| Self profile and context pack | ✅ complete | consumed by the production Analysis path for new memories |
 | Entity resolution and correction | ✅ complete | user-facing UI polish remains later |
 | Person merge/split and portrait jobs | ✅ complete | cloud AI portrait proposals remain later |
 | Structured affect and tone correction | ✅ complete | Journaling `StateOfMind` is mapped as affect evidence; real-device validation remains later |
 | External capture inbox | ✅ complete | Share Extension writes V2-only pending drafts; App Intent phrase validation remains later |
-| Analyze v7 contract | ✅ complete | production new-memory pipeline uses `/api/analyze/v7`; legacy Analyze is no longer the main path |
+| Analysis contract | ✅ complete | production new-memory pipeline uses `/api/analyze`; old versioned and preview Analyze routes are no longer registered |
 | BGTask/background URLSession/APNs routing | ✅ complete | real-device soak and telemetry remain later |
+| Runtime debug orchestration | ✅ complete | Debug has one `DebugRuntimeOperationsView`; it triggers formal orchestrators and no longer directly mutates jobs or GraphDeltas |
 | Eval/debug/privacy gate | ✅ complete | real-user notification quality dashboard and public release privacy audit remain post-v7 production hardening |

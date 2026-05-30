@@ -1,4 +1,3 @@
-#if DEBUG
 import SwiftUI
 import SwiftData
 
@@ -851,7 +850,7 @@ struct DebugFullDiagnosticsView: View {
                 rawText: body,
                 mood: customMood.trimmedOrNil,
                 inputContext: inputContext,
-                captureSource: .composer,
+                provenance: CaptureProvenance(originCategory: .debug, sourceKind: .debugFixture),
                 artifacts: [.text(title: customTitle.trimmedOrNil, body: body)] + contextDrafts
             )
             let memory = try await memoryRepository.createMemory(from: draft)
@@ -1084,6 +1083,7 @@ struct DebugFullDiagnosticsView: View {
 
     private func pipelineStageColor(_ stage: MemoryPipelineStage) -> Color {
         switch stage {
+        case .notScheduled: return .secondary
         case .pending: return .gray
         case .running: return .blue
         case .completed: return .green
@@ -1385,11 +1385,12 @@ struct DebugChainRow: View {
 
 private extension CaptureArtifactDraft {
     var debugIconName: String {
-        switch self {
+        switch content {
         case .text: "text.alignleft"
         case .photo: "photo"
         case .audio: "waveform"
         case .video: "video"
+        case .livePhoto: "livephoto"
         case .location: "mappin.and.ellipse"
         case .link: "link"
         case .todo: "checklist"
@@ -1400,4 +1401,3 @@ private extension CaptureArtifactDraft {
         }
     }
 }
-#endif

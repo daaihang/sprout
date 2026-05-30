@@ -100,14 +100,19 @@ sequenceDiagram
     participant Repo as MoryMemoryRepository
     participant Builder as MemoryCaptureArtifactBuilder
     participant Store as SwiftData
-    participant Pipe as ArchitecturePipelineExecutor
+    participant Pipe as AnalysisExecutor
 
     Feature->>Repo: createMemory(draft)
     Repo->>Builder: buildArtifacts
+    Repo->>Builder: buildSemanticDigests
     Repo->>Store: upsert RecordShellStore
     Repo->>Store: upsert ArtifactStore
+    Repo->>Store: upsert ArtifactSemanticDigestStore
+    Repo->>Store: upsert MemoryCardArrangementStore
     Repo->>Store: upsert AffectSnapshotStore
-    Repo->>Store: upsert PipelineStatus pending
+    Repo->>Store: upsert PipelineStatus notScheduled
+    Repo-->>Feature: save complete
+    Feature->>Repo: optional explicit pipeline trigger
     Repo->>Pipe: runArchitecturePipeline
     Pipe->>Store: query context/graph/history
     Pipe->>Repo: upsert analysis/proposals/graph
@@ -116,7 +121,7 @@ sequenceDiagram
 问题：
 
 - `createMemory` 是 use case，不只是 repository insert。
-- 同一个方法触发 storage、analysis、indexing、pipeline status。
+- 当前 create path 触发 storage、notScheduled pipeline status 和 indexing；analysis trigger 已由 save path 外的显式策略控制。
 - pipeline 出错时需要非常明确地保证 record save 成功、derived state 不半写。
 
 解决方案：

@@ -5,7 +5,7 @@
 - People screen.
 - Person detail and profile edit screens.
 - Person merge/split screen.
-- Insights GraphDelta review.
+- Settings / Memory Intelligence GraphDelta review.
 - Debug Person Profile and Analysis Context Pack views.
 
 ## Expected User Experience

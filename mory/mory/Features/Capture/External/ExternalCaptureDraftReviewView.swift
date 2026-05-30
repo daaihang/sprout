@@ -97,7 +97,7 @@ struct ExternalCaptureDraftReviewView: View {
                     LabeledContent("Raw text", value: draft.rawText)
                     LabeledContent("Mood", value: draft.mood ?? "none")
                     LabeledContent("Context", value: draft.inputContext ?? "none")
-                    LabeledContent("Capture source", value: draft.captureSource.rawValue)
+                    LabeledContent("Capture source", value: draft.provenance.derivedCaptureSource.rawValue)
                     LabeledContent("Artifacts", value: "\(draft.artifacts.count)")
                     LabeledContent("Affect snapshots", value: "\(draft.affectSnapshots.count)")
                 }

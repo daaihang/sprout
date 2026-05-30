@@ -4,12 +4,34 @@
     "" : {
 
     },
-    "%@ (%lld)" : {
+    "%@ · variant %@ · grid %lldx%lld · object %lldx%lld · density %@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "%1$@ (%2$lld)"
+            "value" : "%1$@ · variant %2$@ · grid %3$lldx%4$lld · object %5$lldx%6$lld · density %7$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · 变体 %2$@ · 网格 %3$lldx%4$lld · 物件 %5$lldx%6$lld · 密度 %7$@"
+          }
+        }
+      }
+    },
+    "%@ · variant %@ · grid %lldx%lld · object %lldx%lld · lines %lld/%lld/%lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · variant %2$@ · grid %3$lldx%4$lld · object %5$lldx%6$lld · lines %7$lld/%8$lld/%9$lld"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · 变体 %2$@ · 网格 %3$lldx%4$lld · 物件 %5$lldx%6$lld · 行数 %7$lld/%8$lld/%9$lld"
           }
         }
       }
@@ -20,6 +42,28 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$@ • %2$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ • %2$@"
+          }
+        }
+      }
+    },
+    "%@ object %lldx%lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ object %2$lldx%3$lld"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ 物件 %2$lldx%3$lld"
           }
         }
       }
@@ -46,7 +90,14 @@
       }
     },
     "%lld memories" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 条记忆"
+          }
+        }
+      }
     },
     "%lld mentions" : {
       "localizations" : {
@@ -70,6 +121,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$lld 次提及 · %2$@"
+          }
+        }
+      }
+    },
+    "%lldx%lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lldx%2$lld"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lldx%2$lld"
           }
         }
       }
@@ -102,7 +169,6 @@
       }
     },
     "Active vault" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -113,7 +179,6 @@
       }
     },
     "Add" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -135,7 +200,6 @@
       }
     },
     "Add first suggestion to board" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -146,19 +210,74 @@
       }
     },
     "Adds text or a link to Mory's external capture handoff path." : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "把文本或链接加入 Mory 的外部捕获交接路径。"
+          }
+        }
+      }
+    },
+    "Affect Corrections" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "情绪修正"
+          }
+        }
+      }
     },
     "Affect History" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "情绪历史"
+          }
+        }
+      }
     },
     "Affect label (optional)" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "情绪标签（可选）"
+          }
+        }
+      }
     },
     "Affect snapshots" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "情绪快照"
+          }
+        }
+      }
     },
     "Affect Snapshots" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "情绪快照"
+          }
+        }
+      }
+    },
+    "Affect, status, and bundle entries are presentation/debug nodes when they are not direct Artifact rows." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当情绪、状态和包条目不是直接 Artifact 行时，它们属于展示/调试节点。"
+          }
+        }
+      }
     },
     "AI analysis" : {
       "localizations" : {
@@ -181,7 +300,14 @@
       }
     },
     "Aliases (comma separated)" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "别名（用逗号分隔）"
+          }
+        }
+      }
     },
     "Aliases, separated by commas" : {
       "localizations" : {
@@ -193,8 +319,45 @@
         }
       }
     },
+    "Analysis is now the production pipeline; legacy Analyze controls are deprecated." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Analysis 现在是生产管线；旧 Analyze 控制项已废弃。"
+          }
+        }
+      }
+    },
+    "Analysis is the production memory analysis path. This debug view inspects the context pack, request payload, response proposals, and mapper output used by that path." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Analysis 是生产记忆分析路径。此调试视图检查该路径使用的上下文包、请求载荷、响应提案和映射输出。"
+          }
+        }
+      }
+    },
     "Analysis ready" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "分析就绪"
+          }
+        }
+      }
+    },
+    "Analysis response" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "分析响应"
+          }
+        }
+      }
     },
     "Analysis status" : {
       "localizations" : {
@@ -207,7 +370,24 @@
       }
     },
     "Answer: %@" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "回答：%@"
+          }
+        }
+      }
+    },
+    "Answered (%lld)" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已回答（%lld）"
+          }
+        }
+      }
     },
     "APNs" : {
       "extractionState" : "stale",
@@ -221,7 +401,6 @@
       }
     },
     "APNs token" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -232,7 +411,6 @@
       }
     },
     "Appearance" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -243,7 +421,6 @@
       }
     },
     "Appearance Lab" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -254,7 +431,14 @@
       }
     },
     "Apple Picker" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple 选择器"
+          }
+        }
+      }
     },
     "applied" : {
       "localizations" : {
@@ -267,13 +451,26 @@
       }
     },
     "Applied" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已应用"
+          }
+        }
+      }
     },
     "Apply" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "应用"
+          }
+        }
+      }
     },
     "Arc min records: %lld" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -488,7 +685,6 @@
       }
     },
     "Arc/reflection results" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -550,7 +746,200 @@
       }
     },
     "Arousal" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "唤醒度"
+          }
+        }
+      }
+    },
+    "Arrangement" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "排布"
+          }
+        }
+      }
+    },
+    "artifact.kind.audio" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audio"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "录音"
+          }
+        }
+      }
+    },
+    "artifact.kind.document" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Document"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文档"
+          }
+        }
+      }
+    },
+    "artifact.kind.link" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Link"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "链接"
+          }
+        }
+      }
+    },
+    "artifact.kind.livePhoto" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Live Photo"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "实况照片"
+          }
+        }
+      }
+    },
+    "artifact.kind.location" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Location"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "地点"
+          }
+        }
+      }
+    },
+    "artifact.kind.music" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Music"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音乐"
+          }
+        }
+      }
+    },
+    "artifact.kind.photo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Photo"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "照片"
+          }
+        }
+      }
+    },
+    "artifact.kind.text" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文本"
+          }
+        }
+      }
+    },
+    "artifact.kind.todo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todo"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "待办"
+          }
+        }
+      }
+    },
+    "artifact.kind.video" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Video"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "视频"
+          }
+        }
+      }
+    },
+    "artifact.kind.weather" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weather"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "天气"
+          }
+        }
+      }
     },
     "Artifacts" : {
       "localizations" : {
@@ -563,10 +952,16 @@
       }
     },
     "Artist" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "艺术家"
+          }
+        }
+      }
     },
     "Atmosphere" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -610,7 +1005,28 @@
         }
       }
     },
+    "Auto Arrange" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动排布"
+          }
+        }
+      }
+    },
+    "Auto Pack" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动整理"
+          }
+        }
+      }
+    },
     "Automatic layout" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -631,13 +1047,26 @@
       }
     },
     "Automation" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动化"
+          }
+        }
+      }
     },
     "Available" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "可用"
+          }
+        }
+      }
     },
     "Backfill as %@" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -648,7 +1077,6 @@
       }
     },
     "Backfill missing captureOrigin?" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -659,7 +1087,6 @@
       }
     },
     "Backfill missing origins" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -670,7 +1097,6 @@
       }
     },
     "Backfill value" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -681,7 +1107,6 @@
       }
     },
     "Backfilling" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -691,17 +1116,65 @@
         }
       }
     },
-    "Blocked" : {
-
+    "Background" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "后台"
+          }
+        }
+      }
     },
-    "Blocked: %@" : {
-
+    "Blocked" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已阻止"
+          }
+        }
+      }
     },
     "Body" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正文"
+          }
+        }
+      }
+    },
+    "Budget" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "预算"
+          }
+        }
+      }
+    },
+    "Build context pack for latest memory" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "为最新记忆构建上下文包"
+          }
+        }
+      }
     },
     "Build Draft Preview" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "构建草稿预览"
+          }
+        }
+      }
     },
     "Build Environment" : {
       "extractionState" : "manual",
@@ -720,6 +1193,26 @@
         }
       }
     },
+    "Building context pack" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在构建上下文包"
+          }
+        }
+      }
+    },
+    "Bulk controls" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "批量控制"
+          }
+        }
+      }
+    },
     "Cancel" : {
       "localizations" : {
         "zh-Hans" : {
@@ -730,11 +1223,37 @@
         }
       }
     },
+    "Capabilities" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "能力"
+          }
+        }
+      }
+    },
+    "Capabilities are resolved from role + item. They describe what the surface may do, not necessarily what is visible in the current runtime state." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "能力由角色和项目解析。它们描述该界面允许做什么，不一定等同于当前运行状态下实际可见的内容。"
+          }
+        }
+      }
+    },
     "Capability Checks" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "能力检查"
+          }
+        }
+      }
     },
     "Caption hint" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -745,7 +1264,6 @@
       }
     },
     "Capture Card Lab" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -756,13 +1274,34 @@
       }
     },
     "Capture Memory" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "记录记忆"
+          }
+        }
+      }
     },
     "Capture Memory in Mory" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在 Mory 中记录记忆"
+          }
+        }
+      }
     },
     "Capture source" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "捕获来源"
+          }
+        }
+      }
     },
     "capture.action.add" : {
       "localizations" : {
@@ -1197,6 +1736,22 @@
         }
       }
     },
+    "capture.card.kind.affect" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mood"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "心情"
+          }
+        }
+      }
+    },
     "capture.card.kind.audio" : {
       "localizations" : {
         "en" : {
@@ -1213,6 +1768,22 @@
         }
       }
     },
+    "capture.card.kind.journalingSuggestion" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Journal Suggestion"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "手记建议"
+          }
+        }
+      }
+    },
     "capture.card.kind.link" : {
       "localizations" : {
         "en" : {
@@ -1225,6 +1796,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "链接"
+          }
+        }
+      }
+    },
+    "capture.card.kind.livePhoto" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Live Photo"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Live Photo"
           }
         }
       }
@@ -1258,6 +1845,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "音乐"
+          }
+        }
+      }
+    },
+    "capture.card.kind.person" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Person"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "人物"
           }
         }
       }
@@ -1310,6 +1913,22 @@
         }
       }
     },
+    "capture.card.kind.prompt" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prompt"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "问题"
+          }
+        }
+      }
+    },
     "capture.card.kind.status" : {
       "localizations" : {
         "en" : {
@@ -1354,6 +1973,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "任务"
+          }
+        }
+      }
+    },
+    "capture.card.kind.video" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Video"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "视频"
           }
         }
       }
@@ -3913,11 +4548,93 @@
         }
       }
     },
+    "Card Debug" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "卡片调试"
+          }
+        }
+      }
+    },
+    "Card States & Actions" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "卡片状态与操作"
+          }
+        }
+      }
+    },
+    "Cassette Fixtures" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "磁带卡样例"
+          }
+        }
+      }
+    },
+    "Checks" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "检查"
+          }
+        }
+      }
+    },
+    "Clarification Questions" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "澄清问题"
+          }
+        }
+      }
+    },
+    "clarificationQuestions" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clarification Questions"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "澄清问题"
+          }
+        }
+      }
+    },
     "Classification (e.g. pleasant)" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "分类（例如愉悦）"
+          }
+        }
+      }
+    },
+    "Clear" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清除"
+          }
+        }
+      }
     },
     "Clear Lab Data" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -3927,13 +4644,80 @@
         }
       }
     },
-    "Cloud Intelligence" : {
-      "extractionState" : "stale",
+    "Clear User Adjusted" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清除用户调整"
+          }
+        }
+      }
+    },
+    "Cloud intelligence" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "云端智能"
+          }
+        }
+      }
+    },
+    "Cloud Intelligence" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "云端智能"
+          }
+        }
+      }
+    },
+    "cloudChapterSuggestions" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cloud Chapter Suggestions"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "云端章节建议"
+          }
+        }
+      }
+    },
+    "cloudQuestionSuggestions" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cloud Question Suggestions"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "云端问题建议"
+          }
+        }
+      }
+    },
+    "column %lld, row %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "column %1$lld, row %2$lld"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "第 %1$lld 列，第 %2$lld 行"
           }
         }
       }
@@ -4340,12 +5124,31 @@
       }
     },
     "Compare the same origin fixtures in production, debug, and hidden source label modes." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "对比同一来源样例在生产、调试和隐藏来源标签模式下的表现。"
+          }
+        }
+      }
+    },
+    "Comparison" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "对比"
+          }
+        }
+      }
+    },
+    "Completed" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已完成"
           }
         }
       }
@@ -4372,7 +5175,14 @@
       }
     },
     "Confidence: %@" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "置信度：%@"
+          }
+        }
+      }
     },
     "Context" : {
       "localizations" : {
@@ -4384,11 +5194,37 @@
         }
       }
     },
+    "Context Pack" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "上下文包"
+          }
+        }
+      }
+    },
     "Contexts: %@" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "上下文：%@"
+          }
+        }
+      }
+    },
+    "Contract Notes" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "契约说明"
+          }
+        }
+      }
     },
     "Contrast" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -4399,7 +5235,6 @@
       }
     },
     "Controls" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -4420,7 +5255,6 @@
       }
     },
     "Copy" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -4448,7 +5282,6 @@
       }
     },
     "Copy All Reports" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -4476,7 +5309,6 @@
       }
     },
     "Copy Full Report" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -4487,7 +5319,6 @@
       }
     },
     "Copy rule report" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -4498,7 +5329,6 @@
       }
     },
     "Core Batch runs strict, balanced, and experimental profiles over the high-signal input and history scenarios." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -4509,10 +5339,16 @@
       }
     },
     "Create Memory From Preview" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从预览创建记忆"
+          }
+        }
+      }
     },
     "Custom body override" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -4523,7 +5359,6 @@
       }
     },
     "Custom Content" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -4534,7 +5369,6 @@
       }
     },
     "Custom context override" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -4545,7 +5379,6 @@
       }
     },
     "Custom mood override" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -4556,7 +5389,6 @@
       }
     },
     "Custom title override" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -4576,13 +5408,48 @@
         }
       }
     },
+    "Daily questions" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每日问题"
+          }
+        }
+      }
+    },
+    "dailyQuestions" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Daily Questions"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每日问题"
+          }
+        }
+      }
+    },
     "Data Repair" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "数据修复"
+          }
+        }
+      }
+    },
+    "Daylight" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "日照"
           }
         }
       }
@@ -4610,6 +5477,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "调试 ID"
+          }
+        }
+      }
+    },
+    "Debug Surfaces" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "调试界面"
           }
         }
       }
@@ -5618,7 +6495,6 @@
       }
     },
     "debug.captureCardLab.allTypes.subtitle" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5635,7 +6511,6 @@
       }
     },
     "debug.captureCardLab.allTypes.title" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5652,7 +6527,6 @@
       }
     },
     "debug.captureCardLab.appearance.dark" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5669,7 +6543,6 @@
       }
     },
     "debug.captureCardLab.appearance.light" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5686,7 +6559,6 @@
       }
     },
     "debug.captureCardLab.contrast.high" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5703,7 +6575,6 @@
       }
     },
     "debug.captureCardLab.contrast.standard" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5784,7 +6655,6 @@
       }
     },
     "debug.captureCardLab.edgeCases.subtitle" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5801,7 +6671,6 @@
       }
     },
     "debug.captureCardLab.edgeCases.title" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5994,7 +6863,6 @@
       }
     },
     "debug.captureCardLab.intensity.balanced" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6011,7 +6879,6 @@
       }
     },
     "debug.captureCardLab.intensity.calm" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6028,7 +6895,6 @@
       }
     },
     "debug.captureCardLab.intensity.vivid" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6045,7 +6911,6 @@
       }
     },
     "debug.captureCardLab.music.chooseResult" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6062,7 +6927,6 @@
       }
     },
     "debug.captureCardLab.music.loadedNowPlaying" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6079,7 +6943,6 @@
       }
     },
     "debug.captureCardLab.music.loadingNowPlaying" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6096,7 +6959,6 @@
       }
     },
     "debug.captureCardLab.music.loadNowPlaying" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6113,7 +6975,6 @@
       }
     },
     "debug.captureCardLab.music.noCardGenerated" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6130,7 +6991,6 @@
       }
     },
     "debug.captureCardLab.music.noContentCard" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6147,7 +7007,6 @@
       }
     },
     "debug.captureCardLab.music.noCurrentSong.detail" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6164,7 +7023,6 @@
       }
     },
     "debug.captureCardLab.music.noCurrentSong.title" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6181,7 +7039,6 @@
       }
     },
     "debug.captureCardLab.music.noSongsOrAuthorization" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6230,7 +7087,6 @@
       }
     },
     "debug.captureCardLab.music.searching" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6247,7 +7103,6 @@
       }
     },
     "debug.captureCardLab.music.searchPreview" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6264,7 +7119,6 @@
       }
     },
     "debug.captureCardLab.music.stopped.detail" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6281,7 +7135,6 @@
       }
     },
     "debug.captureCardLab.music.unavailable.detail" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6330,7 +7183,6 @@
       }
     },
     "debug.captureCardLab.palette.default.detail" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6347,7 +7199,6 @@
       }
     },
     "debug.captureCardLab.palette.default.title" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6364,7 +7215,6 @@
       }
     },
     "debug.captureCardLab.palette.music.detail" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6381,7 +7231,6 @@
       }
     },
     "debug.captureCardLab.palette.music.title" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6398,7 +7247,6 @@
       }
     },
     "debug.captureCardLab.palette.photo.detail" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6415,7 +7263,6 @@
       }
     },
     "debug.captureCardLab.palette.photo.title" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6432,7 +7279,6 @@
       }
     },
     "debug.captureCardLab.palette.subtitle" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6449,7 +7295,6 @@
       }
     },
     "debug.captureCardLab.palette.title" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6466,7 +7311,6 @@
       }
     },
     "debug.captureCardLab.palette.weather.detail" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6611,7 +7455,6 @@
       }
     },
     "debug.captureCardLab.photoGroups.subtitle" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6628,7 +7471,6 @@
       }
     },
     "debug.captureCardLab.photoGroups.title" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6677,7 +7519,6 @@
       }
     },
     "debug.captureCardLab.place.generateSnapshot" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6694,7 +7535,6 @@
       }
     },
     "debug.captureCardLab.place.generatingMap" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6887,7 +7727,6 @@
       }
     },
     "debug.captureCardLab.place.privacy" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6952,7 +7791,6 @@
       }
     },
     "debug.captureCardLab.place.snapshotFailed" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6969,7 +7807,6 @@
       }
     },
     "debug.captureCardLab.place.snapshotGenerated" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7226,7 +8063,6 @@
       }
     },
     "debug.captureCardLab.states.subtitle" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7243,7 +8079,6 @@
       }
     },
     "debug.captureCardLab.states.title" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7372,7 +8207,6 @@
       }
     },
     "debug.captureCardLab.status.subtitle" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7389,7 +8223,6 @@
       }
     },
     "debug.captureCardLab.status.title" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7438,7 +8271,6 @@
       }
     },
     "debug.captureCardLab.type.subtitle" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7455,7 +8287,6 @@
       }
     },
     "debug.captureCardLab.weather.temperature.format" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -11483,12 +12314,6 @@
         }
       }
     },
-    "Dedupe" : {
-
-    },
-    "dedupeKey=%@" : {
-
-    },
     "Default layout" : {
       "localizations" : {
         "zh-Hans" : {
@@ -11499,8 +12324,17 @@
         }
       }
     },
+    "Delete" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除"
+          }
+        }
+      }
+    },
     "Delete Core Spotlight index" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -11520,6 +12354,26 @@
         }
       }
     },
+    "Derived Behavior" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "派生行为"
+          }
+        }
+      }
+    },
+    "Derived behavior is what CaptureCardView will actually expose for this state, including loading, error, disabled, and selected gates." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "派生行为是 CaptureCardView 在此状态下实际暴露的内容，包括加载、错误、禁用和选中门控。"
+          }
+        }
+      }
+    },
     "Device ID" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -11532,7 +12386,6 @@
       }
     },
     "Device-scoped keys may persist across sign-out. Owner-scoped keys are namespaced by the active local data owner. Debug keys are development controls and do not store user memory content." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -11542,8 +12395,17 @@
         }
       }
     },
+    "Diagnostics" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "诊断"
+          }
+        }
+      }
+    },
     "Disable tuning runtime" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -11554,7 +12416,6 @@
       }
     },
     "Disabled" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -11575,13 +12436,44 @@
       }
     },
     "Dismissed" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已忽略"
+          }
+        }
+      }
+    },
+    "Dismissed (%lld)" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已忽略（%lld）"
+          }
+        }
+      }
     },
     "Display name" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示名称"
+          }
+        }
+      }
     },
     "Dominance" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "主导度"
+          }
+        }
+      }
     },
     "Done" : {
       "extractionState" : "stale",
@@ -11595,10 +12487,16 @@
       }
     },
     "Draft Preview" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "草稿预览"
+          }
+        }
+      }
     },
     "Each run creates real local memories and calls the configured Go API through the normal pipeline." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -11609,10 +12507,44 @@
       }
     },
     "Edit Person Profile" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "编辑人物档案"
+          }
+        }
+      }
     },
     "Editable Fields" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "可编辑字段"
+          }
+        }
+      }
+    },
+    "Effective gate status" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "实际门控状态"
+          }
+        }
+      }
+    },
+    "Effective gates" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "实际门控"
+          }
+        }
+      }
     },
     "empty.action.addFirstMemory" : {
       "extractionState" : "manual",
@@ -12056,8 +12988,47 @@
         }
       }
     },
+    "Enable all V6 flags" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "启用所有 V6 开关"
+          }
+        }
+      }
+    },
+    "Enable cloud-first strongest policy" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "启用云端优先最强策略"
+          }
+        }
+      }
+    },
+    "Enable semantic search" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "启用语义搜索"
+          }
+        }
+      }
+    },
+    "Enable semantic search + rebuild index" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "启用语义搜索并重建索引"
+          }
+        }
+      }
+    },
     "Enabled" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -12121,7 +13092,6 @@
       }
     },
     "Entity results" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -12267,8 +13237,23 @@
         }
       }
     },
+    "entityProfiles" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entity Profiles"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "实体档案"
+          }
+        }
+      }
+    },
     "Error" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -12278,14 +13263,27 @@
         }
       }
     },
-    "Errors" : {
-
+    "Events" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "事件"
+          }
+        }
+      }
     },
     "Evidence: %lld" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "证据：%lld"
+          }
+        }
+      }
     },
     "Execution" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -12296,7 +13294,6 @@
       }
     },
     "Expectation: %@" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -12307,10 +13304,24 @@
       }
     },
     "External Capture Handoff" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "外部捕获交接"
+          }
+        }
+      }
     },
     "External Capture Recovery" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "外部捕获恢复"
+          }
+        }
+      }
     },
     "FAIL" : {
       "localizations" : {
@@ -12333,6 +13344,16 @@
         }
       }
     },
+    "Failed jobs" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "失败任务"
+          }
+        }
+      }
+    },
     "Failed Stage: %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -12351,7 +13372,24 @@
       }
     },
     "Fallback Draft" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "兜底草稿"
+          }
+        }
+      }
+    },
+    "false" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "否"
+          }
+        }
+      }
     },
     "Feature flags" : {
       "extractionState" : "stale",
@@ -12364,11 +13402,27 @@
         }
       }
     },
+    "Feature gates" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "功能门控"
+          }
+        }
+      }
+    },
     "Field evidence" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "字段证据"
+          }
+        }
+      }
     },
     "Filtered" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -12400,7 +13454,6 @@
       }
     },
     "Fixture" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -12420,6 +13473,16 @@
         }
       }
     },
+    "Four-layer Path" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "四层路径"
+          }
+        }
+      }
+    },
     "Generate map snapshot" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -12432,7 +13495,14 @@
       }
     },
     "Generated" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已生成"
+          }
+        }
+      }
     },
     "Generating map" : {
       "extractionState" : "stale",
@@ -12457,16 +13527,56 @@
       }
     },
     "GraphDelta Review" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "图谱变更审查"
+          }
+        }
+      }
+    },
+    "GraphDelta Status" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "图谱变更状态"
+          }
+        }
+      }
+    },
+    "Grid Board Lab" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "网格面板实验室"
+          }
+        }
+      }
+    },
+    "Grid Tokens" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "网格尺寸令牌"
+          }
+        }
+      }
     },
     "Handoff Recovery" : {
-
-    },
-    "History" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "交接恢复"
+          }
+        }
+      }
     },
     "Home Board Debug" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -12477,12 +13587,21 @@
       }
     },
     "Home Board Rules" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "首页看板规则"
+          }
+        }
+      }
+    },
+    "Home suggestions" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "首页建议"
           }
         }
       }
@@ -13014,20 +14133,83 @@
         }
       }
     },
+    "homeGrid" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Home Grid"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "首页网格"
+          }
+        }
+      }
+    },
+    "ID" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ID"
+          }
+        }
+      }
+    },
     "Import" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "导入"
+          }
+        }
+      }
     },
     "Importance" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重要性"
+          }
+        }
+      }
     },
     "Imported" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已导入"
+          }
+        }
+      }
+    },
+    "In-memory MemoryDetailSnapshot rendered through MemoryDeskRenderer. No repository writes." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "通过 MemoryDeskRenderer 渲染内存中的 MemoryDetailSnapshot，不写入 repository。"
+          }
+        }
+      }
     },
     "Input" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "输入"
+          }
+        }
+      }
     },
     "Inputs" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -13445,11 +14627,61 @@
         }
       }
     },
+    "Intelligence Jobs" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "智能任务"
+          }
+        }
+      }
+    },
+    "Intelligence preferences" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "智能偏好"
+          }
+        }
+      }
+    },
+    "intelligenceJobs" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Intelligence Jobs"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "智能任务"
+          }
+        }
+      }
+    },
     "Intensity" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "强度"
+          }
+        }
+      }
     },
     "Interaction" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "交互"
+          }
+        }
+      }
     },
     "Internal diagnostics are enabled for Debug, development installs, and InternalBeta TestFlight builds only." : {
       "extractionState" : "manual",
@@ -13530,22 +14762,90 @@
       }
     },
     "Journaling Import" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "手记导入"
+          }
+        }
+      }
+    },
+    "Journaling Suggestion" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "手记建议"
+          }
+        }
+      }
     },
     "Journaling Suggestions" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "手记建议"
+          }
+        }
+      }
     },
     "Journaling Suggestions Status" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "手记建议状态"
+          }
+        }
+      }
     },
     "Kind (daily mood / momentary emotion)" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "类型（每日心情 / 瞬时情绪）"
+          }
+        }
+      }
+    },
+    "Kind: %@ · Sensitivity: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Kind: %1$@ · Sensitivity: %2$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "类型：%@ · 敏感度：%@"
+          }
+        }
+      }
     },
     "Label (e.g. calm, relieved)" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "标签（例如平静、释然）"
+          }
+        }
+      }
     },
     "Labels" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "标签"
+          }
+        }
+      }
     },
     "Last error" : {
       "extractionState" : "stale",
@@ -13559,7 +14859,6 @@
       }
     },
     "Last result" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -13570,7 +14869,6 @@
       }
     },
     "Last transport trace" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -13590,8 +14888,17 @@
         }
       }
     },
+    "Layout Policy" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "布局策略"
+          }
+        }
+      }
+    },
     "Leave fields empty to use the selected preset." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -13602,10 +14909,16 @@
       }
     },
     "Leave pending" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保持待处理"
+          }
+        }
+      }
     },
     "Legacy has user data" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -13615,8 +14928,17 @@
         }
       }
     },
+    "Legacy Labs" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "旧版实验室"
+          }
+        }
+      }
+    },
     "Legacy owner" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -13627,7 +14949,6 @@
       }
     },
     "Less" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -13638,7 +14959,6 @@
       }
     },
     "Limit: %lld" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -13659,12 +14979,21 @@
       }
     },
     "Live and search previews only update this debug page. They do not save memories." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "当前播放和搜索预览只更新此调试页，不会保存记忆。"
+          }
+        }
+      }
+    },
+    "Live Photo" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "实况照片"
           }
         }
       }
@@ -13681,10 +15010,24 @@
       }
     },
     "Load Diagnostics" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "加载诊断"
+          }
+        }
+      }
     },
     "Load push server metrics" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "加载推送服务器指标"
+          }
+        }
+      }
     },
     "Load server worker metrics" : {
       "extractionState" : "stale",
@@ -13750,7 +15093,6 @@
       }
     },
     "Local Data Vault" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -13761,12 +15103,21 @@
       }
     },
     "Local Gate Overrides" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "本地门控覆盖"
+          }
+        }
+      }
+    },
+    "Local intelligence" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本地智能"
           }
         }
       }
@@ -13783,12 +15134,27 @@
       }
     },
     "Local preferences" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "本地偏好"
+          }
+        }
+      }
+    },
+    "localNotifications" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Local Notifications"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本地通知"
           }
         }
       }
@@ -13814,24 +15180,81 @@
       }
     },
     "Manage People" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "管理人物"
+          }
+        }
+      }
     },
     "Manage People Merge/Split" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "管理人物合并/拆分"
+          }
+        }
+      }
     },
     "Manual checks" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "手动检查"
+          }
+        }
+      }
     },
     "Manual Device Checklist" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "手动设备检查清单"
+          }
+        }
+      }
     },
     "Map snapshots are static images. Cards fall back to a lightweight map texture when no snapshot is available." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "地图快照是静态图片。没有快照时，卡片会回退到轻量地图纹理。"
+          }
+        }
+      }
+    },
+    "MAP TICKET" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "地图票根"
+          }
+        }
+      }
+    },
+    "Mapped local proposals" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已映射本地提案"
+          }
+        }
+      }
+    },
+    "Mark User Adjusted" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "标记为用户调整"
           }
         }
       }
@@ -14289,10 +15712,16 @@
       }
     },
     "Memory Intelligence" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "记忆智能"
+          }
+        }
+      }
     },
     "Memory results" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -14342,6 +15771,470 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "重试中…"
+          }
+        }
+      }
+    },
+    "memory.arrangement.size" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Size"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "尺寸"
+          }
+        }
+      }
+    },
+    "memory.arrangement.stackWithPrevious" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stack with Previous"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "与上一张堆叠"
+          }
+        }
+      }
+    },
+    "memory.arrangement.unstack" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unstack"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取消堆叠"
+          }
+        }
+      }
+    },
+    "memory.desk.group.journalingBundle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Journaling bundle"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "手记建议包"
+          }
+        }
+      }
+    },
+    "memory.desk.group.mediaStack" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Media stack"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "媒体堆叠"
+          }
+        }
+      }
+    },
+    "memory.desk.group.mixedContext" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Context stack"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "上下文堆叠"
+          }
+        }
+      }
+    },
+    "memory.desk.group.photoStack" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Photo stack"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "照片堆叠"
+          }
+        }
+      }
+    },
+    "memory.desk.journalingSuggestion.detail" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Imported Journaling Suggestion"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "来自手记建议的导入内容"
+          }
+        }
+      }
+    },
+    "memory.desk.journalingSuggestion.metadata" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Journaling"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "手记"
+          }
+        }
+      }
+    },
+    "memory.detail.artifact.audio" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audio"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音频"
+          }
+        }
+      }
+    },
+    "memory.detail.artifact.link" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Link"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "链接"
+          }
+        }
+      }
+    },
+    "memory.detail.empty.article.message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Analysis has not produced an article view for this memory yet."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这条记忆还没有生成文章视图。"
+          }
+        }
+      }
+    },
+    "memory.detail.empty.article.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No article yet"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无文章"
+          }
+        }
+      }
+    },
+    "memory.detail.empty.audio.message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audio attachments will appear here after capture."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "录入音频后会显示在这里。"
+          }
+        }
+      }
+    },
+    "memory.detail.empty.audio.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No audio"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无音频"
+          }
+        }
+      }
+    },
+    "memory.detail.empty.gallery.message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Photos, videos, and Live Photos will appear here."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "照片、视频和 Live Photo 会显示在这里。"
+          }
+        }
+      }
+    },
+    "memory.detail.empty.gallery.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No media"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无媒体"
+          }
+        }
+      }
+    },
+    "memory.detail.empty.link.message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saved links will appear here."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保存的链接会显示在这里。"
+          }
+        }
+      }
+    },
+    "memory.detail.empty.link.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No links"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无链接"
+          }
+        }
+      }
+    },
+    "memory.detail.mode.article" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Article"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文章"
+          }
+        }
+      }
+    },
+    "memory.detail.mode.audio" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audio"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音频"
+          }
+        }
+      }
+    },
+    "memory.detail.mode.checkIn" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check-in"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "签到"
+          }
+        }
+      }
+    },
+    "memory.detail.mode.gallery" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gallery"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "图库"
+          }
+        }
+      }
+    },
+    "memory.detail.mode.link" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Links"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "链接"
+          }
+        }
+      }
+    },
+    "memory.detail.mode.story" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Story"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "故事"
+          }
+        }
+      }
+    },
+    "memory.detail.mode.text" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文字"
+          }
+        }
+      }
+    },
+    "memory.detail.strategy.aiAutomatic" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI automatic"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI 自动"
+          }
+        }
+      }
+    },
+    "memory.detail.strategy.automatic" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatic"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动"
+          }
+        }
+      }
+    },
+    "memory.detail.strategy.fixed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fixed"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "固定"
           }
         }
       }
@@ -14403,13 +16296,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Deleting or reordering attachments will rerun memory analysis after saving."
+            "value" : "Deleting, resizing, stacking, or reordering cards updates the saved memory layout."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "删除或调整附件顺序后，保存会重新分析这条记忆。"
+            "value" : "删除、调整大小、堆叠或重排卡片后，会更新这条记忆的保存布局。"
           }
         }
       }
@@ -14590,13 +16483,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Correct text, mood, context, or add one more supporting note before rerunning analysis."
+            "value" : "Correct text, mood, context, or card layout before saving the memory."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在重新解析前，可以修改文本、心情、背景信息，或补充一条附注。"
+            "value" : "保存前可以修改文本、心情、背景信息或卡片排布。"
           }
         }
       }
@@ -14962,10 +16855,24 @@
       }
     },
     "Merge People" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "合并人物"
+          }
+        }
+      }
     },
     "Merge selected" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "合并所选"
+          }
+        }
+      }
     },
     "Merge selected places" : {
       "localizations" : {
@@ -14978,7 +16885,6 @@
       }
     },
     "Missing by kind" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -14989,13 +16895,26 @@
       }
     },
     "Mood" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "心情"
+          }
+        }
+      }
     },
     "Mood Vector" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "心情向量"
+          }
+        }
+      }
     },
     "More" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15022,6 +16941,72 @@
         }
       }
     },
+    "Move Down Row" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下移一行"
+          }
+        }
+      }
+    },
+    "Move Earlier" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "前移"
+          }
+        }
+      }
+    },
+    "Move Later" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "后移"
+          }
+        }
+      }
+    },
+    "Move Up Row" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "上移一行"
+          }
+        }
+      }
+    },
+    "moved" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已移动"
+          }
+        }
+      }
+    },
+    "multimediaViews" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Multimedia Views"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "多媒体视图"
+          }
+        }
+      }
+    },
     "Music" : {
       "localizations" : {
         "zh-Hans" : {
@@ -15033,7 +17018,6 @@
       }
     },
     "Music Lab" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15065,7 +17049,14 @@
       }
     },
     "New person name" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新人物名称"
+          }
+        }
+      }
     },
     "New place name" : {
       "localizations" : {
@@ -15087,8 +17078,17 @@
         }
       }
     },
+    "nil placement" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "空 placement"
+          }
+        }
+      }
+    },
     "No active local data diagnostics." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15098,14 +17098,47 @@
         }
       }
     },
+    "No affect correction events." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无情绪修正事件。"
+          }
+        }
+      }
+    },
+    "No affect snapshots yet." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无情绪快照。"
+          }
+        }
+      }
+    },
     "No affect snapshots." : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无情绪快照。"
+          }
+        }
+      }
     },
     "No applied graph deltas yet." : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无已应用的图谱变更。"
+          }
+        }
+      }
     },
     "No arc/reflection results" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15132,14 +17165,47 @@
         }
       }
     },
-    "No dedupe hits." : {
-
+    "No background events." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无后台事件。"
+          }
+        }
+      }
+    },
+    "No background runs." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无后台运行。"
+          }
+        }
+      }
+    },
+    "No dedupe hits or notification errors." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无去重命中或通知错误。"
+          }
+        }
+      }
     },
     "No delivered, opened, or dismissed notification events." : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无已送达、已打开或已忽略的通知事件。"
+          }
+        }
+      }
     },
     "No entity results" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15150,7 +17216,14 @@
       }
     },
     "No external captures." : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无外部捕获。"
+          }
+        }
+      }
     },
     "No jobs" : {
       "extractionState" : "stale",
@@ -15163,8 +17236,17 @@
         }
       }
     },
+    "No jobs." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无任务。"
+          }
+        }
+      }
+    },
     "No memory results" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15196,13 +17278,44 @@
       }
     },
     "No pending graph deltas." : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无待处理图谱变更。"
+          }
+        }
+      }
     },
-    "No pending, scheduled, in-app-only, or blocked notification intents." : {
-
+    "No pending questions" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无待处理问题"
+          }
+        }
+      }
     },
     "No person profile yet." : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无人物档案。"
+          }
+        }
+      }
+    },
+    "No person profiles" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无人物档案"
+          }
+        }
+      }
     },
     "No places" : {
       "localizations" : {
@@ -15214,11 +17327,7 @@
         }
       }
     },
-    "No policy, delivery, or route errors." : {
-
-    },
     "No preview loaded." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15228,11 +17337,67 @@
         }
       }
     },
+    "No privacy decisions" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无隐私决策"
+          }
+        }
+      }
+    },
+    "No queued notification intents." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无排队中的通知意图。"
+          }
+        }
+      }
+    },
     "No rejected graph deltas." : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无已拒绝的图谱变更。"
+          }
+        }
+      }
+    },
+    "No related memories" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无相关记忆"
+          }
+        }
+      }
+    },
+    "No related profiles" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无相关档案"
+          }
+        }
+      }
+    },
+    "No self brief" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无自我简报"
+          }
+        }
+      }
     },
     "No suggestion cards" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15243,7 +17408,6 @@
       }
     },
     "No user board cards" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15254,7 +17418,6 @@
       }
     },
     "No visible cards" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15265,7 +17428,14 @@
       }
     },
     "none" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无"
+          }
+        }
+      }
     },
     "Not now" : {
       "localizations" : {
@@ -15299,6 +17469,26 @@
         }
       }
     },
+    "Notification Dedupe And Errors" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "通知去重与错误"
+          }
+        }
+      }
+    },
+    "Notification History" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "通知历史"
+          }
+        }
+      }
+    },
     "Notification intent counts" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -15310,11 +17500,45 @@
         }
       }
     },
-    "Notification Management" : {
-
+    "Notifications" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "通知"
+          }
+        }
+      }
     },
-    "Notification preferences are kept here so Settings and Debug use the same controls." : {
-
+    "Notifications Queue" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "通知队列"
+          }
+        }
+      }
+    },
+    "Object Metrics" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "物件指标"
+          }
+        }
+      }
+    },
+    "Occupancy" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "占用情况"
+          }
+        }
+      }
     },
     "OCR: %@" : {
       "extractionState" : "manual",
@@ -15538,16 +17762,36 @@
       }
     },
     "Open Apple Picker" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开 Apple 选择器"
+          }
+        }
+      }
     },
     "Opening Mory." : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在打开 Mory。"
+          }
+        }
+      }
     },
     "Optional note" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "可选备注"
+          }
+        }
+      }
     },
     "Origin" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15569,7 +17813,6 @@
       }
     },
     "Origins" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15596,8 +17839,27 @@
         }
       }
     },
+    "Overview" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "概览"
+          }
+        }
+      }
+    },
+    "Overview reads the latest saved memory. Fixture pages below do not save or mutate data." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "概览读取最近保存的记忆。下面的样例页面不会保存或修改数据。"
+          }
+        }
+      }
+    },
     "Owner" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15617,11 +17879,45 @@
         }
       }
     },
+    "Payload preview" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "载荷预览"
+          }
+        }
+      }
+    },
     "pending" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "待处理"
+          }
+        }
+      }
     },
     "Pending" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "待处理"
+          }
+        }
+      }
+    },
+    "Pending (%lld)" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "待处理（%lld）"
+          }
+        }
+      }
     },
     "Pending intents" : {
       "extractionState" : "stale",
@@ -15635,10 +17931,16 @@
       }
     },
     "Pending Proposals" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "待处理提案"
+          }
+        }
+      }
     },
     "Pending writebacks" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15830,10 +18132,34 @@
       }
     },
     "Person Profile" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "人物档案"
+          }
+        }
+      }
     },
     "Person profile not found" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未找到人物档案"
+          }
+        }
+      }
+    },
+    "Person Profiles" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "人物档案"
+          }
+        }
+      }
     },
     "person.nav.title" : {
       "extractionState" : "manual",
@@ -15886,8 +18212,17 @@
         }
       }
     },
+    "Phase 3 uses local deterministic refresh. Cloud portrait proposals are part of the Analysis contract phase." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Phase 3 使用本地确定性刷新。云端人物画像提案属于 Analysis 契约阶段。"
+          }
+        }
+      }
+    },
     "Photo labels" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15915,7 +18250,6 @@
       }
     },
     "Photo OCR" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15926,12 +18260,21 @@
       }
     },
     "Pin" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "固定"
+          }
+        }
+      }
+    },
+    "Pipeline statuses" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "管线状态"
           }
         }
       }
@@ -15970,19 +18313,36 @@
         }
       }
     },
+    "pipeline.explain.notScheduled" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The record is saved locally. Analysis has not been scheduled."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "记录已保存在本地，尚未安排解析。"
+          }
+        }
+      }
+    },
     "pipeline.explain.pending" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Your capture is already stored on device. Analysis will be attached after the pipeline runs."
+            "value" : "Analysis has been queued and will start when the pipeline runs."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "记录已保存在设备上。解析结果会在处理完成后附加。"
+            "value" : "解析已进入队列，会在流程运行时开始。"
           }
         }
       }
@@ -16038,7 +18398,7 @@
         }
       }
     },
-    "pipeline.status.pending" : {
+    "pipeline.status.notScheduled" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -16051,6 +18411,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已保存到本地"
+          }
+        }
+      }
+    },
+    "pipeline.status.pending" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Analysis queued"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "等待解析"
           }
         }
       }
@@ -16073,10 +18450,16 @@
       }
     },
     "Place" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "地点"
+          }
+        }
+      }
     },
     "Place Lab" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -16097,13 +18480,26 @@
       }
     },
     "Platform Capture" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "平台捕获"
+          }
+        }
+      }
     },
     "Platform Capture Diagnostics" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "平台捕获诊断"
+          }
+        }
+      }
     },
     "Playback" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -16114,7 +18510,6 @@
       }
     },
     "Prefer less first suggestion" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -16125,7 +18520,6 @@
       }
     },
     "Prefer more first suggestion" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -16136,7 +18530,6 @@
       }
     },
     "Preference counters" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -16147,7 +18540,6 @@
       }
     },
     "Preference: %@ · schema %lld · %@" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -16163,9 +18555,6 @@
         }
       }
     },
-    "Preferences" : {
-
-    },
     "Preview" : {
       "localizations" : {
         "zh-Hans" : {
@@ -16177,7 +18566,6 @@
       }
     },
     "Preview motion states" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -16187,8 +18575,17 @@
         }
       }
     },
+    "Preview skeuomorphic card styles using fixture data. Toggle surface mode to compare with standard cards." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用样例数据预览拟物卡片样式。切换界面模式可与标准卡片对比。"
+          }
+        }
+      }
+    },
     "Preview the same card system across light, dark, high contrast, and reduced motion environments." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -16199,10 +18596,16 @@
       }
     },
     "Primary" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "主要"
+          }
+        }
+      }
     },
     "priority %@" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -16213,12 +18616,21 @@
       }
     },
     "Privacy blur" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "隐私模糊"
+          }
+        }
+      }
+    },
+    "Privacy decisions" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "隐私决策"
           }
         }
       }
@@ -16235,7 +18647,14 @@
       }
     },
     "Profile Actions" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "档案操作"
+          }
+        }
+      }
     },
     "Profile ID" : {
       "localizations" : {
@@ -16257,8 +18676,27 @@
         }
       }
     },
+    "Profiles" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "档案"
+          }
+        }
+      }
+    },
+    "Projection Diagnostics" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "投影诊断"
+          }
+        }
+      }
+    },
     "Prompt profile" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -16268,8 +18706,17 @@
         }
       }
     },
+    "Push" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "推送"
+          }
+        }
+      }
+    },
     "Quality Tuning Lab" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -16280,12 +18727,21 @@
       }
     },
     "Query" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "查询"
+          }
+        }
+      }
+    },
+    "Question tone" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "问题语气"
           }
         }
       }
@@ -16300,11 +18756,15 @@
         }
       }
     },
-    "Queue" : {
-
-    },
     "Queue As Handoff Test Item" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "作为交接测试项入队"
+          }
+        }
+      }
     },
     "quickCapture.contextCheckIn" : {
       "extractionState" : "manual",
@@ -17531,10 +19991,16 @@
       }
     },
     "Raw note" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "原始备注"
+          }
+        }
+      }
     },
     "Raw Response" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -17545,10 +20011,16 @@
       }
     },
     "Raw text" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "原始文本"
+          }
+        }
+      }
     },
     "Raw transcript" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -17558,14 +20030,47 @@
         }
       }
     },
+    "read-only projection" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "只读投影"
+          }
+        }
+      }
+    },
+    "Read-only reports for nil placements. They are not interaction modes." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "针对空 placement 的只读报告。它们不是交互模式。"
+          }
+        }
+      }
+    },
     "Ready" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "就绪"
+          }
+        }
+      }
     },
     "Reason" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "原因"
+          }
+        }
+      }
     },
     "Rebuild Core Spotlight index" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -17575,8 +20080,38 @@
         }
       }
     },
+    "Recent Background Events" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最近后台事件"
+          }
+        }
+      }
+    },
+    "Recent Background Runs" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最近后台运行"
+          }
+        }
+      }
+    },
     "Recent jobs" : {
       "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最近任务"
+          }
+        }
+      }
+    },
+    "Recent Jobs" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -17593,6 +20128,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "最近通知意图"
+          }
+        }
+      }
+    },
+    "Recipe" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "视觉配方"
+          }
+        }
+      }
+    },
+    "Recipe Support" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "配方支持"
           }
         }
       }
@@ -17620,7 +20175,6 @@
       }
     },
     "Records: %@" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -17642,7 +20196,6 @@
       }
     },
     "Reduce Motion" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -17653,7 +20206,6 @@
       }
     },
     "Reflection evidence chars: %lld" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -17664,10 +20216,24 @@
       }
     },
     "Reflection prompt" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "反思提示"
+          }
+        }
+      }
     },
     "Reflection ready" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "反思就绪"
+          }
+        }
+      }
     },
     "reflection.action.archive" : {
       "extractionState" : "manual",
@@ -17942,12 +20508,41 @@
       }
     },
     "Refresh Home Board debug snapshot" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "刷新首页看板调试快照"
+          }
+        }
+      }
+    },
+    "Refresh latest memory" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "刷新最新记忆"
+          }
+        }
+      }
+    },
+    "Refresh person profiles" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "刷新人物档案"
+          }
+        }
+      }
+    },
+    "Refresh portraits for all person entities" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "刷新所有人物实体画像"
           }
         }
       }
@@ -17986,7 +20581,6 @@
       }
     },
     "Refresh repair preview" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -17997,7 +20591,6 @@
       }
     },
     "Refresh rule snapshot" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18007,8 +20600,17 @@
         }
       }
     },
+    "Refresh V6 controls" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "刷新 V6 控制项"
+          }
+        }
+      }
+    },
     "Refreshing" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18030,10 +20632,24 @@
       }
     },
     "Reject" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拒绝"
+          }
+        }
+      }
     },
     "Rejected" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已拒绝"
+          }
+        }
+      }
     },
     "Related" : {
       "localizations" : {
@@ -18041,6 +20657,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "相关"
+          }
+        }
+      }
+    },
+    "Related memories" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "相关记忆"
           }
         }
       }
@@ -18055,8 +20681,25 @@
         }
       }
     },
+    "Reload affect snapshots" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新加载情绪快照"
+          }
+        }
+      }
+    },
     "Reload platform capture diagnostics" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新加载平台捕获诊断"
+          }
+        }
+      }
     },
     "Remote intents" : {
       "extractionState" : "stale",
@@ -18134,8 +20777,17 @@
         }
       }
     },
+    "Rendered Sizes" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "渲染尺寸"
+          }
+        }
+      }
+    },
     "Repair" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18146,7 +20798,6 @@
       }
     },
     "Request" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18167,15 +20818,61 @@
       }
     },
     "Requires confirmation: %@" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需要确认：%@"
+          }
+        }
+      }
+    },
+    "Reset" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重置"
+          }
+        }
+      }
     },
     "Reset defaults" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "恢复默认值"
+          }
+        }
+      }
+    },
+    "Reset intelligence preferences to defaults" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将智能偏好重置为默认值"
+          }
+        }
+      }
+    },
+    "Reset V6 flags to defaults" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将 V6 开关重置为默认值"
+          }
+        }
+      }
+    },
+    "Result" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "结果"
           }
         }
       }
@@ -18225,16 +20922,36 @@
       }
     },
     "Review" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "审查"
+          }
+        }
+      }
     },
-    "Review and apply pending graph proposals." : {
-
+    "Role" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "角色"
+          }
+        }
+      }
     },
     "Role labels (comma separated)" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "角色标签（用逗号分隔）"
+          }
+        }
+      }
     },
     "Rule inputs" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18244,8 +20961,17 @@
         }
       }
     },
+    "Run" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "运行"
+          }
+        }
+      }
+    },
     "Run All Presets" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18255,11 +20981,37 @@
         }
       }
     },
-    "Run background trigger" : {
-
+    "Run app launch recovery" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "运行 App 启动恢复"
+          }
+        }
+      }
+    },
+    "Run BG processing simulation" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "运行 BG processing 模拟"
+          }
+        }
+      }
+    },
+    "Run BG refresh simulation" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "运行 BG refresh 模拟"
+          }
+        }
+      }
     },
     "Run chapter/stage suggest" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18270,7 +21022,6 @@
       }
     },
     "Run Core Batch" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18281,7 +21032,6 @@
       }
     },
     "Run daily question suggest" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18292,10 +21042,16 @@
       }
     },
     "Run debug test notification" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "运行调试测试通知"
+          }
+        }
+      }
     },
     "Run exact local search" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18306,7 +21062,6 @@
       }
     },
     "Run History" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18328,7 +21083,6 @@
       }
     },
     "Run photo semantic placeholder" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18339,7 +21093,6 @@
       }
     },
     "Run provider eval" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18350,7 +21103,6 @@
       }
     },
     "Run Selected Scenario" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18361,7 +21113,6 @@
       }
     },
     "Run semantic-first search" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18371,8 +21122,17 @@
         }
       }
     },
+    "Run silent push simulation" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "运行静默推送模拟"
+          }
+        }
+      }
+    },
     "Run Strict + Balanced Matrix" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18383,7 +21143,6 @@
       }
     },
     "Run transcript refine" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18394,7 +21153,6 @@
       }
     },
     "Running..." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18404,8 +21162,17 @@
         }
       }
     },
+    "Runs" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "运行记录"
+          }
+        }
+      }
+    },
     "Runs use the real memory repository and will appear in Home, Timeline, Search, Arcs, and Reflections." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18415,13 +21182,32 @@
         }
       }
     },
+    "Runtime Operations" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "运行时操作"
+          }
+        }
+      }
+    },
     "Runtime override" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "运行时覆盖"
+          }
+        }
+      }
+    },
+    "Runtime state" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "运行状态"
           }
         }
       }
@@ -18437,7 +21223,6 @@
       }
     },
     "Save Local Preference" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18458,7 +21243,6 @@
       }
     },
     "Scenario" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18480,7 +21264,6 @@
       }
     },
     "Scope" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18502,7 +21285,6 @@
       }
     },
     "Search Apple Music" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18545,7 +21327,6 @@
       }
     },
     "Search summary" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18809,17 +21590,55 @@
         }
       }
     },
+    "Seed journaling StateOfMind draft" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "生成手记 StateOfMind 草稿"
+          }
+        }
+      }
+    },
     "Seed Share-style Test Item" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "生成分享样式测试项"
+          }
+        }
+      }
     },
     "Select a primary person to choose merge candidates." : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请选择一个主要人物以选择合并候选。"
+          }
+        }
+      }
     },
     "Select a source person with linked memories." : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请选择一个有关联记忆的源人物。"
+          }
+        }
+      }
     },
     "Select person" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择人物"
+          }
+        }
+      }
     },
     "Selected" : {
       "extractionState" : "stale",
@@ -18832,12 +21651,52 @@
         }
       }
     },
+    "Selected maps to CaptureCardState.normal with item.isSelected=true. It is not a production CaptureCardState case." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selected 会映射为 CaptureCardState.normal 且 item.isSelected=true。它不是生产环境的 CaptureCardState case。"
+          }
+        }
+      }
+    },
+    "Selectors" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择器"
+          }
+        }
+      }
+    },
+    "Self brief" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自我简报"
+          }
+        }
+      }
+    },
     "Semantic index" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "语义索引"
+          }
+        }
+      }
+    },
+    "Semantic search" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "语义搜索"
           }
         }
       }
@@ -18853,7 +21712,6 @@
       }
     },
     "Semantic search is local/system-backed through Core Spotlight. Request ID is not applicable unless this later routes through a cloud retrieval service." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18863,8 +21721,61 @@
         }
       }
     },
+    "semanticSearch" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Semantic Search"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "语义搜索"
+          }
+        }
+      }
+    },
+    "Send Analysis for latest memory" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "发送最新记忆进行分析"
+          }
+        }
+      }
+    },
+    "Sending Analysis" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在发送分析"
+          }
+        }
+      }
+    },
+    "Sensitive topic policy" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "敏感主题策略"
+          }
+        }
+      }
+    },
     "Sensitivity" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "敏感度"
+          }
+        }
+      }
     },
     "Sent" : {
       "extractionState" : "stale",
@@ -21149,6 +24060,36 @@
         }
       }
     },
+    "Show field audit" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示字段审计"
+          }
+        }
+      }
+    },
+    "Show layout guides" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示布局辅助线"
+          }
+        }
+      }
+    },
+    "Side-by-side comparison of standard vs. skeuomorphic rendering for each supported type." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "并排比较每种支持类型的标准渲染和拟物渲染。"
+          }
+        }
+      }
+    },
     "signin.guest" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -21183,14 +24124,77 @@
         }
       }
     },
+    "Size" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "尺寸"
+          }
+        }
+      }
+    },
+    "Skeuomorphic Card Lab" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拟物卡片实验室"
+          }
+        }
+      }
+    },
+    "Slots" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "槽位"
+          }
+        }
+      }
+    },
+    "Snapshot appearance" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "快照外观"
+          }
+        }
+      }
+    },
+    "Snapshots" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "快照"
+          }
+        }
+      }
+    },
     "Song" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "歌曲"
+          }
+        }
+      }
     },
     "Source" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "来源"
+          }
+        }
+      }
     },
     "Source labels" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21201,7 +24205,14 @@
       }
     },
     "Source: %@" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "来源：%@"
+          }
+        }
+      }
     },
     "Sources" : {
       "localizations" : {
@@ -21214,7 +24225,14 @@
       }
     },
     "Split Person" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拆分人物"
+          }
+        }
+      }
     },
     "Split selected artifacts" : {
       "localizations" : {
@@ -21227,7 +24245,14 @@
       }
     },
     "Split selected memories" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拆分所选记忆"
+          }
+        }
+      }
     },
     "Start recording and attach voice to this memory." : {
       "extractionState" : "stale",
@@ -21236,6 +24261,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "开始录音并附加到这条记忆。"
+          }
+        }
+      }
+    },
+    "Started" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已开始"
           }
         }
       }
@@ -21251,28 +24286,120 @@
       }
     },
     "State Of Mind" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "心境"
+          }
+        }
+      }
     },
     "Status" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "状态"
+          }
+        }
+      }
     },
     "status.answered" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Answered"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已回答"
+          }
+        }
+      }
     },
     "status.dismissed" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dismissed"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已忽略"
+          }
+        }
+      }
     },
     "status.expired" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Expired"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已过期"
+          }
+        }
+      }
     },
     "status.imported" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Imported"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已导入"
+          }
+        }
+      }
     },
     "status.pending" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pending"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "待处理"
+          }
+        }
+      }
     },
     "status.stale" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stale"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已过时"
+          }
+        }
+      }
     },
     "Stop" : {
       "extractionState" : "stale",
@@ -21286,7 +24413,6 @@
       }
     },
     "Store" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21297,7 +24423,6 @@
       }
     },
     "Stored" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21307,11 +24432,27 @@
         }
       }
     },
+    "Stored Interactive" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已存储交互模式"
+          }
+        }
+      }
+    },
     "Structured Mood" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "结构化心情"
+          }
+        }
+      }
     },
     "Style" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21322,7 +24463,6 @@
       }
     },
     "Suggestion cards" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21342,8 +24482,17 @@
         }
       }
     },
+    "Surface Mode" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "界面模式"
+          }
+        }
+      }
+    },
     "Symbol motion" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21524,9 +24673,17 @@
       }
     },
     "Target" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "目标"
+          }
+        }
+      }
     },
     "Task" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21548,7 +24705,34 @@
       }
     },
     "Text" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文本"
+          }
+        }
+      }
+    },
+    "These controls are internal gates only. They do not request system permissions such as notifications." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这些控制项只是内部门控，不会请求通知等系统权限。"
+          }
+        }
+      }
+    },
+    "These requests call the same cloud intelligence client used by capture, daily questions, chapter suggestions, and photo semantics. Notifications are generated only by the local NotificationOrchestrator." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这些请求会调用捕获、每日问题、章节建议和照片语义所使用的同一个云端智能客户端。通知只由本地 NotificationOrchestrator 生成。"
+          }
+        }
+      }
     },
     "These requests call the same cloud intelligence client used by capture, daily questions, chapter suggestions, photo semantics, and notification intent generation." : {
       "extractionState" : "stale",
@@ -21562,7 +24746,6 @@
       }
     },
     "This lab uses fixture-only data. It does not request permissions, save memories, or alter the production composer." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21573,7 +24756,6 @@
       }
     },
     "This mutates local debug data. Existing captureOrigin values will not be overwritten." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21584,7 +24766,6 @@
       }
     },
     "This page calls the same repository and HomeBoardRuleEngine used by Today, then exposes the rule inputs, local preferences, and final visible cards." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21595,7 +24776,6 @@
       }
     },
     "This page exposes the home memory desktop rule inputs, visible cards, user-controlled cards, suggestions, and preference actions before the formal UI polish pass." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21627,7 +24807,6 @@
       }
     },
     "This tool only updates artifacts that do not already have metadata.captureOrigin. Runtime readers do not infer fallback values." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21744,13 +24923,34 @@
       }
     },
     "Tone hint (optional)" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "语气提示（可选）"
+          }
+        }
+      }
     },
     "Tone Hints" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "语气提示"
+          }
+        }
+      }
     },
     "Tone: %@" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "语气：%@"
+          }
+        }
+      }
     },
     "Transcribing..." : {
       "extractionState" : "stale",
@@ -21774,8 +24974,45 @@
         }
       }
     },
-    "Trigger" : {
-
+    "TRANSCRIPT" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "转写"
+          }
+        }
+      }
+    },
+    "true" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "是"
+          }
+        }
+      }
+    },
+    "Type Catalog" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "类型目录"
+          }
+        }
+      }
+    },
+    "UIKit owns scrolling, hit testing, reuse, and long-press lifting. Dragging uses an ordered sparse grid: the lifted card inserts into the visual sequence, later cards flow after it, and local holes are kept until Auto Pack." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "UIKit 负责滚动、命中测试、复用和长按抬起。拖拽使用有序稀疏网格：被抬起的卡片插入视觉序列，后续卡片顺序流动，局部空洞会保留到执行 Auto Pack。"
+          }
+        }
+      }
     },
     "unapplied" : {
       "localizations" : {
@@ -21788,10 +25025,16 @@
       }
     },
     "Undo reject" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "撤销拒绝"
+          }
+        }
+      }
     },
     "Unpin" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21807,6 +25050,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已更新"
+          }
+        }
+      }
+    },
+    "Updated %@" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已更新 %@"
           }
         }
       }
@@ -21833,7 +25086,6 @@
       }
     },
     "Use Manual for user-added legacy artifacts, Context for auto-collected legacy context artifacts, Imported for imports, or Inferred for pipeline-generated content." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21861,7 +25113,6 @@
       }
     },
     "User board cards" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21872,10 +25123,16 @@
       }
     },
     "User notes" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用户备注"
+          }
+        }
+      }
     },
     "UserDefaults scopes" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21902,19 +25159,62 @@
         }
       }
     },
-    "v7 Review" : {
-
+    "V6 Controls" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "V6 控制项"
+          }
+        }
+      }
+    },
+    "V6 feature flags" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "V6 功能开关"
+          }
+        }
+      }
     },
     "Valence" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "愉悦度"
+          }
+        }
+      }
+    },
+    "Variant" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "变体"
+          }
+        }
+      }
     },
     "Visible cards" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "可见卡片"
+          }
+        }
+      }
+    },
+    "Visual Recipes" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "视觉配方"
           }
         }
       }
@@ -21930,11 +25230,27 @@
         }
       }
     },
+    "Voice refinement" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "语音优化"
+          }
+        }
+      }
+    },
     "Warning" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "警告"
+          }
+        }
+      }
     },
     "Weather cards keep kind=weather. Origin remains debug data; production cards hide source labels." : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21945,7 +25261,6 @@
       }
     },
     "Weather Lab" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21955,8 +25270,25 @@
         }
       }
     },
+    "WeatherKit condition" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WeatherKit 天气状况"
+          }
+        }
+      }
+    },
     "With errors" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "有错误"
+          }
+        }
+      }
     },
     "Worker" : {
       "extractionState" : "stale",
@@ -21965,6 +25297,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Worker"
+          }
+        }
+      }
+    },
+    "Working on person profiles" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在处理人物档案"
           }
         }
       }

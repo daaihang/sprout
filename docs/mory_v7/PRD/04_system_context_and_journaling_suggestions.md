@@ -118,4 +118,4 @@ All local model output is lower trust than direct user confirmation.
 - System context appears as editable/removable evidence cards.
 - Journaling mood evidence maps into `AffectSnapshot`.
 - If capability is unavailable, capture still works normally.
-- Analyze v7 receives evidence source metadata.
+- Analysis receives evidence source metadata.

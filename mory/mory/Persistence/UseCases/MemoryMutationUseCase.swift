@@ -4,6 +4,7 @@ import SwiftData
 @MainActor
 struct MemoryMutationUseCase {
     let repository: MoryMemoryRepository
+    let artifactBuilder: MemoryCaptureArtifactBuilder
 
     func applyMemoryMutation(
         recordID: UUID,
@@ -33,11 +34,12 @@ struct MemoryMutationUseCase {
         guard let recordStore = try repository.modelContext.fetch(
             FetchDescriptor<RecordShellStore>(predicate: #Predicate { $0.id == recordID })
         ).first else {
-            throw CocoaError(.fileNoSuchFile)
+            throw MemoryRepositoryError.recordNotFound(recordID)
         }
 
         let now = Date.now
-        var updatedRecord = recordStore.domainModel
+        let originalRecord = recordStore.domainModel
+        var updatedRecord = originalRecord
         let existingArtifactIDs = Set(updatedRecord.artifactIDs)
         let deletedArtifactIDs = repository.orderedUniqueUUIDs(mutation.deletedArtifactIDs)
 
@@ -71,28 +73,35 @@ struct MemoryMutationUseCase {
             }
         }
 
-        let addedArtifacts = mutation.addedArtifacts.isEmpty
-            ? []
-            : repository.captureArtifactBuilder.buildArtifacts(
+        let addedArtifactResult = mutation.addedArtifacts.isEmpty
+            ? MemoryCaptureArtifactBuildResult(artifacts: [], artifactIDByDraftID: [:])
+            : artifactBuilder.buildArtifactResult(
                 from: MemoryCaptureDraft(rawText: "", artifacts: mutation.addedArtifacts),
                 recordID: recordID,
                 createdAt: now
             )
+        let addedArtifacts = addedArtifactResult.artifacts
+        let addedSemanticDigests = artifactBuilder.buildSemanticDigests(from: addedArtifactResult, createdAt: now)
+        let addedArrangementNodes = mutation.addedCardArrangement?.resolveArtifactNodes(
+            artifacts: addedArtifacts,
+            artifactIDByDraftID: addedArtifactResult.artifactIDByDraftID
+        ) ?? []
 
         var updatedArtifactIDs: [UUID] = []
         var normalizedUpdatedArtifacts: [Artifact] = []
         for var artifact in mutation.updatedArtifacts {
             guard artifact.recordID == recordID else {
-                throw CocoaError(.fileNoSuchFile)
+                throw MemoryRepositoryError.artifactDoesNotBelongToRecord(artifactID: artifact.id, recordID: recordID)
             }
             guard try repository.fetchArtifact(id: artifact.id)?.recordID == recordID else {
-                throw CocoaError(.fileNoSuchFile)
+                throw MemoryRepositoryError.artifactNotFound(artifact.id)
             }
             artifact.updatedAt = now
             normalizedUpdatedArtifacts.append(artifact)
             updatedArtifactIDs.append(artifact.id)
         }
         updatedArtifactIDs = repository.orderedUniqueUUIDs(updatedArtifactIDs)
+        let updatedSemanticDigests = artifactBuilder.buildSemanticDigests(from: normalizedUpdatedArtifacts, createdAt: now)
 
         for artifactID in deletedArtifactIDs {
             let belongsToRecord: Bool
@@ -102,7 +111,7 @@ struct MemoryMutationUseCase {
                 belongsToRecord = try repository.fetchArtifact(id: artifactID)?.recordID == recordID
             }
             guard belongsToRecord else {
-                throw CocoaError(.fileNoSuchFile)
+                throw MemoryRepositoryError.artifactDoesNotBelongToRecord(artifactID: artifactID, recordID: recordID)
             }
         }
 
@@ -117,20 +126,47 @@ struct MemoryMutationUseCase {
             let requestedSet = Set(uniqueRequestedOrder)
             let knownSet = Set(artifactIDs)
             guard requestedSet.isSubset(of: knownSet) else {
-                throw CocoaError(.fileNoSuchFile)
+                throw MemoryRepositoryError.invalidArtifactOrder(recordID: recordID)
             }
             let remaining = artifactIDs.filter { !requestedSet.contains($0) }
-            artifactIDs = uniqueRequestedOrder + remaining
-            reorderedArtifactIDs = uniqueRequestedOrder
+            let reorderedIDs = uniqueRequestedOrder + remaining
+            if reorderedIDs != artifactIDs {
+                reorderedArtifactIDs = uniqueRequestedOrder
+            }
+            artifactIDs = reorderedIDs
         }
 
-        try repository.purgeDerivedDataForRefresh(recordID: recordID)
+        let recordFactsChanged = updatedRecord.rawText != originalRecord.rawText
+            || updatedRecord.userMood != originalRecord.userMood
+            || updatedRecord.inputContext != originalRecord.inputContext
+            || updatedRecord.captureSource != originalRecord.captureSource
+        let artifactFactsChanged = !addedArtifacts.isEmpty
+            || !normalizedUpdatedArtifacts.isEmpty
+            || !deletedArtifactIDs.isEmpty
+            || artifactIDs != originalRecord.artifactIDs
+        let recordingFactsChanged = recordFactsChanged || artifactFactsChanged
+
+        if recordingFactsChanged {
+            try repository.purgeDerivedDataForRefresh(recordID: recordID)
+        }
 
         for artifact in addedArtifacts {
             try repository.upsert(artifact: artifact)
         }
+        for digest in addedSemanticDigests {
+            try repository.upsert(artifactSemanticDigest: digest)
+        }
         for artifact in normalizedUpdatedArtifacts {
             try repository.upsert(artifact: artifact)
+        }
+        for artifactID in updatedArtifactIDs {
+            let digestStores = try repository.modelContext.fetch(
+                FetchDescriptor<ArtifactSemanticDigestStore>(predicate: #Predicate { $0.artifactID == artifactID })
+            )
+            digestStores.forEach { repository.modelContext.delete($0) }
+        }
+        for digest in updatedSemanticDigests {
+            try repository.upsert(artifactSemanticDigest: digest)
         }
         for artifactID in deletedArtifactIDs {
             if let store = try repository.modelContext.fetch(
@@ -138,16 +174,40 @@ struct MemoryMutationUseCase {
             ).first {
                 repository.modelContext.delete(store)
             }
+            let digestStores = try repository.modelContext.fetch(
+                FetchDescriptor<ArtifactSemanticDigestStore>(predicate: #Predicate { $0.artifactID == artifactID })
+            )
+            digestStores.forEach { repository.modelContext.delete($0) }
         }
 
-        updatedRecord.artifactIDs = artifactIDs
-        updatedRecord.updatedAt = now
-        recordStore.apply(domainModel: updatedRecord)
-        if mutation.recordPatch.userMood.shouldUpdate {
+        if recordingFactsChanged {
+            updatedRecord.artifactIDs = artifactIDs
+            updatedRecord.updatedAt = now
+            recordStore.apply(domainModel: updatedRecord)
+        }
+        let arrangementArtifacts = try repository.fetchArtifacts(recordID: recordID)
+        if recordingFactsChanged || mutation.cardArrangement != nil || !addedArrangementNodes.isEmpty {
+            let existingArrangement = try repository.fetchMemoryCardArrangement(recordID: recordID)
+            let baseArrangement = mutation.cardArrangement
+                ?? existingArrangement
+                ?? MemoryCardArrangement.defaultArrangement(record: updatedRecord, artifacts: arrangementArtifacts, createdAt: now)
+            let arrangementWithAddedNodes = baseArrangement.appendingArtifactNodes(addedArrangementNodes, updatedAt: now)
+            try repository.upsert(
+                memoryCardArrangement: arrangementWithAddedNodes.synchronized(
+                    record: updatedRecord,
+                    artifacts: arrangementArtifacts,
+                    artifactOrder: mutation.artifactOrder,
+                    updatedAt: now
+                )
+            )
+        }
+        if updatedRecord.userMood != originalRecord.userMood {
             try repository.replaceUserAffectSnapshot(recordID: recordID, rawMood: updatedRecord.userMood, now: now)
         }
 
-        try repository.upsertPendingPipelineStatus(recordID: recordID, updatedAt: now)
+        if recordingFactsChanged {
+            try repository.upsertNotScheduledPipelineStatus(recordID: recordID, updatedAt: now)
+        }
         try repository.save()
 
         var detail = try repository.fetchMemoryDetail(recordID: recordID)
@@ -179,7 +239,7 @@ struct MemoryMutationUseCase {
             updatedArtifactIDs: updatedArtifactIDs,
             deletedArtifactIDs: deletedArtifactIDs,
             reorderedArtifactIDs: reorderedArtifactIDs,
-            invalidatedDerivedData: true,
+            invalidatedDerivedData: recordingFactsChanged,
             pipelineStatus: pipelineStatus
         )
     }
@@ -196,8 +256,11 @@ struct MemoryMutationUseCase {
 
         let result = try await applyMemoryMutation(
             recordID: recordID,
-            mutation: MemoryMutationDraft(addedArtifacts: drafts),
-            refreshPolicy: .markPending
+            mutation: MemoryMutationDraft(
+                addedArtifacts: drafts,
+                addedCardArrangement: MemoryCardArrangementDraft.artifactCards(for: drafts)
+            ),
+            refreshPolicy: .saveOnly
         )
         guard let detail = result.detail else { return nil }
         return repository.makeMemorySummary(
@@ -223,6 +286,14 @@ struct MemoryMutationUseCase {
             FetchDescriptor<ArtifactStore>(predicate: #Predicate { $0.recordID == recordID })
         )
         artifacts.forEach { repository.modelContext.delete($0) }
+        let semanticDigests = try repository.modelContext.fetch(
+            FetchDescriptor<ArtifactSemanticDigestStore>(predicate: #Predicate { $0.recordID == recordID })
+        )
+        semanticDigests.forEach { repository.modelContext.delete($0) }
+        let arrangements = try repository.modelContext.fetch(
+            FetchDescriptor<MemoryCardArrangementStore>(predicate: #Predicate { $0.recordID == recordID })
+        )
+        arrangements.forEach { repository.modelContext.delete($0) }
         try repository.save()
 
         let spotlightIndexService = repository.spotlightIndexService
@@ -235,11 +306,17 @@ struct MemoryMutationUseCase {
     }
 
     func updateMemory(recordID: UUID, draft: MemoryEditDraft) async throws -> MemoryDetailSnapshot? {
-        let addedArtifacts: [CaptureArtifactDraft]
+        var addedArtifacts = draft.addedArtifacts
         if let appendedArtifactText = draft.appendedArtifactText?.trimmedOrNil {
-            addedArtifacts = [.text(title: appendedArtifactText.firstMeaningfulLine ?? "Added Note", body: appendedArtifactText)]
-        } else {
-            addedArtifacts = []
+            addedArtifacts.append(
+                .promptAnswer(
+                    prompt: "Added Note",
+                    answer: appendedArtifactText,
+                    source: "detail_edit",
+                    origin: .manual,
+                    provenance: .manualComposer
+                )
+            )
         }
 
         let result = try await applyMemoryMutation(
@@ -250,16 +327,17 @@ struct MemoryMutationUseCase {
                     userMood: .set(draft.userMood),
                     inputContext: .set(draft.inputContext)
                 ),
-                addedArtifacts: addedArtifacts
+                addedArtifacts: addedArtifacts,
+                addedCardArrangement: MemoryCardArrangementDraft.artifactCards(for: addedArtifacts)
             ),
-            refreshPolicy: .markPending
+            refreshPolicy: .saveOnly
         )
         return result.detail
     }
 
     func refreshMemoryPipeline(recordID: UUID) async throws {
         guard let record = try repository.fetchRecordShell(id: recordID) else {
-            throw CocoaError(.fileNoSuchFile)
+            throw MemoryRepositoryError.recordNotFound(recordID)
         }
         let artifacts = try repository.fetchArtifacts(recordID: recordID)
         let attemptAt = Date.now
@@ -318,8 +396,12 @@ struct MemoryMutationUseCase {
             ) {
                 await repository.indexMemoryIfPossible(summary)
             }
-            _ = try? await repository.notificationOrchestrator.orchestrate(
-                trigger: .pipelineCompleted(recordID: recordID),
+            _ = await repository.backgroundTriggerDispatcher?.handle(
+                trigger: BackgroundTrigger(
+                    kind: .pipelineCompleted,
+                    targetID: recordID,
+                    source: "MemoryMutationUseCase.refreshMemoryPipeline"
+                ),
                 repository: repository,
                 now: completedAt
             )

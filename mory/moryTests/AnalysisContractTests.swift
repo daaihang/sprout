@@ -3,6 +3,83 @@ import XCTest
 
 @MainActor
 final class AnalysisContractTests: XCTestCase {
+    func testAnalysisInputContractUsesRecordingFactsAndExcludesVisualArrangement() throws {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let recordID = UUID(uuidString: "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA")!
+        let artifactID = UUID(uuidString: "BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB")!
+        let record = RecordShell(
+            id: recordID,
+            createdAt: now,
+            updatedAt: now,
+            captureSource: .composer,
+            rawText: "A record with a photo.",
+            artifactIDs: [artifactID]
+        )
+        let artifact = Artifact(
+            id: artifactID,
+            recordID: recordID,
+            kind: .photo,
+            title: "Photo",
+            summary: "window | Text: note",
+            textContent: "OCR: note",
+            createdAt: now,
+            updatedAt: now
+        )
+        let digest = ArtifactSemanticDigest(
+            recordID: recordID,
+            artifactID: artifactID,
+            artifactKind: .photo,
+            source: .localVision,
+            summary: "window | Text: note",
+            caption: "window",
+            ocrText: "note",
+            visualLabels: ["window"],
+            createdAt: now,
+            updatedAt: now
+        )
+        let arrangement = MemoryCardArrangement(
+            recordID: recordID,
+            nodes: [
+                MemoryCardNode(
+                    contentRef: .artifact(artifactID),
+                    visualRecipe: .polaroid,
+                    layout: MemoryCardLayoutToken(order: 0, rotationDegrees: -2)
+                )
+            ],
+            createdAt: now,
+            updatedAt: now
+        )
+        let detail = MemoryDetailSnapshot(
+            record: record,
+            artifacts: [artifact],
+            artifactSemanticDigests: [digest],
+            cardArrangement: arrangement,
+            analysis: nil,
+            pipelineStatus: nil,
+            entities: [],
+            edges: [],
+            arcs: [],
+            reflections: []
+        )
+
+        let contract = AnalysisInputContractBuilder().build(from: detail)
+
+        XCTAssertEqual(contract.schemaVersion, AnalysisInputContract.schemaVersion)
+        XCTAssertEqual(contract.record.id, recordID)
+        XCTAssertEqual(contract.artifacts.map(\.id), [artifactID])
+        XCTAssertEqual(contract.semanticDigests.map(\.artifactID), [artifactID])
+        XCTAssertEqual(contract.semanticDigests.first?.ocrText, "note")
+        XCTAssertTrue(AnalysisInputContract.arrangementExclusionReason.contains("visual layout"))
+
+        let payload = AnalysisRequestBuilder().build(
+            inputContract: contract,
+            contextPack: makeContextPack(targetRecordID: recordID, sensitiveID: UUID(), builtAt: now)
+        )
+        let encodedPayload = String(data: try JSONEncoder().encode(payload), encoding: .utf8) ?? ""
+        XCTAssertFalse(encodedPayload.contains("semantic_digests"))
+        XCTAssertFalse(encodedPayload.contains("arrangement_exclusion"))
+    }
+
     func testRequestBuilderIncludesContextPackMoodEvidenceAndPrivacyBudget() throws {
         let now = Date(timeIntervalSince1970: 1_768_864_000)
         let record = RecordShell(

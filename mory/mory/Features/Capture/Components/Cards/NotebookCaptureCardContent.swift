@@ -4,6 +4,7 @@ struct NotebookCaptureCardContent: View {
     let common: CaptureCardCommonDisplay
     let item: CaptureCardItem
     let accent: Color
+    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .notebook, sizeToken: .card)
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -13,9 +14,9 @@ struct NotebookCaptureCardContent: View {
                 .padding(.leading, 28)
 
             contentArea
-                .padding(EdgeInsets(top: 14, leading: 36, bottom: 14, trailing: 14))
+                .padding(EdgeInsets(top: metrics.padding.top, leading: 36, bottom: metrics.padding.bottom, trailing: metrics.padding.trailing))
         }
-        .frame(width: 180, height: 200)
+        .frame(width: metrics.preferredSize.width, height: metrics.preferredSize.height)
         .clipShape(notebookShape)
         .overlay {
             notebookShape
@@ -56,7 +57,7 @@ struct NotebookCaptureCardContent: View {
             if let title = common.title?.trimmedOrNil {
                 Text(title)
                     .font(.system(size: 13, weight: .medium, design: .serif))
-                    .lineLimit(2)
+                    .lineLimit(metrics.titleLineLimit)
                     .foregroundStyle(Color(white: 0.15))
             }
 
@@ -91,7 +92,7 @@ struct NotebookCaptureCardContent: View {
             Text(common.detail)
                 .font(.system(size: 11, design: .serif))
                 .foregroundStyle(Color(white: 0.3))
-                .lineLimit(5)
+                .lineLimit(metrics.detailLineLimit)
                 .strikethrough(common.isSelected, color: Color(white: 0.3).opacity(0.5))
         }
     }
@@ -106,7 +107,7 @@ struct NotebookCaptureCardContent: View {
                 Text(common.detail)
                     .font(.system(size: 10, design: .serif))
                     .foregroundStyle(.blue.opacity(0.6))
-                    .lineLimit(2)
+                    .lineLimit(max(1, metrics.detailLineLimit - 2))
                     .underline()
             }
 
@@ -114,7 +115,7 @@ struct NotebookCaptureCardContent: View {
                 Text(metadata)
                     .font(.system(size: 9, design: .serif))
                     .foregroundStyle(Color(white: 0.4))
-                    .lineLimit(1)
+                    .lineLimit(metrics.metadataLineLimit)
             }
         }
     }
@@ -125,14 +126,14 @@ struct NotebookCaptureCardContent: View {
             Text(payload.prompt)
                 .font(.system(size: 11, weight: .medium, design: .serif))
                 .foregroundStyle(Color(white: 0.25))
-                .lineLimit(3)
+                .lineLimit(max(2, metrics.titleLineLimit + 1))
                 .italic()
 
             if let answer = payload.answer?.trimmedOrNil {
                 Text(answer)
                     .font(.system(size: 10, design: .serif))
                     .foregroundStyle(Color(white: 0.35))
-                    .lineLimit(4)
+                    .lineLimit(metrics.detailLineLimit)
             }
         }
     }
@@ -141,7 +142,7 @@ struct NotebookCaptureCardContent: View {
         Text(common.detail)
             .font(.system(size: 11, design: .serif))
             .foregroundStyle(Color(white: 0.3))
-            .lineLimit(6)
+            .lineLimit(metrics.detailLineLimit)
     }
 
     private var notebookShape: RoundedRectangle {

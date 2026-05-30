@@ -45,6 +45,73 @@ final class NotificationManagementEventTests: XCTestCase {
         XCTAssertEqual(snapshot.errorEvents.map(\.eventKind), [.policyBlocked])
     }
 
+    func testFetchNotificationIntentsFallsBackUnsupportedKindToDebugTest() throws {
+        let fixture = makeRepositoryFixture()
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let validIntent = makeIntent(status: .pending, scheduledAt: now)
+        try fixture.repository.upsertNotificationIntent(validIntent)
+
+        fixture.container.mainContext.insert(
+            NotificationIntentStore(
+                id: UUID(),
+                kindRawValue: "unsupportedNotificationKind",
+                title: "Unsupported",
+                body: "Unsupported notification kind",
+                privacyLevelRawValue: NotificationPrivacyLevel.generic.rawValue,
+                targetTypeRawValue: ClarificationTargetType.record.rawValue,
+                targetID: UUID(),
+                scheduledAt: now,
+                statusRawValue: NotificationIntentStatus.pending.rawValue,
+                deliveryChannelRawValue: NotificationDeliveryChannel.local.rawValue,
+                dedupeKey: "unsupportedNotificationKind|record|test",
+                deepLink: nil,
+                reason: "Unsupported notification model",
+                sourceTriggerRawValue: NotificationTriggerSource.debugManual.rawValue,
+                createdByRawValue: NotificationIntentCreator.orchestrator.rawValue,
+                lastEvaluatedAt: now,
+                createdAt: now
+            )
+        )
+        try fixture.container.mainContext.save()
+
+        let intents = try fixture.repository.fetchNotificationIntents(status: nil, limit: nil)
+
+        XCTAssertEqual(intents.count, 2)
+        XCTAssertTrue(intents.contains { $0.id == validIntent.id })
+        let fallbackIntent = try XCTUnwrap(intents.first { $0.id != validIntent.id })
+        XCTAssertEqual(fallbackIntent.kind, .debugTest)
+    }
+
+    func testFetchNotificationManagementEventsDropsUnsupportedKindField() throws {
+        let fixture = makeRepositoryFixture()
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let validEvent = makeEvent(kind: .generated, createdAt: now)
+        try fixture.repository.upsertNotificationManagementEvent(validEvent)
+
+        fixture.container.mainContext.insert(
+            NotificationManagementEventStore(
+                id: UUID(),
+                eventKindRawValue: NotificationManagementEventKind.generated.rawValue,
+                intentID: UUID(),
+                dedupeKey: "unsupportedNotificationKind|record|test",
+                triggerRawValue: NotificationTriggerSource.debugManual.rawValue,
+                kindRawValue: "unsupportedNotificationKind",
+                targetTypeRawValue: ClarificationTargetType.record.rawValue,
+                targetID: UUID(),
+                message: "Unsupported notification management event",
+                createdAt: now.addingTimeInterval(1)
+            )
+        )
+        try fixture.container.mainContext.save()
+
+        let events = try fixture.repository.fetchNotificationManagementEvents(kind: nil, limit: nil)
+
+        XCTAssertEqual(events.count, 2)
+        XCTAssertTrue(events.contains { $0.id == validEvent.id })
+        let fallbackEvent = try XCTUnwrap(events.first { $0.id != validEvent.id })
+        XCTAssertNil(fallbackEvent.kind)
+    }
+
     private func makeRepositoryFixture() -> NotificationManagementRepositoryFixture {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(

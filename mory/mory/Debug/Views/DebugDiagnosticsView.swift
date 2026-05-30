@@ -1,4 +1,3 @@
-#if DEBUG
 import SwiftUI
 import SwiftData
 import PhotosUI
@@ -76,12 +75,12 @@ struct DebugDiagnosticsView: View {
                 }
 
                 NavigationLink {
-                    DebugJobQueueView()
+                    DebugRuntimeOperationsView()
                 } label: {
                     DebugMenuRow(
-                        icon: "list.bullet",
-                        title: "Job Queue",
-                        subtitle: "Inspect V6 jobs, notification intents, graph deltas, recovery, and due worker execution"
+                        icon: "clock.arrow.circlepath",
+                        title: "Runtime Operations",
+                        subtitle: "Inspect and trigger Background, Intelligence jobs, Notifications, and Push through formal orchestrators"
                     )
                 }
 
@@ -101,7 +100,7 @@ struct DebugDiagnosticsView: View {
                     DebugMenuRow(
                         icon: "rectangle.stack.badge.person.crop",
                         title: "Analysis Context Pack",
-                        subtitle: "Build the v7 local context pack for the latest memory and inspect budget, privacy, and evidence"
+                        subtitle: "Build the Analysis context pack for the latest memory and inspect budget, privacy, and evidence"
                     )
                 }
 
@@ -111,7 +110,7 @@ struct DebugDiagnosticsView: View {
                     DebugMenuRow(
                         icon: "person.crop.rectangle.stack",
                         title: "Person Profiles",
-                        subtitle: "Inspect v7 PersonProfile, portrait evidence, refresh behavior, and cloud-safe brief redaction"
+                        subtitle: "Inspect Analysis PersonProfile, portrait evidence, refresh behavior, and cloud-safe brief redaction"
                     )
                 }
 
@@ -121,7 +120,7 @@ struct DebugDiagnosticsView: View {
                     DebugMenuRow(
                         icon: "waveform.path.ecg.rectangle",
                         title: "Affect Snapshots",
-                        subtitle: "Inspect v7 structured mood, correction events, and Journaling Suggestions fallback state"
+                        subtitle: "Inspect structured mood, correction events, and Journaling Suggestions fallback state"
                     )
                 }
 
@@ -166,22 +165,12 @@ struct DebugDiagnosticsView: View {
                 }
 
                 NavigationLink {
-                    CaptureCardLabView()
-                } label: {
-                    DebugMenuRow(
-                        icon: "rectangle.stack",
-                        title: "Capture Card Lab",
-                        subtitle: "Preview capture attachment card styles, origins, states, and motion fixtures"
-                    )
-                }
-
-                NavigationLink {
-                    SkeuomorphicCardLabView()
+                    CardDebugView()
                 } label: {
                     DebugMenuRow(
                         icon: "rectangle.on.rectangle.angled",
-                        title: "Skeuomorphic Card Lab",
-                        subtitle: "Preview immersive card styles: Polaroid, Cassette, Notebook, Vinyl"
+                        title: "Card Debug",
+                        subtitle: "Inspect four-layer card data, visual recipes, arrangement, and fixture stress labs"
                     )
                 }
 
@@ -206,16 +195,6 @@ struct DebugDiagnosticsView: View {
                         icon: "wrench.and.screwdriver",
                         title: "Data Repair",
                         subtitle: "Backfill missing captureOrigin metadata for legacy local artifacts"
-                    )
-                }
-
-                NavigationLink {
-                    NotificationManagementView()
-                } label: {
-                    DebugMenuRow(
-                        icon: "bell.badge",
-                        title: "Notification Management",
-                        subtitle: "Inspect queue, history, dedupe, errors, preferences, and push diagnostics"
                     )
                 }
 
@@ -260,7 +239,6 @@ struct DebugDiagnosticsView: View {
         .navigationTitle("debug.title")
     }
 }
-
 private struct DebugLocalDataVaultView: View {
     @Environment(\.localDataDiagnostics) private var diagnostics
 
@@ -862,5 +840,3 @@ struct DebugStorageIntegrityView: View {
         }
     }
 }
-
-#endif

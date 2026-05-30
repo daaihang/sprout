@@ -1,157 +1,124 @@
-# Sprout
+# Sprout / Mory
 
-Sprout is a local-first personal memory system. The current `mory/` iOS app is built on the **Mory v3/v4 memory architecture** and has started landing the **Mory v5 product shell**.
+Mory is a local-first personal memory system. The current iOS app is centered on a write-first memory capture path: users can record a memory, attach multimodal evidence, arrange the resulting cards, save the facts locally, and let AI analysis run only when explicitly scheduled.
 
-v3 established the five-layer memory ontology and end-to-end analysis loop. v4 extends that system with multimodal capture, save-before context candidates, persistent authentication, quality gates, and real Today board data. v5 is the UI/UX productization pass for public beta.
+The current source of truth is the code plus the current system handbooks under `docs/mory_system_handbook/` and `docs/mory_system_handbook_zh/`. Older v3-v7 documents remain useful historical context, but they are not the primary status reference.
 
-## Architecture
+## Current Architecture
 
 ```text
-Capture -> Artifact -> Composition -> Analysis Snapshot -> Graph -> Temporal Arc -> Reflection
+Capture Draft
+  -> RecordShell
+  -> Artifact[]
+  -> ArtifactSemanticDigest[]
+  -> MemoryCardArrangement
+  -> AffectSnapshot[]
+  -> optional Analysis
+  -> Graph / Arc / Reflection / Questions
 ```
 
 | Layer | Purpose |
-|-------|---------|
-| **Capture** | User input draft and save orchestration via `MemoryCaptureDraft` / `CaptureOrchestrator` |
-| **Artifact** | Raw memory material: text, photo, audio, weather, location, music, link, todo, document |
-| **Composition** | Today board composition and card preferences via `CompositionItem` / `HomeBoardItemPreference` |
-| **Analysis Snapshot** | AI-generated summary, entities, retrieval terms, salience, and reflection hints |
-| **Graph** | Entity nodes, entity edges, and artifact-entity links |
-| **Temporal Arc** | Storyline candidates promoted from related memory clusters |
-| **Reflection** | AI-generated insights with source records/artifacts |
+| --- | --- |
+| `RecordShell` | The main memory fact: raw text, timestamps, capture source, provenance, mood/context, and artifact IDs. |
+| `Artifact` | User or context material: text, photo, video, live photo, audio, link, music, place, weather, todo, document-like evidence. |
+| `ArtifactSemanticDigest` | Structured media/text meaning such as OCR, captions, labels, transcript, duration, dimensions, and local identifiers. |
+| `MemoryCardArrangement` | User visual expression: card refs, visual recipe, size token, order, stack/group, grid placement, nudge, rotation, z-index. |
+| `AffectSnapshot` | Structured mood/affect evidence with explicit source tracking. |
+| `Analysis` | Optional post-save intelligence. Arrangement is excluded from analysis input because it is visual expression, not semantic fact. |
 
-The ontology is still v3-compatible. v4 adds richer artifact inputs and context capture without changing the downstream Graph -> Arc -> Reflection model.
+Saving a memory does not mean AI analysis has started. The default local write path stores `.notScheduled`; only an explicit refresh policy moves the pipeline into `pending`, `running`, `completed`, or `failed`.
 
 ## Current Implementation Status
 
-Current code is closest to **v4 Beta 2+ plus v5 alpha shell**. Most v4 implementation work exists in code; the remaining work is real-device verification, quality tuning, and product polish.
-
 | Area | Current status |
-|------|----------------|
-| Auth persistence | Implemented: Apple auth, Keychain credential storage, access-token refresh |
-| AI request contract | Implemented: `record_aggregate.v1` payload with record shell, artifacts, known entities, debug options |
-| Photo capture | Implemented: Photos picker, Vision classification/OCR, thumbnail, artifact text for analysis |
-| Audio capture | Implemented: recorder state machine, Speech transcription, editable transcript, audio artifact |
-| Link capture | Implemented: URL detection and LinkPresentation metadata preview; `og:image` URL extraction is still limited |
-| Auto context | Implemented: save-before location/weather/music candidates with user selection |
-| Home / Today board | Implemented: real memory, accepted arc, reflection, context cluster, pending-action, system cards |
-| Quality gates | Implemented: entity, arc, and reflection gates plus Quality Tuning Lab and opt-in local batch |
-| v5 navigation shell | Implemented: Today / Memories / Insights tabs, bottom quick capture toolbar, Settings entry |
-| v5 settings/privacy | Implemented baseline: account, permissions, privacy, data controls, capture preferences, appearance/language, internal diagnostics |
-| Public beta polish | In progress: visual refinement, accessibility QA, localization QA, real-device permission testing |
-
-The older v4 phase table has been superseded by `docs/mory_v4/STATUS_2026-05-17.md`.
+| --- | --- |
+| Local memory write path | Implemented: `RecordShell + Artifact[] + ArtifactSemanticDigest[] + MemoryCardArrangement + AffectSnapshot[]` are saved in one record-facts path. |
+| Capture composer | Implemented: text, photo, video, live photo, audio, link, location, weather, music, todo, prompt answer, person context, affect, external capture, and Journaling Suggestions can seed the unified draft. |
+| Card arrangement | Implemented: fixed 6-column logical grid, size tokens `stamp / strip / card / square / tape / banner`, visual recipes, stack/group, order, rotation/nudge/z-index. |
+| Card rendering | Implemented: composer/detail render through the shared capture card path with `MemoryCardRecipeLayoutPolicy`, `MemoryCardObjectMetrics`, and recipe-specific object presentation. |
+| Memory detail | Implemented: product viewing path uses arrangement-driven `MemoryDeskRenderer`; editing keeps arrangement mutation instead of rebuilding default layout. |
+| Card Debug | Implemented: one `Card Debug` hub covers overview, type catalog, layout policy, visual recipes, grid board lab, card states/actions, arrangement reports, and fixture stress labs. |
+| AI pipeline | Implemented: `/api/analyze` remains the analysis boundary; `AnalysisInputContract` includes `RecordShell`, ordered artifacts, and ordered semantic digests, and excludes arrangement. |
+| Background/notifications | Wired: background orchestration, local notifications, push registration/enqueue/writeback, and notification management diagnostics exist; real-device behavior still needs field validation. |
+| Product polish | In progress: Today/Memories/Insights information architecture, global status visibility, accessibility, localization QA, and release-quality visual polish are still open. |
 
 ## Code Structure
 
 ```text
 mory/mory/
-├── App/
-│   ├── MoryApp.swift                 — app entry, auth gate, dependency setup
-│   ├── MoryRootView.swift            — v5 three-tab shell and quick capture presentation
-│   ├── AppNavigation.swift           — tab and settings routes
-│   └── MoryAppDependencies.swift     — environment dependencies
+├── App/                              app entry, root shell, dependency setup
 ├── Domain/
-│   ├── Analysis/                     — RecordAnalysisSnapshot
-│   ├── Capture/                      — RecordShell
-│   ├── Composition/                  — Board, Composition, HomeBoardRuleEngine
-│   ├── Content/                      — Artifact
-│   ├── Graph/                        — EntityNode, EntityEdge, ArtifactEntityLink
-│   ├── Memory/                       — presentation snapshots, drafts, repository protocol
-│   └── Reflection/                   — ReflectionSnapshot
+│   ├── Capture/                      RecordShell, drafts, provenance
+│   ├── Content/                      Artifact and semantic digest models
+│   ├── Memory/                       snapshots, card arrangement, repository protocol
+│   ├── Analysis/                     analysis contract and snapshots
+│   ├── Graph/                        entity graph and links
+│   └── Reflection/                   reflections and arcs
 ├── Features/
-│   ├── Capture/                      — composer, quick text, quick voice, photo/audio/link/location components
-│   ├── Home/                         — Today board and recent memories
-│   ├── Memories/                     — library, filters, timeline/search entry points
-│   ├── Insights/                     — storylines, reflections, people, places, themes, decisions
-│   ├── MemoryDetail/                 — source artifacts, analysis, rerun/edit/delete actions
-│   ├── Settings/                     — account, permissions, privacy, export/delete/preferences
-│   ├── Auth/                         — sign-in UI
-│   └── Shared/                       — public empty states and shared UI
+│   ├── Capture/                      unified composer and capture card components
+│   ├── MemoryDetail/                 arrangement-driven memory desk and editor
+│   ├── Home/                         Today shell and recent memories
+│   ├── Memories/                     library, filters, timeline, search
+│   ├── Insights/                     reflections, arcs, people, places, themes
+│   ├── Settings/                     account, privacy, permissions, diagnostics
+│   └── Shared/                       shared UI primitives
 ├── Infrastructure/
-│   ├── Analysis/
-│   │   ├── Artifacts/                — PhotoArtifactProcessor, AudioTranscriptionService, LinkMetadataExtractor
-│   │   ├── Graph/                    — GraphUpdater and graph/search query services
-│   │   ├── Pipeline/                 — request/response mapping, remote analysis, pipeline executor
-│   │   ├── Quality/                  — entity/arc/reflection quality policies
-│   │   └── Temporal/                 — arc candidate, promoter, merge, reflection services
-│   ├── Auth/                         — AppleAuthService, AuthSessionManager, KeychainCredentialStore
-│   ├── Capture/                      — CaptureOrchestrator
-│   ├── Context/                      — location, weather, music, permissions, auto collector
-│   └── Networking/                   — API client/configuration
-├── Persistence/
-│   ├── Models/                       — SwiftData stores
-│   ├── Mappers/                      — domain/store mapping
-│   ├── Repositories/                 — MoryMemoryRepository
-│   └── Stack/                        — SwiftData container setup
-└── Debug/                            — internal diagnostics and Quality Tuning Lab
+│   ├── Analysis/                     pipeline, API mapping, graph/reflection helpers
+│   ├── Auth/                         Apple auth and Keychain session storage
+│   ├── Capture/                      CaptureOrchestrator
+│   ├── Context/                      location, weather, music, permissions
+│   └── Networking/                   API client/configuration
+├── Persistence/                      SwiftData stores, mappers, repositories, stack
+└── Debug/                            diagnostics, Card Debug, quality and status labs
 
 server/
-├── cmd/server/                       — Go backend entry point
-├── internal/ai/                      — AI provider abstraction
-├── internal/auth/                    — Apple auth and JWT issuance
-├── internal/http/                    — API handlers and server
-├── internal/db/                      — local persistence adapters
-└── internal/subscription/            — subscription service placeholder
+├── cmd/server/                       Go backend entry point
+├── internal/ai/                      AI provider abstraction
+├── internal/auth/                    Apple auth and JWT issuance
+├── internal/http/                    API handlers
+├── internal/db/                      SQLite adapters
+└── internal/subscription/            subscription service placeholder
 ```
 
-## App Shell
+## Capture And Cards
 
-The current public app shell is defined in `MoryRootView`:
+The current record layer is intentionally independent from AI:
 
-1. **Today** — live board, recent memories, pipeline states.
-2. **Memories** — library filters, timeline, search, memory detail.
-3. **Insights** — storylines, reflections, people, places, themes, decisions.
+- The composer owns the draft and `MemoryCardArrangementDraft`.
+- Adding or removing content updates both staged artifacts and arrangement nodes.
+- Size changes, stack/unstack, reorder, and delete are arrangement edits.
+- `MemoryCaptureArtifactBuilder` returns artifacts, semantic digests, and draft-to-persisted artifact ID mapping.
+- `MemoryCreationUseCase` persists facts first, then persists `.notScheduled` pipeline status.
+- `MemoryMutationUseCase` updates artifacts, digests, arrangement, and affect data without defaulting over user layout.
 
-A bottom quick capture toolbar is available across tabs:
+Card layout uses a fixed 6-column logical grid across devices. The grid box is layout occupancy; card objects can render with their own visual ratio through `MemoryCardObjectMetrics`, but the visual size is not persisted as fact data.
 
-- Text capture opens `QuickTextCaptureView`.
-- Press-hold voice capture records and transcribes before review.
-- More capture opens the full `CaptureComposerView`.
+## Debug Surfaces
 
-Settings is available from the top-right account button. Internal diagnostics are only shown when `AppRuntimeEnvironment.allowsDebugTools` is true.
+The main card verification surface is `Card Debug`:
 
-## Authentication
+- `Overview`: recent memory four-layer health.
+- `Type Catalog`: each content type and each supported size.
+- `Layout Policy`: size token, grid box, density, and object metrics.
+- `Visual Recipes`: all legal recipe/size combinations.
+- `Grid Board Lab`: 6-column ordered sparse grid, placement, occupancy, drag/reorder experiments.
+- `Card States & Actions`: composer/detail/debug roles, runtime states, and capability truth table.
+- `Fixture Stress Lab`: legacy fixture pressure tests.
 
-Authentication is handled by `AuthSessionManager` in `mory/mory/Infrastructure/Auth/AuthSessionManager.swift`.
-
-- Sign in with Apple posts to `/auth/apple`.
-- Sessions are stored in iOS Keychain via `KeychainCredentialStore`.
-- `MoryAuthTokenProvider` refreshes access tokens before analysis requests.
-- Debug/development guest credentials are supported for local workflows.
-- The app entry point switches directly between loading, authenticated, and unauthenticated states in `MoryApp`.
-
-## Capture And Context
-
-Capture now supports:
-
-- Text.
-- Photo with local Vision classification/OCR and thumbnail generation.
-- Audio with local Speech transcription and editable transcript.
-- Link with URL detection and LinkPresentation preview metadata.
-- Manual location selection.
-- Save-before context candidates for location, weather, and music.
-
-Context is collected before save, shown to the user, and saved only if selected. The app does not append late context after the initial memory snapshot.
+Debug surfaces are for engineering acceptance. They should not be treated as the final user-facing status design.
 
 ## AI Analysis Pipeline
 
-AI analysis is record-aggregate based.
+AI is post-save and contract-bound:
 
-- Signed-in capture analysis posts to `/api/analysis/records`.
-- Payload carries `schema_version`, `analysis_reason`, `record_shell`, `artifacts`, `known_entities`, and optional debug options.
-- iOS maps the server response into `RecordAnalysisSnapshot`.
-- The local pipeline then updates graph links, promotes temporal arcs, and requests/stores reflections when quality gates pass.
+- Save-only path writes local facts and `.notScheduled`.
+- Explicit analysis builds `AnalysisInputContract`.
+- Contract input includes `RecordShell`, ordered `Artifact[]`, and ordered `ArtifactSemanticDigest[]`.
+- Contract input excludes `MemoryCardArrangement`.
+- The app posts analysis work to `/api/analyze`.
+- AI output is persisted as analysis/proposals/graph/reflection state; high-risk conclusions should remain reviewable.
 
-The current pipeline is intentionally ordered:
-
-```text
-Analyze -> Persist analysis -> Graph update -> Arc promotion -> Reflection request/store
-```
-
-Reflection is not started in parallel with Analyze because it depends on analysis salience, entities, gates, and reflection hints.
-
-The backend keeps AI provider selection behind the server boundary:
+The backend keeps provider selection behind the server boundary:
 
 - `AI_PROVIDER=anthropic`
 - `AI_PROVIDER=openai_compatible`
@@ -159,31 +126,27 @@ The backend keeps AI provider selection behind the server boundary:
 
 OpenAI-compatible vendors, including DeepSeek-style endpoints, integrate through backend configuration rather than direct client calls.
 
-## Home Board
+## Build And Verification
 
-Today uses `HomeBoardRuleEngine` and real repository data. It can render:
-
-- Memory cards.
-- Accepted storyline cards.
-- Suggested reflection cards.
-- Context cluster cards.
-- Pending or failed processing cards.
-- System prompt cards.
-
-Local user preferences support pin, hide, and dismiss actions through `HomeBoardItemPreference`.
-
-## Build
-
-Preferred verification command:
+Preferred iOS compile checks use generic simulator destinations so validation does not depend on opening or switching a specific simulator:
 
 ```sh
-xcodebuild -project mory/mory.xcodeproj -scheme mory -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build
+xcodebuild -project mory/mory.xcodeproj -scheme mory -destination 'generic/platform=iOS Simulator' build
+xcodebuild -project mory/mory.xcodeproj -scheme mory -destination 'generic/platform=iOS Simulator' build-for-testing
 ```
 
-Filtered output:
+Useful static checks:
 
 ```sh
-xcodebuild -project mory/mory.xcodeproj -scheme mory -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build 2>&1 | rg -n 'error:|warning:|BUILD SUCCEEDED|BUILD FAILED'
+git diff --check
+jq empty mory/mory/Localizable.xcstrings
+```
+
+Backend tests:
+
+```sh
+cd server
+/Users/z14/sdk/go1.26.3/bin/go test ./...
 ```
 
 ## Backend
@@ -194,16 +157,6 @@ Backend lives in `server/` and deploys independently from the iOS app.
 - Docker build: `server/Dockerfile`
 - Deployment notes: `server/DEPLOY_FLY.md`
 - OpenAPI: `server/openapi.yaml`
-
-Local Go toolchain note:
-
-- Go installed through GoLand is available at `/Users/z14/sdk/go1.26.3/bin/go`.
-- This path is not currently on the shell `PATH`, so local verification commands should use the absolute binary path or export it before running backend work.
-
-```sh
-cd server
-/Users/z14/sdk/go1.26.3/bin/go test ./...
-```
 
 Default conservative deployment:
 
@@ -216,49 +169,28 @@ APNS_ENABLED=false
 
 To enable live AI, set `AI_MODE=live` and configure `AI_PROVIDER`, `AI_MODEL`, `AI_API_KEY`, and `AI_BASE_URL` for the selected provider.
 
-Local DeepSeek-compatible setup:
-
-1. Create `server/.env` from `server/.env.example`.
-2. Set `AI_API_KEY=your_key`.
-3. Keep:
-   - `AI_MODE=live`
-   - `AI_PROVIDER=openai_compatible`
-   - `AI_MODEL=deepseek-chat`
-   - `AI_BASE_URL=https://api.deepseek.com`
-   - `JWT_TTL=1h`
-4. Run:
-
-```sh
-set -a && source server/.env && set +a && go run ./server/cmd/server
-```
-
-The backend normalizes `AI_BASE_URL` to the correct OpenAI-compatible chat completions endpoint automatically.
-
 Remote push delivery:
 
 - `/api/push/register` stores APNs tokens plus notification and intelligence preferences.
-- `/api/push/enqueue` queues remote notification intents with a production payload envelope for `record`, `artifact`, `question`, `entity`, `place`, `theme`, `decision`, `chapter`, and `reflection` targets.
-- The Go server includes a scheduled delivery loop controlled by `PUSH_DELIVERY_WORKER_ENABLED`, `PUSH_DELIVERY_INTERVAL`, `PUSH_DELIVERY_BATCH_SIZE`, `PUSH_DELIVERY_MAX_ATTEMPTS`, `PUSH_DELIVERY_RETRY_BACKOFF`, and `PUSH_DELIVERY_ALERT_FAILURE_THRESHOLD`.
-- Transient APNs failures are retried with exponential backoff; permanent APNs failures are marked failed and surfaced through `/metrics`.
-- Real APNs sending uses token auth. Set `APNS_ENABLED=true`, `APNS_ENVIRONMENT`, `APNS_TOPIC`, `APNS_KEY_ID`, `APNS_TEAM_ID`, and either `APNS_AUTH_KEY_PATH` or `APNS_AUTH_KEY`.
-
-Operational metrics:
-
-- `GET /metrics` emits request counters, AI operation counters/tokens/errors, and push delivery worker counters such as `push_delivery_sent_total`, `push_delivery_retried_total`, `push_delivery_permanent_failed_total`, and `push_delivery_consecutive_loop_errors`.
-- Production monitoring should alert if `push_delivery_consecutive_loop_errors > 0` for multiple intervals, if `push_delivery_permanent_failed_total` spikes, or if AI operation error counters rise after a deploy.
+- `/api/push/enqueue` queues remote notification intents.
+- Real APNs sending uses token auth with `APNS_ENABLED=true`, `APNS_ENVIRONMENT`, `APNS_TOPIC`, `APNS_KEY_ID`, `APNS_TEAM_ID`, and either `APNS_AUTH_KEY_PATH` or `APNS_AUTH_KEY`.
+- `GET /metrics` emits request counters, AI operation counters/tokens/errors, and push delivery worker counters.
 
 ## Immediate Next Work
 
-1. **Real-device verification** — Apple login persistence, Photos, Microphone, Speech, Location, WeatherKit, and MusicKit.
-2. **Link metadata completion** — add richer description and explicit `og:image` URL extraction where LinkPresentation does not expose it.
-3. **AI latency and traceability** — record stage timing and decide whether any remaining >15s path blocks beta.
-4. **v5 visual/product polish** — refine Today, Memories, Insights, Settings, empty states, accessibility, and localization.
-5. **Project health** — split large files called out in `docs/mory_v5/Architecture/09_project_structure_health.md`.
-6. **Quality tuning** — run local core batch against the Go server and expand realistic samples before RC.
+1. Real-device verification for Apple login, Photos, microphone, Speech, Location, WeatherKit, MusicKit, background tasks, and APNs.
+2. Product-level intelligence/status surface: analysis ready, failed, retry, proposal review, imports, and source provenance.
+3. Composer/detail card interaction polish after Debug acceptance: drag/reorder, state/action consistency, accessibility, and localization QA.
+4. Today/Home board design on top of the same 6-column card layout vocabulary.
+5. Link metadata completion, video playback/detail polish, prompt/person/affect presentation refinement.
+6. Release hardening: privacy copy, export/delete QA, entitlement gating, backend monitoring, and focused regression coverage.
 
 ## Documentation
 
-- [Mory v3 docs](docs/mory_v3/) — ontology, domain model, AI/graph/reflection contracts.
-- [Mory v4 docs](docs/mory_v4/) — multimodal capture, context, auth, speed, quality, real-device status.
-- [Mory v4 current status](docs/mory_v4/STATUS_2026-05-17.md) — most accurate v4 implementation and verification snapshot.
-- [Mory v5 docs](docs/mory_v5/) — public beta product shell, presentation architecture, settings/privacy, acceptance gates.
+- [Current system handbook](docs/mory_system_handbook/)
+- [Current Chinese system handbook](docs/mory_system_handbook_zh/)
+- [Historical v7 docs](docs/mory_v7/)
+- [Historical v6 docs](docs/mory_v6/)
+- [Historical v5 docs](docs/mory_v5/)
+- [Historical v4 docs](docs/mory_v4/)
+- [Historical v3 docs](docs/mory_v3/)

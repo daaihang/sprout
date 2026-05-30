@@ -3,24 +3,19 @@ import XCTest
 
 @MainActor
 final class NotificationDeliveryRouterTests: XCTestCase {
-    private let apnsTokenKey = "mory.apnsTokenHex"
-
     override func setUp() {
         super.setUp()
-        // Clear any APNS token left by other tests.
         PushDeviceRegistrationStore.resetForTests()
-        UserDefaults.standard.removeObject(forKey: apnsTokenKey)
     }
 
     override func tearDown() {
         PushDeviceRegistrationStore.resetForTests()
-        UserDefaults.standard.removeObject(forKey: apnsTokenKey)
         super.tearDown()
     }
 
     func testRouterSetsLocalChannelWhenNoAPNSToken() async throws {
         // No APNS token → should route to local.
-        let fixture = makeRouterFixture()
+        let fixture = makeRouterFixture(hasAPNSToken: false)
         let intent = makeTestIntent()
 
         try await fixture.router.route(intent: intent, repository: fixture.repository)
@@ -32,18 +27,21 @@ final class NotificationDeliveryRouterTests: XCTestCase {
     }
 
     func testRouterSetsRemoteChannelWhenAPNSTokenPresent() async throws {
-        // Seed a fake APNS hex token.
-        UserDefaults.standard.set("deadbeefcafe1234", forKey: apnsTokenKey)
-        let fixture = makeRouterFixture()
+        let fixture = makeRouterFixture(hasAPNSToken: true)
         let intent = makeTestIntent()
 
-        // Remote service throws (test double) — we only care about the upserted channel.
-        try? await fixture.router.route(intent: intent, repository: fixture.repository)
+        try await fixture.router.route(intent: intent, repository: fixture.repository)
 
         let stored = try XCTUnwrap(
             fixture.repository.fetchNotificationIntents(status: nil, limit: nil).first
         )
         XCTAssertEqual(stored.deliveryChannel, .remote)
+        let payload = try XCTUnwrap(fixture.remotePushService.lastPayload)
+        XCTAssertEqual(payload.intentID, intent.id)
+        XCTAssertEqual(payload.kind, intent.kind.rawValue)
+        XCTAssertEqual(payload.targetType, intent.targetType.rawValue)
+        XCTAssertEqual(payload.targetID, intent.targetID)
+        XCTAssertEqual(payload.deepLink, "mory://memories/record/\(intent.targetID.uuidString)")
     }
 
     // MARK: - Helpers
@@ -51,17 +49,22 @@ final class NotificationDeliveryRouterTests: XCTestCase {
     private struct RouterFixture {
         var router: NotificationDeliveryRouter
         var repository: RouterTestNotificationIntentRepository
+        var remotePushService: RouterTestRemotePushService
     }
 
-    private func makeRouterFixture() -> RouterFixture {
+    private func makeRouterFixture(hasAPNSToken: Bool) -> RouterFixture {
         let repository = RouterTestNotificationIntentRepository()
-        let remotePushService = RouterTestRemotePushService()
-        var router = NotificationDeliveryRouter(remotePushSyncService: remotePushService)
+        let remotePushService = RouterTestRemotePushService(hasAPNSToken: hasAPNSToken)
+        var router = NotificationDeliveryRouter(pushEnqueuer: remotePushService)
         // Inject a stub notification center so no real UNUserNotificationCenter calls happen.
         router.localScheduler = LocalNotificationScheduler(
             notificationCenter: RouterTestLocalNotificationCenter()
         )
-        return RouterFixture(router: router, repository: repository)
+        return RouterFixture(
+            router: router,
+            repository: repository,
+            remotePushService: remotePushService
+        )
     }
 
     private func makeTestIntent() -> NotificationIntent {
@@ -78,8 +81,6 @@ final class NotificationDeliveryRouterTests: XCTestCase {
 }
 
 // MARK: - Test Doubles
-
-private enum RouterTestError: Error { case unsupported }
 
 @MainActor
 private final class RouterTestNotificationIntentRepository: NotificationIntentRepositorying {
@@ -135,14 +136,27 @@ private final class RouterTestNotificationIntentRepository: NotificationIntentRe
 }
 
 private final class RouterTestRemotePushService: RemotePushSyncing {
+    let hasAPNSToken: Bool
+    private(set) var lastPayload: RemotePushDeliveryPayload?
+
+    init(hasAPNSToken: Bool) {
+        self.hasAPNSToken = hasAPNSToken
+    }
+
     func prepareForLocalDataOwner(_ ownerID: String) {}
     func registerSystemRemoteNotificationsIfNeeded(repository: any MoryMemoryRepositorying) {}
     func syncRegistrationIfPossible(repository: any MoryMemoryRepositorying, force: Bool) async {}
-    func enqueueRemoteNotificationIntent(_ intent: NotificationIntent) async throws -> MoryAPIClient.PushEnqueueResponse {
-        throw RouterTestError.unsupported
+    func enqueueRemotePush(_ payload: RemotePushDeliveryPayload) async throws -> MoryAPIClient.PushEnqueueResponse {
+        lastPayload = payload
+        return MoryAPIClient.PushEnqueueResponse(
+            accepted: true,
+            userID: "router-test",
+            queuedCount: 1,
+            skippedCount: 0
+        )
     }
     func writeBackInteraction(_ event: NotificationInteractionEvent) async {}
-    func fetchDebugSnapshot(repository: any MoryMemoryRepositorying) async -> RemotePushDebugSnapshot {
+    func fetchDebugSnapshot(intentCounts: RemotePushDebugIntentCounts) async -> RemotePushDebugSnapshot {
         RemotePushDebugSnapshot(
             ownerID: nil, deviceID: "test", timezone: "UTC",
             hasAPNSToken: false, apnsTokenPreview: nil,

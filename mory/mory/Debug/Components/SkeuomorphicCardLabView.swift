@@ -1,4 +1,3 @@
-#if DEBUG
 import SwiftUI
 
 struct SkeuomorphicCardLabView: View {
@@ -275,4 +274,3 @@ struct SkeuomorphicCardLabView: View {
         ]
     }
 }
-#endif

@@ -1,6 +1,6 @@
 # 08. Server Architecture Audit
 
-本文审计 Go server。范围包括 HTTP handlers、auth、AI providers、Analyze v7 contract、SQLite store、notification push delivery 和 subscription。
+本文审计 Go server。范围包括 HTTP handlers、auth、AI providers、Analysis contract、SQLite store、Push delivery 和 subscription。
 
 ## 1. Server 总览
 
@@ -10,7 +10,7 @@ flowchart TD
     B --> C["auth middleware / user context"]
     B --> D["server/internal/ai"]
     B --> E["server/internal/db"]
-    B --> F["server/internal/notification"]
+    B --> F["server/internal/push"]
     B --> G["server/internal/subscription"]
     D --> H["OpenAI-compatible provider"]
     D --> I["Anthropic provider"]
@@ -26,9 +26,9 @@ flowchart TD
 | `internal/config` | 环境变量和配置 |
 | `internal/http` | 路由、request/response envelope、auth context |
 | `internal/auth` | Apple auth / JWT |
-| `internal/ai` | Analyze legacy/v6/v7、providers、prompt、parse |
+| `internal/ai` | Analysis、reflection、intelligence providers、prompt、parse |
 | `internal/db` | SQLite persistence |
-| `internal/notification` | push payload、APNs、delivery worker |
+| `internal/push` | push payload、APNs、delivery worker、retry/pacing |
 | `internal/subscription` | subscription verify |
 
 ## 2. HTTP Layer
@@ -37,7 +37,7 @@ flowchart TD
 
 - 提供 `/healthz`、metrics。
 - auth apple/refresh。
-- analyze preview、legacy analyze、Analyze v7。
+- canonical Analysis。
 - reflection、question、chapter、photo semantic、notification intent。
 - push register/enqueue/writeback。
 - subscription verify。
@@ -76,37 +76,37 @@ flowchart TD
 - Auth error envelope 标准化。
 - 401 与 403 语义清楚：invalid/expired token -> refresh or logout；forbidden -> capability/account issue。
 
-## 4. Analyze v7
+## 4. Analysis
 
 当前流程：
 
 ```mermaid
 sequenceDiagram
     participant iOS as MoryAPIClient
-    participant HTTP as handleAnalyzeV7
-    participant AI as Provider.AnalyzeV7
-    participant Prompt as v7 prompt/parser
+    participant HTTP as handleAnalyze
+    participant AI as Provider.Analyze
+    participant Prompt as analysis prompt/parser
 
-    iOS->>HTTP: POST /api/analyze/v7
-    HTTP->>HTTP: validate schema version
-    HTTP->>AI: AnalyzeV7(req, user)
-    AI->>Prompt: build v7 prompt
+    iOS->>HTTP: POST /api/analyze
+    HTTP->>HTTP: validate analysis payload
+    HTTP->>AI: Analyze(req, user)
+    AI->>Prompt: build analysis prompt
     Prompt-->>AI: analysis + proposals
-    AI-->>HTTP: AnalyzeV7Result
+    AI-->>HTTP: AnalysisResult
     HTTP-->>iOS: envelope { data, meta }
 ```
 
 优点：
 
-- v7 route 已存在。
+- canonical analysis route 已存在。
 - request 包含 context pack、mood evidence、client capabilities。
 - response 包含 analysis、proposal arrays、quality。
 
 问题：
 
-- `v7_types.go` 同时包含 request/response structs、validation、legacy conversion、quality/proposal builders。
-- provider files 中 legacy Analyze、AnalyzeV7、Reflection 都在同一个 provider 文件。
-- deterministic `BuildAnalyzeV7Response` helper 容易让人误解 v7 proposal 全由 AI 原生生成。
+- `types.go` 同时包含 request/response structs、validation、quality/proposal builders。
+- provider files 中 Analysis、Reflection 和其他 intelligence endpoints 仍需要继续保持边界清晰。
+- deterministic proposal normalization helper 容易让人误解 proposal 全由 AI 原生生成。
 
 解决方案：
 
@@ -204,24 +204,24 @@ sequenceDiagram
 
 稳定合同：
 
-- `/api/analyze/v7` 是新建记忆生产分析主路径。
+- `/api/analyze` 是新建记忆生产分析主路径；旧 `/api/analyze/v7`、`/api/analysis/records`、`/api/analysis/preview` 不再注册。
 - server 返回 proposals，iOS 本地 policy 决定是否 trusted mutation。
 - push register/enqueue/writeback 由 iOS notification services 使用。
 
 风险：
 
-- iOS 和 server v7 structs 分别定义，缺少 schema contract test 生成。
+- iOS 和 server Analysis structs 分别定义，缺少 schema contract test 生成。
 
 解决方案：
 
 - 增加 shared JSON fixtures。
-- iOS `AnalyzeV7ContractTests` 和 Go handler/provider tests 使用同一 fixture corpus。
+- iOS `AnalysisContractTests` 和 Go handler/provider tests 使用同一 fixture corpus。
 
 ## 10. Server 优先级
 
 | 优先级 | 问题 | 解决方案 |
 | --- | --- | --- |
-| P0 | v7 contract drift | 共享 fixtures + contract tests |
+| P0 | Analysis contract drift | 共享 fixtures + contract tests |
 | P1 | handlers.go 过大 | 按 route family 拆 |
 | P1 | sqlite.go 过大 | 按 store concern 拆 |
 | P1 | provider 文件混合 legacy/v7/reflection | provider transport 与 operation 分离 |

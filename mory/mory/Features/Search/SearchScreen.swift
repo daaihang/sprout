@@ -1,13 +1,44 @@
 import SwiftUI
 
 struct SearchScreen: View {
+    enum Presentation {
+        case standalone
+        case embeddedInMemories
+
+        var navigationTitle: LocalizedStringKey {
+            switch self {
+            case .standalone:
+                return "search.nav.title"
+            case .embeddedInMemories:
+                return "tab.memories"
+            }
+        }
+
+        var showsIdleIndexControls: Bool {
+            self == .standalone
+        }
+
+        var showsCrossDomainResults: Bool {
+            self == .standalone
+        }
+    }
+
     @Environment(\.memoryRepository) private var memoryRepository
 
     @Binding var query: String
+    let presentation: Presentation
     @State private var result = SearchSnapshot(query: "", memories: [], entities: [], arcs: [], reflections: [])
     @State private var errorMessage: String?
     @State private var indexStatusMessage: String?
     @State private var isRebuildingIndex = false
+
+    init(
+        query: Binding<String>,
+        presentation: Presentation = .standalone
+    ) {
+        _query = query
+        self.presentation = presentation
+    }
 
     var body: some View {
         List {
@@ -18,7 +49,7 @@ struct SearchScreen: View {
                 }
             }
 
-            if query.trimmedOrNil == nil {
+            if query.trimmedOrNil == nil, presentation.showsIdleIndexControls {
                 Section("Semantic index") {
                     if let indexStatusMessage {
                         Text(verbatim: indexStatusMessage)
@@ -44,8 +75,8 @@ struct SearchScreen: View {
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-            } else {
-                if result.isPubliclyEmpty {
+            } else if query.trimmedOrNil != nil {
+                if isEmptyForPresentation {
                     Section {
                         MoryPublicEmptyStateView(
                             state: .search,
@@ -54,10 +85,12 @@ struct SearchScreen: View {
                     }
                 }
 
-                Section("Search source") {
-                    Text(verbatim: result.sourceSummary)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                if presentation.showsCrossDomainResults {
+                    Section("Search source") {
+                        Text(verbatim: result.sourceSummary)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 Section("search.section.memories") {
@@ -77,62 +110,71 @@ struct SearchScreen: View {
                     }
                 }
 
-                Section("search.section.entities") {
-                    if result.entities.isEmpty {
-                        Text("search.empty.entities")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(result.entities) { entityResult in
-                            NavigationLink {
-                                EntityDestinationView(entityID: entityResult.entity.id, kind: entityResult.entity.kind)
-                                    .moryHidesTabChrome()
-                            } label: {
-                                SearchEntityRow(result: entityResult)
+                if presentation.showsCrossDomainResults {
+                    Section("search.section.entities") {
+                        if result.entities.isEmpty {
+                            Text("search.empty.entities")
+                                .foregroundStyle(.secondary)
+                        } else {
+                            ForEach(result.entities) { entityResult in
+                                NavigationLink {
+                                    EntityDestinationView(entityID: entityResult.entity.id, kind: entityResult.entity.kind)
+                                        .moryHidesTabChrome()
+                                } label: {
+                                    SearchEntityRow(result: entityResult)
+                                }
+                                .accessibilityElement(children: .combine)
                             }
-                            .accessibilityElement(children: .combine)
                         }
                     }
-                }
 
-                Section("search.section.arcs") {
-                    if result.arcs.isEmpty {
-                        Text("search.empty.arcs")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(result.arcs) { arcResult in
-                            NavigationLink {
-                                ArcDetailView(arcID: arcResult.summary.arc.id)
-                                    .moryHidesTabChrome()
-                            } label: {
-                                SearchArcRow(result: arcResult)
+                    Section("search.section.arcs") {
+                        if result.arcs.isEmpty {
+                            Text("search.empty.arcs")
+                                .foregroundStyle(.secondary)
+                        } else {
+                            ForEach(result.arcs) { arcResult in
+                                NavigationLink {
+                                    ArcDetailView(arcID: arcResult.summary.arc.id)
+                                        .moryHidesTabChrome()
+                                } label: {
+                                    SearchArcRow(result: arcResult)
+                                }
+                                .accessibilityElement(children: .combine)
                             }
-                            .accessibilityElement(children: .combine)
                         }
                     }
-                }
 
-                Section("search.section.reflections") {
-                    if result.reflections.isEmpty {
-                        Text("search.empty.reflections")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(result.reflections) { reflectionResult in
-                            NavigationLink {
-                                ReflectionDetailView(reflectionID: reflectionResult.summary.reflection.id)
-                                    .moryHidesTabChrome()
-                            } label: {
-                                SearchReflectionRow(result: reflectionResult)
+                    Section("search.section.reflections") {
+                        if result.reflections.isEmpty {
+                            Text("search.empty.reflections")
+                                .foregroundStyle(.secondary)
+                        } else {
+                            ForEach(result.reflections) { reflectionResult in
+                                NavigationLink {
+                                    ReflectionDetailView(reflectionID: reflectionResult.summary.reflection.id)
+                                        .moryHidesTabChrome()
+                                } label: {
+                                    SearchReflectionRow(result: reflectionResult)
+                                }
+                                .accessibilityElement(children: .combine)
                             }
-                            .accessibilityElement(children: .combine)
                         }
                     }
                 }
             }
         }
-        .navigationTitle("search.nav.title")
+        .navigationTitle(presentation.navigationTitle)
         .task(id: query) {
             await load()
         }
+    }
+
+    private var isEmptyForPresentation: Bool {
+        if presentation.showsCrossDomainResults {
+            return result.isPubliclyEmpty
+        }
+        return result.memories.isEmpty
     }
 
     private func load() async {

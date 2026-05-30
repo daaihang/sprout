@@ -1,4 +1,6 @@
+import AVFoundation
 import Foundation
+import UIKit
 
 struct ExternalCaptureDraftFactory: Sendable {
     private let attachmentFileStore = ExternalCaptureAttachmentFileStore()
@@ -47,16 +49,59 @@ struct ExternalCaptureDraftFactory: Sendable {
         let affectDrafts = suggestion.bundle.stateOfMind.compactMap {
             makeAffectDraft(from: $0, provenance: baseProvenance.withJournalingEvidenceID($0.id))
         }
+        let cardArrangement = journalingSuggestionArrangement(
+            rawText: bodyText,
+            artifacts: artifacts,
+            importSessionID: importSessionID
+        )
         return MemoryCaptureDraft(
             title: suggestion.title,
             rawText: bodyText,
             mood: affectDrafts.first?.rawInput ?? affectDrafts.first?.labels.first?.rawValue,
             inputContext: diagnostics.joined(separator: "\n").trimmedOrNil,
-            captureSource: .composer,
             provenance: baseProvenance,
             artifacts: artifacts,
-            affectSnapshots: affectDrafts
+            affectSnapshots: affectDrafts,
+            cardArrangement: cardArrangement
         )
+    }
+
+    private func journalingSuggestionArrangement(
+        rawText: String,
+        artifacts: [CaptureArtifactDraft],
+        importSessionID: UUID
+    ) -> MemoryCardArrangementDraft {
+        var nodes: [MemoryCardDraftNode] = []
+        var order = 0
+
+        if rawText.trimmedOrNil != nil {
+            nodes.append(
+                MemoryCardDraftNode(
+                    contentRef: .recordBody,
+                    visualRecipe: .notebook,
+                    layout: MemoryCardLayoutToken(order: order, size: .banner, rotationDegrees: -1.5, zIndex: order)
+                )
+            )
+            order += 1
+        }
+
+        let groupedDraftIDs = artifacts.compactMap { draft -> UUID? in
+            if case .text = draft.content {
+                return nil
+            }
+            return draft.provenance?.importSessionID == importSessionID ? draft.draftID : nil
+        }
+        if !groupedDraftIDs.isEmpty {
+            nodes.append(
+                MemoryCardDraftNode(
+                    contentRef: .artifactDraftGroup(groupedDraftIDs, kind: .journalingBundle),
+                    visualRecipe: .bundlePacket,
+                    layout: MemoryCardLayoutToken(order: order, size: .card, rotationDegrees: -2, zIndex: order)
+                )
+            )
+        }
+
+        return MemoryCardArrangementDraft(nodes: nodes)
     }
 
     func makeDraft(from request: ExternalCaptureRequest) -> MemoryCaptureDraft {
@@ -101,7 +146,6 @@ struct ExternalCaptureDraftFactory: Sendable {
             rawText: bodyText,
             mood: affectDrafts.first?.rawInput ?? affectDrafts.first?.labels.first?.rawValue,
             inputContext: [request.context?.trimmedOrNil, diagnostics.joined(separator: "\n").trimmedOrNil].compactMap { $0 }.joined(separator: "\n").trimmedOrNil,
-            captureSource: request.sourceKind == .shareSheet ? .importFile : .composer,
             provenance: baseProvenance,
             artifacts: artifacts,
             affectSnapshots: affectDrafts
@@ -172,10 +216,38 @@ struct ExternalCaptureDraftFactory: Sendable {
             return nil
         }
         switch media.kind {
-        case .photo, .livePhotoImage:
+        case .photo:
             return attachmentArtifactDraft(from: attachment, sourceKind: .journalingSuggestion, title: "Journaling photo", provenance: provenance.withAttachmentRole(attachment.role.rawValue), diagnostics: &diagnostics)
-        case .video, .livePhotoVideo:
+        case .video:
             return attachmentArtifactDraft(from: attachment, sourceKind: .journalingSuggestion, title: "Journaling video", provenance: provenance.withAttachmentRole(attachment.role.rawValue), diagnostics: &diagnostics)
+        case .livePhoto:
+            guard let pairedVideoAttachmentID = media.pairedVideoAttachmentID,
+                  let pairedVideoAttachment = attachmentsByID[pairedVideoAttachmentID] else {
+                diagnostics.append("Journaling Live Photo missing paired video attachment.")
+                return nil
+            }
+            let stillData = loadAttachmentData(attachment, diagnostics: &diagnostics)
+            let pairedVideoData = loadAttachmentData(pairedVideoAttachment, diagnostics: &diagnostics)
+            return .livePhoto(
+                title: "Journaling Live Photo",
+                summary: "Imported Live Photo from Journaling Suggestions.",
+                stillFilename: attachment.filename,
+                videoFilename: pairedVideoAttachment.filename,
+                stillImageData: stillData,
+                pairedVideoData: pairedVideoData,
+                thumbnailData: stillData,
+                metadata: [
+                    "source": ExternalCaptureSourceKind.journalingSuggestion.rawValue,
+                    "stillContentType": attachment.contentType,
+                    "pairedVideoContentType": pairedVideoAttachment.contentType,
+                    "stillStoredFileName": attachment.storedFileName ?? "",
+                    "pairedVideoStoredFileName": pairedVideoAttachment.storedFileName ?? "",
+                    "attachmentRole": attachment.role.rawValue,
+                    "pairedVideoAttachmentRole": pairedVideoAttachment.role.rawValue
+                ],
+                origin: .imported,
+                provenance: provenance.withAttachmentRole("livePhoto")
+            )
         }
     }
 
@@ -278,17 +350,20 @@ struct ExternalCaptureDraftFactory: Sendable {
                 provenance: provenance
             )
         case .video, .file:
+            let preview = data.flatMap { videoPreview(for: $0) }
             return .video(
                 title: title ?? attachment.filename,
                 summary: attachment.summary ?? "Imported video/file from \(sourceKind.rawValue).",
                 filename: attachment.filename,
                 videoData: data,
-                thumbnailData: nil,
+                thumbnailData: preview?.thumbnailData,
                 videoMetadata: [
                     "source": sourceKind.rawValue,
                     "contentType": attachment.contentType,
                     "storedFileName": attachment.storedFileName ?? "",
-                    "attachmentRole": attachment.role.rawValue
+                    "attachmentRole": attachment.role.rawValue,
+                    "durationSeconds": preview?.durationSeconds.map(String.init) ?? "",
+                    "byteCount": data.map { String($0.count) } ?? ""
                 ],
                 origin: .imported,
                 provenance: provenance
@@ -311,6 +386,26 @@ struct ExternalCaptureDraftFactory: Sendable {
             diagnostics.append("Attachment \(attachment.filename): \(diagnostic)")
         }
         return data
+    }
+
+    private func videoPreview(for data: Data) -> (thumbnailData: Data?, durationSeconds: Int?) {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("mory_external_video_\(UUID().uuidString)")
+            .appendingPathExtension("mov")
+        do {
+            try data.write(to: url, options: [.atomic])
+            defer { try? FileManager.default.removeItem(at: url) }
+            let asset = AVURLAsset(url: url)
+            let duration = CMTimeGetSeconds(asset.duration)
+            let generator = AVAssetImageGenerator(asset: asset)
+            generator.appliesPreferredTrackTransform = true
+            generator.maximumSize = CGSize(width: 640, height: 640)
+            let image = try generator.copyCGImage(at: .zero, actualTime: nil)
+            let thumbnailData = UIImage(cgImage: image).jpegData(compressionQuality: 0.72)
+            return (thumbnailData, duration.isFinite ? Int(duration.rounded()) : nil)
+        } catch {
+            return (nil, nil)
+        }
     }
 
     private func makeAffectDraft(from evidence: ExternalCaptureAffectEvidence, provenance: CaptureProvenance) -> AffectSnapshotDraft? {
