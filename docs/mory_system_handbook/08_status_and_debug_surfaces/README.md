@@ -6,7 +6,7 @@ This section records where users or developers can see current system state.
 
 | Surface | Shows | Gap |
 | --- | --- | --- |
-| Composer | staged cards, affect cards, save/loading errors | Does not explain post-save analysis. |
+| Composer | compact staged card board, affect cards, arrangement edits, save/loading errors | Does not explain post-save analysis. |
 | Home | today's memory desk / lightweight capture motivation | Final home design waits for immersive capture cards. |
 | Memories | memory list, top search, and pipeline badge | Status is small and passive. |
 | Memory Detail | pipeline status, retry, AI analysis disclosure | Good for a single memory, not global state. |
@@ -25,7 +25,7 @@ This section records where users or developers can see current system state.
 | Notification Management | Single Settings/Debug page for notification queue, history, dedupe, errors, preferences, APNs sync, debug test notification, and push metrics. |
 | Debug Cloud Intelligence | Run cloud intelligence endpoints. |
 | Platform Capture Diagnostics | Check Journaling, App Group, Share, App Intents, inbox. |
-| Card Debug | Inspect four-layer card health, type catalog fixtures, arrangement rendering, visual recipes, and legacy card stress labs. |
+| Card Debug | Inspect four-layer card health, type catalog fixtures, layout policy, object metrics, visual recipes, 6-column grid board behavior, card states/actions, arrangement reports, and fixture stress labs. |
 
 ## Missing Status Layer
 
@@ -44,4 +44,4 @@ The app needs a product-level "System Status / Intelligence Status" surface that
 
 `wired`
 
-Notification status is now centralized in one management page. Debug coverage is strong, but product-level AI/background status visibility is still incomplete.
+Notification status is now centralized in one management page. Card Debug now covers the card/layout acceptance layer. Product-level AI/background status visibility is still incomplete.

@@ -15,9 +15,10 @@ The user should be able to collect one memory from multiple inputs, review cards
 `UnifiedCaptureComposerView` shows:
 
 - editable body text,
-- staged artifact carousel,
+- compact 6-column board preview for staged cards,
 - affect cards,
 - context cards,
+- arrangement size/stack/reorder/delete controls,
 - saving spinner,
 - local error text.
 
@@ -65,6 +66,7 @@ flowchart LR
 - `Artifact.metadata.captureOrigin`: manual, context, imported, inferred.
 - `ArtifactSemanticDigest`: media meaning such as OCR, local visual labels, caption, transcript, dimensions, duration, and local identifiers. This is the structured semantic bridge for future analysis.
 - `MemoryCardArrangement`: user-authored card layout for composer/detail/today desk. It is visual presentation state and is not part of default AI analysis input. Current layout policy uses a fixed 6-column logical grid with size tokens (`stamp`, `strip`, `card`, `square`, `tape`, `banner`) and per-node `gridPlacement(column,row)`.
+- `MemoryCardObjectMetrics`: derived render-time sizing for recipe + size + density. It is not persisted and does not change the fact model.
 - `AffectSnapshot.sources`: userSelected, journalSuggestionStateOfMind, aiInferredText, userCorrected, and related sources.
 
 ## AI Intervention Points
@@ -100,4 +102,4 @@ Potential future gates:
 1. Add a product-level "analysis running / ready / failed" status flow after save.
 2. Prevent transcript refinement from overwriting user-edited text.
 3. Add stronger provenance fields for imported and Journaling-originated cards.
-4. Improve video, prompt, person, and affect card presentation.
+4. Continue product polish for video, prompt, person, affect, and drag/reorder card interactions after Debug acceptance.
