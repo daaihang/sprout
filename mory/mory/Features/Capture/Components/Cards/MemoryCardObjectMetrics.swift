@@ -33,7 +33,6 @@ struct MemoryCardObjectPadding: Hashable, Sendable {
 
 struct MemoryCardObjectMetrics: Hashable, Sendable {
     var recipe: MemoryCardVisualRecipe
-    var sizeToken: MemoryCardSizeToken
     var density: MemoryCardContentDensity
     var preferredSize: CGSize
     var padding: MemoryCardObjectPadding
@@ -44,222 +43,143 @@ struct MemoryCardObjectMetrics: Hashable, Sendable {
 
     static func resolve(
         recipe: MemoryCardVisualRecipe,
-        sizeToken: MemoryCardSizeToken,
         density explicitDensity: MemoryCardContentDensity? = nil,
         availableSize: CGSize? = nil
     ) -> MemoryCardObjectMetrics {
-        let normalizedSize = MemoryCardRecipeLayoutPolicy.normalizedSize(sizeToken, for: recipe)
-        let density = explicitDensity ?? MemoryCardRecipeLayoutPolicy.contentDensity(for: normalizedSize)
-        let base = baseMetrics(for: normalizedSize, density: density)
-        let resolved = recipeOverrides(recipe: recipe, sizeToken: normalizedSize, density: density, base: base)
-        return resolved.fitting(in: availableSize)
-    }
-
-    func fitting(in availableSize: CGSize?) -> MemoryCardObjectMetrics {
-        guard let availableSize,
-              availableSize.width.isFinite,
-              availableSize.height.isFinite,
-              availableSize.width > 1,
-              availableSize.height > 1
-        else {
-            return self
-        }
-
-        var metrics = self
-        let bounds = Self.ratioBounds(for: sizeToken)
-        let fittedWidth = preferredSize.width.clamped(
-            to: (availableSize.width * bounds.minimumWidth)...(availableSize.width * bounds.maximumWidth)
-        )
-        let fittedHeight = preferredSize.height.clamped(
-            to: (availableSize.height * bounds.minimumHeight)...(availableSize.height * bounds.maximumHeight)
-        )
-
-        if fittedWidth != preferredSize.width || fittedHeight != preferredSize.height {
-            let shrinkScale = min(fittedWidth / preferredSize.width, fittedHeight / preferredSize.height)
-            if shrinkScale < 1 {
-                metrics.padding = padding.scaled(by: max(0.58, shrinkScale))
+        let density = MemoryCardRecipeLayoutPolicy.normalizedDensity(explicitDensity, for: recipe)
+        let availableWidth = availableSize?.width
+        var metrics = baseMetrics(recipe: recipe, density: density, availableWidth: availableWidth)
+        if let availableSize,
+           availableSize.width.isFinite,
+           availableSize.width > 1 {
+            metrics.preferredSize.width = availableSize.width
+            if availableSize.height.isFinite, availableSize.height > 1 {
+                metrics.preferredSize.height = min(max(metrics.preferredSize.height, 1), availableSize.height)
             }
-            metrics.preferredSize = CGSize(width: fittedWidth, height: fittedHeight)
         }
-
         return metrics
     }
 
-    private static func baseMetrics(
-        for size: MemoryCardSizeToken,
-        density: MemoryCardContentDensity
-    ) -> MemoryCardObjectMetrics {
-        switch size {
-        case .stamp:
-            return MemoryCardObjectMetrics(
-                recipe: .statusNote,
-                sizeToken: size,
-                density: density,
-                preferredSize: CGSize(width: 106, height: 104),
-                padding: MemoryCardObjectPadding(10),
-                titleLineLimit: 1,
-                detailLineLimit: 1,
-                metadataLineLimit: 1,
-                thumbnailScale: .none
-            )
-        case .strip:
-            return MemoryCardObjectMetrics(
-                recipe: .statusNote,
-                sizeToken: size,
-                density: density,
-                preferredSize: CGSize(width: 168, height: 76),
-                padding: MemoryCardObjectPadding(top: 10, leading: 12, bottom: 10, trailing: 12),
-                titleLineLimit: 1,
-                detailLineLimit: 1,
-                metadataLineLimit: 1,
-                thumbnailScale: .fit
-            )
-        case .card:
-            return MemoryCardObjectMetrics(
-                recipe: .statusNote,
-                sizeToken: size,
-                density: density,
-                preferredSize: CGSize(width: 194, height: 168),
-                padding: MemoryCardObjectPadding(13),
-                titleLineLimit: 2,
-                detailLineLimit: 3,
-                metadataLineLimit: 1,
-                thumbnailScale: .fit
-            )
-        }
+    static func estimatedHeight(
+        for recipe: MemoryCardVisualRecipe,
+        density: MemoryCardContentDensity? = nil,
+        columnWidth: CGFloat
+    ) -> CGFloat {
+        resolve(
+            recipe: recipe,
+            density: density,
+            availableSize: CGSize(width: columnWidth, height: .greatestFiniteMagnitude)
+        ).preferredSize.height
     }
 
-    private static func recipeOverrides(
+    private static func baseMetrics(
         recipe: MemoryCardVisualRecipe,
-        sizeToken: MemoryCardSizeToken,
         density: MemoryCardContentDensity,
-        base: MemoryCardObjectMetrics
+        availableWidth: CGFloat?
     ) -> MemoryCardObjectMetrics {
-        var metrics = base
-        metrics.recipe = recipe
-        metrics.sizeToken = sizeToken
-        metrics.density = density
+        let width = max(120, min(availableWidth ?? 188, 260))
+        var metrics = MemoryCardObjectMetrics(
+            recipe: recipe,
+            density: density,
+            preferredSize: CGSize(width: width, height: defaultHeight(for: recipe, density: density, width: width)),
+            padding: padding(for: density),
+            titleLineLimit: density == .compact ? 1 : 2,
+            detailLineLimit: detailLineLimit(for: recipe, density: density),
+            metadataLineLimit: 1,
+            thumbnailScale: thumbnailScale(for: recipe)
+        )
 
-        switch (recipe, sizeToken) {
-        case (.notebook, .card):
-            metrics.preferredSize = CGSize(width: 194, height: 188)
-            metrics.detailLineLimit = 10
-        case (.polaroid, .card), (.livePhotoPrint, .card):
-            metrics.preferredSize = CGSize(width: 178, height: 218)
+        switch recipe {
+        case .weatherStamp, .affectCard, .statusNote:
+            metrics.padding = density == .compact
+                ? MemoryCardObjectPadding(top: 10, leading: 12, bottom: 10, trailing: 12)
+                : MemoryCardObjectPadding(14)
+        case .notebook:
+            metrics.detailLineLimit = density == .expanded ? 12 : 8
+        case .polaroid, .livePhotoPrint:
             metrics.titleLineLimit = 2
             metrics.detailLineLimit = 2
-        case (.filmFrame, .card):
-            metrics.preferredSize = CGSize(width: 194, height: 132)
-            metrics.detailLineLimit = 2
-        case (.cassette, .strip):
-            metrics.preferredSize = CGSize(width: 168, height: 64)
-        case (.cassette, .card):
-            metrics.preferredSize = CGSize(width: 194, height: 126)
-            metrics.detailLineLimit = 4
-        case (.vinyl, .strip):
-            metrics.preferredSize = CGSize(width: 168, height: 82)
-            metrics.detailLineLimit = 1
-        case (.vinyl, .card):
-            metrics.preferredSize = CGSize(width: 194, height: 154)
-            metrics.detailLineLimit = 2
-        case (.mapTicket, .strip):
-            metrics.preferredSize = CGSize(width: 176, height: 96)
-            metrics.detailLineLimit = 1
-        case (.mapTicket, .card):
-            metrics.preferredSize = CGSize(width: 194, height: 128)
-            metrics.detailLineLimit = 2
-        case (.weatherStamp, .stamp):
-            metrics.preferredSize = CGSize(width: 58, height: 58)
-            metrics.padding = MemoryCardObjectPadding(6)
-            metrics.titleLineLimit = 1
-            metrics.detailLineLimit = 1
-        case (.weatherStamp, .strip):
-            metrics.preferredSize = CGSize(width: 168, height: 64)
-            metrics.padding = MemoryCardObjectPadding(top: 8, leading: 12, bottom: 8, trailing: 12)
-            metrics.titleLineLimit = 1
-            metrics.detailLineLimit = 1
-        case (.weatherStamp, .card):
-            metrics.preferredSize = CGSize(width: 194, height: 148)
-            metrics.detailLineLimit = 2
-        case (.affectCard, .stamp), (.statusNote, .stamp):
-            metrics.preferredSize = CGSize(width: 116, height: 110)
-            metrics.detailLineLimit = 1
-        case (.affectCard, .strip), (.statusNote, .strip):
-            metrics.preferredSize = CGSize(width: 176, height: 112)
-            metrics.detailLineLimit = 2
-        case (.linkNote, .strip):
-            metrics.preferredSize = CGSize(width: 176, height: 96)
-            metrics.detailLineLimit = 1
-        case (.linkNote, .card):
-            metrics.preferredSize = CGSize(width: 194, height: 148)
-            metrics.detailLineLimit = 3
-        case (.taskNote, .strip), (.personCard, .strip):
-            metrics.preferredSize = CGSize(width: 176, height: 96)
-            metrics.titleLineLimit = 1
-            metrics.detailLineLimit = 1
-        case (.taskNote, .card):
-            metrics.preferredSize = CGSize(width: 194, height: 148)
-            metrics.detailLineLimit = 4
-        case (.personCard, .card):
-            metrics.preferredSize = CGSize(width: 148, height: 190)
-            metrics.detailLineLimit = 2
-        case (.bundlePacket, .card):
-            metrics.preferredSize = CGSize(width: 194, height: 150)
-            metrics.detailLineLimit = 2
-        default:
+        case .filmFrame, .cassette, .vinyl, .mapTicket, .linkNote, .taskNote, .personCard, .bundlePacket:
             break
         }
 
         return metrics
     }
 
-    private static func ratioBounds(for size: MemoryCardSizeToken) -> MemoryCardObjectRatioBounds {
-        switch size {
-        case .stamp:
-            return MemoryCardObjectRatioBounds(
-                minimumWidth: 0.72,
-                minimumHeight: 0.72,
-                maximumWidth: 1.32,
-                maximumHeight: 1.32
-            )
-        case .strip:
-            return MemoryCardObjectRatioBounds(
-                minimumWidth: 0.78,
-                minimumHeight: 0.76,
-                maximumWidth: 1.22,
-                maximumHeight: 1.22
-            )
-        case .card:
-            return MemoryCardObjectRatioBounds(
-                minimumWidth: 0.78,
-                minimumHeight: 0.76,
-                maximumWidth: 1.18,
-                maximumHeight: 1.18
-            )
+    private static func padding(for density: MemoryCardContentDensity) -> MemoryCardObjectPadding {
+        switch density {
+        case .compact:
+            return MemoryCardObjectPadding(top: 10, leading: 12, bottom: 10, trailing: 12)
+        case .regular:
+            return MemoryCardObjectPadding(14)
+        case .expanded:
+            return MemoryCardObjectPadding(16)
         }
     }
-}
 
-private struct MemoryCardObjectRatioBounds: Hashable, Sendable {
-    var minimumWidth: CGFloat
-    var minimumHeight: CGFloat
-    var maximumWidth: CGFloat
-    var maximumHeight: CGFloat
-}
-
-private extension MemoryCardObjectPadding {
-    func scaled(by scale: CGFloat) -> MemoryCardObjectPadding {
-        MemoryCardObjectPadding(
-            top: top * scale,
-            leading: leading * scale,
-            bottom: bottom * scale,
-            trailing: trailing * scale
-        )
+    private static func detailLineLimit(
+        for recipe: MemoryCardVisualRecipe,
+        density: MemoryCardContentDensity
+    ) -> Int {
+        switch (recipe, density) {
+        case (.notebook, .expanded):
+            return 12
+        case (.notebook, _):
+            return 8
+        case (.taskNote, .expanded), (.linkNote, .expanded):
+            return 5
+        case (.weatherStamp, .compact), (.affectCard, .compact), (.statusNote, .compact):
+            return 1
+        case (_, .compact):
+            return 2
+        case (_, .regular):
+            return 3
+        case (_, .expanded):
+            return 4
+        }
     }
-}
 
-private extension CGFloat {
-    func clamped(to range: ClosedRange<CGFloat>) -> CGFloat {
-        Swift.min(Swift.max(self, range.lowerBound), range.upperBound)
+    private static func thumbnailScale(for recipe: MemoryCardVisualRecipe) -> MemoryCardObjectThumbnailScale {
+        switch recipe {
+        case .weatherStamp, .affectCard, .statusNote:
+            return .none
+        case .polaroid, .filmFrame, .livePhotoPrint, .bundlePacket:
+            return .fill
+        case .notebook, .cassette, .vinyl, .mapTicket, .linkNote, .taskNote, .personCard:
+            return .fit
+        }
+    }
+
+    private static func defaultHeight(
+        for recipe: MemoryCardVisualRecipe,
+        density: MemoryCardContentDensity,
+        width: CGFloat
+    ) -> CGFloat {
+        let base: CGFloat
+        switch recipe {
+        case .notebook:
+            base = density == .expanded ? 226 : 190
+        case .polaroid, .livePhotoPrint:
+            base = width * 1.18 + 42
+        case .filmFrame:
+            base = width * 0.72
+        case .cassette:
+            base = density == .compact ? 88 : 126
+        case .vinyl:
+            base = density == .compact ? 112 : 156
+        case .mapTicket:
+            base = density == .compact ? 118 : 148
+        case .weatherStamp:
+            base = density == .compact ? 92 : 148
+        case .linkNote, .taskNote:
+            base = density == .compact ? 116 : 156
+        case .personCard:
+            base = density == .compact ? 144 : 190
+        case .affectCard, .statusNote:
+            base = density == .compact ? 112 : 148
+        case .bundlePacket:
+            base = 158
+        }
+        return max(72, min(base, 320))
     }
 }

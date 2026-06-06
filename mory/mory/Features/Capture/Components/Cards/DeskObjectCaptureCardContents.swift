@@ -5,7 +5,7 @@ struct MapTicketCaptureCardContent: View {
     let common: CaptureCardCommonDisplay
     let payload: CapturePlaceCardPayload
     let accent: Color
-    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .mapTicket, sizeToken: .card)
+    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .mapTicket)
 
     var body: some View {
         HStack(spacing: 0) {
@@ -115,19 +115,18 @@ struct WeatherStampCaptureCardContent: View {
     let common: CaptureCardCommonDisplay
     let payload: CaptureWeatherCardPayload
     let accent: Color
-    var sizeToken: MemoryCardSizeToken = .stamp
     var density: MemoryCardContentDensity = .compact
     var variant: MemoryCardVisualVariant?
-    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .weatherStamp, sizeToken: .stamp)
+    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .weatherStamp, density: .compact)
 
     var body: some View {
         Group {
-            switch normalizedSize {
-            case .stamp:
+            switch density {
+            case .compact:
                 stampLayout
-            case .strip:
+            case .regular:
                 stripLayout
-            case .card:
+            case .expanded:
                 cardLayout
             }
         }
@@ -157,15 +156,11 @@ struct WeatherStampCaptureCardContent: View {
         }
     }
 
-    private var normalizedSize: MemoryCardSizeToken {
-        MemoryCardRecipeLayoutPolicy.normalizedSize(sizeToken, for: .weatherStamp)
-    }
-
     private var resolvedVariant: MemoryCardVisualVariant {
         MemoryCardRecipeLayoutPolicy.resolvedVariant(
             variant,
             for: .weatherStamp,
-            size: normalizedSize
+            density: density
         )
     }
 
@@ -374,9 +369,8 @@ struct LinkNoteCaptureCardContent: View {
     let common: CaptureCardCommonDisplay
     let payload: CaptureLinkCardPayload
     let accent: Color
-    var sizeToken: MemoryCardSizeToken = .card
     var density: MemoryCardContentDensity = .regular
-    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .linkNote, sizeToken: .card)
+    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .linkNote)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -449,7 +443,7 @@ struct TaskNoteCaptureCardContent: View {
     let common: CaptureCardCommonDisplay
     let payload: CaptureTodoCardPayload
     let accent: Color
-    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .taskNote, sizeToken: .strip)
+    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .taskNote, density: .compact)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {

@@ -24,7 +24,7 @@ Owned by the user.
 Contains:
 
 - Pinned cards.
-- Resized cards.
+- Manually ordered masonry cards.
 - Manually ordered cards.
 - Accepted AI cards.
 - User-hidden card preferences.
@@ -152,7 +152,7 @@ Less like this
 Mory must not:
 
 - Move pinned cards silently.
-- Resize user-resized cards silently.
+- Reorder user-ordered cards silently.
 - Reinsert hidden cards.
 - Replace accepted cards with new AI variants.
 
@@ -194,4 +194,3 @@ Avoid:
 - Every AI-derived card has reason and source access.
 - User can dismiss/reduce suggestion categories.
 - Empty and low-data states still lead to capture.
-

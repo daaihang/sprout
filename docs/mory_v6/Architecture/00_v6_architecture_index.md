@@ -30,7 +30,7 @@ Relevant existing files:
 | [01 Continuous Intelligence Layer](01_continuous_intelligence_layer.md) | Defines the new orchestration layer and job lifecycle. |
 | [02 Domain Model Extensions](02_domain_model_extensions.md) | Defines new domain objects: jobs, questions, profiles, graph deltas, notification intents. |
 | [03 SwiftData Repository Migration](03_swiftdata_repository_migration.md) | Defines persistence, schema, mapper, and repository changes. |
-| [04 SwiftUI Home Grid And UI System](04_swiftui_home_grid_and_ui_system.md) | Defines native SwiftUI grid, board layers, and card component architecture. |
+| [04 SwiftUI Home Masonry And UI System](04_swiftui_home_masonry_and_ui_system.md) | Defines native SwiftUI masonry, board layers, and card component architecture. |
 | [05 Core ML And Core Spotlight](05_core_ml_and_core_spotlight.md) | Defines lightweight native/system intelligence and semantic search integration. |
 | [06 Background Jobs Notifications And Go Server](06_background_jobs_notifications_and_go_server.md) | Defines background execution, notifications, and backend changes. |
 | [07 Testing Observability Rollout](07_testing_observability_rollout.md) | Defines tests, debug surfaces, metrics, and rollout phases. |

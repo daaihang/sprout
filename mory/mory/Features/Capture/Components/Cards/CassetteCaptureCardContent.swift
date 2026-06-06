@@ -3,21 +3,16 @@ import SwiftUI
 struct CassetteCaptureCardContent: View {
     let common: CaptureCardCommonDisplay
     let payload: CaptureAudioCardPayload
-    var sizeToken: MemoryCardSizeToken = .strip
     var density: MemoryCardContentDensity = .regular
-    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .cassette, sizeToken: .strip)
+    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .cassette, density: .compact)
 
     var body: some View {
-        switch normalizedSize {
-        case .stamp, .strip:
+        switch density {
+        case .compact:
             stripBody
-        case .card:
+        case .regular, .expanded:
             tapeBody
         }
-    }
-
-    private var normalizedSize: MemoryCardSizeToken {
-        MemoryCardRecipeLayoutPolicy.normalizedSize(sizeToken, for: .cassette)
     }
 
     private var stripBody: some View {

@@ -19,8 +19,19 @@ struct MemoryDeskRenderer: View {
     }
 
     private var layoutPlan: MemoryDeskBoardLayoutPlan<UUID> {
-        MemoryDeskBoardLayoutPlan.make(
-            nodes: resolvedNodes.map { MemoryDeskBoardInputNode(id: $0.id, layout: $0.layout) },
+        let columnWidth = metrics.columnSpec(for: containerWidth).columnWidth
+        return MemoryDeskBoardLayoutPlan.make(
+            nodes: resolvedNodes.map {
+                MemoryDeskBoardInputNode(
+                    id: $0.id,
+                    layout: $0.layout,
+                    estimatedHeight: MemoryCardObjectMetrics.estimatedHeight(
+                        for: $0.visualRecipe,
+                        density: nil,
+                        columnWidth: columnWidth
+                    )
+                )
+            },
             containerWidth: containerWidth,
             metrics: metrics
         )
@@ -72,8 +83,7 @@ struct MemoryDeskRenderer: View {
                 placeCardStyle: .auto,
                 surfaceMode: .skeuomorphic,
                 visualRecipe: node.visualRecipe,
-                visualVariant: node.visualVariant,
-                sizeToken: node.layout.size
+                visualVariant: node.visualVariant
             ),
             objectAvailableSize: availableSize
         )

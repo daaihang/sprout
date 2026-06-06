@@ -555,24 +555,22 @@ final class CaptureCardModelsTests: XCTestCase {
                 surfaceMode: .skeuomorphic,
                 visualRecipe: fixture.recipe,
                 visualVariant: fixture.preferredVariant,
-                sizeToken: fixture.preferredSize
+                contentDensity: fixture.preferredDensity
             )
 
             XCTAssertEqual(presentation.surfaceMode, .skeuomorphic)
             XCTAssertEqual(presentation.visualRecipe, fixture.recipe)
-            XCTAssertTrue(fixture.supportedSizes.contains(fixture.preferredSize))
-            XCTAssertEqual(presentation.sizeToken, fixture.preferredSize)
+            XCTAssertEqual(
+                presentation.contentDensity,
+                MemoryCardRecipeLayoutPolicy.normalizedDensity(fixture.preferredDensity, for: fixture.recipe)
+            )
             XCTAssertEqual(
                 presentation.visualVariant,
                 MemoryCardRecipeLayoutPolicy.resolvedVariant(
                     fixture.preferredVariant,
                     for: fixture.recipe,
-                    size: fixture.preferredSize
+                    density: fixture.preferredDensity
                 )
-            )
-            XCTAssertEqual(
-                presentation.contentDensity,
-                MemoryCardRecipeLayoutPolicy.contentDensity(for: fixture.preferredSize)
             )
             XCTAssertFalse(fixture.layerNotes.isEmpty)
         }
@@ -587,26 +585,24 @@ final class CaptureCardModelsTests: XCTestCase {
         XCTAssertTrue(entries.allSatisfy { !$0.draftLayer.isEmpty && !$0.artifactLayer.isEmpty && !$0.digestLayer.isEmpty && !$0.arrangementLayer.isEmpty })
     }
 
-    func testCardDebugCatalogPreferredSizesRespectLayoutPolicy() {
+    func testCardDebugCatalogPreferredDensitiesRespectLayoutPolicy() {
         for fixture in CardDebugCatalog.recipeFixtures {
             XCTAssertTrue(
-                MemoryCardRecipeLayoutPolicy.supportedSizes(for: fixture.recipe).contains(fixture.preferredSize)
-            )
-            XCTAssertEqual(
-                Set(fixture.supportedSizes),
-                Set(MemoryCardRecipeLayoutPolicy.supportedSizes(for: fixture.recipe))
+                MemoryCardRecipeLayoutPolicy.supportedDensities(for: fixture.recipe).contains(
+                    MemoryCardRecipeLayoutPolicy.normalizedDensity(fixture.preferredDensity, for: fixture.recipe)
+                )
             )
         }
     }
 
-    func testCardDebugCatalogCoversEverySupportedRecipeSize() {
+    func testCardDebugCatalogCoversEverySupportedRecipeDensity() {
         let expected = Set(MemoryCardVisualRecipe.allCases.flatMap { recipe in
-            MemoryCardRecipeLayoutPolicy.supportedSizes(for: recipe).map { "\(recipe.rawValue).\($0.rawValue)" }
+            MemoryCardRecipeLayoutPolicy.supportedDensities(for: recipe).map { "\(recipe.rawValue).\($0.rawValue)" }
         })
-        let actual = Set(CardDebugCatalog.recipeSizeFixtures.map { "\($0.fixture.recipe.rawValue).\($0.size.rawValue)" })
+        let actual = Set(CardDebugCatalog.recipeDensityFixtures.map { "\($0.fixture.recipe.rawValue).\($0.density.rawValue)" })
 
         XCTAssertEqual(actual, expected)
-        for fixture in CardDebugCatalog.recipeSizeFixtures {
+        for fixture in CardDebugCatalog.recipeDensityFixtures {
             let metrics = fixture.metrics
             let presentation = CaptureCardPresentation(
                 item: fixture.fixture.item,
@@ -615,61 +611,53 @@ final class CaptureCardModelsTests: XCTestCase {
                 surfaceMode: .skeuomorphic,
                 visualRecipe: fixture.fixture.recipe,
                 visualVariant: fixture.variant,
-                sizeToken: fixture.size
+                contentDensity: fixture.density
             )
 
-            XCTAssertEqual(presentation.sizeToken, fixture.size)
+            XCTAssertEqual(presentation.contentDensity, fixture.density)
             XCTAssertEqual(presentation.visualVariant, fixture.resolvedVariant)
             XCTAssertEqual(metrics.recipe, fixture.fixture.recipe)
-            XCTAssertEqual(metrics.sizeToken, fixture.size)
+            XCTAssertEqual(metrics.density, fixture.density)
             XCTAssertGreaterThan(metrics.preferredSize.width, 0)
             XCTAssertGreaterThan(metrics.preferredSize.height, 0)
         }
     }
 
-    func testCardDebugArrangementReportCoversOccupancyPlacementAndOverflowState() {
+    func testCardDebugArrangementReportCoversMasonryFramesAndRenderOverflow() {
         let snapshot = CardDebugCatalog.arrangementPlaygroundSnapshot()
         let nodes = MemoryDeskRenderPlan.nodes(for: snapshot)
         let report = CardDebugArrangementReport.make(nodes: nodes)
 
         XCTAssertEqual(report.slots.count, nodes.count)
-        XCTAssertGreaterThan(report.rowCount, 0)
-        XCTAssertGreaterThan(report.occupiedCells, 0)
-        XCTAssertGreaterThan(report.totalCells, 0)
-        XCTAssertGreaterThanOrEqual(report.density, 0)
-        XCTAssertLessThanOrEqual(report.density, 1)
-        XCTAssertEqual(report.overlapCount, 0)
-        XCTAssertTrue(report.slots.allSatisfy { $0.placement != nil })
+        XCTAssertGreaterThan(report.columnCount, 0)
+        XCTAssertGreaterThan(report.columnWidth, 0)
+        XCTAssertGreaterThan(report.boardHeight, 0)
+        XCTAssertGreaterThan(report.stickerOverflow, 0)
         XCTAssertTrue(report.slots.allSatisfy { $0.frame.width > 0 && $0.frame.height > 0 })
+        XCTAssertTrue(report.slots.allSatisfy { $0.renderFrame.width > $0.frame.width })
         XCTAssertTrue(report.slots.allSatisfy { !$0.debugLine.isEmpty })
     }
 
     func testCardDebugStatesActionsRecipesCoverEveryVisualRecipe() {
-        XCTAssertEqual(
-            Set(CardDebugStatesActionsModel.recipeOptions),
-            Set(MemoryCardVisualRecipe.allCases)
-        )
-        XCTAssertEqual(
-            CardDebugStatesActionsModel.recipeOptions.count,
-            MemoryCardVisualRecipe.allCases.count
-        )
+        XCTAssertEqual(Set(CardDebugStatesActionsModel.recipeOptions), Set(MemoryCardVisualRecipe.allCases))
+        XCTAssertEqual(CardDebugStatesActionsModel.recipeOptions.count, MemoryCardVisualRecipe.allCases.count)
     }
 
-    func testCardDebugStatesActionsSizeOptionsMatchLayoutPolicy() {
+    func testCardDebugStatesActionsDensityOptionsMatchLayoutPolicy() {
         for recipe in MemoryCardVisualRecipe.allCases {
             XCTAssertEqual(
-                CardDebugStatesActionsModel.supportedSizes(for: recipe),
-                MemoryCardRecipeLayoutPolicy.supportedSizes(for: recipe)
+                CardDebugStatesActionsModel.supportedDensities(for: recipe),
+                MemoryCardRecipeLayoutPolicy.supportedDensities(for: recipe)
             )
         }
     }
 
     func testCardDebugStatesActionsVariantOptionsMatchLayoutPolicy() {
         for recipe in MemoryCardVisualRecipe.allCases {
-            for size in CardDebugStatesActionsModel.supportedSizes(for: recipe) {
+            for density in CardDebugStatesActionsModel.supportedDensities(for: recipe) {
                 XCTAssertEqual(
-                    CardDebugStatesActionsModel.supportedVariants(for: recipe, size: size),
-                    MemoryCardRecipeLayoutPolicy.supportedVariants(for: recipe, size: size)
+                    CardDebugStatesActionsModel.supportedVariants(for: recipe, density: density),
+                    MemoryCardRecipeLayoutPolicy.supportedVariants(for: recipe, density: density)
                 )
             }
         }
@@ -690,7 +678,7 @@ final class CaptureCardModelsTests: XCTestCase {
             for runtimeState in CardDebugRuntimeStateOption.allCases {
                 let presentation = CardDebugStatesActionsModel.presentation(
                     recipe: .cassette,
-                    size: .card,
+                    density: .regular,
                     variant: .automatic,
                     role: role,
                     runtimeState: runtimeState
@@ -701,50 +689,46 @@ final class CaptureCardModelsTests: XCTestCase {
                 XCTAssertEqual(presentation.surfaceMode, .skeuomorphic)
                 XCTAssertEqual(presentation.item.state, runtimeState.state)
                 XCTAssertEqual(presentation.item.isSelected, runtimeState.isSelected)
-                XCTAssertEqual(presentation.sizeToken, .card)
+                XCTAssertEqual(presentation.contentDensity, .regular)
                 XCTAssertEqual(presentation.visualVariant, .automatic)
-                XCTAssertEqual(
-                    presentation.contentDensity,
-                    MemoryCardRecipeLayoutPolicy.contentDensity(for: .card)
-                )
             }
         }
     }
 
-    func testCardDebugStatesActionsUnsupportedSizeFallsBackThroughPolicy() {
+    func testCardDebugStatesActionsUnsupportedDensityFallsBackThroughPolicy() {
         let presentation = CardDebugStatesActionsModel.presentation(
             recipe: .affectCard,
-            size: .card,
+            density: .expanded,
             variant: .weatherWind,
             role: .debug,
             runtimeState: .normal
         )
 
-        XCTAssertEqual(presentation.sizeToken, MemoryCardRecipeLayoutPolicy.defaultSize(for: .affectCard))
-        XCTAssertTrue(CardDebugStatesActionsModel.supportedSizes(for: .affectCard).contains(presentation.sizeToken))
+        XCTAssertEqual(presentation.contentDensity, MemoryCardRecipeLayoutPolicy.defaultDensity(for: .affectCard))
+        XCTAssertTrue(CardDebugStatesActionsModel.supportedDensities(for: .affectCard).contains(presentation.contentDensity))
         XCTAssertEqual(presentation.visualVariant, .automatic)
     }
 
     func testCardDebugStatesActionsUnsupportedVariantFallsBackThroughPolicy() {
         let presentation = CardDebugStatesActionsModel.presentation(
             recipe: .weatherStamp,
-            size: .strip,
+            density: .regular,
             variant: .weatherWind,
             role: .debug,
             runtimeState: .normal
         )
 
-        XCTAssertEqual(presentation.sizeToken, .strip)
+        XCTAssertEqual(presentation.contentDensity, .regular)
         XCTAssertEqual(presentation.visualVariant, .weatherIconTemperature)
         XCTAssertTrue(
-            CardDebugStatesActionsModel.supportedVariants(for: .weatherStamp, size: .strip).contains(presentation.visualVariant)
+            CardDebugStatesActionsModel.supportedVariants(for: .weatherStamp, density: .regular).contains(presentation.visualVariant)
         )
     }
 
     func testCardDebugStatesActionsCapabilityRowsComeFromPresentation() {
         let presentation = CardDebugStatesActionsModel.presentation(
             recipe: .taskNote,
-            size: .strip,
+            density: .compact,
             role: .debug,
             runtimeState: .selected
         )
@@ -767,20 +751,20 @@ final class CaptureCardModelsTests: XCTestCase {
         XCTAssertEqual(derived["hasTrailingControl"], presentation.hasTrailingControl)
     }
 
-    func testCardDebugCatalogRecipeSizeFixturesCoverSupportedVariantMatrix() {
+    func testCardDebugCatalogRecipeDensityFixturesCoverSupportedVariantMatrix() {
         for recipe in MemoryCardVisualRecipe.allCases {
-            for size in MemoryCardRecipeLayoutPolicy.supportedSizes(for: recipe) {
+            for density in MemoryCardRecipeLayoutPolicy.supportedDensities(for: recipe) {
                 let expectedVariants = Set(
-                    MemoryCardRecipeLayoutPolicy.supportedVariants(for: recipe, size: size).map { variant in
+                    MemoryCardRecipeLayoutPolicy.supportedVariants(for: recipe, density: density).map { variant in
                         variant == .automatic ? MemoryCardVisualVariant.automatic : variant
                     }
                 )
                 let actualVariants = Set(
-                    CardDebugCatalog.recipeSizeFixtures
-                        .filter { $0.fixture.recipe == recipe && $0.size == size }
+                    CardDebugCatalog.recipeDensityFixtures
+                        .filter { $0.fixture.recipe == recipe && $0.density == density }
                         .map { $0.variant ?? .automatic }
                 )
-                XCTAssertEqual(actualVariants, expectedVariants, "Expected fixtures for \(recipe.rawValue).\(size.rawValue)")
+                XCTAssertEqual(actualVariants, expectedVariants, "Expected fixtures for \(recipe.rawValue).\(density.rawValue)")
             }
         }
     }

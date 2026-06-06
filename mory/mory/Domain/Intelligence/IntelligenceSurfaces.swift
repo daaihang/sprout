@@ -21,8 +21,6 @@ struct HomeBoardSignal: Identifiable, Codable, Hashable, Sendable {
     var subtitle: String
     var priority: Double
     var reason: String
-    var suggestedWidthColumns: Int
-    var suggestedHeightUnits: Int
     var createdAt: Date
     var expiresAt: Date?
 
@@ -36,8 +34,6 @@ struct HomeBoardSignal: Identifiable, Codable, Hashable, Sendable {
         subtitle: String,
         priority: Double = 0,
         reason: String,
-        suggestedWidthColumns: Int = 2,
-        suggestedHeightUnits: Int = 1,
         createdAt: Date = .now,
         expiresAt: Date? = nil
     ) {
@@ -50,8 +46,6 @@ struct HomeBoardSignal: Identifiable, Codable, Hashable, Sendable {
         self.subtitle = subtitle
         self.priority = priority
         self.reason = reason
-        self.suggestedWidthColumns = max(1, suggestedWidthColumns)
-        self.suggestedHeightUnits = max(1, suggestedHeightUnits)
         self.createdAt = createdAt
         self.expiresAt = expiresAt
     }

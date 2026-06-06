@@ -4,11 +4,11 @@ struct VinylRecordCaptureCardContent: View {
     let common: CaptureCardCommonDisplay
     let payload: CaptureMusicCardPayload
     let accent: Color
-    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .vinyl, sizeToken: .strip)
+    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .vinyl, density: .compact)
 
     var body: some View {
         Group {
-            if metrics.sizeToken == .strip {
+            if metrics.density == .compact {
                 stripBody
             } else {
                 tapeBody
@@ -116,7 +116,7 @@ struct VinylRecordCaptureCardContent: View {
     }
 
     private var recordLength: CGFloat {
-        if metrics.sizeToken == .strip {
+        if metrics.density == .compact {
             return min(58, max(42, metrics.preferredSize.height - metrics.padding.top - metrics.padding.bottom))
         }
         return min(sleeveLength * 0.94, max(96, metrics.preferredSize.height * 0.86))

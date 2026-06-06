@@ -12,7 +12,7 @@ mory/mory/Infrastructure/Intelligence/
 mory/mory/Infrastructure/Search/
 mory/mory/Infrastructure/Notifications/
 mory/mory/Features/Intelligence/
-mory/mory/Features/Home/Grid/
+mory/mory/Features/Home/Layout/
 mory/mory/Features/Home/Cards/
 ```
 
@@ -53,9 +53,9 @@ Features/Intelligence/ClarificationQuestionCard.swift
 Features/Intelligence/EntityConfirmationView.swift
 Features/Intelligence/DailyQuestionCard.swift
 
-Features/Home/Grid/HomeBoardGridLayout.swift
-Features/Home/Grid/HomeBoardSpan.swift
-Features/Home/Grid/HomeBoardGridMetrics.swift
+Features/Home/Layout/HomeBoardMasonryLayout.swift
+Features/Home/Layout/HomeBoardItemLayout.swift
+Domain/BoardLayout/MoryMasonryLayout.swift
 
 Features/Home/Cards/HomeMemoryCard.swift
 Features/Home/Cards/HomeQuestionCard.swift
@@ -111,7 +111,7 @@ Features/People/PersonDetailView.swift
 
 Changes:
 
-- Home grid and suggestion layer.
+- Home masonry and suggestion layer.
 - Semantic search path.
 - AI/privacy/notification settings.
 - Show unresolved questions on relevant details.
@@ -167,7 +167,7 @@ Add:
 mory/moryTests/IntelligenceDomainTests.swift
 mory/moryTests/ClarificationQuestionBuilderTests.swift
 mory/moryTests/MoryMemoryRepositoryIntelligenceTests.swift
-mory/moryTests/HomeBoardGridLayoutTests.swift
+mory/moryTests/MoryMasonryLayoutTests.swift
 mory/moryTests/SpotlightIndexServiceTests.swift
 
 server/internal/intelligence/intelligence_test.go

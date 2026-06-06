@@ -14,7 +14,7 @@ struct HomeBoardSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: MorySpacing.large) {
             if !board.userBoardItems.isEmpty {
-                HomeBoardGrid(
+                HomeBoardMasonry(
                     items: board.userBoardItems,
                     isEditing: isEditing,
                     onSelect: onSelect,
@@ -31,7 +31,7 @@ struct HomeBoardSection: View {
                 VStack(alignment: .leading, spacing: MorySpacing.small) {
                     Text(verbatim: "Suggestions")
                         .font(.headline)
-                    HomeBoardGrid(
+                    HomeBoardMasonry(
                         items: board.suggestionItems,
                         isEditing: isEditing,
                         onSelect: onSelect,
@@ -49,7 +49,7 @@ struct HomeBoardSection: View {
     }
 }
 
-struct HomeBoardGrid: View {
+struct HomeBoardMasonry: View {
     let items: [HomeBoardItemSnapshot]
     let isEditing: Bool
     let onSelect: (HomeRoute) -> Void
@@ -61,7 +61,7 @@ struct HomeBoardGrid: View {
     let onSystemAction: () -> Void
 
     var body: some View {
-        HomeBoardGridLayout(metrics: metrics) {
+        HomeBoardMasonryLayout(metrics: metrics) {
             ForEach(items) { item in
                 HomeBoardCard(
                     item: item,
@@ -74,15 +74,14 @@ struct HomeBoardGrid: View {
                     onDismissQuestion: onDismissQuestion,
                     onSystemAction: onSystemAction
                 )
-                .layoutValue(key: HomeBoardSpanKey.self, value: item.layout.span)
                 .zIndex(Double(item.compositionItem.zIndex))
             }
         }
         .animation(.spring(response: 0.34, dampingFraction: 0.86), value: items.map(\.compositionItem.itemKey))
     }
 
-    private var metrics: HomeBoardGridMetrics {
-        HomeBoardGridMetrics(columns: 4)
+    private var metrics: MoryMasonryMetrics {
+        MoryMasonryMetrics.default
     }
 
     private func orderControls(for item: HomeBoardItemSnapshot) -> HomeBoardOrderControls? {

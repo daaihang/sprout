@@ -36,14 +36,6 @@ enum MemoryCardVisualRecipe: String, Codable, CaseIterable, Identifiable, Sendab
     var id: String { rawValue }
 }
 
-enum MemoryCardSizeToken: String, Codable, CaseIterable, Identifiable, Sendable {
-    case stamp
-    case strip
-    case card
-
-    var id: String { rawValue }
-}
-
 enum MemoryCardVisualVariant: String, Codable, CaseIterable, Identifiable, Sendable {
     case automatic
     case weatherIcon
@@ -56,39 +48,75 @@ enum MemoryCardVisualVariant: String, Codable, CaseIterable, Identifiable, Senda
     var id: String { rawValue }
 }
 
-enum MemoryCardBoardRowMoveDirection: Hashable, Sendable {
-    case up
-    case down
+enum MemoryCardStickerCorner: String, Codable, CaseIterable, Identifiable, Sendable {
+    case topLeading
+    case topTrailing
+    case bottomLeading
+    case bottomTrailing
+
+    var id: String { rawValue }
+}
+
+enum MemoryCardStickerKind: String, Codable, CaseIterable, Identifiable, Sendable {
+    case dot
+    case tape
+    case paperclip
+    case emoji
+    case sparkle
+
+    var id: String { rawValue }
+}
+
+struct MemoryCardStickerAttachment: Codable, Hashable, Sendable {
+    var corner: MemoryCardStickerCorner
+    var kind: MemoryCardStickerKind
+    var xOffset: Double
+    var yOffset: Double
+    var rotationDegrees: Double
+    var zIndex: Int
+
+    init(
+        corner: MemoryCardStickerCorner,
+        kind: MemoryCardStickerKind,
+        xOffset: Double = 0,
+        yOffset: Double = 0,
+        rotationDegrees: Double = 0,
+        zIndex: Int = 0
+    ) {
+        self.corner = corner
+        self.kind = kind
+        self.xOffset = xOffset
+        self.yOffset = yOffset
+        self.rotationDegrees = rotationDegrees
+        self.zIndex = zIndex
+    }
 }
 
 struct MemoryCardLayoutToken: Codable, Hashable, Sendable {
     var order: Int
-    var size: MemoryCardSizeToken
-    var gridPlacement: MemoryCardGridPlacement?
     var groupID: UUID?
     var rotationDegrees: Double
     var xNudge: Double
     var yNudge: Double
     var zIndex: Int
+    var stickers: [MemoryCardStickerAttachment]
 
     init(
         order: Int,
-        size: MemoryCardSizeToken = .card,
-        gridPlacement: MemoryCardGridPlacement? = nil,
         groupID: UUID? = nil,
         rotationDegrees: Double = 0,
         xNudge: Double = 0,
         yNudge: Double = 0,
-        zIndex: Int = 0
+        zIndex: Int = 0,
+        stickers: [MemoryCardStickerAttachment] = []
     ) {
         self.order = order
-        self.size = size
-        self.gridPlacement = gridPlacement
         self.groupID = groupID
         self.rotationDegrees = rotationDegrees
         self.xNudge = xNudge
         self.yNudge = yNudge
         self.zIndex = zIndex
+        self.stickers = stickers
     }
 }
 
@@ -115,7 +143,7 @@ struct MemoryCardNode: Identifiable, Codable, Hashable, Sendable {
 }
 
 struct MemoryCardArrangement: Identifiable, Codable, Hashable, Sendable {
-    static let schemaVersion = 4
+    static let schemaVersion = 5
 
     var id: UUID
     var recordID: UUID
@@ -193,7 +221,7 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
             MemoryCardDraftNode(
                 contentRef: .recordBody,
                 visualRecipe: .notebook,
-                layout: MemoryCardLayoutToken(order: 0, size: .card, rotationDegrees: -1.5, zIndex: 0)
+                layout: MemoryCardLayoutToken(order: 0, rotationDegrees: -1.5, zIndex: 0)
             ),
             at: 0
         )
@@ -209,7 +237,6 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
                 visualRecipe: Self.defaultVisualRecipe(for: draft.content),
                 layout: MemoryCardLayoutToken(
                     order: order,
-                    size: Self.defaultSize(for: draft.content),
                     rotationDegrees: Self.defaultRotation(for: draft.draftID),
                     zIndex: order
                 )
@@ -235,11 +262,9 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
                     node.contentRef = .artifactDraft(keptIDs[0])
                     if let keptDraft = draftByID[keptIDs[0]] {
                         node.visualRecipe = Self.defaultVisualRecipe(for: keptDraft.content)
-                        node.layout.size = Self.defaultSize(for: keptDraft.content)
                         node.visualVariant = Self.defaultVisualVariant(for: keptDraft.content)
                     } else {
                         node.visualRecipe = .statusNote
-                        node.layout.size = MemoryCardRecipeLayoutPolicy.defaultSize(for: .statusNote)
                         node.visualVariant = nil
                     }
                 } else {
@@ -265,23 +290,11 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
         normalizeOrder()
     }
 
-    mutating func setSize(_ size: MemoryCardSizeToken, forDraftID draftID: UUID) {
-        guard let index = nodeIndex(containingArtifactDraft: draftID) else { return }
-        nodes[index].layout.size = MemoryCardRecipeLayoutPolicy.normalizedSize(size, for: nodes[index].visualRecipe)
-        nodes[index].visualVariant = MemoryCardRecipeLayoutPolicy.normalizedVariant(
-            nodes[index].visualVariant,
-            for: nodes[index].visualRecipe,
-            size: nodes[index].layout.size
-        )
-        normalizeOrder()
-    }
-
     mutating func setVisualVariant(_ variant: MemoryCardVisualVariant?, forDraftID draftID: UUID) {
         guard let index = nodeIndex(containingArtifactDraft: draftID) else { return }
         nodes[index].visualVariant = MemoryCardRecipeLayoutPolicy.normalizedVariant(
             variant,
-            for: nodes[index].visualRecipe,
-            size: nodes[index].layout.size
+            for: nodes[index].visualRecipe
         )
         normalizeOrder()
     }
@@ -296,7 +309,6 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
         nodes[previousIndex].contentRef = .artifactDraftGroup(mergedIDs, kind: .mediaStack)
         nodes[previousIndex].visualRecipe = .bundlePacket
         nodes[previousIndex].visualVariant = nil
-        nodes[previousIndex].layout.size = MemoryCardRecipeLayoutPolicy.defaultSize(for: .bundlePacket)
         nodes.remove(at: index)
         normalizeOrder()
     }
@@ -320,7 +332,6 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
                 visualVariant: draft.flatMap { Self.defaultVisualVariant(for: $0.content) },
                 layout: MemoryCardLayoutToken(
                     order: baseOrder + offset,
-                    size: draft.map { Self.defaultSize(for: $0.content) } ?? MemoryCardRecipeLayoutPolicy.defaultSize(for: .statusNote),
                     rotationDegrees: Self.defaultRotation(for: draftID),
                     zIndex: baseOrder + offset
                 )
@@ -356,11 +367,9 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
                 if keptIDs.count == 1 {
                     if let draft = artifactDrafts.first(where: { $0.draftID == keptIDs[0] }) {
                         node.visualRecipe = Self.defaultVisualRecipe(for: draft.content)
-                        node.layout.size = Self.defaultSize(for: draft.content)
                         node.visualVariant = Self.defaultVisualVariant(for: draft.content)
                     } else {
                         node.visualRecipe = .statusNote
-                        node.layout.size = MemoryCardRecipeLayoutPolicy.defaultSize(for: .statusNote)
                         node.visualVariant = nil
                     }
                     node.layout.groupID = nil
@@ -419,7 +428,7 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
                 MemoryCardDraftNode(
                     contentRef: .recordBody,
                     visualRecipe: .notebook,
-                    layout: MemoryCardLayoutToken(order: 0, size: .card, rotationDegrees: -1.5, zIndex: 0)
+                    layout: MemoryCardLayoutToken(order: 0, rotationDegrees: -1.5, zIndex: 0)
                 ),
                 at: 0
             )
@@ -502,7 +511,6 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
                 visualVariant: MemoryCardArrangement.defaultVisualVariant(for: artifact),
                 layout: MemoryCardLayoutToken(
                     order: order,
-                    size: MemoryCardArrangement.defaultSize(for: artifact),
                     rotationDegrees: MemoryCardArrangement.defaultRotation(for: artifact.id),
                     zIndex: order
                 )
@@ -607,23 +615,9 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
         }
     }
 
-    private static func defaultSize(for content: CaptureArtifactContent) -> MemoryCardSizeToken {
-        switch content {
-        case .audio, .music:
-            return .strip
-        case .weather:
-            return .stamp
-        case .todo:
-            return .strip
-        case .photo, .video, .livePhoto, .text, .location, .link, .promptAnswer, .personContext:
-            return .card
-        }
-    }
-
     private static func defaultVisualVariant(for content: CaptureArtifactContent) -> MemoryCardVisualVariant? {
         let recipe = defaultVisualRecipe(for: content)
-        let size = defaultSize(for: content)
-        return MemoryCardRecipeLayoutPolicy.normalizedVariant(nil, for: recipe, size: size)
+        return MemoryCardRecipeLayoutPolicy.normalizedVariant(nil, for: recipe)
     }
 
     private static func defaultRotation(for id: UUID) -> Double {
@@ -646,7 +640,7 @@ extension MemoryCardArrangement {
                 MemoryCardNode(
                     contentRef: .recordBody,
                     visualRecipe: .notebook,
-                    layout: MemoryCardLayoutToken(order: order, size: .card, rotationDegrees: -1.5, zIndex: order)
+                    layout: MemoryCardLayoutToken(order: order, rotationDegrees: -1.5, zIndex: order)
                 )
             )
             order += 1
@@ -661,12 +655,11 @@ extension MemoryCardArrangement {
                     contentRef: .artifact(artifact.id),
                     visualRecipe: defaultVisualRecipe(for: artifact),
                     visualVariant: defaultVisualVariant(for: artifact),
-                    layout: MemoryCardLayoutToken(
-                        order: order,
-                        size: defaultSize(for: artifact),
-                        rotationDegrees: defaultRotation(for: artifact.id),
-                        zIndex: order
-                    )
+                layout: MemoryCardLayoutToken(
+                    order: order,
+                    rotationDegrees: defaultRotation(for: artifact.id),
+                    zIndex: order
+                )
                 )
             )
             order += 1
@@ -722,23 +715,9 @@ extension MemoryCardArrangement {
         }
     }
 
-    nonisolated static func defaultSize(for artifact: Artifact) -> MemoryCardSizeToken {
-        switch artifact.kind {
-        case .music, .audio:
-            return .strip
-        case .weather:
-            return .stamp
-        case .todo:
-            return .strip
-        case .photo, .video, .livePhoto, .text, .location, .link, .document:
-            return .card
-        }
-    }
-
     nonisolated static func defaultVisualVariant(for artifact: Artifact) -> MemoryCardVisualVariant? {
         let recipe = defaultVisualRecipe(for: artifact)
-        let size = defaultSize(for: artifact)
-        return MemoryCardRecipeLayoutPolicy.normalizedVariant(nil, for: recipe, size: size)
+        return MemoryCardRecipeLayoutPolicy.normalizedVariant(nil, for: recipe)
     }
 
     nonisolated static func defaultRotation(for id: UUID) -> Double {
@@ -774,7 +753,6 @@ extension MemoryCardArrangement {
                 node.contentRef = keptIDs.count == 1 ? .artifact(keptIDs[0]) : .artifactGroup(keptIDs, kind: kind)
                 if keptIDs.count == 1 {
                     node.visualRecipe = artifactByID[keptIDs[0]].map(Self.defaultVisualRecipe(for:)) ?? node.visualRecipe
-                    node.layout.size = artifactByID[keptIDs[0]].map(Self.defaultSize(for:)) ?? node.layout.size
                     node.visualVariant = artifactByID[keptIDs[0]].flatMap(Self.defaultVisualVariant(for:))
                     node.layout.groupID = nil
                 }
@@ -790,7 +768,7 @@ extension MemoryCardArrangement {
                 MemoryCardNode(
                     contentRef: .recordBody,
                     visualRecipe: .notebook,
-                    layout: MemoryCardLayoutToken(order: 0, size: .card, rotationDegrees: -1.5, zIndex: 0)
+                    layout: MemoryCardLayoutToken(order: 0, rotationDegrees: -1.5, zIndex: 0)
                 ),
                 at: 0
             )
@@ -806,7 +784,6 @@ extension MemoryCardArrangement {
                 visualVariant: Self.defaultVisualVariant(for: artifact),
                 layout: MemoryCardLayoutToken(
                     order: baseOrder + offset,
-                    size: Self.defaultSize(for: artifact),
                     rotationDegrees: Self.defaultRotation(for: artifact.id),
                     zIndex: baseOrder + offset
                 )
@@ -827,18 +804,6 @@ extension MemoryCardArrangement {
         )
     }
 
-    func settingSize(_ size: MemoryCardSizeToken, forArtifactID artifactID: UUID, updatedAt: Date) -> MemoryCardArrangement {
-        var nodes = nodes
-        guard let index = nodes.firstIndex(where: { $0.containsArtifactID(artifactID) }) else { return self }
-        nodes[index].layout.size = MemoryCardRecipeLayoutPolicy.normalizedSize(size, for: nodes[index].visualRecipe)
-        nodes[index].visualVariant = MemoryCardRecipeLayoutPolicy.normalizedVariant(
-            nodes[index].visualVariant,
-            for: nodes[index].visualRecipe,
-            size: nodes[index].layout.size
-        )
-        return replacing(nodes: nodes, updatedAt: updatedAt)
-    }
-
     func settingVisualVariant(
         _ variant: MemoryCardVisualVariant?,
         forArtifactID artifactID: UUID,
@@ -848,8 +813,7 @@ extension MemoryCardArrangement {
         guard let index = nodes.firstIndex(where: { $0.containsArtifactID(artifactID) }) else { return self }
         nodes[index].visualVariant = MemoryCardRecipeLayoutPolicy.normalizedVariant(
             variant,
-            for: nodes[index].visualRecipe,
-            size: nodes[index].layout.size
+            for: nodes[index].visualRecipe
         )
         return replacing(nodes: nodes, updatedAt: updatedAt)
     }
@@ -863,7 +827,6 @@ extension MemoryCardArrangement {
         nodes[index - 1].contentRef = .artifactGroup(OrderedCollections.unique(previousIDs + currentIDs), kind: .mediaStack)
         nodes[index - 1].visualRecipe = .bundlePacket
         nodes[index - 1].visualVariant = nil
-        nodes[index - 1].layout.size = MemoryCardRecipeLayoutPolicy.defaultSize(for: .bundlePacket)
         nodes.remove(at: index)
         return replacing(nodes: nodes.normalizedLayoutOrder(), updatedAt: updatedAt)
     }
@@ -883,7 +846,6 @@ extension MemoryCardArrangement {
                 visualVariant: Self.defaultVisualVariant(for: artifact),
                 layout: MemoryCardLayoutToken(
                     order: nodes[index].layout.order + offset,
-                    size: Self.defaultSize(for: artifact),
                     rotationDegrees: Self.defaultRotation(for: artifactID),
                     zIndex: nodes[index].layout.zIndex + offset
                 )
@@ -915,47 +877,6 @@ extension MemoryCardArrangement {
 
         let moved = nodes.remove(at: sourceIndex)
         nodes.insert(moved, at: targetIndex)
-        return replacing(nodes: nodes, updatedAt: updatedAt)
-    }
-
-    func movingArtifactToAdjacentBoardRow(
-        artifactID: UUID,
-        direction: MemoryCardBoardRowMoveDirection,
-        updatedAt: Date
-    ) -> MemoryCardArrangement {
-        var nodes = nodes.sortedForArrangementEditing().normalizedLayoutOrder()
-        guard let sourceIndex = nodes.firstIndex(where: { $0.containsArtifactID(artifactID) }),
-              let currentRow = nodes[sourceIndex].layout.gridPlacement?.row else {
-            return self
-        }
-
-        let candidateRows = Set(nodes.compactMap { $0.layout.gridPlacement?.row }).sorted()
-        let targetRow: Int?
-        switch direction {
-        case .up:
-            targetRow = candidateRows.last { $0 < currentRow }
-        case .down:
-            targetRow = candidateRows.first { $0 > currentRow }
-        }
-        guard let targetRow else { return self }
-
-        let targetIndices = nodes.indices.filter { nodes[$0].layout.gridPlacement?.row == targetRow }
-        guard let firstTargetIndex = targetIndices.first,
-              let lastTargetIndex = targetIndices.last else {
-            return self
-        }
-
-        let moved = nodes.remove(at: sourceIndex)
-        let insertionIndex: Int
-        switch direction {
-        case .up:
-            insertionIndex = firstTargetIndex
-        case .down:
-            insertionIndex = sourceIndex < lastTargetIndex
-                ? min(lastTargetIndex, nodes.endIndex)
-                : min(lastTargetIndex + 1, nodes.endIndex)
-        }
-        nodes.insert(moved, at: insertionIndex)
         return replacing(nodes: nodes, updatedAt: updatedAt)
     }
 
@@ -1036,50 +957,30 @@ private extension Array where Element == MemoryCardNode {
     }
 
     func normalizedLayoutOrder() -> [MemoryCardNode] {
-        var ordered = enumerated().map { index, element in
+        enumerated().map { index, element in
             var node = element
             node.layout.order = index
             node.layout.zIndex = index
-            node.layout.size = MemoryCardRecipeLayoutPolicy.normalizedSize(node.layout.size, for: node.visualRecipe)
             node.visualVariant = MemoryCardRecipeLayoutPolicy.normalizedVariant(
                 node.visualVariant,
-                for: node.visualRecipe,
-                size: node.layout.size
+                for: node.visualRecipe
             )
             return node
         }
-        let placements = MemoryCardGridPacking.placements(for: ordered.map(\.layout.size))
-        for index in ordered.indices {
-            ordered[index].layout.gridPlacement = placements[safe: index]
-        }
-        return ordered
     }
 }
 
 private extension Array where Element == MemoryCardDraftNode {
     func normalizedLayoutOrder() -> [MemoryCardDraftNode] {
-        var ordered = enumerated().map { index, element in
+        enumerated().map { index, element in
             var node = element
             node.layout.order = index
             node.layout.zIndex = index
-            node.layout.size = MemoryCardRecipeLayoutPolicy.normalizedSize(node.layout.size, for: node.visualRecipe)
             node.visualVariant = MemoryCardRecipeLayoutPolicy.normalizedVariant(
                 node.visualVariant,
-                for: node.visualRecipe,
-                size: node.layout.size
+                for: node.visualRecipe
             )
             return node
         }
-        let placements = MemoryCardGridPacking.placements(for: ordered.map(\.layout.size))
-        for index in ordered.indices {
-            ordered[index].layout.gridPlacement = placements[safe: index]
-        }
-        return ordered
-    }
-}
-
-private extension Array {
-    subscript(safe index: Int) -> Element? {
-        indices.contains(index) ? self[index] : nil
     }
 }

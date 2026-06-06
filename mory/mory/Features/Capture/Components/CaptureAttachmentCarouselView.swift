@@ -7,14 +7,10 @@ struct CaptureAttachmentCarouselView: View {
     let onRemoveAffectDraft: (Int) -> Void
     let onRemoveJournalingSuggestion: (UUID) -> Void
     var onReorderStagedArtifact: (Int, Int) -> Void = { _, _ in }
-    var onSetSize: (CaptureComposerAttachmentItem, MemoryCardSizeToken) -> Void = { _, _ in }
     var onStackWithPrevious: (CaptureComposerAttachmentItem) -> Void = { _ in }
     var onUnstack: (CaptureComposerAttachmentItem) -> Void = { _ in }
     var presentationForItem: (CaptureComposerAttachmentItem) -> CaptureCardPresentation = {
         .composerAttachment($0)
-    }
-    var supportedSizesForItem: (CaptureComposerAttachmentItem) -> [MemoryCardSizeToken] = { _ in
-        MemoryCardSizeToken.allCases
     }
 
     var body: some View {
@@ -45,13 +41,6 @@ struct CaptureAttachmentCarouselView: View {
                         }
                         .contextMenu {
                             if item.supportsArrangementEditing {
-                                Menu("memory.arrangement.size") {
-                                    ForEach(supportedSizesForItem(item)) { size in
-                                        Button(size.rawValue) {
-                                            onSetSize(item, size)
-                                        }
-                                    }
-                                }
                                 Button("memory.arrangement.stackWithPrevious") {
                                     onStackWithPrevious(item)
                                 }

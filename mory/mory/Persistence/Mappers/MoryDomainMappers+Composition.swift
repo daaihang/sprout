@@ -13,8 +13,6 @@ extension HomeBoardSignalStore {
             subtitle: domainModel.subtitle,
             priority: domainModel.priority,
             reason: domainModel.reason,
-            suggestedWidthColumns: domainModel.suggestedWidthColumns,
-            suggestedHeightUnits: domainModel.suggestedHeightUnits,
             createdAt: domainModel.createdAt,
             expiresAt: domainModel.expiresAt
         )
@@ -31,8 +29,6 @@ extension HomeBoardSignalStore {
             subtitle: subtitle,
             priority: priority,
             reason: reason,
-            suggestedWidthColumns: suggestedWidthColumns,
-            suggestedHeightUnits: suggestedHeightUnits,
             createdAt: createdAt,
             expiresAt: expiresAt
         )
@@ -48,8 +44,6 @@ extension HomeBoardSignalStore {
         subtitle = domainModel.subtitle
         priority = domainModel.priority
         reason = domainModel.reason
-        suggestedWidthColumns = domainModel.suggestedWidthColumns
-        suggestedHeightUnits = domainModel.suggestedHeightUnits
         createdAt = domainModel.createdAt
         expiresAt = domainModel.expiresAt
     }
@@ -144,8 +138,6 @@ extension CompositionItemStore {
             itemKey: domainModel.itemKey,
             targetTypeRawValue: domainModel.targetType.rawValue,
             targetID: domainModel.targetID,
-            widthColumns: domainModel.widthColumns,
-            heightUnits: domainModel.heightUnits,
             zIndex: domainModel.zIndex,
             rotationDegrees: domainModel.rotationDegrees,
             scale: domainModel.scale,
@@ -164,8 +156,6 @@ extension CompositionItemStore {
             itemKey: itemKey,
             targetType: CompositionTargetType(rawValue: targetTypeRawValue) ?? .artifact,
             targetID: targetID,
-            widthColumns: widthColumns,
-            heightUnits: heightUnits,
             zIndex: zIndex,
             rotationDegrees: rotationDegrees,
             scale: scale,
@@ -183,8 +173,6 @@ extension CompositionItemStore {
         itemKey = domainModel.itemKey
         targetTypeRawValue = domainModel.targetType.rawValue
         targetID = domainModel.targetID
-        widthColumns = domainModel.widthColumns
-        heightUnits = domainModel.heightUnits
         zIndex = domainModel.zIndex
         rotationDegrees = domainModel.rotationDegrees
         scale = domainModel.scale

@@ -62,7 +62,7 @@ Mory is not a chat AI product. Its AI-native behavior should appear as organizat
 2. [01_continuous_intelligence_layer.md](Architecture/01_continuous_intelligence_layer.md)
 3. [02_domain_model_extensions.md](Architecture/02_domain_model_extensions.md)
 4. [03_swiftdata_repository_migration.md](Architecture/03_swiftdata_repository_migration.md)
-5. [04_swiftui_home_grid_and_ui_system.md](Architecture/04_swiftui_home_grid_and_ui_system.md)
+5. [04_swiftui_home_masonry_and_ui_system.md](Architecture/04_swiftui_home_masonry_and_ui_system.md)
 6. [05_core_ml_and_core_spotlight.md](Architecture/05_core_ml_and_core_spotlight.md)
 7. [06_background_jobs_notifications_and_go_server.md](Architecture/06_background_jobs_notifications_and_go_server.md)
 8. [07_testing_observability_rollout.md](Architecture/07_testing_observability_rollout.md)
@@ -122,10 +122,10 @@ V6 should ship in staged increments:
    - First clarification question cards.
 
 2. **v6.0-alpha.2: Home Memory Desktop**
-   - SwiftUI grid layout.
+   - SwiftUI masonry layout.
    - User board layer and assistant suggestion layer.
-   - Fixed card sizes.
-   - Pin, hide, dismiss, and resize.
+   - Fixed column width with adaptive card heights.
+   - Pin, hide, dismiss, and reorder.
 
 3. **v6.0-alpha.3: Semantic Retrieval**
    - Core Spotlight indexing.

@@ -77,7 +77,7 @@ struct V6FeatureFlags: Codable, Hashable, Sendable {
     var intelligenceJobs: Bool
     var entityProfiles: Bool
     var clarificationQuestions: Bool
-    var homeGrid: Bool
+    var homeBoard: Bool
     var semanticSearch: Bool
     var dailyQuestions: Bool
     var localNotifications: Bool

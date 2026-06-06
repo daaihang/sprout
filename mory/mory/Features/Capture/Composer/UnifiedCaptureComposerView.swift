@@ -149,12 +149,10 @@ struct UnifiedCaptureComposerView: View {
                             onRemoveAffectDraft: removeAffectDraft(at:),
                             onRemoveJournalingSuggestion: removeJournalingSuggestion(importSessionID:),
                             onReorderItems: reorderAttachmentItem(from:to:),
-                            onSetSize: setArrangementSize(for:size:),
                             onStackWithPrevious: stackArrangementNodeWithPrevious(item:),
                             onUnstack: unstackArrangementNode(item:),
                             presentationForItem: presentationForAttachmentItem(_:),
-                            layoutForItem: layoutForAttachmentItem(_:),
-                            supportedSizesForItem: supportedSizesForAttachmentItem(_:)
+                            layoutForItem: layoutForAttachmentItem(_:)
                         )
 
                         CaptureBodyEditorView(
@@ -491,19 +489,12 @@ struct UnifiedCaptureComposerView: View {
     }
 
     @MainActor
-    private func setArrangementSize(for item: CaptureComposerAttachmentItem, size: MemoryCardSizeToken) {
-        guard let draftID = arrangementDraftID(for: item) else { return }
-        cardArrangementDraft.setSize(size, forDraftID: draftID)
-    }
-
-    @MainActor
     private func presentationForAttachmentItem(_ item: CaptureComposerAttachmentItem) -> CaptureCardPresentation {
         guard let node = arrangementNode(for: item) else {
             if let fallbackRecipe = fallbackRecipe(for: item) {
                 return .composerAttachment(
                     item,
-                    visualRecipe: fallbackRecipe,
-                    sizeToken: MemoryCardRecipeLayoutPolicy.defaultSize(for: fallbackRecipe)
+                    visualRecipe: fallbackRecipe
                 )
             }
             return .composerAttachment(item)
@@ -511,20 +502,8 @@ struct UnifiedCaptureComposerView: View {
         return .composerAttachment(
             item,
             visualRecipe: node.visualRecipe,
-            visualVariant: node.visualVariant,
-            sizeToken: node.layout.size
+            visualVariant: node.visualVariant
         )
-    }
-
-    @MainActor
-    private func supportedSizesForAttachmentItem(_ item: CaptureComposerAttachmentItem) -> [MemoryCardSizeToken] {
-        guard let node = arrangementNode(for: item) else {
-            if let fallbackRecipe = fallbackRecipe(for: item) {
-                return MemoryCardRecipeLayoutPolicy.supportedSizes(for: fallbackRecipe)
-            }
-            return MemoryCardRecipeLayoutPolicy.supportedSizes(for: .statusNote)
-        }
-        return MemoryCardRecipeLayoutPolicy.supportedSizes(for: node.visualRecipe)
     }
 
     @MainActor

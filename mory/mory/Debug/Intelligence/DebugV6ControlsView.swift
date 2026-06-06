@@ -99,7 +99,7 @@ struct DebugV6ControlsView: View {
                     Toggle("intelligenceJobs", isOn: flagBoolBinding(\.intelligenceJobs))
                     Toggle("entityProfiles", isOn: flagBoolBinding(\.entityProfiles))
                     Toggle("clarificationQuestions", isOn: flagBoolBinding(\.clarificationQuestions))
-                    Toggle("homeGrid", isOn: flagBoolBinding(\.homeGrid))
+                    Toggle("homeBoard", isOn: flagBoolBinding(\.homeBoard))
                     Toggle("semanticSearch", isOn: flagBoolBinding(\.semanticSearch))
                     Toggle("dailyQuestions", isOn: flagBoolBinding(\.dailyQuestions))
                     Toggle("localNotifications", isOn: flagBoolBinding(\.localNotifications))

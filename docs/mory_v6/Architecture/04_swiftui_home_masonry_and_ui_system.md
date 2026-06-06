@@ -1,4 +1,4 @@
-# 04. SwiftUI Home Grid And UI System
+# 04. SwiftUI Home Masonry And UI System
 
 ## 1. Goal
 
@@ -15,18 +15,17 @@ List
       ForEach(board.items)
 ```
 
-`CompositionItem` already has layout hints:
+`CompositionItem` already has ordering and presentation hints:
 
 ```text
-widthColumns
-heightUnits
+userSortIndex
 zIndex
 rotationDegrees
 scale
 isHidden
 ```
 
-But the UI does not yet use them as a real grid.
+The UI should derive masonry frames at render time instead of persisting spatial coordinates.
 
 ## 3. Recommended SwiftUI Architecture
 
@@ -34,16 +33,15 @@ Use:
 
 ```text
 ScrollView
-  HomeBoardGridLayout(columns: 4)
+  HomeBoardMasonryLayout(metrics: .default)
     ForEach(items)
       HomeBoardCard(...)
-        .layoutValue(key: HomeBoardSpanKey.self, value: span)
 ```
 
 Native APIs:
 
-- `Layout` protocol for packing.
-- `LayoutValueKey` for span values.
+- `Layout` protocol for masonry placement.
+- Measured subview height for adaptive cards.
 - `ViewThatFits` for card internals.
 - `Menu` for card actions.
 - `Button` and native controls for actions.
@@ -51,21 +49,21 @@ Native APIs:
 Avoid:
 
 - `List` for the main board.
-- `LazyVGrid` as the primary layout if variable spans are needed.
+- `LazyVGrid` as the primary layout if adaptive masonry columns are needed.
 - Pixel-level persisted frames.
 - Freeform canvas in v6 alpha.
 
 ## 4. Why Custom `Layout`
 
-`LazyVGrid` is excellent for regular grids, but weak for arbitrary card spans.
+`LazyVGrid` is excellent for regular grids, but weak for waterfall placement with adaptive card heights.
 
-`Grid` supports explicit row/column structure, but is less suited to auto-packing dynamic board items.
+`Grid` supports explicit row/column structure, but is less suited to shortest-column placement.
 
 Custom `Layout` is the native SwiftUI solution for:
 
-- Fixed 4-column layout.
-- Fixed span sizes.
-- Auto-placement.
+- Fixed column width with responsive column count.
+- Adaptive card heights.
+- Shortest-column placement.
 - Stable sizing.
 - User-owned ordering.
 - Future edit mode.
@@ -78,9 +76,9 @@ View structure:
 HomeScreen
   HomeBoardScrollView
     UserBoardSection
-      HomeBoardGridLayout
+      HomeBoardMasonryLayout
     AssistantSuggestionSection
-      SuggestionRail/Grid
+      SuggestionRail/Masonry
 ```
 
 User board and suggestions should be visually related but semantically separate.
@@ -93,22 +91,21 @@ Actions:
 - Pin/unpin.
 - Hide.
 - Dismiss.
-- Resize.
 - Add suggestion to board.
 - Less like this.
 - More like this.
 - Explain why.
 
-Use native `Menu` for normal mode. Use edit mode for dragging/resizing.
+Use native `Menu` for normal mode. Use edit mode for ordering and future visual decoration controls.
 
 ## 7. Card Component Model
 
 Recommended files:
 
 ```text
-Features/Home/Grid/HomeBoardGridLayout.swift
-Features/Home/Grid/HomeBoardSpan.swift
-Features/Home/Grid/HomeBoardGridMetrics.swift
+Features/Home/Layout/HomeBoardMasonryLayout.swift
+Features/Home/Layout/HomeBoardItemLayout.swift
+Domain/BoardLayout/MoryMasonryLayout.swift
 Features/Home/Cards/HomeMemoryCard.swift
 Features/Home/Cards/HomeQuestionCard.swift
 Features/Home/Cards/HomeSystemCard.swift

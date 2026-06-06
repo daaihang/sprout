@@ -3,84 +3,60 @@ import SwiftUI
 struct MemoryDeskBoardMetrics: Hashable, Sendable {
     static let debugMaxBoardWidth: CGFloat = 620
 
-    var columns: Int
-    var horizontalPadding: CGFloat
-    var verticalPadding: CGFloat
-    var columnSpacing: CGFloat
-    var rowSpacing: CGFloat
-    var rowHeight: CGFloat
-    var minimumCellWidth: CGFloat
+    var masonry: MoryMasonryMetrics
 
-    static let `default` = MemoryDeskBoardMetrics(
-        columns: MemoryCardRecipeLayoutPolicy.columnCount,
-        horizontalPadding: 16,
-        verticalPadding: 18,
-        columnSpacing: 10,
-        rowSpacing: 12,
-        rowHeight: 82,
-        minimumCellWidth: 42
-    )
-
-    static let compactComposer = MemoryDeskBoardMetrics(
-        columns: MemoryCardRecipeLayoutPolicy.columnCount,
-        horizontalPadding: 16,
-        verticalPadding: 12,
-        columnSpacing: 8,
-        rowSpacing: 10,
-        rowHeight: 64,
-        minimumCellWidth: 34
-    )
+    static let `default` = MemoryDeskBoardMetrics(masonry: .default)
+    static let compactComposer = MemoryDeskBoardMetrics(masonry: .compactComposer)
 
     static func debugBoardWidth(for availableWidth: CGFloat) -> CGFloat {
         min(max(availableWidth, 0), debugMaxBoardWidth)
     }
 
-    static func debugSquare(availableWidth: CGFloat) -> MemoryDeskBoardMetrics {
-        let horizontalPadding: CGFloat = 16
-        let columnSpacing: CGFloat = 8
-        let minimumCellWidth: CGFloat = 34
+    static func debugBoard(availableWidth: CGFloat) -> MemoryDeskBoardMetrics {
         let boardWidth = debugBoardWidth(for: availableWidth)
-        let usableWidth = max(
-            boardWidth - (horizontalPadding * 2),
-            minimumCellWidth * CGFloat(MemoryCardRecipeLayoutPolicy.columnCount)
-        )
-        let totalSpacing = columnSpacing * CGFloat(MemoryCardRecipeLayoutPolicy.columnCount - 1)
-        let cellSize = max(
-            minimumCellWidth,
-            floor((usableWidth - totalSpacing) / CGFloat(MemoryCardRecipeLayoutPolicy.columnCount))
-        )
-        return MemoryDeskBoardMetrics(
-            columns: MemoryCardRecipeLayoutPolicy.columnCount,
-            horizontalPadding: horizontalPadding,
-            verticalPadding: 18,
-            columnSpacing: columnSpacing,
-            rowSpacing: columnSpacing,
-            rowHeight: cellSize,
-            minimumCellWidth: minimumCellWidth
-        )
+        var metrics = MoryMasonryMetrics.default
+        metrics.minColumnWidth = 132
+        metrics.maxColumnWidth = 188
+        metrics.columnSpacing = 10
+        metrics.rowSpacing = 10
+        metrics.horizontalPadding = boardWidth < 340 ? 12 : 16
+        metrics.verticalPadding = 16
+        metrics.stickerOverflow = 16
+        return MemoryDeskBoardMetrics(masonry: metrics)
     }
 
-    func cellWidth(for containerWidth: CGFloat) -> CGFloat {
-        let clampedColumns = max(1, columns)
-        let usableWidth = max(containerWidth - (horizontalPadding * 2), minimumCellWidth * CGFloat(clampedColumns))
-        let totalSpacing = columnSpacing * CGFloat(clampedColumns - 1)
-        return max(minimumCellWidth, floor((usableWidth - totalSpacing) / CGFloat(clampedColumns)))
+    func columnSpec(for containerWidth: CGFloat) -> MoryMasonryColumnSpec {
+        MoryMasonryLayoutPlan<String>.columnSpec(containerWidth: containerWidth, metrics: masonry)
     }
 }
 
 struct MemoryDeskBoardInputNode<ID: Hashable & Sendable>: Hashable, Sendable {
     let id: ID
     let layout: MemoryCardLayoutToken
+    let estimatedHeight: CGFloat
+
+    init(
+        id: ID,
+        layout: MemoryCardLayoutToken,
+        estimatedHeight: CGFloat
+    ) {
+        self.id = id
+        self.layout = layout
+        self.estimatedHeight = max(1, estimatedHeight)
+    }
 }
 
 struct MemoryDeskBoardLayoutSlot<ID: Hashable & Sendable>: Identifiable, Hashable, Sendable {
     let id: ID
     let layout: MemoryCardLayoutToken
+    let column: Int
     let frame: CGRect
+    let renderFrame: CGRect
 }
 
 struct MemoryDeskBoardLayoutPlan<ID: Hashable & Sendable>: Hashable, Sendable {
     let slots: [MemoryDeskBoardLayoutSlot<ID>]
+    let columnSpec: MoryMasonryColumnSpec
     let boardHeight: CGFloat
 
     static func make(
@@ -88,56 +64,33 @@ struct MemoryDeskBoardLayoutPlan<ID: Hashable & Sendable>: Hashable, Sendable {
         containerWidth: CGFloat,
         metrics: MemoryDeskBoardMetrics = .default
     ) -> MemoryDeskBoardLayoutPlan<ID> {
-        let ordered = nodes.enumerated().map { index, node in
-            (index: index, node: node)
-        }
-        let effectivePlacements = MemoryCardGridPacking.effectivePlacements(
-            for: ordered.map(\.node.layout)
+        let masonryPlan = MoryMasonryLayoutPlan.make(
+            nodes: nodes.map {
+                MoryMasonryInputNode(
+                    id: $0.id,
+                    order: $0.layout.order,
+                    zIndex: $0.layout.zIndex,
+                    estimatedHeight: $0.estimatedHeight
+                )
+            },
+            containerWidth: containerWidth,
+            metrics: metrics.masonry
         )
-        let effectiveEntries = ordered.enumerated().map { index, entry in
-            var layout = entry.node.layout
-            if layout.gridPlacement == nil {
-                layout.gridPlacement = effectivePlacements[safe: index]
-            }
-            return (
-                index: entry.index,
-                node: MemoryDeskBoardInputNode(id: entry.node.id, layout: layout)
+        let layoutByID = Dictionary(uniqueKeysWithValues: nodes.map { ($0.id, $0.layout) })
+        let slots = masonryPlan.slots.compactMap { slot -> MemoryDeskBoardLayoutSlot<ID>? in
+            guard let layout = layoutByID[slot.id] else { return nil }
+            return MemoryDeskBoardLayoutSlot(
+                id: slot.id,
+                layout: layout,
+                column: slot.column,
+                frame: slot.frame,
+                renderFrame: slot.renderFrame
             )
         }
-        let frames = effectiveEntries.map { entry in
-            frame(for: entry.node.layout, containerWidth: containerWidth, metrics: metrics)
-        }
-        let slots = zip(effectiveEntries, frames).map { entry, frame in
-            MemoryDeskBoardLayoutSlot(id: entry.node.id, layout: entry.node.layout, frame: frame)
-        }
-        let maxY = frames.map(\.maxY).max() ?? 0
-        let minHeight = metrics.verticalPadding * 2 + metrics.rowHeight
         return MemoryDeskBoardLayoutPlan(
             slots: slots,
-            boardHeight: max(minHeight, maxY + metrics.verticalPadding)
+            columnSpec: masonryPlan.columnSpec,
+            boardHeight: masonryPlan.boardHeight
         )
-    }
-
-    private static func frame(
-        for layout: MemoryCardLayoutToken,
-        containerWidth: CGFloat,
-        metrics: MemoryDeskBoardMetrics
-    ) -> CGRect {
-        let cellWidth = metrics.cellWidth(for: containerWidth)
-        let box = MemoryCardRecipeLayoutPolicy.gridBox(for: layout.size)
-        let placement = layout.gridPlacement ?? MemoryCardGridPlacement(column: 0, row: layout.order)
-
-        let x = metrics.horizontalPadding + CGFloat(placement.column) * (cellWidth + metrics.columnSpacing)
-        let y = metrics.verticalPadding + CGFloat(placement.row) * (metrics.rowHeight + metrics.rowSpacing)
-        let width = CGFloat(box.columnSpan) * cellWidth + CGFloat(max(0, box.columnSpan - 1)) * metrics.columnSpacing
-        let height = CGFloat(box.rowSpan) * metrics.rowHeight + CGFloat(max(0, box.rowSpan - 1)) * metrics.rowSpacing
-
-        return CGRect(x: x, y: y, width: width, height: height)
-    }
-}
-
-private extension Array {
-    subscript(safe index: Int) -> Element? {
-        indices.contains(index) ? self[index] : nil
     }
 }

@@ -4,7 +4,7 @@ struct NotebookCaptureCardContent: View {
     let common: CaptureCardCommonDisplay
     let item: CaptureCardItem
     let accent: Color
-    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .notebook, sizeToken: .card)
+    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .notebook, density: .expanded)
 
     var body: some View {
         ZStack(alignment: .topLeading) {

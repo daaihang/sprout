@@ -5,10 +5,10 @@ struct PersonContextCaptureCardContent: View {
     let common: CaptureCardCommonDisplay
     let payload: CapturePersonContextCardPayload
     let accent: Color
-    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .personCard, sizeToken: .card)
+    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .personCard)
 
     var body: some View {
-        VStack(spacing: metrics.sizeToken == .strip ? 0 : 9) {
+        VStack(spacing: metrics.density == .compact ? 0 : 9) {
             portrait
                 .frame(width: portraitSize.width, height: portraitSize.height)
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
@@ -39,7 +39,7 @@ struct PersonContextCaptureCardContent: View {
     }
 
     private var portraitSize: CGSize {
-        metrics.sizeToken == .strip
+        metrics.density == .compact
             ? CGSize(width: 54, height: 46)
             : CGSize(width: 102, height: 98)
     }
@@ -70,7 +70,7 @@ struct BundlePacketCaptureCardContent: View {
     let thumbnailData: Data?
     let itemCount: Int?
     let accent: Color
-    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .bundlePacket, sizeToken: .card)
+    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .bundlePacket)
 
     var body: some View {
         ZStack(alignment: .bottomLeading) {
@@ -133,7 +133,7 @@ struct BundlePacketCaptureCardContent: View {
                     .foregroundStyle(accent.opacity(0.42))
             }
         }
-        .frame(width: metrics.sizeToken == .card ? 112 : 92, height: metrics.sizeToken == .card ? 104 : 84)
+        .frame(width: metrics.density == .compact ? 92 : 112, height: metrics.density == .compact ? 84 : 104)
         .offset(offset)
         .rotationEffect(.degrees(rotation))
     }
@@ -161,14 +161,13 @@ struct MoodSwatchCaptureCardContent: View {
     let common: CaptureCardCommonDisplay
     let payload: CaptureAffectCardPayload?
     let accent: Color
-    var sizeToken: MemoryCardSizeToken = .stamp
     var density: MemoryCardContentDensity = .compact
-    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .affectCard, sizeToken: .stamp)
+    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .affectCard, density: .compact)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             swatch
-                .frame(height: metrics.sizeToken == .stamp ? 42 : 50)
+                .frame(height: metrics.density == .compact ? 42 : 50)
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.affect"))
@@ -224,7 +223,7 @@ struct MoodSwatchCaptureCardContent: View {
 struct PlainSystemNoteCaptureCardContent: View {
     let common: CaptureCardCommonDisplay
     let accent: Color
-    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .statusNote, sizeToken: .stamp)
+    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .statusNote, density: .compact)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {

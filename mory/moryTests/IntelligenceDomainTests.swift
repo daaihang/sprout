@@ -23,7 +23,7 @@ final class IntelligenceDomainTests: XCTestCase {
         XCTAssertTrue(flags.intelligenceJobs)
         XCTAssertTrue(flags.entityProfiles)
         XCTAssertTrue(flags.clarificationQuestions)
-        XCTAssertTrue(flags.homeGrid)
+        XCTAssertTrue(flags.homeBoard)
         XCTAssertTrue(flags.semanticSearch)
         XCTAssertTrue(flags.dailyQuestions)
         XCTAssertTrue(flags.localNotifications)

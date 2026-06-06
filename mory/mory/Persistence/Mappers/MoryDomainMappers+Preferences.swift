@@ -98,8 +98,6 @@ extension HomeBoardPreferenceStore {
             isPinned: domainModel.isPinned,
             isHidden: domainModel.isHidden,
             dismissedAt: domainModel.dismissedAt,
-            widthColumns: domainModel.widthColumns,
-            heightUnits: domainModel.heightUnits,
             userSortIndex: domainModel.userSortIndex,
             acceptedAt: domainModel.acceptedAt,
             feedbackAdjustment: domainModel.feedbackAdjustment,
@@ -121,8 +119,6 @@ extension HomeBoardPreferenceStore {
             isPinned: isPinned,
             isHidden: isHidden,
             dismissedAt: dismissedAt,
-            widthColumns: widthColumns,
-            heightUnits: heightUnits,
             userSortIndex: userSortIndex,
             acceptedAt: acceptedAt,
             feedbackAdjustment: feedbackAdjustment ?? 0,
@@ -143,8 +139,6 @@ extension HomeBoardPreferenceStore {
         isPinned = domainModel.isPinned
         isHidden = domainModel.isHidden
         dismissedAt = domainModel.dismissedAt
-        widthColumns = domainModel.widthColumns
-        heightUnits = domainModel.heightUnits
         userSortIndex = domainModel.userSortIndex
         acceptedAt = domainModel.acceptedAt
         feedbackAdjustment = domainModel.feedbackAdjustment

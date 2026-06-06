@@ -4,34 +4,15 @@
     "" : {
 
     },
-    "%@ · variant %@ · grid %lldx%lld · object %lldx%lld · density %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@ · variant %2$@ · grid %3$lldx%4$lld · object %5$lldx%6$lld · density %7$@"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@ · 变体 %2$@ · 网格 %3$lldx%4$lld · 物件 %5$lldx%6$lld · 密度 %7$@"
-          }
-        }
-      }
+    "#%lld" : {
+
     },
-    "%@ · variant %@ · grid %lldx%lld · object %lldx%lld · lines %lld/%lld/%lld" : {
+    "%@ · variant %@ · object %lldx%lld · lines %lld/%lld/%lld" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "%1$@ · variant %2$@ · grid %3$lldx%4$lld · object %5$lldx%6$lld · lines %7$lld/%8$lld/%9$lld"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@ · 变体 %2$@ · 网格 %3$lldx%4$lld · 物件 %5$lldx%6$lld · 行数 %7$lld/%8$lld/%9$lld"
+            "value" : "%1$@ · variant %2$@ · object %3$lldx%4$lld · lines %5$lld/%6$lld/%7$lld"
           }
         }
       }
@@ -53,6 +34,7 @@
       }
     },
     "%@ object %lldx%lld" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -64,6 +46,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$@ 物件 %2$lldx%3$lld"
+          }
+        }
+      }
+    },
+    "%@ order=%lld column=%lld frame=(%lld,%lld) %lldx%lld render=%lldx%lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ order=%2$lld column=%3$lld frame=(%4$lld,%5$lld) %6$lldx%7$lld render=%8$lldx%9$lld"
           }
         }
       }
@@ -126,6 +118,7 @@
       }
     },
     "%lldx%lld" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1015,16 +1008,6 @@
         }
       }
     },
-    "Auto Pack" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "自动整理"
-          }
-        }
-      }
-    },
     "Automatic layout" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1234,6 +1217,7 @@
       }
     },
     "Capabilities are resolved from role + item. They describe what the surface may do, not necessarily what is visible in the current runtime state." : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -4569,6 +4553,7 @@
       }
     },
     "Cassette Fixtures" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -4625,6 +4610,7 @@
       }
     },
     "Clear" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -4645,6 +4631,7 @@
       }
     },
     "Clear User Adjusted" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -4707,6 +4694,7 @@
       }
     },
     "column %lld, row %lld" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4721,6 +4709,9 @@
           }
         }
       }
+    },
+    "Column Metrics" : {
+
     },
     "common.attachmentCount %lld" : {
       "extractionState" : "manual",
@@ -12325,6 +12316,7 @@
       }
     },
     "Delete" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -12354,6 +12346,12 @@
         }
       }
     },
+    "Density" : {
+
+    },
+    "Density controls internal information density only. Masonry column width controls layout frame." : {
+
+    },
     "Derived Behavior" : {
       "localizations" : {
         "zh-Hans" : {
@@ -12365,6 +12363,7 @@
       }
     },
     "Derived behavior is what CaptureCardView will actually expose for this state, including loading, error, disabled, and selected gates." : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -13546,26 +13545,6 @@
         }
       }
     },
-    "Grid Board Lab" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "网格面板实验室"
-          }
-        }
-      }
-    },
-    "Grid Tokens" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "网格尺寸令牌"
-          }
-        }
-      }
-    },
     "Handoff Recovery" : {
       "localizations" : {
         "zh-Hans" : {
@@ -14133,18 +14112,18 @@
         }
       }
     },
-    "homeGrid" : {
+    "homeBoard" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Home Grid"
+            "value" : "Home Board"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "首页网格"
+            "value" : "首页面板"
           }
         }
       }
@@ -14889,6 +14868,7 @@
       }
     },
     "Layout Policy" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15250,6 +15230,7 @@
       }
     },
     "Mark User Adjusted" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15258,6 +15239,15 @@
           }
         }
       }
+    },
+    "Masonry" : {
+
+    },
+    "Masonry Board Lab" : {
+
+    },
+    "Masonry Policy" : {
+
     },
     "memories.empty.description" : {
       "extractionState" : "manual",
@@ -15776,6 +15766,7 @@
       }
     },
     "memory.arrangement.size" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -16941,49 +16932,8 @@
         }
       }
     },
-    "Move Down Row" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "下移一行"
-          }
-        }
-      }
-    },
-    "Move Earlier" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "前移"
-          }
-        }
-      }
-    },
-    "Move Later" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "后移"
-          }
-        }
-      }
-    },
-    "Move Up Row" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "上移一行"
-          }
-        }
-      }
-    },
     "moved" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -17081,6 +17031,7 @@
       }
     },
     "nil placement" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -17533,6 +17484,7 @@
       }
     },
     "Occupancy" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18689,6 +18641,7 @@
       }
     },
     "Projection Diagnostics" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -20033,6 +19986,7 @@
       }
     },
     "read-only projection" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -20043,6 +19997,7 @@
       }
     },
     "Read-only reports for nil placements. They are not interaction modes." : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -20144,7 +20099,11 @@
         }
       }
     },
+    "Recipe Density Defaults" : {
+
+    },
     "Recipe Support" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -20779,7 +20738,11 @@
         }
       }
     },
+    "Rendered Densities" : {
+
+    },
     "Rendered Sizes" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -20798,6 +20761,9 @@
           }
         }
       }
+    },
+    "Report" : {
+
     },
     "Request" : {
       "localizations" : {
@@ -21654,6 +21620,7 @@
       }
     },
     "Selected maps to CaptureCardState.normal with item.isSelected=true. It is not a production CaptureCardState case." : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -24127,6 +24094,7 @@
       }
     },
     "Size" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -24435,6 +24403,7 @@
       }
     },
     "Stored Interactive" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -25002,27 +24971,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "类型目录"
-          }
-        }
-      }
-    },
-    "UIKit owns scrolling, hit testing, reuse, and long-press lifting. Dragging uses an ordered sparse grid: the lifted card inserts into the visual sequence, later cards flow after it, and local holes are kept until Auto Pack." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "UIKit 负责滚动、命中测试、复用和长按抬起。拖拽使用有序稀疏网格：被抬起的卡片插入视觉序列，后续卡片顺序流动，局部空洞会保留到执行 Auto Pack。"
-          }
-        }
-      }
-    },
-    "UIKit owns scrolling, hit testing, reuse, and long-press lifting. Dragging uses the shared 4-column board engine: the active card moves to a clamped grid target, collisions are resolved by side-shift or push-down, and release applies vertical compact." : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "UIKit 负责滚动、命中测试、复用和长按抬起。拖拽使用共享 4 列画布引擎：活跃卡片移动到约束后的网格目标，碰撞通过侧移或下推解决，松手后执行垂直压缩。"
           }
         }
       }

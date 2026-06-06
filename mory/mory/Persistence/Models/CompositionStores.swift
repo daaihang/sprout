@@ -12,8 +12,6 @@ final class HomeBoardSignalStore {
     var subtitle: String
     var priority: Double
     var reason: String
-    var suggestedWidthColumns: Int
-    var suggestedHeightUnits: Int
     var createdAt: Date
     var expiresAt: Date?
 
@@ -27,8 +25,6 @@ final class HomeBoardSignalStore {
         subtitle: String,
         priority: Double,
         reason: String,
-        suggestedWidthColumns: Int,
-        suggestedHeightUnits: Int,
         createdAt: Date,
         expiresAt: Date? = nil
     ) {
@@ -41,8 +37,6 @@ final class HomeBoardSignalStore {
         self.subtitle = subtitle
         self.priority = priority
         self.reason = reason
-        self.suggestedWidthColumns = suggestedWidthColumns
-        self.suggestedHeightUnits = suggestedHeightUnits
         self.createdAt = createdAt
         self.expiresAt = expiresAt
     }
@@ -119,8 +113,6 @@ final class CompositionItemStore {
     var itemKey: String
     var targetTypeRawValue: String
     var targetID: UUID
-    var widthColumns: Int
-    var heightUnits: Int
     var zIndex: Int
     var rotationDegrees: Double
     var scale: Double
@@ -136,8 +128,6 @@ final class CompositionItemStore {
         itemKey: String,
         targetTypeRawValue: String,
         targetID: UUID,
-        widthColumns: Int,
-        heightUnits: Int,
         zIndex: Int,
         rotationDegrees: Double,
         scale: Double,
@@ -152,8 +142,6 @@ final class CompositionItemStore {
         self.itemKey = itemKey
         self.targetTypeRawValue = targetTypeRawValue
         self.targetID = targetID
-        self.widthColumns = widthColumns
-        self.heightUnits = heightUnits
         self.zIndex = zIndex
         self.rotationDegrees = rotationDegrees
         self.scale = scale

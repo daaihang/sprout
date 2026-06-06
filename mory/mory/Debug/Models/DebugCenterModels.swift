@@ -171,7 +171,7 @@ enum V6DebugControls {
             title: "Home Board Intelligence",
             checks: [
                 ("homeSuggestionsEnabled", preferences.homeSuggestionsEnabled),
-                ("v6.homeGrid", flags.homeGrid),
+                ("v6.homeBoard", flags.homeBoard),
                 ("v6.entityProfiles", flags.entityProfiles),
                 ("v6.clarificationQuestions", flags.clarificationQuestions),
             ]
@@ -215,7 +215,7 @@ enum V6DebugControls {
         updated.intelligenceJobs = true
         updated.entityProfiles = true
         updated.clarificationQuestions = true
-        updated.homeGrid = true
+        updated.homeBoard = true
         updated.semanticSearch = true
         updated.dailyQuestions = true
         updated.localNotifications = true

@@ -134,21 +134,21 @@ Home becomes a user-controlled grid with assistant suggestion layer.
 
 Tasks:
 
-- Add grid span model.
+- Add masonry item layout model.
 - Add card layout model.
-- Add `LazyVGrid` or custom `Layout`.
-- Add fixed card sizes.
+- Add custom masonry `Layout`.
+- Add fixed column width and adaptive card heights.
 - Add edit mode.
-- Add pin/hide/dismiss/resize.
+- Add pin/hide/dismiss/reorder.
 - Add yesterday panel and today suggestions.
 - Preserve current list fallback during rollout.
 
 Files:
 
 ```text
-Features/Home/Grid/HomeBoardGridLayout.swift
-Features/Home/Grid/HomeBoardSpan.swift
-Features/Home/Grid/HomeBoardGridMetrics.swift
+Features/Home/Layout/HomeBoardMasonryLayout.swift
+Features/Home/Layout/HomeBoardItemLayout.swift
+Domain/BoardLayout/MoryMasonryLayout.swift
 Features/Home/Cards/
 Domain/Composition/Composition.swift
 Domain/Composition/HomeBoardRuleEngine.swift

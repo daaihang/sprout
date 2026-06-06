@@ -85,8 +85,7 @@
 
 当前允许用户与系统共同稳定维护的字段是：
 
-- `widthColumns`
-- `heightUnits`
+- `userSortIndex`
 - `zIndex`
 - `rotationDegrees`
 - `scale`

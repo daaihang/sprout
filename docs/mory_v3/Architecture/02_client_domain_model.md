@@ -94,8 +94,7 @@
 - `itemKey`
 - `targetType`
 - `targetID`
-- `widthColumns`
-- `heightUnits`
+- `userSortIndex`
 - `zIndex`
 - `rotationDegrees`
 - `scale`

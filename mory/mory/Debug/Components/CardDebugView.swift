@@ -21,12 +21,12 @@ struct CardDebugView: View {
                 }
 
                 NavigationLink {
-                    CardDebugGridBoardLabView()
+                    CardDebugMasonryBoardLabView()
                 } label: {
                     DebugMenuRow(
-                        icon: "square.grid.3x3.topleft.filled",
-                        title: "Grid Board Lab",
-                        subtitle: "Add, delete, resize, pack, and inspect 4-column grid occupancy"
+                        icon: "rectangle.split.3x1",
+                        title: "Masonry Board Lab",
+                        subtitle: "Inspect fixed column width, adaptive card height, column placement, and sticker overflow"
                     )
                 }
 
@@ -36,17 +36,17 @@ struct CardDebugView: View {
                     DebugMenuRow(
                         icon: "rectangle.stack.badge.play",
                         title: "Arrangement Playground",
-                        subtitle: "Preview order, size tokens, stack, rotation, z-index, and desk rendering"
+                        subtitle: "Preview order, stack, rotation, z-index, stickers, and masonry rendering"
                     )
                 }
 
                 NavigationLink {
-                    CardDebugLayoutPolicyView()
+                    CardDebugMasonryPolicyView()
                 } label: {
                     DebugMenuRow(
-                        icon: "square.grid.3x3",
-                        title: "Layout Policy",
-                        subtitle: "Inspect 4-column grid tokens, supported recipe sizes, and stamp/strip/card fixtures"
+                        icon: "rectangle.split.3x1.fill",
+                        title: "Masonry Policy",
+                        subtitle: "Inspect column metrics, density defaults, variants, and object metrics"
                     )
                 }
 
@@ -66,7 +66,7 @@ struct CardDebugView: View {
                     DebugMenuRow(
                         icon: "slider.horizontal.3",
                         title: "Card States & Actions",
-                        subtitle: "Switch recipe, size, role, runtime state, capabilities, and derived card behavior"
+                        subtitle: "Switch recipe, density, role, runtime state, capabilities, and derived card behavior"
                     )
                 }
 
@@ -153,11 +153,10 @@ private struct CardDebugTypeCatalogView: View {
                     NavigationLink {
                         CardDebugTypeDetailView(entry: entry)
                     } label: {
-                        let supported = entry.fixture.supportedSizes.map(\.rawValue).joined(separator: ", ")
                         DebugMenuRow(
                             icon: entry.fixture.recipe.symbolName,
                             title: entry.contentType,
-                            subtitle: "recipe=\(entry.fixture.recipe.rawValue) · default=\(entry.fixture.preferredSize.rawValue) · supported=\(supported)"
+                            subtitle: "recipe=\(entry.fixture.recipe.rawValue) · density=\(entry.fixture.preferredDensity.rawValue)"
                         )
                     }
                 }
@@ -175,28 +174,21 @@ private struct CardDebugTypeDetailView: View {
 
     var body: some View {
         List {
-            Section("Rendered Sizes") {
-                ForEach(entry.fixture.supportedSizes) { size in
-                    let sizeFixtures = CardDebugCatalog.recipeSizeFixtures.filter {
-                        $0.fixture.recipe == entry.fixture.recipe && $0.size == size
-                    }
-
-                    ForEach(sizeFixtures) { fixture in
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Spacer()
-                                CaptureCardView(presentation: presentation(size: fixture.size, variant: fixture.variant))
-                                Spacer()
-                            }
-                            let box = MemoryCardRecipeLayoutPolicy.gridBox(for: fixture.size)
-                            let metrics = fixture.metrics
-                            Text("\(fixture.size.rawValue) · variant \(fixture.resolvedVariant.rawValue) · grid \(box.columnSpan)x\(box.rowSpan) · object \(Int(metrics.preferredSize.width))x\(Int(metrics.preferredSize.height)) · density \(metrics.density.rawValue)")
-                                .font(.caption.monospaced())
-                                .foregroundStyle(.secondary)
-                                .textSelection(.enabled)
+            Section("Rendered Densities") {
+                ForEach(CardDebugCatalog.recipeDensityFixtures.filter { $0.fixture.recipe == entry.fixture.recipe }) { fixture in
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Spacer()
+                            CaptureCardView(presentation: presentation(density: fixture.density, variant: fixture.variant))
+                            Spacer()
                         }
-                        .padding(.vertical, 12)
+                        let metrics = fixture.metrics
+                        Text("\(fixture.density.rawValue) · variant \(fixture.resolvedVariant.rawValue) · object \(Int(metrics.preferredSize.width))x\(Int(metrics.preferredSize.height)) · lines \(metrics.titleLineLimit)/\(metrics.detailLineLimit)/\(metrics.metadataLineLimit)")
+                            .font(.caption.monospaced())
+                            .foregroundStyle(.secondary)
+                            .textSelection(.enabled)
                     }
+                    .padding(.vertical, 12)
                 }
             }
 
@@ -210,7 +202,7 @@ private struct CardDebugTypeDetailView: View {
             Section("Checks") {
                 let metrics = MemoryCardObjectMetrics.resolve(
                     recipe: entry.fixture.recipe,
-                    sizeToken: entry.fixture.preferredSize
+                    density: entry.fixture.preferredDensity
                 )
                 DebugValueRow(
                     title: "Object metrics",
@@ -227,7 +219,7 @@ private struct CardDebugTypeDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    private func presentation(size: MemoryCardSizeToken, variant: MemoryCardVisualVariant?) -> CaptureCardPresentation {
+    private func presentation(density: MemoryCardContentDensity, variant: MemoryCardVisualVariant?) -> CaptureCardPresentation {
         CaptureCardPresentation(
             item: entry.fixture.item,
             role: .debugLab,
@@ -235,7 +227,7 @@ private struct CardDebugTypeDetailView: View {
             surfaceMode: .skeuomorphic,
             visualRecipe: entry.fixture.recipe,
             visualVariant: variant,
-            sizeToken: size
+            contentDensity: density
         )
     }
 }
@@ -261,13 +253,12 @@ private struct CardDebugArrangementPlaygroundView: View {
                 MemoryDeskRenderer(snapshot: snapshot)
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Occupancy")
+                    Text("Masonry")
                         .font(.headline)
-                    DebugValueRow(title: "Rows", value: "\(report.rowCount)")
-                    DebugValueRow(title: "Cells", value: "\(report.occupiedCells)/\(report.totalCells)")
-                    DebugValueRow(title: "Density", value: report.densityLabel)
-                    DebugValueRow(title: "Overlaps", value: "\(report.overlapCount)")
-                    DebugValueRow(title: "Overflowing objects", value: "\(report.slots.filter(\.hasOverflow).count)")
+                    DebugValueRow(title: "Columns", value: "\(report.columnCount)")
+                    DebugValueRow(title: "Column width", value: "\(Int(report.columnWidth))")
+                    DebugValueRow(title: "Board height", value: "\(Int(report.boardHeight))")
+                    DebugValueRow(title: "Sticker overflow", value: "\(Int(report.stickerOverflow))")
                 }
                 .padding(.horizontal, 20)
 
@@ -295,8 +286,7 @@ private struct CardDebugVisualRecipesView: View {
         List {
             ForEach(CardDebugCatalog.recipeFixtures) { fixture in
                 Section {
-                    ForEach(CardDebugCatalog.recipeSizeFixtures.filter { $0.fixture.recipe == fixture.recipe }) { recipeSizeFixture in
-                        let size = recipeSizeFixture.size
+                    ForEach(CardDebugCatalog.recipeDensityFixtures.filter { $0.fixture.recipe == fixture.recipe }) { densityFixture in
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
                                 Spacer()
@@ -307,15 +297,14 @@ private struct CardDebugVisualRecipesView: View {
                                         provenanceDisplayMode: .debug,
                                         surfaceMode: .skeuomorphic,
                                         visualRecipe: fixture.recipe,
-                                        visualVariant: recipeSizeFixture.variant,
-                                        sizeToken: size
+                                        visualVariant: densityFixture.variant,
+                                        contentDensity: densityFixture.density
                                     )
                                 )
                                 Spacer()
                             }
-                            let box = MemoryCardRecipeLayoutPolicy.gridBox(for: size)
-                            let metrics = recipeSizeFixture.metrics
-                            Text("\(size.rawValue) · variant \(recipeSizeFixture.resolvedVariant.rawValue) · grid \(box.columnSpan)x\(box.rowSpan) · object \(Int(metrics.preferredSize.width))x\(Int(metrics.preferredSize.height)) · lines \(metrics.titleLineLimit)/\(metrics.detailLineLimit)/\(metrics.metadataLineLimit)")
+                            let metrics = densityFixture.metrics
+                            Text("\(densityFixture.density.rawValue) · variant \(densityFixture.resolvedVariant.rawValue) · object \(Int(metrics.preferredSize.width))x\(Int(metrics.preferredSize.height)) · lines \(metrics.titleLineLimit)/\(metrics.detailLineLimit)/\(metrics.metadataLineLimit)")
                                 .font(.caption.monospaced())
                                 .foregroundStyle(.secondary)
                         }
@@ -323,16 +312,16 @@ private struct CardDebugVisualRecipesView: View {
                     }
 
                     DebugValueRow(title: "Recipe", value: fixture.recipe.rawValue)
-                    DebugValueRow(title: "Preferred size", value: fixture.preferredSize.rawValue)
+                    DebugValueRow(title: "Preferred density", value: fixture.preferredDensity.rawValue)
                     DebugValueRow(
                         title: "Preferred variant",
                         value: MemoryCardRecipeLayoutPolicy.resolvedVariant(
                             fixture.preferredVariant,
                             for: fixture.recipe,
-                            size: fixture.preferredSize
+                            density: fixture.preferredDensity
                         ).rawValue
                     )
-                    DebugValueRow(title: "Supported sizes", value: fixture.supportedSizes.map(\.rawValue).joined(separator: ", "))
+                    DebugValueRow(title: "Supported densities", value: MemoryCardRecipeLayoutPolicy.supportedDensities(for: fixture.recipe).map(\.rawValue).joined(separator: ", "))
                     DebugValueRow(title: "Kind", value: fixture.item.kind.rawValue)
                 } header: {
                     Text(fixture.recipe.rawValue)
@@ -344,68 +333,38 @@ private struct CardDebugVisualRecipesView: View {
     }
 }
 
-private struct CardDebugLayoutPolicyView: View {
-    private let cassetteFixture = CardDebugCatalog.fixture(for: .cassette)
+private struct CardDebugMasonryPolicyView: View {
+    private let metrics = MoryMasonryMetrics.default
 
     var body: some View {
         List {
-            Section("Grid Tokens") {
-                ForEach(MemoryCardSizeToken.allCases) { size in
-                    let box = MemoryCardRecipeLayoutPolicy.gridBox(for: size)
-                    DebugValueRow(
-                        title: size.rawValue,
-                        value: "\(box.columnSpan)x\(box.rowSpan) · \(MemoryCardRecipeLayoutPolicy.contentDensity(for: size).rawValue)"
-                    )
-                }
+            Section("Column Metrics") {
+                DebugValueRow(title: "Column width", value: "\(Int(metrics.minColumnWidth))...\(Int(metrics.maxColumnWidth))")
+                DebugValueRow(title: "Spacing", value: "columns \(Int(metrics.columnSpacing)) · rows \(Int(metrics.rowSpacing))")
+                DebugValueRow(title: "Padding", value: "h \(Int(metrics.horizontalPadding)) · v \(Int(metrics.verticalPadding))")
+                DebugValueRow(title: "Sticker overflow", value: "\(Int(metrics.stickerOverflow))")
             }
 
-            Section("Recipe Support") {
+            Section("Recipe Density Defaults") {
                 ForEach(MemoryCardVisualRecipe.allCases) { recipe in
                     DebugValueRow(
                         title: recipe.rawValue,
-                        value: MemoryCardRecipeLayoutPolicy.supportedSizes(for: recipe).map(\.rawValue).joined(separator: ", ")
+                        value: "default=\(MemoryCardRecipeLayoutPolicy.defaultDensity(for: recipe).rawValue) · supported=\(MemoryCardRecipeLayoutPolicy.supportedDensities(for: recipe).map(\.rawValue).joined(separator: ", "))"
                     )
-                }
-            }
-
-            Section("Cassette Fixtures") {
-                ForEach(cassetteFixture.supportedSizes) { size in
-                    HStack {
-                        Spacer()
-                        CaptureCardView(
-                            presentation: CaptureCardPresentation(
-                                item: cassetteFixture.item,
-                                role: .debugLab,
-                                provenanceDisplayMode: .debug,
-                                surfaceMode: .skeuomorphic,
-                                visualRecipe: .cassette,
-                                sizeToken: size
-                            )
-                        )
-                        Spacer()
-                    }
-                    .padding(.vertical, 10)
-                    .overlay(alignment: .topLeading) {
-                        let metrics = MemoryCardObjectMetrics.resolve(recipe: .cassette, sizeToken: size)
-                        Text("\(size.rawValue) object \(Int(metrics.preferredSize.width))x\(Int(metrics.preferredSize.height))")
-                            .font(.caption.monospaced())
-                            .foregroundStyle(.secondary)
-                    }
                 }
             }
 
             Section("Object Metrics") {
                 ForEach(CardDebugCatalog.recipeFixtures) { fixture in
-                    let size = fixture.preferredSize
-                    let metrics = MemoryCardObjectMetrics.resolve(recipe: fixture.recipe, sizeToken: size)
+                    let metrics = MemoryCardObjectMetrics.resolve(recipe: fixture.recipe, density: fixture.preferredDensity)
                     DebugValueRow(
-                        title: "\(fixture.recipe.rawValue).\(size.rawValue)",
+                        title: "\(fixture.recipe.rawValue).\(fixture.preferredDensity.rawValue)",
                         value: "\(Int(metrics.preferredSize.width))x\(Int(metrics.preferredSize.height)) · padding \(Int(metrics.padding.top)) · lines \(metrics.titleLineLimit)/\(metrics.detailLineLimit)/\(metrics.metadataLineLimit)"
                     )
                 }
             }
         }
-        .navigationTitle("Layout Policy")
+        .navigationTitle("Masonry Policy")
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -413,49 +372,33 @@ private struct CardDebugLayoutPolicyView: View {
 private extension MemoryCardVisualRecipe {
     var symbolName: String {
         switch self {
-        case .notebook:
-            return "note.text"
-        case .polaroid:
-            return "photo"
-        case .filmFrame:
-            return "film"
-        case .livePhotoPrint:
-            return "livephoto"
-        case .cassette:
-            return "waveform"
-        case .vinyl:
-            return "music.note"
-        case .mapTicket:
-            return "map"
-        case .weatherStamp:
-            return "cloud.sun"
-        case .linkNote:
-            return "link"
-        case .taskNote:
-            return "checklist"
-        case .personCard:
-            return "person.crop.rectangle"
-        case .affectCard:
-            return "heart.text.square"
-        case .bundlePacket:
-            return "shippingbox"
-        case .statusNote:
-            return "info.circle"
+        case .notebook: return "note.text"
+        case .polaroid: return "photo"
+        case .filmFrame: return "film"
+        case .livePhotoPrint: return "livephoto"
+        case .cassette: return "waveform"
+        case .vinyl: return "music.note"
+        case .mapTicket: return "map"
+        case .weatherStamp: return "cloud.sun"
+        case .linkNote: return "link"
+        case .taskNote: return "checklist"
+        case .personCard: return "person.crop.rectangle"
+        case .affectCard: return "heart.text.square"
+        case .bundlePacket: return "shippingbox"
+        case .statusNote: return "info.circle"
         }
     }
 }
 
 private extension MemoryCardNode {
     var debugLine: String {
-        let placement = layout.gridPlacement.map { "c\($0.column)r\($0.row)" } ?? "nil"
-        return "order=\(layout.order) size=\(layout.size.rawValue) grid=\(placement) recipe=\(visualRecipe.rawValue) z=\(layout.zIndex) ref=\(contentRef.debugLabel)"
+        "order=\(layout.order) recipe=\(visualRecipe.rawValue) z=\(layout.zIndex) stickers=\(layout.stickers.count) ref=\(contentRef.debugLabel)"
     }
 }
 
 private extension MemoryDeskBoardLayoutSlot {
     var debugLine: String {
-        let placement = layout.gridPlacement.map { "c\($0.column)r\($0.row)" } ?? "nil"
-        return "order=\(layout.order) size=\(layout.size.rawValue) grid=\(placement) frame=(\(Int(frame.origin.x)),\(Int(frame.origin.y))) \(Int(frame.width))x\(Int(frame.height))"
+        "order=\(layout.order) column=\(column) frame=(\(Int(frame.origin.x)),\(Int(frame.origin.y))) \(Int(frame.width))x\(Int(frame.height))"
     }
 }
 

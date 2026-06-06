@@ -175,7 +175,7 @@ struct DebugHomeBoardRuleItemRow: View {
 
             DebugValueRow(title: "Card key", value: item.compositionItem.itemKey)
             DebugValueRow(title: "Target", value: "\(item.compositionItem.targetType.rawValue) · \(item.compositionItem.targetID.uuidString)")
-            DebugValueRow(title: "Layout", value: "\(item.layout.layer.rawValue) · \(item.layout.span.widthColumns)x\(item.layout.span.heightUnits)")
+            DebugValueRow(title: "Layout", value: item.layout.layer.rawValue)
             DebugValueRow(title: "Sources", value: item.sourceRecordIDs.isEmpty ? "none" : item.sourceRecordIDs.prefix(4).map(\.uuidString).joined(separator: "\n"))
             DebugValueRow(title: "Flags", value: "pinned=\(item.isPinned) hidden=\(item.isHidden) dismissed=\(item.dismissedAt?.formatted(.iso8601) ?? "nil")")
             DebugValueRow(title: "Updated", value: item.updatedAt.formatted(.iso8601))

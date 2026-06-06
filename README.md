@@ -22,7 +22,7 @@ Capture Draft
 | `RecordShell` | The main memory fact: raw text, timestamps, capture source, provenance, mood/context, and artifact IDs. |
 | `Artifact` | User or context material: text, photo, video, live photo, audio, link, music, place, weather, todo, document-like evidence. |
 | `ArtifactSemanticDigest` | Structured media/text meaning such as OCR, captions, labels, transcript, duration, dimensions, and local identifiers. |
-| `MemoryCardArrangement` | User visual expression: card refs, visual recipe, size token, order, stack/group, grid placement, nudge, rotation, z-index. |
+| `MemoryCardArrangement` | User visual expression: card refs, visual recipe, order, stack/group, sticker attachments, nudge, rotation, z-index. |
 | `AffectSnapshot` | Structured mood/affect evidence with explicit source tracking. |
 | `Analysis` | Optional post-save intelligence. Arrangement is excluded from analysis input because it is visual expression, not semantic fact. |
 
@@ -34,7 +34,7 @@ Saving a memory does not mean AI analysis has started. The default local write p
 | --- | --- |
 | Local memory write path | Implemented: `RecordShell + Artifact[] + ArtifactSemanticDigest[] + MemoryCardArrangement + AffectSnapshot[]` are saved in one record-facts path. |
 | Capture composer | Implemented: text, photo, video, live photo, audio, link, location, weather, music, todo, prompt answer, person context, affect, external capture, and Journaling Suggestions can seed the unified draft. |
-| Card arrangement | Implemented: fixed 4-column logical grid, size tokens `stamp / strip / card`, visual recipes, stack/group, order, rotation/nudge/z-index. |
+| Card arrangement | Implemented: fixed-column-width masonry layout, adaptive card heights, visual recipes, stack/group, order, sticker attachment schema, rotation/nudge/z-index. |
 | Card rendering | Implemented: composer/detail render through the shared capture card path with `MemoryCardRecipeLayoutPolicy`, `MemoryCardObjectMetrics`, and recipe-specific object presentation. |
 | Memory detail | Implemented: product viewing path uses arrangement-driven `MemoryDeskRenderer`; editing keeps arrangement mutation instead of rebuilding default layout. |
 | Card Debug | Implemented: one `Card Debug` hub covers overview, type catalog, layout policy, visual recipes, grid board lab, card states/actions, arrangement reports, and fixture stress labs. |
@@ -50,7 +50,7 @@ mory/mory/
 ├── Domain/
 │   ├── Capture/                      RecordShell, drafts, provenance
 │   ├── Content/                      Artifact and semantic digest models
-│   ├── BoardLayout/                  shared 4-column board layout engine
+│   ├── BoardLayout/                  shared masonry board layout engine
 │   ├── Memory/                       snapshots, card arrangement, repository protocol
 │   ├── Analysis/                     analysis contract and snapshots
 │   ├── Graph/                        entity graph and links
@@ -87,22 +87,22 @@ The current record layer is intentionally independent from AI:
 
 - The composer owns the draft and `MemoryCardArrangementDraft`.
 - Adding or removing content updates both staged artifacts and arrangement nodes.
-- Size changes, stack/unstack, reorder, and delete are arrangement edits.
+- Stack/unstack, reorder, delete, sticker attachment, and visual treatment are arrangement edits.
 - `MemoryCaptureArtifactBuilder` returns artifacts, semantic digests, and draft-to-persisted artifact ID mapping.
 - `MemoryCreationUseCase` persists facts first, then persists `.notScheduled` pipeline status.
 - `MemoryMutationUseCase` updates artifacts, digests, arrangement, and affect data without defaulting over user layout.
 
-Card layout uses a fixed 4-column logical grid across devices. The grid box is layout occupancy; card objects can render with their own visual ratio through `MemoryCardObjectMetrics`, but the visual size is not persisted as fact data. The only legal size tokens are `stamp` (1x1), `strip` (2x1), and `card` (2x2).
+Card layout now uses fixed-column-width masonry across devices. Column count is derived from available width, each card keeps the same column width, and height is estimated/rendered from recipe, density, and measured content. The persisted arrangement stores order and visual expression only; masonry frames are derived at render time.
 
 ## Debug Surfaces
 
 The main card verification surface is `Card Debug`:
 
 - `Overview`: recent memory four-layer health.
-- `Type Catalog`: each content type and each supported size.
-- `Layout Policy`: size token, grid box, density, and object metrics.
-- `Visual Recipes`: all legal recipe/size combinations.
-- `Grid Board Lab`: shared 4-column pseudo-free board engine prototype, placement, occupancy, drag/collision/compact experiments.
+- `Type Catalog`: each content type and supported density.
+- `Masonry Policy`: column metrics, density, estimated height, and object metrics.
+- `Visual Recipes`: all legal recipe/density combinations.
+- `Masonry Board Lab`: fixed-column masonry prototype, column metrics, adaptive heights, and sticker overflow inspection.
 - `Card States & Actions`: composer/detail/debug roles, runtime states, and capability truth table.
 - `Fixture Stress Lab`: legacy fixture pressure tests.
 

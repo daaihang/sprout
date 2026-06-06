@@ -39,7 +39,7 @@ final class DebugCenterModelsTests: XCTestCase {
         flags.intelligenceJobs = false
         flags.entityProfiles = false
         flags.clarificationQuestions = false
-        flags.homeGrid = false
+        flags.homeBoard = false
         flags.semanticSearch = false
         flags.dailyQuestions = false
         flags.localNotifications = false
@@ -51,7 +51,7 @@ final class DebugCenterModelsTests: XCTestCase {
         XCTAssertTrue(enabledFlags.intelligenceJobs)
         XCTAssertTrue(enabledFlags.entityProfiles)
         XCTAssertTrue(enabledFlags.clarificationQuestions)
-        XCTAssertTrue(enabledFlags.homeGrid)
+        XCTAssertTrue(enabledFlags.homeBoard)
         XCTAssertTrue(enabledFlags.semanticSearch)
         XCTAssertTrue(enabledFlags.dailyQuestions)
         XCTAssertTrue(enabledFlags.localNotifications)

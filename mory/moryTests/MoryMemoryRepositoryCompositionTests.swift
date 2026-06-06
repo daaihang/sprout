@@ -193,12 +193,12 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
             MemoryCardDraftNode(
                 contentRef: .recordBody,
                 visualRecipe: .notebook,
-                layout: MemoryCardLayoutToken(order: 0, size: .card)
+                layout: MemoryCardLayoutToken(order: 0)
             ),
             MemoryCardDraftNode(
                 contentRef: .artifactDraftGroup([photoDraftID, audioDraftID], kind: .mediaStack),
                 visualRecipe: .bundlePacket,
-                layout: MemoryCardLayoutToken(order: 1, size: .card, rotationDegrees: -2)
+                layout: MemoryCardLayoutToken(order: 1, rotationDegrees: -2)
             )
         ])
 
@@ -764,7 +764,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertFalse(board.items.contains { $0.compositionItem.itemKey == hiddenTarget.compositionItem.itemKey })
     }
 
-    func testHomeBoardUserOrderAndResizePersistAcrossRefreshes() async throws {
+    func testHomeBoardUserOrderPersistsAcrossRefreshes() async throws {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
@@ -792,7 +792,6 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         try repository.updateHomeBoardItemPreference(memoryItems[0], action: .setUserOrder(30))
         try repository.updateHomeBoardItemPreference(memoryItems[1], action: .setUserOrder(10))
         try repository.updateHomeBoardItemPreference(memoryItems[2], action: .setUserOrder(20))
-        try repository.updateHomeBoardItemPreference(memoryItems[1], action: .resize(HomeBoardSpan(widthColumns: 3, heightUnits: 2)))
 
         board = try repository.fetchHomeBoard(for: Date(), limit: 8)
         let orderedKeys = board.userBoardItems.filter { $0.cardKind == .memory }.map(\.compositionItem.itemKey)
@@ -801,9 +800,9 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
             memoryItems[2].compositionItem.itemKey,
             memoryItems[0].compositionItem.itemKey,
         ])
-        let resized = try XCTUnwrap(board.items.first { $0.compositionItem.itemKey == memoryItems[1].compositionItem.itemKey })
-        XCTAssertEqual(resized.layout.span, HomeBoardSpan(widthColumns: 3, heightUnits: 2))
-        XCTAssertEqual(resized.layout.layer, .userBoard)
+        let ordered = try XCTUnwrap(board.items.first { $0.compositionItem.itemKey == memoryItems[1].compositionItem.itemKey })
+        XCTAssertEqual(ordered.layout.layer, .userBoard)
+        XCTAssertEqual(ordered.layout.userSortIndex, 10)
     }
 
     func testHomeBoardMoveEarlierLaterNormalizesUserBoardOrder() async throws {
@@ -960,7 +959,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertNotNil(accepted.layout.acceptedAt)
         XCTAssertFalse(board.suggestionItems.contains { $0.compositionItem.itemKey == suggestion.compositionItem.itemKey })
         XCTAssertTrue(board.userBoardItems.contains { $0.compositionItem.itemKey == suggestion.compositionItem.itemKey })
-        XCTAssertEqual(accepted.layout.span, suggestion.layout.span)
+        XCTAssertEqual(accepted.layout.userSortIndex, suggestion.layout.userSortIndex)
     }
 
     func testHomeBoardSuggestionFeedbackAdjustsSuggestionPriorityWithoutTakingOwnership() async throws {
@@ -1949,7 +1948,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
             MemoryCardDraftNode(
                 contentRef: .artifactDraft(draftID),
                 visualRecipe: .linkNote,
-                layout: MemoryCardLayoutToken(order: 0, size: .card, rotationDegrees: 2)
+                layout: MemoryCardLayoutToken(order: 0, rotationDegrees: 2)
             )
         ])
 
@@ -1976,7 +1975,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
             return false
         })
         XCTAssertEqual(linkNode.visualRecipe, .linkNote)
-        XCTAssertEqual(linkNode.layout.size, .card)
+        XCTAssertEqual(linkNode.layout.rotationDegrees, 2)
         XCTAssertFalse(arrangement.nodes.contains { node in
             switch node.contentRef {
             case let .artifact(id):
@@ -1989,7 +1988,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         })
     }
 
-    func testApplyMemoryMutationPreservesUserArrangementSizeAndStack() async throws {
+    func testApplyMemoryMutationPreservesUserArrangementMetadataAndStack() async throws {
         let container = MoryPersistenceStack.makeSharedModelContainer(inMemory: true)
         let repository = MoryMemoryRepository(
             modelContext: container.mainContext,
@@ -2016,9 +2015,28 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let audioID = try XCTUnwrap(initialDetail.artifacts.first(where: { $0.kind == .audio })?.id)
         let todoID = try XCTUnwrap(initialDetail.artifacts.first(where: { $0.kind == .todo })?.id)
         let initialArrangement = try XCTUnwrap(initialDetail.cardArrangement)
-        let userArrangement = initialArrangement
-            .settingSize(.card, forArtifactID: photoID, updatedAt: Date.now)
-            .stackingWithPrevious(artifactID: todoID, updatedAt: Date.now)
+        var userNodes = initialArrangement.nodes
+        if let photoIndex = userNodes.firstIndex(where: { node in
+            if case let .artifact(id) = node.contentRef {
+                return id == photoID
+            }
+            return false
+        }) {
+            userNodes[photoIndex].layout.rotationDegrees = 4
+            userNodes[photoIndex].layout.xNudge = 6
+            userNodes[photoIndex].layout.stickers = [
+                MemoryCardStickerAttachment(corner: .topTrailing, kind: .paperclip, xOffset: 2, yOffset: -3, rotationDegrees: 8, zIndex: 1)
+            ]
+        }
+        let userArrangement = MemoryCardArrangement(
+            id: initialArrangement.id,
+            recordID: initialArrangement.recordID,
+            schemaVersion: initialArrangement.schemaVersion,
+            nodes: userNodes,
+            createdAt: initialArrangement.createdAt,
+            updatedAt: Date.now
+        )
+        .stackingWithPrevious(artifactID: todoID, updatedAt: Date.now)
 
         _ = try await repository.applyMemoryMutation(
             recordID: memory.record.id,
@@ -2046,7 +2064,9 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
             }
             return false
         })
-        XCTAssertEqual(photoNode.layout.size, .card)
+        XCTAssertEqual(photoNode.layout.rotationDegrees, 4)
+        XCTAssertEqual(photoNode.layout.xNudge, 6)
+        XCTAssertEqual(photoNode.layout.stickers.first?.kind, .paperclip)
 
         let stackedNode = try XCTUnwrap(arrangement.nodes.first { node in
             if case let .artifactGroup(ids, _) = node.contentRef {
@@ -2055,7 +2075,6 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
             return false
         })
         XCTAssertEqual(stackedNode.visualRecipe, .bundlePacket)
-        XCTAssertEqual(stackedNode.layout.size, .card)
         XCTAssertFalse(arrangement.nodes.contains { node in
             if case let .artifact(id) = node.contentRef {
                 return id == todoID
@@ -2090,8 +2109,16 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let analyzedDetail = try XCTUnwrap(repository.fetchMemoryDetail(recordID: memory.record.id))
         let originalUpdatedAt = analyzedDetail.record.updatedAt
         let photoID = try XCTUnwrap(analyzedDetail.artifacts.first(where: { $0.kind == .photo })?.id)
-        let visualArrangement = try XCTUnwrap(analyzedDetail.cardArrangement)
-            .settingSize(.card, forArtifactID: photoID, updatedAt: Date.now)
+        var visualArrangement = try XCTUnwrap(analyzedDetail.cardArrangement)
+        if let photoIndex = visualArrangement.nodes.firstIndex(where: { node in
+            if case let .artifact(id) = node.contentRef {
+                return id == photoID
+            }
+            return false
+        }) {
+            visualArrangement.nodes[photoIndex].layout.yNudge = -4
+            visualArrangement.nodes[photoIndex].layout.rotationDegrees = 3
+        }
         XCTAssertEqual(analyzedDetail.pipelineStatus?.stage, .completed)
         XCTAssertNotNil(analyzedDetail.analysis)
 
@@ -2114,7 +2141,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
             }
             return false
         })
-        XCTAssertEqual(photoNode.layout.size, .card)
+        XCTAssertEqual(photoNode.layout.yNudge, -4)
+        XCTAssertEqual(photoNode.layout.rotationDegrees, 3)
     }
 
     func testApplyMemoryMutationUpdatesDeletesReordersAndPurgesGraphLinks() async throws {
@@ -2508,9 +2536,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
             return (artifactID, node)
         })
         XCTAssertEqual(nodeByArtifactID[photoArtifact.id]?.visualRecipe, .polaroid)
-        XCTAssertEqual(nodeByArtifactID[photoArtifact.id]?.layout.size, .card)
         XCTAssertEqual(nodeByArtifactID[audioArtifact.id]?.visualRecipe, .cassette)
-        XCTAssertEqual(nodeByArtifactID[audioArtifact.id]?.layout.size, .strip)
         XCTAssertFalse(arrangement.nodes.contains { node in
             switch node.contentRef {
             case let .artifact(id):

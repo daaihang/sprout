@@ -7,16 +7,12 @@ struct CaptureAttachmentCompactBoardView: View {
     let onRemoveAffectDraft: (Int) -> Void
     let onRemoveJournalingSuggestion: (UUID) -> Void
     var onReorderItems: (CaptureComposerAttachmentItem, CaptureComposerAttachmentItem) -> Void = { _, _ in }
-    var onSetSize: (CaptureComposerAttachmentItem, MemoryCardSizeToken) -> Void = { _, _ in }
     var onStackWithPrevious: (CaptureComposerAttachmentItem) -> Void = { _ in }
     var onUnstack: (CaptureComposerAttachmentItem) -> Void = { _ in }
     var presentationForItem: (CaptureComposerAttachmentItem) -> CaptureCardPresentation = {
         .composerAttachment($0)
     }
     var layoutForItem: (CaptureComposerAttachmentItem) -> MemoryCardLayoutToken? = { _ in nil }
-    var supportedSizesForItem: (CaptureComposerAttachmentItem) -> [MemoryCardSizeToken] = { _ in
-        MemoryCardSizeToken.allCases
-    }
 
     @State private var measuredContainerWidth: CGFloat = 0
     private let boardMetrics = MemoryDeskBoardMetrics.compactComposer
@@ -26,32 +22,29 @@ struct CaptureAttachmentCompactBoardView: View {
     }
 
     private var boardItems: [BoardItem] {
-        let base = items.enumerated().map { index, item in
+        items.enumerated().map { index, item in
             let presentation = presentationForItem(item)
             var layout = layoutForItem(item) ?? MemoryCardLayoutToken(
                 order: index,
-                size: presentation.sizeToken,
                 rotationDegrees: item.isProcessing ? 0 : Double((index % 5) - 2),
                 zIndex: index
             )
             layout.order = index
-            layout.size = presentation.sizeToken
             layout.zIndex = index
             return BoardItem(item: item, presentation: presentation, layout: layout)
-        }
-        let placements = MemoryCardGridPacking.placements(for: base.map(\.layout.size))
-        return base.enumerated().map { index, boardItem in
-            var boardItem = boardItem
-            if boardItem.layout.gridPlacement == nil {
-                boardItem.layout.gridPlacement = placements[safe: index]
-            }
-            return boardItem
         }
     }
 
     private var layoutPlan: MemoryDeskBoardLayoutPlan<String> {
-        MemoryDeskBoardLayoutPlan.make(
-            nodes: boardItems.map { MemoryDeskBoardInputNode(id: $0.id, layout: $0.layout) },
+        let columnWidth = boardMetrics.columnSpec(for: containerWidth).columnWidth
+        return MemoryDeskBoardLayoutPlan.make(
+            nodes: boardItems.map {
+                MemoryDeskBoardInputNode(
+                    id: $0.id,
+                    layout: $0.layout,
+                    estimatedHeight: estimatedHeight(for: $0, columnWidth: columnWidth)
+                )
+            },
             containerWidth: containerWidth,
             metrics: boardMetrics
         )
@@ -93,13 +86,6 @@ struct CaptureAttachmentCompactBoardView: View {
                     }
                     .contextMenu {
                         if slot.boardItem.item.supportsCompactBoardArrangementEditing {
-                            Menu("memory.arrangement.size") {
-                                ForEach(supportedSizesForItem(slot.boardItem.item)) { size in
-                                    Button(size.rawValue) {
-                                        onSetSize(slot.boardItem.item, size)
-                                    }
-                                }
-                            }
                             Button("memory.arrangement.stackWithPrevious") {
                                 onStackWithPrevious(slot.boardItem.item)
                             }
@@ -157,6 +143,14 @@ struct CaptureAttachmentCompactBoardView: View {
             return
         }
     }
+
+    private func estimatedHeight(for item: BoardItem, columnWidth: CGFloat) -> CGFloat {
+        MemoryCardObjectMetrics.estimatedHeight(
+            for: item.presentation.visualRecipe ?? .statusNote,
+            density: item.presentation.contentDensity,
+            columnWidth: columnWidth
+        )
+    }
 }
 
 private struct BoardItem: Identifiable {
@@ -186,11 +180,5 @@ private extension CaptureComposerAttachmentItem {
         case .affect, .processing:
             return false
         }
-    }
-}
-
-private extension Array {
-    subscript(safe index: Int) -> Element? {
-        indices.contains(index) ? self[index] : nil
     }
 }

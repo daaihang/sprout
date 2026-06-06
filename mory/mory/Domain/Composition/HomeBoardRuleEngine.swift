@@ -29,7 +29,7 @@ struct HomeBoardRuleEngine: Sendable {
             id: compositionID,
             boardID: boardID,
             compositionKey: "home-composition",
-            title: "Home Grid",
+            title: "Home Board",
             sortOrder: 0,
             createdAt: now,
             updatedAt: now
@@ -53,8 +53,6 @@ struct HomeBoardRuleEngine: Sendable {
             guard !preference.isHidden, preference.dismissedAt == nil else { return nil }
             var updated = candidate
             updated.isPinned = preference.isPinned
-            updated.widthColumns = preference.widthColumns ?? updated.widthColumns
-            updated.heightUnits = preference.heightUnits ?? updated.heightUnits
             updated.userSortIndex = preference.userSortIndex
             updated.acceptedAt = preference.acceptedAt
             updated.feedbackAdjustment = preference.feedbackAdjustment
@@ -74,8 +72,7 @@ struct HomeBoardRuleEngine: Sendable {
         let selectedCandidates = userCandidates + Array(suggestionCandidates)
 
         let items = selectedCandidates.enumerated().map { index, candidate in
-            let span = HomeBoardSpan(widthColumns: candidate.widthColumns, heightUnits: candidate.heightUnits)
-            return HomeBoardItemSnapshot(
+            HomeBoardItemSnapshot(
                 compositionItem: CompositionItem(
                     id: UUID(),
                     boardID: boardID,
@@ -85,8 +82,6 @@ struct HomeBoardRuleEngine: Sendable {
                     itemKey: candidate.cardKey,
                     targetType: candidate.targetType,
                     targetID: candidate.targetID,
-                    widthColumns: span.widthColumns,
-                    heightUnits: span.heightUnits,
                     zIndex: index,
                     rotationDegrees: rotationForPosition(index),
                     scale: candidate.isPinned ? 1.02 : 1,
@@ -99,7 +94,6 @@ struct HomeBoardRuleEngine: Sendable {
                 reason: candidate.reason,
                 sourceRecordIDs: candidate.sourceRecordIDs,
                 layout: HomeBoardItemLayout(
-                    span: span,
                     layer: candidate.layoutLayer,
                     userSortIndex: candidate.userSortIndex,
                     acceptedAt: candidate.acceptedAt,
@@ -164,8 +158,6 @@ struct HomeBoardRuleEngine: Sendable {
                     ]),
                     createdAt: memory.record.createdAt,
                     updatedAt: updatedAt,
-                    widthColumns: 2,
-                    heightUnits: memory.contextArtifacts.isEmpty ? 1 : 2,
                     defaultLayer: .userBoard
                 )
             )
@@ -199,8 +191,6 @@ struct HomeBoardRuleEngine: Sendable {
                     reason: "active storyline",
                     createdAt: arc.createdAt,
                     updatedAt: arc.updatedAt,
-                    widthColumns: 2,
-                    heightUnits: 2,
                     defaultLayer: .suggestion
                 )
             )
@@ -226,8 +216,6 @@ struct HomeBoardRuleEngine: Sendable {
                     reason: "suggested reflection",
                     createdAt: reflection.createdAt,
                     updatedAt: reflection.createdAt,
-                    widthColumns: 2,
-                    heightUnits: 2,
                     defaultLayer: .suggestion
                 )
             )
@@ -318,8 +306,6 @@ struct HomeBoardRuleEngine: Sendable {
                 reason: "repeated context",
                 createdAt: sourceMemories.last?.record.createdAt ?? .now,
                 updatedAt: sourceMemories.first?.record.updatedAt ?? .now,
-                widthColumns: 2,
-                heightUnits: 1,
                 defaultLayer: .suggestion
             )
         ]
@@ -350,8 +336,6 @@ struct HomeBoardRuleEngine: Sendable {
             reason: "yesterday ready",
             createdAt: sourceMemories.last?.record.createdAt ?? yesterday,
             updatedAt: sourceMemories.first?.record.updatedAt ?? yesterday,
-            widthColumns: 4,
-            heightUnits: 2,
             defaultLayer: .suggestion
         )
     }
@@ -377,8 +361,6 @@ struct HomeBoardRuleEngine: Sendable {
                     reason: isFailed ? "pipeline failed" : "pipeline running",
                     createdAt: status.status.lastAttemptAt ?? status.status.updatedAt,
                     updatedAt: status.status.updatedAt,
-                    widthColumns: 2,
-                    heightUnits: 1,
                     defaultLayer: .suggestion
                 )
             }
@@ -416,8 +398,6 @@ struct HomeBoardRuleEngine: Sendable {
                     reason: question.reason.ifEmpty(cardTitle),
                     createdAt: question.createdAt,
                     updatedAt: profile?.updatedAt ?? question.createdAt,
-                    widthColumns: 2,
-                    heightUnits: question.kind == .entityAlias || question.kind == .dailyReflection ? 2 : 1,
                     defaultLayer: .suggestion
                 )
             }
@@ -443,8 +423,6 @@ struct HomeBoardRuleEngine: Sendable {
             reason: reason,
             createdAt: .now,
             updatedAt: .now,
-            widthColumns: 2,
-            heightUnits: 1,
             defaultLayer: .suggestion
         )
     }
@@ -491,8 +469,6 @@ private struct HomeBoardCandidate {
     var reason: String
     var createdAt: Date
     var updatedAt: Date
-    var widthColumns: Int
-    var heightUnits: Int
     var defaultLayer: HomeBoardItemLayer
     var isPinned = false
     var acceptedAt: Date?

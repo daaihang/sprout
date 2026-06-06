@@ -16,7 +16,7 @@
 
 **战略路径（三段并行）**：
 1. **1 个月**：止血 + 合规 + 兑现 6 个"infra 已建未接 UI"的免费 v6 进度（reflection save/dismiss、followUp 展示、confidence、aliases 等）
-2. **2-3 个月**：v6 schema 升级（artifact role/position、entity relationship、composition x/y）+ Home Grid + Yesterday Panel + Entity correction 全套
+2. **2-3 个月**：v6 schema 升级（artifact role/position、entity relationship、composition order）+ Home Masonry + Yesterday Panel + Entity correction 全套
 3. **借 iOS 26 Foundation Models**：把 server AI 流量大部分下沉本地，兑现 "private + AI-native + Apple-native" 定位
 
 **核心判断**：不需要新增 v6 之外的概念——**v6 PRD 完整实现就是 Section 0 North Star 里描述的成熟态产品**。差距不在"做什么"，而在"做完最后一公里 UI 和稳健性"。
@@ -456,7 +456,7 @@ v6 `02:153-165` 要求 9 个 correction actions，PersonDetail / EntityDetail / 
 | A | `Artifact.role` 字段 | 阻塞 voice refinement（原文 vs 精修双轨） |
 | B | `Artifact.position / sectionID` | 阻塞 multimedia article mode 和 detail 排序 |
 | C | `EntityNode.relationship` 字段 | 阻塞"Who is Alex to you?"的关系字段 |
-| D | `CompositionItem.x / y` 坐标 | 阻塞 Home grid spatial 布局 |
+| D | `CompositionItem.userSortIndex` 和 masonry layout | 阻塞 Home masonry spatial 布局 |
 | E | Yesterday Panel 概念 | 阻塞 v6 核心承诺"打开看到昨天整理好" |
 | F | IntelligenceJob / GraphDelta / ClarificationQuestion model | 阻塞 v6 continuous intelligence |
 | G | Core Spotlight 索引 | 阻塞 v6 semantic search |
@@ -512,7 +512,7 @@ v6 `02:153-165` 要求 9 个 correction actions，PersonDetail / EntityDetail / 
 - EntityNode.relationship 加字段
 - CompositionItem x/y 坐标加字段
 - IntelligenceJob / GraphDelta 新 model
-- Home Grid 新 feature 模块（v5 list 留兜底）
+- Home Masonry 新 feature 模块（v5 list 留兜底）
 - Yesterday Panel domain model
 
 ### v6 beta（用户主权 + AI 深化）
@@ -826,7 +826,7 @@ v6 `02:153-165` 要求 9 个 correction actions，PersonDetail / EntityDetail / 
 #### 🟢 v6 Alpha Done
 - v6 schema 升级完成（artifact role/position、entity relationship、composition x/y）
 - Foundation Models 接入 ≥ 3 个任务
-- Home grid + Yesterday Panel 上线
+- Home masonry + Yesterday Panel 上线
 - Entity correction 全套操作可用
 - 验收 12.3 AI 质量指标 ≥ 80%
 
@@ -951,7 +951,7 @@ mory 的三重护城河：
 **Phase 2（2-3 个月）：v6 schema 升级 + 新 surface**
 
 - Artifact role/position + EntityNode.relationship + Composition x/y 三个核心 schema 改动
-- Home Grid 作为新 feature 模块上线（v5 list 留兜底）
+- Home Masonry 作为新 feature 模块上线（v5 list 留兜底）
 - Yesterday Panel 概念实现
 - Entity correction 全套（merge / not-same / rename / alias / less-like-this）
 
@@ -1008,7 +1008,7 @@ mory 到达 North Star 的标志：
 
 ### 14.1 Schema 迁移风险
 
-**问题**：v6 路线图依赖 3 个 schema 改动（artifact.role/position、EntityNode.relationship、CompositionItem.x/y）。SwiftData 迁移历史上有 silent data loss 案例。
+**问题**：v6 路线图依赖 3 个 schema 改动（artifact.role/position、EntityNode.relationship、CompositionItem order/layout metadata）。SwiftData 迁移历史上有 silent data loss 案例。
 
 **最坏情况**：用户升级 app → SwiftData 自动 migration 失败 → 老 record / entity / composition 不可读 → 用户失去一年的记忆累积 → 退款 + 社交媒体公关危机。
 
@@ -1029,7 +1029,7 @@ mory 到达 North Star 的标志：
 | 上游 | 下游被阻塞的功能 |
 |------|----------------|
 | `artifact.role` schema | Voice refinement 双轨 → Writing Tools 整合 → "ask first run" Settings |
-| `CompositionItem.x/y` | Home Grid → Yesterday Panel 视觉 → 多媒体视图（Film Gallery 也需要布局协议） |
+| `CompositionItem.userSortIndex` / masonry layout | Home Masonry → Yesterday Panel 视觉 → 多媒体视图（Film Gallery 也需要布局协议） |
 | `IntelligenceJob` model | Clarification questions → Daily questions → Notification 通知 |
 | Outbox 模式 | Continuous intelligence → 离线 capture → 网络断态体验 |
 | `userID 列加进 SwiftData` | 多用户支持 → 跨设备同步 → 真正的 AI-native（不只是设备级） |

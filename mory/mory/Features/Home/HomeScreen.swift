@@ -340,17 +340,6 @@ struct HomeScreen: View {
                 Text(verbatim: "Move later")
             }
             .disabled(!canMoveHomeBoardItem(item, direction: .later))
-
-            ForEach(HomeBoardSpan.allowedSizes, id: \.self) { span in
-                Button {
-                    performHomeBoardAction(for: item) {
-                        updateBoardPreference(item, action: .resize(span))
-                    }
-                } label: {
-                    Text(verbatim: "Resize to \(span.widthColumns)x\(span.heightUnits)")
-                }
-                .disabled(span == item.layout.span)
-            }
         }
 
         Button(role: .destructive) {

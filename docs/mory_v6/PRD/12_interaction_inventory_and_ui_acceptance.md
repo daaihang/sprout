@@ -30,9 +30,9 @@ Home must support:
 - Today board.
 - User-pinned cards.
 - Assistant-suggested cards.
-- Fixed card sizes.
+- Fixed column width with adaptive card heights.
 - Edit mode.
-- Resize within supported sizes.
+- Reorder within the user board.
 - Dismiss suggestion.
 - Hide card type.
 - "Show more like this" and "show less like this" preferences.
@@ -229,7 +229,7 @@ V6 UI must support:
 - Keyboard focus for search.
 - Meaningful notification copy.
 
-Home grid cards must not become unreadable at large text sizes. If needed, card content should reduce metadata before reducing legibility.
+Home masonry cards must not become unreadable at large text sizes. If needed, card content should reduce metadata before reducing legibility.
 
 ## 13. SwiftUI Native Acceptance
 

@@ -16,7 +16,7 @@ struct DebugHomeBoardDiagnosticsView: View {
                 if let preferences, let flags {
                     DebugV6GateDiagnosticRow(diagnostic: V6DebugControls.homeBoardGate(preferences: preferences, flags: flags))
                     DebugCenterValueRow(title: "Home suggestions", value: preferences.homeSuggestionsEnabled ? "enabled" : "disabled")
-                    DebugCenterValueRow(title: "Home grid", value: flags.homeGrid ? "enabled" : "disabled")
+                    DebugCenterValueRow(title: "Home Board", value: flags.homeBoard ? "enabled" : "disabled")
                     DebugCenterValueRow(title: "Entity profiles", value: flags.entityProfiles ? "enabled" : "disabled")
                     DebugCenterValueRow(title: "Clarification questions", value: flags.clarificationQuestions ? "enabled" : "disabled")
                 } else {
@@ -166,7 +166,7 @@ struct DebugHomeBoardDiagnosticsView: View {
             lines.append("\(item.layout.layer.rawValue) \(item.cardKind.rawValue) \(debugHomeBoardTitle(item))")
             lines.append("  key=\(item.compositionItem.itemKey)")
             lines.append("  target=\(item.compositionItem.targetType.rawValue)/\(item.compositionItem.targetID.uuidString)")
-            lines.append("  span=\(item.layout.span.widthColumns)x\(item.layout.span.heightUnits) priority=\(item.priority)")
+            lines.append("  layer=\(item.layout.layer.rawValue) priority=\(item.priority)")
             lines.append("  reason=\(item.reason)")
             lines.append("  source_records=\(item.sourceRecordIDs.map(\.uuidString).joined(separator: ","))")
         }
@@ -195,7 +195,7 @@ private struct DebugHomeBoardItemDiagnosticsRow: View {
                 .foregroundStyle(.secondary)
             DebugCenterValueRow(title: "Key", value: item.compositionItem.itemKey)
             DebugCenterValueRow(title: "Target", value: "\(item.compositionItem.targetType.rawValue) · \(item.compositionItem.targetID.uuidString)")
-            DebugCenterValueRow(title: "Span / priority", value: "\(item.layout.span.widthColumns)x\(item.layout.span.heightUnits) · \(item.priority)")
+            DebugCenterValueRow(title: "Layer / priority", value: "\(item.layout.layer.rawValue) · \(item.priority)")
             DebugCenterValueRow(title: "Flags", value: "pinned=\(item.isPinned), hidden=\(item.isHidden), dismissed=\(item.dismissedAt?.formatted(.iso8601) ?? "nil")")
             DebugCenterValueRow(title: "Sources", value: item.sourceRecordIDs.isEmpty ? "none" : item.sourceRecordIDs.map(\.uuidString).joined(separator: "\n"))
             HStack {

@@ -65,8 +65,8 @@ flowchart LR
 - `RecordShell.inputContext`: freeform context lines such as Journaling version or source.
 - `Artifact.metadata.captureOrigin`: manual, context, imported, inferred.
 - `ArtifactSemanticDigest`: media meaning such as OCR, local visual labels, caption, transcript, dimensions, duration, and local identifiers. This is the structured semantic bridge for future analysis.
-- `MemoryCardArrangement`: user-authored card layout for composer/detail/today desk. It is visual presentation state and is not part of default AI analysis input. Current layout policy uses a fixed 4-column logical grid with size tokens (`stamp`, `strip`, `card`) and per-node `gridPlacement(column,row)`.
-- `MemoryCardObjectMetrics`: derived render-time sizing for recipe + size + density. It is not persisted and does not change the fact model.
+- `MemoryCardArrangement`: user-authored card layout for composer/detail/today desk. It is visual presentation state and is not part of default AI analysis input. Current layout policy uses fixed-column masonry; per-node order and visual metadata are persisted, while frames are derived at render time.
+- `MemoryCardObjectMetrics`: derived render-time sizing for recipe + density + column width. It is not persisted and does not change the fact model.
 - `AffectSnapshot.sources`: userSelected, journalSuggestionStateOfMind, aiInferredText, userCorrected, and related sources.
 
 ## AI Intervention Points

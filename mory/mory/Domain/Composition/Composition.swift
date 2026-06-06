@@ -48,8 +48,6 @@ struct HomeBoardItemPreference: Identifiable, Codable, Hashable, Sendable {
     var isPinned: Bool
     var isHidden: Bool
     var dismissedAt: Date?
-    var widthColumns: Int?
-    var heightUnits: Int?
     var userSortIndex: Double?
     var acceptedAt: Date?
     var feedbackAdjustment: Double
@@ -68,8 +66,6 @@ struct HomeBoardItemPreference: Identifiable, Codable, Hashable, Sendable {
         isPinned: Bool = false,
         isHidden: Bool = false,
         dismissedAt: Date? = nil,
-        widthColumns: Int? = nil,
-        heightUnits: Int? = nil,
         userSortIndex: Double? = nil,
         acceptedAt: Date? = nil,
         feedbackAdjustment: Double = 0,
@@ -87,8 +83,6 @@ struct HomeBoardItemPreference: Identifiable, Codable, Hashable, Sendable {
         self.isPinned = isPinned
         self.isHidden = isHidden
         self.dismissedAt = dismissedAt
-        self.widthColumns = widthColumns
-        self.heightUnits = heightUnits
         self.userSortIndex = userSortIndex
         self.acceptedAt = acceptedAt
         self.feedbackAdjustment = feedbackAdjustment
@@ -100,7 +94,6 @@ struct HomeBoardItemPreference: Identifiable, Codable, Hashable, Sendable {
 enum HomeBoardPreferenceAction: Sendable {
     case addToBoard
     case pin(Bool)
-    case resize(HomeBoardSpan)
     case setUserOrder(Double)
     case preferMore
     case preferLess
@@ -177,8 +170,6 @@ struct CompositionItem: Identifiable, Codable, Hashable, Sendable {
     var itemKey: String
     var targetType: CompositionTargetType
     var targetID: UUID
-    var widthColumns: Int
-    var heightUnits: Int
     var zIndex: Int
     var rotationDegrees: Double
     var scale: Double
@@ -194,8 +185,6 @@ struct CompositionItem: Identifiable, Codable, Hashable, Sendable {
         itemKey: String,
         targetType: CompositionTargetType,
         targetID: UUID,
-        widthColumns: Int,
-        heightUnits: Int,
         zIndex: Int,
         rotationDegrees: Double = 0,
         scale: Double = 1,
@@ -210,8 +199,6 @@ struct CompositionItem: Identifiable, Codable, Hashable, Sendable {
         self.itemKey = itemKey
         self.targetType = targetType
         self.targetID = targetID
-        self.widthColumns = widthColumns
-        self.heightUnits = heightUnits
         self.zIndex = zIndex
         self.rotationDegrees = rotationDegrees
         self.scale = scale

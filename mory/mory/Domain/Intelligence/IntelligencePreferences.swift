@@ -176,7 +176,7 @@ struct V6FeatureFlags: Identifiable, Codable, Hashable, Sendable {
     var intelligenceJobs: Bool
     var entityProfiles: Bool
     var clarificationQuestions: Bool
-    var homeGrid: Bool
+    var homeBoard: Bool
     var semanticSearch: Bool
     var dailyQuestions: Bool
     var localNotifications: Bool
@@ -193,7 +193,7 @@ struct V6FeatureFlags: Identifiable, Codable, Hashable, Sendable {
         intelligenceJobs: Bool = true,
         entityProfiles: Bool = true,
         clarificationQuestions: Bool = true,
-        homeGrid: Bool = true,
+        homeBoard: Bool = true,
         semanticSearch: Bool = true,
         dailyQuestions: Bool = true,
         localNotifications: Bool = true,
@@ -209,7 +209,7 @@ struct V6FeatureFlags: Identifiable, Codable, Hashable, Sendable {
         self.intelligenceJobs = intelligenceJobs
         self.entityProfiles = entityProfiles
         self.clarificationQuestions = clarificationQuestions
-        self.homeGrid = homeGrid
+        self.homeBoard = homeBoard
         self.semanticSearch = semanticSearch
         self.dailyQuestions = dailyQuestions
         self.localNotifications = localNotifications

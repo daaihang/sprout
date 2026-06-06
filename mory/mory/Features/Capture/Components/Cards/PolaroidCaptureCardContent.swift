@@ -4,9 +4,8 @@ import UIKit
 struct PolaroidCaptureCardContent: View {
     let common: CaptureCardCommonDisplay
     let payload: CapturePhotoCardPayload
-    var sizeToken: MemoryCardSizeToken = .card
     var density: MemoryCardContentDensity = .regular
-    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .polaroid, sizeToken: .card)
+    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .polaroid)
 
     var body: some View {
         VStack(spacing: 0) {

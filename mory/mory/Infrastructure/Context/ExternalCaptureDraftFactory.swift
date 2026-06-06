@@ -79,7 +79,7 @@ struct ExternalCaptureDraftFactory: Sendable {
                 MemoryCardDraftNode(
                     contentRef: .recordBody,
                     visualRecipe: .notebook,
-                    layout: MemoryCardLayoutToken(order: order, size: .card, rotationDegrees: -1.5, zIndex: order)
+                    layout: MemoryCardLayoutToken(order: order, rotationDegrees: -1.5, zIndex: order)
                 )
             )
             order += 1
@@ -96,7 +96,7 @@ struct ExternalCaptureDraftFactory: Sendable {
                 MemoryCardDraftNode(
                     contentRef: .artifactDraftGroup(groupedDraftIDs, kind: .journalingBundle),
                     visualRecipe: .bundlePacket,
-                    layout: MemoryCardLayoutToken(order: order, size: .card, rotationDegrees: -2, zIndex: order)
+                    layout: MemoryCardLayoutToken(order: order, rotationDegrees: -2, zIndex: order)
                 )
             )
         }

@@ -32,7 +32,7 @@ Required for v6 core:
 Strongly recommended:
 
 - SwiftUI home grid layout.
-- Fixed card sizes.
+- Fixed column width with adaptive card heights.
 - Semantic search using Core Spotlight.
 - Daily question engine.
 - Local notification scheduling.

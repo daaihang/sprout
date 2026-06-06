@@ -44,8 +44,6 @@ struct MemoryDetailView: View {
                             }
                         },
                         onMoveArtifact: moveDraftArtifact(_:by:),
-                        onMoveArtifactToAdjacentRow: moveDraftArtifactToAdjacentRow(_:direction:),
-                        onSetArtifactSize: setDraftArtifactSize(_:size:),
                         onStackArtifactWithPrevious: stackDraftArtifactWithPrevious(_:),
                         onUnstackArtifact: unstackDraftArtifact(_:),
                         onAutoArrange: autoArrangeDraftCards
@@ -403,11 +401,6 @@ struct MemoryDetailView: View {
         }
     }
 
-    private func setDraftArtifactSize(_ artifactID: UUID, size: MemoryCardSizeToken) {
-        guard let arrangement = draftCardArrangement else { return }
-        applyDraftCardArrangement(arrangement.settingSize(size, forArtifactID: artifactID, updatedAt: Date.now))
-    }
-
     private func stackDraftArtifactWithPrevious(_ artifactID: UUID) {
         guard let arrangement = draftCardArrangement else { return }
         applyDraftCardArrangement(arrangement.stackingWithPrevious(artifactID: artifactID, updatedAt: Date.now))
@@ -421,19 +414,6 @@ struct MemoryDetailView: View {
             artifacts: snapshot.artifacts,
             updatedAt: Date.now
         ))
-    }
-
-    private func moveDraftArtifactToAdjacentRow(_ artifactID: UUID, direction: MemoryCardBoardRowMoveDirection) {
-        guard let arrangement = draftCardArrangement else { return }
-        withAnimation(.snappy(duration: 0.2)) {
-            applyDraftCardArrangement(
-                arrangement.movingArtifactToAdjacentBoardRow(
-                    artifactID: artifactID,
-                    direction: direction,
-                    updatedAt: Date.now
-                )
-            )
-        }
     }
 
     private func autoArrangeDraftCards() {
@@ -498,8 +478,6 @@ private struct MemoryDetailEditingView: View {
     let errorMessage: String?
     var onDeleteArtifacts: ([UUID]) -> Void
     var onMoveArtifact: (UUID, Int) -> Void
-    var onMoveArtifactToAdjacentRow: (UUID, MemoryCardBoardRowMoveDirection) -> Void
-    var onSetArtifactSize: (UUID, MemoryCardSizeToken) -> Void
     var onStackArtifactWithPrevious: (UUID) -> Void
     var onUnstackArtifact: (UUID) -> Void
     var onAutoArrange: () -> Void
@@ -515,8 +493,6 @@ private struct MemoryDetailEditingView: View {
                         cardArrangement: cardArrangement,
                         onDeleteArtifacts: onDeleteArtifacts,
                         onMoveArtifact: onMoveArtifact,
-                        onMoveArtifactToAdjacentRow: onMoveArtifactToAdjacentRow,
-                        onSetArtifactSize: onSetArtifactSize,
                         onStackArtifactWithPrevious: onStackArtifactWithPrevious,
                         onUnstackArtifact: onUnstackArtifact,
                         onAutoArrange: onAutoArrange
@@ -593,8 +569,6 @@ private struct MemoryDetailEditingBoardView: View {
     let cardArrangement: MemoryCardArrangement?
     var onDeleteArtifacts: ([UUID]) -> Void
     var onMoveArtifact: (UUID, Int) -> Void
-    var onMoveArtifactToAdjacentRow: (UUID, MemoryCardBoardRowMoveDirection) -> Void
-    var onSetArtifactSize: (UUID, MemoryCardSizeToken) -> Void
     var onStackArtifactWithPrevious: (UUID) -> Void
     var onUnstackArtifact: (UUID) -> Void
     var onAutoArrange: () -> Void
@@ -622,8 +596,19 @@ private struct MemoryDetailEditingBoardView: View {
     }
 
     private var layoutPlan: MemoryDeskBoardLayoutPlan<UUID> {
-        MemoryDeskBoardLayoutPlan.make(
-            nodes: boardNodes.map { MemoryDeskBoardInputNode(id: $0.id, layout: $0.layout) },
+        let columnWidth = metrics.columnSpec(for: containerWidth).columnWidth
+        return MemoryDeskBoardLayoutPlan.make(
+            nodes: boardNodes.map {
+                MemoryDeskBoardInputNode(
+                    id: $0.id,
+                    layout: $0.layout,
+                    estimatedHeight: MemoryCardObjectMetrics.estimatedHeight(
+                        for: $0.visualRecipe,
+                        density: nil,
+                        columnWidth: columnWidth
+                    )
+                )
+            },
             containerWidth: containerWidth,
             metrics: metrics
         )
@@ -662,14 +647,9 @@ private struct MemoryDetailEditingBoardView: View {
                             availableSize: slot.frame.size,
                             canMoveEarlier: canMove(slot.node, by: -1),
                             canMoveLater: canMove(slot.node, by: 1),
-                            canMoveRowUp: canMoveRow(slot.node, direction: .up),
-                            canMoveRowDown: canMoveRow(slot.node, direction: .down),
                             onDelete: { onDeleteArtifacts(slot.node.artifactIDs) },
                             onMoveEarlier: { onMoveArtifact(slot.node.primaryArtifactID, -1) },
                             onMoveLater: { onMoveArtifact(slot.node.primaryArtifactID, 1) },
-                            onMoveRowUp: { onMoveArtifactToAdjacentRow(slot.node.primaryArtifactID, .up) },
-                            onMoveRowDown: { onMoveArtifactToAdjacentRow(slot.node.primaryArtifactID, .down) },
-                            onSetSize: { size in onSetArtifactSize(slot.node.primaryArtifactID, size) },
                             onStackWithPrevious: { onStackArtifactWithPrevious(slot.node.primaryArtifactID) },
                             onUnstack: { onUnstackArtifact(slot.node.primaryArtifactID) }
                         )
@@ -720,16 +700,6 @@ private struct MemoryDetailEditingBoardView: View {
         return boardNodes.indices.contains(index + offset)
     }
 
-    private func canMoveRow(_ node: MemoryDetailEditingBoardNode, direction: MemoryCardBoardRowMoveDirection) -> Bool {
-        guard let row = node.layout.gridPlacement?.row else { return false }
-        let rows = Set(boardNodes.compactMap { $0.layout.gridPlacement?.row })
-        switch direction {
-        case .up:
-            return rows.contains { $0 < row }
-        case .down:
-            return rows.contains { $0 > row }
-        }
-    }
 }
 
 private struct MemoryDetailEditingBoardCard: View {
@@ -737,14 +707,9 @@ private struct MemoryDetailEditingBoardCard: View {
     let availableSize: CGSize
     let canMoveEarlier: Bool
     let canMoveLater: Bool
-    let canMoveRowUp: Bool
-    let canMoveRowDown: Bool
     var onDelete: () -> Void
     var onMoveEarlier: () -> Void
     var onMoveLater: () -> Void
-    var onMoveRowUp: () -> Void
-    var onMoveRowDown: () -> Void
-    var onSetSize: (MemoryCardSizeToken) -> Void
     var onStackWithPrevious: () -> Void
     var onUnstack: () -> Void
 
@@ -757,8 +722,7 @@ private struct MemoryDetailEditingBoardCard: View {
                     provenanceDisplayMode: .production,
                     surfaceMode: .skeuomorphic,
                     visualRecipe: node.visualRecipe,
-                    visualVariant: node.visualVariant,
-                    sizeToken: node.layout.size
+                    visualVariant: node.visualVariant
                 ),
                 objectAvailableSize: availableSize
             )
@@ -779,30 +743,6 @@ private struct MemoryDetailEditingBoardCard: View {
                 .disabled(!canMoveLater)
 
                 Divider()
-
-                Button {
-                    onMoveRowUp()
-                } label: {
-                    Label("Move Up Row", systemImage: "arrow.up.to.line.compact")
-                }
-                .disabled(!canMoveRowUp)
-
-                Button {
-                    onMoveRowDown()
-                } label: {
-                    Label("Move Down Row", systemImage: "arrow.down.to.line.compact")
-                }
-                .disabled(!canMoveRowDown)
-
-                Divider()
-
-                Menu("memory.arrangement.size") {
-                    ForEach(supportedSizes) { size in
-                        Button(size.rawValue) {
-                            onSetSize(size)
-                        }
-                    }
-                }
 
                 Button {
                     onStackWithPrevious()
@@ -834,10 +774,6 @@ private struct MemoryDetailEditingBoardCard: View {
             .buttonStyle(.plain)
             .accessibilityLabel("common.more")
         }
-    }
-
-    private var supportedSizes: [MemoryCardSizeToken] {
-        MemoryCardRecipeLayoutPolicy.supportedSizes(for: node.visualRecipe)
     }
 }
 

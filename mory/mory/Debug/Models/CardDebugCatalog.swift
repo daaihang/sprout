@@ -4,13 +4,9 @@ struct CardDebugRecipeFixture: Identifiable, Hashable {
     var id: String { recipe.rawValue }
     let recipe: MemoryCardVisualRecipe
     let item: CaptureCardItem
-    let preferredSize: MemoryCardSizeToken
+    let preferredDensity: MemoryCardContentDensity
     let preferredVariant: MemoryCardVisualVariant?
     let layerNotes: [String]
-
-    var supportedSizes: [MemoryCardSizeToken] {
-        MemoryCardRecipeLayoutPolicy.supportedSizes(for: recipe)
-    }
 }
 
 struct CardDebugTypeCatalogEntry: Identifiable, Hashable {
@@ -23,20 +19,20 @@ struct CardDebugTypeCatalogEntry: Identifiable, Hashable {
     let arrangementLayer: String
 }
 
-struct CardDebugRecipeSizeFixture: Identifiable, Hashable {
+struct CardDebugRecipeDensityFixture: Identifiable, Hashable {
     var id: String {
-        "\(fixture.recipe.rawValue)-\(size.rawValue)-\(resolvedVariant.rawValue)"
+        "\(fixture.recipe.rawValue)-\(density.rawValue)-\(resolvedVariant.rawValue)"
     }
     let fixture: CardDebugRecipeFixture
-    let size: MemoryCardSizeToken
+    let density: MemoryCardContentDensity
     let variant: MemoryCardVisualVariant?
 
     var metrics: MemoryCardObjectMetrics {
-        MemoryCardObjectMetrics.resolve(recipe: fixture.recipe, sizeToken: size)
+        MemoryCardObjectMetrics.resolve(recipe: fixture.recipe, density: density)
     }
 
     var resolvedVariant: MemoryCardVisualVariant {
-        MemoryCardRecipeLayoutPolicy.resolvedVariant(variant, for: fixture.recipe, size: size)
+        MemoryCardRecipeLayoutPolicy.resolvedVariant(variant, for: fixture.recipe, density: density)
     }
 }
 
@@ -52,7 +48,7 @@ enum CardDebugCatalog {
                 detail: "A quiet morning note with the core record body.",
                 metadata: "recordBody"
             ),
-            preferredSize: .card,
+            preferredDensity: .expanded,
             preferredVariant: nil,
             layerNotes: ["contentRef=.recordBody", "ArtifactKind.text is folded into RecordShell.rawText", "visualRecipe=.notebook"]
         ),
@@ -66,7 +62,7 @@ enum CardDebugCatalog {
                 detail: "Photo evidence with a white border and timestamp area.",
                 metadata: "photo.jpg"
             ),
-            preferredSize: .card,
+            preferredDensity: .regular,
             preferredVariant: nil,
             layerNotes: ["CaptureArtifactContent.photo", "ArtifactKind.photo", "photo digest can carry OCR/caption/labels", "visualRecipe=.polaroid"]
         ),
@@ -80,7 +76,7 @@ enum CardDebugCatalog {
                 detail: "Video evidence with first-frame summary.",
                 metadata: "0:18"
             ),
-            preferredSize: .card,
+            preferredDensity: .regular,
             preferredVariant: nil,
             layerNotes: ["CaptureArtifactContent.video", "ArtifactKind.video", "video digest can carry duration/first-frame notes", "visualRecipe=.filmFrame"]
         ),
@@ -94,7 +90,7 @@ enum CardDebugCatalog {
                 detail: "Still image plus paired motion clip.",
                 metadata: "Live Photo"
             ),
-            preferredSize: .card,
+            preferredDensity: .regular,
             preferredVariant: nil,
             layerNotes: ["CaptureArtifactContent.livePhoto", "ArtifactKind.livePhoto", "digest keeps still + paired video notes", "visualRecipe=.livePhotoPrint"]
         ),
@@ -108,7 +104,7 @@ enum CardDebugCatalog {
                 detail: "Transcript snippet stays in textContent and digest, not metadata.",
                 metadata: "1:14"
             ),
-            preferredSize: .strip,
+            preferredDensity: .compact,
             preferredVariant: nil,
             layerNotes: ["CaptureArtifactContent.audio", "ArtifactKind.audio", "audio digest carries transcript/language/confidence", "visualRecipe=.cassette"]
         ),
@@ -122,7 +118,7 @@ enum CardDebugCatalog {
                 detail: "M83 · Hurry Up, We're Dreaming",
                 metadata: "Now Playing"
             ),
-            preferredSize: .strip,
+            preferredDensity: .compact,
             preferredVariant: nil,
             layerNotes: ["CaptureArtifactContent.music", "ArtifactKind.music", "music fact fields stay structured", "visualRecipe=.vinyl"]
         ),
@@ -136,7 +132,7 @@ enum CardDebugCatalog {
                 detail: "1555 Huaihai Middle Road",
                 metadata: "31.2180, 121.4460"
             ),
-            preferredSize: .card,
+            preferredDensity: .regular,
             preferredVariant: nil,
             layerNotes: ["CaptureArtifactContent.location", "ArtifactKind.location", "location digest keeps structured place facts", "visualRecipe=.mapTicket"]
         ),
@@ -150,7 +146,7 @@ enum CardDebugCatalog {
                 detail: "Mostly cloudy",
                 metadata: "Humidity 61% · Wind 12 km/h · UV 3"
             ),
-            preferredSize: .stamp,
+            preferredDensity: .compact,
             preferredVariant: nil,
             layerNotes: ["CaptureArtifactContent.weather", "ArtifactKind.weather", "weather summary stays structured", "visualRecipe=.weatherStamp"]
         ),
@@ -164,7 +160,7 @@ enum CardDebugCatalog {
                 detail: "developer.apple.com/documentation/swiftui/layout",
                 metadata: "developer.apple.com"
             ),
-            preferredSize: .card,
+            preferredDensity: .regular,
             preferredVariant: nil,
             layerNotes: ["CaptureArtifactContent.link", "ArtifactKind.link", "URL/host remain artifact metadata facts", "visualRecipe=.linkNote"]
         ),
@@ -178,7 +174,7 @@ enum CardDebugCatalog {
                 detail: "Send the design notes after the review.",
                 metadata: "todo"
             ),
-            preferredSize: .strip,
+            preferredDensity: .compact,
             preferredVariant: nil,
             layerNotes: ["CaptureArtifactContent.todo", "ArtifactKind.todo", "task text remains content fact", "visualRecipe=.taskNote"]
         ),
@@ -192,7 +188,7 @@ enum CardDebugCatalog {
                 detail: "Design partner from the morning critique.",
                 metadata: "personContext"
             ),
-            preferredSize: .card,
+            preferredDensity: .regular,
             preferredVariant: nil,
             layerNotes: ["CaptureArtifactContent.personContext", "ArtifactKind.document", "documentType=personContext", "visualRecipe=.personCard"]
         ),
@@ -206,7 +202,7 @@ enum CardDebugCatalog {
                 detail: "Mood swatch from user-selected affect.",
                 metadata: "affect"
             ),
-            preferredSize: .stamp,
+            preferredDensity: .compact,
             preferredVariant: nil,
             layerNotes: ["AffectSnapshot", "not an Artifact", "debug/detail presentation node only", "visualRecipe=.affectCard"]
         ),
@@ -220,7 +216,7 @@ enum CardDebugCatalog {
                 detail: "5 items · 1 mood",
                 metadata: "Journaling"
             ),
-            preferredSize: .card,
+            preferredDensity: .regular,
             preferredVariant: nil,
             layerNotes: ["journalingSuggestion(importSessionID)", "can group multiple artifacts", "visualRecipe=.bundlePacket"]
         ),
@@ -234,7 +230,7 @@ enum CardDebugCatalog {
                 detail: "Fallback/debug-only status content.",
                 metadata: "debug"
             ),
-            preferredSize: .stamp,
+            preferredDensity: .compact,
             preferredVariant: nil,
             layerNotes: ["debug/fallback only", "not a primary content fact", "visualRecipe=.statusNote"]
         ),
@@ -242,27 +238,26 @@ enum CardDebugCatalog {
 
     static var typeCatalogEntries: [CardDebugTypeCatalogEntry] {
         recipeFixtures.map { fixture in
-            let box = MemoryCardRecipeLayoutPolicy.gridBox(for: fixture.preferredSize)
-            let density = MemoryCardRecipeLayoutPolicy.contentDensity(for: fixture.preferredSize)
+            let density = MemoryCardRecipeLayoutPolicy.normalizedDensity(fixture.preferredDensity, for: fixture.recipe)
             return CardDebugTypeCatalogEntry(
                 contentType: contentType(for: fixture.recipe),
                 fixture: fixture,
                 draftLayer: draftLayer(for: fixture.recipe),
                 artifactLayer: artifactLayer(for: fixture.recipe),
                 digestLayer: digestLayer(for: fixture.recipe),
-                arrangementLayer: "MemoryCardNode(contentRef, visualRecipe=\(fixture.recipe.rawValue), variant=\(MemoryCardRecipeLayoutPolicy.resolvedVariant(fixture.preferredVariant, for: fixture.recipe, size: fixture.preferredSize).rawValue), size=\(fixture.preferredSize.rawValue), grid=\(box.columnSpan)x\(box.rowSpan), density=\(density.rawValue))"
+                arrangementLayer: "MemoryCardNode(contentRef, visualRecipe=\(fixture.recipe.rawValue), variant=\(MemoryCardRecipeLayoutPolicy.resolvedVariant(fixture.preferredVariant, for: fixture.recipe, density: density).rawValue), density=\(density.rawValue), layout=order/zIndex/rotation/nudge/stickers)"
             )
         }
     }
 
-    static var recipeSizeFixtures: [CardDebugRecipeSizeFixture] {
+    static var recipeDensityFixtures: [CardDebugRecipeDensityFixture] {
         recipeFixtures.flatMap { fixture in
-            fixture.supportedSizes.map { size in
-                let variants = MemoryCardRecipeLayoutPolicy.supportedVariants(for: fixture.recipe, size: size)
+            MemoryCardRecipeLayoutPolicy.supportedDensities(for: fixture.recipe).map { density in
+                let variants = MemoryCardRecipeLayoutPolicy.supportedVariants(for: fixture.recipe, density: density)
                 return variants.map { variant in
-                    CardDebugRecipeSizeFixture(
+                    CardDebugRecipeDensityFixture(
                         fixture: fixture,
-                        size: size,
+                        density: density,
                         variant: variant == .automatic ? nil : variant
                     )
                 }
@@ -352,20 +347,20 @@ enum CardDebugCatalog {
             createdAt: now,
             updatedAt: now,
             captureSource: .composer,
-            rawText: "Debug arrangement playground: the renderer should preserve recipe, order, size, rotation, and stack.",
+            rawText: "Debug arrangement playground: the renderer should preserve recipe, order, rotation, nudge, z-index, stickers, and stack.",
             artifactIDs: artifacts.map(\.id)
         )
         let arrangement = MemoryCardArrangement(
             recordID: recordID,
             nodes: [
-                MemoryCardNode(contentRef: .recordBody, visualRecipe: .notebook, layout: MemoryCardLayoutToken(order: 0, size: .card, rotationDegrees: -1.5, zIndex: 0)),
-                MemoryCardNode(contentRef: .artifact(photoID), visualRecipe: .polaroid, layout: MemoryCardLayoutToken(order: 1, size: .card, rotationDegrees: 2, zIndex: 1)),
-                MemoryCardNode(contentRef: .artifact(audioID), visualRecipe: .cassette, layout: MemoryCardLayoutToken(order: 2, size: .strip, rotationDegrees: -2, zIndex: 2)),
-                MemoryCardNode(contentRef: .artifact(linkID), visualRecipe: .linkNote, layout: MemoryCardLayoutToken(order: 3, size: .card, rotationDegrees: 1, zIndex: 3)),
-                MemoryCardNode(contentRef: .artifact(weatherID), visualRecipe: .weatherStamp, layout: MemoryCardLayoutToken(order: 4, size: .stamp, rotationDegrees: -3, zIndex: 4)),
-                MemoryCardNode(contentRef: .artifact(placeID), visualRecipe: .mapTicket, layout: MemoryCardLayoutToken(order: 5, size: .card, rotationDegrees: 1.5, zIndex: 5)),
-                MemoryCardNode(contentRef: .artifact(musicID), visualRecipe: .vinyl, layout: MemoryCardLayoutToken(order: 6, size: .strip, rotationDegrees: -1, zIndex: 6)),
-                MemoryCardNode(contentRef: .artifactGroup([photoID, linkID, weatherID], kind: .mixedContext), visualRecipe: .bundlePacket, layout: MemoryCardLayoutToken(order: 7, size: .card, rotationDegrees: 2.5, zIndex: 7)),
+                MemoryCardNode(contentRef: .recordBody, visualRecipe: .notebook, layout: MemoryCardLayoutToken(order: 0, rotationDegrees: -1.5, zIndex: 0)),
+                MemoryCardNode(contentRef: .artifact(photoID), visualRecipe: .polaroid, layout: MemoryCardLayoutToken(order: 1, rotationDegrees: 2, zIndex: 1)),
+                MemoryCardNode(contentRef: .artifact(audioID), visualRecipe: .cassette, layout: MemoryCardLayoutToken(order: 2, rotationDegrees: -2, zIndex: 2)),
+                MemoryCardNode(contentRef: .artifact(linkID), visualRecipe: .linkNote, layout: MemoryCardLayoutToken(order: 3, rotationDegrees: 1, zIndex: 3)),
+                MemoryCardNode(contentRef: .artifact(weatherID), visualRecipe: .weatherStamp, layout: MemoryCardLayoutToken(order: 4, rotationDegrees: -3, zIndex: 4)),
+                MemoryCardNode(contentRef: .artifact(placeID), visualRecipe: .mapTicket, layout: MemoryCardLayoutToken(order: 5, rotationDegrees: 1.5, zIndex: 5)),
+                MemoryCardNode(contentRef: .artifact(musicID), visualRecipe: .vinyl, layout: MemoryCardLayoutToken(order: 6, rotationDegrees: -1, zIndex: 6)),
+                MemoryCardNode(contentRef: .artifactGroup([photoID, linkID, weatherID], kind: .mixedContext), visualRecipe: .bundlePacket, layout: MemoryCardLayoutToken(order: 7, rotationDegrees: 2.5, zIndex: 7)),
             ],
             createdAt: now,
             updatedAt: now

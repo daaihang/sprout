@@ -114,12 +114,12 @@ For internal builds, each AI-derived card should show:
 - Answer flow.
 - Profile update.
 
-### Phase 3: Home Grid
+### Phase 3: Home Masonry
 
 - Custom SwiftUI Layout.
-- Fixed card spans.
+- Fixed column width with adaptive card heights.
 - User layer vs suggestion layer.
-- Pin/hide/dismiss/resize.
+- Pin/hide/dismiss/reorder.
 
 ### Phase 4: Semantic Search
 

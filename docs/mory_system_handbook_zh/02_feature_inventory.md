@@ -18,17 +18,16 @@
 | 添加心情 | 已接入 | 已有结构化 mood/affect，但可视化和纠错还不完整。 |
 | 添加问答 | 已接入 | Reflection prompt 可以变成问答卡，用于更结构化记录。 |
 | 添加人物上下文 | 已接入 | 联系人和人物上下文可以保存，但不会自动合并为真实人物实体。 |
-| 卡片排布 | 可用 | 新建页和详情页使用同一套 arrangement 语义：visual recipe、size token、order、stack/group、grid placement、rotation/nudge/zIndex。 |
+| 卡片排布 | 可用 | 新建页和详情页使用同一套 arrangement 语义：visual recipe、order、stack/group、贴纸挂点、rotation/nudge/zIndex；瀑布流 frame 运行时派生。 |
 
 ## 卡片和排布
 
 卡片不是新的事实模型，而是用户表达层。当前规则是：
 
 - `MemoryCardArrangement` 保存视觉排布，不写进 `Artifact.metadata`。
-- size token 固定为 `stamp / strip / card`，分别表示 `1x1 / 2x1 / 2x2`。
-- 底层是 4 列逻辑网格，格子表示占位，不强迫卡片物件填满盒子。
-- `MemoryCardObjectMetrics` 只在渲染时从 recipe + size + density 派生物件尺寸和文本详略，不持久化。
-- `Card Debug` 用来验收类型、尺寸、布局、状态和动作，不等同于正式 UI。
+- 底层是固定列宽瀑布流：列数由可用宽度决定，每张卡片固定列宽、自适应高度。
+- `MemoryCardObjectMetrics` 只在渲染时从 recipe + density + column width 派生物件尺寸和文本详略，不持久化。
+- `Card Debug` 用来验收类型、density、masonry 布局、状态和动作，不等同于正式 UI。
 
 ## Apple Journaling Suggestions
 

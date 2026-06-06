@@ -102,8 +102,6 @@ func debugActionLabel(_ action: HomeBoardPreferenceAction) -> String {
         return "addToBoard"
     case let .pin(value):
         return "pin(\(value))"
-    case let .resize(span):
-        return "resize(\(span.widthColumns)x\(span.heightUnits))"
     case let .setUserOrder(value):
         return "setUserOrder(\(value))"
     case .preferMore:

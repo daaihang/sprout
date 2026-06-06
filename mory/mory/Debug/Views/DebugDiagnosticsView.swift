@@ -160,7 +160,7 @@ struct DebugDiagnosticsView: View {
                     DebugMenuRow(
                         icon: "rectangle.grid.2x2",
                         title: "Home Board Debug",
-                        subtitle: "Inspect memory desktop inputs, card layers, layout spans, reasons, and preference actions"
+                        subtitle: "Inspect memory desktop inputs, card layers, reasons, and preference actions"
                     )
                 }
 
