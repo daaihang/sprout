@@ -362,12 +362,6 @@ enum CardDebugGridBoardLabModel {
             return .taskNote
         case .card:
             return .linkNote
-        case .square:
-            return .polaroid
-        case .tape:
-            return .cassette
-        case .banner:
-            return .notebook
         }
     }
 

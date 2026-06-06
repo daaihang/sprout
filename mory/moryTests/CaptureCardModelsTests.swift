@@ -690,7 +690,7 @@ final class CaptureCardModelsTests: XCTestCase {
             for runtimeState in CardDebugRuntimeStateOption.allCases {
                 let presentation = CardDebugStatesActionsModel.presentation(
                     recipe: .cassette,
-                    size: .banner,
+                    size: .card,
                     variant: .automatic,
                     role: role,
                     runtimeState: runtimeState
@@ -701,11 +701,11 @@ final class CaptureCardModelsTests: XCTestCase {
                 XCTAssertEqual(presentation.surfaceMode, .skeuomorphic)
                 XCTAssertEqual(presentation.item.state, runtimeState.state)
                 XCTAssertEqual(presentation.item.isSelected, runtimeState.isSelected)
-                XCTAssertEqual(presentation.sizeToken, .banner)
+                XCTAssertEqual(presentation.sizeToken, .card)
                 XCTAssertEqual(presentation.visualVariant, .automatic)
                 XCTAssertEqual(
                     presentation.contentDensity,
-                    MemoryCardRecipeLayoutPolicy.contentDensity(for: .banner)
+                    MemoryCardRecipeLayoutPolicy.contentDensity(for: .card)
                 )
             }
         }
@@ -713,16 +713,16 @@ final class CaptureCardModelsTests: XCTestCase {
 
     func testCardDebugStatesActionsUnsupportedSizeFallsBackThroughPolicy() {
         let presentation = CardDebugStatesActionsModel.presentation(
-            recipe: .weatherStamp,
-            size: .banner,
+            recipe: .affectCard,
+            size: .card,
             variant: .weatherWind,
             role: .debug,
             runtimeState: .normal
         )
 
-        XCTAssertEqual(presentation.sizeToken, MemoryCardRecipeLayoutPolicy.defaultSize(for: .weatherStamp))
-        XCTAssertTrue(CardDebugStatesActionsModel.supportedSizes(for: .weatherStamp).contains(presentation.sizeToken))
-        XCTAssertEqual(presentation.visualVariant, .weatherIcon)
+        XCTAssertEqual(presentation.sizeToken, MemoryCardRecipeLayoutPolicy.defaultSize(for: .affectCard))
+        XCTAssertTrue(CardDebugStatesActionsModel.supportedSizes(for: .affectCard).contains(presentation.sizeToken))
+        XCTAssertEqual(presentation.visualVariant, .automatic)
     }
 
     func testCardDebugStatesActionsUnsupportedVariantFallsBackThroughPolicy() {

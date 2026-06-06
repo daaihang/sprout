@@ -26,7 +26,7 @@ struct CardDebugView: View {
                     DebugMenuRow(
                         icon: "square.grid.3x3.topleft.filled",
                         title: "Grid Board Lab",
-                        subtitle: "Add, delete, resize, pack, and inspect 6-column grid occupancy"
+                        subtitle: "Add, delete, resize, pack, and inspect 4-column grid occupancy"
                     )
                 }
 
@@ -46,7 +46,7 @@ struct CardDebugView: View {
                     DebugMenuRow(
                         icon: "square.grid.3x3",
                         title: "Layout Policy",
-                        subtitle: "Inspect 6-column grid tokens, supported recipe sizes, and cassette strip/tape/banner fixtures"
+                        subtitle: "Inspect 4-column grid tokens, supported recipe sizes, and stamp/strip/card fixtures"
                     )
                 }
 

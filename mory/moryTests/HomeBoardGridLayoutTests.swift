@@ -18,22 +18,10 @@ final class HomeBoardGridLayoutTests: XCTestCase {
         XCTAssertEqual(HomeBoardGridPacking.requiredRowCount(for: placements), 2)
     }
 
-    func testEightColumnRegularLayoutKeepsMoreCardsInFirstRow() {
-        let placements = HomeBoardGridPacking.pack(
-            spans: [
-                HomeBoardSpan(widthColumns: 2, heightUnits: 1),
-                HomeBoardSpan(widthColumns: 2, heightUnits: 1),
-                HomeBoardSpan(widthColumns: 2, heightUnits: 1),
-                HomeBoardSpan(widthColumns: 2, heightUnits: 1),
-                HomeBoardSpan(widthColumns: 4, heightUnits: 1),
-            ],
-            columns: 8
-        )
-
-        XCTAssertEqual(placements.prefix(4).map(\.row), [0, 0, 0, 0])
-        XCTAssertEqual(placements[4].row, 1)
-        XCTAssertEqual(placements[4].column, 0)
-        XCTAssertEqual(HomeBoardGridPacking.requiredRowCount(for: placements), 2)
+    func testAdaptiveMetricsAlwaysUseFourColumns() {
+        XCTAssertEqual(HomeBoardGridMetrics.columns(for: 320), 4)
+        XCTAssertEqual(HomeBoardGridMetrics.columns(for: 900), 4)
+        XCTAssertEqual(HomeBoardGridMetrics.adaptive(for: 900).columns, 4)
     }
 
     func testOversizedSpanClampsToAvailableColumns() {

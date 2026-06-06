@@ -5,7 +5,7 @@ struct FilmFrameCaptureCardContent: View {
     let common: CaptureCardCommonDisplay
     let payload: CaptureVideoCardPayload
     let accent: Color
-    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .filmFrame, sizeToken: .tape)
+    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .filmFrame, sizeToken: .card)
 
     var body: some View {
         VStack(spacing: 0) {
@@ -111,7 +111,7 @@ struct LivePhotoPrintCaptureCardContent: View {
     let common: CaptureCardCommonDisplay
     let payload: CaptureLivePhotoCardPayload
     let accent: Color
-    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .livePhotoPrint, sizeToken: .square)
+    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .livePhotoPrint, sizeToken: .card)
 
     var body: some View {
         ZStack(alignment: .topTrailing) {

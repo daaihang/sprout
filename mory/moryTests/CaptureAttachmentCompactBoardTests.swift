@@ -3,7 +3,7 @@ import XCTest
 
 final class CaptureAttachmentCompactBoardTests: XCTestCase {
     func testCompactBoardLayoutAcceptsStringItemIDsAndPackedGridPlacements() throws {
-        let sizes: [MemoryCardSizeToken] = [.square, .tape, .card, .stamp, .strip]
+        let sizes: [MemoryCardSizeToken] = [.card, .strip, .stamp, .card, .strip]
         let placements = MemoryCardGridPacking.placements(for: sizes)
         let nodes = sizes.enumerated().map { index, size in
             MemoryDeskBoardInputNode(

@@ -36,11 +36,11 @@ final class MemoryCardArrangementDraftTests: XCTestCase {
             return (id, node)
         })
         XCTAssertEqual(nodesByDraftID[photoID]?.visualRecipe, .polaroid)
-        XCTAssertEqual(nodesByDraftID[photoID]?.layout.size, .square)
+        XCTAssertEqual(nodesByDraftID[photoID]?.layout.size, .card)
         XCTAssertEqual(nodesByDraftID[videoID]?.visualRecipe, .filmFrame)
-        XCTAssertEqual(nodesByDraftID[videoID]?.layout.size, .tape)
+        XCTAssertEqual(nodesByDraftID[videoID]?.layout.size, .card)
         XCTAssertEqual(nodesByDraftID[audioID]?.visualRecipe, .cassette)
-        XCTAssertEqual(nodesByDraftID[audioID]?.layout.size, .tape)
+        XCTAssertEqual(nodesByDraftID[audioID]?.layout.size, .strip)
     }
 
     func testRemovingDraftFromGroupRestoresRemainingContentRecipe() {
@@ -68,7 +68,7 @@ final class MemoryCardArrangementDraftTests: XCTestCase {
         XCTAssertEqual(arrangement.nodes.count, 1)
         XCTAssertEqual(node?.contentRef, .artifactDraft(videoID))
         XCTAssertEqual(node?.visualRecipe, .filmFrame)
-        XCTAssertEqual(node?.layout.size, .tape)
+        XCTAssertEqual(node?.layout.size, .card)
     }
 
     func testSyncRestoresSingleRemainingGroupRecipeFromCurrentDrafts() {
@@ -151,7 +151,7 @@ final class MemoryCardArrangementDraftTests: XCTestCase {
             return false
         }
         XCTAssertEqual(videoNode?.visualRecipe, .filmFrame)
-        XCTAssertEqual(videoNode?.layout.size, .tape)
+        XCTAssertEqual(videoNode?.layout.size, .card)
     }
 
     func testSizeChangeAndReorderRepackDraftGridPlacements() {
@@ -178,16 +178,16 @@ final class MemoryCardArrangementDraftTests: XCTestCase {
         var arrangement = MemoryCardArrangementDraft()
         drafts.forEach { arrangement.appendArtifactDraft($0) }
 
-        arrangement.setSize(.banner, forDraftID: photoID)
+        arrangement.setSize(.card, forDraftID: audioID)
         arrangement.reorderArtifactDraft(from: linkID, to: audioID)
 
         XCTAssertEqual(arrangement.nodes.map(\.layout.order), [0, 1, 2])
         XCTAssertTrue(arrangement.nodes.allSatisfy { $0.layout.gridPlacement != nil })
-        let photoNode = arrangement.nodes.first { node in
-            if case let .artifactDraft(id) = node.contentRef { return id == photoID }
+        let audioNode = arrangement.nodes.first { node in
+            if case let .artifactDraft(id) = node.contentRef { return id == audioID }
             return false
         }
-        XCTAssertEqual(photoNode?.layout.size, .banner)
+        XCTAssertEqual(audioNode?.layout.size, .card)
     }
 
     func testWeatherDraftDefaultsToStampVariant() {

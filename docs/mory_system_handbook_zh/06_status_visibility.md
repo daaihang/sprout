@@ -21,7 +21,7 @@ Mory 当前最大的问题之一，是很多能力存在，但用户和产品负
 
 - Capture draft 里到底有什么。
 - 每种卡片 recipe 和 size 是否能正确展示。
-- 6 列 grid box、object metrics、placement、overflow、occupancy 是否合理。
+- 4 列 grid box、object metrics、placement、overflow、occupancy 是否合理。
 - composer/detail/debug 下卡片 role、runtime state 和 actions 是否一致。
 - Journaling bundle 收到了哪些 evidence。
 - Share Extension 是否成功写入共享容器。
@@ -37,7 +37,7 @@ Mory 当前最大的问题之一，是很多能力存在，但用户和产品负
 
 | 位置 | 能看什么 | 当前问题 |
 | --- | --- | --- |
-| 新建记忆页 | 草稿卡片、6 列 compact board、输入内容和保存错误 | 来源和后续分析状态不够明显。 |
+| 新建记忆页 | 草稿卡片、4 列 compact board、输入内容和保存错误 | 来源和后续分析状态不够明显。 |
 | 记忆详情 | 保存后的记忆内容和 arrangement-driven board | AI 分析过程和证据来源仍需强化。 |
 | People 页面 | 人物和画像 | 证据和用户纠错入口还需更清晰。 |
 | Insights 页面 | 反思、章节、问题和用户可读的智能产出 | 信息架构仍需从“审核后台”收敛成复盘入口。 |

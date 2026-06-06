@@ -4,7 +4,7 @@ import XCTest
 final class MemoryCardGridPackingTests: XCTestCase {
     func testFirstFitPackingProducesNonOverlappingPlacements() {
         let sizes: [MemoryCardSizeToken] = [
-            .banner, .tape, .square, .card, .strip, .stamp, .card, .tape, .strip
+            .card, .strip, .stamp, .card, .strip, .stamp, .card, .strip, .card
         ]
         let placements = MemoryCardGridPacking.placements(for: sizes)
 
@@ -31,18 +31,18 @@ final class MemoryCardGridPackingTests: XCTestCase {
 
     func testRequiredRowCountMatchesBottomEdgeOfLayouts() {
         let layouts = [
-            MemoryCardLayoutToken(order: 0, size: .banner, gridPlacement: MemoryCardGridPlacement(column: 0, row: 0)),
+            MemoryCardLayoutToken(order: 0, size: .card, gridPlacement: MemoryCardGridPlacement(column: 0, row: 0)),
             MemoryCardLayoutToken(order: 1, size: .strip, gridPlacement: MemoryCardGridPlacement(column: 2, row: 3)),
-            MemoryCardLayoutToken(order: 2, size: .square, gridPlacement: MemoryCardGridPlacement(column: 0, row: 4))
+            MemoryCardLayoutToken(order: 2, size: .card, gridPlacement: MemoryCardGridPlacement(column: 0, row: 4))
         ]
 
-        let expected = 7 // square starts at row 4 and spans 3 rows.
+        let expected = 6 // card starts at row 4 and spans 2 rows.
         XCTAssertEqual(MemoryCardGridPacking.requiredRowCount(for: layouts), expected)
     }
 
     func testPackingExpandsWhenSizeBecomesLarger() {
-        let baseSizes: [MemoryCardSizeToken] = [.card, .card, .card, .card, .card]
-        let enlargedSizes: [MemoryCardSizeToken] = [.banner, .card, .card, .card, .card]
+        let baseSizes: [MemoryCardSizeToken] = [.strip, .strip, .strip, .strip, .strip]
+        let enlargedSizes: [MemoryCardSizeToken] = [.card, .strip, .strip, .strip, .strip]
 
         let basePlacements = MemoryCardGridPacking.placements(for: baseSizes)
         let enlargedPlacements = MemoryCardGridPacking.placements(for: enlargedSizes)

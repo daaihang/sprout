@@ -133,7 +133,7 @@ struct BundlePacketCaptureCardContent: View {
                     .foregroundStyle(accent.opacity(0.42))
             }
         }
-        .frame(width: metrics.sizeToken == .square ? 112 : 92, height: metrics.sizeToken == .square ? 104 : 84)
+        .frame(width: metrics.sizeToken == .card ? 112 : 92, height: metrics.sizeToken == .card ? 104 : 84)
         .offset(offset)
         .rotationEffect(.degrees(rotation))
     }

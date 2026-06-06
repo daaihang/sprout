@@ -25,8 +25,8 @@
 卡片不是新的事实模型，而是用户表达层。当前规则是：
 
 - `MemoryCardArrangement` 保存视觉排布，不写进 `Artifact.metadata`。
-- size token 固定为 `stamp / strip / card / square / tape / banner`。
-- 底层是 6 列逻辑网格，格子表示占位，不强迫卡片物件填满盒子。
+- size token 固定为 `stamp / strip / card`，分别表示 `1x1 / 2x1 / 2x2`。
+- 底层是 4 列逻辑网格，格子表示占位，不强迫卡片物件填满盒子。
 - `MemoryCardObjectMetrics` 只在渲染时从 recipe + size + density 派生物件尺寸和文本详略，不持久化。
 - `Card Debug` 用来验收类型、尺寸、布局、状态和动作，不等同于正式 UI。
 

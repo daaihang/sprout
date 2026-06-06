@@ -12,7 +12,7 @@ nonisolated struct HomeBoardGridMetrics: Hashable, Sendable {
     }
 
     static func columns(for containerWidth: CGFloat) -> Int {
-        containerWidth >= 600 ? 8 : 4
+        4
     }
 
     static func adaptive(for containerWidth: CGFloat) -> HomeBoardGridMetrics {

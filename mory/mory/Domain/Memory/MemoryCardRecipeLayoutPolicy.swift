@@ -29,7 +29,7 @@ struct MemoryCardGridPlacement: Codable, Hashable, Sendable {
 }
 
 enum MemoryCardRecipeLayoutPolicy {
-    static let columnCount = 6
+    static let columnCount = 4
 
     static func gridBox(for size: MemoryCardSizeToken) -> MemoryCardGridBox {
         switch size {
@@ -38,13 +38,7 @@ enum MemoryCardRecipeLayoutPolicy {
         case .strip:
             return MemoryCardGridBox(columnSpan: 2, rowSpan: 1)
         case .card:
-            return MemoryCardGridBox(columnSpan: 3, rowSpan: 2)
-        case .square:
-            return MemoryCardGridBox(columnSpan: 3, rowSpan: 3)
-        case .tape:
-            return MemoryCardGridBox(columnSpan: 4, rowSpan: 2)
-        case .banner:
-            return MemoryCardGridBox(columnSpan: 6, rowSpan: 3)
+            return MemoryCardGridBox(columnSpan: 2, rowSpan: 2)
         }
     }
 
@@ -52,55 +46,41 @@ enum MemoryCardRecipeLayoutPolicy {
         switch size {
         case .stamp, .strip:
             return .compact
-        case .card, .square, .tape:
+        case .card:
             return .regular
-        case .banner:
-            return .expanded
         }
     }
 
     static func supportedSizes(for recipe: MemoryCardVisualRecipe) -> [MemoryCardSizeToken] {
         switch recipe {
         case .notebook:
-            return [.card, .banner]
-        case .polaroid, .livePhotoPrint:
-            return [.square, .banner]
-        case .filmFrame:
-            return [.tape, .banner]
-        case .cassette:
-            return [.strip, .tape, .banner]
-        case .vinyl:
-            return [.strip, .tape]
-        case .mapTicket:
             return [.card]
+        case .polaroid, .livePhotoPrint:
+            return [.card]
+        case .filmFrame:
+            return [.card]
+        case .cassette:
+            return [.strip, .card]
+        case .vinyl:
+            return [.strip, .card]
+        case .mapTicket, .linkNote, .personCard:
+            return [.strip, .card]
         case .affectCard, .statusNote:
             return [.stamp, .strip]
         case .weatherStamp:
             return [.stamp, .strip, .card]
-        case .linkNote:
-            return [.card, .banner]
         case .taskNote:
             return [.strip, .card]
-        case .personCard:
-            return [.strip, .card]
         case .bundlePacket:
-            return [.card, .square]
+            return [.card]
         }
     }
 
     static func defaultSize(for recipe: MemoryCardVisualRecipe) -> MemoryCardSizeToken {
         switch recipe {
-        case .notebook:
+        case .notebook, .polaroid, .livePhotoPrint, .filmFrame, .mapTicket, .linkNote, .personCard, .bundlePacket:
             return .card
-        case .polaroid, .livePhotoPrint:
-            return .square
-        case .filmFrame, .cassette:
-            return .tape
-        case .vinyl:
-            return .tape
-        case .mapTicket, .linkNote, .personCard, .bundlePacket:
-            return .card
-        case .taskNote:
+        case .cassette, .vinyl, .taskNote:
             return .strip
         case .weatherStamp, .affectCard, .statusNote:
             return .stamp
@@ -127,8 +107,6 @@ enum MemoryCardRecipeLayoutPolicy {
             return [.automatic, .weatherIconTemperature]
         case .card:
             return [.automatic, .weatherFullMetrics]
-        case .square, .tape, .banner:
-            return [.automatic]
         }
     }
 
@@ -148,8 +126,6 @@ enum MemoryCardRecipeLayoutPolicy {
             return .weatherIconTemperature
         case .card:
             return .weatherFullMetrics
-        case .square, .tape, .banner:
-            return .automatic
         }
     }
 

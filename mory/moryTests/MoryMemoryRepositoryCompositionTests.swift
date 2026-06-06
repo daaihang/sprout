@@ -193,7 +193,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
             MemoryCardDraftNode(
                 contentRef: .recordBody,
                 visualRecipe: .notebook,
-                layout: MemoryCardLayoutToken(order: 0, size: .banner)
+                layout: MemoryCardLayoutToken(order: 0, size: .card)
             ),
             MemoryCardDraftNode(
                 contentRef: .artifactDraftGroup([photoDraftID, audioDraftID], kind: .mediaStack),
@@ -2017,7 +2017,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let todoID = try XCTUnwrap(initialDetail.artifacts.first(where: { $0.kind == .todo })?.id)
         let initialArrangement = try XCTUnwrap(initialDetail.cardArrangement)
         let userArrangement = initialArrangement
-            .settingSize(.banner, forArtifactID: photoID, updatedAt: Date.now)
+            .settingSize(.card, forArtifactID: photoID, updatedAt: Date.now)
             .stackingWithPrevious(artifactID: todoID, updatedAt: Date.now)
 
         _ = try await repository.applyMemoryMutation(
@@ -2046,7 +2046,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
             }
             return false
         })
-        XCTAssertEqual(photoNode.layout.size, .banner)
+        XCTAssertEqual(photoNode.layout.size, .card)
 
         let stackedNode = try XCTUnwrap(arrangement.nodes.first { node in
             if case let .artifactGroup(ids, _) = node.contentRef {
@@ -2091,7 +2091,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let originalUpdatedAt = analyzedDetail.record.updatedAt
         let photoID = try XCTUnwrap(analyzedDetail.artifacts.first(where: { $0.kind == .photo })?.id)
         let visualArrangement = try XCTUnwrap(analyzedDetail.cardArrangement)
-            .settingSize(.banner, forArtifactID: photoID, updatedAt: Date.now)
+            .settingSize(.card, forArtifactID: photoID, updatedAt: Date.now)
         XCTAssertEqual(analyzedDetail.pipelineStatus?.stage, .completed)
         XCTAssertNotNil(analyzedDetail.analysis)
 
@@ -2114,7 +2114,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
             }
             return false
         })
-        XCTAssertEqual(photoNode.layout.size, .banner)
+        XCTAssertEqual(photoNode.layout.size, .card)
     }
 
     func testApplyMemoryMutationUpdatesDeletesReordersAndPurgesGraphLinks() async throws {
@@ -2508,9 +2508,9 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
             return (artifactID, node)
         })
         XCTAssertEqual(nodeByArtifactID[photoArtifact.id]?.visualRecipe, .polaroid)
-        XCTAssertEqual(nodeByArtifactID[photoArtifact.id]?.layout.size, .square)
+        XCTAssertEqual(nodeByArtifactID[photoArtifact.id]?.layout.size, .card)
         XCTAssertEqual(nodeByArtifactID[audioArtifact.id]?.visualRecipe, .cassette)
-        XCTAssertEqual(nodeByArtifactID[audioArtifact.id]?.layout.size, .tape)
+        XCTAssertEqual(nodeByArtifactID[audioArtifact.id]?.layout.size, .strip)
         XCTAssertFalse(arrangement.nodes.contains { node in
             switch node.contentRef {
             case let .artifact(id):

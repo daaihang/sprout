@@ -119,48 +119,12 @@ struct MemoryCardObjectMetrics: Hashable, Sendable {
                 recipe: .statusNote,
                 sizeToken: size,
                 density: density,
-                preferredSize: CGSize(width: 214, height: 148),
+                preferredSize: CGSize(width: 194, height: 168),
                 padding: MemoryCardObjectPadding(13),
                 titleLineLimit: 2,
                 detailLineLimit: 3,
                 metadataLineLimit: 1,
                 thumbnailScale: .fit
-            )
-        case .square:
-            return MemoryCardObjectMetrics(
-                recipe: .statusNote,
-                sizeToken: size,
-                density: density,
-                preferredSize: CGSize(width: 184, height: 224),
-                padding: MemoryCardObjectPadding(10),
-                titleLineLimit: 1,
-                detailLineLimit: 2,
-                metadataLineLimit: 1,
-                thumbnailScale: .fill
-            )
-        case .tape:
-            return MemoryCardObjectMetrics(
-                recipe: .statusNote,
-                sizeToken: size,
-                density: density,
-                preferredSize: CGSize(width: 232, height: 136),
-                padding: MemoryCardObjectPadding(top: 12, leading: 14, bottom: 12, trailing: 14),
-                titleLineLimit: 1,
-                detailLineLimit: 2,
-                metadataLineLimit: 1,
-                thumbnailScale: .fill
-            )
-        case .banner:
-            return MemoryCardObjectMetrics(
-                recipe: .statusNote,
-                sizeToken: size,
-                density: density,
-                preferredSize: CGSize(width: 340, height: 196),
-                padding: MemoryCardObjectPadding(16),
-                titleLineLimit: 2,
-                detailLineLimit: 5,
-                metadataLineLimit: 2,
-                thumbnailScale: .fill
             )
         }
     }
@@ -178,39 +142,31 @@ struct MemoryCardObjectMetrics: Hashable, Sendable {
 
         switch (recipe, sizeToken) {
         case (.notebook, .card):
-            metrics.preferredSize = CGSize(width: 190, height: 204)
-            metrics.detailLineLimit = 6
-        case (.notebook, .banner):
-            metrics.preferredSize = CGSize(width: 326, height: 218)
+            metrics.preferredSize = CGSize(width: 194, height: 188)
             metrics.detailLineLimit = 10
-        case (.polaroid, .square), (.livePhotoPrint, .square):
+        case (.polaroid, .card), (.livePhotoPrint, .card):
             metrics.preferredSize = CGSize(width: 178, height: 218)
-            metrics.detailLineLimit = 1
-        case (.polaroid, .banner), (.livePhotoPrint, .banner):
-            metrics.preferredSize = CGSize(width: 278, height: 334)
             metrics.titleLineLimit = 2
             metrics.detailLineLimit = 2
-        case (.filmFrame, .tape):
-            metrics.preferredSize = CGSize(width: 232, height: 154)
-            metrics.detailLineLimit = 1
-        case (.filmFrame, .banner):
-            metrics.preferredSize = CGSize(width: 336, height: 214)
+        case (.filmFrame, .card):
+            metrics.preferredSize = CGSize(width: 194, height: 132)
             metrics.detailLineLimit = 2
         case (.cassette, .strip):
             metrics.preferredSize = CGSize(width: 168, height: 64)
-        case (.cassette, .tape):
-            metrics.preferredSize = CGSize(width: 232, height: 136)
-        case (.cassette, .banner):
-            metrics.preferredSize = CGSize(width: 418, height: 126)
+        case (.cassette, .card):
+            metrics.preferredSize = CGSize(width: 194, height: 126)
             metrics.detailLineLimit = 4
         case (.vinyl, .strip):
             metrics.preferredSize = CGSize(width: 168, height: 82)
             metrics.detailLineLimit = 1
-        case (.vinyl, .tape):
-            metrics.preferredSize = CGSize(width: 230, height: 150)
+        case (.vinyl, .card):
+            metrics.preferredSize = CGSize(width: 194, height: 154)
+            metrics.detailLineLimit = 2
+        case (.mapTicket, .strip):
+            metrics.preferredSize = CGSize(width: 176, height: 96)
             metrics.detailLineLimit = 1
         case (.mapTicket, .card):
-            metrics.preferredSize = CGSize(width: 234, height: 128)
+            metrics.preferredSize = CGSize(width: 194, height: 128)
             metrics.detailLineLimit = 2
         case (.weatherStamp, .stamp):
             metrics.preferredSize = CGSize(width: 58, height: 58)
@@ -223,7 +179,7 @@ struct MemoryCardObjectMetrics: Hashable, Sendable {
             metrics.titleLineLimit = 1
             metrics.detailLineLimit = 1
         case (.weatherStamp, .card):
-            metrics.preferredSize = CGSize(width: 214, height: 148)
+            metrics.preferredSize = CGSize(width: 194, height: 148)
             metrics.detailLineLimit = 2
         case (.affectCard, .stamp), (.statusNote, .stamp):
             metrics.preferredSize = CGSize(width: 116, height: 110)
@@ -231,12 +187,12 @@ struct MemoryCardObjectMetrics: Hashable, Sendable {
         case (.affectCard, .strip), (.statusNote, .strip):
             metrics.preferredSize = CGSize(width: 176, height: 112)
             metrics.detailLineLimit = 2
+        case (.linkNote, .strip):
+            metrics.preferredSize = CGSize(width: 176, height: 96)
+            metrics.detailLineLimit = 1
         case (.linkNote, .card):
-            metrics.preferredSize = CGSize(width: 214, height: 148)
+            metrics.preferredSize = CGSize(width: 194, height: 148)
             metrics.detailLineLimit = 3
-        case (.linkNote, .banner):
-            metrics.preferredSize = CGSize(width: 326, height: 192)
-            metrics.detailLineLimit = 5
         case (.taskNote, .strip), (.personCard, .strip):
             metrics.preferredSize = CGSize(width: 176, height: 96)
             metrics.titleLineLimit = 1
@@ -248,11 +204,8 @@ struct MemoryCardObjectMetrics: Hashable, Sendable {
             metrics.preferredSize = CGSize(width: 148, height: 190)
             metrics.detailLineLimit = 2
         case (.bundlePacket, .card):
-            metrics.preferredSize = CGSize(width: 220, height: 150)
+            metrics.preferredSize = CGSize(width: 194, height: 150)
             metrics.detailLineLimit = 2
-        case (.bundlePacket, .square):
-            metrics.preferredSize = CGSize(width: 236, height: 206)
-            metrics.detailLineLimit = 3
         default:
             break
         }
@@ -282,27 +235,6 @@ struct MemoryCardObjectMetrics: Hashable, Sendable {
                 minimumHeight: 0.76,
                 maximumWidth: 1.18,
                 maximumHeight: 1.18
-            )
-        case .square:
-            return MemoryCardObjectRatioBounds(
-                minimumWidth: 0.74,
-                minimumHeight: 0.74,
-                maximumWidth: 1.16,
-                maximumHeight: 1.16
-            )
-        case .tape:
-            return MemoryCardObjectRatioBounds(
-                minimumWidth: 0.74,
-                minimumHeight: 0.74,
-                maximumWidth: 1.14,
-                maximumHeight: 1.14
-            )
-        case .banner:
-            return MemoryCardObjectRatioBounds(
-                minimumWidth: 0.72,
-                minimumHeight: 0.72,
-                maximumWidth: 1.10,
-                maximumHeight: 1.16
             )
         }
     }

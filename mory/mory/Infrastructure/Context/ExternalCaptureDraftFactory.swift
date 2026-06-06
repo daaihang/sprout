@@ -79,7 +79,7 @@ struct ExternalCaptureDraftFactory: Sendable {
                 MemoryCardDraftNode(
                     contentRef: .recordBody,
                     visualRecipe: .notebook,
-                    layout: MemoryCardLayoutToken(order: order, size: .banner, rotationDegrees: -1.5, zIndex: order)
+                    layout: MemoryCardLayoutToken(order: order, size: .card, rotationDegrees: -1.5, zIndex: order)
                 )
             )
             order += 1

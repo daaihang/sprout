@@ -129,8 +129,6 @@ struct WeatherStampCaptureCardContent: View {
                 stripLayout
             case .card:
                 cardLayout
-            case .square, .tape, .banner:
-                cardLayout
             }
         }
         .frame(width: metrics.preferredSize.width, height: metrics.preferredSize.height, alignment: .center)

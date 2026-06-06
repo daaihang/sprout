@@ -12,7 +12,7 @@ final class MemoryCardArrangementGridEditingTests: XCTestCase {
                 MemoryCardNode(
                     contentRef: .artifact(placeID),
                     visualRecipe: .mapTicket,
-                    layout: MemoryCardLayoutToken(order: 0, size: .banner)
+                    layout: MemoryCardLayoutToken(order: 0, size: .stamp)
                 )
             ],
             createdAt: now,
@@ -37,12 +37,12 @@ final class MemoryCardArrangementGridEditingTests: XCTestCase {
                 MemoryCardNode(
                     contentRef: .artifact(photoID),
                     visualRecipe: .polaroid,
-                    layout: MemoryCardLayoutToken(order: 2, size: .banner, gridPlacement: MemoryCardGridPlacement(column: 5, row: 9), rotationDegrees: -2)
+                    layout: MemoryCardLayoutToken(order: 2, size: .card, gridPlacement: MemoryCardGridPlacement(column: 3, row: 9), rotationDegrees: -2)
                 ),
                 MemoryCardNode(
                     contentRef: .artifactGroup([audioID, todoID], kind: .mediaStack),
                     visualRecipe: .bundlePacket,
-                    layout: MemoryCardLayoutToken(order: 1, size: .square, gridPlacement: MemoryCardGridPlacement(column: 4, row: 4), rotationDegrees: 1)
+                    layout: MemoryCardLayoutToken(order: 1, size: .card, gridPlacement: MemoryCardGridPlacement(column: 3, row: 4), rotationDegrees: 1)
                 )
             ],
             createdAt: now,
@@ -53,7 +53,7 @@ final class MemoryCardArrangementGridEditingTests: XCTestCase {
 
         XCTAssertEqual(arranged.nodes.map(\.layout.order), [0, 1])
         XCTAssertEqual(arranged.nodes.map(\.visualRecipe), [.bundlePacket, .polaroid])
-        XCTAssertEqual(arranged.nodes.map(\.layout.size), [.square, .banner])
+        XCTAssertEqual(arranged.nodes.map(\.layout.size), [.card, .card])
         XCTAssertTrue(arranged.nodes.allSatisfy { $0.layout.gridPlacement != nil })
         XCTAssertEqual(arranged.nodes[0].layout.rotationDegrees, 1)
         XCTAssertEqual(arranged.nodes[1].layout.rotationDegrees, -2)
@@ -72,17 +72,17 @@ final class MemoryCardArrangementGridEditingTests: XCTestCase {
                 MemoryCardNode(
                     contentRef: .artifact(bannerID),
                     visualRecipe: .notebook,
-                    layout: MemoryCardLayoutToken(order: 0, size: .banner)
+                    layout: MemoryCardLayoutToken(order: 0, size: .card)
                 ),
                 MemoryCardNode(
                     contentRef: .artifact(stripID),
                     visualRecipe: .taskNote,
-                    layout: MemoryCardLayoutToken(order: 1, size: .strip)
+                    layout: MemoryCardLayoutToken(order: 2, size: .strip)
                 ),
                 MemoryCardNode(
                     contentRef: .artifact(cardID),
                     visualRecipe: .linkNote,
-                    layout: MemoryCardLayoutToken(order: 2, size: .card)
+                    layout: MemoryCardLayoutToken(order: 1, size: .card)
                 )
             ],
             createdAt: now,
@@ -112,7 +112,7 @@ final class MemoryCardArrangementGridEditingTests: XCTestCase {
                 MemoryCardNode(
                     contentRef: .artifact(photoID),
                     visualRecipe: .polaroid,
-                    layout: MemoryCardLayoutToken(order: 0, size: .banner)
+                    layout: MemoryCardLayoutToken(order: 0, size: .card)
                 ),
                 MemoryCardNode(
                     contentRef: .artifact(audioID),
@@ -130,7 +130,7 @@ final class MemoryCardArrangementGridEditingTests: XCTestCase {
         XCTAssertEqual(moved.nodes.first?.visualRecipe, .cassette)
         XCTAssertEqual(moved.nodes.first?.layout.size, .strip)
         XCTAssertEqual(moved.nodes.last?.visualRecipe, .polaroid)
-        XCTAssertEqual(moved.nodes.last?.layout.size, .banner)
+        XCTAssertEqual(moved.nodes.last?.layout.size, .card)
         XCTAssertNoGridOverlap(moved.nodes)
     }
 

@@ -192,7 +192,7 @@ final class MemoryDeskRendererTests: XCTestCase {
                 id: firstID,
                 layout: MemoryCardLayoutToken(
                     order: 0,
-                    size: .banner,
+                    size: .card,
                     gridPlacement: MemoryCardGridPlacement(column: 0, row: 0)
                 )
             ),
@@ -208,15 +208,15 @@ final class MemoryDeskRendererTests: XCTestCase {
 
         let metrics = MemoryDeskBoardMetrics.default
         let plan = MemoryDeskBoardLayoutPlan.make(nodes: nodes, containerWidth: 390, metrics: metrics)
-        let bannerSlot = try XCTUnwrap(plan.slots.first(where: { $0.id == firstID }))
+        let cardSlot = try XCTUnwrap(plan.slots.first(where: { $0.id == firstID }))
         let stripSlot = try XCTUnwrap(plan.slots.first(where: { $0.id == secondID }))
 
         let cellWidth = metrics.cellWidth(for: 390)
-        let expectedBannerWidth = CGFloat(6) * cellWidth + CGFloat(5) * metrics.columnSpacing
+        let expectedCardWidth = CGFloat(2) * cellWidth + metrics.columnSpacing
         let expectedStripWidth = CGFloat(2) * cellWidth + metrics.columnSpacing
 
-        XCTAssertEqual(bannerSlot.frame.origin.x, metrics.horizontalPadding, accuracy: 0.1)
-        XCTAssertEqual(bannerSlot.frame.width, expectedBannerWidth, accuracy: 0.1)
+        XCTAssertEqual(cardSlot.frame.origin.x, metrics.horizontalPadding, accuracy: 0.1)
+        XCTAssertEqual(cardSlot.frame.width, expectedCardWidth, accuracy: 0.1)
         XCTAssertEqual(stripSlot.frame.origin.x, metrics.horizontalPadding + CGFloat(2) * (cellWidth + metrics.columnSpacing), accuracy: 0.1)
         XCTAssertEqual(stripSlot.frame.origin.y, metrics.verticalPadding + CGFloat(3) * (metrics.rowHeight + metrics.rowSpacing), accuracy: 0.1)
         XCTAssertEqual(stripSlot.frame.width, expectedStripWidth, accuracy: 0.1)
@@ -225,15 +225,15 @@ final class MemoryDeskRendererTests: XCTestCase {
 
     func testBoardLayoutPlanFirstFitPacksMissingGridPlacementsWithoutOverlap() {
         let nodes = [
-            MemoryDeskBoardInputNode(id: "banner", layout: MemoryCardLayoutToken(order: 0, size: .banner)),
-            MemoryDeskBoardInputNode(id: "tape", layout: MemoryCardLayoutToken(order: 1, size: .tape)),
-            MemoryDeskBoardInputNode(id: "square", layout: MemoryCardLayoutToken(order: 2, size: .square)),
-            MemoryDeskBoardInputNode(id: "card", layout: MemoryCardLayoutToken(order: 3, size: .card))
+            MemoryDeskBoardInputNode(id: "card-a", layout: MemoryCardLayoutToken(order: 0, size: .card)),
+            MemoryDeskBoardInputNode(id: "strip", layout: MemoryCardLayoutToken(order: 1, size: .strip)),
+            MemoryDeskBoardInputNode(id: "stamp", layout: MemoryCardLayoutToken(order: 2, size: .stamp)),
+            MemoryDeskBoardInputNode(id: "card-b", layout: MemoryCardLayoutToken(order: 3, size: .card))
         ]
 
         let plan = MemoryDeskBoardLayoutPlan.make(nodes: nodes, containerWidth: 390, metrics: .default)
 
-        XCTAssertEqual(plan.slots.map(\.id), ["banner", "tape", "square", "card"])
+        XCTAssertEqual(plan.slots.map(\.id), ["card-a", "strip", "stamp", "card-b"])
         XCTAssertTrue(plan.slots.allSatisfy { $0.layout.gridPlacement != nil })
         XCTAssertNoGridOverlap(plan.slots.map(\.layout))
     }

@@ -40,9 +40,6 @@ enum MemoryCardSizeToken: String, Codable, CaseIterable, Identifiable, Sendable 
     case stamp
     case strip
     case card
-    case square
-    case tape
-    case banner
 
     var id: String { rawValue }
 }
@@ -118,7 +115,7 @@ struct MemoryCardNode: Identifiable, Codable, Hashable, Sendable {
 }
 
 struct MemoryCardArrangement: Identifiable, Codable, Hashable, Sendable {
-    static let schemaVersion = 3
+    static let schemaVersion = 4
 
     var id: UUID
     var recordID: UUID
@@ -196,7 +193,7 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
             MemoryCardDraftNode(
                 contentRef: .recordBody,
                 visualRecipe: .notebook,
-                layout: MemoryCardLayoutToken(order: 0, size: .banner, rotationDegrees: -1.5, zIndex: 0)
+                layout: MemoryCardLayoutToken(order: 0, size: .card, rotationDegrees: -1.5, zIndex: 0)
             ),
             at: 0
         )
@@ -422,7 +419,7 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
                 MemoryCardDraftNode(
                     contentRef: .recordBody,
                     visualRecipe: .notebook,
-                    layout: MemoryCardLayoutToken(order: 0, size: .banner, rotationDegrees: -1.5, zIndex: 0)
+                    layout: MemoryCardLayoutToken(order: 0, size: .card, rotationDegrees: -1.5, zIndex: 0)
                 ),
                 at: 0
             )
@@ -612,17 +609,13 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
 
     private static func defaultSize(for content: CaptureArtifactContent) -> MemoryCardSizeToken {
         switch content {
-        case .photo, .livePhoto:
-            return .square
-        case .video:
-            return .tape
         case .audio, .music:
-            return .tape
+            return .strip
         case .weather:
             return .stamp
         case .todo:
             return .strip
-        case .text, .location, .link, .promptAnswer, .personContext:
+        case .photo, .video, .livePhoto, .text, .location, .link, .promptAnswer, .personContext:
             return .card
         }
     }
@@ -653,7 +646,7 @@ extension MemoryCardArrangement {
                 MemoryCardNode(
                     contentRef: .recordBody,
                     visualRecipe: .notebook,
-                    layout: MemoryCardLayoutToken(order: order, size: .banner, rotationDegrees: -1.5, zIndex: order)
+                    layout: MemoryCardLayoutToken(order: order, size: .card, rotationDegrees: -1.5, zIndex: order)
                 )
             )
             order += 1
@@ -731,17 +724,13 @@ extension MemoryCardArrangement {
 
     nonisolated static func defaultSize(for artifact: Artifact) -> MemoryCardSizeToken {
         switch artifact.kind {
-        case .photo, .livePhoto:
-            return .square
-        case .video:
-            return .tape
         case .music, .audio:
-            return .tape
+            return .strip
         case .weather:
             return .stamp
         case .todo:
             return .strip
-        case .text, .location, .link, .document:
+        case .photo, .video, .livePhoto, .text, .location, .link, .document:
             return .card
         }
     }
@@ -801,7 +790,7 @@ extension MemoryCardArrangement {
                 MemoryCardNode(
                     contentRef: .recordBody,
                     visualRecipe: .notebook,
-                    layout: MemoryCardLayoutToken(order: 0, size: .banner, rotationDegrees: -1.5, zIndex: 0)
+                    layout: MemoryCardLayoutToken(order: 0, size: .card, rotationDegrees: -1.5, zIndex: 0)
                 ),
                 at: 0
             )

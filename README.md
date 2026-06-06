@@ -34,7 +34,7 @@ Saving a memory does not mean AI analysis has started. The default local write p
 | --- | --- |
 | Local memory write path | Implemented: `RecordShell + Artifact[] + ArtifactSemanticDigest[] + MemoryCardArrangement + AffectSnapshot[]` are saved in one record-facts path. |
 | Capture composer | Implemented: text, photo, video, live photo, audio, link, location, weather, music, todo, prompt answer, person context, affect, external capture, and Journaling Suggestions can seed the unified draft. |
-| Card arrangement | Implemented: fixed 6-column logical grid, size tokens `stamp / strip / card / square / tape / banner`, visual recipes, stack/group, order, rotation/nudge/z-index. |
+| Card arrangement | Implemented: fixed 4-column logical grid, size tokens `stamp / strip / card`, visual recipes, stack/group, order, rotation/nudge/z-index. |
 | Card rendering | Implemented: composer/detail render through the shared capture card path with `MemoryCardRecipeLayoutPolicy`, `MemoryCardObjectMetrics`, and recipe-specific object presentation. |
 | Memory detail | Implemented: product viewing path uses arrangement-driven `MemoryDeskRenderer`; editing keeps arrangement mutation instead of rebuilding default layout. |
 | Card Debug | Implemented: one `Card Debug` hub covers overview, type catalog, layout policy, visual recipes, grid board lab, card states/actions, arrangement reports, and fixture stress labs. |
@@ -91,7 +91,7 @@ The current record layer is intentionally independent from AI:
 - `MemoryCreationUseCase` persists facts first, then persists `.notScheduled` pipeline status.
 - `MemoryMutationUseCase` updates artifacts, digests, arrangement, and affect data without defaulting over user layout.
 
-Card layout uses a fixed 6-column logical grid across devices. The grid box is layout occupancy; card objects can render with their own visual ratio through `MemoryCardObjectMetrics`, but the visual size is not persisted as fact data.
+Card layout uses a fixed 4-column logical grid across devices. The grid box is layout occupancy; card objects can render with their own visual ratio through `MemoryCardObjectMetrics`, but the visual size is not persisted as fact data. The only legal size tokens are `stamp` (1x1), `strip` (2x1), and `card` (2x2).
 
 ## Debug Surfaces
 
@@ -101,7 +101,7 @@ The main card verification surface is `Card Debug`:
 - `Type Catalog`: each content type and each supported size.
 - `Layout Policy`: size token, grid box, density, and object metrics.
 - `Visual Recipes`: all legal recipe/size combinations.
-- `Grid Board Lab`: 6-column ordered sparse grid, placement, occupancy, drag/reorder experiments.
+- `Grid Board Lab`: 4-column ordered sparse grid, placement, occupancy, drag/reorder experiments.
 - `Card States & Actions`: composer/detail/debug roles, runtime states, and capability truth table.
 - `Fixture Stress Lab`: legacy fixture pressure tests.
 
@@ -181,7 +181,7 @@ Remote push delivery:
 1. Real-device verification for Apple login, Photos, microphone, Speech, Location, WeatherKit, MusicKit, background tasks, and APNs.
 2. Product-level intelligence/status surface: analysis ready, failed, retry, proposal review, imports, and source provenance.
 3. Composer/detail card interaction polish after Debug acceptance: drag/reorder, state/action consistency, accessibility, and localization QA.
-4. Today/Home board design on top of the same 6-column card layout vocabulary.
+4. Today/Home board design on top of the same 4-column card layout vocabulary.
 5. Link metadata completion, video playback/detail polish, prompt/person/affect presentation refinement.
 6. Release hardening: privacy copy, export/delete QA, entitlement gating, backend monitoring, and focused regression coverage.
 

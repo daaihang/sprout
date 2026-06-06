@@ -52,7 +52,7 @@ enum CardDebugCatalog {
                 detail: "A quiet morning note with the core record body.",
                 metadata: "recordBody"
             ),
-            preferredSize: .banner,
+            preferredSize: .card,
             preferredVariant: nil,
             layerNotes: ["contentRef=.recordBody", "ArtifactKind.text is folded into RecordShell.rawText", "visualRecipe=.notebook"]
         ),
@@ -66,7 +66,7 @@ enum CardDebugCatalog {
                 detail: "Photo evidence with a white border and timestamp area.",
                 metadata: "photo.jpg"
             ),
-            preferredSize: .square,
+            preferredSize: .card,
             preferredVariant: nil,
             layerNotes: ["CaptureArtifactContent.photo", "ArtifactKind.photo", "photo digest can carry OCR/caption/labels", "visualRecipe=.polaroid"]
         ),
@@ -80,7 +80,7 @@ enum CardDebugCatalog {
                 detail: "Video evidence with first-frame summary.",
                 metadata: "0:18"
             ),
-            preferredSize: .tape,
+            preferredSize: .card,
             preferredVariant: nil,
             layerNotes: ["CaptureArtifactContent.video", "ArtifactKind.video", "video digest can carry duration/first-frame notes", "visualRecipe=.filmFrame"]
         ),
@@ -94,7 +94,7 @@ enum CardDebugCatalog {
                 detail: "Still image plus paired motion clip.",
                 metadata: "Live Photo"
             ),
-            preferredSize: .square,
+            preferredSize: .card,
             preferredVariant: nil,
             layerNotes: ["CaptureArtifactContent.livePhoto", "ArtifactKind.livePhoto", "digest keeps still + paired video notes", "visualRecipe=.livePhotoPrint"]
         ),
@@ -108,7 +108,7 @@ enum CardDebugCatalog {
                 detail: "Transcript snippet stays in textContent and digest, not metadata.",
                 metadata: "1:14"
             ),
-            preferredSize: .tape,
+            preferredSize: .strip,
             preferredVariant: nil,
             layerNotes: ["CaptureArtifactContent.audio", "ArtifactKind.audio", "audio digest carries transcript/language/confidence", "visualRecipe=.cassette"]
         ),
@@ -122,7 +122,7 @@ enum CardDebugCatalog {
                 detail: "M83 · Hurry Up, We're Dreaming",
                 metadata: "Now Playing"
             ),
-            preferredSize: .tape,
+            preferredSize: .strip,
             preferredVariant: nil,
             layerNotes: ["CaptureArtifactContent.music", "ArtifactKind.music", "music fact fields stay structured", "visualRecipe=.vinyl"]
         ),
@@ -358,13 +358,13 @@ enum CardDebugCatalog {
         let arrangement = MemoryCardArrangement(
             recordID: recordID,
             nodes: [
-                MemoryCardNode(contentRef: .recordBody, visualRecipe: .notebook, layout: MemoryCardLayoutToken(order: 0, size: .banner, rotationDegrees: -1.5, zIndex: 0)),
-                MemoryCardNode(contentRef: .artifact(photoID), visualRecipe: .polaroid, layout: MemoryCardLayoutToken(order: 1, size: .square, rotationDegrees: 2, zIndex: 1)),
-                MemoryCardNode(contentRef: .artifact(audioID), visualRecipe: .cassette, layout: MemoryCardLayoutToken(order: 2, size: .tape, rotationDegrees: -2, zIndex: 2)),
+                MemoryCardNode(contentRef: .recordBody, visualRecipe: .notebook, layout: MemoryCardLayoutToken(order: 0, size: .card, rotationDegrees: -1.5, zIndex: 0)),
+                MemoryCardNode(contentRef: .artifact(photoID), visualRecipe: .polaroid, layout: MemoryCardLayoutToken(order: 1, size: .card, rotationDegrees: 2, zIndex: 1)),
+                MemoryCardNode(contentRef: .artifact(audioID), visualRecipe: .cassette, layout: MemoryCardLayoutToken(order: 2, size: .strip, rotationDegrees: -2, zIndex: 2)),
                 MemoryCardNode(contentRef: .artifact(linkID), visualRecipe: .linkNote, layout: MemoryCardLayoutToken(order: 3, size: .card, rotationDegrees: 1, zIndex: 3)),
                 MemoryCardNode(contentRef: .artifact(weatherID), visualRecipe: .weatherStamp, layout: MemoryCardLayoutToken(order: 4, size: .stamp, rotationDegrees: -3, zIndex: 4)),
                 MemoryCardNode(contentRef: .artifact(placeID), visualRecipe: .mapTicket, layout: MemoryCardLayoutToken(order: 5, size: .card, rotationDegrees: 1.5, zIndex: 5)),
-                MemoryCardNode(contentRef: .artifact(musicID), visualRecipe: .vinyl, layout: MemoryCardLayoutToken(order: 6, size: .tape, rotationDegrees: -1, zIndex: 6)),
+                MemoryCardNode(contentRef: .artifact(musicID), visualRecipe: .vinyl, layout: MemoryCardLayoutToken(order: 6, size: .strip, rotationDegrees: -1, zIndex: 6)),
                 MemoryCardNode(contentRef: .artifactGroup([photoID, linkID, weatherID], kind: .mixedContext), visualRecipe: .bundlePacket, layout: MemoryCardLayoutToken(order: 7, size: .card, rotationDegrees: 2.5, zIndex: 7)),
             ],
             createdAt: now,

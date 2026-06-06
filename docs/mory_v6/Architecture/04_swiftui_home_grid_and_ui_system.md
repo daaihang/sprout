@@ -34,7 +34,7 @@ Use:
 
 ```text
 ScrollView
-  HomeBoardGridLayout(columns: 4 or 8)
+  HomeBoardGridLayout(columns: 4)
     ForEach(items)
       HomeBoardCard(...)
         .layoutValue(key: HomeBoardSpanKey.self, value: span)
@@ -63,7 +63,7 @@ Avoid:
 
 Custom `Layout` is the native SwiftUI solution for:
 
-- 4/8 column switching.
+- Fixed 4-column layout.
 - Fixed span sizes.
 - Auto-placement.
 - Stable sizing.
@@ -173,4 +173,3 @@ Do not persist:
 - User preferences persist.
 - AI suggestions do not alter user-owned layout.
 - VoiceOver and Dynamic Type remain usable.
-

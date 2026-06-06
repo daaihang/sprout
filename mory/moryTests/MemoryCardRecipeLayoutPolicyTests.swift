@@ -6,17 +6,11 @@ final class MemoryCardRecipeLayoutPolicyTests: XCTestCase {
     func testGridBoxAndDensityMappings() {
         XCTAssertEqual(MemoryCardRecipeLayoutPolicy.gridBox(for: .stamp), MemoryCardGridBox(columnSpan: 1, rowSpan: 1))
         XCTAssertEqual(MemoryCardRecipeLayoutPolicy.gridBox(for: .strip), MemoryCardGridBox(columnSpan: 2, rowSpan: 1))
-        XCTAssertEqual(MemoryCardRecipeLayoutPolicy.gridBox(for: .card), MemoryCardGridBox(columnSpan: 3, rowSpan: 2))
-        XCTAssertEqual(MemoryCardRecipeLayoutPolicy.gridBox(for: .square), MemoryCardGridBox(columnSpan: 3, rowSpan: 3))
-        XCTAssertEqual(MemoryCardRecipeLayoutPolicy.gridBox(for: .tape), MemoryCardGridBox(columnSpan: 4, rowSpan: 2))
-        XCTAssertEqual(MemoryCardRecipeLayoutPolicy.gridBox(for: .banner), MemoryCardGridBox(columnSpan: 6, rowSpan: 3))
+        XCTAssertEqual(MemoryCardRecipeLayoutPolicy.gridBox(for: .card), MemoryCardGridBox(columnSpan: 2, rowSpan: 2))
 
         XCTAssertEqual(MemoryCardRecipeLayoutPolicy.contentDensity(for: .stamp), .compact)
         XCTAssertEqual(MemoryCardRecipeLayoutPolicy.contentDensity(for: .strip), .compact)
         XCTAssertEqual(MemoryCardRecipeLayoutPolicy.contentDensity(for: .card), .regular)
-        XCTAssertEqual(MemoryCardRecipeLayoutPolicy.contentDensity(for: .square), .regular)
-        XCTAssertEqual(MemoryCardRecipeLayoutPolicy.contentDensity(for: .tape), .regular)
-        XCTAssertEqual(MemoryCardRecipeLayoutPolicy.contentDensity(for: .banner), .expanded)
     }
 
     func testEachRecipeHasSupportedAndDefaultSize() {
@@ -30,19 +24,20 @@ final class MemoryCardRecipeLayoutPolicyTests: XCTestCase {
     }
 
     func testRecipeSupportedSizesMatchPolicyContract() {
-        XCTAssertEqual(MemoryCardRecipeLayoutPolicy.supportedSizes(for: .cassette), [.strip, .tape, .banner])
+        XCTAssertEqual(MemoryCardRecipeLayoutPolicy.columnCount, 4)
+        XCTAssertEqual(MemoryCardSizeToken.allCases, [.stamp, .strip, .card])
+        XCTAssertEqual(MemoryCardRecipeLayoutPolicy.supportedSizes(for: .cassette), [.strip, .card])
         XCTAssertEqual(MemoryCardRecipeLayoutPolicy.supportedSizes(for: .weatherStamp), [.stamp, .strip, .card])
         XCTAssertEqual(MemoryCardRecipeLayoutPolicy.supportedSizes(for: .affectCard), [.stamp, .strip])
         XCTAssertEqual(MemoryCardRecipeLayoutPolicy.supportedSizes(for: .statusNote), [.stamp, .strip])
-        XCTAssertEqual(MemoryCardRecipeLayoutPolicy.supportedSizes(for: .linkNote), [.card, .banner])
-        XCTAssertEqual(MemoryCardRecipeLayoutPolicy.supportedSizes(for: .polaroid), [.square, .banner])
-        XCTAssertEqual(MemoryCardRecipeLayoutPolicy.supportedSizes(for: .mapTicket), [.card])
+        XCTAssertEqual(MemoryCardRecipeLayoutPolicy.supportedSizes(for: .linkNote), [.strip, .card])
+        XCTAssertEqual(MemoryCardRecipeLayoutPolicy.supportedSizes(for: .polaroid), [.card])
+        XCTAssertEqual(MemoryCardRecipeLayoutPolicy.supportedSizes(for: .mapTicket), [.strip, .card])
     }
 
     func testNormalizedSizeFallsBackToDefaultWhenUnsupported() {
-        XCTAssertEqual(MemoryCardRecipeLayoutPolicy.normalizedSize(.banner, for: .mapTicket), .card)
         XCTAssertEqual(MemoryCardRecipeLayoutPolicy.normalizedSize(.stamp, for: .notebook), .card)
-        XCTAssertEqual(MemoryCardRecipeLayoutPolicy.normalizedSize(.tape, for: .weatherStamp), .stamp)
+        XCTAssertEqual(MemoryCardRecipeLayoutPolicy.normalizedSize(.card, for: .affectCard), .stamp)
         XCTAssertEqual(MemoryCardRecipeLayoutPolicy.normalizedSize(.strip, for: .cassette), .strip)
     }
 
@@ -83,11 +78,11 @@ final class MemoryCardRecipeLayoutPolicyTests: XCTestCase {
             .weatherFullMetrics
         )
         XCTAssertEqual(
-            MemoryCardRecipeLayoutPolicy.supportedVariants(for: .cassette, size: .tape),
+            MemoryCardRecipeLayoutPolicy.supportedVariants(for: .cassette, size: .card),
             [.automatic]
         )
         XCTAssertEqual(
-            MemoryCardRecipeLayoutPolicy.resolvedVariant(.weatherHumidity, for: .cassette, size: .tape),
+            MemoryCardRecipeLayoutPolicy.resolvedVariant(.weatherHumidity, for: .cassette, size: .card),
             .automatic
         )
     }

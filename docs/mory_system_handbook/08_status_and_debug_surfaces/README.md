@@ -25,7 +25,7 @@ This section records where users or developers can see current system state.
 | Notification Management | Single Settings/Debug page for notification queue, history, dedupe, errors, preferences, APNs sync, debug test notification, and push metrics. |
 | Debug Cloud Intelligence | Run cloud intelligence endpoints. |
 | Platform Capture Diagnostics | Check Journaling, App Group, Share, App Intents, inbox. |
-| Card Debug | Inspect four-layer card health, type catalog fixtures, layout policy, object metrics, visual recipes, 6-column grid board behavior, card states/actions, arrangement reports, and fixture stress labs. |
+| Card Debug | Inspect four-layer card health, type catalog fixtures, layout policy, object metrics, visual recipes, 4-column grid board behavior, card states/actions, arrangement reports, and fixture stress labs. |
 
 ## Missing Status Layer
 

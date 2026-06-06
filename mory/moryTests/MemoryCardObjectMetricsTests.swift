@@ -21,11 +21,11 @@ final class MemoryCardObjectMetricsTests: XCTestCase {
     }
 
     func testUnsupportedSizeNormalizesBeforeResolvingMetrics() {
-        let weather = MemoryCardObjectMetrics.resolve(recipe: .weatherStamp, sizeToken: .banner)
-        XCTAssertEqual(weather.sizeToken, .stamp)
-        XCTAssertEqual(weather.density, .compact)
+        let affect = MemoryCardObjectMetrics.resolve(recipe: .affectCard, sizeToken: .card)
+        XCTAssertEqual(affect.sizeToken, .stamp)
+        XCTAssertEqual(affect.density, .compact)
 
-        let map = MemoryCardObjectMetrics.resolve(recipe: .mapTicket, sizeToken: .tape)
+        let map = MemoryCardObjectMetrics.resolve(recipe: .mapTicket, sizeToken: .stamp)
         XCTAssertEqual(map.sizeToken, .card)
         XCTAssertEqual(map.density, .regular)
     }

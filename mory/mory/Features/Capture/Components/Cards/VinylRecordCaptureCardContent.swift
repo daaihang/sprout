@@ -4,7 +4,7 @@ struct VinylRecordCaptureCardContent: View {
     let common: CaptureCardCommonDisplay
     let payload: CaptureMusicCardPayload
     let accent: Color
-    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .vinyl, sizeToken: .tape)
+    var metrics: MemoryCardObjectMetrics = .resolve(recipe: .vinyl, sizeToken: .strip)
 
     var body: some View {
         Group {

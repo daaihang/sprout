@@ -50,8 +50,6 @@ struct HomeBoardSection: View {
 }
 
 struct HomeBoardGrid: View {
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-
     let items: [HomeBoardItemSnapshot]
     let isEditing: Bool
     let onSelect: (HomeRoute) -> Void
@@ -84,7 +82,7 @@ struct HomeBoardGrid: View {
     }
 
     private var metrics: HomeBoardGridMetrics {
-        HomeBoardGridMetrics(columns: horizontalSizeClass == .regular ? 8 : 4)
+        HomeBoardGridMetrics(columns: 4)
     }
 
     private func orderControls(for item: HomeBoardItemSnapshot) -> HomeBoardOrderControls? {

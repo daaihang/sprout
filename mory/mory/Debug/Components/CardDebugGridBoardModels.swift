@@ -106,12 +106,8 @@ struct CardDebugGridBoardLabSlot: Identifiable, Hashable {
             return 8
         case .strip:
             return 10
-        case .card, .square:
+        case .card:
             return 12
-        case .tape:
-            return 14
-        case .banner:
-            return 16
         }
     }
 }
