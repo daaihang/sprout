@@ -16952,6 +16952,7 @@
       }
     },
     "Move Earlier" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -16962,6 +16963,7 @@
       }
     },
     "Move Later" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -25005,11 +25007,22 @@
       }
     },
     "UIKit owns scrolling, hit testing, reuse, and long-press lifting. Dragging uses an ordered sparse grid: the lifted card inserts into the visual sequence, later cards flow after it, and local holes are kept until Auto Pack." : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "UIKit 负责滚动、命中测试、复用和长按抬起。拖拽使用有序稀疏网格：被抬起的卡片插入视觉序列，后续卡片顺序流动，局部空洞会保留到执行 Auto Pack。"
+          }
+        }
+      }
+    },
+    "UIKit owns scrolling, hit testing, reuse, and long-press lifting. Dragging uses the shared 4-column board engine: the active card moves to a clamped grid target, collisions are resolved by side-shift or push-down, and release applies vertical compact." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "UIKit 负责滚动、命中测试、复用和长按抬起。拖拽使用共享 4 列画布引擎：活跃卡片移动到约束后的网格目标，碰撞通过侧移或下推解决，松手后执行垂直压缩。"
           }
         }
       }

@@ -38,17 +38,9 @@ struct CardDebugGridBoardLabView: View {
         )
     }
 
-    private var nilProjectionItems: [CardDebugGridBoardLabItem] {
-        items.map { item in
-            var item = item
-            item.placement = nil
-            return item
-        }
-    }
-
     private var nilLegacyReport: CardDebugGridBoardLabReport {
         CardDebugGridBoardLabModel.report(
-            for: nilProjectionItems,
+            for: items,
             mode: .nilPlacementFallback,
             containerWidth: containerWidth,
             metrics: metrics
@@ -57,7 +49,7 @@ struct CardDebugGridBoardLabView: View {
 
     private var firstFitReport: CardDebugGridBoardLabReport {
         CardDebugGridBoardLabModel.report(
-            for: nilProjectionItems,
+            for: items,
             mode: .firstFitEffectivePlacement,
             containerWidth: containerWidth,
             metrics: metrics
@@ -106,7 +98,7 @@ struct CardDebugGridBoardLabView: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
 
-            Text("UIKit owns scrolling, hit testing, reuse, and long-press lifting. Dragging uses an ordered sparse grid: the lifted card inserts into the visual sequence, later cards flow after it, and local holes are kept until Auto Pack.")
+            Text("UIKit owns scrolling, hit testing, reuse, and long-press lifting. Dragging uses the shared 4-column board engine: the active card moves to a clamped grid target, collisions are resolved by side-shift or push-down, and release applies vertical compact.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -114,9 +106,17 @@ struct CardDebugGridBoardLabView: View {
             HStack {
                 Menu {
                     ForEach(MemoryCardSizeToken.allCases) { size in
-                        Button(size.rawValue) {
-                            items = CardDebugGridBoardLabModel.itemsAfterAdding(size: size, to: items)
-                            lastPreview = nil
+                        Menu(size.rawValue) {
+                            ForEach(CardDebugVisualStyle.allCases) { style in
+                                Button(style.label) {
+                                    items = CardDebugGridBoardLabModel.itemsAfterAdding(
+                                        size: size,
+                                        style: style,
+                                        to: items
+                                    )
+                                    lastPreview = nil
+                                }
+                            }
                         }
                     }
                 } label: {
@@ -170,16 +170,12 @@ struct CardDebugGridBoardLabView: View {
                 items = CardDebugGridBoardLabModel.itemsAfterDeleting(id: id, from: items)
                 lastPreview = nil
             },
-            onMoveEarlier: { id in
-                items = CardDebugGridBoardLabModel.itemsAfterMoving(id: id, by: -1, in: items)
-                lastPreview = nil
-            },
-            onMoveLater: { id in
-                items = CardDebugGridBoardLabModel.itemsAfterMoving(id: id, by: 1, in: items)
-                lastPreview = nil
-            },
             onSetSize: { id, size in
                 items = CardDebugGridBoardLabModel.itemsAfterResizing(id: id, to: size, in: items)
+                lastPreview = nil
+            },
+            onSetStyle: { id, style in
+                items = CardDebugGridBoardLabModel.itemsAfterSettingStyle(id: id, to: style, in: items)
                 lastPreview = nil
             },
             onTogglePinned: { id in
@@ -204,7 +200,7 @@ struct CardDebugGridBoardLabView: View {
             DebugValueRow(title: "Board width", value: "\(Int(report.boardWidth.rounded()))")
             DebugValueRow(title: "Cell size", value: "\(Int(report.cellSize.rounded()))")
             DebugValueRow(title: "Drag target", value: report.activeDragTargetLabel)
-            DebugValueRow(title: "Insertion index", value: report.insertionIndexLabel)
+            DebugValueRow(title: "Target key", value: report.insertionIndexLabel)
             DebugValueRow(title: "Moved range", value: report.movedRangeLabel)
             DebugValueRow(title: "Rows", value: "\(report.rowCount)")
             DebugValueRow(title: "Cells", value: "\(report.occupiedCells)/\(report.totalCells)")
@@ -257,16 +253,15 @@ struct CardDebugGridBoardPlaceholderCard: View {
     let isDragging: Bool
     let isInteractive: Bool
     var onDelete: () -> Void
-    var onMoveEarlier: () -> Void
-    var onMoveLater: () -> Void
     var onSetSize: (MemoryCardSizeToken) -> Void
+    var onSetStyle: (CardDebugVisualStyle) -> Void
     var onTogglePinned: () -> Void
     var onToggleUserAdjusted: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Image(systemName: slot.item.recipe.debugSymbolName)
+                Image(systemName: slot.item.visual.symbolName)
                 Text(slot.item.title)
                     .fontWeight(.semibold)
                     .lineLimit(1)
@@ -292,6 +287,11 @@ struct CardDebugGridBoardPlaceholderCard: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
 
+            Text(slot.item.visual.style.label)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+
             if !isInteractive {
                 Text("read-only projection")
                     .font(.caption2.monospaced())
@@ -302,14 +302,8 @@ struct CardDebugGridBoardPlaceholderCard: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(cardBackground, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .strokeBorder(
-                    isProblematic ? Color.red.opacity(0.75) : Color.primary.opacity(0.16),
-                    lineWidth: isProblematic ? 2 : 1
-                )
-        }
+        .background(cardBackground)
+        .overlay(cardStroke)
         .scaleEffect(isDragging ? 1.025 : 1)
         .opacity(isDragging ? 0.82 : 1)
         .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
@@ -317,14 +311,19 @@ struct CardDebugGridBoardPlaceholderCard: View {
 
     private var actionMenu: some View {
         Menu {
-            Button("Move Earlier", action: onMoveEarlier)
-            Button("Move Later", action: onMoveLater)
             Button(slot.item.isPinned ? "Unpin" : "Pin", action: onTogglePinned)
             Button(slot.item.isUserAdjusted ? "Clear User Adjusted" : "Mark User Adjusted", action: onToggleUserAdjusted)
             Menu("Size") {
                 ForEach(MemoryCardSizeToken.allCases) { size in
                     Button(size.rawValue) {
                         onSetSize(size)
+                    }
+                }
+            }
+            Menu("Style") {
+                ForEach(CardDebugVisualStyle.allCases) { style in
+                    Button(style.label) {
+                        onSetStyle(style)
                     }
                 }
             }
@@ -343,11 +342,70 @@ struct CardDebugGridBoardPlaceholderCard: View {
         .accessibilityLabel("Card actions")
     }
 
-    private var cardBackground: some ShapeStyle {
-        LinearGradient(
+    @ViewBuilder
+    private var cardBackground: some View {
+        switch slot.item.visual.style {
+        case .circleBadge, .moodCircle:
+            Circle()
+                .fill(backgroundStyle)
+        case .capsule:
+            Capsule(style: .continuous)
+                .fill(backgroundStyle)
+        case .emojiSticker, .borderlessCutout:
+            UnevenRoundedRectangle(
+                topLeadingRadius: 18,
+                bottomLeadingRadius: 10,
+                bottomTrailingRadius: 20,
+                topTrailingRadius: 12,
+                style: .continuous
+            )
+            .fill(backgroundStyle)
+        case .paperNote:
+            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                .fill(backgroundStyle)
+        case .photoTile:
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(backgroundStyle)
+        case .memoryCard:
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(backgroundStyle)
+        }
+    }
+
+    @ViewBuilder
+    private var cardStroke: some View {
+        let color = isProblematic ? Color.red.opacity(0.75) : Color.primary.opacity(0.16)
+        let lineWidth: CGFloat = isProblematic ? 2 : 1
+        switch slot.item.visual.style {
+        case .circleBadge, .moodCircle:
+            Circle().strokeBorder(color, lineWidth: lineWidth)
+        case .capsule:
+            Capsule(style: .continuous).strokeBorder(color, lineWidth: lineWidth)
+        case .emojiSticker, .borderlessCutout:
+            UnevenRoundedRectangle(
+                topLeadingRadius: 18,
+                bottomLeadingRadius: 10,
+                bottomTrailingRadius: 20,
+                topTrailingRadius: 12,
+                style: .continuous
+            )
+            .strokeBorder(color, lineWidth: lineWidth)
+        case .paperNote:
+            RoundedRectangle(cornerRadius: 4, style: .continuous).strokeBorder(color, lineWidth: lineWidth)
+        case .photoTile:
+            RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(color, lineWidth: lineWidth)
+        case .memoryCard:
+            RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(color, lineWidth: lineWidth)
+        }
+    }
+
+    private var backgroundStyle: LinearGradient {
+        let hue = Double(abs(slot.item.visual.tintSeed % 360)) / 360
+        let color = Color(hue: hue, saturation: 0.58, brightness: 0.92)
+        return LinearGradient(
             colors: [
-                Color.accentColor.opacity(0.18),
-                Color(.systemBackground).opacity(0.94)
+                color.opacity(slot.item.visual.style == .borderlessCutout ? 0.08 : 0.24),
+                Color(.systemBackground).opacity(slot.item.visual.style == .photoTile ? 0.76 : 0.94)
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -361,9 +419,8 @@ struct CardDebugGridBoardRenderedCellHost: View {
     let isDragging: Bool
     let isInteractive: Bool
     var onDelete: () -> Void
-    var onMoveEarlier: () -> Void
-    var onMoveLater: () -> Void
     var onSetSize: (MemoryCardSizeToken) -> Void
+    var onSetStyle: (CardDebugVisualStyle) -> Void
     var onTogglePinned: () -> Void
     var onToggleUserAdjusted: () -> Void
 
@@ -376,9 +433,8 @@ struct CardDebugGridBoardRenderedCellHost: View {
                 isDragging: isDragging,
                 isInteractive: isInteractive,
                 onDelete: onDelete,
-                onMoveEarlier: onMoveEarlier,
-                onMoveLater: onMoveLater,
                 onSetSize: onSetSize,
+                onSetStyle: onSetStyle,
                 onTogglePinned: onTogglePinned,
                 onToggleUserAdjusted: onToggleUserAdjusted
             )
@@ -386,40 +442,5 @@ struct CardDebugGridBoardRenderedCellHost: View {
             .offset(x: insets.leading, y: insets.top)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    }
-}
-
-private extension MemoryCardVisualRecipe {
-    var debugSymbolName: String {
-        switch self {
-        case .notebook:
-            return "note.text"
-        case .polaroid:
-            return "photo"
-        case .filmFrame:
-            return "film"
-        case .livePhotoPrint:
-            return "livephoto"
-        case .cassette:
-            return "waveform"
-        case .vinyl:
-            return "music.note"
-        case .mapTicket:
-            return "map"
-        case .weatherStamp:
-            return "cloud.sun"
-        case .linkNote:
-            return "link"
-        case .taskNote:
-            return "checklist"
-        case .personCard:
-            return "person.crop.rectangle"
-        case .affectCard:
-            return "heart.text.square"
-        case .bundlePacket:
-            return "shippingbox"
-        case .statusNote:
-            return "info.circle"
-        }
     }
 }

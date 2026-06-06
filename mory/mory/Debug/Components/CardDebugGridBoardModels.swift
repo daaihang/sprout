@@ -8,14 +8,165 @@ enum CardDebugGridBoardPlacementMode: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
-struct CardDebugGridBoardLabItem: Identifiable, Hashable {
-    let id: UUID
+enum CardDebugVisualStyle: String, CaseIterable, Identifiable {
+    case circleBadge
+    case emojiSticker
+    case capsule
+    case paperNote
+    case photoTile
+    case moodCircle
+    case borderlessCutout
+    case memoryCard
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .circleBadge:
+            return "Circle Badge"
+        case .emojiSticker:
+            return "Emoji Sticker"
+        case .capsule:
+            return "Capsule"
+        case .paperNote:
+            return "Paper Note"
+        case .photoTile:
+            return "Photo Tile"
+        case .moodCircle:
+            return "Mood Circle"
+        case .borderlessCutout:
+            return "Cutout"
+        case .memoryCard:
+            return "Memory Card"
+        }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .circleBadge:
+            return "person.crop.circle"
+        case .emojiSticker:
+            return "face.smiling"
+        case .capsule:
+            return "capsule"
+        case .paperNote:
+            return "note.text"
+        case .photoTile:
+            return "photo"
+        case .moodCircle:
+            return "circle.hexagongrid.fill"
+        case .borderlessCutout:
+            return "scissors"
+        case .memoryCard:
+            return "sparkles.rectangle.stack"
+        }
+    }
+
+    static func defaultStyle(for size: MemoryCardSizeToken) -> CardDebugVisualStyle {
+        switch size {
+        case .stamp:
+            return .circleBadge
+        case .strip:
+            return .capsule
+        case .card:
+            return .memoryCard
+        }
+    }
+}
+
+struct CardDebugVisualDescriptor: Hashable {
+    var style: CardDebugVisualStyle
     var title: String
-    var size: MemoryCardSizeToken
-    var recipe: MemoryCardVisualRecipe
-    var placement: MemoryCardGridPlacement?
-    var isPinned = false
-    var isUserAdjusted = false
+    var symbolName: String
+    var tintSeed: Int
+
+    init(
+        style: CardDebugVisualStyle,
+        title: String,
+        symbolName: String? = nil,
+        tintSeed: Int
+    ) {
+        self.style = style
+        self.title = title
+        self.symbolName = symbolName ?? style.symbolName
+        self.tintSeed = tintSeed
+    }
+}
+
+struct CardDebugGridBoardLabItem: Identifiable, Hashable {
+    var layout: MoryBoardLayoutItem<UUID>
+    var visual: CardDebugVisualDescriptor
+
+    var id: UUID {
+        layout.id
+    }
+
+    var title: String {
+        get { visual.title }
+        set { visual.title = newValue }
+    }
+
+    var size: MemoryCardSizeToken {
+        get { MemoryCardSizeToken(boardGridSize: layout.size) }
+        set { layout.size = newValue.boardGridSize }
+    }
+
+    var placement: MemoryCardGridPlacement? {
+        get { MemoryCardGridPlacement(column: layout.x, row: layout.y) }
+        set {
+            guard let newValue else { return }
+            layout.x = newValue.column
+            layout.y = newValue.row
+        }
+    }
+
+    var recipe: MemoryCardVisualRecipe {
+        CardDebugGridBoardLabModel.recipe(for: size)
+    }
+
+    var isPinned: Bool {
+        get { layout.isPinned }
+        set { layout.isPinned = newValue }
+    }
+
+    var isUserAdjusted: Bool {
+        get { layout.isUserAdjusted }
+        set { layout.isUserAdjusted = newValue }
+    }
+
+    init(
+        id: UUID = UUID(),
+        title: String,
+        size: MemoryCardSizeToken,
+        recipe: MemoryCardVisualRecipe = .statusNote,
+        placement: MemoryCardGridPlacement? = nil,
+        visualStyle: CardDebugVisualStyle? = nil,
+        isPinned: Bool = false,
+        isUserAdjusted: Bool = false
+    ) {
+        let point = placement ?? MemoryCardGridPlacement(column: 0, row: 0)
+        let style = visualStyle ?? CardDebugVisualStyle.defaultStyle(for: size)
+        self.layout = MoryBoardLayoutItem(
+            id: id,
+            x: point.column,
+            y: point.row,
+            w: size.boardGridSize.w,
+            h: size.boardGridSize.h,
+            isPinned: isPinned,
+            isUserAdjusted: isUserAdjusted
+        )
+        self.visual = CardDebugVisualDescriptor(
+            style: style,
+            title: title,
+            symbolName: recipe.debugFallbackSymbolName ?? style.symbolName,
+            tintSeed: id.stableDebugTintSeed
+        )
+    }
+
+    init(layout: MoryBoardLayoutItem<UUID>, visual: CardDebugVisualDescriptor) {
+        self.layout = layout
+        self.visual = visual
+    }
 }
 
 struct CardDebugGridBoardLabSlot: Identifiable, Hashable {
@@ -93,7 +244,7 @@ struct CardDebugGridBoardLabSlot: Identifiable, Hashable {
 
     var debugLine: String {
         let placement = layout.gridPlacement.map { "c\($0.column)r\($0.row)" } ?? "nil"
-        return "\(item.title) \(layout.size.rawValue) \(placement) \(gridBox.columnSpan)x\(gridBox.rowSpan) grid=\(Int(gridFrame.width))x\(Int(gridFrame.height)) render=\(Int(renderFrame.width))x\(Int(renderFrame.height))"
+        return "\(item.title) \(layout.size.rawValue) \(placement) xywh=\(item.layout.x)/\(item.layout.y)/\(item.layout.w)/\(item.layout.h) style=\(item.visual.style.rawValue) pinned=\(item.isPinned) user=\(item.isUserAdjusted) grid=\(Int(gridFrame.width))x\(Int(gridFrame.height)) render=\(Int(renderFrame.width))x\(Int(renderFrame.height))"
     }
 
     private static func renderFrame(for gridFrame: CGRect, size: MemoryCardSizeToken) -> CGRect {
@@ -201,4 +352,67 @@ struct CardDebugGridUIKitDragSession {
     let itemID: UUID
     let itemSize: MemoryCardSizeToken
     let geometry: CardDebugGridDragGeometry
+}
+
+extension MemoryCardSizeToken {
+    var boardGridSize: MoryBoardGridSize {
+        switch self {
+        case .stamp:
+            return .stamp
+        case .strip:
+            return .strip
+        case .card:
+            return .card
+        }
+    }
+
+    init(boardGridSize: MoryBoardGridSize) {
+        switch (boardGridSize.w, boardGridSize.h) {
+        case (1, 1):
+            self = .stamp
+        case (2, 1):
+            self = .strip
+        default:
+            self = .card
+        }
+    }
+}
+
+private extension UUID {
+    var stableDebugTintSeed: Int {
+        uuidString.unicodeScalars.reduce(0) { partial, scalar in
+            (partial &* 31) &+ Int(scalar.value)
+        }
+    }
+}
+
+private extension MemoryCardVisualRecipe {
+    var debugFallbackSymbolName: String? {
+        switch self {
+        case .notebook:
+            return "book.pages"
+        case .polaroid, .filmFrame, .livePhotoPrint:
+            return "photo"
+        case .cassette:
+            return "waveform"
+        case .vinyl:
+            return "music.note"
+        case .mapTicket:
+            return "mappin.and.ellipse"
+        case .weatherStamp:
+            return "cloud.sun"
+        case .linkNote:
+            return "link"
+        case .taskNote:
+            return "checklist"
+        case .personCard:
+            return "person.crop.circle"
+        case .affectCard:
+            return "heart"
+        case .bundlePacket:
+            return "square.stack.3d.up"
+        case .statusNote:
+            return "sparkles"
+        }
+    }
 }

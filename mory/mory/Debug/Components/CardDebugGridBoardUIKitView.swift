@@ -12,9 +12,8 @@ struct CardDebugGridBoardUIKitView: UIViewRepresentable {
     let overlapCount: Int
     var onDragEnded: (CardDebugGridDragPreview) -> Void
     var onDelete: (UUID) -> Void
-    var onMoveEarlier: (UUID) -> Void
-    var onMoveLater: (UUID) -> Void
     var onSetSize: (UUID, MemoryCardSizeToken) -> Void
+    var onSetStyle: (UUID, CardDebugVisualStyle) -> Void
     var onTogglePinned: (UUID) -> Void
     var onToggleUserAdjusted: (UUID) -> Void
 
@@ -405,14 +404,11 @@ struct CardDebugGridBoardUIKitView: UIViewRepresentable {
                     onDelete: { [weak self] in
                         self?.parent.onDelete(slot.item.id)
                     },
-                    onMoveEarlier: { [weak self] in
-                        self?.parent.onMoveEarlier(slot.item.id)
-                    },
-                    onMoveLater: { [weak self] in
-                        self?.parent.onMoveLater(slot.item.id)
-                    },
                     onSetSize: { [weak self] size in
                         self?.parent.onSetSize(slot.item.id, size)
+                    },
+                    onSetStyle: { [weak self] style in
+                        self?.parent.onSetStyle(slot.item.id, style)
                     },
                     onTogglePinned: { [weak self] in
                         self?.parent.onTogglePinned(slot.item.id)

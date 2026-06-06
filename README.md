@@ -50,6 +50,7 @@ mory/mory/
 ├── Domain/
 │   ├── Capture/                      RecordShell, drafts, provenance
 │   ├── Content/                      Artifact and semantic digest models
+│   ├── BoardLayout/                  shared 4-column board layout engine
 │   ├── Memory/                       snapshots, card arrangement, repository protocol
 │   ├── Analysis/                     analysis contract and snapshots
 │   ├── Graph/                        entity graph and links
@@ -101,7 +102,7 @@ The main card verification surface is `Card Debug`:
 - `Type Catalog`: each content type and each supported size.
 - `Layout Policy`: size token, grid box, density, and object metrics.
 - `Visual Recipes`: all legal recipe/size combinations.
-- `Grid Board Lab`: 4-column ordered sparse grid, placement, occupancy, drag/reorder experiments.
+- `Grid Board Lab`: shared 4-column pseudo-free board engine prototype, placement, occupancy, drag/collision/compact experiments.
 - `Card States & Actions`: composer/detail/debug roles, runtime states, and capability truth table.
 - `Fixture Stress Lab`: legacy fixture pressure tests.
 
