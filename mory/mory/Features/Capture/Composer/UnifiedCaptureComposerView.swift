@@ -37,6 +37,7 @@ struct UnifiedCaptureComposerView: View {
 
     @State private var generatedTitle = ""
     @State private var bodyText = ""
+    @State private var isRecordBodyCardVisible = false
     @State private var mood = ""
     @State private var inputContext = ""
     @State private var draftProvenance: CaptureProvenance = .manualComposer
@@ -82,11 +83,17 @@ struct UnifiedCaptureComposerView: View {
         !isSaving && !isProcessingPhoto && !primaryArtifactDrafts.isEmpty
     }
 
-    private var composerActionStrip: some View {
-        CaptureComposerActionStrip(
+    private func composerAddMenu(labelStyle: MemoryAddCardMenu.LabelStyle) -> some View {
+        MemoryAddCardMenu(
             selectedPhotoItems: $selectedPhotoItems,
+            labelStyle: labelStyle,
             isProcessingPhoto: isProcessingPhoto,
             isCollectingContext: isCollectingContext,
+            includesText: true,
+            includesMood: true,
+            includesJournaling: true,
+            includesContextRefresh: true,
+            onText: { showRecordBodyCard(focus: true) },
             onMood: { sheetCoordinator.present(.mood) },
             onJournaling: { presentJournalingImport() },
             onCamera: { sheetCoordinator.present(.camera) },
@@ -195,16 +202,32 @@ struct UnifiedCaptureComposerView: View {
                             onReorderItems: reorderAttachmentItem(from:to:),
                             onStackWithPrevious: stackArrangementNodeWithPrevious(item:),
                             onUnstack: unstackArrangementNode(item:),
+                            onSetDensity: setAttachmentItemDensity(item:density:),
                             onPreview: previewAttachmentItem(_:),
                             presentationForItem: presentationForAttachmentItem(_:),
                             layoutForItem: layoutForAttachmentItem(_:)
                         )
 
-                        CaptureBodyEditorView(
-                            text: $bodyText,
-                            focus: $isBodyFocused,
-                            minHeight: max(proxy.size.height - (attachmentItems.isEmpty ? 0 : 220), 360)
-                        )
+                        if isRecordBodyCardVisible {
+                            RecordBodyCardEditor(
+                                text: $bodyText,
+                                focus: $isBodyFocused,
+                                minHeight: max(proxy.size.height - (attachmentItems.isEmpty ? 260 : 360), 160)
+                            )
+                            .padding(.horizontal, 20)
+                            .padding(.top, attachmentItems.isEmpty ? 16 : 12)
+                            .contextMenu {
+                                Button {
+                                    isBodyFocused = true
+                                } label: {
+                                    Label("memory.card.edit", systemImage: "pencil")
+                                }
+                            }
+                        }
+
+                        composerAddMenu(labelStyle: .footer)
+                            .padding(.top, isRecordBodyCardVisible || !attachmentItems.isEmpty ? 16 : 28)
+                            .padding(.bottom, 28)
                     }
                     .frame(maxWidth: .infinity, minHeight: proxy.size.height, alignment: .top)
                 }
@@ -223,8 +246,13 @@ struct UnifiedCaptureComposerView: View {
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if !isBodyFocused {
-                    composerActionStrip
-                        .padding(.vertical, 2)
+                    HStack {
+                        Spacer()
+                        composerAddMenu(labelStyle: .toolbar)
+                            .buttonStyle(.borderedProminent)
+                        Spacer()
+                    }
+                    .padding(.vertical, 8)
                         .background(.bar)
                         .overlay(alignment: .top) {
                             Divider()
@@ -259,7 +287,7 @@ struct UnifiedCaptureComposerView: View {
 
                 ToolbarItemGroup(placement: .keyboard) {
                     if isBodyFocused {
-                        composerActionStrip
+                        composerAddMenu(labelStyle: .toolbar)
                     }
                 }
             }
@@ -279,13 +307,23 @@ struct UnifiedCaptureComposerView: View {
                         sheetCoordinator.present(.camera)
                     }
                 } else {
-                    isBodyFocused = seed.voiceResult == nil
+                    isBodyFocused = isRecordBodyCardVisible && seed.voiceResult == nil
                 }
             }
             .onChange(of: selectedPhotoItems) { _, items in
                 Task { await addPhotoItems(items) }
             }
-            .quickLookPreview($previewURL, in: previewURLs)
+            .sheet(isPresented: Binding(
+                get: { !previewURLs.isEmpty },
+                set: { isPresented in
+                    if !isPresented {
+                        previewURLs = []
+                        previewURL = nil
+                    }
+                }
+            )) {
+                MemoryCardPreviewSheet(urls: previewURLs)
+            }
             .onDisappear {
                 previewCoordinator.clearTemporaryFiles()
             }
@@ -352,6 +390,7 @@ struct UnifiedCaptureComposerView: View {
         draftProvenance = .manualVoice
         bodyTextProvenance = .manualVoice
         bodyText = transcript ?? ""
+        isRecordBodyCardVisible = transcript != nil
         generatedTitle = transcript?.generatedMemoryTitle() ?? String(localized: "quickCapture.voice.defaultTitle")
         appendStagedArtifact(.audio(
             title: String(localized: "quickCapture.voice.defaultTitle"),
@@ -398,6 +437,7 @@ struct UnifiedCaptureComposerView: View {
     @MainActor
     private func applyVoiceRefinement(_ refinement: VoiceTranscriptRefinement, voice: QuickVoiceCaptureResult) {
         bodyText = refinement.transcript
+        isRecordBodyCardVisible = true
         if let suggestedTitle = refinement.suggestedTitle {
             generatedTitle = suggestedTitle
         } else if generatedTitle.trimmedOrNil == nil {
@@ -659,6 +699,14 @@ struct UnifiedCaptureComposerView: View {
     }
 
     @MainActor
+    private func showRecordBodyCard(focus: Bool) {
+        isRecordBodyCardVisible = true
+        if focus {
+            isBodyFocused = true
+        }
+    }
+
+    @MainActor
     private func reorderAttachmentItem(from source: CaptureComposerAttachmentItem, to target: CaptureComposerAttachmentItem) {
         if case let .stagedArtifact(sourceIndex) = source.source,
            case let .stagedArtifact(targetIndex) = target.source {
@@ -672,6 +720,14 @@ struct UnifiedCaptureComposerView: View {
         }
         withAnimation(.snappy(duration: 0.2)) {
             cardArrangementDraft.reorderArtifactDraft(from: sourceDraftID, to: targetDraftID)
+        }
+    }
+
+    @MainActor
+    private func setAttachmentItemDensity(item: CaptureComposerAttachmentItem, density: MemoryCardContentDensity) {
+        guard let draftID = arrangementDraftID(for: item) else { return }
+        withAnimation(.snappy(duration: 0.18)) {
+            cardArrangementDraft.setContentDensity(density, forDraftID: draftID)
         }
     }
 
@@ -702,9 +758,7 @@ struct UnifiedCaptureComposerView: View {
         defer { isSaving = false }
 
         do {
-            let rawText = bodyText.trimmedOrNil
-                ?? stagedArtifactDrafts.map { CaptureCardItem(draft: $0).detail }.joined(separator: "\n").trimmedOrNil
-                ?? String(localized: "capture.memory.untitled")
+            let rawText = bodyText.trimmedOrNil ?? ""
             let draft = MemoryCaptureDraft(
                 title: resolvedInternalTitle(rawText: rawText),
                 rawText: rawText,
@@ -797,6 +851,7 @@ struct UnifiedCaptureComposerView: View {
 
     @MainActor
     private func appendTranscriptToBody(_ transcript: String) {
+        isRecordBodyCardVisible = true
         if bodyText.trimmedOrNil == nil {
             bodyText = transcript
             return
@@ -830,6 +885,7 @@ struct UnifiedCaptureComposerView: View {
             generatedTitle = title
         }
         if let importedRawText = draft.rawText.trimmedOrNil {
+            isRecordBodyCardVisible = true
             if bodyText.trimmedOrNil == nil {
                 bodyTextProvenance = draft.provenance
             }
@@ -874,6 +930,7 @@ struct UnifiedCaptureComposerView: View {
     private func resolvedInternalTitle(rawText: String) -> String {
         generatedTitle.generatedMemoryTitle()
             ?? rawText.generatedMemoryTitle()
+            ?? primaryArtifactDrafts.lazy.map(\.captureSummary).compactMap { $0.generatedMemoryTitle() }.first
             ?? String(localized: "capture.memory.untitled")
     }
 

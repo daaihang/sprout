@@ -54,7 +54,7 @@ struct MemoryMutationUseCase {
         case .unchanged:
             break
         case let .set(rawText):
-            updatedRecord.rawText = rawText?.trimmedOrNil ?? updatedRecord.rawText
+            updatedRecord.rawText = rawText?.trimmedOrNil ?? ""
         }
 
         switch mutation.recordPatch.userMood {

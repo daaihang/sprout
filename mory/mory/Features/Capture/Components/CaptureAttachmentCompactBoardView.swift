@@ -10,6 +10,7 @@ struct CaptureAttachmentCompactBoardView: View {
     var onReorderItems: (CaptureComposerAttachmentItem, CaptureComposerAttachmentItem) -> Void = { _, _ in }
     var onStackWithPrevious: (CaptureComposerAttachmentItem) -> Void = { _ in }
     var onUnstack: (CaptureComposerAttachmentItem) -> Void = { _ in }
+    var onSetDensity: (CaptureComposerAttachmentItem, MemoryCardContentDensity) -> Void = { _, _ in }
     var onPreview: (CaptureComposerAttachmentItem) -> Void = { _ in }
     var presentationForItem: (CaptureComposerAttachmentItem) -> CaptureCardPresentation = {
         .composerAttachment($0)
@@ -67,8 +68,7 @@ struct CaptureAttachmentCompactBoardView: View {
                     CaptureCardView(
                         presentation: slot.boardItem.presentation,
                         objectAvailableSize: slot.frame.size,
-                        onTap: { onPreview(slot.boardItem.item) },
-                        onRemove: { remove(slot.boardItem.item) }
+                        onTap: { onPreview(slot.boardItem.item) }
                     )
                     .frame(width: slot.frame.width, height: slot.frame.height, alignment: .center)
                     .position(
@@ -88,16 +88,7 @@ struct CaptureAttachmentCompactBoardView: View {
                         return true
                     }
                     .contextMenu {
-                        if canMergeWithPrevious(slot.boardItem.item) {
-                            Button("memory.card.mergeMedia") {
-                                onStackWithPrevious(slot.boardItem.item)
-                            }
-                        }
-                        if slot.boardItem.item.isDraftMediaGroup {
-                            Button("memory.card.spreadMedia") {
-                                onUnstack(slot.boardItem.item)
-                            }
-                        }
+                        MemoryCardActionMenu(configuration: actionMenuConfiguration(for: slot.boardItem))
                     }
                 }
             }
@@ -116,6 +107,24 @@ struct CaptureAttachmentCompactBoardView: View {
                 }
             }
         }
+    }
+
+    private func actionMenuConfiguration(for boardItem: BoardItem) -> MemoryCardActionMenuConfiguration {
+        MemoryCardActionMenuConfiguration(
+            contentKind: boardItem.presentation.contentKind,
+            contentDensity: boardItem.presentation.contentDensity,
+            canPreview: boardItem.item.card.state == .normal,
+            canEdit: false,
+            canSetDensity: boardItem.item.card.state == .normal,
+            canMergeMedia: canMergeWithPrevious(boardItem.item),
+            canSpreadMedia: boardItem.item.isDraftMediaGroup,
+            canDelete: boardItem.item.isRemovable,
+            onPreview: { onPreview(boardItem.item) },
+            onSetDensity: { density in onSetDensity(boardItem.item, density) },
+            onMergeMedia: { onStackWithPrevious(boardItem.item) },
+            onSpreadMedia: { onUnstack(boardItem.item) },
+            onDelete: { remove(boardItem.item) }
+        )
     }
 
     private var boardBackground: some View {

@@ -59,6 +59,7 @@ struct CaptureCardView: View {
         }
         .buttonStyle(.plain)
         .contentShape(RoundedRectangle(cornerRadius: renderContext.chromeCornerRadius, style: .continuous))
+        .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: renderContext.chromeCornerRadius, style: .continuous))
         .disabled(item.state == .disabled)
         .opacity(item.state == .disabled ? 0.48 : 1)
         .scaleEffect(presentation.displaysSelection ? 1.018 : 1)
@@ -169,8 +170,6 @@ struct CaptureCardView: View {
                 .controlSize(.small)
                 .padding(6)
                 .background(Color(.secondarySystemBackground).opacity(0.92), in: Circle())
-        } else if presentation.displaysRemoveControl {
-            removeButton
         } else if item.state == .error {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.caption)
@@ -184,19 +183,6 @@ struct CaptureCardView: View {
                 .font(.title3)
                 .transition(.scale.combined(with: .opacity))
         }
-    }
-
-    private var removeButton: some View {
-        Button {
-            onRemove?()
-        } label: {
-            Image(systemName: "xmark.circle.fill")
-                .symbolRenderingMode(.hierarchical)
-                .font(.title3)
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(item.state == .error ? .red.opacity(0.86) : .secondary)
-        .accessibilityLabel(item.state == .error ? String(localized: "capture.card.removeFailed") : String(localized: "common.delete"))
     }
 
     private var containerBackground: AnyShapeStyle {

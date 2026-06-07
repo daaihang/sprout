@@ -389,7 +389,7 @@ final class CaptureCardModelsTests: XCTestCase {
         )
 
         XCTAssertFalse(presentation.displaysSelection)
-        XCTAssertTrue(presentation.displaysRemoveControl)
+        XCTAssertFalse(presentation.displaysRemoveControl)
     }
 
     func testRemovableNormalCardsPreferRemoveOverSelectedAffordance() {
@@ -403,8 +403,8 @@ final class CaptureCardModelsTests: XCTestCase {
             )
         )
 
-        XCTAssertFalse(presentation.displaysSelection)
-        XCTAssertTrue(presentation.displaysRemoveControl)
+        XCTAssertTrue(presentation.displaysSelection)
+        XCTAssertFalse(presentation.displaysRemoveControl)
     }
 
     func testTrailingControlsOverlayWithoutContentAvoidanceModel() {
@@ -425,7 +425,7 @@ final class CaptureCardModelsTests: XCTestCase {
         )
 
         XCTAssertFalse(plain.hasTrailingControl)
-        XCTAssertTrue(removable.hasTrailingControl)
+        XCTAssertFalse(removable.hasTrailingControl)
         XCTAssertTrue(selected.hasTrailingControl)
         XCTAssertTrue(loading.hasTrailingControl)
     }
@@ -446,7 +446,7 @@ final class CaptureCardModelsTests: XCTestCase {
         XCTAssertFalse(disabled.displaysRemoveControl)
     }
 
-    func testComposerPresentationControlsRemoveButNotSelection() {
+    func testComposerPresentationKeepsRemoveInMenuNotSurface() {
         let card = CaptureCardItem(
             payload: .weather(CaptureWeatherCardPayload()),
             state: .normal,
@@ -461,9 +461,10 @@ final class CaptureCardModelsTests: XCTestCase {
         )
 
         XCTAssertTrue(presentation.allowsPrimaryAction)
-        XCTAssertTrue(presentation.displaysRemoveControl)
+        XCTAssertTrue(presentation.capabilities.canRemove)
+        XCTAssertFalse(presentation.displaysRemoveControl)
         XCTAssertFalse(presentation.displaysSelection)
-        XCTAssertTrue(presentation.hasTrailingControl)
+        XCTAssertFalse(presentation.hasTrailingControl)
     }
 
     func testComposerPresentationDoesNotRemoveLoadingOrDisabledCards() {
@@ -515,7 +516,8 @@ final class CaptureCardModelsTests: XCTestCase {
 
         XCTAssertTrue(selected.displaysSelection)
         XCTAssertFalse(selected.displaysRemoveControl)
-        XCTAssertTrue(removable.displaysRemoveControl)
+        XCTAssertFalse(removable.displaysRemoveControl)
+        XCTAssertTrue(removable.capabilities.canRemove)
         XCTAssertFalse(removable.displaysSelection)
     }
 
@@ -543,7 +545,8 @@ final class CaptureCardModelsTests: XCTestCase {
         XCTAssertEqual(composer.provenanceDisplayMode, .production)
         XCTAssertEqual(composer.item.kind, .weather)
         XCTAssertEqual(composer.item.origin, .context)
-        XCTAssertTrue(composer.displaysRemoveControl)
+        XCTAssertTrue(composer.capabilities.canRemove)
+        XCTAssertFalse(composer.displaysRemoveControl)
 
         let artifact = Artifact(
             recordID: UUID(),

@@ -98,61 +98,31 @@ struct MemoryDeskRenderer: View {
             onTap: { performPrimaryAction(for: node) }
         )
         .contextMenu {
-            cardContextMenu(for: node)
+            MemoryCardActionMenu(configuration: actionMenuConfiguration(for: node))
         }
     }
 
-    @ViewBuilder
-    private func cardContextMenu(for node: ResolvedMemoryDeskNode) -> some View {
-        Button {
-            performPreviewAction(for: node)
-        } label: {
-            Label("memory.card.preview", systemImage: "eye")
-        }
-
-        Menu {
-            ForEach(MemoryCardPresentationPolicy.supportedDensities(for: node.contentKind)) { density in
-                Button {
-                    onSetCardDensity(node.id, density)
-                } label: {
-                    Label(density.menuLabel, systemImage: density == node.contentDensity ? "checkmark" : density.systemImage)
+    private func actionMenuConfiguration(for node: ResolvedMemoryDeskNode) -> MemoryCardActionMenuConfiguration {
+        MemoryCardActionMenuConfiguration(
+            contentKind: node.contentKind,
+            contentDensity: node.contentDensity,
+            canPreview: true,
+            canEdit: true,
+            canSetDensity: true,
+            canMergeMedia: canMergeMediaWithPrevious(node),
+            canSpreadMedia: node.isMediaGroup,
+            canDelete: !node.artifactIDs.isEmpty,
+            onPreview: { performPreviewAction(for: node) },
+            onEdit: onEditMemory,
+            onSetDensity: { density in onSetCardDensity(node.id, density) },
+            onMergeMedia: {
+                if let primaryArtifactID = node.primaryArtifactID {
+                    onMergeMediaWithPrevious(primaryArtifactID)
                 }
-            }
-        } label: {
-            Label("memory.card.displayDensity", systemImage: "rectangle.3.group")
-        }
-
-        Button {
-            onEditMemory()
-        } label: {
-            Label("memory.card.edit", systemImage: "pencil")
-        }
-
-        if canMergeMediaWithPrevious(node), let primaryArtifactID = node.primaryArtifactID {
-            Button {
-                onMergeMediaWithPrevious(primaryArtifactID)
-            } label: {
-                Label("memory.card.mergeMedia", systemImage: "rectangle.stack.badge.plus")
-            }
-        }
-
-        if node.isMediaGroup {
-            Button {
-                onUnmergeMedia(node.id)
-            } label: {
-                Label("memory.card.spreadMedia", systemImage: "square.split.2x1")
-            }
-        }
-
-        if !node.artifactIDs.isEmpty {
-            Divider()
-
-            Button(role: .destructive) {
-                onDeleteArtifacts(node.artifactIDs)
-            } label: {
-                Label("common.delete", systemImage: "trash")
-            }
-        }
+            },
+            onSpreadMedia: { onUnmergeMedia(node.id) },
+            onDelete: { onDeleteArtifacts(node.artifactIDs) }
+        )
     }
 
     private func performPrimaryAction(for node: ResolvedMemoryDeskNode) {

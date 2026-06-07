@@ -204,7 +204,7 @@ struct CaptureCardPresentation: Hashable, Sendable {
     }
 
     var displaysRemoveControl: Bool {
-        capabilities.canRemove && (item.state == .normal || item.state == .error)
+        false
     }
 
     var displaysSelection: Bool {
@@ -212,7 +212,7 @@ struct CaptureCardPresentation: Hashable, Sendable {
     }
 
     var hasTrailingControl: Bool {
-        item.state == .loading || item.state == .error || displaysRemoveControl || displaysSelection
+        item.state == .loading || item.state == .error || displaysSelection
     }
 }
 

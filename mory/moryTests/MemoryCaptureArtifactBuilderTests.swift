@@ -90,6 +90,29 @@ final class MemoryCaptureArtifactBuilderTests: XCTestCase {
         XCTAssertEqual(music.metadata["artworkSecondaryTextColor"], "#DDDDDD")
     }
 
+    func testResolvedRecordRawTextDoesNotSynthesizeBodyFromArtifacts() throws {
+        let builder = MemoryCaptureArtifactBuilder()
+        let draft = MemoryCaptureDraft(
+            rawText: "",
+            artifacts: [
+                .photo(
+                    title: "Kitchen light",
+                    summary: "A warm photo",
+                    filename: "photo.jpg",
+                    imageData: Data([1, 2, 3]),
+                    origin: .manual
+                )
+            ]
+        )
+        let artifacts = builder.buildArtifacts(
+            from: draft,
+            recordID: UUID(),
+            createdAt: Date(timeIntervalSince1970: 1_800_000_000)
+        )
+
+        XCTAssertEqual(builder.resolvedRecordRawText(from: draft, artifacts: artifacts), "")
+    }
+
     func testBuildArtifactsPersistsVideoPreviewAndMetadata() throws {
         let builder = MemoryCaptureArtifactBuilder()
         let videoData = Data([0, 1, 2, 3, 4, 5])

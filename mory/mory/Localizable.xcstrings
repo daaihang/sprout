@@ -1325,6 +1325,22 @@
         }
       }
     },
+    "capture.action.addCard" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Card"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "添加卡片"
+          }
+        }
+      }
+    },
     "capture.action.addContent" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2531,6 +2547,7 @@
       }
     },
     "capture.card.removeFailed" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -16711,6 +16728,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "上移附件"
+          }
+        }
+      }
+    },
+    "memory.edit.newCards" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Cards"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新增卡片"
           }
         }
       }

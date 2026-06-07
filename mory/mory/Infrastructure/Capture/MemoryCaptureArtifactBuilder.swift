@@ -92,23 +92,7 @@ struct MemoryCaptureArtifactBuilder {
     }
 
     func resolvedRecordRawText(from draft: MemoryCaptureDraft, artifacts: [Artifact]) -> String {
-        if let rawText = draft.rawText.trimmedOrNil {
-            return rawText
-        }
-
-        let artifactSummary = artifacts
-            .compactMap { artifact in
-                artifact.textContent.trimmedOrNil
-                    ?? artifact.summary.trimmedOrNil
-                    ?? artifact.title.trimmedOrNil
-            }
-            .joined(separator: "\n")
-            .trimmedOrNil
-
-        return artifactSummary
-            ?? draft.artifacts.map(\.captureSummary).joined(separator: "\n").trimmedOrNil
-            ?? draft.title?.trimmedOrNil
-            ?? "Untitled Memory"
+        draft.rawText.trimmedOrNil ?? ""
     }
 
     func preferredPrimaryArtifact(from artifacts: [Artifact]) -> Artifact? {

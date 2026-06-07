@@ -1,5 +1,6 @@
-import QuickLook
+import PhotosUI
 import SwiftUI
+import UIKit
 
 struct MemoryDetailView: View {
     @Environment(\.memoryRepository) private var memoryRepository
@@ -13,19 +14,20 @@ struct MemoryDetailView: View {
     @State private var isEditing = false
     @State private var draftTitle = ""
     @State private var draftRawText = ""
+    @State private var isDraftRecordBodyCardVisible = false
     @State private var draftArtifactOrder: [UUID] = []
     @State private var draftCardArrangement: MemoryCardArrangement?
     @State private var draftDeletedArtifactIDs: Set<UUID> = []
-    @State private var draftNewArtifactKind: MemoryDetailNewArtifactKind = .note
-    @State private var draftNewArtifactID = UUID()
-    @State private var draftNewArtifactTitle = ""
-    @State private var draftNewArtifactURL = ""
-    @State private var draftNewArtifactText = ""
+    @State private var draftAddedArtifactDrafts: [CaptureArtifactDraft] = []
+    @State private var draftAddedCardArrangement = MemoryCardArrangementDraft()
+    @State private var selectedPhotoItems: [PhotosPickerItem] = []
+    @State private var detailSheetCoordinator = CaptureComposerSheetCoordinator()
+    @State private var isProcessingPhoto = false
     @State private var isSavingEdits = false
     @State private var isConfirmingDiscardEdits = false
     @State private var previewCoordinator = MemoryCardPreviewCoordinator()
-    @State private var previewURL: URL?
     @State private var previewURLs: [URL] = []
+    @State private var previewDeleteArtifactIDs: [UUID] = []
     @State private var pendingDeleteArtifactIDs: [UUID] = []
     @State private var isConfirmingCardDeletion = false
 
@@ -38,25 +40,26 @@ struct MemoryDetailView: View {
                     MemoryDetailEditingView(
                         title: $draftTitle,
                         rawText: $draftRawText,
-                        newArtifactKind: $draftNewArtifactKind,
-                        newArtifactTitle: $draftNewArtifactTitle,
-                        newArtifactURL: $draftNewArtifactURL,
-                        newArtifactText: $draftNewArtifactText,
+                        isRecordBodyCardVisible: $isDraftRecordBodyCardVisible,
                         artifacts: draftEditableArtifacts,
                         cardArrangement: draftCardArrangement,
+                        addedDraftItems: draftAddedAttachmentItems,
                         errorMessage: errorMessage,
                         onDeleteArtifacts: { artifactIDs in
-                            withAnimation(.snappy(duration: 0.2)) {
-                                draftDeletedArtifactIDs.formUnion(artifactIDs)
-                                syncDraftCardArrangement()
-                            }
+                            requestDeleteArtifacts(artifactIDs)
                         },
                         onPreviewArtifacts: previewArtifacts(_:),
                         onSetCardDensity: setDraftCardDensity(nodeID:density:),
-                        onMoveArtifact: moveDraftArtifact(_:by:),
                         onStackArtifactWithPrevious: stackDraftArtifactWithPrevious(_:),
                         onUnstackArtifact: unstackDraftArtifact(_:),
-                        onAutoArrange: autoArrangeDraftCards
+                        onAutoArrange: autoArrangeDraftCards,
+                        onRemoveAddedDraft: removeAddedDraft(at:),
+                        onRemoveAddedDraftGroup: removeAddedDraftGroup(_:),
+                        onPreviewAddedDraft: previewAddedDraftItem(_:),
+                        onSetAddedDraftDensity: setAddedDraftDensity(item:density:),
+                        onReorderAddedDraft: reorderAddedDraftItem(from:to:),
+                        onStackAddedDraftWithPrevious: stackAddedDraftWithPrevious(item:),
+                        onUnstackAddedDraft: unstackAddedDraft(item:)
                     )
                 } else {
                     ScrollView {
@@ -97,6 +100,21 @@ struct MemoryDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .moryHidesTabChrome()
         .toolbar(content: detailToolbar)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if snapshot != nil {
+                HStack {
+                    Spacer()
+                    detailAddMenu(labelStyle: .toolbar)
+                        .buttonStyle(.borderedProminent)
+                    Spacer()
+                }
+                .padding(.vertical, 8)
+                .background(.bar)
+                .overlay(alignment: .top) {
+                    Divider()
+                }
+            }
+        }
         .task(id: recordID) {
             await load()
         }
@@ -113,13 +131,33 @@ struct MemoryDetailView: View {
         }
         .confirmationDialog("memory.card.delete.title", isPresented: $isConfirmingCardDeletion) {
             Button("common.delete", role: .destructive) {
-                Task { await deletePendingArtifacts() }
+                confirmPendingCardDeletion()
             }
             Button("common.cancel", role: .cancel) {}
         } message: {
             Text("memory.card.delete.message")
         }
-        .quickLookPreview($previewURL, in: previewURLs)
+        .sheet(item: $detailSheetCoordinator.activeSheet) { sheet in
+            detailSheetContent(for: sheet)
+        }
+        .sheet(isPresented: Binding(
+            get: { !previewURLs.isEmpty },
+            set: { isPresented in
+                if !isPresented {
+                    previewURLs = []
+                    previewDeleteArtifactIDs = []
+                }
+            }
+        )) {
+            MemoryCardPreviewSheet(
+                urls: previewURLs,
+                canDelete: !previewDeleteArtifactIDs.isEmpty,
+                onDelete: { stageDeleteArtifacts(previewDeleteArtifactIDs) }
+            )
+        }
+        .onChange(of: selectedPhotoItems) { _, items in
+            Task { await addPhotoItems(items) }
+        }
         .onDisappear {
             previewCoordinator.clearTemporaryFiles()
         }
@@ -143,10 +181,17 @@ struct MemoryDetailView: View {
 
         ToolbarItemGroup(placement: .topBarTrailing) {
             if isEditing {
-                Button(isSavingEdits ? String(localized: "common.saving") : String(localized: "memory.edit.done")) {
+                Button {
                     Task { await saveEdits() }
+                } label: {
+                    if isSavingEdits {
+                        ProgressView()
+                    } else {
+                        Image(systemName: "checkmark")
+                    }
                 }
-                .disabled(isSavingEdits || draftRawText.trimmedOrNil == nil)
+                .disabled(isSavingEdits)
+                .accessibilityLabel("common.save")
             } else {
                 Menu {
                     Button("memory.edit.button") {
@@ -166,6 +211,79 @@ struct MemoryDetailView: View {
                 }
                 .accessibilityLabel("common.more")
             }
+        }
+    }
+
+    private func detailAddMenu(labelStyle: MemoryAddCardMenu.LabelStyle) -> some View {
+        MemoryAddCardMenu(
+            selectedPhotoItems: $selectedPhotoItems,
+            labelStyle: labelStyle,
+            isProcessingPhoto: isProcessingPhoto,
+            includesText: true,
+            includesMood: false,
+            includesJournaling: false,
+            includesContextRefresh: false,
+            onText: {
+                ensureEditingForCardMutation()
+                isDraftRecordBodyCardVisible = true
+            },
+            onCamera: {
+                ensureEditingForCardMutation()
+                detailSheetCoordinator.present(.camera)
+            },
+            onAudio: {
+                ensureEditingForCardMutation()
+                detailSheetCoordinator.present(.audio)
+            },
+            onLink: {
+                ensureEditingForCardMutation()
+                detailSheetCoordinator.present(.link)
+            },
+            onMusic: {
+                ensureEditingForCardMutation()
+                detailSheetCoordinator.present(.music)
+            },
+            onLocation: {
+                ensureEditingForCardMutation()
+                detailSheetCoordinator.present(.location)
+            },
+            onTodo: {
+                ensureEditingForCardMutation()
+                detailSheetCoordinator.present(.todo)
+            }
+        )
+    }
+
+    @ViewBuilder
+    private func detailSheetContent(for sheet: CaptureComposerSheet) -> some View {
+        switch sheet {
+        case .camera:
+            UnifiedCameraCaptureView { image in
+                Task { await addCameraImage(image) }
+            }
+            .ignoresSafeArea()
+        case .audio:
+            UnifiedAudioCaptureSheet { draft, _ in
+                appendDraftAddedArtifact(draft.withProvenance(manualProvenance(.audioRecorder)))
+            }
+        case .link:
+            UnifiedLinkCaptureSheet { draft in
+                appendDraftAddedArtifact(draft.withProvenance(manualProvenance(.linkComposer)))
+            }
+        case .music:
+            UnifiedMusicCaptureSheet { draft in
+                appendDraftAddedArtifact(draft.withProvenance(manualProvenance(.musicPicker)))
+            }
+        case .location:
+            LocationPickerView(initialSelection: nil) { draft in
+                appendDraftAddedArtifact(draft.withProvenance(manualProvenance(.locationPicker)))
+            }
+        case .todo:
+            UnifiedTodoCaptureSheet { draft in
+                appendDraftAddedArtifact(draft.withProvenance(manualProvenance(.todoComposer)))
+            }
+        case .mood, .journalingFallback:
+            ContentUnavailableView("capture.action.add", systemImage: "plus")
         }
     }
 
@@ -211,6 +329,14 @@ struct MemoryDetailView: View {
         isEditing = true
     }
 
+    private func ensureEditingForCardMutation() {
+        if !isEditing {
+            prepareEditDraft()
+            errorMessage = nil
+            isEditing = true
+        }
+    }
+
     private func requestCancelEditing() {
         if draftHasChanges {
             isConfirmingDiscardEdits = true
@@ -231,14 +357,12 @@ struct MemoryDetailView: View {
         let record = snapshot.record
         draftTitle = record.displayTitle
         draftRawText = record.rawText
+        isDraftRecordBodyCardVisible = record.rawText.trimmedOrNil != nil
         draftArtifactOrder = orderedArtifacts(from: snapshot).map(\.id)
         draftCardArrangement = editBaseArrangement(for: snapshot)
         draftDeletedArtifactIDs = []
-        draftNewArtifactKind = .note
-        draftNewArtifactID = UUID()
-        draftNewArtifactTitle = ""
-        draftNewArtifactURL = ""
-        draftNewArtifactText = ""
+        draftAddedArtifactDrafts = []
+        draftAddedCardArrangement = MemoryCardArrangementDraft()
     }
 
     private var draftHasChanges: Bool {
@@ -249,7 +373,7 @@ struct MemoryDetailView: View {
         if draftTitle.generatedMemoryTitle() != record.displayTitle.generatedMemoryTitle() { return true }
         if draftRawText != record.rawText { return true }
         if !draftDeletedArtifactIDs.isEmpty { return true }
-        if pendingNewArtifactDraft() != nil { return true }
+        if !draftAddedArtifactDrafts.isEmpty { return true }
         if draftCardArrangement != editBaseArrangement(for: snapshot) { return true }
         return mutationArtifactOrder != nil
     }
@@ -298,6 +422,36 @@ struct MemoryDetailView: View {
             .filter(\.isVisibleMemoryDetailAttachment)
     }
 
+    private var draftAddedAttachmentItems: [CaptureComposerAttachmentItem] {
+        let draftByID = Dictionary(uniqueKeysWithValues: draftAddedArtifactDrafts.map { ($0.draftID, $0) })
+        let orderedNodes = draftAddedCardArrangement.nodes.sorted { lhs, rhs in
+            if lhs.layout.order == rhs.layout.order {
+                return lhs.id.uuidString < rhs.id.uuidString
+            }
+            return lhs.layout.order < rhs.layout.order
+        }
+        return orderedNodes.flatMap { node -> [CaptureComposerAttachmentItem] in
+            switch node.contentRef {
+            case let .artifactDraft(draftID):
+                guard let index = draftAddedArtifactDrafts.firstIndex(where: { $0.draftID == draftID }) else { return [] }
+                return [.staged(index: index, draft: draftAddedArtifactDrafts[index])]
+            case let .artifactDraftGroup(draftIDs, _):
+                let drafts = draftIDs.compactMap { draftByID[$0] }
+                guard !drafts.isEmpty else { return [] }
+                if drafts.allSatisfy(\.isMemoryCardMergeableMedia),
+                   let groupItem = CaptureComposerAttachmentItem.draftGroup(nodeID: node.id, drafts: drafts) {
+                    return [groupItem]
+                }
+                return drafts.compactMap { draft in
+                    guard let index = draftAddedArtifactDrafts.firstIndex(where: { $0.draftID == draft.draftID }) else { return nil }
+                    return .staged(index: index, draft: draft)
+                }
+            case .recordBody, .affectDraft, .journalingSuggestion:
+                return []
+            }
+        }
+    }
+
     private var mutationArtifactOrder: [UUID]? {
         guard let snapshot else { return nil }
         let originalRemainingOrder = orderedArtifacts(from: snapshot)
@@ -324,64 +478,11 @@ struct MemoryDetailView: View {
     }
 
     private func addedArtifactsForEditedDraft() -> [CaptureArtifactDraft] {
-        pendingNewArtifactDraft().map { [$0] } ?? []
+        draftAddedArtifactDrafts
     }
 
     private func addedCardArrangementForEditedDraft() -> MemoryCardArrangementDraft? {
-        guard let draft = pendingNewArtifactDraft() else { return nil }
-        var arrangement = MemoryCardArrangementDraft()
-        arrangement.appendArtifactDraft(draft)
-        return arrangement
-    }
-
-    private func pendingNewArtifactDraft() -> CaptureArtifactDraft? {
-        switch draftNewArtifactKind {
-        case .note:
-            guard let note = draftNewArtifactText.trimmedOrNil else { return nil }
-            return CaptureArtifactDraft(
-                draftID: draftNewArtifactID,
-                origin: .manual,
-                provenance: .manualComposer,
-                content: .promptAnswer(
-                    PromptAnswerArtifactContent(
-                        prompt: String(localized: "memory.edit.addAttachment"),
-                        answer: note,
-                        source: "detail_edit"
-                    )
-                )
-            )
-        case .link:
-            guard let url = draftNewArtifactURL.trimmedOrNil else { return nil }
-            return CaptureArtifactDraft(
-                draftID: draftNewArtifactID,
-                origin: .manual,
-                provenance: .manualComposer,
-                content: .link(
-                    LinkArtifactContent(
-                        title: draftNewArtifactTitle.trimmedOrNil,
-                        url: url,
-                        note: draftNewArtifactText.trimmedOrNil,
-                        summary: draftNewArtifactText.trimmedOrNil
-                    )
-                )
-            )
-        case .todo:
-            guard let title = draftNewArtifactTitle.trimmedOrNil
-                ?? draftNewArtifactText.firstMeaningfulLine else {
-                return nil
-            }
-            return CaptureArtifactDraft(
-                draftID: draftNewArtifactID,
-                origin: .manual,
-                provenance: .manualComposer,
-                content: .todo(
-                    TodoArtifactContent(
-                        title: title,
-                        note: draftNewArtifactText.trimmedOrNil
-                    )
-                )
-            )
-        }
+        draftAddedArtifactDrafts.isEmpty ? nil : draftAddedCardArrangement
     }
 
     private func orderedArtifacts(from snapshot: MemoryDetailSnapshot) -> [Artifact] {
@@ -401,41 +502,6 @@ struct MemoryDetailView: View {
                 artifacts: snapshot.artifacts,
                 createdAt: snapshot.record.createdAt
             )
-    }
-
-    private func canMoveDraftArtifact(_ id: UUID, by offset: Int) -> Bool {
-        let visibleOrder = visibleDraftAttachmentIDs
-        guard let visibleIndex = visibleOrder.firstIndex(of: id) else { return false }
-        let targetIndex = visibleIndex + offset
-        return visibleOrder.indices.contains(targetIndex)
-    }
-
-    private func moveDraftArtifact(_ id: UUID, by offset: Int) {
-        guard let arrangement = draftCardArrangement else { return }
-        withAnimation(.snappy(duration: 0.18)) {
-            applyDraftCardArrangement(arrangement.movingArtifact(artifactID: id, by: offset, updatedAt: Date.now))
-        }
-    }
-
-    private func reorderDraftArtifact(_ sourceID: UUID, near targetID: UUID) {
-        guard sourceID != targetID else { return }
-        let visibleOrder = visibleDraftAttachmentIDs
-        guard let sourceVisibleIndex = visibleOrder.firstIndex(of: sourceID),
-              let targetVisibleIndex = visibleOrder.firstIndex(of: targetID),
-              let sourceIndex = draftArtifactOrder.firstIndex(of: sourceID),
-              let targetIndex = draftArtifactOrder.firstIndex(of: targetID) else {
-            return
-        }
-
-        withAnimation(.snappy(duration: 0.2)) {
-            let movedID = draftArtifactOrder.remove(at: sourceIndex)
-            let adjustedTargetIndex = draftArtifactOrder.firstIndex(of: targetID) ?? targetIndex
-            let insertionIndex = sourceVisibleIndex < targetVisibleIndex
-                ? min(adjustedTargetIndex + 1, draftArtifactOrder.endIndex)
-                : adjustedTargetIndex
-            draftArtifactOrder.insert(movedID, at: insertionIndex)
-            syncDraftCardArrangement()
-        }
     }
 
     private func stackDraftArtifactWithPrevious(_ artifactID: UUID) {
@@ -505,6 +571,7 @@ struct MemoryDetailView: View {
         guard let snapshot else { return }
         do {
             previewCoordinator.clearTemporaryFiles()
+            previewDeleteArtifactIDs = []
             presentPreviewURLs(try previewCoordinator.previewURLs(for: snapshot.record))
         } catch {
             errorMessage = error.localizedDescription
@@ -517,16 +584,36 @@ struct MemoryDetailView: View {
         let artifacts = ids.compactMap { artifactByID[$0] }
         do {
             previewCoordinator.clearTemporaryFiles()
+            previewDeleteArtifactIDs = artifacts.map(\.id)
             presentPreviewURLs(try previewCoordinator.previewURLs(for: artifacts))
         } catch {
             errorMessage = error.localizedDescription
         }
     }
 
+    private func previewAddedDraftItem(_ item: CaptureComposerAttachmentItem) {
+        do {
+            previewCoordinator.clearTemporaryFiles()
+            switch item.source {
+            case let .stagedArtifact(index):
+                guard draftAddedArtifactDrafts.indices.contains(index) else { return }
+                previewDeleteArtifactIDs = []
+                presentPreviewURLs(try previewCoordinator.previewURLs(for: [draftAddedArtifactDrafts[index]]))
+            case let .draftGroup(_, draftIDs):
+                let draftByID = Dictionary(uniqueKeysWithValues: draftAddedArtifactDrafts.map { ($0.draftID, $0) })
+                previewDeleteArtifactIDs = []
+                presentPreviewURLs(try previewCoordinator.previewURLs(for: draftIDs.compactMap { draftByID[$0] }))
+            default:
+                return
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     private func presentPreviewURLs(_ urls: [URL]) {
-        guard let first = urls.first else { return }
+        guard !urls.isEmpty else { return }
         previewURLs = urls
-        previewURL = first
     }
 
     private func openPlace(_ artifactID: UUID) {
@@ -551,18 +638,15 @@ struct MemoryDetailView: View {
     }
 
     private func setCardDensity(nodeID: UUID, density: MemoryCardContentDensity) {
-        guard let snapshot else { return }
-        let arrangement = editBaseArrangement(for: snapshot)
-            .settingContentDensity(density, forNodeID: nodeID, updatedAt: Date.now)
-        Task { await saveCardArrangement(arrangement) }
+        ensureEditingForCardMutation()
+        setDraftCardDensity(nodeID: nodeID, density: density)
     }
 
     private func mergeMediaWithPrevious(_ artifactID: UUID) {
         guard let snapshot,
               canMergeMediaWithPrevious(artifactID: artifactID, snapshot: snapshot) else { return }
-        let arrangement = editBaseArrangement(for: snapshot)
-            .stackingWithPrevious(artifactID: artifactID, updatedAt: Date.now)
-        Task { await saveCardArrangement(arrangement) }
+        ensureEditingForCardMutation()
+        stackDraftArtifactWithPrevious(artifactID)
     }
 
     private func canMergeMediaWithPrevious(artifactID: UUID, snapshot: MemoryDetailSnapshot) -> Bool {
@@ -584,10 +668,9 @@ struct MemoryDetailView: View {
     }
 
     private func unmergeMedia(nodeID: UUID) {
-        guard let snapshot else { return }
-        let arrangement = editBaseArrangement(for: snapshot)
-            .unstacking(nodeID: nodeID, artifacts: snapshot.artifacts, updatedAt: Date.now)
-        Task { await saveCardArrangement(arrangement) }
+        ensureEditingForCardMutation()
+        guard let snapshot, let arrangement = draftCardArrangement else { return }
+        applyDraftCardArrangement(arrangement.unstacking(nodeID: nodeID, artifacts: snapshot.artifacts, updatedAt: Date.now))
     }
 
     private func requestDeleteArtifacts(_ ids: [UUID]) {
@@ -595,45 +678,144 @@ struct MemoryDetailView: View {
         isConfirmingCardDeletion = !ids.isEmpty
     }
 
-    private func deletePendingArtifacts() async {
+    private func confirmPendingCardDeletion() {
         let ids = pendingDeleteArtifactIDs
         pendingDeleteArtifactIDs = []
         guard !ids.isEmpty else { return }
-        do {
-            let result = try await memoryRepository.applyMemoryMutation(
-                recordID: recordID,
-                mutation: MemoryMutationDraft(deletedArtifactIDs: ids),
-                refreshPolicy: .saveOnly
-            )
-            snapshot = result.detail
-            if let detail = result.detail {
-                resetEditDraft(from: detail)
-            }
-            errorMessage = nil
-            await load()
-        } catch {
-            errorMessage = error.localizedDescription
-            await load()
+        stageDeleteArtifacts(ids)
+    }
+
+    private func stageDeleteArtifacts(_ ids: [UUID]) {
+        guard !ids.isEmpty else { return }
+        ensureEditingForCardMutation()
+        withAnimation(.snappy(duration: 0.2)) {
+            draftDeletedArtifactIDs.formUnion(ids)
+            syncDraftCardArrangement()
         }
     }
 
-    private func saveCardArrangement(_ arrangement: MemoryCardArrangement) async {
-        do {
-            let result = try await memoryRepository.applyMemoryMutation(
-                recordID: recordID,
-                mutation: MemoryMutationDraft(cardArrangement: arrangement),
-                refreshPolicy: .saveOnly
-            )
-            snapshot = result.detail
-            if let detail = result.detail {
-                resetEditDraft(from: detail)
-            }
-            errorMessage = nil
-            await load()
-        } catch {
-            errorMessage = error.localizedDescription
-            await load()
+    @MainActor
+    private func appendDraftAddedArtifact(_ draft: CaptureArtifactDraft) {
+        ensureEditingForCardMutation()
+        draftAddedArtifactDrafts.append(draft)
+        draftAddedCardArrangement.appendArtifactDraft(draft)
+    }
+
+    @MainActor
+    private func addPhotoItems(_ items: [PhotosPickerItem]) async {
+        guard !items.isEmpty else { return }
+        ensureEditingForCardMutation()
+        isProcessingPhoto = true
+        defer {
+            isProcessingPhoto = false
+            selectedPhotoItems = []
         }
+
+        let processor = MediaArtifactProcessor()
+        for item in items {
+            do {
+                let draft = try await processor.process(
+                    item: item,
+                    origin: .manual,
+                    provenance: manualProvenance(.photoLibrary)
+                )
+                appendDraftAddedArtifact(draft)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    @MainActor
+    private func addCameraImage(_ image: UIImage) async {
+        guard let data = image.jpegData(compressionQuality: 0.86) else { return }
+        ensureEditingForCardMutation()
+        isProcessingPhoto = true
+        defer { isProcessingPhoto = false }
+        await addPhotoData(data, filename: "camera_\(Int(Date().timeIntervalSince1970)).jpg")
+    }
+
+    @MainActor
+    private func addPhotoData(_ data: Data, filename: String) async {
+        let result = await PhotoArtifactProcessor().process(imageData: data, filename: filename)
+        let summary = result.summary.trimmedOrNil ?? String(localized: "quickCapture.photo.defaultSummary")
+        appendDraftAddedArtifact(.photo(
+            title: nil,
+            summary: summary,
+            filename: filename,
+            imageData: data,
+            thumbnailData: result.thumbnailData,
+            ocrText: result.ocrText,
+            photoMetadata: result.metadata,
+            origin: .manual,
+            provenance: manualProvenance(.camera)
+        ))
+    }
+
+    @MainActor
+    private func removeAddedDraft(at index: Int) {
+        guard draftAddedArtifactDrafts.indices.contains(index) else { return }
+        let removed = draftAddedArtifactDrafts.remove(at: index)
+        draftAddedCardArrangement.removeArtifactDraft(removed.draftID, artifactDrafts: draftAddedArtifactDrafts)
+    }
+
+    @MainActor
+    private func removeAddedDraftGroup(_ draftIDs: [UUID]) {
+        guard !draftIDs.isEmpty else { return }
+        let ids = Set(draftIDs)
+        draftAddedArtifactDrafts.removeAll { ids.contains($0.draftID) }
+        draftIDs.forEach { draftAddedCardArrangement.removeArtifactDraft($0, artifactDrafts: draftAddedArtifactDrafts) }
+    }
+
+    @MainActor
+    private func setAddedDraftDensity(item: CaptureComposerAttachmentItem, density: MemoryCardContentDensity) {
+        guard let draftID = addedDraftID(for: item) else { return }
+        withAnimation(.snappy(duration: 0.18)) {
+            draftAddedCardArrangement.setContentDensity(density, forDraftID: draftID)
+        }
+    }
+
+    @MainActor
+    private func reorderAddedDraftItem(from source: CaptureComposerAttachmentItem, to target: CaptureComposerAttachmentItem) {
+        guard let sourceDraftID = addedDraftID(for: source),
+              let targetDraftID = addedDraftID(for: target),
+              sourceDraftID != targetDraftID else {
+            return
+        }
+        withAnimation(.snappy(duration: 0.2)) {
+            draftAddedCardArrangement.reorderArtifactDraft(from: sourceDraftID, to: targetDraftID)
+        }
+    }
+
+    @MainActor
+    private func stackAddedDraftWithPrevious(item: CaptureComposerAttachmentItem) {
+        guard let draftID = addedDraftID(for: item) else { return }
+        withAnimation(.snappy(duration: 0.18)) {
+            draftAddedCardArrangement.toggleStackWithPrevious(draftID: draftID)
+        }
+    }
+
+    @MainActor
+    private func unstackAddedDraft(item: CaptureComposerAttachmentItem) {
+        guard let draftID = addedDraftID(for: item) else { return }
+        withAnimation(.snappy(duration: 0.18)) {
+            draftAddedCardArrangement.unstackContainingDraft(draftID, artifactDrafts: draftAddedArtifactDrafts)
+        }
+    }
+
+    private func addedDraftID(for item: CaptureComposerAttachmentItem) -> UUID? {
+        switch item.source {
+        case let .stagedArtifact(index):
+            return draftAddedArtifactDrafts.indices.contains(index) ? draftAddedArtifactDrafts[index].draftID : nil
+        case let .draftGroup(_, draftIDs):
+            return draftIDs.first
+        case .contextCandidate, .affect, .journalingSuggestion, .processing:
+            return nil
+        }
+    }
+
+    private func manualProvenance(_ sourceKind: CaptureProvenanceSourceKind) -> CaptureProvenance {
+        CaptureProvenance(originCategory: .userInput, sourceKind: sourceKind)
     }
 
     private func applyDraftCardArrangement(_ arrangement: MemoryCardArrangement) {
@@ -668,21 +850,25 @@ struct MemoryDetailView: View {
 private struct MemoryDetailEditingView: View {
     @Binding var title: String
     @Binding var rawText: String
-    @Binding var newArtifactKind: MemoryDetailNewArtifactKind
-    @Binding var newArtifactTitle: String
-    @Binding var newArtifactURL: String
-    @Binding var newArtifactText: String
+    @Binding var isRecordBodyCardVisible: Bool
 
     let artifacts: [Artifact]
     let cardArrangement: MemoryCardArrangement?
+    let addedDraftItems: [CaptureComposerAttachmentItem]
     let errorMessage: String?
     var onDeleteArtifacts: ([UUID]) -> Void
     var onPreviewArtifacts: ([UUID]) -> Void
     var onSetCardDensity: (UUID, MemoryCardContentDensity) -> Void
-    var onMoveArtifact: (UUID, Int) -> Void
     var onStackArtifactWithPrevious: (UUID) -> Void
     var onUnstackArtifact: (UUID) -> Void
     var onAutoArrange: () -> Void
+    var onRemoveAddedDraft: (Int) -> Void
+    var onRemoveAddedDraftGroup: ([UUID]) -> Void
+    var onPreviewAddedDraft: (CaptureComposerAttachmentItem) -> Void
+    var onSetAddedDraftDensity: (CaptureComposerAttachmentItem, MemoryCardContentDensity) -> Void
+    var onReorderAddedDraft: (CaptureComposerAttachmentItem, CaptureComposerAttachmentItem) -> Void
+    var onStackAddedDraftWithPrevious: (CaptureComposerAttachmentItem) -> Void
+    var onUnstackAddedDraft: (CaptureComposerAttachmentItem) -> Void
 
     @FocusState private var isBodyFocused: Bool
 
@@ -696,25 +882,47 @@ private struct MemoryDetailEditingView: View {
                         onDeleteArtifacts: onDeleteArtifacts,
                         onPreviewArtifacts: onPreviewArtifacts,
                         onSetCardDensity: onSetCardDensity,
-                        onMoveArtifact: onMoveArtifact,
                         onStackArtifactWithPrevious: onStackArtifactWithPrevious,
                         onUnstackArtifact: onUnstackArtifact,
                         onAutoArrange: onAutoArrange
                     )
 
-                    supportingArtifactEditor
-                        .padding(.horizontal, 20)
-                        .padding(.top, artifacts.isEmpty ? 16 : 4)
+                    if !addedDraftItems.isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("memory.edit.newCards")
+                                .font(.headline)
+                                .padding(.horizontal, 20)
+
+                            CaptureAttachmentCompactBoardView(
+                                items: addedDraftItems,
+                                onRemoveStagedArtifact: onRemoveAddedDraft,
+                                onRemoveContextCandidate: { _ in },
+                                onRemoveDraftGroup: onRemoveAddedDraftGroup,
+                                onRemoveAffectDraft: { _ in },
+                                onRemoveJournalingSuggestion: { _ in },
+                                onReorderItems: onReorderAddedDraft,
+                                onStackWithPrevious: onStackAddedDraftWithPrevious,
+                                onUnstack: onUnstackAddedDraft,
+                                onSetDensity: onSetAddedDraftDensity,
+                                onPreview: onPreviewAddedDraft
+                            )
+                        }
+                        .padding(.top, artifacts.isEmpty ? 16 : 10)
+                    }
 
                     titleEditor
                         .padding(.horizontal, 20)
                         .padding(.top, 12)
 
-                    CaptureBodyEditorView(
-                        text: $rawText,
-                        focus: $isBodyFocused,
-                        minHeight: max(proxy.size.height - (artifacts.isEmpty ? 0 : 132), 360)
-                    )
+                    if isRecordBodyCardVisible {
+                        RecordBodyCardEditor(
+                            text: $rawText,
+                            focus: $isBodyFocused,
+                            minHeight: max(proxy.size.height - 360, 160)
+                        )
+                        .padding(.horizontal, 20)
+                        .padding(.top, 12)
+                    }
 
                     statusSection
                         .padding(.horizontal, 20)
@@ -725,37 +933,6 @@ private struct MemoryDetailEditingView: View {
             .scrollDismissesKeyboard(.interactively)
         }
         .background(Color(.systemBackground))
-    }
-
-    private var supportingArtifactEditor: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("memory.edit.addAttachment")
-                .font(.headline)
-
-            Picker("memory.edit.addAttachment", selection: $newArtifactKind) {
-                ForEach(MemoryDetailNewArtifactKind.allCases) { kind in
-                    Text(kind.labelKey).tag(kind)
-                }
-            }
-            .pickerStyle(.segmented)
-
-            if newArtifactKind.usesTitleField {
-                TextField("capture.field.title", text: $newArtifactTitle)
-                    .textFieldStyle(.roundedBorder)
-            }
-
-            if newArtifactKind == .link {
-                TextField("capture.field.url", text: $newArtifactURL)
-                    .textInputAutocapitalization(.never)
-                    .keyboardType(.URL)
-                    .textFieldStyle(.roundedBorder)
-            }
-
-            TextField(newArtifactKind.notePlaceholderKey, text: $newArtifactText, axis: .vertical)
-                .textFieldStyle(.roundedBorder)
-                .lineLimit(2...4)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var titleEditor: some View {
@@ -788,7 +965,6 @@ private struct MemoryDetailEditingBoardView: View {
     var onDeleteArtifacts: ([UUID]) -> Void
     var onPreviewArtifacts: ([UUID]) -> Void
     var onSetCardDensity: (UUID, MemoryCardContentDensity) -> Void
-    var onMoveArtifact: (UUID, Int) -> Void
     var onStackArtifactWithPrevious: (UUID) -> Void
     var onUnstackArtifact: (UUID) -> Void
     var onAutoArrange: () -> Void
@@ -866,14 +1042,10 @@ private struct MemoryDetailEditingBoardView: View {
                         MemoryDetailEditingBoardCard(
                             node: slot.node,
                             availableSize: slot.frame.size,
-                            canMoveEarlier: canMove(slot.node, by: -1),
-                            canMoveLater: canMove(slot.node, by: 1),
                             canMergeWithPrevious: canMergeMediaWithPrevious(slot.node),
                             onDelete: { onDeleteArtifacts(slot.node.artifactIDs) },
                             onPreview: { onPreviewArtifacts(slot.node.artifactIDs) },
                             onSetDensity: { density in onSetCardDensity(slot.node.id, density) },
-                            onMoveEarlier: { onMoveArtifact(slot.node.primaryArtifactID, -1) },
-                            onMoveLater: { onMoveArtifact(slot.node.primaryArtifactID, 1) },
                             onStackWithPrevious: { onStackArtifactWithPrevious(slot.node.primaryArtifactID) },
                             onUnstack: { onUnstackArtifact(slot.node.primaryArtifactID) }
                         )
@@ -919,11 +1091,6 @@ private struct MemoryDetailEditingBoardView: View {
         measuredContainerWidth = width
     }
 
-    private func canMove(_ node: MemoryDetailEditingBoardNode, by offset: Int) -> Bool {
-        guard let index = boardNodes.firstIndex(where: { $0.id == node.id }) else { return false }
-        return boardNodes.indices.contains(index + offset)
-    }
-
     private func canMergeMediaWithPrevious(_ node: MemoryDetailEditingBoardNode) -> Bool {
         guard node.isSingleMedia else { return false }
         guard let index = boardNodes.firstIndex(where: { $0.id == node.id }), index > 0 else { return false }
@@ -935,101 +1102,41 @@ private struct MemoryDetailEditingBoardView: View {
 private struct MemoryDetailEditingBoardCard: View {
     let node: MemoryDetailEditingBoardNode
     let availableSize: CGSize
-    let canMoveEarlier: Bool
-    let canMoveLater: Bool
     let canMergeWithPrevious: Bool
     var onDelete: () -> Void
     var onPreview: () -> Void
     var onSetDensity: (MemoryCardContentDensity) -> Void
-    var onMoveEarlier: () -> Void
-    var onMoveLater: () -> Void
     var onStackWithPrevious: () -> Void
     var onUnstack: () -> Void
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
-            CaptureCardView(
-                presentation: CaptureCardPresentation(
-                    item: node.item,
-                    role: .detailEditing,
-                    provenanceDisplayMode: .production,
-                    contentKind: node.contentKind,
-                    contentDensity: node.contentDensity
-                ),
-                objectAvailableSize: availableSize,
-                onTap: onPreview
-            )
-
-            Menu {
-                Button {
-                    onPreview()
-                } label: {
-                    Label("memory.card.preview", systemImage: "eye")
-                }
-
-                Menu {
-                    ForEach(MemoryCardPresentationPolicy.supportedDensities(for: node.contentKind)) { density in
-                        Button {
-                            onSetDensity(density)
-                        } label: {
-                            Label(density.menuLabel, systemImage: density == node.contentDensity ? "checkmark" : density.systemImage)
-                        }
-                    }
-                } label: {
-                    Label("memory.card.displayDensity", systemImage: "rectangle.3.group")
-                }
-
-                Divider()
-
-                Button {
-                    onMoveEarlier()
-                } label: {
-                    Label("memory.edit.moveAttachmentUp", systemImage: "arrow.up")
-                }
-                .disabled(!canMoveEarlier)
-
-                Button {
-                    onMoveLater()
-                } label: {
-                    Label("memory.edit.moveAttachmentDown", systemImage: "arrow.down")
-                }
-                .disabled(!canMoveLater)
-
-                Divider()
-
-                if canMergeWithPrevious {
-                    Button {
-                        onStackWithPrevious()
-                    } label: {
-                        Label("memory.card.mergeMedia", systemImage: "rectangle.stack.badge.plus")
-                    }
-                }
-
-                if node.isMediaGroup {
-                    Button {
-                        onUnstack()
-                    } label: {
-                        Label("memory.card.spreadMedia", systemImage: "square.split.2x1")
-                    }
-                }
-
-                Divider()
-
-                Button(role: .destructive) {
-                    onDelete()
-                } label: {
-                    Label("common.delete", systemImage: "trash")
-                }
-            } label: {
-                Image(systemName: "ellipsis.circle.fill")
-                    .font(.title3)
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(.secondary)
-                    .padding(9)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("common.more")
+        CaptureCardView(
+            presentation: CaptureCardPresentation(
+                item: node.item,
+                role: .detailEditing,
+                provenanceDisplayMode: .production,
+                contentKind: node.contentKind,
+                contentDensity: node.contentDensity
+            ),
+            objectAvailableSize: availableSize,
+            onTap: onPreview
+        )
+        .contextMenu {
+            MemoryCardActionMenu(configuration: MemoryCardActionMenuConfiguration(
+                contentKind: node.contentKind,
+                contentDensity: node.contentDensity,
+                canPreview: true,
+                canEdit: false,
+                canSetDensity: true,
+                canMergeMedia: canMergeWithPrevious,
+                canSpreadMedia: node.isMediaGroup,
+                canDelete: true,
+                onPreview: onPreview,
+                onSetDensity: onSetDensity,
+                onMergeMedia: onStackWithPrevious,
+                onSpreadMedia: onUnstack,
+                onDelete: onDelete
+            ))
         }
     }
 }
@@ -1184,45 +1291,6 @@ private extension MemoryCardNode {
             return ids
         case .recordBody, .affect, .journalingSuggestion:
             return []
-        }
-    }
-}
-
-private enum MemoryDetailNewArtifactKind: String, CaseIterable, Identifiable {
-    case note
-    case link
-    case todo
-
-    var id: String { rawValue }
-
-    var labelKey: LocalizedStringKey {
-        switch self {
-        case .note:
-            return "capture.field.note"
-        case .link:
-            return "capture.card.kind.link"
-        case .todo:
-            return "capture.card.kind.todo"
-        }
-    }
-
-    var notePlaceholderKey: LocalizedStringKey {
-        switch self {
-        case .note:
-            return "memory.edit.addAttachment.placeholder"
-        case .link:
-            return "capture.field.note"
-        case .todo:
-            return "capture.field.note"
-        }
-    }
-
-    var usesTitleField: Bool {
-        switch self {
-        case .note:
-            return false
-        case .link, .todo:
-            return true
         }
     }
 }
