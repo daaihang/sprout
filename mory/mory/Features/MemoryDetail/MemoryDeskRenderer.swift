@@ -2,6 +2,17 @@ import SwiftUI
 
 struct MemoryDeskRenderer: View {
     let snapshot: MemoryDetailSnapshot
+    var onPreviewRecord: () -> Void = {}
+    var onPreviewArtifacts: ([UUID]) -> Void = { _ in }
+    var onOpenPlace: (UUID) -> Void = { _ in }
+    var onOpenLink: (UUID) -> Void = { _ in }
+    var onToggleMusic: (UUID) -> Void = { _ in }
+    var onEditMemory: () -> Void = {}
+    var onSetCardDensity: (UUID, MemoryCardContentDensity) -> Void = { _, _ in }
+    var onMergeMediaWithPrevious: (UUID) -> Void = { _ in }
+    var onUnmergeMedia: (UUID) -> Void = { _ in }
+    var onDeleteArtifacts: ([UUID]) -> Void = { _ in }
+
     @State private var measuredContainerWidth: CGFloat = 0
     private let metrics = MemoryDeskBoardMetrics.default
 
@@ -83,8 +94,96 @@ struct MemoryDeskRenderer: View {
                 contentKind: node.contentKind,
                 contentDensity: node.contentDensity
             ),
-            objectAvailableSize: availableSize
+            objectAvailableSize: availableSize,
+            onTap: { performPrimaryAction(for: node) }
         )
+        .contextMenu {
+            cardContextMenu(for: node)
+        }
+    }
+
+    @ViewBuilder
+    private func cardContextMenu(for node: ResolvedMemoryDeskNode) -> some View {
+        Button {
+            performPreviewAction(for: node)
+        } label: {
+            Label("memory.card.preview", systemImage: "eye")
+        }
+
+        Menu {
+            ForEach(MemoryCardPresentationPolicy.supportedDensities(for: node.contentKind)) { density in
+                Button {
+                    onSetCardDensity(node.id, density)
+                } label: {
+                    Label(density.menuLabel, systemImage: density == node.contentDensity ? "checkmark" : density.systemImage)
+                }
+            }
+        } label: {
+            Label("memory.card.displayDensity", systemImage: "rectangle.3.group")
+        }
+
+        Button {
+            onEditMemory()
+        } label: {
+            Label("memory.card.edit", systemImage: "pencil")
+        }
+
+        if canMergeMediaWithPrevious(node), let primaryArtifactID = node.primaryArtifactID {
+            Button {
+                onMergeMediaWithPrevious(primaryArtifactID)
+            } label: {
+                Label("memory.card.mergeMedia", systemImage: "rectangle.stack.badge.plus")
+            }
+        }
+
+        if node.isMediaGroup {
+            Button {
+                onUnmergeMedia(node.id)
+            } label: {
+                Label("memory.card.spreadMedia", systemImage: "square.split.2x1")
+            }
+        }
+
+        if !node.artifactIDs.isEmpty {
+            Divider()
+
+            Button(role: .destructive) {
+                onDeleteArtifacts(node.artifactIDs)
+            } label: {
+                Label("common.delete", systemImage: "trash")
+            }
+        }
+    }
+
+    private func performPrimaryAction(for node: ResolvedMemoryDeskNode) {
+        switch node.contentKind {
+        case .place:
+            node.primaryArtifactID.map(onOpenPlace)
+        case .link:
+            node.primaryArtifactID.map(onOpenLink)
+        case .music:
+            node.primaryArtifactID.map(onToggleMusic)
+        default:
+            performPreviewAction(for: node)
+        }
+    }
+
+    private func performPreviewAction(for node: ResolvedMemoryDeskNode) {
+        switch node.contentRef {
+        case .recordBody:
+            onPreviewRecord()
+        case .artifact, .artifactGroup:
+            onPreviewArtifacts(node.artifactIDs)
+        case .affect, .journalingSuggestion:
+            onPreviewArtifacts(node.artifactIDs)
+        }
+    }
+
+    private func canMergeMediaWithPrevious(_ node: ResolvedMemoryDeskNode) -> Bool {
+        guard node.isSingleMedia else { return false }
+        let ordered = resolvedNodes
+        guard let index = ordered.firstIndex(where: { $0.id == node.id }), index > 0 else { return false }
+        return ordered[index - 1].isMediaNode
     }
 
     private func updateMeasuredWidth(_ width: CGFloat) {
@@ -98,12 +197,14 @@ struct MemoryDeskRenderer: View {
             guard let rawText = snapshot.record.rawText.trimmedOrNil else { return nil }
             return ResolvedMemoryDeskNode(
                 id: node.id,
+                contentRef: node.contentRef,
+                artifacts: [],
                 item: CaptureCardItem(
                     id: "record-\(snapshot.record.id.uuidString)",
-                    payload: .prompt(CapturePromptCardPayload(prompt: snapshot.record.titleForDesk, answer: rawText)),
+                    payload: .prompt(CapturePromptCardPayload(prompt: snapshot.record.displayTitle, answer: rawText)),
                     origin: snapshot.record.captureProvenance?.artifactOrigin ?? .manual,
                     provenance: snapshot.record.captureProvenance,
-                    title: snapshot.record.titleForDesk,
+                    title: snapshot.record.displayTitle,
                     detail: rawText,
                     metadata: snapshot.record.createdAt.formatted(date: .abbreviated, time: .shortened)
                 ),
@@ -115,6 +216,8 @@ struct MemoryDeskRenderer: View {
             guard let artifact = snapshot.artifacts.first(where: { $0.id == id }) else { return nil }
             return ResolvedMemoryDeskNode(
                 id: node.id,
+                contentRef: node.contentRef,
+                artifacts: [artifact],
                 item: CaptureCardItem(artifact: artifact),
                 contentKind: CaptureCardItem(artifact: artifact).memoryContentKind,
                 contentDensity: node.contentDensity,
@@ -125,8 +228,10 @@ struct MemoryDeskRenderer: View {
             guard !artifacts.isEmpty else { return nil }
             return ResolvedMemoryDeskNode(
                 id: node.id,
+                contentRef: node.contentRef,
+                artifacts: artifacts,
                 item: groupedItem(artifacts: artifacts, kind: kind, nodeID: node.id),
-                contentKind: .bundle,
+                contentKind: groupContentKind(artifacts: artifacts, kind: kind),
                 contentDensity: node.contentDensity,
                 layout: node.layout
             )
@@ -137,6 +242,8 @@ struct MemoryDeskRenderer: View {
             guard !artifacts.isEmpty else { return nil }
             return ResolvedMemoryDeskNode(
                 id: node.id,
+                contentRef: node.contentRef,
+                artifacts: artifacts,
                 item: journalingSuggestionItem(importSessionID: importSessionID, artifacts: artifacts),
                 contentKind: .journalingSuggestion,
                 contentDensity: node.contentDensity,
@@ -146,6 +253,12 @@ struct MemoryDeskRenderer: View {
     }
 
     private func groupedItem(artifacts: [Artifact], kind: MemoryCardGroupKind, nodeID: UUID) -> CaptureCardItem {
+        if kind.isMediaGroup,
+           let first = artifacts.first,
+           first.isMemoryCardMergeableMedia {
+            return mediaStackItem(first: first, artifacts: artifacts, nodeID: nodeID)
+        }
+
         let thumbnail = artifacts.compactMap { $0.previewPayload ?? $0.binaryPayload }.first
         let title: String
         switch kind {
@@ -179,6 +292,42 @@ struct MemoryDeskRenderer: View {
             detail: artifacts.map(\.title).compactMap(\.trimmedOrNil).prefix(3).joined(separator: " · "),
             metadata: "\(artifacts.count)"
         )
+    }
+
+    private func mediaStackItem(first: Artifact, artifacts: [Artifact], nodeID: UUID) -> CaptureCardItem {
+        let base = CaptureCardItem(artifact: first)
+        let payload: CaptureCardPayload
+        switch base.payload {
+        case var .photo(photo):
+            photo.photoCount = artifacts.count
+            payload = .photo(photo)
+        case var .video(video):
+            video.mediaCount = artifacts.count
+            payload = .video(video)
+        case var .livePhoto(livePhoto):
+            livePhoto.mediaCount = artifacts.count
+            payload = .livePhoto(livePhoto)
+        default:
+            payload = base.payload
+        }
+        return CaptureCardItem(
+            id: "media-group-\(nodeID.uuidString)",
+            payload: payload,
+            origin: first.deskCaptureOrigin,
+            provenance: first.captureProvenance,
+            title: base.title,
+            detail: base.detail,
+            metadata: "\(artifacts.count)"
+        )
+    }
+
+    private func groupContentKind(artifacts: [Artifact], kind: MemoryCardGroupKind) -> MemoryCardContentKind {
+        guard kind.isMediaGroup,
+              let first = artifacts.first,
+              first.isMemoryCardMergeableMedia else {
+            return .bundle
+        }
+        return CaptureCardItem(artifact: first).memoryContentKind
     }
 
     private func journalingSuggestionItem(importSessionID: UUID, artifacts: [Artifact]) -> CaptureCardItem {
@@ -254,10 +403,32 @@ struct MemoryDeskRenderPlan {
 
 private struct ResolvedMemoryDeskNode: Identifiable {
     let id: UUID
+    var contentRef: MemoryCardContentRef
+    var artifacts: [Artifact]
     var item: CaptureCardItem
     var contentKind: MemoryCardContentKind
     var contentDensity: MemoryCardContentDensity
     var layout: MemoryCardLayoutToken
+
+    var artifactIDs: [UUID] {
+        artifacts.map(\.id)
+    }
+
+    var primaryArtifactID: UUID? {
+        artifactIDs.first
+    }
+
+    var isSingleMedia: Bool {
+        artifacts.count == 1 && artifacts[0].isMemoryCardMergeableMedia
+    }
+
+    var isMediaNode: Bool {
+        !artifacts.isEmpty && artifacts.allSatisfy(\.isMemoryCardMergeableMedia)
+    }
+
+    var isMediaGroup: Bool {
+        artifacts.count > 1 && isMediaNode
+    }
 }
 
 private struct ResolvedMemoryDeskSlot: Identifiable {
@@ -272,15 +443,33 @@ private struct ResolvedMemoryDeskSlot: Identifiable {
     }
 }
 
-private extension RecordShell {
-    var titleForDesk: String {
-        rawText.firstMeaningfulLine ?? "Untitled Memory"
-    }
-}
-
 private extension Artifact {
     var deskCaptureOrigin: CaptureArtifactOrigin? {
         captureProvenance?.artifactOrigin
             ?? metadata["captureOrigin"].flatMap(CaptureArtifactOrigin.init(rawValue:))
+    }
+}
+
+extension MemoryCardContentDensity {
+    var menuLabel: LocalizedStringKey {
+        switch self {
+        case .simple: return "memory.card.density.simple"
+        case .standard: return "memory.card.density.standard"
+        case .detailed: return "memory.card.density.detailed"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .simple: return "capsule"
+        case .standard: return "rectangle"
+        case .detailed: return "rectangle.portrait"
+        }
+    }
+}
+
+private extension MemoryCardGroupKind {
+    var isMediaGroup: Bool {
+        self == .mediaStack || self == .photoStack
     }
 }

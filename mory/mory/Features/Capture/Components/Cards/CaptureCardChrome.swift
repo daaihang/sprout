@@ -1,14 +1,12 @@
 import SwiftUI
 
-struct CaptureCardChrome<Content: View, Footer: View, TrailingControl: View, ContainerStroke: View>: View {
+struct CaptureCardChrome<Content: View, TrailingControl: View, ContainerStroke: View>: View {
     let item: CaptureCardItem
     let containerBackground: AnyShapeStyle
     let containerStroke: ContainerStroke
-    let footer: Footer
     let trailingControl: TrailingControl
     let showsLayoutGuides: Bool
     let fieldAuditText: String?
-    let showsFooter: Bool
     let cornerRadius: CGFloat
     @ViewBuilder var content: Content
 
@@ -18,11 +16,6 @@ struct CaptureCardChrome<Content: View, Footer: View, TrailingControl: View, Con
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(containerBackground, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
                 .redacted(reason: item.state == .loading ? .placeholder : [])
-                .overlay(alignment: .bottomLeading) {
-                    if showsFooter {
-                        footer
-                    }
-                }
                 .overlay {
                     if showsLayoutGuides {
                         layoutGuides

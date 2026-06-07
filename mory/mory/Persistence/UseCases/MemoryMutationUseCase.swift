@@ -43,6 +43,13 @@ struct MemoryMutationUseCase {
         let existingArtifactIDs = Set(updatedRecord.artifactIDs)
         let deletedArtifactIDs = repository.orderedUniqueUUIDs(mutation.deletedArtifactIDs)
 
+        switch mutation.recordPatch.title {
+        case .unchanged:
+            break
+        case let .set(title):
+            updatedRecord.title = title?.generatedMemoryTitle()
+        }
+
         switch mutation.recordPatch.rawText {
         case .unchanged:
             break
@@ -137,6 +144,7 @@ struct MemoryMutationUseCase {
         }
 
         let recordFactsChanged = updatedRecord.rawText != originalRecord.rawText
+            || updatedRecord.title != originalRecord.title
             || updatedRecord.userMood != originalRecord.userMood
             || updatedRecord.inputContext != originalRecord.inputContext
             || updatedRecord.captureSource != originalRecord.captureSource
@@ -323,6 +331,7 @@ struct MemoryMutationUseCase {
             recordID: recordID,
             mutation: MemoryMutationDraft(
                 recordPatch: MemoryMutationRecordPatch(
+                    title: .set(draft.title),
                     rawText: .set(draft.rawText),
                     userMood: .set(draft.userMood),
                     inputContext: .set(draft.inputContext)

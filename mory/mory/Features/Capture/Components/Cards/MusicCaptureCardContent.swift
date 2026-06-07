@@ -156,7 +156,7 @@ struct MusicCaptureCardContent: View {
     }
 
     private var musicState: CaptureMusicPlaybackState {
-        payload.playbackState ?? (common.origin == .context ? .playing : .searchResult)
+        payload.playbackState ?? .stopped
     }
 
     private var musicPlaceholder: some View {

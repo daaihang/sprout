@@ -18,6 +18,8 @@ struct LivePhotoCaptureCardContent: View {
                 .padding(7)
                 .background(Color.black.opacity(highContrast ? 0.58 : 0.36), in: Circle())
                 .padding(9)
+            CaptureCardMediaStackBadge(count: payload.mediaCount)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
         }
     }
 

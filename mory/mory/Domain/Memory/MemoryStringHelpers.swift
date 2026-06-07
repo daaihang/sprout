@@ -32,3 +32,11 @@ extension String {
         trimmedOrNil ?? fallback
     }
 }
+
+extension RecordShell {
+    var displayTitle: String {
+        title?.trimmedOrNil
+            ?? rawText.firstMeaningfulLine
+            ?? "Untitled Memory"
+    }
+}

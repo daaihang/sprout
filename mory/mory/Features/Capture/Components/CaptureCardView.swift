@@ -88,11 +88,9 @@ struct CaptureCardView: View {
             item: item,
             containerBackground: containerBackground,
             containerStroke: containerStroke,
-            footer: cardFooter,
             trailingControl: trailingControl,
             showsLayoutGuides: showsLayoutGuides,
             fieldAuditText: showsFieldAudit ? fieldAuditText : nil,
-            showsFooter: renderContext.showsFooter,
             cornerRadius: renderContext.chromeCornerRadius
         ) {
             content
@@ -163,45 +161,6 @@ struct CaptureCardView: View {
         }
     }
 
-    private var cardFooter: some View {
-        HStack(spacing: 6) {
-            if let origin = item.origin,
-               let visual = presentation.provenanceDisplayMode.visual(for: origin, provenance: item.provenance) {
-                originBadge(visual, origin: origin)
-            }
-
-            if let metadata = visibleFooterMetadata {
-                Text(metadata)
-                    .font(.caption2)
-                    .foregroundStyle(footerMetadataForeground)
-                    .lineLimit(1)
-            }
-        }
-        .padding(10)
-    }
-
-    private func originBadge(_ visual: CaptureCardProvenanceVisual, origin: CaptureArtifactOrigin) -> some View {
-        HStack(spacing: visual.isCompact ? 3 : 4) {
-            if let symbolName = visual.symbolName {
-                Image(systemName: symbolName)
-                    .font(.caption2.weight(.semibold))
-            }
-            if let label = visual.label {
-                Text(label)
-                    .lineLimit(1)
-            }
-        }
-            .font(.caption2.weight(visual.isCompact ? .medium : .semibold))
-            .foregroundStyle(originForeground(for: origin))
-            .padding(.horizontal, visual.isCompact ? 5 : 7)
-            .padding(.vertical, visual.isCompact ? 2 : 3)
-            .background {
-                Capsule()
-                    .fill(originBackground(for: origin))
-            }
-            .opacity(visual.isCompact ? 0.74 : 1)
-    }
-
     @ViewBuilder
     private var trailingControl: some View {
         if item.state == .loading {
@@ -251,78 +210,12 @@ struct CaptureCardView: View {
             )
     }
 
-    private func originForeground(for origin: CaptureArtifactOrigin?) -> Color {
-        if usesMapLegibility {
-            return mapFooterForeground
-        }
-        switch origin {
-        case .manual:
-            return .primary
-        case .context:
-            return palette.controlTint
-        case .imported:
-            return palette.controlTint.opacity(0.82)
-        case .inferred:
-            return palette.controlTint.opacity(0.72)
-        case nil:
-            return .secondary
-        }
-    }
-
-    private func originBackground(for origin: CaptureArtifactOrigin?) -> Color {
-        if usesMapLegibility {
-            return mapFooterBackground
-        }
-        return originForeground(for: origin).opacity(highContrast ? 0.2 : 0.13)
-    }
-
-    private var footerMetadataForeground: Color {
-        usesMapLegibility ? mapFooterForeground.opacity(0.78) : .secondary
-    }
-
-    private var visibleFooterMetadata: String? {
-        guard let metadata = item.metadata?.trimmedOrNil else { return nil }
-        guard presentation.provenanceDisplayMode != .debug else { return metadata }
-        guard item.kind == .weather else { return nil }
-        guard let origin = item.origin else { return metadata }
-        let normalizedMetadata = metadata.lowercased()
-        let hiddenOriginValues = [
-            origin.rawValue.lowercased(),
-            origin.captureBadgeLabel.lowercased(),
-        ]
-        return hiddenOriginValues.contains(normalizedMetadata) ? nil : metadata
-    }
-
-    private var usesMapLegibility: Bool {
-        guard case let .place(payload) = item.payload else { return false }
-        return payload.mapSnapshotData != nil && !payload.isPrivacyEnabled
-    }
-
     private var mapLegibilityStyle: CaptureMapLegibilityStyle {
-        guard case let .place(payload) = item.payload, usesMapLegibility else { return .fallback }
-        return CaptureMapLegibilityStyle.resolve(snapshotData: payload.mapSnapshotData)
-    }
-
-    private var mapFooterForeground: Color {
-        switch mapLegibilityStyle {
-        case .lightText:
-            return .white
-        case .darkText:
-            return .black.opacity(0.86)
-        case .fallback:
-            return .primary
-        }
-    }
-
-    private var mapFooterBackground: Color {
-        switch mapLegibilityStyle {
-        case .lightText:
-            return .black.opacity(highContrast ? 0.48 : 0.28)
-        case .darkText:
-            return .white.opacity(highContrast ? 0.78 : 0.56)
-        case .fallback:
-            return Color.primary.opacity(highContrast ? 0.18 : 0.1)
-        }
+        guard case let .place(payload) = item.payload,
+              let snapshotData = payload.mapSnapshotData,
+              !payload.isPrivacyEnabled
+        else { return .fallback }
+        return CaptureMapLegibilityStyle.resolve(snapshotData: snapshotData)
     }
 
     private var highContrast: Bool {
@@ -374,7 +267,6 @@ struct CaptureCardView: View {
             "role=\(presentation.role.rawValue)",
             "contentKind=\(presentation.contentKind.rawValue)",
             "density=\(renderContext.density.rawValue)",
-            "footer=\(renderContext.footerMode)",
             "aspect=\(renderContext.mediaAspectRatio.map { String(format: "%.3f", $0) } ?? "nil")",
             "kind=\(item.kind.rawValue)",
             "payload=\(item.payload.kind.rawValue)",

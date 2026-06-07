@@ -599,7 +599,7 @@ final class CaptureCardModelsTests: XCTestCase {
         }
     }
 
-    func testRenderContextHidesFooterForMediaAndMapBackgroundCards() {
+    func testRenderContextNormalizesMediaAndPlaceChromeWithoutFooter() {
         let photo = CaptureCardPresentation(
             item: CaptureCardItem(
                 payload: .photo(CapturePhotoCardPayload(mediaDimensions: ArtifactMediaDimensions(width: 1440, height: 1800))),
@@ -632,13 +632,11 @@ final class CaptureCardModelsTests: XCTestCase {
         )
 
         XCTAssertEqual(photo.contentDensity, .standard)
-        XCTAssertFalse(CaptureCardRenderContext(presentation: photo, availableSize: nil).showsFooter)
         XCTAssertEqual(video.contentDensity, .standard)
-        XCTAssertFalse(CaptureCardRenderContext(presentation: video, availableSize: nil).showsFooter)
-        XCTAssertTrue(CaptureCardRenderContext(presentation: simplePlace, availableSize: nil).showsFooter)
-        XCTAssertFalse(CaptureCardRenderContext(presentation: standardPlace, availableSize: nil).showsFooter)
         XCTAssertGreaterThan(CaptureCardRenderContext(presentation: simplePlace, availableSize: nil).chromeCornerRadius, 100)
         XCTAssertEqual(CaptureCardRenderContext(presentation: standardPlace, availableSize: nil).chromeCornerRadius, 20)
+        XCTAssertEqual(CaptureCardRenderContext(presentation: photo, availableSize: nil).chromeCornerRadius, 20)
+        XCTAssertEqual(CaptureCardRenderContext(presentation: video, availableSize: nil).chromeCornerRadius, 20)
     }
 
     func testCardDebugArrangementReportCoversMasonryFramesAndRenderOverflow() {

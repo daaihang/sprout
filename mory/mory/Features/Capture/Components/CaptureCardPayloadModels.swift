@@ -61,12 +61,14 @@ struct CaptureVideoCardPayload: Hashable, Sendable {
     var thumbnailData: Data? = nil
     var durationSeconds: Int? = nil
     var mediaDimensions: ArtifactMediaDimensions? = nil
+    var mediaCount: Int = 1
 }
 
 struct CaptureLivePhotoCardPayload: Hashable, Sendable {
     var thumbnailData: Data? = nil
     var pairedVideoByteCount: Int? = nil
     var mediaDimensions: ArtifactMediaDimensions? = nil
+    var mediaCount: Int = 1
 }
 
 struct CaptureAudioCardPayload: Hashable, Sendable {
@@ -95,6 +97,8 @@ struct CaptureMusicCardPayload: Hashable, Sendable {
     var artworkPalette: MusicArtworkPalette? = nil
     var durationSeconds: Int? = nil
     var playbackState: CaptureMusicPlaybackState? = nil
+    var catalogID: String? = nil
+    var storeID: String? = nil
 }
 
 struct CaptureLinkCardPayload: Hashable, Sendable {

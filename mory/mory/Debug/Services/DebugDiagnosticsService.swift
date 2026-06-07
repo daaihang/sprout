@@ -114,7 +114,7 @@ struct DebugDiagnosticsService {
 
         return DebugMemoryFixtureSnapshot(
             recordID: record.id,
-            recordTitle: record.rawText.firstMeaningfulLine ?? "Debug Fixture",
+            recordTitle: record.displayTitle,
             chain: DebugMemoryChainSnapshot(
                 record: record,
                 artifacts: artifacts,

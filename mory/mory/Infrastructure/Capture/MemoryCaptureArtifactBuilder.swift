@@ -409,6 +409,8 @@ struct MemoryCaptureArtifactBuilder {
             ]
             if !c.albumName.isEmpty { metadata["albumName"] = c.albumName }
             if let artworkURL = c.artworkURL { metadata["artworkURL"] = artworkURL }
+            if let catalogID = c.catalogID?.trimmedOrNil { metadata["catalogID"] = catalogID }
+            if let storeID = c.storeID?.trimmedOrNil { metadata["storeID"] = storeID }
             if c.artworkData != nil { metadata["hasArtworkData"] = "true" }
             if let artworkPalette = c.artworkPalette {
                 metadata.merge(artworkPalette.metadata) { _, new in new }

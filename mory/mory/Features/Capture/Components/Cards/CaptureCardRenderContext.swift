@@ -1,17 +1,11 @@
 import SwiftUI
 
-enum CaptureCardFooterMode: Hashable, Sendable {
-    case visible
-    case hidden
-}
-
 struct CaptureCardRenderContext: Hashable, Sendable {
     let contentKind: MemoryCardContentKind
     let density: MemoryCardContentDensity
     let metrics: MemoryCardObjectMetrics
     let availableSize: CGSize?
     let mediaAspectRatio: CGFloat?
-    let footerMode: CaptureCardFooterMode
 
     init(presentation: CaptureCardPresentation, availableSize: CGSize?) {
         let contentKind = presentation.contentKind
@@ -30,31 +24,12 @@ struct CaptureCardRenderContext: Hashable, Sendable {
             availableSize: availableSize,
             mediaAspectRatio: mediaAspectRatio
         )
-        self.footerMode = Self.footerMode(contentKind: contentKind, density: density)
-    }
-
-    var showsFooter: Bool {
-        footerMode == .visible
     }
 
     var isSimple: Bool { density == .simple }
     var isStandard: Bool { density == .standard }
     var isDetailed: Bool { density == .detailed }
     var chromeCornerRadius: CGFloat { isSimple ? 999 : 20 }
-
-    private static func footerMode(
-        contentKind: MemoryCardContentKind,
-        density: MemoryCardContentDensity
-    ) -> CaptureCardFooterMode {
-        switch contentKind {
-        case .photo, .video, .livePhoto:
-            return .hidden
-        case .place where density != .simple:
-            return .hidden
-        default:
-            return .visible
-        }
-    }
 }
 
 extension CaptureCardPayload {

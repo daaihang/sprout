@@ -5,6 +5,7 @@ extension RecordShellStore {
     convenience init(domainModel: RecordShell) {
         self.init(
             id: domainModel.id,
+            title: domainModel.title,
             createdAt: domainModel.createdAt,
             updatedAt: domainModel.updatedAt,
             captureSourceRawValue: domainModel.captureSource.rawValue,
@@ -21,6 +22,7 @@ extension RecordShellStore {
     var domainModel: RecordShell {
         RecordShell(
             id: id,
+            title: title,
             createdAt: createdAt,
             updatedAt: updatedAt,
             captureSource: CaptureSource(rawValue: captureSourceRawValue) ?? .manual,
@@ -36,6 +38,7 @@ extension RecordShellStore {
 
     func apply(domainModel: RecordShell) {
         id = domainModel.id
+        title = domainModel.title
         createdAt = domainModel.createdAt
         updatedAt = domainModel.updatedAt
         captureSourceRawValue = domainModel.captureSource.rawValue

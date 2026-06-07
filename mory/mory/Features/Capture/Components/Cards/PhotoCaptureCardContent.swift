@@ -19,12 +19,16 @@ struct PhotoCaptureCardContent: View {
     private var singlePhotoContent: some View {
         ZStack {
             photoBackground
+            CaptureCardMediaStackBadge(count: payload.photoCount)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
         }
     }
 
     private var photoGroupContent: some View {
         ZStack {
             mosaicBackground
+            CaptureCardMediaStackBadge(count: payload.photoCount)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
         }
     }
 

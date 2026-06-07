@@ -97,7 +97,9 @@ extension CaptureCardItem {
                     artworkData: artifact.previewPayload ?? artifact.binaryPayload,
                     artworkPalette: artifact.captureCardArtworkPalette,
                     durationSeconds: artifact.metadata["durationSeconds"].flatMap(Int.init),
-                    playbackState: .stopped
+                    playbackState: .stopped,
+                    catalogID: artifact.metadata["catalogID"]?.trimmedOrNil,
+                    storeID: artifact.metadata["storeID"]?.trimmedOrNil
                 )),
                 origin: artifact.captureCardOrigin,
                 provenance: artifact.captureProvenance,
@@ -422,7 +424,9 @@ extension CaptureCardItem {
                     artworkData: c.artworkData,
                     artworkPalette: c.artworkPalette,
                     durationSeconds: c.durationSeconds,
-                    playbackState: musicPlaybackState
+                    playbackState: musicPlaybackState,
+                    catalogID: c.catalogID?.trimmedOrNil,
+                    storeID: c.storeID?.trimmedOrNil
                 )),
                 origin: origin,
                 provenance: provenance,

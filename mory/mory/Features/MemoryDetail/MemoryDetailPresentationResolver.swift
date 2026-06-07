@@ -35,7 +35,7 @@ struct MemoryDetailPresentationResolver {
             mode: mode,
             record: snapshot.record,
             bodyText: bodyText,
-            title: snapshot.record.rawText.generatedMemoryTitle() ?? String(localized: "memory.nav.title"),
+            title: snapshot.record.displayTitle,
             subtitle: snapshot.record.createdAt.formatted(date: .abbreviated, time: .shortened),
             contentArtifacts: contentArtifacts,
             contextArtifacts: contextArtifacts,

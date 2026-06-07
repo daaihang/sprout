@@ -10,10 +10,7 @@ struct MemorySummary: Identifiable, Hashable, Sendable {
     var id: UUID { record.id }
 
     var title: String {
-        if let artifactTitle = primaryArtifact?.title.trimmedOrNil {
-            return artifactTitle
-        }
-        return record.rawText.firstMeaningfulLine ?? "Untitled Memory"
+        record.displayTitle
     }
 
     var summaryText: String {
@@ -38,6 +35,7 @@ struct MemoryDetailSnapshot: Hashable, Sendable {
 }
 
 struct MemoryEditDraft: Hashable, Sendable {
+    var title: String?
     var rawText: String
     var userMood: String?
     var inputContext: String?
@@ -45,12 +43,14 @@ struct MemoryEditDraft: Hashable, Sendable {
     var addedArtifacts: [CaptureArtifactDraft]
 
     init(
+        title: String? = nil,
         rawText: String,
         userMood: String? = nil,
         inputContext: String? = nil,
         appendedArtifactText: String? = nil,
         addedArtifacts: [CaptureArtifactDraft] = []
     ) {
+        self.title = title
         self.rawText = rawText
         self.userMood = userMood
         self.inputContext = inputContext
@@ -73,17 +73,20 @@ enum MemoryMutationField<Value: Hashable & Sendable>: Hashable, Sendable {
 }
 
 struct MemoryMutationRecordPatch: Hashable, Sendable {
+    var title: MemoryMutationField<String>
     var rawText: MemoryMutationField<String>
     var userMood: MemoryMutationField<String>
     var inputContext: MemoryMutationField<String>
     var captureSource: MemoryMutationField<CaptureSource>
 
     init(
+        title: MemoryMutationField<String> = .unchanged,
         rawText: MemoryMutationField<String> = .unchanged,
         userMood: MemoryMutationField<String> = .unchanged,
         inputContext: MemoryMutationField<String> = .unchanged,
         captureSource: MemoryMutationField<CaptureSource> = .unchanged
     ) {
+        self.title = title
         self.rawText = rawText
         self.userMood = userMood
         self.inputContext = inputContext
@@ -91,7 +94,8 @@ struct MemoryMutationRecordPatch: Hashable, Sendable {
     }
 
     var hasChanges: Bool {
-        rawText.shouldUpdate
+        title.shouldUpdate
+            || rawText.shouldUpdate
             || userMood.shouldUpdate
             || inputContext.shouldUpdate
             || captureSource.shouldUpdate

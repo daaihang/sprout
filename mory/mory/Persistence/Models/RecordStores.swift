@@ -4,6 +4,7 @@ import SwiftData
 @Model
 final class RecordShellStore {
     @Attribute(.unique) var id: UUID
+    var title: String?
     var createdAt: Date
     var updatedAt: Date
     var captureSourceRawValue: String
@@ -17,6 +18,7 @@ final class RecordShellStore {
 
     init(
         id: UUID,
+        title: String? = nil,
         createdAt: Date,
         updatedAt: Date,
         captureSourceRawValue: String,
@@ -29,6 +31,7 @@ final class RecordShellStore {
         debugFixtureSeededAt: Date? = nil
     ) {
         self.id = id
+        self.title = title
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.captureSourceRawValue = captureSourceRawValue

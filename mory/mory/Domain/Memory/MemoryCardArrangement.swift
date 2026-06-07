@@ -694,6 +694,17 @@ extension MemoryCardArrangement {
         return replacing(nodes: nodes, updatedAt: updatedAt)
     }
 
+    func settingContentDensity(
+        _ density: MemoryCardContentDensity,
+        forNodeID nodeID: UUID,
+        updatedAt: Date
+    ) -> MemoryCardArrangement {
+        var nodes = nodes
+        guard let index = nodes.firstIndex(where: { $0.id == nodeID }) else { return self }
+        nodes[index].contentDensity = density
+        return replacing(nodes: nodes, updatedAt: updatedAt)
+    }
+
     func stackingWithPrevious(artifactID: UUID, updatedAt: Date) -> MemoryCardArrangement {
         var nodes = nodes.normalizedLayoutOrder()
         guard let index = nodes.firstIndex(where: { $0.containsArtifactID(artifactID) }), index > 0 else { return self }

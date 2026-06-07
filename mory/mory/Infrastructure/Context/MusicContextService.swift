@@ -9,6 +9,7 @@ struct MusicNowPlayingSnapshot: Equatable, Sendable {
     let artistName: String
     let albumTitle: String
     let durationSeconds: Int
+    var storeID: String? = nil
     var artworkData: Data? = nil
     var artworkPalette: MusicArtworkPalette? = nil
 }
@@ -31,6 +32,8 @@ struct MusicCatalogSongCandidate: Identifiable, Hashable, Sendable {
             artworkURL: artworkURL,
             artworkData: nil,
             artworkPalette: artworkPalette,
+            catalogID: id.rawValue,
+            storeID: id.rawValue,
             origin: origin
         )
     }
@@ -93,6 +96,8 @@ final class MusicContextService: Sendable, ContextMusicProviding {
             artworkURL: song.artwork?.url(width: 300, height: 300)?.absoluteString,
             artworkData: nil,
             artworkPalette: Self.makeArtworkPalette(from: song.artwork),
+            catalogID: song.id.rawValue,
+            storeID: song.id.rawValue,
             origin: origin
         )
     }
@@ -138,6 +143,8 @@ final class MusicContextService: Sendable, ContextMusicProviding {
             artworkURL: nil,
             artworkData: snapshot.artworkData,
             artworkPalette: snapshot.artworkPalette,
+            catalogID: snapshot.storeID,
+            storeID: snapshot.storeID,
             origin: origin
         )
     }
@@ -152,6 +159,7 @@ final class MusicContextService: Sendable, ContextMusicProviding {
             artistName: (item.artist ?? "").trimmingCharacters(in: .whitespacesAndNewlines),
             albumTitle: (item.albumTitle ?? "").trimmingCharacters(in: .whitespacesAndNewlines),
             durationSeconds: Int(item.playbackDuration),
+            storeID: item.playbackStoreID.trimmedOrNil,
             artworkData: artworkImage?.jpegData(compressionQuality: 0.82),
             artworkPalette: artworkImage.flatMap(Self.makeArtworkPalette(from:))
         )

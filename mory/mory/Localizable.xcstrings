@@ -272,6 +272,9 @@
         }
       }
     },
+    "AI" : {
+
+    },
     "AI analysis" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1247,6 +1250,9 @@
         }
       }
     },
+    "Capture" : {
+
+    },
     "Capture Card Lab" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1688,6 +1694,7 @@
       }
     },
     "capture.card.audio.transcript" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1751,6 +1758,9 @@
           }
         }
       }
+    },
+    "capture.card.kind.bundle" : {
+
     },
     "capture.card.kind.journalingSuggestion" : {
       "localizations" : {
@@ -1866,6 +1876,7 @@
       }
     },
     "capture.card.kind.photos" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4562,6 +4573,9 @@
         }
       }
     },
+    "Cards" : {
+
+    },
     "Checks" : {
       "localizations" : {
         "zh-Hans" : {
@@ -4618,6 +4632,15 @@
           }
         }
       }
+    },
+    "Clear all local data" : {
+
+    },
+    "Clear all local data?" : {
+
+    },
+    "Clear debug fixtures?" : {
+
     },
     "Clear Lab Data" : {
       "localizations" : {
@@ -5302,6 +5325,7 @@
       }
     },
     "Copy rule report" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -5417,6 +5441,18 @@
         }
       }
     },
+    "Danger Zone" : {
+
+    },
+    "Dangerous" : {
+
+    },
+    "Dangerous tools can erase local data or change active account state. Use only when validating repair or reset behavior." : {
+
+    },
+    "Data & Repair" : {
+
+    },
     "Data Repair" : {
       "localizations" : {
         "zh-Hans" : {
@@ -5465,6 +5501,7 @@
       }
     },
     "Debug Surfaces" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -12328,6 +12365,9 @@
         }
       }
     },
+    "Delete Core Spotlight index?" : {
+
+    },
     "Delivery pace" : {
       "localizations" : {
         "zh-Hans" : {
@@ -12501,6 +12541,7 @@
       }
     },
     "Each run creates real local memories and calls the configured Go API through the normal pipeline." : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -13467,6 +13508,9 @@
         }
       }
     },
+    "Fixture Stress" : {
+
+    },
     "Force APNs registration sync" : {
       "localizations" : {
         "zh-Hans" : {
@@ -13571,6 +13615,7 @@
       }
     },
     "Home Board Rules" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15109,6 +15154,7 @@
       }
     },
     "Local preferences" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -15231,7 +15277,13 @@
     "Masonry Board Lab" : {
 
     },
+    "Masonry frames are derived at render time from order, density, estimated height, and available width." : {
+
+    },
     "Masonry Policy" : {
+
+    },
+    "Masonry/Density Policy" : {
 
     },
     "memories.empty.description" : {
@@ -15746,38 +15798,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "重试中…"
-          }
-        }
-      }
-    },
-    "memory.arrangement.stackWithPrevious" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stack with Previous"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "与上一张堆叠"
-          }
-        }
-      }
-    },
-    "memory.arrangement.unstack" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Unstack"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "取消堆叠"
           }
         }
       }
@@ -17339,6 +17359,7 @@
       }
     },
     "No visible cards" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -18518,6 +18539,7 @@
       }
     },
     "priority %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -20486,6 +20508,7 @@
       }
     },
     "Refresh rule snapshot" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -21083,6 +21106,9 @@
           }
         }
       }
+    },
+    "Runtime" : {
+
     },
     "Runtime Operations" : {
       "localizations" : {
@@ -23983,6 +24009,9 @@
         }
       }
     },
+    "Sign out of this debug session?" : {
+
+    },
     "signin.guest" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -24578,6 +24607,9 @@
         }
       }
     },
+    "These pages use fixtures except for the parent overview, which reads the latest saved memory." : {
+
+    },
     "These requests call the same cloud intelligence client used by capture, daily questions, chapter suggestions, and photo semantics. Notifications are generated only by the local NotificationOrchestrator." : {
       "localizations" : {
         "zh-Hans" : {
@@ -24598,6 +24630,12 @@
           }
         }
       }
+    },
+    "This changes the active authentication session and can change which local data vault is active." : {
+
+    },
+    "This deletes the full local repository, not just quality tuning reports." : {
+
     },
     "This lab uses fixture-only data. It does not request permissions, save memories, or alter the production composer." : {
       "localizations" : {
@@ -24620,6 +24658,7 @@
       }
     },
     "This page calls the same repository and HomeBoardRuleEngine used by Today, then exposes the rule inputs, local preferences, and final visible cards." : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -24659,6 +24698,12 @@
           }
         }
       }
+    },
+    "This removes debug fixture memories created by the diagnostics tool." : {
+
+    },
+    "This removes the local system search index for Mory. Memories remain in local storage and can be reindexed later." : {
+
     },
     "This tool only updates artifacts that do not already have metadata.captureOrigin. Runtime readers do not infer fallback values." : {
       "localizations" : {
@@ -24929,6 +24974,9 @@
         }
       }
     },
+    "Use only in a throwaway local debug store." : {
+
+    },
     "Use this to confirm whether sign-in is blocked by Keychain persistence, server auth, or session state." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -25024,6 +25072,7 @@
       }
     },
     "Visible cards" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {

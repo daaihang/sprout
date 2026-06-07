@@ -85,11 +85,11 @@ struct CaptureAttachmentCompactBoardView: View {
                         return true
                     }
                     .contextMenu {
-                        if slot.boardItem.item.supportsCompactBoardArrangementEditing {
-                            Button("memory.arrangement.stackWithPrevious") {
+                        if slot.boardItem.item.supportsCompactBoardMediaArrangementEditing {
+                            Button("memory.card.mergeMedia") {
                                 onStackWithPrevious(slot.boardItem.item)
                             }
-                            Button("memory.arrangement.unstack") {
+                            Button("memory.card.spreadMedia") {
                                 onUnstack(slot.boardItem.item)
                             }
                         }
@@ -174,12 +174,7 @@ private struct ResolvedBoardSlot: Identifiable {
 }
 
 private extension CaptureComposerAttachmentItem {
-    var supportsCompactBoardArrangementEditing: Bool {
-        switch source {
-        case .stagedArtifact, .contextCandidate, .journalingSuggestion:
-            return true
-        case .affect, .processing:
-            return false
-        }
+    var supportsCompactBoardMediaArrangementEditing: Bool {
+        card.payload.isMemoryCardMergeableMedia
     }
 }

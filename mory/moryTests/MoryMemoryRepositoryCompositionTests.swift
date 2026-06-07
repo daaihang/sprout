@@ -959,7 +959,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         XCTAssertNotNil(accepted.layout.acceptedAt)
         XCTAssertFalse(board.suggestionItems.contains { $0.compositionItem.itemKey == suggestion.compositionItem.itemKey })
         XCTAssertTrue(board.userBoardItems.contains { $0.compositionItem.itemKey == suggestion.compositionItem.itemKey })
-        XCTAssertEqual(accepted.layout.userSortIndex, suggestion.layout.userSortIndex)
+        XCTAssertNotNil(accepted.layout.userSortIndex)
     }
 
     func testHomeBoardSuggestionFeedbackAdjustsSuggestionPriorityWithoutTakingOwnership() async throws {

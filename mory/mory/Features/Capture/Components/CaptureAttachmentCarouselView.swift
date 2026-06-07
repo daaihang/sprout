@@ -40,11 +40,11 @@ struct CaptureAttachmentCarouselView: View {
                             return true
                         }
                         .contextMenu {
-                            if item.supportsArrangementEditing {
-                                Button("memory.arrangement.stackWithPrevious") {
+                            if item.supportsMediaArrangementEditing {
+                                Button("memory.card.mergeMedia") {
                                     onStackWithPrevious(item)
                                 }
-                                Button("memory.arrangement.unstack") {
+                                Button("memory.card.spreadMedia") {
                                     onUnstack(item)
                                 }
                             }
@@ -78,12 +78,7 @@ struct CaptureAttachmentCarouselView: View {
 }
 
 private extension CaptureComposerAttachmentItem {
-    var supportsArrangementEditing: Bool {
-        switch source {
-        case .stagedArtifact, .contextCandidate, .journalingSuggestion:
-            return true
-        case .affect, .processing:
-            return false
-        }
+    var supportsMediaArrangementEditing: Bool {
+        card.payload.isMemoryCardMergeableMedia
     }
 }

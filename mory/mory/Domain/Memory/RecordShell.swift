@@ -13,6 +13,7 @@ enum CaptureSource: String, Codable, CaseIterable, Identifiable, Sendable {
 
 struct RecordShell: Identifiable, Codable, Hashable, Sendable {
     let id: UUID
+    var title: String?
     var createdAt: Date
     var updatedAt: Date
     var captureSource: CaptureSource
@@ -26,6 +27,7 @@ struct RecordShell: Identifiable, Codable, Hashable, Sendable {
 
     init(
         id: UUID = UUID(),
+        title: String? = nil,
         createdAt: Date,
         updatedAt: Date,
         captureSource: CaptureSource,
@@ -38,6 +40,7 @@ struct RecordShell: Identifiable, Codable, Hashable, Sendable {
         debugFixtureSeededAt: Date? = nil
     ) {
         self.id = id
+        self.title = title
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.captureSource = captureSource

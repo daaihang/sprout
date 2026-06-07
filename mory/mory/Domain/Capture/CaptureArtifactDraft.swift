@@ -159,6 +159,8 @@ struct MusicArtifactContent: Hashable, Sendable {
     var artworkURL: String?
     var artworkData: Data?
     var artworkPalette: MusicArtworkPalette?
+    var catalogID: String?
+    var storeID: String?
 }
 
 // MARK: - CaptureArtifactContent
@@ -384,7 +386,35 @@ extension CaptureArtifactDraft {
         CaptureArtifactDraft(origin: origin, provenance: provenance, content: .weather(WeatherArtifactContent(condition: condition, temperatureCelsius: temperatureCelsius, humidity: humidity, windSpeedKmh: windSpeedKmh, uvIndex: uvIndex, latitude: latitude, longitude: longitude, conditionCode: conditionCode, symbolName: symbolName, isDaylight: isDaylight)))
     }
 
-    static func music(trackName: String, artistName: String, albumName: String, durationSeconds: Int, artworkURL: String? = nil, artworkData: Data? = nil, artworkPalette: MusicArtworkPalette? = nil, origin: CaptureArtifactOrigin = .manual, provenance: CaptureProvenance? = nil) -> CaptureArtifactDraft {
-        CaptureArtifactDraft(origin: origin, provenance: provenance, content: .music(MusicArtifactContent(trackName: trackName, artistName: artistName, albumName: albumName, durationSeconds: durationSeconds, artworkURL: artworkURL, artworkData: artworkData, artworkPalette: artworkPalette)))
+    static func music(
+        trackName: String,
+        artistName: String,
+        albumName: String,
+        durationSeconds: Int,
+        artworkURL: String? = nil,
+        artworkData: Data? = nil,
+        artworkPalette: MusicArtworkPalette? = nil,
+        catalogID: String? = nil,
+        storeID: String? = nil,
+        origin: CaptureArtifactOrigin = .manual,
+        provenance: CaptureProvenance? = nil
+    ) -> CaptureArtifactDraft {
+        CaptureArtifactDraft(
+            origin: origin,
+            provenance: provenance,
+            content: .music(
+                MusicArtifactContent(
+                    trackName: trackName,
+                    artistName: artistName,
+                    albumName: albumName,
+                    durationSeconds: durationSeconds,
+                    artworkURL: artworkURL,
+                    artworkData: artworkData,
+                    artworkPalette: artworkPalette,
+                    catalogID: catalogID,
+                    storeID: storeID
+                )
+            )
+        )
     }
 }

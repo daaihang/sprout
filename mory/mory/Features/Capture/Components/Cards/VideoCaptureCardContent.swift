@@ -18,6 +18,14 @@ struct VideoCaptureCardContent: View {
                 .background(Color.black.opacity(highContrast ? 0.62 : 0.42), in: Circle())
                 .shadow(color: .black.opacity(0.24), radius: 8, y: 3)
 
+            bottomBadges
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                .padding(10)
+        }
+    }
+
+    private var bottomBadges: some View {
+        VStack(alignment: .trailing, spacing: 6) {
             if let duration = payload.durationSeconds {
                 Text(duration.formattedCaptureDuration)
                     .font(.caption.monospacedDigit().weight(.semibold))
@@ -25,8 +33,14 @@ struct VideoCaptureCardContent: View {
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(Color.black.opacity(highContrast ? 0.68 : 0.46), in: Capsule())
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
-                    .padding(10)
+            }
+            if payload.mediaCount > 1 {
+                Text("+\(payload.mediaCount - 1)")
+                    .font(.caption.monospacedDigit().weight(.bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(Color.black.opacity(0.54), in: Capsule())
             }
         }
     }

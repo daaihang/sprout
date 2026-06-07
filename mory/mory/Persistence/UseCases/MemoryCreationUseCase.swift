@@ -12,9 +12,12 @@ struct MemoryCreationUseCase {
         let captureArtifacts = artifactResult.artifacts
         let semanticDigests = artifactBuilder.buildSemanticDigests(from: artifactResult, createdAt: now)
         let normalizedText = artifactBuilder.resolvedRecordRawText(from: draft, artifacts: captureArtifacts)
+        let recordTitle = draft.title?.generatedMemoryTitle()
+            ?? normalizedText.generatedMemoryTitle()
 
         let recordShell = RecordShell(
             id: recordID,
+            title: recordTitle,
             createdAt: now,
             updatedAt: now,
             captureSource: draft.provenance.derivedCaptureSource,

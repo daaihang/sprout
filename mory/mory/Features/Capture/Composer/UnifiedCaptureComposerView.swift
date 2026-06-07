@@ -521,7 +521,28 @@ struct UnifiedCaptureComposerView: View {
 
     @MainActor
     private func stackArrangementNodeWithPrevious(item: CaptureComposerAttachmentItem) {
-        guard let draftID = arrangementDraftID(for: item) else { return }
+        guard let draftID = arrangementDraftID(for: item),
+              arrangementArtifactDrafts.first(where: { $0.draftID == draftID })?.isMemoryCardMergeableMedia == true else {
+            return
+        }
+        let nodes = cardArrangementDraft.nodes.sorted { lhs, rhs in
+            if lhs.layout.order == rhs.layout.order {
+                return lhs.id.uuidString < rhs.id.uuidString
+            }
+            return lhs.layout.order < rhs.layout.order
+        }
+        guard let index = nodes.firstIndex(where: { node in
+            node.contentRef.artifactDraftIDs.contains(draftID)
+        }), index > 0 else {
+            return
+        }
+        let previousDraftIDs = nodes[index - 1].contentRef.artifactDraftIDs
+        guard !previousDraftIDs.isEmpty,
+              previousDraftIDs.allSatisfy({ previousID in
+                  arrangementArtifactDrafts.first(where: { $0.draftID == previousID })?.isMemoryCardMergeableMedia == true
+              }) else {
+            return
+        }
         cardArrangementDraft.toggleStackWithPrevious(draftID: draftID)
     }
 

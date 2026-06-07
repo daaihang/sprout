@@ -191,7 +191,7 @@ extension MoryMemoryRepository {
             guard let record = try fetchRecordShell(id: status.recordID) else { return nil }
             return PipelineStatusSummary(
                 recordID: status.recordID,
-                title: record.rawText.firstMeaningfulLine ?? "Untitled Memory",
+                title: record.displayTitle,
                 status: status
             )
         }
