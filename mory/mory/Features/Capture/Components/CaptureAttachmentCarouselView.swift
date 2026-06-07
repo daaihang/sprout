@@ -4,6 +4,7 @@ struct CaptureAttachmentCarouselView: View {
     let items: [CaptureComposerAttachmentItem]
     let onRemoveStagedArtifact: (Int) -> Void
     let onRemoveContextCandidate: (UUID) -> Void
+    var onRemoveDraftGroup: ([UUID]) -> Void = { _ in }
     let onRemoveAffectDraft: (Int) -> Void
     let onRemoveJournalingSuggestion: (UUID) -> Void
     var onReorderStagedArtifact: (Int, Int) -> Void = { _, _ in }
@@ -42,10 +43,12 @@ struct CaptureAttachmentCarouselView: View {
                             return true
                         }
                         .contextMenu {
-                            if item.supportsMediaArrangementEditing {
+                            if canMergeWithPrevious(item) {
                                 Button("memory.card.mergeMedia") {
                                     onStackWithPrevious(item)
                                 }
+                            }
+                            if item.isDraftMediaGroup {
                                 Button("memory.card.spreadMedia") {
                                     onUnstack(item)
                                 }
@@ -69,6 +72,8 @@ struct CaptureAttachmentCarouselView: View {
             onRemoveStagedArtifact(index)
         case let .contextCandidate(id):
             onRemoveContextCandidate(id)
+        case let .draftGroup(_, draftIDs):
+            onRemoveDraftGroup(draftIDs)
         case let .affect(index):
             onRemoveAffectDraft(index)
         case let .journalingSuggestion(importSessionID):
@@ -77,10 +82,28 @@ struct CaptureAttachmentCarouselView: View {
             return
         }
     }
+
+    private func canMergeWithPrevious(_ item: CaptureComposerAttachmentItem) -> Bool {
+        guard item.isSingleMergeableMedia,
+              let index = items.firstIndex(where: { $0.id == item.id }),
+              index > 0 else {
+            return false
+        }
+        return items[index - 1].isMergeableMediaNode
+    }
 }
 
 private extension CaptureComposerAttachmentItem {
-    var supportsMediaArrangementEditing: Bool {
+    var isDraftMediaGroup: Bool {
+        if case .draftGroup = source { return true }
+        return false
+    }
+
+    var isSingleMergeableMedia: Bool {
+        card.payload.isMemoryCardMergeableMedia && !isDraftMediaGroup
+    }
+
+    var isMergeableMediaNode: Bool {
         card.payload.isMemoryCardMergeableMedia
     }
 }

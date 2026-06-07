@@ -57,18 +57,12 @@ Wide iPhone / iPad: more columns as width allows
 Mac / very wide: broader masonry without phone-density columns
 ```
 
-Card sizes:
+Card density:
 
 ```text
-1x1: tiny signal, status, count
-2x1: compact memory, question, pending action
-2x2: memory with media, reflection, person card
-3x1: banner, yesterday ready, search prompt
-3x2: chapter/storyline preview
-3x3: rich memory or gallery card
-4x1: full-width daily question
-4x2: yesterday panel, context cluster
-4x3: gallery/chapter surface
+Simple: compact capsule for signals and short actions.
+Standard: default media cards and short memory content.
+Detailed: expanded text, summaries, and rich context cards.
 ```
 
 ## 4. Card Categories
@@ -183,7 +177,7 @@ Avoid:
 - Arbitrary decorative backgrounds.
 - Default List as the main home surface.
 - One-note palettes.
-- Text that resizes layout unpredictably.
+- Text that overflows its adaptive-height card.
 
 ## 9. Acceptance Criteria
 

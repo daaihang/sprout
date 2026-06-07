@@ -50,7 +50,7 @@ Future-friendly:
 - Remote APNs sending.
 - Core ML model integration beyond rules.
 - Full chapter editing.
-- Board edit mode drag and resize polish.
+- Board edit mode drag and density-menu polish.
 
 ## 5. Product Metrics
 

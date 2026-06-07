@@ -1,13 +1,13 @@
 import Foundation
 
 extension Artifact {
-    var isMemoryCardMergeableMedia: Bool {
+    nonisolated var isMemoryCardMergeableMedia: Bool {
         kind == .photo || kind == .video || kind == .livePhoto
     }
 }
 
 extension CaptureArtifactDraft {
-    var isMemoryCardMergeableMedia: Bool {
+    nonisolated var isMemoryCardMergeableMedia: Bool {
         switch content {
         case .photo, .video, .livePhoto:
             return true

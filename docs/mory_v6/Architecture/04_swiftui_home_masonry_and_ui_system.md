@@ -140,7 +140,7 @@ Rules:
 - User order is respected.
 - Suggested cards never occupy user-owned positions unless accepted.
 - Hidden cards are excluded.
-- Oversized cards clamp to column count.
+- Masonry cards keep fixed column width and adaptive height.
 
 ## 10. Persistence
 

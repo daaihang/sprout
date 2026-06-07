@@ -47,6 +47,17 @@ enum MoryMusicPlaybackController {
     }
 
     static func togglePlayback(for artifact: Artifact) async throws -> CaptureMusicPlaybackState {
+        try await togglePlayback(
+            catalogID: artifact.metadata["catalogID"]?.trimmedOrNil,
+            storeID: artifact.metadata["storeID"]?.trimmedOrNil
+        )
+    }
+
+    static func togglePlayback(for payload: CaptureMusicCardPayload) async throws -> CaptureMusicPlaybackState {
+        try await togglePlayback(catalogID: payload.catalogID, storeID: payload.storeID)
+    }
+
+    static func togglePlayback(catalogID: String?, storeID: String?) async throws -> CaptureMusicPlaybackState {
         let status = MusicAuthorization.currentStatus == .authorized
             ? MusicAuthorization.currentStatus
             : await MusicAuthorization.request()
@@ -54,8 +65,7 @@ enum MoryMusicPlaybackController {
             throw PlaybackError.authorizationDenied
         }
 
-        let playbackID = artifact.metadata["storeID"]?.trimmedOrNil
-            ?? artifact.metadata["catalogID"]?.trimmedOrNil
+        let playbackID = storeID?.trimmedOrNil ?? catalogID?.trimmedOrNil
         guard let playbackID else {
             throw PlaybackError.missingPlayableID
         }

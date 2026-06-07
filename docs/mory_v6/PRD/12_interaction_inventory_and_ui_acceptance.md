@@ -42,7 +42,7 @@ Gesture rules:
 - Normal tap opens card target.
 - Long press opens menu.
 - Drag/reorder should only exist in edit mode if it conflicts with menu.
-- Resize should use explicit controls, not ambiguous freeform gestures.
+- Detail-level changes should use explicit menu controls, not ambiguous resize gestures.
 
 ## 4. Capture Interactions
 

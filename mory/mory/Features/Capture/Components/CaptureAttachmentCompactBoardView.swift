@@ -4,6 +4,7 @@ struct CaptureAttachmentCompactBoardView: View {
     let items: [CaptureComposerAttachmentItem]
     let onRemoveStagedArtifact: (Int) -> Void
     let onRemoveContextCandidate: (UUID) -> Void
+    var onRemoveDraftGroup: ([UUID]) -> Void = { _ in }
     let onRemoveAffectDraft: (Int) -> Void
     let onRemoveJournalingSuggestion: (UUID) -> Void
     var onReorderItems: (CaptureComposerAttachmentItem, CaptureComposerAttachmentItem) -> Void = { _, _ in }
@@ -74,8 +75,8 @@ struct CaptureAttachmentCompactBoardView: View {
                         x: slot.frame.midX + slot.boardItem.layout.xNudge,
                         y: slot.frame.midY + slot.boardItem.layout.yNudge
                     )
-                    .rotationEffect(.degrees(slot.boardItem.layout.rotationDegrees))
-                    .zIndex(Double(slot.boardItem.layout.zIndex))
+                    .rotationEffect(.degrees(slot.boardItem.renderRotationDegrees))
+                    .zIndex(slot.boardItem.layout.renderZIndex)
                     .draggable(slot.boardItem.id)
                     .dropDestination(for: String.self) { droppedIDs, _ in
                         guard let droppedID = droppedIDs.first,
@@ -87,10 +88,12 @@ struct CaptureAttachmentCompactBoardView: View {
                         return true
                     }
                     .contextMenu {
-                        if slot.boardItem.item.supportsCompactBoardMediaArrangementEditing {
+                        if canMergeWithPrevious(slot.boardItem.item) {
                             Button("memory.card.mergeMedia") {
                                 onStackWithPrevious(slot.boardItem.item)
                             }
+                        }
+                        if slot.boardItem.item.isDraftMediaGroup {
                             Button("memory.card.spreadMedia") {
                                 onUnstack(slot.boardItem.item)
                             }
@@ -137,6 +140,8 @@ struct CaptureAttachmentCompactBoardView: View {
             onRemoveStagedArtifact(index)
         case let .contextCandidate(id):
             onRemoveContextCandidate(id)
+        case let .draftGroup(_, draftIDs):
+            onRemoveDraftGroup(draftIDs)
         case let .affect(index):
             onRemoveAffectDraft(index)
         case let .journalingSuggestion(importSessionID):
@@ -144,6 +149,15 @@ struct CaptureAttachmentCompactBoardView: View {
         case .processing:
             return
         }
+    }
+
+    private func canMergeWithPrevious(_ item: CaptureComposerAttachmentItem) -> Bool {
+        guard item.isSingleMergeableMedia,
+              let index = items.firstIndex(where: { $0.id == item.id }),
+              index > 0 else {
+            return false
+        }
+        return items[index - 1].isMergeableMediaNode
     }
 
     private func estimatedHeight(for item: BoardItem, columnWidth: CGFloat) -> CGFloat {
@@ -161,6 +175,10 @@ private struct BoardItem: Identifiable {
     var item: CaptureComposerAttachmentItem
     var presentation: CaptureCardPresentation
     var layout: MemoryCardLayoutToken
+
+    var renderRotationDegrees: Double {
+        item.card.payload.isMemoryCardMergeableMedia ? 0 : layout.rotationDegrees
+    }
 }
 
 private struct ResolvedBoardSlot: Identifiable {
@@ -176,7 +194,16 @@ private struct ResolvedBoardSlot: Identifiable {
 }
 
 private extension CaptureComposerAttachmentItem {
-    var supportsCompactBoardMediaArrangementEditing: Bool {
+    var isDraftMediaGroup: Bool {
+        if case .draftGroup = source { return true }
+        return false
+    }
+
+    var isSingleMergeableMedia: Bool {
+        card.payload.isMemoryCardMergeableMedia && !isDraftMediaGroup
+    }
+
+    var isMergeableMediaNode: Bool {
         card.payload.isMemoryCardMergeableMedia
     }
 }

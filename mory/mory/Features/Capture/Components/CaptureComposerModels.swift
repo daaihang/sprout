@@ -3,6 +3,7 @@ import Foundation
 struct CaptureComposerAttachmentItem: Identifiable {
     enum Source: Equatable {
         case stagedArtifact(index: Int)
+        case draftGroup(nodeID: UUID, draftIDs: [UUID])
         case contextCandidate(id: UUID)
         case affect(index: Int)
         case journalingSuggestion(importSessionID: UUID)
@@ -27,6 +28,31 @@ struct CaptureComposerAttachmentItem: Identifiable {
             id: id,
             source: .stagedArtifact(index: index),
             card: CaptureCardItem(draft: draft, id: id)
+        )
+    }
+
+    static func draftGroup(nodeID: UUID, drafts: [CaptureArtifactDraft]) -> CaptureComposerAttachmentItem? {
+        guard let first = drafts.first else { return nil }
+        let itemID = "draft-group-\(nodeID.uuidString)"
+        var card = CaptureCardItem(draft: first, id: itemID)
+        switch card.payload {
+        case var .photo(payload):
+            payload.photoCount = drafts.count
+            card.payload = .photo(payload)
+        case var .video(payload):
+            payload.mediaCount = drafts.count
+            card.payload = .video(payload)
+        case var .livePhoto(payload):
+            payload.mediaCount = drafts.count
+            card.payload = .livePhoto(payload)
+        default:
+            break
+        }
+        card.metadata = "\(drafts.count)"
+        return CaptureComposerAttachmentItem(
+            id: itemID,
+            source: .draftGroup(nodeID: nodeID, draftIDs: drafts.map(\.draftID)),
+            card: card
         )
     }
 

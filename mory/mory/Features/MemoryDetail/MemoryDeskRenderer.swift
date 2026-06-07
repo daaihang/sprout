@@ -66,8 +66,8 @@ struct MemoryDeskRenderer: View {
                         x: slot.frame.midX + slot.node.layout.xNudge,
                         y: slot.frame.midY + slot.node.layout.yNudge
                     )
-                    .rotationEffect(.degrees(slot.node.layout.rotationDegrees))
-                    .zIndex(Double(slot.node.layout.zIndex))
+                    .rotationEffect(.degrees(slot.node.renderRotationDegrees))
+                    .zIndex(slot.node.layout.renderZIndex)
             }
         }
         .frame(maxWidth: .infinity, minHeight: layoutPlan.boardHeight, maxHeight: layoutPlan.boardHeight, alignment: .topLeading)
@@ -428,6 +428,10 @@ private struct ResolvedMemoryDeskNode: Identifiable {
 
     var isMediaGroup: Bool {
         artifacts.count > 1 && isMediaNode
+    }
+
+    var renderRotationDegrees: Double {
+        isMediaNode ? 0 : layout.rotationDegrees
     }
 }
 

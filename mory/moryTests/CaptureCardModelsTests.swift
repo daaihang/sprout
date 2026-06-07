@@ -323,6 +323,30 @@ final class CaptureCardModelsTests: XCTestCase {
         XCTAssertEqual(payload.locationCount, 1)
     }
 
+    func testDraftMediaGroupAttachmentRendersSingleCountedMediaCard() throws {
+        let nodeID = UUID()
+        let drafts: [CaptureArtifactDraft] = [
+            .photo(summary: "Photo", filename: "photo.jpg", thumbnailData: Data([1])),
+            .video(summary: "Video", filename: "video.mov", thumbnailData: Data([2])),
+            .livePhoto(
+                summary: "Live",
+                stillFilename: "live.heic",
+                videoFilename: "live.mov",
+                thumbnailData: Data([3])
+            )
+        ]
+
+        let item = try XCTUnwrap(CaptureComposerAttachmentItem.draftGroup(nodeID: nodeID, drafts: drafts))
+
+        XCTAssertEqual(item.source, .draftGroup(nodeID: nodeID, draftIDs: drafts.map(\.draftID)))
+        XCTAssertEqual(item.card.kind, .photo)
+        XCTAssertEqual(item.card.metadata, "3")
+        guard case let .photo(payload) = item.card.payload else {
+            return XCTFail("Expected grouped media to inherit the first media card payload.")
+        }
+        XCTAssertEqual(payload.photoCount, 3)
+    }
+
     func testOnlyNormalCardsDisplaySelection() {
         for state in CaptureCardState.allCases {
             let presentation = CaptureCardPresentation.debug(

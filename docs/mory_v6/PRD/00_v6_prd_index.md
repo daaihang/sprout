@@ -61,7 +61,7 @@ These remain open and should be resolved during v6 planning or early alpha:
 
 - Exact notification default frequency.
 - Whether remote push should send only generic wake-up copy or include user-visible question text.
-- Whether user-resized card dimensions are synced later through CloudKit.
+- Whether user card density and arrangement preferences are synced later through CloudKit.
 - Whether AI-generated chapter titles are auto-suggested only or can be auto-created in low-risk cases.
 - Whether "Ask my memories" appears as search enhancement, not a separate tab.
 - Whether article mode is an explicit edit mode in v6 or a v6.x follow-up.

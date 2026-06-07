@@ -89,6 +89,15 @@ struct MemoryCardLayoutToken: Codable, Hashable, Sendable {
     }
 }
 
+extension MemoryCardLayoutToken {
+    var renderZIndex: Double {
+        if zIndex == order {
+            return Double(-order)
+        }
+        return Double(zIndex)
+    }
+}
+
 struct MemoryCardNode: Identifiable, Codable, Hashable, Sendable {
     var id: UUID
     var contentRef: MemoryCardContentRef
@@ -200,8 +209,8 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
                 contentDensity: MemoryCardPresentationPolicy.defaultDensity(for: draft.content),
                 layout: MemoryCardLayoutToken(
                     order: order,
-                    rotationDegrees: Self.defaultRotation(for: draft.draftID),
-                    zIndex: order
+                    rotationDegrees: Self.defaultRotation(for: draft),
+                    zIndex: Self.defaultZIndex(for: order)
                 )
             )
         )
@@ -289,8 +298,8 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
                 contentDensity: draft.map { MemoryCardPresentationPolicy.defaultDensity(for: $0.content) } ?? .standard,
                 layout: MemoryCardLayoutToken(
                     order: baseOrder + offset,
-                    rotationDegrees: Self.defaultRotation(for: draftID),
-                    zIndex: baseOrder + offset
+                    rotationDegrees: draft.map(Self.defaultRotation(for:)) ?? Self.defaultRotation(for: draftID),
+                    zIndex: Self.defaultZIndex(for: baseOrder + offset)
                 )
             )
         }
@@ -462,8 +471,8 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
                 contentDensity: MemoryCardPresentationPolicy.defaultDensity(for: artifact),
                 layout: MemoryCardLayoutToken(
                     order: order,
-                    rotationDegrees: MemoryCardArrangement.defaultRotation(for: artifact.id),
-                    zIndex: order
+                    rotationDegrees: MemoryCardArrangement.defaultRotation(for: artifact),
+                    zIndex: MemoryCardArrangement.defaultZIndex(for: order)
                 )
             )
         })
@@ -535,9 +544,17 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
         nodes = nodes.normalizedLayoutOrder()
     }
 
-    private static func defaultRotation(for id: UUID) -> Double {
+    nonisolated private static func defaultRotation(for id: UUID) -> Double {
         let value = abs(id.uuidString.hashValue % 7)
         return Double(value - 3)
+    }
+
+    nonisolated private static func defaultRotation(for draft: CaptureArtifactDraft) -> Double {
+        draft.isMemoryCardMergeableMedia ? 0 : defaultRotation(for: draft.draftID)
+    }
+
+    nonisolated private static func defaultZIndex(for order: Int) -> Int {
+        -order
     }
 }
 
@@ -555,7 +572,7 @@ extension MemoryCardArrangement {
                 MemoryCardNode(
                     contentRef: .recordBody,
                     contentDensity: .detailed,
-                    layout: MemoryCardLayoutToken(order: order, rotationDegrees: -1.5, zIndex: order)
+                    layout: MemoryCardLayoutToken(order: order, rotationDegrees: -1.5, zIndex: Self.defaultZIndex(for: order))
                 )
             )
             order += 1
@@ -571,8 +588,8 @@ extension MemoryCardArrangement {
                     contentDensity: MemoryCardPresentationPolicy.defaultDensity(for: artifact),
                     layout: MemoryCardLayoutToken(
                         order: order,
-                        rotationDegrees: defaultRotation(for: artifact.id),
-                        zIndex: order
+                        rotationDegrees: defaultRotation(for: artifact),
+                        zIndex: defaultZIndex(for: order)
                     )
                 )
             )
@@ -602,6 +619,14 @@ extension MemoryCardArrangement {
     nonisolated static func defaultRotation(for id: UUID) -> Double {
         let value = abs(id.uuidString.hashValue % 7)
         return Double(value - 3)
+    }
+
+    nonisolated static func defaultRotation(for artifact: Artifact) -> Double {
+        artifact.isMemoryCardMergeableMedia ? 0 : defaultRotation(for: artifact.id)
+    }
+
+    nonisolated static func defaultZIndex(for order: Int) -> Int {
+        -order
     }
 
     func synchronized(
@@ -663,8 +688,8 @@ extension MemoryCardArrangement {
                 contentDensity: MemoryCardPresentationPolicy.defaultDensity(for: artifact),
                 layout: MemoryCardLayoutToken(
                     order: baseOrder + offset,
-                    rotationDegrees: Self.defaultRotation(for: artifact.id),
-                    zIndex: baseOrder + offset
+                    rotationDegrees: Self.defaultRotation(for: artifact),
+                    zIndex: Self.defaultZIndex(for: baseOrder + offset)
                 )
             )
         })
@@ -731,8 +756,8 @@ extension MemoryCardArrangement {
                 contentDensity: MemoryCardPresentationPolicy.defaultDensity(for: artifact),
                 layout: MemoryCardLayoutToken(
                     order: nodes[index].layout.order + offset,
-                    rotationDegrees: Self.defaultRotation(for: artifactID),
-                    zIndex: nodes[index].layout.zIndex + offset
+                    rotationDegrees: Self.defaultRotation(for: artifact),
+                    zIndex: Self.defaultZIndex(for: nodes[index].layout.order + offset)
                 )
             )
         }
@@ -844,8 +869,11 @@ private extension Array where Element == MemoryCardNode {
     func normalizedLayoutOrder() -> [MemoryCardNode] {
         enumerated().map { index, element in
             var node = element
+            let usesDefaultZIndex = node.layout.zIndex == node.layout.order || node.layout.zIndex == -node.layout.order
             node.layout.order = index
-            node.layout.zIndex = index
+            if usesDefaultZIndex {
+                node.layout.zIndex = MemoryCardArrangement.defaultZIndex(for: index)
+            }
             return node
         }
     }
@@ -855,8 +883,11 @@ private extension Array where Element == MemoryCardDraftNode {
     func normalizedLayoutOrder() -> [MemoryCardDraftNode] {
         enumerated().map { index, element in
             var node = element
+            let usesDefaultZIndex = node.layout.zIndex == node.layout.order || node.layout.zIndex == -node.layout.order
             node.layout.order = index
-            node.layout.zIndex = index
+            if usesDefaultZIndex {
+                node.layout.zIndex = MemoryCardArrangement.defaultZIndex(for: index)
+            }
             return node
         }
     }

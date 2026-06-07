@@ -120,18 +120,57 @@ struct UnifiedCaptureComposerView: View {
                 affects: affectDrafts.filter { $0.isJournalingSuggestion(in: sessionID) }
             )
         })
-        items.append(contentsOf: stagedArtifactDrafts.indices.map { index in
-            let draft = stagedArtifactDrafts[index]
-            guard draft.journalingSuggestionSessionID == nil else { return nil }
-            return .staged(index: index, draft: draft)
-        }.compactMap { $0 })
+        items.append(contentsOf: arrangedArtifactItems)
         items.append(contentsOf: affectDrafts.indices.map { index in
             let draft = affectDrafts[index]
             guard draft.journalingSuggestionSessionID == nil else { return nil }
             return .affect(index: index, draft: draft)
         }.compactMap { $0 })
-        items.append(contentsOf: contextCandidates.map(CaptureComposerAttachmentItem.context))
         return items
+    }
+
+    @MainActor
+    private var arrangedArtifactItems: [CaptureComposerAttachmentItem] {
+        let draftByID = Dictionary(uniqueKeysWithValues: arrangementArtifactDrafts.map { ($0.draftID, $0) })
+        let orderedNodes = cardArrangementDraft.nodes.sorted { lhs, rhs in
+            if lhs.layout.order == rhs.layout.order {
+                return lhs.id.uuidString < rhs.id.uuidString
+            }
+            return lhs.layout.order < rhs.layout.order
+        }
+        return orderedNodes.flatMap { node -> [CaptureComposerAttachmentItem] in
+            switch node.contentRef {
+            case let .artifactDraft(draftID):
+                guard let draft = draftByID[draftID],
+                      draft.journalingSuggestionSessionID == nil,
+                      let item = attachmentItem(forDraftID: draftID) else {
+                    return []
+                }
+                return [item]
+            case let .artifactDraftGroup(draftIDs, _):
+                let drafts = draftIDs.compactMap { draftByID[$0] }
+                    .filter { $0.journalingSuggestionSessionID == nil }
+                guard !drafts.isEmpty else { return [] }
+                if drafts.allSatisfy(\.isMemoryCardMergeableMedia),
+                   let groupItem = CaptureComposerAttachmentItem.draftGroup(nodeID: node.id, drafts: drafts) {
+                    return [groupItem]
+                }
+                return drafts.compactMap { attachmentItem(forDraftID: $0.draftID) }
+            case .recordBody, .affectDraft, .journalingSuggestion:
+                return []
+            }
+        }
+    }
+
+    @MainActor
+    private func attachmentItem(forDraftID draftID: UUID) -> CaptureComposerAttachmentItem? {
+        if let index = stagedArtifactDrafts.firstIndex(where: { $0.draftID == draftID }) {
+            return .staged(index: index, draft: stagedArtifactDrafts[index])
+        }
+        if let candidate = contextCandidates.first(where: { $0.draft.draftID == draftID }) {
+            return .context(candidate)
+        }
+        return nil
     }
 
     @MainActor
@@ -150,6 +189,7 @@ struct UnifiedCaptureComposerView: View {
                             items: attachmentItems,
                             onRemoveStagedArtifact: removeStagedArtifact(at:),
                             onRemoveContextCandidate: removeContextCandidate(id:),
+                            onRemoveDraftGroup: removeDraftGroup(_:),
                             onRemoveAffectDraft: removeAffectDraft(at:),
                             onRemoveJournalingSuggestion: removeJournalingSuggestion(importSessionID:),
                             onReorderItems: reorderAttachmentItem(from:to:),
@@ -515,6 +555,9 @@ struct UnifiedCaptureComposerView: View {
 
     @MainActor
     private func arrangementNode(for item: CaptureComposerAttachmentItem) -> MemoryCardDraftNode? {
+        if case let .draftGroup(nodeID, _) = item.source {
+            return cardArrangementDraft.nodes.first { $0.id == nodeID }
+        }
         guard let draftID = arrangementDraftID(for: item) else { return nil }
         return cardArrangementDraft.nodes.first { node in
             switch node.contentRef {
@@ -563,6 +606,11 @@ struct UnifiedCaptureComposerView: View {
 
     @MainActor
     private func previewAttachmentItem(_ item: CaptureComposerAttachmentItem) {
+        if case let .music(payload) = item.card.payload {
+            toggleMusic(payload)
+            return
+        }
+
         do {
             switch item.source {
             case let .stagedArtifact(index):
@@ -571,6 +619,10 @@ struct UnifiedCaptureComposerView: View {
             case let .contextCandidate(id):
                 guard let draft = contextCandidates.first(where: { $0.id == id })?.draft else { return }
                 presentPreviewURLs(try previewCoordinator.previewURLs(for: [draft]))
+            case let .draftGroup(_, draftIDs):
+                let draftByID = Dictionary(uniqueKeysWithValues: arrangementArtifactDrafts.map { ($0.draftID, $0) })
+                let drafts = draftIDs.compactMap { draftByID[$0] }
+                presentPreviewURLs(try previewCoordinator.previewURLs(for: drafts))
             case let .affect(index):
                 guard affectDrafts.indices.contains(index) else { return }
                 presentPreviewURLs(try previewCoordinator.previewURLs(forAffectDrafts: [affectDrafts[index]]))
@@ -585,6 +637,17 @@ struct UnifiedCaptureComposerView: View {
             }
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func toggleMusic(_ payload: CaptureMusicCardPayload) {
+        Task {
+            do {
+                _ = try await MoryMusicPlaybackController.togglePlayback(for: payload)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
@@ -619,6 +682,8 @@ struct UnifiedCaptureComposerView: View {
             return stagedArtifactDrafts.indices.contains(index) ? stagedArtifactDrafts[index].draftID : nil
         case let .contextCandidate(id):
             return contextCandidates.first(where: { $0.id == id })?.draft.draftID
+        case let .draftGroup(_, draftIDs):
+            return draftIDs.first
         case let .journalingSuggestion(importSessionID):
             return stagedArtifactDrafts.first { draft in
                 guard draft.isJournalingSuggestion(in: importSessionID) else { return false }
@@ -699,6 +764,15 @@ struct UnifiedCaptureComposerView: View {
         guard let index = contextCandidates.firstIndex(where: { $0.id == id }) else { return }
         let removed = contextCandidates.remove(at: index)
         cardArrangementDraft.removeArtifactDraft(removed.draft.draftID, artifactDrafts: arrangementArtifactDrafts)
+    }
+
+    @MainActor
+    private func removeDraftGroup(_ draftIDs: [UUID]) {
+        guard !draftIDs.isEmpty else { return }
+        let ids = Set(draftIDs)
+        stagedArtifactDrafts.removeAll { ids.contains($0.draftID) }
+        contextCandidates.removeAll { ids.contains($0.draft.draftID) }
+        draftIDs.forEach { cardArrangementDraft.removeArtifactDraft($0, artifactDrafts: arrangementArtifactDrafts) }
     }
 
     @MainActor

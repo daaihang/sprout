@@ -74,25 +74,19 @@ Home board should support:
 - Pin.
 - Hide.
 - Dismiss.
-- Resize among fixed sizes.
+- Change card detail level where the content type supports it.
 - Add suggested card.
 - Remove suggested card.
 - Edit board mode.
 - Reset AI suggestions.
 - Reduce more/less of a card category.
 
-Fixed sizes:
+Masonry cards should use fixed column width and adaptive height:
 
 ```text
-1x1
-2x1
-2x2
-3x1
-3x2
-3x3
-4x1
-4x2
-4x3
+Simple: compact capsule.
+Standard: media or 2-4 lines of text.
+Detailed: expanded text where the type supports it.
 ```
 
 Dragging should not conflict with long-press menus. If direct drag is unstable, use an explicit edit mode:
@@ -104,7 +98,7 @@ Normal mode:
 
 Edit mode:
   drag = reorder
-  resize handle = resize
+  menu = detail level / media merge / delete
   tap outside = exit edit mode
 ```
 
@@ -163,4 +157,3 @@ Users need lightweight correction paths:
 - Less like this.
 
 Corrections should write structured local state, not just free text feedback.
-

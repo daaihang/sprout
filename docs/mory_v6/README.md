@@ -181,7 +181,7 @@ This loop proves the V6 thesis:
 - Do not remove v5 record, artifact, graph, arc, and reflection objects.
 - Do not make the Go server a full memory store.
 - Do not allow LLM output to write trusted graph state without a `GraphDelta` policy.
-- Do not let AI resize or reorder pinned home cards.
+- Do not let AI change density or reorder pinned home cards.
 - Do not introduce custom UI chrome where native SwiftUI components already express the control clearly.
 - Do not treat Core ML as mandatory for every device on day one; rules and cached signals must have a fallback.
 - Treat cloud AI as the current deep-intelligence engine. Local AI is for storage privacy, Apple system capabilities, cheap repeated signals, semantic indexing, and future opt-in local-first modes.

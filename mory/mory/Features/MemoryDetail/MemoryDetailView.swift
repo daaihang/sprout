@@ -558,10 +558,29 @@ struct MemoryDetailView: View {
     }
 
     private func mergeMediaWithPrevious(_ artifactID: UUID) {
-        guard let snapshot else { return }
+        guard let snapshot,
+              canMergeMediaWithPrevious(artifactID: artifactID, snapshot: snapshot) else { return }
         let arrangement = editBaseArrangement(for: snapshot)
             .stackingWithPrevious(artifactID: artifactID, updatedAt: Date.now)
         Task { await saveCardArrangement(arrangement) }
+    }
+
+    private func canMergeMediaWithPrevious(artifactID: UUID, snapshot: MemoryDetailSnapshot) -> Bool {
+        let artifactByID = Dictionary(uniqueKeysWithValues: snapshot.artifacts.map { ($0.id, $0) })
+        let nodes = MemoryDeskRenderPlan.nodes(for: snapshot)
+        guard let index = nodes.firstIndex(where: { $0.contentRef.artifactIDs.contains(artifactID) }),
+              index > 0 else {
+            return false
+        }
+        let currentIDs = nodes[index].contentRef.artifactIDs
+        let previousIDs = nodes[index - 1].contentRef.artifactIDs
+        guard currentIDs.count == 1,
+              currentIDs[0] == artifactID,
+              artifactByID[artifactID]?.isMemoryCardMergeableMedia == true,
+              !previousIDs.isEmpty else {
+            return false
+        }
+        return previousIDs.allSatisfy { artifactByID[$0]?.isMemoryCardMergeableMedia == true }
     }
 
     private func unmergeMedia(nodeID: UUID) {
@@ -863,8 +882,8 @@ private struct MemoryDetailEditingBoardView: View {
                             x: slot.frame.midX + slot.node.layout.xNudge,
                             y: slot.frame.midY + slot.node.layout.yNudge
                         )
-                        .rotationEffect(.degrees(slot.node.layout.rotationDegrees))
-                        .zIndex(Double(slot.node.layout.zIndex))
+                        .rotationEffect(.degrees(slot.node.renderRotationDegrees))
+                        .zIndex(slot.node.layout.renderZIndex)
                     }
                 }
                 .frame(maxWidth: .infinity, minHeight: layoutPlan.boardHeight, maxHeight: layoutPlan.boardHeight, alignment: .topLeading)
@@ -1131,6 +1150,10 @@ private struct MemoryDetailEditingBoardNode: Identifiable {
 
     var isMediaGroup: Bool {
         artifacts.count > 1 && isMediaNode
+    }
+
+    var renderRotationDegrees: Double {
+        isMediaNode ? 0 : layout.rotationDegrees
     }
 }
 
