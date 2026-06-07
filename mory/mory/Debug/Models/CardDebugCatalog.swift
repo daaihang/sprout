@@ -1,273 +1,262 @@
 import Foundation
 
-struct CardDebugRecipeFixture: Identifiable, Hashable {
-    var id: String { recipe.rawValue }
-    let recipe: MemoryCardVisualRecipe
+struct CardDebugContentFixture: Identifiable, Hashable {
+    var id: String { contentKind.rawValue }
+    let contentKind: MemoryCardContentKind
     let item: CaptureCardItem
     let preferredDensity: MemoryCardContentDensity
-    let preferredVariant: MemoryCardVisualVariant?
     let layerNotes: [String]
 }
 
 struct CardDebugTypeCatalogEntry: Identifiable, Hashable {
     var id: String { contentType }
     let contentType: String
-    let fixture: CardDebugRecipeFixture
+    let fixture: CardDebugContentFixture
     let draftLayer: String
     let artifactLayer: String
     let digestLayer: String
     let arrangementLayer: String
 }
 
-struct CardDebugRecipeDensityFixture: Identifiable, Hashable {
+struct CardDebugContentDensityFixture: Identifiable, Hashable {
     var id: String {
-        "\(fixture.recipe.rawValue)-\(density.rawValue)-\(resolvedVariant.rawValue)"
+        "\(fixture.contentKind.rawValue)-\(density.rawValue)"
     }
-    let fixture: CardDebugRecipeFixture
+
+    let fixture: CardDebugContentFixture
     let density: MemoryCardContentDensity
-    let variant: MemoryCardVisualVariant?
 
     var metrics: MemoryCardObjectMetrics {
-        MemoryCardObjectMetrics.resolve(recipe: fixture.recipe, density: density)
-    }
-
-    var resolvedVariant: MemoryCardVisualVariant {
-        MemoryCardRecipeLayoutPolicy.resolvedVariant(variant, for: fixture.recipe, density: density)
+        MemoryCardObjectMetrics.resolve(contentKind: fixture.contentKind, density: density)
     }
 }
 
 enum CardDebugCatalog {
-    static let recipeFixtures: [CardDebugRecipeFixture] = [
-        CardDebugRecipeFixture(
-            recipe: .notebook,
+    static let contentFixtures: [CardDebugContentFixture] = [
+        CardDebugContentFixture(
+            contentKind: .recordBody,
             item: CaptureCardItem(
-                id: "debug-recipe-notebook",
+                id: "debug-kind-record-body",
                 payload: .prompt(CapturePromptCardPayload(prompt: "What should be remembered?", answer: "A quiet morning note with the core record body.")),
                 origin: .manual,
                 title: "Record body",
                 detail: "A quiet morning note with the core record body.",
                 metadata: "recordBody"
             ),
-            preferredDensity: .expanded,
-            preferredVariant: nil,
-            layerNotes: ["contentRef=.recordBody", "ArtifactKind.text is folded into RecordShell.rawText", "visualRecipe=.notebook"]
+            preferredDensity: .detailed,
+            layerNotes: ["contentRef=.recordBody", "ArtifactKind.text is folded into RecordShell.rawText", "density=.detailed"]
         ),
-        CardDebugRecipeFixture(
-            recipe: .polaroid,
+        CardDebugContentFixture(
+            contentKind: .photo,
             item: CaptureCardItem(
-                id: "debug-recipe-polaroid",
+                id: "debug-kind-photo",
                 payload: .photo(CapturePhotoCardPayload(photoCount: 1)),
                 origin: .manual,
                 title: "Kitchen light",
-                detail: "Photo evidence with a white border and timestamp area.",
+                detail: "Photo evidence with thumbnail and digest text.",
                 metadata: "photo.jpg"
             ),
-            preferredDensity: .regular,
-            preferredVariant: nil,
-            layerNotes: ["CaptureArtifactContent.photo", "ArtifactKind.photo", "photo digest can carry OCR/caption/labels", "visualRecipe=.polaroid"]
+            preferredDensity: .standard,
+            layerNotes: ["CaptureArtifactContent.photo", "ArtifactKind.photo", "photo digest can carry OCR/caption/labels"]
         ),
-        CardDebugRecipeFixture(
-            recipe: .filmFrame,
+        CardDebugContentFixture(
+            contentKind: .video,
             item: CaptureCardItem(
-                id: "debug-recipe-film-frame",
+                id: "debug-kind-video",
                 payload: .video(CaptureVideoCardPayload(durationSeconds: 18)),
                 origin: .manual,
                 title: "Street clip",
                 detail: "Video evidence with first-frame summary.",
                 metadata: "0:18"
             ),
-            preferredDensity: .regular,
-            preferredVariant: nil,
-            layerNotes: ["CaptureArtifactContent.video", "ArtifactKind.video", "video digest can carry duration/first-frame notes", "visualRecipe=.filmFrame"]
+            preferredDensity: .standard,
+            layerNotes: ["CaptureArtifactContent.video", "ArtifactKind.video", "video digest can carry duration/first-frame notes"]
         ),
-        CardDebugRecipeFixture(
-            recipe: .livePhotoPrint,
+        CardDebugContentFixture(
+            contentKind: .livePhoto,
             item: CaptureCardItem(
-                id: "debug-recipe-live-photo-print",
+                id: "debug-kind-live-photo",
                 payload: .livePhoto(CaptureLivePhotoCardPayload(pairedVideoByteCount: 128_000)),
                 origin: .manual,
                 title: "Live moment",
                 detail: "Still image plus paired motion clip.",
                 metadata: "Live Photo"
             ),
-            preferredDensity: .regular,
-            preferredVariant: nil,
-            layerNotes: ["CaptureArtifactContent.livePhoto", "ArtifactKind.livePhoto", "digest keeps still + paired video notes", "visualRecipe=.livePhotoPrint"]
+            preferredDensity: .standard,
+            layerNotes: ["CaptureArtifactContent.livePhoto", "ArtifactKind.livePhoto", "digest keeps still + paired video notes"]
         ),
-        CardDebugRecipeFixture(
-            recipe: .cassette,
+        CardDebugContentFixture(
+            contentKind: .audio,
             item: CaptureCardItem(
-                id: "debug-recipe-cassette",
+                id: "debug-kind-audio",
                 payload: .audio(CaptureAudioCardPayload(durationSeconds: 74)),
                 origin: .manual,
                 title: "Voice memo",
                 detail: "Transcript snippet stays in textContent and digest, not metadata.",
                 metadata: "1:14"
             ),
-            preferredDensity: .compact,
-            preferredVariant: nil,
-            layerNotes: ["CaptureArtifactContent.audio", "ArtifactKind.audio", "audio digest carries transcript/language/confidence", "visualRecipe=.cassette"]
+            preferredDensity: .simple,
+            layerNotes: ["CaptureArtifactContent.audio", "ArtifactKind.audio", "audio digest carries transcript/language/confidence"]
         ),
-        CardDebugRecipeFixture(
-            recipe: .vinyl,
+        CardDebugContentFixture(
+            contentKind: .music,
             item: CaptureCardItem(
-                id: "debug-recipe-vinyl",
+                id: "debug-kind-music",
                 payload: .music(CaptureMusicCardPayload(durationSeconds: 244, playbackState: .playing)),
                 origin: .context,
                 title: "Midnight City",
                 detail: "M83 · Hurry Up, We're Dreaming",
                 metadata: "Now Playing"
             ),
-            preferredDensity: .compact,
-            preferredVariant: nil,
-            layerNotes: ["CaptureArtifactContent.music", "ArtifactKind.music", "music fact fields stay structured", "visualRecipe=.vinyl"]
+            preferredDensity: .simple,
+            layerNotes: ["CaptureArtifactContent.music", "ArtifactKind.music", "music fact fields stay structured"]
         ),
-        CardDebugRecipeFixture(
-            recipe: .mapTicket,
+        CardDebugContentFixture(
+            contentKind: .place,
             item: CaptureCardItem(
-                id: "debug-recipe-map-ticket",
+                id: "debug-kind-place",
                 payload: .place(CapturePlaceCardPayload(latitude: 31.218, longitude: 121.446)),
                 origin: .context,
                 title: "Shanghai Library",
                 detail: "1555 Huaihai Middle Road",
                 metadata: "31.2180, 121.4460"
             ),
-            preferredDensity: .regular,
-            preferredVariant: nil,
-            layerNotes: ["CaptureArtifactContent.location", "ArtifactKind.location", "location digest keeps structured place facts", "visualRecipe=.mapTicket"]
+            preferredDensity: .standard,
+            layerNotes: ["CaptureArtifactContent.location", "ArtifactKind.location", "location digest keeps structured place facts"]
         ),
-        CardDebugRecipeFixture(
-            recipe: .weatherStamp,
+        CardDebugContentFixture(
+            contentKind: .weather,
             item: CaptureCardItem(
-                id: "debug-recipe-weather-stamp",
+                id: "debug-kind-weather",
                 payload: .weather(CaptureWeatherCardPayload(style: .cloudy, conditionCode: "mostlyCloudy", symbolName: "cloud.sun.fill", isDaylight: true)),
                 origin: .context,
                 title: "23°C",
                 detail: "Mostly cloudy",
                 metadata: "Humidity 61% · Wind 12 km/h · UV 3"
             ),
-            preferredDensity: .compact,
-            preferredVariant: nil,
-            layerNotes: ["CaptureArtifactContent.weather", "ArtifactKind.weather", "weather summary stays structured", "visualRecipe=.weatherStamp"]
+            preferredDensity: .simple,
+            layerNotes: ["CaptureArtifactContent.weather", "ArtifactKind.weather", "weather summary stays structured"]
         ),
-        CardDebugRecipeFixture(
-            recipe: .linkNote,
+        CardDebugContentFixture(
+            contentKind: .link,
             item: CaptureCardItem(
-                id: "debug-recipe-link-note",
+                id: "debug-kind-link",
                 payload: .link(CaptureLinkCardPayload()),
                 origin: .manual,
                 title: "SwiftUI Layout",
                 detail: "developer.apple.com/documentation/swiftui/layout",
                 metadata: "developer.apple.com"
             ),
-            preferredDensity: .regular,
-            preferredVariant: nil,
-            layerNotes: ["CaptureArtifactContent.link", "ArtifactKind.link", "URL/host remain artifact metadata facts", "visualRecipe=.linkNote"]
+            preferredDensity: .standard,
+            layerNotes: ["CaptureArtifactContent.link", "ArtifactKind.link", "URL/host remain artifact metadata facts"]
         ),
-        CardDebugRecipeFixture(
-            recipe: .taskNote,
+        CardDebugContentFixture(
+            contentKind: .todo,
             item: CaptureCardItem(
-                id: "debug-recipe-task-note",
+                id: "debug-kind-todo",
                 payload: .todo(CaptureTodoCardPayload()),
                 origin: .manual,
                 title: "Follow up",
                 detail: "Send the design notes after the review.",
                 metadata: "todo"
             ),
-            preferredDensity: .compact,
-            preferredVariant: nil,
-            layerNotes: ["CaptureArtifactContent.todo", "ArtifactKind.todo", "task text remains content fact", "visualRecipe=.taskNote"]
+            preferredDensity: .simple,
+            layerNotes: ["CaptureArtifactContent.todo", "ArtifactKind.todo", "task text remains content fact"]
         ),
-        CardDebugRecipeFixture(
-            recipe: .personCard,
+        CardDebugContentFixture(
+            contentKind: .person,
             item: CaptureCardItem(
-                id: "debug-recipe-person-card",
+                id: "debug-kind-person",
                 payload: .person(CapturePersonContextCardPayload(name: "Alex Chen")),
                 origin: .manual,
                 title: "Alex Chen",
                 detail: "Design partner from the morning critique.",
                 metadata: "personContext"
             ),
-            preferredDensity: .regular,
-            preferredVariant: nil,
-            layerNotes: ["CaptureArtifactContent.personContext", "ArtifactKind.document", "documentType=personContext", "visualRecipe=.personCard"]
+            preferredDensity: .standard,
+            layerNotes: ["CaptureArtifactContent.personContext", "ArtifactKind.document", "documentType=personContext"]
         ),
-        CardDebugRecipeFixture(
-            recipe: .affectCard,
+        CardDebugContentFixture(
+            contentKind: .affect,
             item: CaptureCardItem(
-                id: "debug-recipe-affect-card",
+                id: "debug-kind-affect",
                 payload: .affect(CaptureAffectCardPayload(valence: 0.42, sourceDescription: "manual mood")),
                 origin: .manual,
                 title: "Steady",
-                detail: "Mood swatch from user-selected affect.",
+                detail: "Mood from user-selected affect.",
                 metadata: "affect"
             ),
-            preferredDensity: .compact,
-            preferredVariant: nil,
-            layerNotes: ["AffectSnapshot", "not an Artifact", "debug/detail presentation node only", "visualRecipe=.affectCard"]
+            preferredDensity: .simple,
+            layerNotes: ["AffectSnapshot", "not an Artifact", "debug/detail presentation node only"]
         ),
-        CardDebugRecipeFixture(
-            recipe: .bundlePacket,
+        CardDebugContentFixture(
+            contentKind: .journalingSuggestion,
             item: CaptureCardItem(
-                id: "debug-recipe-bundle-packet",
+                id: "debug-kind-journaling",
                 payload: .journalingSuggestion(CaptureJournalingSuggestionCardPayload(artifactCount: 5, affectCount: 1, photoCount: 2, videoCount: 1, livePhotoCount: 1, locationCount: 1)),
                 origin: .imported,
                 title: "Journaling import",
                 detail: "5 items · 1 mood",
                 metadata: "Journaling"
             ),
-            preferredDensity: .regular,
-            preferredVariant: nil,
-            layerNotes: ["journalingSuggestion(importSessionID)", "can group multiple artifacts", "visualRecipe=.bundlePacket"]
+            preferredDensity: .standard,
+            layerNotes: ["journalingSuggestion(importSessionID)", "can group multiple artifacts"]
         ),
-        CardDebugRecipeFixture(
-            recipe: .statusNote,
+        CardDebugContentFixture(
+            contentKind: .bundle,
             item: CaptureCardItem(
-                id: "debug-recipe-status-note",
+                id: "debug-kind-bundle",
+                payload: .photo(CapturePhotoCardPayload(photoCount: 3)),
+                origin: .manual,
+                title: "Stack",
+                detail: "Grouped artifacts use one adaptive bundle card.",
+                metadata: "3"
+            ),
+            preferredDensity: .standard,
+            layerNotes: ["MemoryCardContentRef.artifactGroup", "layout stores groupID/order/zIndex only"]
+        ),
+        CardDebugContentFixture(
+            contentKind: .status,
+            item: CaptureCardItem(
+                id: "debug-kind-status",
                 payload: .status(CaptureStatusCardPayload()),
                 origin: nil,
                 title: "System note",
                 detail: "Fallback/debug-only status content.",
                 metadata: "debug"
             ),
-            preferredDensity: .compact,
-            preferredVariant: nil,
-            layerNotes: ["debug/fallback only", "not a primary content fact", "visualRecipe=.statusNote"]
+            preferredDensity: .simple,
+            layerNotes: ["debug/fallback only", "not a primary content fact"]
         ),
     ]
 
     static var typeCatalogEntries: [CardDebugTypeCatalogEntry] {
-        recipeFixtures.map { fixture in
-            let density = MemoryCardRecipeLayoutPolicy.normalizedDensity(fixture.preferredDensity, for: fixture.recipe)
+        contentFixtures.map { fixture in
+            let density = MemoryCardPresentationPolicy.normalizedDensity(
+                fixture.preferredDensity,
+                for: fixture.contentKind
+            )
             return CardDebugTypeCatalogEntry(
-                contentType: contentType(for: fixture.recipe),
+                contentType: contentType(for: fixture.contentKind),
                 fixture: fixture,
-                draftLayer: draftLayer(for: fixture.recipe),
-                artifactLayer: artifactLayer(for: fixture.recipe),
-                digestLayer: digestLayer(for: fixture.recipe),
-                arrangementLayer: "MemoryCardNode(contentRef, visualRecipe=\(fixture.recipe.rawValue), variant=\(MemoryCardRecipeLayoutPolicy.resolvedVariant(fixture.preferredVariant, for: fixture.recipe, density: density).rawValue), density=\(density.rawValue), layout=order/zIndex/rotation/nudge/stickers)"
+                draftLayer: draftLayer(for: fixture.contentKind),
+                artifactLayer: artifactLayer(for: fixture.contentKind),
+                digestLayer: digestLayer(for: fixture.contentKind),
+                arrangementLayer: "MemoryCardNode(contentRef, contentDensity=\(density.rawValue), layout=order/zIndex/rotation/nudge/stickers)"
             )
         }
     }
 
-    static var recipeDensityFixtures: [CardDebugRecipeDensityFixture] {
-        recipeFixtures.flatMap { fixture in
-            MemoryCardRecipeLayoutPolicy.supportedDensities(for: fixture.recipe).map { density in
-                let variants = MemoryCardRecipeLayoutPolicy.supportedVariants(for: fixture.recipe, density: density)
-                return variants.map { variant in
-                    CardDebugRecipeDensityFixture(
-                        fixture: fixture,
-                        density: density,
-                        variant: variant == .automatic ? nil : variant
-                    )
-                }
+    static var contentDensityFixtures: [CardDebugContentDensityFixture] {
+        contentFixtures.flatMap { fixture in
+            MemoryCardPresentationPolicy.supportedDensities(for: fixture.contentKind).map { density in
+                CardDebugContentDensityFixture(fixture: fixture, density: density)
             }
-            .flatMap { $0 }
         }
     }
 
-    static func fixture(for recipe: MemoryCardVisualRecipe) -> CardDebugRecipeFixture {
-        recipeFixtures.first { $0.recipe == recipe } ?? recipeFixtures[0]
+    static func fixture(for contentKind: MemoryCardContentKind) -> CardDebugContentFixture {
+        contentFixtures.first { $0.contentKind == contentKind } ?? contentFixtures[0]
     }
 
     static func arrangementPlaygroundSnapshot() -> MemoryDetailSnapshot {
@@ -296,7 +285,7 @@ enum CardDebugCatalog {
                 kind: .audio,
                 title: "Voice memo",
                 summary: "Audio summary",
-                textContent: "Transcript snippet for the cassette card.",
+                textContent: "Transcript snippet for the audio card.",
                 mediaRef: ArtifactMediaRef(filename: "voice.m4a", mimeType: "audio/mp4"),
                 createdAt: now,
                 updatedAt: now
@@ -347,20 +336,20 @@ enum CardDebugCatalog {
             createdAt: now,
             updatedAt: now,
             captureSource: .composer,
-            rawText: "Debug arrangement playground: the renderer should preserve recipe, order, rotation, nudge, z-index, stickers, and stack.",
+            rawText: "Debug arrangement playground: the renderer should preserve order, rotation, nudge, z-index, stickers, stack, and content density.",
             artifactIDs: artifacts.map(\.id)
         )
         let arrangement = MemoryCardArrangement(
             recordID: recordID,
             nodes: [
-                MemoryCardNode(contentRef: .recordBody, visualRecipe: .notebook, layout: MemoryCardLayoutToken(order: 0, rotationDegrees: -1.5, zIndex: 0)),
-                MemoryCardNode(contentRef: .artifact(photoID), visualRecipe: .polaroid, layout: MemoryCardLayoutToken(order: 1, rotationDegrees: 2, zIndex: 1)),
-                MemoryCardNode(contentRef: .artifact(audioID), visualRecipe: .cassette, layout: MemoryCardLayoutToken(order: 2, rotationDegrees: -2, zIndex: 2)),
-                MemoryCardNode(contentRef: .artifact(linkID), visualRecipe: .linkNote, layout: MemoryCardLayoutToken(order: 3, rotationDegrees: 1, zIndex: 3)),
-                MemoryCardNode(contentRef: .artifact(weatherID), visualRecipe: .weatherStamp, layout: MemoryCardLayoutToken(order: 4, rotationDegrees: -3, zIndex: 4)),
-                MemoryCardNode(contentRef: .artifact(placeID), visualRecipe: .mapTicket, layout: MemoryCardLayoutToken(order: 5, rotationDegrees: 1.5, zIndex: 5)),
-                MemoryCardNode(contentRef: .artifact(musicID), visualRecipe: .vinyl, layout: MemoryCardLayoutToken(order: 6, rotationDegrees: -1, zIndex: 6)),
-                MemoryCardNode(contentRef: .artifactGroup([photoID, linkID, weatherID], kind: .mixedContext), visualRecipe: .bundlePacket, layout: MemoryCardLayoutToken(order: 7, rotationDegrees: 2.5, zIndex: 7)),
+                MemoryCardNode(contentRef: .recordBody, contentDensity: .detailed, layout: MemoryCardLayoutToken(order: 0, rotationDegrees: -1.5, zIndex: 0)),
+                MemoryCardNode(contentRef: .artifact(photoID), contentDensity: .standard, layout: MemoryCardLayoutToken(order: 1, rotationDegrees: 2, zIndex: 1)),
+                MemoryCardNode(contentRef: .artifact(audioID), contentDensity: .simple, layout: MemoryCardLayoutToken(order: 2, rotationDegrees: -2, zIndex: 2)),
+                MemoryCardNode(contentRef: .artifact(linkID), contentDensity: .standard, layout: MemoryCardLayoutToken(order: 3, rotationDegrees: 1, zIndex: 3)),
+                MemoryCardNode(contentRef: .artifact(weatherID), contentDensity: .simple, layout: MemoryCardLayoutToken(order: 4, rotationDegrees: -3, zIndex: 4)),
+                MemoryCardNode(contentRef: .artifact(placeID), contentDensity: .standard, layout: MemoryCardLayoutToken(order: 5, rotationDegrees: 1.5, zIndex: 5)),
+                MemoryCardNode(contentRef: .artifact(musicID), contentDensity: .simple, layout: MemoryCardLayoutToken(order: 6, rotationDegrees: -1, zIndex: 6)),
+                MemoryCardNode(contentRef: .artifactGroup([photoID, linkID, weatherID], kind: .mixedContext), contentDensity: .standard, layout: MemoryCardLayoutToken(order: 7, rotationDegrees: 2.5, zIndex: 7)),
             ],
             createdAt: now,
             updatedAt: now
@@ -379,51 +368,64 @@ enum CardDebugCatalog {
         )
     }
 
-    private static func contentType(for recipe: MemoryCardVisualRecipe) -> String {
-        switch recipe {
-        case .notebook: return "recordBody / text / promptAnswer"
-        case .polaroid: return "photo"
-        case .filmFrame: return "video"
-        case .livePhotoPrint: return "livePhoto"
-        case .cassette: return "audio"
-        case .vinyl: return "music"
-        case .mapTicket: return "location"
-        case .weatherStamp: return "weather"
-        case .linkNote: return "link"
-        case .taskNote: return "todo"
-        case .personCard: return "personContext"
-        case .affectCard: return "affect"
-        case .bundlePacket: return "journaling suggestion / stack"
-        case .statusNote: return "status/debug"
+    private static func contentType(for contentKind: MemoryCardContentKind) -> String {
+        switch contentKind {
+        case .recordBody: return "recordBody / text"
+        case .photo: return "photo"
+        case .video: return "video"
+        case .livePhoto: return "livePhoto"
+        case .audio: return "audio"
+        case .place: return "location"
+        case .weather: return "weather"
+        case .music: return "music"
+        case .link: return "link"
+        case .todo: return "todo"
+        case .prompt: return "promptAnswer"
+        case .person: return "personContext"
+        case .affect: return "affect"
+        case .journalingSuggestion: return "journaling suggestion"
+        case .bundle: return "stack / bundle"
+        case .status: return "status/debug"
         }
     }
 
-    private static func draftLayer(for recipe: MemoryCardVisualRecipe) -> String {
-        switch recipe {
-        case .notebook: return "MemoryCaptureDraft.bodyText or CaptureArtifactContent.text/promptAnswer"
-        case .affectCard: return "Affect draft / AffectSnapshot"
-        case .bundlePacket: return "Journaling import session or grouped artifact draft nodes"
-        case .statusNote: return "Debug status fixture"
-        default: return "CaptureArtifactDraft(content)"
+    private static func draftLayer(for contentKind: MemoryCardContentKind) -> String {
+        switch contentKind {
+        case .recordBody, .prompt:
+            return "MemoryCaptureDraft.bodyText or CaptureArtifactContent.text/promptAnswer"
+        case .affect:
+            return "Affect draft / AffectSnapshot"
+        case .journalingSuggestion, .bundle:
+            return "Journaling import session or grouped artifact draft nodes"
+        case .status:
+            return "Debug status fixture"
+        default:
+            return "CaptureArtifactDraft(content)"
         }
     }
 
-    private static func artifactLayer(for recipe: MemoryCardVisualRecipe) -> String {
-        switch recipe {
-        case .notebook: return "RecordShell.rawText or ArtifactKind.text/document"
-        case .personCard: return "ArtifactKind.document + documentType=personContext"
-        case .affectCard: return "AffectSnapshot, not Artifact"
-        case .bundlePacket: return "Artifact[] grouped by importSessionID or stack node"
-        case .statusNote: return "Debug-only status payload"
-        default: return "Artifact(kind/title/summary/textContent/mediaRef/technical metadata)"
+    private static func artifactLayer(for contentKind: MemoryCardContentKind) -> String {
+        switch contentKind {
+        case .recordBody:
+            return "RecordShell.rawText or ArtifactKind.text/document"
+        case .person:
+            return "ArtifactKind.document + documentType=personContext"
+        case .affect:
+            return "AffectSnapshot, not Artifact"
+        case .journalingSuggestion, .bundle:
+            return "Artifact[] grouped by importSessionID or stack node"
+        case .status:
+            return "Debug-only status payload"
+        default:
+            return "Artifact(kind/title/summary/textContent/mediaRef/technical metadata)"
         }
     }
 
-    private static func digestLayer(for recipe: MemoryCardVisualRecipe) -> String {
-        switch recipe {
-        case .polaroid, .filmFrame, .livePhotoPrint, .cassette:
+    private static func digestLayer(for contentKind: MemoryCardContentKind) -> String {
+        switch contentKind {
+        case .photo, .video, .livePhoto, .audio:
             return "ArtifactSemanticDigest stores media meaning outside Artifact.metadata"
-        case .affectCard, .statusNote:
+        case .affect, .status:
             return "No artifact semantic digest"
         default:
             return "Structured digest when content type provides semantic evidence"

@@ -2,7 +2,7 @@ import XCTest
 @testable import mory
 
 final class MemoryCardArrangementEditingTests: XCTestCase {
-    func testAutoArrangeNormalizesOrderAndPreservesVisualMetadata() {
+    func testAutoArrangeNormalizesOrderAndPreservesPresentationMetadata() {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let recordID = UUID(uuidString: "33333333-3333-3333-3333-333333333333")!
         let photoID = UUID(uuidString: "44444444-4444-4444-4444-444444444444")!
@@ -13,12 +13,12 @@ final class MemoryCardArrangementEditingTests: XCTestCase {
             nodes: [
                 MemoryCardNode(
                     contentRef: .artifact(photoID),
-                    visualRecipe: .polaroid,
+                    contentDensity: .detailed,
                     layout: MemoryCardLayoutToken(order: 2, rotationDegrees: -2, xNudge: 3, zIndex: 8)
                 ),
                 MemoryCardNode(
                     contentRef: .artifactGroup([audioID, todoID], kind: .mediaStack),
-                    visualRecipe: .bundlePacket,
+                    contentDensity: .standard,
                     layout: MemoryCardLayoutToken(order: 1, rotationDegrees: 1, yNudge: -4, zIndex: 4)
                 )
             ],
@@ -30,7 +30,7 @@ final class MemoryCardArrangementEditingTests: XCTestCase {
 
         XCTAssertEqual(arranged.nodes.map(\.layout.order), [0, 1])
         XCTAssertEqual(arranged.nodes.map(\.layout.zIndex), [0, 1])
-        XCTAssertEqual(arranged.nodes.map(\.visualRecipe), [.bundlePacket, .polaroid])
+        XCTAssertEqual(arranged.nodes.map(\.contentDensity), [.standard, .detailed])
         XCTAssertEqual(arranged.nodes[0].layout.rotationDegrees, 1)
         XCTAssertEqual(arranged.nodes[0].layout.yNudge, -4)
         XCTAssertEqual(arranged.nodes[1].layout.rotationDegrees, -2)
@@ -47,12 +47,12 @@ final class MemoryCardArrangementEditingTests: XCTestCase {
             nodes: [
                 MemoryCardNode(
                     contentRef: .artifact(photoID),
-                    visualRecipe: .polaroid,
+                    contentDensity: .detailed,
                     layout: MemoryCardLayoutToken(order: 0)
                 ),
                 MemoryCardNode(
                     contentRef: .artifact(audioID),
-                    visualRecipe: .cassette,
+                    contentDensity: .simple,
                     layout: MemoryCardLayoutToken(order: 1)
                 )
             ],
@@ -63,10 +63,31 @@ final class MemoryCardArrangementEditingTests: XCTestCase {
         let moved = arrangement.movingArtifact(artifactID: audioID, by: -1, updatedAt: now)
 
         XCTAssertEqual(moved.nodes.first?.contentRef, .artifact(audioID))
-        XCTAssertEqual(moved.nodes.first?.visualRecipe, .cassette)
+        XCTAssertEqual(moved.nodes.first?.contentDensity, .simple)
         XCTAssertEqual(moved.nodes.first?.layout.order, 0)
-        XCTAssertEqual(moved.nodes.last?.visualRecipe, .polaroid)
+        XCTAssertEqual(moved.nodes.last?.contentDensity, .detailed)
         XCTAssertEqual(moved.nodes.last?.layout.order, 1)
+    }
+
+    func testSettingContentDensityUpdatesOnlyTheTargetNode() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let recordID = UUID(uuidString: "77777777-7777-7777-7777-777777777777")!
+        let photoID = UUID(uuidString: "88888888-8888-8888-8888-888888888888")!
+        let audioID = UUID(uuidString: "99999999-9999-9999-9999-999999999999")!
+        let arrangement = MemoryCardArrangement(
+            recordID: recordID,
+            nodes: [
+                MemoryCardNode(contentRef: .artifact(photoID), contentDensity: .standard, layout: MemoryCardLayoutToken(order: 0)),
+                MemoryCardNode(contentRef: .artifact(audioID), contentDensity: .simple, layout: MemoryCardLayoutToken(order: 1))
+            ],
+            createdAt: now,
+            updatedAt: now
+        )
+
+        let updated = arrangement.settingContentDensity(.detailed, forArtifactID: photoID, updatedAt: now)
+
+        XCTAssertEqual(updated.nodes.first?.contentDensity, .detailed)
+        XCTAssertEqual(updated.nodes.last?.contentDensity, .simple)
     }
 
     func testStickersArePreservedThroughNormalization() {
@@ -86,7 +107,7 @@ final class MemoryCardArrangementEditingTests: XCTestCase {
             nodes: [
                 MemoryCardNode(
                     contentRef: .artifact(artifactID),
-                    visualRecipe: .linkNote,
+                    contentDensity: .standard,
                     layout: MemoryCardLayoutToken(order: 0, stickers: [sticker])
                 )
             ],

@@ -13,7 +13,7 @@ struct CaptureCardChrome<Content: View, Footer: View, TrailingControl: View, Con
     var body: some View {
         ZStack(alignment: .topTrailing) {
             content
-                .frame(width: 190, height: 132)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(containerBackground, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .redacted(reason: item.state == .loading ? .placeholder : [])
                 .overlay(alignment: .bottomLeading) { footer }

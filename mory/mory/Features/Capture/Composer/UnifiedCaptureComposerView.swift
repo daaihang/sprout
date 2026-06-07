@@ -491,18 +491,11 @@ struct UnifiedCaptureComposerView: View {
     @MainActor
     private func presentationForAttachmentItem(_ item: CaptureComposerAttachmentItem) -> CaptureCardPresentation {
         guard let node = arrangementNode(for: item) else {
-            if let fallbackRecipe = fallbackRecipe(for: item) {
-                return .composerAttachment(
-                    item,
-                    visualRecipe: fallbackRecipe
-                )
-            }
             return .composerAttachment(item)
         }
         return .composerAttachment(
             item,
-            visualRecipe: node.visualRecipe,
-            visualVariant: node.visualVariant
+            contentDensity: node.contentDensity
         )
     }
 
@@ -570,39 +563,6 @@ struct UnifiedCaptureComposerView: View {
             }?.draftID
         case .affect, .processing:
             return nil
-        }
-    }
-
-    private func fallbackRecipe(for item: CaptureComposerAttachmentItem) -> MemoryCardVisualRecipe? {
-        switch item.card.payload {
-        case .photo:
-            return .polaroid
-        case .video:
-            return .filmFrame
-        case .livePhoto:
-            return .livePhotoPrint
-        case .audio:
-            return .cassette
-        case .music:
-            return .vinyl
-        case .link:
-            return .linkNote
-        case .place:
-            return .mapTicket
-        case .weather:
-            return .weatherStamp
-        case .todo:
-            return .taskNote
-        case .prompt:
-            return .notebook
-        case .person:
-            return .personCard
-        case .affect:
-            return .affectCard
-        case .journalingSuggestion:
-            return .bundlePacket
-        case .status:
-            return .statusNote
         }
     }
 

@@ -34,10 +34,10 @@ Saving a memory does not mean AI analysis has started. The default local write p
 | --- | --- |
 | Local memory write path | Implemented: `RecordShell + Artifact[] + ArtifactSemanticDigest[] + MemoryCardArrangement + AffectSnapshot[]` are saved in one record-facts path. |
 | Capture composer | Implemented: text, photo, video, live photo, audio, link, location, weather, music, todo, prompt answer, person context, affect, external capture, and Journaling Suggestions can seed the unified draft. |
-| Card arrangement | Implemented: fixed-column-width masonry layout, adaptive card heights, visual recipes, stack/group, order, sticker attachment schema, rotation/nudge/z-index. |
-| Card rendering | Implemented: composer/detail render through the shared capture card path with `MemoryCardRecipeLayoutPolicy`, `MemoryCardObjectMetrics`, and recipe-specific object presentation. |
+| Card arrangement | Implemented: fixed-column-width masonry layout, adaptive card heights, content density, stack/group, order, sticker attachment schema, rotation/nudge/z-index. |
+| Card rendering | Implemented: composer/detail render through the shared capture card path with `MemoryCardPresentationPolicy`, `MemoryCardObjectMetrics`, and content-kind object presentation. |
 | Memory detail | Implemented: product viewing path uses arrangement-driven `MemoryDeskRenderer`; editing keeps arrangement mutation instead of rebuilding default layout. |
-| Card Debug | Implemented: one `Card Debug` hub covers overview, type catalog, layout policy, visual recipes, grid board lab, card states/actions, arrangement reports, and fixture stress labs. |
+| Card Debug | Implemented: one `Card Debug` hub covers overview, type catalog, masonry policy, density matrix, masonry board lab, card states/actions, arrangement reports, and fixture stress labs. |
 | AI pipeline | Implemented: `/api/analyze` remains the analysis boundary; `AnalysisInputContract` includes `RecordShell`, ordered artifacts, and ordered semantic digests, and excludes arrangement. |
 | Background/notifications | Wired: background orchestration, local notifications, push registration/enqueue/writeback, and notification management diagnostics exist; real-device behavior still needs field validation. |
 | Product polish | In progress: Today/Memories/Insights information architecture, global status visibility, accessibility, localization QA, and release-quality visual polish are still open. |
@@ -87,12 +87,12 @@ The current record layer is intentionally independent from AI:
 
 - The composer owns the draft and `MemoryCardArrangementDraft`.
 - Adding or removing content updates both staged artifacts and arrangement nodes.
-- Stack/unstack, reorder, delete, sticker attachment, and visual treatment are arrangement edits.
+- Stack/unstack, reorder, delete, sticker attachment, density, and visual treatment are arrangement edits.
 - `MemoryCaptureArtifactBuilder` returns artifacts, semantic digests, and draft-to-persisted artifact ID mapping.
 - `MemoryCreationUseCase` persists facts first, then persists `.notScheduled` pipeline status.
 - `MemoryMutationUseCase` updates artifacts, digests, arrangement, and affect data without defaulting over user layout.
 
-Card layout now uses fixed-column-width masonry across devices. Column count is derived from available width, each card keeps the same column width, and height is estimated/rendered from recipe, density, and measured content. The persisted arrangement stores order and visual expression only; masonry frames are derived at render time.
+Card layout now uses fixed-column-width masonry across devices. Column count is derived from available width, each card keeps the same column width, and height is estimated/rendered from content kind, density, and measured content. The persisted arrangement stores order, density, and visual expression only; masonry frames are derived at render time.
 
 ## Debug Surfaces
 
@@ -101,7 +101,7 @@ The main card verification surface is `Card Debug`:
 - `Overview`: recent memory four-layer health.
 - `Type Catalog`: each content type and supported density.
 - `Masonry Policy`: column metrics, density, estimated height, and object metrics.
-- `Visual Recipes`: all legal recipe/density combinations.
+- `Density Matrix`: all legal content-kind/density combinations.
 - `Masonry Board Lab`: fixed-column masonry prototype, column metrics, adaptive heights, and sticker overflow inspection.
 - `Card States & Actions`: composer/detail/debug roles, runtime states, and capability truth table.
 - `Fixture Stress Lab`: legacy fixture pressure tests.

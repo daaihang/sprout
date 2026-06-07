@@ -8,18 +8,11 @@ struct PlaceCaptureCardContent: View {
     let payload: CapturePlaceCardPayload
     let accent: Color
     let highContrastOverride: Bool?
-    let style: CapturePlaceCardStyle
 
     var body: some View {
         ZStack(alignment: .bottomLeading) {
             placeBackground
-
-            switch style {
-            case .immersive:
-                immersiveFooter
-            case .standard, .auto:
-                standardContent
-            }
+            standardContent
         }
     }
 
@@ -46,23 +39,6 @@ struct PlaceCaptureCardContent: View {
         .shadow(color: placeTextShadow, radius: 3, y: 1)
         .padding(12)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-    }
-
-    private var immersiveFooter: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.place"))
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(placePrimaryText)
-                .lineLimit(1)
-            Text(common.detail)
-                .font(.caption)
-                .foregroundStyle(placeSecondaryText)
-                .lineLimit(1)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 9)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .shadow(color: placeTextShadow, radius: 3, y: 1)
     }
 
     @ViewBuilder

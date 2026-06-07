@@ -4,7 +4,7 @@ enum CaptureCardLabFixtures {
     static let allTypes: [CaptureCardItem] = [
         CaptureCardItem(
             id: "fixture-photo",
-            payload: .photo(CapturePhotoCardPayload(photoCount: 3, groupStyle: .mosaic)),
+            payload: .photo(CapturePhotoCardPayload(photoCount: 3)),
             title: String(localized: "debug.captureCardLab.fixture.photo.title"),
             detail: String(localized: "debug.captureCardLab.fixture.photo.detail"),
             metadata: String(format: String(localized: "capture.card.photo.count.format"), 3),
@@ -285,21 +285,21 @@ enum CaptureCardLabFixtures {
         ),
         CaptureCardItem(
             id: "photo-group-mosaic",
-            payload: .photo(CapturePhotoCardPayload(photoCount: 4, groupStyle: .mosaic)),
+            payload: .photo(CapturePhotoCardPayload(photoCount: 4)),
             title: String(localized: "debug.captureCardLab.photo.mosaic.title"),
             detail: String(localized: "debug.captureCardLab.photo.mosaic.detail"),
             metadata: String(format: String(localized: "capture.card.photo.count.format"), 4)
         ),
         CaptureCardItem(
             id: "photo-group-stack",
-            payload: .photo(CapturePhotoCardPayload(photoCount: 5, groupStyle: .stack)),
+            payload: .photo(CapturePhotoCardPayload(photoCount: 5)),
             title: String(localized: "debug.captureCardLab.photo.stack.title"),
             detail: String(localized: "debug.captureCardLab.photo.stack.detail"),
             metadata: String(format: String(localized: "capture.card.photo.count.format"), 5)
         ),
         CaptureCardItem(
             id: "photo-group-carousel",
-            payload: .photo(CapturePhotoCardPayload(photoCount: 8, groupStyle: .carousel)),
+            payload: .photo(CapturePhotoCardPayload(photoCount: 8)),
             title: String(localized: "debug.captureCardLab.photo.carousel.title"),
             detail: String(localized: "debug.captureCardLab.photo.carousel.detail"),
             metadata: String(format: String(localized: "capture.card.photo.count.format"), 8)

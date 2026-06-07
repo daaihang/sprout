@@ -102,13 +102,8 @@ struct CaptureCardPresentation: Hashable, Sendable {
     var highContrastOverride: Bool?
     var weatherSymbolMotionLevel: CaptureWeatherSymbolMotionLevel
     var weatherAtmosphereIntensityScale: Double
-    var musicCardStyle: CaptureMusicCardStyle
-    var placeCardStyle: CapturePlaceCardStyle
     var showsLayoutGuides: Bool
     var showsFieldAudit: Bool
-    var surfaceMode: CaptureCardSurfaceMode
-    var visualRecipe: MemoryCardVisualRecipe?
-    var visualVariant: MemoryCardVisualVariant
     var contentDensity: MemoryCardContentDensity
 
     init(
@@ -120,21 +115,14 @@ struct CaptureCardPresentation: Hashable, Sendable {
         highContrastOverride: Bool? = nil,
         weatherSymbolMotionLevel: CaptureWeatherSymbolMotionLevel = .subtle,
         weatherAtmosphereIntensityScale: Double = 1,
-        musicCardStyle: CaptureMusicCardStyle = .auto,
-        placeCardStyle: CapturePlaceCardStyle = .auto,
         showsLayoutGuides: Bool = false,
         showsFieldAudit: Bool = false,
-        surfaceMode: CaptureCardSurfaceMode = .standard,
-        visualRecipe: MemoryCardVisualRecipe? = nil,
-        visualVariant: MemoryCardVisualVariant? = nil,
         contentDensity: MemoryCardContentDensity? = nil
     ) {
-        let normalizedDensity = visualRecipe.map {
-            MemoryCardRecipeLayoutPolicy.normalizedDensity(contentDensity, for: $0)
-        } ?? (contentDensity ?? .regular)
-        let normalizedVariant = visualRecipe.map {
-            MemoryCardRecipeLayoutPolicy.resolvedVariant(visualVariant, for: $0, density: normalizedDensity)
-        } ?? .automatic
+        let normalizedDensity = MemoryCardPresentationPolicy.normalizedDensity(
+            contentDensity,
+            for: item.memoryContentKind
+        )
         self.item = item
         self.role = role
         self.capabilities = capabilities ?? CaptureCardCapabilities.resolve(role: role, item: item)
@@ -143,70 +131,41 @@ struct CaptureCardPresentation: Hashable, Sendable {
         self.highContrastOverride = highContrastOverride
         self.weatherSymbolMotionLevel = weatherSymbolMotionLevel
         self.weatherAtmosphereIntensityScale = weatherAtmosphereIntensityScale
-        self.musicCardStyle = musicCardStyle
-        self.placeCardStyle = placeCardStyle
         self.showsLayoutGuides = showsLayoutGuides
         self.showsFieldAudit = showsFieldAudit
-        self.surfaceMode = surfaceMode
-        self.visualRecipe = visualRecipe
-        self.visualVariant = normalizedVariant
         self.contentDensity = normalizedDensity
     }
 
     static func composerAttachment(
         _ attachment: CaptureComposerAttachmentItem,
-        visualRecipe: MemoryCardVisualRecipe? = nil,
-        visualVariant: MemoryCardVisualVariant? = nil
+        contentDensity: MemoryCardContentDensity? = nil
     ) -> CaptureCardPresentation {
         CaptureCardPresentation(
             item: attachment.card,
             role: .composerEditing,
             provenanceDisplayMode: .production,
-            musicCardStyle: .compactRow,
-            placeCardStyle: .standard,
-            visualRecipe: visualRecipe,
-            visualVariant: visualVariant
+            contentDensity: contentDensity
         )
     }
 
-    static func detailArtifact(
-        _ artifact: Artifact,
-        visualRecipe: MemoryCardVisualRecipe? = nil,
-        visualVariant: MemoryCardVisualVariant? = nil
-    ) -> CaptureCardPresentation {
+    static func detailArtifact(_ artifact: Artifact) -> CaptureCardPresentation {
         CaptureCardPresentation(
             item: CaptureCardItem(artifact: artifact),
             role: .detailViewing,
-            provenanceDisplayMode: .production,
-            musicCardStyle: .compactRow,
-            placeCardStyle: .standard,
-            visualRecipe: visualRecipe,
-            visualVariant: visualVariant
+            provenanceDisplayMode: .production
         )
     }
 
-    static func detailEditing(
-        _ item: CaptureCardItem,
-        visualRecipe: MemoryCardVisualRecipe? = nil,
-        visualVariant: MemoryCardVisualVariant? = nil
-    ) -> CaptureCardPresentation {
+    static func detailEditing(_ item: CaptureCardItem) -> CaptureCardPresentation {
         CaptureCardPresentation(
             item: item,
             role: .detailEditing,
-            provenanceDisplayMode: .production,
-            musicCardStyle: .compactRow,
-            placeCardStyle: .standard,
-            visualRecipe: visualRecipe,
-            visualVariant: visualVariant
+            provenanceDisplayMode: .production
         )
     }
 
-    static func detailEditing(
-        _ artifact: Artifact,
-        visualRecipe: MemoryCardVisualRecipe? = nil,
-        visualVariant: MemoryCardVisualVariant? = nil
-    ) -> CaptureCardPresentation {
-        detailEditing(CaptureCardItem(artifact: artifact), visualRecipe: visualRecipe, visualVariant: visualVariant)
+    static func detailEditing(_ artifact: Artifact) -> CaptureCardPresentation {
+        detailEditing(CaptureCardItem(artifact: artifact))
     }
 
     static func debug(
@@ -216,13 +175,9 @@ struct CaptureCardPresentation: Hashable, Sendable {
         provenanceDisplayMode: CaptureCardProvenanceDisplayMode = .debug,
         weatherSymbolMotionLevel: CaptureWeatherSymbolMotionLevel = .subtle,
         weatherAtmosphereIntensityScale: Double = 1,
-        musicCardStyle: CaptureMusicCardStyle = .auto,
-        placeCardStyle: CapturePlaceCardStyle = .auto,
         showsLayoutGuides: Bool = false,
         showsFieldAudit: Bool = false,
-        surfaceMode: CaptureCardSurfaceMode = .standard,
-        visualRecipe: MemoryCardVisualRecipe? = nil,
-        visualVariant: MemoryCardVisualVariant? = nil
+        contentDensity: MemoryCardContentDensity? = nil
     ) -> CaptureCardPresentation {
         CaptureCardPresentation(
             item: item,
@@ -232,13 +187,9 @@ struct CaptureCardPresentation: Hashable, Sendable {
             highContrastOverride: highContrastOverride,
             weatherSymbolMotionLevel: weatherSymbolMotionLevel,
             weatherAtmosphereIntensityScale: weatherAtmosphereIntensityScale,
-            musicCardStyle: musicCardStyle,
-            placeCardStyle: placeCardStyle,
             showsLayoutGuides: showsLayoutGuides,
             showsFieldAudit: showsFieldAudit,
-            surfaceMode: surfaceMode,
-            visualRecipe: visualRecipe,
-            visualVariant: visualVariant
+            contentDensity: contentDensity
         )
     }
 
@@ -256,6 +207,47 @@ struct CaptureCardPresentation: Hashable, Sendable {
 
     var hasTrailingControl: Bool {
         item.state == .loading || item.state == .error || displaysRemoveControl || displaysSelection
+    }
+}
+
+extension CaptureCardItem {
+    var memoryContentKind: MemoryCardContentKind {
+        payload.memoryContentKind
+    }
+}
+
+extension CaptureCardPayload {
+    var memoryContentKind: MemoryCardContentKind {
+        switch self {
+        case .photo:
+            return .photo
+        case .video:
+            return .video
+        case .livePhoto:
+            return .livePhoto
+        case .audio:
+            return .audio
+        case .place:
+            return .place
+        case .weather:
+            return .weather
+        case .music:
+            return .music
+        case .link:
+            return .link
+        case .todo:
+            return .todo
+        case .prompt:
+            return .prompt
+        case .person:
+            return .person
+        case .affect:
+            return .affect
+        case .journalingSuggestion:
+            return .journalingSuggestion
+        case .status:
+            return .status
+        }
     }
 }
 

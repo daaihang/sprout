@@ -17,37 +17,6 @@ enum MemoryCardGroupKind: String, Codable, CaseIterable, Identifiable, Sendable 
     var id: String { rawValue }
 }
 
-enum MemoryCardVisualRecipe: String, Codable, CaseIterable, Identifiable, Sendable {
-    case notebook
-    case polaroid
-    case filmFrame
-    case livePhotoPrint
-    case cassette
-    case vinyl
-    case mapTicket
-    case weatherStamp
-    case linkNote
-    case taskNote
-    case personCard
-    case affectCard
-    case bundlePacket
-    case statusNote
-
-    var id: String { rawValue }
-}
-
-enum MemoryCardVisualVariant: String, Codable, CaseIterable, Identifiable, Sendable {
-    case automatic
-    case weatherIcon
-    case weatherTemperature
-    case weatherHumidity
-    case weatherWind
-    case weatherIconTemperature
-    case weatherFullMetrics
-
-    var id: String { rawValue }
-}
-
 enum MemoryCardStickerCorner: String, Codable, CaseIterable, Identifiable, Sendable {
     case topLeading
     case topTrailing
@@ -123,27 +92,24 @@ struct MemoryCardLayoutToken: Codable, Hashable, Sendable {
 struct MemoryCardNode: Identifiable, Codable, Hashable, Sendable {
     var id: UUID
     var contentRef: MemoryCardContentRef
-    var visualRecipe: MemoryCardVisualRecipe
-    var visualVariant: MemoryCardVisualVariant?
+    var contentDensity: MemoryCardContentDensity
     var layout: MemoryCardLayoutToken
 
     init(
         id: UUID = UUID(),
         contentRef: MemoryCardContentRef,
-        visualRecipe: MemoryCardVisualRecipe,
-        visualVariant: MemoryCardVisualVariant? = nil,
+        contentDensity: MemoryCardContentDensity? = nil,
         layout: MemoryCardLayoutToken
     ) {
         self.id = id
         self.contentRef = contentRef
-        self.visualRecipe = visualRecipe
-        self.visualVariant = visualVariant
+        self.contentDensity = contentDensity ?? MemoryCardPresentationPolicy.defaultDensity(for: contentRef)
         self.layout = layout
     }
 }
 
 struct MemoryCardArrangement: Identifiable, Codable, Hashable, Sendable {
-    static let schemaVersion = 5
+    static let schemaVersion = 6
 
     var id: UUID
     var recordID: UUID
@@ -180,21 +146,18 @@ enum MemoryCardDraftContentRef: Codable, Hashable, Sendable {
 struct MemoryCardDraftNode: Identifiable, Codable, Hashable, Sendable {
     var id: UUID
     var contentRef: MemoryCardDraftContentRef
-    var visualRecipe: MemoryCardVisualRecipe
-    var visualVariant: MemoryCardVisualVariant?
+    var contentDensity: MemoryCardContentDensity
     var layout: MemoryCardLayoutToken
 
     init(
         id: UUID = UUID(),
         contentRef: MemoryCardDraftContentRef,
-        visualRecipe: MemoryCardVisualRecipe,
-        visualVariant: MemoryCardVisualVariant? = nil,
+        contentDensity: MemoryCardContentDensity? = nil,
         layout: MemoryCardLayoutToken
     ) {
         self.id = id
         self.contentRef = contentRef
-        self.visualRecipe = visualRecipe
-        self.visualVariant = visualVariant
+        self.contentDensity = contentDensity ?? MemoryCardPresentationPolicy.defaultDensity(for: contentRef)
         self.layout = layout
     }
 }
@@ -220,7 +183,7 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
         nodes.insert(
             MemoryCardDraftNode(
                 contentRef: .recordBody,
-                visualRecipe: .notebook,
+                contentDensity: .detailed,
                 layout: MemoryCardLayoutToken(order: 0, rotationDegrees: -1.5, zIndex: 0)
             ),
             at: 0
@@ -234,7 +197,7 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
         nodes.append(
             MemoryCardDraftNode(
                 contentRef: .artifactDraft(draft.draftID),
-                visualRecipe: Self.defaultVisualRecipe(for: draft.content),
+                contentDensity: MemoryCardPresentationPolicy.defaultDensity(for: draft.content),
                 layout: MemoryCardLayoutToken(
                     order: order,
                     rotationDegrees: Self.defaultRotation(for: draft.draftID),
@@ -261,14 +224,13 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
                 if keptIDs.count == 1 {
                     node.contentRef = .artifactDraft(keptIDs[0])
                     if let keptDraft = draftByID[keptIDs[0]] {
-                        node.visualRecipe = Self.defaultVisualRecipe(for: keptDraft.content)
-                        node.visualVariant = Self.defaultVisualVariant(for: keptDraft.content)
+                        node.contentDensity = MemoryCardPresentationPolicy.defaultDensity(for: keptDraft.content)
                     } else {
-                        node.visualRecipe = .statusNote
-                        node.visualVariant = nil
+                        node.contentDensity = .standard
                     }
                 } else {
                     node.contentRef = .artifactDraftGroup(keptIDs, kind: .mediaStack)
+                    node.contentDensity = .standard
                 }
                 return node
             case .recordBody, .affectDraft, .journalingSuggestion:
@@ -290,12 +252,9 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
         normalizeOrder()
     }
 
-    mutating func setVisualVariant(_ variant: MemoryCardVisualVariant?, forDraftID draftID: UUID) {
+    mutating func setContentDensity(_ density: MemoryCardContentDensity, forDraftID draftID: UUID) {
         guard let index = nodeIndex(containingArtifactDraft: draftID) else { return }
-        nodes[index].visualVariant = MemoryCardRecipeLayoutPolicy.normalizedVariant(
-            variant,
-            for: nodes[index].visualRecipe
-        )
+        nodes[index].contentDensity = density
         normalizeOrder()
     }
 
@@ -307,8 +266,7 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
         guard !currentIDs.isEmpty, !previousIDs.isEmpty else { return }
         let mergedIDs = OrderedCollections.unique(previousIDs + currentIDs)
         nodes[previousIndex].contentRef = .artifactDraftGroup(mergedIDs, kind: .mediaStack)
-        nodes[previousIndex].visualRecipe = .bundlePacket
-        nodes[previousIndex].visualVariant = nil
+        nodes[previousIndex].contentDensity = .standard
         nodes.remove(at: index)
         normalizeOrder()
     }
@@ -328,8 +286,7 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
             let draft = draftByID[draftID]
             return MemoryCardDraftNode(
                 contentRef: .artifactDraft(draftID),
-                visualRecipe: draft.map { Self.defaultVisualRecipe(for: $0.content) } ?? .statusNote,
-                visualVariant: draft.flatMap { Self.defaultVisualVariant(for: $0.content) },
+                contentDensity: draft.map { MemoryCardPresentationPolicy.defaultDensity(for: $0.content) } ?? .standard,
                 layout: MemoryCardLayoutToken(
                     order: baseOrder + offset,
                     rotationDegrees: Self.defaultRotation(for: draftID),
@@ -366,13 +323,13 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
                 node.contentRef = keptIDs.count == 1 ? .artifactDraft(keptIDs[0]) : .artifactDraftGroup(keptIDs, kind: kind)
                 if keptIDs.count == 1 {
                     if let draft = artifactDrafts.first(where: { $0.draftID == keptIDs[0] }) {
-                        node.visualRecipe = Self.defaultVisualRecipe(for: draft.content)
-                        node.visualVariant = Self.defaultVisualVariant(for: draft.content)
+                        node.contentDensity = MemoryCardPresentationPolicy.defaultDensity(for: draft.content)
                     } else {
-                        node.visualRecipe = .statusNote
-                        node.visualVariant = nil
+                        node.contentDensity = .standard
                     }
                     node.layout.groupID = nil
+                } else {
+                    node.contentDensity = .standard
                 }
                 return node
             case .affectDraft, .journalingSuggestion:
@@ -427,7 +384,7 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
             sourceNodes.insert(
                 MemoryCardDraftNode(
                     contentRef: .recordBody,
-                    visualRecipe: .notebook,
+                    contentDensity: .detailed,
                     layout: MemoryCardLayoutToken(order: 0, rotationDegrees: -1.5, zIndex: 0)
                 ),
                 at: 0
@@ -442,8 +399,7 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
                     MemoryCardNode(
                         id: node.id,
                         contentRef: .recordBody,
-                        visualRecipe: node.visualRecipe,
-                        visualVariant: node.visualVariant,
+                        contentDensity: node.contentDensity,
                         layout: node.layout
                     )
                 )
@@ -458,8 +414,7 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
                     MemoryCardNode(
                         id: node.id,
                         contentRef: .artifact(artifactID),
-                        visualRecipe: node.visualRecipe,
-                        visualVariant: node.visualVariant,
+                        contentDensity: node.contentDensity,
                         layout: node.layout
                     )
                 )
@@ -472,8 +427,7 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
                     MemoryCardNode(
                         id: node.id,
                         contentRef: .artifactGroup(artifactIDs, kind: kind),
-                        visualRecipe: node.visualRecipe,
-                        visualVariant: node.visualVariant,
+                        contentDensity: .standard,
                         layout: node.layout
                     )
                 )
@@ -482,8 +436,7 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
                     MemoryCardNode(
                         id: node.id,
                         contentRef: .affect(id),
-                        visualRecipe: node.visualRecipe,
-                        visualVariant: node.visualVariant,
+                        contentDensity: .simple,
                         layout: node.layout
                     )
                 )
@@ -492,8 +445,7 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
                     MemoryCardNode(
                         id: node.id,
                         contentRef: .journalingSuggestion(importSessionID),
-                        visualRecipe: node.visualRecipe,
-                        visualVariant: node.visualVariant,
+                        contentDensity: .standard,
                         layout: node.layout
                     )
                 )
@@ -507,8 +459,7 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
             let order = existingOrderCount + offset
             return MemoryCardNode(
                 contentRef: .artifact(artifact.id),
-                visualRecipe: MemoryCardArrangement.defaultVisualRecipe(for: artifact),
-                visualVariant: MemoryCardArrangement.defaultVisualVariant(for: artifact),
+                contentDensity: MemoryCardPresentationPolicy.defaultDensity(for: artifact),
                 layout: MemoryCardLayoutToken(
                     order: order,
                     rotationDegrees: MemoryCardArrangement.defaultRotation(for: artifact.id),
@@ -542,8 +493,7 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
                     return MemoryCardNode(
                         id: node.id,
                         contentRef: .artifact(artifactID),
-                        visualRecipe: node.visualRecipe,
-                        visualVariant: node.visualVariant,
+                        contentDensity: node.contentDensity,
                         layout: node.layout
                     )
                 case let .artifactDraftGroup(draftIDs, kind):
@@ -553,8 +503,7 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
                     return MemoryCardNode(
                         id: node.id,
                         contentRef: .artifactGroup(artifactIDs, kind: kind),
-                        visualRecipe: node.visualRecipe,
-                        visualVariant: node.visualVariant,
+                        contentDensity: .standard,
                         layout: node.layout
                     )
                 case .recordBody, .affectDraft, .journalingSuggestion:
@@ -586,40 +535,6 @@ struct MemoryCardArrangementDraft: Codable, Hashable, Sendable {
         nodes = nodes.normalizedLayoutOrder()
     }
 
-    private static func defaultVisualRecipe(for content: CaptureArtifactContent) -> MemoryCardVisualRecipe {
-        switch content {
-        case .text:
-            return .notebook
-        case .photo:
-            return .polaroid
-        case .video:
-            return .filmFrame
-        case .livePhoto:
-            return .livePhotoPrint
-        case .audio:
-            return .cassette
-        case .music:
-            return .vinyl
-        case .link:
-            return .linkNote
-        case .location:
-            return .mapTicket
-        case .weather:
-            return .weatherStamp
-        case .todo:
-            return .taskNote
-        case .promptAnswer:
-            return .notebook
-        case .personContext:
-            return .personCard
-        }
-    }
-
-    private static func defaultVisualVariant(for content: CaptureArtifactContent) -> MemoryCardVisualVariant? {
-        let recipe = defaultVisualRecipe(for: content)
-        return MemoryCardRecipeLayoutPolicy.normalizedVariant(nil, for: recipe)
-    }
-
     private static func defaultRotation(for id: UUID) -> Double {
         let value = abs(id.uuidString.hashValue % 7)
         return Double(value - 3)
@@ -639,7 +554,7 @@ extension MemoryCardArrangement {
             nodes.append(
                 MemoryCardNode(
                     contentRef: .recordBody,
-                    visualRecipe: .notebook,
+                    contentDensity: .detailed,
                     layout: MemoryCardLayoutToken(order: order, rotationDegrees: -1.5, zIndex: order)
                 )
             )
@@ -653,13 +568,12 @@ extension MemoryCardArrangement {
             nodes.append(
                 MemoryCardNode(
                     contentRef: .artifact(artifact.id),
-                    visualRecipe: defaultVisualRecipe(for: artifact),
-                    visualVariant: defaultVisualVariant(for: artifact),
-                layout: MemoryCardLayoutToken(
-                    order: order,
-                    rotationDegrees: defaultRotation(for: artifact.id),
-                    zIndex: order
-                )
+                    contentDensity: MemoryCardPresentationPolicy.defaultDensity(for: artifact),
+                    layout: MemoryCardLayoutToken(
+                        order: order,
+                        rotationDegrees: defaultRotation(for: artifact.id),
+                        zIndex: order
+                    )
                 )
             )
             order += 1
@@ -683,41 +597,6 @@ extension MemoryCardArrangement {
         }
         result.append(contentsOf: artifactsByID.values.sorted { $0.updatedAt > $1.updatedAt })
         return result
-    }
-
-    nonisolated static func defaultVisualRecipe(for artifact: Artifact) -> MemoryCardVisualRecipe {
-        switch artifact.kind {
-        case .text:
-            return .notebook
-        case .photo:
-            return .polaroid
-        case .video:
-            return .filmFrame
-        case .livePhoto:
-            return .livePhotoPrint
-        case .audio:
-            return .cassette
-        case .music:
-            return .vinyl
-        case .link:
-            return .linkNote
-        case .location:
-            return .mapTicket
-        case .weather:
-            return .weatherStamp
-        case .todo:
-            return .taskNote
-        case .document:
-            if artifact.metadata["documentType"] == "personContext" {
-                return .personCard
-            }
-            return .notebook
-        }
-    }
-
-    nonisolated static func defaultVisualVariant(for artifact: Artifact) -> MemoryCardVisualVariant? {
-        let recipe = defaultVisualRecipe(for: artifact)
-        return MemoryCardRecipeLayoutPolicy.normalizedVariant(nil, for: recipe)
     }
 
     nonisolated static func defaultRotation(for id: UUID) -> Double {
@@ -752,9 +631,10 @@ extension MemoryCardArrangement {
                 usedArtifactIDs.formUnion(keptIDs)
                 node.contentRef = keptIDs.count == 1 ? .artifact(keptIDs[0]) : .artifactGroup(keptIDs, kind: kind)
                 if keptIDs.count == 1 {
-                    node.visualRecipe = artifactByID[keptIDs[0]].map(Self.defaultVisualRecipe(for:)) ?? node.visualRecipe
-                    node.visualVariant = artifactByID[keptIDs[0]].flatMap(Self.defaultVisualVariant(for:))
+                    node.contentDensity = artifactByID[keptIDs[0]].map(MemoryCardPresentationPolicy.defaultDensity(for:)) ?? node.contentDensity
                     node.layout.groupID = nil
+                } else {
+                    node.contentDensity = .standard
                 }
                 return node
             case .affect, .journalingSuggestion:
@@ -767,7 +647,7 @@ extension MemoryCardArrangement {
             syncedNodes.insert(
                 MemoryCardNode(
                     contentRef: .recordBody,
-                    visualRecipe: .notebook,
+                    contentDensity: .detailed,
                     layout: MemoryCardLayoutToken(order: 0, rotationDegrees: -1.5, zIndex: 0)
                 ),
                 at: 0
@@ -780,8 +660,7 @@ extension MemoryCardArrangement {
         syncedNodes.append(contentsOf: orderedArtifacts.enumerated().map { offset, artifact in
             MemoryCardNode(
                 contentRef: .artifact(artifact.id),
-                visualRecipe: Self.defaultVisualRecipe(for: artifact),
-                visualVariant: Self.defaultVisualVariant(for: artifact),
+                contentDensity: MemoryCardPresentationPolicy.defaultDensity(for: artifact),
                 layout: MemoryCardLayoutToken(
                     order: baseOrder + offset,
                     rotationDegrees: Self.defaultRotation(for: artifact.id),
@@ -804,17 +683,14 @@ extension MemoryCardArrangement {
         )
     }
 
-    func settingVisualVariant(
-        _ variant: MemoryCardVisualVariant?,
+    func settingContentDensity(
+        _ density: MemoryCardContentDensity,
         forArtifactID artifactID: UUID,
         updatedAt: Date
     ) -> MemoryCardArrangement {
         var nodes = nodes
         guard let index = nodes.firstIndex(where: { $0.containsArtifactID(artifactID) }) else { return self }
-        nodes[index].visualVariant = MemoryCardRecipeLayoutPolicy.normalizedVariant(
-            variant,
-            for: nodes[index].visualRecipe
-        )
+        nodes[index].contentDensity = density
         return replacing(nodes: nodes, updatedAt: updatedAt)
     }
 
@@ -825,8 +701,7 @@ extension MemoryCardArrangement {
         let previousIDs = nodes[index - 1].artifactIDs
         guard !currentIDs.isEmpty, !previousIDs.isEmpty else { return self }
         nodes[index - 1].contentRef = .artifactGroup(OrderedCollections.unique(previousIDs + currentIDs), kind: .mediaStack)
-        nodes[index - 1].visualRecipe = .bundlePacket
-        nodes[index - 1].visualVariant = nil
+        nodes[index - 1].contentDensity = .standard
         nodes.remove(at: index)
         return replacing(nodes: nodes.normalizedLayoutOrder(), updatedAt: updatedAt)
     }
@@ -842,8 +717,7 @@ extension MemoryCardArrangement {
             guard let artifact = artifactByID[artifactID] else { return nil }
             return MemoryCardNode(
                 contentRef: .artifact(artifactID),
-                visualRecipe: Self.defaultVisualRecipe(for: artifact),
-                visualVariant: Self.defaultVisualVariant(for: artifact),
+                contentDensity: MemoryCardPresentationPolicy.defaultDensity(for: artifact),
                 layout: MemoryCardLayoutToken(
                     order: nodes[index].layout.order + offset,
                     rotationDegrees: Self.defaultRotation(for: artifactID),
@@ -961,10 +835,6 @@ private extension Array where Element == MemoryCardNode {
             var node = element
             node.layout.order = index
             node.layout.zIndex = index
-            node.visualVariant = MemoryCardRecipeLayoutPolicy.normalizedVariant(
-                node.visualVariant,
-                for: node.visualRecipe
-            )
             return node
         }
     }
@@ -976,10 +846,6 @@ private extension Array where Element == MemoryCardDraftNode {
             var node = element
             node.layout.order = index
             node.layout.zIndex = index
-            node.visualVariant = MemoryCardRecipeLayoutPolicy.normalizedVariant(
-                node.visualVariant,
-                for: node.visualRecipe
-            )
             return node
         }
     }

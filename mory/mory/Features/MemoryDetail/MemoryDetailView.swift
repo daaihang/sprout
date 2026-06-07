@@ -603,8 +603,8 @@ private struct MemoryDetailEditingBoardView: View {
                     id: $0.id,
                     layout: $0.layout,
                     estimatedHeight: MemoryCardObjectMetrics.estimatedHeight(
-                        for: $0.visualRecipe,
-                        density: nil,
+                        for: $0.contentKind,
+                        density: $0.contentDensity,
                         columnWidth: columnWidth
                     )
                 )
@@ -720,9 +720,7 @@ private struct MemoryDetailEditingBoardCard: View {
                     item: node.item,
                     role: .detailEditing,
                     provenanceDisplayMode: .production,
-                    surfaceMode: .skeuomorphic,
-                    visualRecipe: node.visualRecipe,
-                    visualVariant: node.visualVariant
+                    contentDensity: node.contentDensity
                 ),
                 objectAvailableSize: availableSize
             )
@@ -781,8 +779,8 @@ private struct MemoryDetailEditingBoardNode: Identifiable {
     let id: UUID
     let artifactIDs: [UUID]
     let item: CaptureCardItem
-    let visualRecipe: MemoryCardVisualRecipe
-    let visualVariant: MemoryCardVisualVariant?
+    let contentKind: MemoryCardContentKind
+    let contentDensity: MemoryCardContentDensity
     let layout: MemoryCardLayoutToken
 
     var primaryArtifactID: UUID {
@@ -807,8 +805,8 @@ private struct MemoryDetailEditingBoardNode: Identifiable {
         self.item = artifacts.count == 1
             ? CaptureCardItem(artifact: artifacts[0])
             : Self.groupItem(nodeID: node.id, artifacts: artifacts)
-        self.visualRecipe = node.visualRecipe
-        self.visualVariant = node.visualVariant
+        self.contentKind = artifacts.count == 1 ? self.item.memoryContentKind : .bundle
+        self.contentDensity = node.contentDensity
         self.layout = node.layout
     }
 
@@ -816,7 +814,7 @@ private struct MemoryDetailEditingBoardNode: Identifiable {
         let thumbnail = artifacts.compactMap { $0.previewPayload ?? $0.binaryPayload }.first
         return CaptureCardItem(
             id: "edit-group-\(nodeID.uuidString)",
-            payload: .photo(CapturePhotoCardPayload(thumbnailData: thumbnail, photoCount: artifacts.count, groupStyle: .stack)),
+            payload: .photo(CapturePhotoCardPayload(thumbnailData: thumbnail, photoCount: artifacts.count)),
             origin: artifacts.first?.captureProvenance?.artifactOrigin,
             provenance: artifacts.first?.captureProvenance,
             title: "Stack",

@@ -63,58 +63,35 @@ struct CardDebugCapabilityRow: Identifiable, Hashable {
 }
 
 enum CardDebugStatesActionsModel {
-    static var recipeOptions: [MemoryCardVisualRecipe] {
-        CardDebugCatalog.recipeFixtures.map(\.recipe)
+    static var contentKindOptions: [MemoryCardContentKind] {
+        CardDebugCatalog.contentFixtures.map(\.contentKind)
     }
 
-    static func fixture(for recipe: MemoryCardVisualRecipe) -> CardDebugRecipeFixture {
-        CardDebugCatalog.fixture(for: recipe)
+    static func fixture(for contentKind: MemoryCardContentKind) -> CardDebugContentFixture {
+        CardDebugCatalog.fixture(for: contentKind)
     }
 
-    static func supportedDensities(for recipe: MemoryCardVisualRecipe) -> [MemoryCardContentDensity] {
-        MemoryCardRecipeLayoutPolicy.supportedDensities(for: recipe)
-    }
-
-    static func supportedVariants(
-        for recipe: MemoryCardVisualRecipe,
-        density: MemoryCardContentDensity
-    ) -> [MemoryCardVisualVariant] {
-        MemoryCardRecipeLayoutPolicy.supportedVariants(for: recipe, density: density)
-    }
-
-    static func normalizedVariant(
-        _ variant: MemoryCardVisualVariant,
-        for recipe: MemoryCardVisualRecipe,
-        density: MemoryCardContentDensity
-    ) -> MemoryCardVisualVariant {
-        MemoryCardRecipeLayoutPolicy.resolvedVariant(
-            variant == .automatic ? nil : variant,
-            for: recipe,
-            density: density
-        )
+    static func supportedDensities(for contentKind: MemoryCardContentKind) -> [MemoryCardContentDensity] {
+        MemoryCardPresentationPolicy.supportedDensities(for: contentKind)
     }
 
     static func item(
-        recipe: MemoryCardVisualRecipe,
+        contentKind: MemoryCardContentKind,
         runtimeState: CardDebugRuntimeStateOption
     ) -> CaptureCardItem {
-        runtimeState.apply(to: fixture(for: recipe).item)
+        runtimeState.apply(to: fixture(for: contentKind).item)
     }
 
     static func presentation(
-        recipe: MemoryCardVisualRecipe,
+        contentKind: MemoryCardContentKind,
         density: MemoryCardContentDensity,
-        variant: MemoryCardVisualVariant = .automatic,
         role: CardDebugRoleOption,
         runtimeState: CardDebugRuntimeStateOption
     ) -> CaptureCardPresentation {
         CaptureCardPresentation(
-            item: item(recipe: recipe, runtimeState: runtimeState),
+            item: item(contentKind: contentKind, runtimeState: runtimeState),
             role: role.role,
             provenanceDisplayMode: .debug,
-            surfaceMode: .skeuomorphic,
-            visualRecipe: recipe,
-            visualVariant: variant == .automatic ? nil : variant,
             contentDensity: density
         )
     }
@@ -140,27 +117,21 @@ enum CardDebugStatesActionsModel {
 }
 
 struct CardDebugStatesActionsView: View {
-    @State private var selectedRecipe: MemoryCardVisualRecipe = .cassette
-    @State private var selectedDensity: MemoryCardContentDensity = MemoryCardRecipeLayoutPolicy.defaultDensity(for: .cassette)
-    @State private var selectedVariant: MemoryCardVisualVariant = .automatic
+    @State private var selectedContentKind: MemoryCardContentKind = .audio
+    @State private var selectedDensity: MemoryCardContentDensity = MemoryCardPresentationPolicy.defaultDensity(for: .audio)
     @State private var selectedRole: CardDebugRoleOption = .composer
     @State private var selectedRuntimeState: CardDebugRuntimeStateOption = .normal
     @State private var tapCount = 0
     @State private var removeCount = 0
 
     private var supportedDensities: [MemoryCardContentDensity] {
-        CardDebugStatesActionsModel.supportedDensities(for: selectedRecipe)
-    }
-
-    private var supportedVariants: [MemoryCardVisualVariant] {
-        CardDebugStatesActionsModel.supportedVariants(for: selectedRecipe, density: selectedDensity)
+        CardDebugStatesActionsModel.supportedDensities(for: selectedContentKind)
     }
 
     private var presentation: CaptureCardPresentation {
         CardDebugStatesActionsModel.presentation(
-            recipe: selectedRecipe,
+            contentKind: selectedContentKind,
             density: selectedDensity,
-            variant: selectedVariant,
             role: selectedRole,
             runtimeState: selectedRuntimeState
         )
@@ -176,35 +147,22 @@ struct CardDebugStatesActionsView: View {
         }
         .navigationTitle("Card States & Actions")
         .navigationBarTitleDisplayMode(.inline)
-        .onChange(of: selectedRecipe) { _, newRecipe in
-            selectedDensity = MemoryCardRecipeLayoutPolicy.normalizedDensity(selectedDensity, for: newRecipe)
-            normalizeVariant()
-        }
-        .onChange(of: selectedDensity) { _, _ in
-            normalizeVariant()
-        }
-        .onChange(of: selectedVariant) { _, _ in
-            normalizeVariant()
+        .onChange(of: selectedContentKind) { _, newKind in
+            selectedDensity = MemoryCardPresentationPolicy.normalizedDensity(selectedDensity, for: newKind)
         }
     }
 
     private var selectorSection: some View {
         Section {
-            Picker("Recipe", selection: $selectedRecipe) {
-                ForEach(CardDebugStatesActionsModel.recipeOptions) { recipe in
-                    Text(recipe.rawValue).tag(recipe)
+            Picker("Content kind", selection: $selectedContentKind) {
+                ForEach(CardDebugStatesActionsModel.contentKindOptions) { kind in
+                    Text(kind.rawValue).tag(kind)
                 }
             }
 
             Picker("Density", selection: $selectedDensity) {
                 ForEach(supportedDensities) { density in
                     Text(density.rawValue).tag(density)
-                }
-            }
-
-            Picker("Variant", selection: $selectedVariant) {
-                ForEach(supportedVariants) { variant in
-                    Text(variant.rawValue).tag(variant)
                 }
             }
 
@@ -241,13 +199,12 @@ struct CardDebugStatesActionsView: View {
                 .padding(.vertical, 10)
 
                 let metrics = MemoryCardObjectMetrics.resolve(
-                    recipe: selectedRecipe,
+                    contentKind: selectedContentKind,
                     density: presentation.contentDensity
                 )
                 DebugValueRow(title: "Presentation role", value: presentation.role.rawValue)
                 DebugValueRow(title: "Runtime state", value: presentation.item.state.rawValue)
                 DebugValueRow(title: "Selected", value: presentation.item.isSelected ? "true" : "false")
-                DebugValueRow(title: "Visual variant", value: presentation.visualVariant.rawValue)
                 DebugValueRow(title: "Object metrics", value: "\(Int(metrics.preferredSize.width))x\(Int(metrics.preferredSize.height)) · \(metrics.density.rawValue)")
                 DebugValueRow(title: "Tap callback count", value: "\(tapCount)")
                 DebugValueRow(title: "Remove callback count", value: "\(removeCount)")
@@ -277,23 +234,10 @@ struct CardDebugStatesActionsView: View {
 
     private var contractSection: some View {
         Section("Contract Notes") {
-            DebugValueRow(title: "Source fixture", value: CardDebugStatesActionsModel.fixture(for: selectedRecipe).item.id)
-            DebugValueRow(title: "Surface", value: presentation.surfaceMode.rawValue)
-            DebugValueRow(title: "Visual recipe", value: selectedRecipe.rawValue)
-            DebugValueRow(title: "Visual variant", value: presentation.visualVariant.rawValue)
+            DebugValueRow(title: "Source fixture", value: CardDebugStatesActionsModel.fixture(for: selectedContentKind).item.id)
+            DebugValueRow(title: "Content kind", value: selectedContentKind.rawValue)
             DebugValueRow(title: "Density", value: presentation.contentDensity.rawValue)
             DebugValueRow(title: "canRetry gap", value: presentation.capabilities.canRetry ? "available" : "not wired")
-        }
-    }
-
-    private func normalizeVariant() {
-        let normalized = CardDebugStatesActionsModel.normalizedVariant(
-            selectedVariant,
-            for: selectedRecipe,
-            density: selectedDensity
-        )
-        if normalized != selectedVariant {
-            selectedVariant = normalized
         }
     }
 }

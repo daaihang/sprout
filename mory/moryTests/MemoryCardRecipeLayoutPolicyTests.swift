@@ -1,45 +1,39 @@
 import XCTest
 @testable import mory
 
-final class MemoryCardRecipeLayoutPolicyTests: XCTestCase {
-    func testDefaultDensityIsSupportedForEveryRecipe() {
-        for recipe in MemoryCardVisualRecipe.allCases {
-            let supported = MemoryCardRecipeLayoutPolicy.supportedDensities(for: recipe)
-            let defaultDensity = MemoryCardRecipeLayoutPolicy.defaultDensity(for: recipe)
-            XCTAssertTrue(supported.contains(defaultDensity), "\(recipe.rawValue) default density must be supported")
+final class MemoryCardPresentationPolicyTests: XCTestCase {
+    func testDefaultDensityIsSupportedForEveryContentKind() {
+        for contentKind in MemoryCardContentKind.allCases {
+            let supported = MemoryCardPresentationPolicy.supportedDensities(for: contentKind)
+            let defaultDensity = MemoryCardPresentationPolicy.defaultDensity(for: contentKind)
+            XCTAssertTrue(supported.contains(defaultDensity), "\(contentKind.rawValue) default density must be supported")
         }
     }
 
-    func testRecipeSpecificDensitySupport() {
-        XCTAssertEqual(MemoryCardRecipeLayoutPolicy.supportedDensities(for: .notebook), [.regular, .expanded])
-        XCTAssertEqual(MemoryCardRecipeLayoutPolicy.supportedDensities(for: .weatherStamp), [.compact, .regular])
-        XCTAssertEqual(MemoryCardRecipeLayoutPolicy.supportedDensities(for: .affectCard), [.compact, .regular])
-        XCTAssertEqual(MemoryCardRecipeLayoutPolicy.supportedDensities(for: .cassette), MemoryCardContentDensity.allCases)
+    func testContentKindSpecificDensitySupport() {
+        XCTAssertEqual(MemoryCardPresentationPolicy.supportedDensities(for: .recordBody), MemoryCardContentDensity.allCases)
+        XCTAssertEqual(MemoryCardPresentationPolicy.supportedDensities(for: .audio), MemoryCardContentDensity.allCases)
+        XCTAssertEqual(MemoryCardPresentationPolicy.supportedDensities(for: .bundle), MemoryCardContentDensity.allCases)
+        XCTAssertEqual(MemoryCardPresentationPolicy.supportedDensities(for: .weather), [.simple, .standard])
+        XCTAssertEqual(MemoryCardPresentationPolicy.supportedDensities(for: .affect), [.simple, .standard])
+        XCTAssertEqual(MemoryCardPresentationPolicy.supportedDensities(for: .status), [.simple, .standard])
+        XCTAssertEqual(MemoryCardPresentationPolicy.supportedDensities(for: .photo), [.standard, .detailed])
     }
 
-    func testDensityNormalizationFallsBackToRecipeDefault() {
-        XCTAssertEqual(MemoryCardRecipeLayoutPolicy.normalizedDensity(.compact, for: .notebook), .expanded)
-        XCTAssertEqual(MemoryCardRecipeLayoutPolicy.normalizedDensity(.expanded, for: .weatherStamp), .compact)
-        XCTAssertEqual(MemoryCardRecipeLayoutPolicy.normalizedDensity(.regular, for: .cassette), .regular)
+    func testDensityNormalizationFallsBackToContentDefault() {
+        XCTAssertEqual(MemoryCardPresentationPolicy.normalizedDensity(.simple, for: .photo), .standard)
+        XCTAssertEqual(MemoryCardPresentationPolicy.normalizedDensity(.detailed, for: .weather), .simple)
+        XCTAssertEqual(MemoryCardPresentationPolicy.normalizedDensity(.standard, for: .audio), .standard)
     }
 
-    func testWeatherVariantsFollowDensity() {
-        XCTAssertEqual(
-            MemoryCardRecipeLayoutPolicy.defaultVariant(for: .weatherStamp, density: .compact),
-            .weatherIcon
-        )
-        XCTAssertEqual(
-            MemoryCardRecipeLayoutPolicy.defaultVariant(for: .weatherStamp, density: .regular),
-            .weatherIconTemperature
-        )
-        XCTAssertEqual(
-            MemoryCardRecipeLayoutPolicy.resolvedVariant(.weatherFullMetrics, for: .weatherStamp, density: .compact),
-            .weatherIcon
-        )
-    }
+    func testDraftAndArtifactDefaultsUseContentSemantics() {
+        XCTAssertEqual(MemoryCardPresentationPolicy.defaultDensity(for: CaptureArtifactContent.audio(AudioArtifactContent(title: nil, summary: "", filename: "voice.caf"))), .simple)
+        XCTAssertEqual(MemoryCardPresentationPolicy.defaultDensity(for: CaptureArtifactContent.text(TextArtifactContent(title: nil, body: "Long note"))), .detailed)
 
-    func testNonWeatherVariantsResolveToAutomatic() {
-        XCTAssertNil(MemoryCardRecipeLayoutPolicy.normalizedVariant(.weatherIcon, for: .cassette, density: .compact))
-        XCTAssertEqual(MemoryCardRecipeLayoutPolicy.resolvedVariant(nil, for: .cassette, density: .compact), .automatic)
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let photo = Artifact(recordID: UUID(), kind: .photo, title: "Photo", summary: "Photo", createdAt: now, updatedAt: now)
+        let document = Artifact(recordID: UUID(), kind: .document, title: "Doc", summary: "Doc", createdAt: now, updatedAt: now)
+        XCTAssertEqual(MemoryCardPresentationPolicy.defaultDensity(for: photo), .standard)
+        XCTAssertEqual(MemoryCardPresentationPolicy.defaultDensity(for: document), .detailed)
     }
 }

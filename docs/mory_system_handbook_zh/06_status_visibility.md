@@ -43,7 +43,7 @@ Mory 当前最大的问题之一，是很多能力存在，但用户和产品负
 | Insights 页面 | 反思、章节、问题和用户可读的智能产出 | 信息架构仍需从“审核后台”收敛成复盘入口。 |
 | Settings | 权限、外部捕获、通知等 | 太多状态仍偏开发者理解。 |
 | Debug Center | 详细诊断 | 普通用户不会进入，也不该依赖它。 |
-| Card Debug | 四层卡片健康度、类型目录、Masonry Policy、Visual Recipes、Masonry Board Lab、Card States & Actions、压力 fixtures | 已是卡片/布局验收面板，但不是正式用户状态页。 |
+| Card Debug | 四层卡片健康度、类型目录、Masonry Policy、Density Matrix、Masonry Board Lab、Card States & Actions、压力 fixtures | 已是卡片/布局验收面板，但不是正式用户状态页。 |
 | Notification Management | 通知队列、历史、去重、错误、偏好和 push metrics | 已统一通知状态，但不解释所有后台任务。 |
 | Background Operations | 后台 run/event、job、pipeline status、push state | 已有统一后台调试页；日志是 owner-scoped JSON/UserDefaults 诊断状态，还不是面向普通用户的状态页。 |
 

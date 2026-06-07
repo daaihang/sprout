@@ -6,21 +6,9 @@ struct MusicCaptureCardContent: View {
     let payload: CaptureMusicCardPayload
     let accent: Color
     let palette: CaptureCardPalette
-    let style: CaptureMusicCardStyle
     let highContrast: Bool
 
     var body: some View {
-        switch style {
-        case .compactRow, .auto:
-            compactRowBody
-        case .compactTile:
-            compactTileBody
-        case .cover:
-            coverBody
-        }
-    }
-
-    private var compactRowBody: some View {
         ZStack {
             musicBackground
 
@@ -42,51 +30,6 @@ struct MusicCaptureCardContent: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(12)
-            .shadow(color: coverLegibility.shadow, radius: 3, y: 1)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-        }
-    }
-
-    private var compactTileBody: some View {
-        ZStack {
-            musicBackground
-
-            VStack(alignment: .leading, spacing: 7) {
-                compactArtwork(size: 46)
-
-                Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.music"))
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(coverLegibility.primaryText)
-                    .lineLimit(2)
-                Text(common.detail)
-                    .font(.caption2)
-                    .foregroundStyle(coverLegibility.secondaryText)
-                    .lineLimit(1)
-            }
-            .padding(12)
-            .shadow(color: coverLegibility.shadow, radius: 3, y: 1)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        }
-    }
-
-    private var coverBody: some View {
-        ZStack {
-            musicBackground
-
-            VStack(spacing: 5) {
-                Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.music"))
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(coverLegibility.primaryText)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.center)
-                Text(common.detail)
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(coverLegibility.secondaryText)
-                    .lineLimit(1)
-                    .multilineTextAlignment(.center)
-            }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 12)
             .shadow(color: coverLegibility.shadow, radius: 3, y: 1)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         }

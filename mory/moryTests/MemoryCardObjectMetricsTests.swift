@@ -3,11 +3,11 @@ import XCTest
 @testable import mory
 
 final class MemoryCardObjectMetricsTests: XCTestCase {
-    func testMetricsResolveForEveryRecipeAndSupportedDensity() {
-        for recipe in MemoryCardVisualRecipe.allCases {
-            for density in MemoryCardRecipeLayoutPolicy.supportedDensities(for: recipe) {
-                let metrics = MemoryCardObjectMetrics.resolve(recipe: recipe, density: density)
-                XCTAssertEqual(metrics.recipe, recipe)
+    func testMetricsResolveForEveryContentKindAndSupportedDensity() {
+        for contentKind in MemoryCardContentKind.allCases {
+            for density in MemoryCardPresentationPolicy.supportedDensities(for: contentKind) {
+                let metrics = MemoryCardObjectMetrics.resolve(contentKind: contentKind, density: density)
+                XCTAssertEqual(metrics.contentKind, contentKind)
                 XCTAssertEqual(metrics.density, density)
                 XCTAssertGreaterThan(metrics.preferredSize.width, 0)
                 XCTAssertGreaterThan(metrics.preferredSize.height, 0)
@@ -20,23 +20,23 @@ final class MemoryCardObjectMetricsTests: XCTestCase {
 
     func testAvailableWidthControlsPreferredWidth() {
         let metrics = MemoryCardObjectMetrics.resolve(
-            recipe: .linkNote,
-            density: .regular,
+            contentKind: .link,
+            density: .standard,
             availableSize: CGSize(width: 180, height: 240)
         )
         XCTAssertEqual(metrics.preferredSize.width, 180)
         XCTAssertLessThanOrEqual(metrics.preferredSize.height, 240)
     }
 
-    func testEstimatedHeightUsesRecipeAndDensity() {
-        let compact = MemoryCardObjectMetrics.estimatedHeight(for: .notebook, density: .regular, columnWidth: 180)
-        let expanded = MemoryCardObjectMetrics.estimatedHeight(for: .notebook, density: .expanded, columnWidth: 180)
-        XCTAssertGreaterThan(expanded, compact)
+    func testEstimatedHeightUsesContentKindAndDensity() {
+        let simple = MemoryCardObjectMetrics.estimatedHeight(for: .recordBody, density: .simple, columnWidth: 180)
+        let detailed = MemoryCardObjectMetrics.estimatedHeight(for: .recordBody, density: .detailed, columnWidth: 180)
+        XCTAssertGreaterThan(detailed, simple)
     }
 
-    func testMediaRecipesUseFillThumbnailScale() {
-        XCTAssertEqual(MemoryCardObjectMetrics.resolve(recipe: .polaroid).thumbnailScale, .fill)
-        XCTAssertEqual(MemoryCardObjectMetrics.resolve(recipe: .filmFrame).thumbnailScale, .fill)
-        XCTAssertEqual(MemoryCardObjectMetrics.resolve(recipe: .weatherStamp, density: .compact).thumbnailScale, .none)
+    func testThumbnailScaleDependsOnContentKindOnly() {
+        XCTAssertEqual(MemoryCardObjectMetrics.resolve(contentKind: .photo).thumbnailScale, .fill)
+        XCTAssertEqual(MemoryCardObjectMetrics.resolve(contentKind: .video).thumbnailScale, .fill)
+        XCTAssertEqual(MemoryCardObjectMetrics.resolve(contentKind: .weather, density: .simple).thumbnailScale, .none)
     }
 }

@@ -540,83 +540,43 @@ final class CaptureCardModelsTests: XCTestCase {
         XCTAssertFalse(CaptureCardKind.allCases.contains { $0.rawValue == "autoContext" })
     }
 
-    func testCardDebugRecipeCatalogCoversEveryVisualRecipe() {
-        let fixtures = CardDebugCatalog.recipeFixtures
-        let fixtureRecipes = Set(fixtures.map(\.recipe))
-
-        XCTAssertEqual(fixtureRecipes, Set(MemoryCardVisualRecipe.allCases))
-        XCTAssertEqual(fixtures.count, MemoryCardVisualRecipe.allCases.count)
-
-        for fixture in fixtures {
-            let presentation = CaptureCardPresentation(
-                item: fixture.item,
-                role: .debugLab,
-                provenanceDisplayMode: .debug,
-                surfaceMode: .skeuomorphic,
-                visualRecipe: fixture.recipe,
-                visualVariant: fixture.preferredVariant,
-                contentDensity: fixture.preferredDensity
-            )
-
-            XCTAssertEqual(presentation.surfaceMode, .skeuomorphic)
-            XCTAssertEqual(presentation.visualRecipe, fixture.recipe)
-            XCTAssertEqual(
-                presentation.contentDensity,
-                MemoryCardRecipeLayoutPolicy.normalizedDensity(fixture.preferredDensity, for: fixture.recipe)
-            )
-            XCTAssertEqual(
-                presentation.visualVariant,
-                MemoryCardRecipeLayoutPolicy.resolvedVariant(
-                    fixture.preferredVariant,
-                    for: fixture.recipe,
-                    density: fixture.preferredDensity
-                )
-            )
-            XCTAssertFalse(fixture.layerNotes.isEmpty)
-        }
-    }
-
-    func testCardDebugTypeCatalogCoversEveryRecipeOnce() {
+    func testCardDebugTypeCatalogCoversEveryContentKindOnce() {
         let entries = CardDebugCatalog.typeCatalogEntries
-        let recipes = entries.map(\.fixture.recipe)
+        let contentKinds = entries.map(\.fixture.contentKind)
 
-        XCTAssertEqual(Set(recipes), Set(MemoryCardVisualRecipe.allCases))
-        XCTAssertEqual(recipes.count, Set(recipes).count)
+        XCTAssertEqual(Set(contentKinds), Set(MemoryCardContentKind.allCases))
+        XCTAssertEqual(contentKinds.count, Set(contentKinds).count)
         XCTAssertTrue(entries.allSatisfy { !$0.draftLayer.isEmpty && !$0.artifactLayer.isEmpty && !$0.digestLayer.isEmpty && !$0.arrangementLayer.isEmpty })
     }
 
     func testCardDebugCatalogPreferredDensitiesRespectLayoutPolicy() {
-        for fixture in CardDebugCatalog.recipeFixtures {
+        for fixture in CardDebugCatalog.contentFixtures {
             XCTAssertTrue(
-                MemoryCardRecipeLayoutPolicy.supportedDensities(for: fixture.recipe).contains(
-                    MemoryCardRecipeLayoutPolicy.normalizedDensity(fixture.preferredDensity, for: fixture.recipe)
+                MemoryCardPresentationPolicy.supportedDensities(for: fixture.contentKind).contains(
+                    MemoryCardPresentationPolicy.normalizedDensity(fixture.preferredDensity, for: fixture.contentKind)
                 )
             )
         }
     }
 
-    func testCardDebugCatalogCoversEverySupportedRecipeDensity() {
-        let expected = Set(MemoryCardVisualRecipe.allCases.flatMap { recipe in
-            MemoryCardRecipeLayoutPolicy.supportedDensities(for: recipe).map { "\(recipe.rawValue).\($0.rawValue)" }
+    func testCardDebugCatalogCoversEverySupportedContentDensity() {
+        let expected = Set(MemoryCardContentKind.allCases.flatMap { contentKind in
+            MemoryCardPresentationPolicy.supportedDensities(for: contentKind).map { "\(contentKind.rawValue).\($0.rawValue)" }
         })
-        let actual = Set(CardDebugCatalog.recipeDensityFixtures.map { "\($0.fixture.recipe.rawValue).\($0.density.rawValue)" })
+        let actual = Set(CardDebugCatalog.contentDensityFixtures.map { "\($0.fixture.contentKind.rawValue).\($0.density.rawValue)" })
 
         XCTAssertEqual(actual, expected)
-        for fixture in CardDebugCatalog.recipeDensityFixtures {
+        for fixture in CardDebugCatalog.contentDensityFixtures {
             let metrics = fixture.metrics
             let presentation = CaptureCardPresentation(
                 item: fixture.fixture.item,
                 role: .debugLab,
                 provenanceDisplayMode: .debug,
-                surfaceMode: .skeuomorphic,
-                visualRecipe: fixture.fixture.recipe,
-                visualVariant: fixture.variant,
                 contentDensity: fixture.density
             )
 
             XCTAssertEqual(presentation.contentDensity, fixture.density)
-            XCTAssertEqual(presentation.visualVariant, fixture.resolvedVariant)
-            XCTAssertEqual(metrics.recipe, fixture.fixture.recipe)
+            XCTAssertEqual(metrics.contentKind, fixture.fixture.contentKind)
             XCTAssertEqual(metrics.density, fixture.density)
             XCTAssertGreaterThan(metrics.preferredSize.width, 0)
             XCTAssertGreaterThan(metrics.preferredSize.height, 0)
@@ -626,7 +586,7 @@ final class CaptureCardModelsTests: XCTestCase {
     func testCardDebugArrangementReportCoversMasonryFramesAndRenderOverflow() {
         let snapshot = CardDebugCatalog.arrangementPlaygroundSnapshot()
         let nodes = MemoryDeskRenderPlan.nodes(for: snapshot)
-        let report = CardDebugArrangementReport.make(nodes: nodes)
+        let report = CardDebugArrangementReport.make(nodes: nodes, artifacts: snapshot.artifacts)
 
         XCTAssertEqual(report.slots.count, nodes.count)
         XCTAssertGreaterThan(report.columnCount, 0)
@@ -638,34 +598,23 @@ final class CaptureCardModelsTests: XCTestCase {
         XCTAssertTrue(report.slots.allSatisfy { !$0.debugLine.isEmpty })
     }
 
-    func testCardDebugStatesActionsRecipesCoverEveryVisualRecipe() {
-        XCTAssertEqual(Set(CardDebugStatesActionsModel.recipeOptions), Set(MemoryCardVisualRecipe.allCases))
-        XCTAssertEqual(CardDebugStatesActionsModel.recipeOptions.count, MemoryCardVisualRecipe.allCases.count)
+    func testCardDebugStatesActionsContentKindsCoverCatalog() {
+        XCTAssertEqual(Set(CardDebugStatesActionsModel.contentKindOptions), Set(MemoryCardContentKind.allCases))
+        XCTAssertEqual(CardDebugStatesActionsModel.contentKindOptions.count, MemoryCardContentKind.allCases.count)
     }
 
     func testCardDebugStatesActionsDensityOptionsMatchLayoutPolicy() {
-        for recipe in MemoryCardVisualRecipe.allCases {
+        for contentKind in MemoryCardContentKind.allCases {
             XCTAssertEqual(
-                CardDebugStatesActionsModel.supportedDensities(for: recipe),
-                MemoryCardRecipeLayoutPolicy.supportedDensities(for: recipe)
+                CardDebugStatesActionsModel.supportedDensities(for: contentKind),
+                MemoryCardPresentationPolicy.supportedDensities(for: contentKind)
             )
-        }
-    }
-
-    func testCardDebugStatesActionsVariantOptionsMatchLayoutPolicy() {
-        for recipe in MemoryCardVisualRecipe.allCases {
-            for density in CardDebugStatesActionsModel.supportedDensities(for: recipe) {
-                XCTAssertEqual(
-                    CardDebugStatesActionsModel.supportedVariants(for: recipe, density: density),
-                    MemoryCardRecipeLayoutPolicy.supportedVariants(for: recipe, density: density)
-                )
-            }
         }
     }
 
     func testCardDebugStatesActionsSelectedRuntimeMapsToNormalSelectedItem() {
         let item = CardDebugStatesActionsModel.item(
-            recipe: .taskNote,
+            contentKind: .todo,
             runtimeState: .selected
         )
 
@@ -677,58 +626,36 @@ final class CaptureCardModelsTests: XCTestCase {
         for role in CardDebugRoleOption.allCases {
             for runtimeState in CardDebugRuntimeStateOption.allCases {
                 let presentation = CardDebugStatesActionsModel.presentation(
-                    recipe: .cassette,
-                    density: .regular,
-                    variant: .automatic,
+                    contentKind: .audio,
+                    density: .standard,
                     role: role,
                     runtimeState: runtimeState
                 )
 
                 XCTAssertEqual(presentation.role, role.role)
-                XCTAssertEqual(presentation.visualRecipe, .cassette)
-                XCTAssertEqual(presentation.surfaceMode, .skeuomorphic)
                 XCTAssertEqual(presentation.item.state, runtimeState.state)
                 XCTAssertEqual(presentation.item.isSelected, runtimeState.isSelected)
-                XCTAssertEqual(presentation.contentDensity, .regular)
-                XCTAssertEqual(presentation.visualVariant, .automatic)
+                XCTAssertEqual(presentation.contentDensity, .standard)
             }
         }
     }
 
     func testCardDebugStatesActionsUnsupportedDensityFallsBackThroughPolicy() {
         let presentation = CardDebugStatesActionsModel.presentation(
-            recipe: .affectCard,
-            density: .expanded,
-            variant: .weatherWind,
+            contentKind: .affect,
+            density: .detailed,
             role: .debug,
             runtimeState: .normal
         )
 
-        XCTAssertEqual(presentation.contentDensity, MemoryCardRecipeLayoutPolicy.defaultDensity(for: .affectCard))
-        XCTAssertTrue(CardDebugStatesActionsModel.supportedDensities(for: .affectCard).contains(presentation.contentDensity))
-        XCTAssertEqual(presentation.visualVariant, .automatic)
-    }
-
-    func testCardDebugStatesActionsUnsupportedVariantFallsBackThroughPolicy() {
-        let presentation = CardDebugStatesActionsModel.presentation(
-            recipe: .weatherStamp,
-            density: .regular,
-            variant: .weatherWind,
-            role: .debug,
-            runtimeState: .normal
-        )
-
-        XCTAssertEqual(presentation.contentDensity, .regular)
-        XCTAssertEqual(presentation.visualVariant, .weatherIconTemperature)
-        XCTAssertTrue(
-            CardDebugStatesActionsModel.supportedVariants(for: .weatherStamp, density: .regular).contains(presentation.visualVariant)
-        )
+        XCTAssertEqual(presentation.contentDensity, MemoryCardPresentationPolicy.defaultDensity(for: .affect))
+        XCTAssertTrue(CardDebugStatesActionsModel.supportedDensities(for: .affect).contains(presentation.contentDensity))
     }
 
     func testCardDebugStatesActionsCapabilityRowsComeFromPresentation() {
         let presentation = CardDebugStatesActionsModel.presentation(
-            recipe: .taskNote,
-            density: .compact,
+            contentKind: .todo,
+            density: .simple,
             role: .debug,
             runtimeState: .selected
         )
@@ -749,24 +676,6 @@ final class CaptureCardModelsTests: XCTestCase {
         XCTAssertEqual(derived["displaysRemoveControl"], presentation.displaysRemoveControl)
         XCTAssertEqual(derived["displaysSelection"], presentation.displaysSelection)
         XCTAssertEqual(derived["hasTrailingControl"], presentation.hasTrailingControl)
-    }
-
-    func testCardDebugCatalogRecipeDensityFixturesCoverSupportedVariantMatrix() {
-        for recipe in MemoryCardVisualRecipe.allCases {
-            for density in MemoryCardRecipeLayoutPolicy.supportedDensities(for: recipe) {
-                let expectedVariants = Set(
-                    MemoryCardRecipeLayoutPolicy.supportedVariants(for: recipe, density: density).map { variant in
-                        variant == .automatic ? MemoryCardVisualVariant.automatic : variant
-                    }
-                )
-                let actualVariants = Set(
-                    CardDebugCatalog.recipeDensityFixtures
-                        .filter { $0.fixture.recipe == recipe && $0.density == density }
-                        .map { $0.variant ?? .automatic }
-                )
-                XCTAssertEqual(actualVariants, expectedVariants, "Expected fixtures for \(recipe.rawValue).\(density.rawValue)")
-            }
-        }
     }
 
     func testOriginFixturesKeepKindStableAcrossAllOrigins() {
@@ -1036,17 +945,6 @@ final class CaptureCardModelsTests: XCTestCase {
         XCTAssertEqual(payload.playbackState, .searchResult)
     }
 
-    func testMusicStyleLabelsUseLayoutNamesOnly() {
-        XCTAssertEqual(CaptureMusicCardStyle.compactRow.label, String(localized: "capture.card.music.style.compactRow"))
-        XCTAssertEqual(CaptureMusicCardStyle.compactTile.label, String(localized: "capture.card.music.style.compactTile"))
-        XCTAssertEqual(CaptureMusicCardStyle.cover.label, String(localized: "capture.card.music.style.cover"))
-        XCTAssertEqual(CaptureMusicCardStyle.auto.label, String(localized: "capture.card.music.style.auto"))
-        XCTAssertFalse(CaptureMusicCardStyle.compactRow.label.localizedCaseInsensitiveContains("compact"))
-        XCTAssertFalse(CaptureMusicCardStyle.compactTile.label.localizedCaseInsensitiveContains("compact"))
-        XCTAssertFalse(CaptureMusicCardStyle.compactRow.label.contains("紧凑"))
-        XCTAssertFalse(CaptureMusicCardStyle.compactTile.label.contains("紧凑"))
-    }
-
     func testAudioDraftMappingUsesTranscriptAsPrimaryDetail() {
         let card = CaptureCardItem(draft: .audio(
             title: "Voice",
@@ -1062,22 +960,7 @@ final class CaptureCardModelsTests: XCTestCase {
         XCTAssertEqual(card.metadata, "voice.caf")
     }
 
-    func testMusicCardStyleResolutionUsesCompactFallbackWithoutArtwork() {
-        let noArtwork = CaptureCardItem(payload: .music(CaptureMusicCardPayload()), title: "Track", detail: "Artist")
-        let withArtwork = CaptureCardItem(
-            payload: .music(CaptureMusicCardPayload(artworkData: makeImageData(color: .purple))),
-            title: "Track",
-            detail: "Artist"
-        )
-
-        XCTAssertEqual(CaptureMusicCardStyle.compactRow.resolved(for: noArtwork), .compactRow)
-        XCTAssertEqual(CaptureMusicCardStyle.compactTile.resolved(for: noArtwork), .compactTile)
-        XCTAssertEqual(CaptureMusicCardStyle.cover.resolved(for: noArtwork), .cover)
-        XCTAssertEqual(CaptureMusicCardStyle.cover.resolved(for: withArtwork), .cover)
-        XCTAssertEqual(CaptureMusicCardStyle.auto.resolved(for: withArtwork), .compactRow)
-    }
-
-    func testPhotoGroupFixturesKeepPhotoKindAndStyles() {
+    func testPhotoGroupFixturesKeepPhotoKindAndCounts() {
         let groups = CaptureCardLabFixtures.photoGroups
 
         let payloads: [CapturePhotoCardPayload] = groups.compactMap { item in
@@ -1089,7 +972,6 @@ final class CaptureCardModelsTests: XCTestCase {
 
         XCTAssertEqual(payloads.first?.photoCount, 1)
         XCTAssertTrue(groups.allSatisfy { $0.kind == .photo })
-        XCTAssertEqual(Set(payloads.compactMap(\.groupStyle)), Set(CapturePhotoGroupStyle.allCases))
         XCTAssertTrue(payloads.dropFirst().allSatisfy { $0.photoCount > 1 })
     }
 
@@ -1185,57 +1067,6 @@ final class CaptureCardModelsTests: XCTestCase {
 
         XCTAssertEqual(legibility.tone, .semantic)
         XCTAssertFalse(legibility.scrimColors.isEmpty)
-    }
-
-    func testSurfaceModeEnumHasExpectedCases() {
-        XCTAssertEqual(CaptureCardSurfaceMode.standard.rawValue, "standard")
-        XCTAssertEqual(CaptureCardSurfaceMode.skeuomorphic.rawValue, "skeuomorphic")
-        XCTAssertEqual(CaptureCardSurfaceMode.allCases.count, 2)
-    }
-
-    func testPresentationDefaultsToStandardSurfaceMode() {
-        let presentation = CaptureCardPresentation(
-            item: CaptureCardItem(payload: .photo(CapturePhotoCardPayload()), detail: "Test"),
-            role: .composerEditing,
-            provenanceDisplayMode: .production
-        )
-        XCTAssertEqual(presentation.surfaceMode, .standard)
-    }
-
-    func testDebugFactoryAcceptsSkeuomorphicSurfaceMode() {
-        let item = CaptureCardItem(payload: .photo(CapturePhotoCardPayload()), detail: "Test")
-        let presentation = CaptureCardPresentation.debug(item, surfaceMode: .skeuomorphic)
-        XCTAssertEqual(presentation.surfaceMode, .skeuomorphic)
-    }
-
-    func testDebugFactoryDefaultsToStandardSurfaceMode() {
-        let item = CaptureCardItem(payload: .photo(CapturePhotoCardPayload()), detail: "Test")
-        let presentation = CaptureCardPresentation.debug(item)
-        XCTAssertEqual(presentation.surfaceMode, .standard)
-    }
-
-    func testComposerAndDetailFactoriesUseStandardSurfaceMode() {
-        let candidate = ContextCandidate(
-            draft: .location(title: "Cafe", summary: "Near station", latitude: 31.2, longitude: 121.4, origin: .context),
-            capturedAt: Date(timeIntervalSince1970: 1_800_000_000),
-            isSelected: false
-        )
-        let composer = CaptureCardPresentation.composerAttachment(.context(candidate))
-        XCTAssertEqual(composer.surfaceMode, .standard)
-
-        let artifact = Artifact(
-            recordID: UUID(),
-            kind: .photo,
-            title: "Photo",
-            summary: "A photo",
-            createdAt: .now,
-            updatedAt: .now
-        )
-        let detail = CaptureCardPresentation.detailArtifact(artifact)
-        XCTAssertEqual(detail.surfaceMode, .standard)
-
-        let editing = CaptureCardPresentation.detailEditing(artifact)
-        XCTAssertEqual(editing.surfaceMode, .standard)
     }
 
     private func makeImageData(color: UIColor) -> Data {

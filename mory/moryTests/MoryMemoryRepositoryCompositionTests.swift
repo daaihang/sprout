@@ -156,7 +156,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let arrangement = try XCTUnwrap(detail.cardArrangement)
         XCTAssertEqual(arrangement.recordID, memory.record.id)
         XCTAssertEqual(arrangement.nodes.count, 4)
-        XCTAssertTrue(arrangement.nodes.contains { $0.contentRef == .recordBody && $0.visualRecipe == .notebook })
+        XCTAssertTrue(arrangement.nodes.contains { $0.contentRef == .recordBody && $0.contentDensity == .detailed })
 
         let nodesByArtifactID = Dictionary(uniqueKeysWithValues: arrangement.nodes.compactMap { node -> (UUID, MemoryCardNode)? in
             guard case let .artifact(artifactID) = node.contentRef else { return nil }
@@ -165,9 +165,9 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let photoID = try XCTUnwrap(detail.artifacts.first(where: { $0.kind == .photo })?.id)
         let videoID = try XCTUnwrap(detail.artifacts.first(where: { $0.kind == .video })?.id)
         let livePhotoID = try XCTUnwrap(detail.artifacts.first(where: { $0.kind == .livePhoto })?.id)
-        XCTAssertEqual(nodesByArtifactID[photoID]?.visualRecipe, .polaroid)
-        XCTAssertEqual(nodesByArtifactID[videoID]?.visualRecipe, .filmFrame)
-        XCTAssertEqual(nodesByArtifactID[livePhotoID]?.visualRecipe, .livePhotoPrint)
+        XCTAssertEqual(nodesByArtifactID[photoID]?.contentDensity, .standard)
+        XCTAssertEqual(nodesByArtifactID[videoID]?.contentDensity, .standard)
+        XCTAssertEqual(nodesByArtifactID[livePhotoID]?.contentDensity, .standard)
     }
 
     func testCreateMemoryRemapsArrangementDraftIDsToPersistedArtifactIDs() async throws {
@@ -192,12 +192,12 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let arrangementDraft = MemoryCardArrangementDraft(nodes: [
             MemoryCardDraftNode(
                 contentRef: .recordBody,
-                visualRecipe: .notebook,
+                contentDensity: .detailed,
                 layout: MemoryCardLayoutToken(order: 0)
             ),
             MemoryCardDraftNode(
                 contentRef: .artifactDraftGroup([photoDraftID, audioDraftID], kind: .mediaStack),
-                visualRecipe: .bundlePacket,
+                contentDensity: .standard,
                 layout: MemoryCardLayoutToken(order: 1, rotationDegrees: -2)
             )
         ])
@@ -1947,7 +1947,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
         let addedArrangement = MemoryCardArrangementDraft(nodes: [
             MemoryCardDraftNode(
                 contentRef: .artifactDraft(draftID),
-                visualRecipe: .linkNote,
+                contentDensity: .standard,
                 layout: MemoryCardLayoutToken(order: 0, rotationDegrees: 2)
             )
         ])
@@ -1974,7 +1974,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
             }
             return false
         })
-        XCTAssertEqual(linkNode.visualRecipe, .linkNote)
+        XCTAssertEqual(linkNode.contentDensity, .standard)
         XCTAssertEqual(linkNode.layout.rotationDegrees, 2)
         XCTAssertFalse(arrangement.nodes.contains { node in
             switch node.contentRef {
@@ -2074,7 +2074,7 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
             }
             return false
         })
-        XCTAssertEqual(stackedNode.visualRecipe, .bundlePacket)
+        XCTAssertEqual(stackedNode.contentDensity, .standard)
         XCTAssertFalse(arrangement.nodes.contains { node in
             if case let .artifact(id) = node.contentRef {
                 return id == todoID
@@ -2535,8 +2535,8 @@ final class MoryMemoryRepositoryCompositionTests: XCTestCase {
             guard case let .artifact(artifactID) = node.contentRef else { return nil }
             return (artifactID, node)
         })
-        XCTAssertEqual(nodeByArtifactID[photoArtifact.id]?.visualRecipe, .polaroid)
-        XCTAssertEqual(nodeByArtifactID[audioArtifact.id]?.visualRecipe, .cassette)
+        XCTAssertEqual(nodeByArtifactID[photoArtifact.id]?.contentDensity, .standard)
+        XCTAssertEqual(nodeByArtifactID[audioArtifact.id]?.contentDensity, .simple)
         XCTAssertFalse(arrangement.nodes.contains { node in
             switch node.contentRef {
             case let .artifact(id):

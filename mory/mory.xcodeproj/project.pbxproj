@@ -363,6 +363,12 @@
 				INFOPLIST_FILE = mory/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Mory;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSAppleMusicUsageDescription = "Mory reads the currently playing track so memories can capture the music that surrounds them.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Mory uses the camera to quickly capture photo memories.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Mory uses your location to enrich memories with place context and current weather.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Mory needs microphone access to record audio memories.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Mory needs photo library access to attach photos to memories.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Mory uses speech recognition to transcribe audio recordings into text.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -372,8 +378,8 @@
 				INFOPLIST_KEY_UILaunchStoryboardName = mory;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
@@ -418,6 +424,12 @@
 				INFOPLIST_FILE = mory/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Mory;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSAppleMusicUsageDescription = "Mory reads the currently playing track so memories can capture the music that surrounds them.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Mory uses the camera to quickly capture photo memories.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Mory uses your location to enrich memories with place context and current weather.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Mory needs microphone access to record audio memories.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Mory needs photo library access to attach photos to memories.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Mory uses speech recognition to transcribe audio recordings into text.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -427,8 +439,8 @@
 				INFOPLIST_KEY_UILaunchStoryboardName = mory;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";

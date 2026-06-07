@@ -25170,12 +25170,12 @@
         }
       }
     },
-    "Visual Recipes" : {
+    "Density Matrix" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "视觉配方"
+            "value" : "详略矩阵"
           }
         }
       }

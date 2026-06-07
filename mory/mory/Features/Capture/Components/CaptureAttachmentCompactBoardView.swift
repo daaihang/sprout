@@ -146,7 +146,7 @@ struct CaptureAttachmentCompactBoardView: View {
 
     private func estimatedHeight(for item: BoardItem, columnWidth: CGFloat) -> CGFloat {
         MemoryCardObjectMetrics.estimatedHeight(
-            for: item.presentation.visualRecipe ?? .statusNote,
+            for: item.presentation.item.memoryContentKind,
             density: item.presentation.contentDensity,
             columnWidth: columnWidth
         )

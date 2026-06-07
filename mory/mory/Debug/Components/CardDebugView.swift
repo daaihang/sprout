@@ -16,7 +16,7 @@ struct CardDebugView: View {
                     DebugMenuRow(
                         icon: "list.bullet.rectangle",
                         title: "Type Catalog",
-                        subtitle: "Inspect each content type as draft, artifact, digest, arrangement, and rendered object"
+                        subtitle: "Inspect each content type, density, arrangement layer, and rendered object"
                     )
                 }
 
@@ -36,7 +36,7 @@ struct CardDebugView: View {
                     DebugMenuRow(
                         icon: "rectangle.stack.badge.play",
                         title: "Arrangement Playground",
-                        subtitle: "Preview order, stack, rotation, z-index, stickers, and masonry rendering"
+                        subtitle: "Preview order, stack, rotation, z-index, stickers, density, and masonry rendering"
                     )
                 }
 
@@ -46,17 +46,17 @@ struct CardDebugView: View {
                     DebugMenuRow(
                         icon: "rectangle.split.3x1.fill",
                         title: "Masonry Policy",
-                        subtitle: "Inspect column metrics, density defaults, variants, and object metrics"
+                        subtitle: "Inspect column metrics, density defaults, and object metrics"
                     )
                 }
 
                 NavigationLink {
-                    CardDebugVisualRecipesView()
+                    CardDebugDensityMatrixView()
                 } label: {
                     DebugMenuRow(
-                        icon: "rectangle.on.rectangle.angled",
-                        title: "Visual Recipes",
-                        subtitle: "Preview every MemoryCardVisualRecipe as a desktop object"
+                        icon: "rectangle.on.rectangle",
+                        title: "Density Matrix",
+                        subtitle: "Preview every content kind across simple, standard, and detailed where supported"
                     )
                 }
 
@@ -66,7 +66,7 @@ struct CardDebugView: View {
                     DebugMenuRow(
                         icon: "slider.horizontal.3",
                         title: "Card States & Actions",
-                        subtitle: "Switch recipe, density, role, runtime state, capabilities, and derived card behavior"
+                        subtitle: "Switch content kind, density, role, runtime state, capabilities, and derived behavior"
                     )
                 }
 
@@ -77,18 +77,6 @@ struct CardDebugView: View {
                         icon: "rectangle.stack",
                         title: "Fixture Stress Lab",
                         subtitle: "Existing fixture lab for weather, music, place, states, origins, and edge cases"
-                    )
-                }
-            }
-
-            Section("Legacy Labs") {
-                NavigationLink {
-                    SkeuomorphicCardLabView()
-                } label: {
-                    DebugMenuRow(
-                        icon: "archivebox",
-                        title: "Legacy Skeuomorphic Lab",
-                        subtitle: "Old focused recipe lab kept as a reference while Card Debug becomes the main entry"
                     )
                 }
             }
@@ -131,7 +119,7 @@ struct CardDebugView: View {
         do {
             guard let latest = try memoryRepository.fetchRecentMemories(limit: 1).first else {
                 latestDetail = nil
-                overviewMessage = "No saved memories yet. Use Type Catalog and Visual Recipes for fixture-only checks."
+                overviewMessage = "No saved memories yet. Use Type Catalog and Density Matrix for fixture-only checks."
                 return
             }
             latestDetail = try memoryRepository.fetchMemoryDetail(recordID: latest.id)
@@ -154,9 +142,9 @@ private struct CardDebugTypeCatalogView: View {
                         CardDebugTypeDetailView(entry: entry)
                     } label: {
                         DebugMenuRow(
-                            icon: entry.fixture.recipe.symbolName,
+                            icon: entry.fixture.contentKind.symbolName,
                             title: entry.contentType,
-                            subtitle: "recipe=\(entry.fixture.recipe.rawValue) · density=\(entry.fixture.preferredDensity.rawValue)"
+                            subtitle: "kind=\(entry.fixture.contentKind.rawValue) · density=\(entry.fixture.preferredDensity.rawValue)"
                         )
                     }
                 }
@@ -175,15 +163,15 @@ private struct CardDebugTypeDetailView: View {
     var body: some View {
         List {
             Section("Rendered Densities") {
-                ForEach(CardDebugCatalog.recipeDensityFixtures.filter { $0.fixture.recipe == entry.fixture.recipe }) { fixture in
+                ForEach(CardDebugCatalog.contentDensityFixtures.filter { $0.fixture.contentKind == entry.fixture.contentKind }) { fixture in
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
                             Spacer()
-                            CaptureCardView(presentation: presentation(density: fixture.density, variant: fixture.variant))
+                            CaptureCardView(presentation: presentation(density: fixture.density))
                             Spacer()
                         }
                         let metrics = fixture.metrics
-                        Text("\(fixture.density.rawValue) · variant \(fixture.resolvedVariant.rawValue) · object \(Int(metrics.preferredSize.width))x\(Int(metrics.preferredSize.height)) · lines \(metrics.titleLineLimit)/\(metrics.detailLineLimit)/\(metrics.metadataLineLimit)")
+                        Text("\(fixture.density.rawValue) · object \(Int(metrics.preferredSize.width))x\(Int(metrics.preferredSize.height)) · lines \(metrics.titleLineLimit)/\(metrics.detailLineLimit)/\(metrics.metadataLineLimit)")
                             .font(.caption.monospaced())
                             .foregroundStyle(.secondary)
                             .textSelection(.enabled)
@@ -201,7 +189,7 @@ private struct CardDebugTypeDetailView: View {
 
             Section("Checks") {
                 let metrics = MemoryCardObjectMetrics.resolve(
-                    recipe: entry.fixture.recipe,
+                    contentKind: entry.fixture.contentKind,
                     density: entry.fixture.preferredDensity
                 )
                 DebugValueRow(
@@ -219,14 +207,11 @@ private struct CardDebugTypeDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    private func presentation(density: MemoryCardContentDensity, variant: MemoryCardVisualVariant?) -> CaptureCardPresentation {
+    private func presentation(density: MemoryCardContentDensity) -> CaptureCardPresentation {
         CaptureCardPresentation(
             item: entry.fixture.item,
             role: .debugLab,
             provenanceDisplayMode: .debug,
-            surfaceMode: .skeuomorphic,
-            visualRecipe: entry.fixture.recipe,
-            visualVariant: variant,
             contentDensity: density
         )
     }
@@ -238,7 +223,7 @@ private struct CardDebugArrangementPlaygroundView: View {
         MemoryDeskRenderPlan.nodes(for: snapshot)
     }
     private var report: CardDebugArrangementReport {
-        CardDebugArrangementReport.make(nodes: nodes)
+        CardDebugArrangementReport.make(nodes: nodes, artifacts: snapshot.artifacts)
     }
 
     var body: some View {
@@ -281,12 +266,12 @@ private struct CardDebugArrangementPlaygroundView: View {
     }
 }
 
-private struct CardDebugVisualRecipesView: View {
+private struct CardDebugDensityMatrixView: View {
     var body: some View {
         List {
-            ForEach(CardDebugCatalog.recipeFixtures) { fixture in
+            ForEach(CardDebugCatalog.contentFixtures) { fixture in
                 Section {
-                    ForEach(CardDebugCatalog.recipeDensityFixtures.filter { $0.fixture.recipe == fixture.recipe }) { densityFixture in
+                    ForEach(CardDebugCatalog.contentDensityFixtures.filter { $0.fixture.contentKind == fixture.contentKind }) { densityFixture in
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
                                 Spacer()
@@ -295,40 +280,32 @@ private struct CardDebugVisualRecipesView: View {
                                         item: fixture.item,
                                         role: .debugLab,
                                         provenanceDisplayMode: .debug,
-                                        surfaceMode: .skeuomorphic,
-                                        visualRecipe: fixture.recipe,
-                                        visualVariant: densityFixture.variant,
                                         contentDensity: densityFixture.density
                                     )
                                 )
                                 Spacer()
                             }
                             let metrics = densityFixture.metrics
-                            Text("\(densityFixture.density.rawValue) · variant \(densityFixture.resolvedVariant.rawValue) · object \(Int(metrics.preferredSize.width))x\(Int(metrics.preferredSize.height)) · lines \(metrics.titleLineLimit)/\(metrics.detailLineLimit)/\(metrics.metadataLineLimit)")
+                            Text("\(densityFixture.density.rawValue) · object \(Int(metrics.preferredSize.width))x\(Int(metrics.preferredSize.height)) · lines \(metrics.titleLineLimit)/\(metrics.detailLineLimit)/\(metrics.metadataLineLimit)")
                                 .font(.caption.monospaced())
                                 .foregroundStyle(.secondary)
                         }
                         .padding(.vertical, 12)
                     }
 
-                    DebugValueRow(title: "Recipe", value: fixture.recipe.rawValue)
+                    DebugValueRow(title: "Content kind", value: fixture.contentKind.rawValue)
                     DebugValueRow(title: "Preferred density", value: fixture.preferredDensity.rawValue)
                     DebugValueRow(
-                        title: "Preferred variant",
-                        value: MemoryCardRecipeLayoutPolicy.resolvedVariant(
-                            fixture.preferredVariant,
-                            for: fixture.recipe,
-                            density: fixture.preferredDensity
-                        ).rawValue
+                        title: "Supported densities",
+                        value: MemoryCardPresentationPolicy.supportedDensities(for: fixture.contentKind).map(\.rawValue).joined(separator: ", ")
                     )
-                    DebugValueRow(title: "Supported densities", value: MemoryCardRecipeLayoutPolicy.supportedDensities(for: fixture.recipe).map(\.rawValue).joined(separator: ", "))
-                    DebugValueRow(title: "Kind", value: fixture.item.kind.rawValue)
+                    DebugValueRow(title: "Payload kind", value: fixture.item.kind.rawValue)
                 } header: {
-                    Text(fixture.recipe.rawValue)
+                    Text(fixture.contentKind.rawValue)
                 }
             }
         }
-        .navigationTitle("Visual Recipes")
+        .navigationTitle("Density Matrix")
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -345,20 +322,20 @@ private struct CardDebugMasonryPolicyView: View {
                 DebugValueRow(title: "Sticker overflow", value: "\(Int(metrics.stickerOverflow))")
             }
 
-            Section("Recipe Density Defaults") {
-                ForEach(MemoryCardVisualRecipe.allCases) { recipe in
+            Section("Density Defaults") {
+                ForEach(MemoryCardContentKind.allCases) { contentKind in
                     DebugValueRow(
-                        title: recipe.rawValue,
-                        value: "default=\(MemoryCardRecipeLayoutPolicy.defaultDensity(for: recipe).rawValue) · supported=\(MemoryCardRecipeLayoutPolicy.supportedDensities(for: recipe).map(\.rawValue).joined(separator: ", "))"
+                        title: contentKind.rawValue,
+                        value: "default=\(MemoryCardPresentationPolicy.defaultDensity(for: contentKind).rawValue) · supported=\(MemoryCardPresentationPolicy.supportedDensities(for: contentKind).map(\.rawValue).joined(separator: ", "))"
                     )
                 }
             }
 
             Section("Object Metrics") {
-                ForEach(CardDebugCatalog.recipeFixtures) { fixture in
-                    let metrics = MemoryCardObjectMetrics.resolve(recipe: fixture.recipe, density: fixture.preferredDensity)
+                ForEach(CardDebugCatalog.contentFixtures) { fixture in
+                    let metrics = MemoryCardObjectMetrics.resolve(contentKind: fixture.contentKind, density: fixture.preferredDensity)
                     DebugValueRow(
-                        title: "\(fixture.recipe.rawValue).\(fixture.preferredDensity.rawValue)",
+                        title: "\(fixture.contentKind.rawValue).\(fixture.preferredDensity.rawValue)",
                         value: "\(Int(metrics.preferredSize.width))x\(Int(metrics.preferredSize.height)) · padding \(Int(metrics.padding.top)) · lines \(metrics.titleLineLimit)/\(metrics.detailLineLimit)/\(metrics.metadataLineLimit)"
                     )
                 }
@@ -369,30 +346,31 @@ private struct CardDebugMasonryPolicyView: View {
     }
 }
 
-private extension MemoryCardVisualRecipe {
+private extension MemoryCardContentKind {
     var symbolName: String {
         switch self {
-        case .notebook: return "note.text"
-        case .polaroid: return "photo"
-        case .filmFrame: return "film"
-        case .livePhotoPrint: return "livephoto"
-        case .cassette: return "waveform"
-        case .vinyl: return "music.note"
-        case .mapTicket: return "map"
-        case .weatherStamp: return "cloud.sun"
-        case .linkNote: return "link"
-        case .taskNote: return "checklist"
-        case .personCard: return "person.crop.rectangle"
-        case .affectCard: return "heart.text.square"
-        case .bundlePacket: return "shippingbox"
-        case .statusNote: return "info.circle"
+        case .recordBody, .prompt: return "note.text"
+        case .photo: return "photo"
+        case .video: return "film"
+        case .livePhoto: return "livephoto"
+        case .audio: return "waveform"
+        case .music: return "music.note"
+        case .place: return "map"
+        case .weather: return "cloud.sun"
+        case .link: return "link"
+        case .todo: return "checklist"
+        case .person: return "person.crop.rectangle"
+        case .affect: return "heart.text.square"
+        case .journalingSuggestion: return "sparkles.rectangle.stack"
+        case .bundle: return "shippingbox"
+        case .status: return "info.circle"
         }
     }
 }
 
 private extension MemoryCardNode {
     var debugLine: String {
-        "order=\(layout.order) recipe=\(visualRecipe.rawValue) z=\(layout.zIndex) stickers=\(layout.stickers.count) ref=\(contentRef.debugLabel)"
+        "order=\(layout.order) density=\(contentDensity.rawValue) z=\(layout.zIndex) stickers=\(layout.stickers.count) ref=\(contentRef.debugLabel)"
     }
 }
 

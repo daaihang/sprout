@@ -2,7 +2,7 @@ import XCTest
 @testable import mory
 
 final class MemoryCardArrangementDraftTests: XCTestCase {
-    func testUnstackRestoresContentSpecificRecipes() {
+    func testUnstackRestoresContentSpecificDensities() {
         let photoID = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
         let videoID = UUID(uuidString: "22222222-2222-2222-2222-222222222222")!
         let audioID = UUID(uuidString: "33333333-3333-3333-3333-333333333333")!
@@ -23,13 +23,13 @@ final class MemoryCardArrangementDraftTests: XCTestCase {
             guard case let .artifactDraft(id) = node.contentRef else { return nil }
             return (id, node)
         })
-        XCTAssertEqual(nodesByDraftID[photoID]?.visualRecipe, .polaroid)
-        XCTAssertEqual(nodesByDraftID[videoID]?.visualRecipe, .filmFrame)
-        XCTAssertEqual(nodesByDraftID[audioID]?.visualRecipe, .cassette)
+        XCTAssertEqual(nodesByDraftID[photoID]?.contentDensity, .standard)
+        XCTAssertEqual(nodesByDraftID[videoID]?.contentDensity, .standard)
+        XCTAssertEqual(nodesByDraftID[audioID]?.contentDensity, .simple)
         XCTAssertEqual(arrangement.nodes.map(\.layout.order), [0, 1, 2])
     }
 
-    func testRemovingDraftFromGroupRestoresRemainingContentRecipe() {
+    func testRemovingDraftFromGroupRestoresRemainingContentDensity() {
         let photoID = UUID(uuidString: "44444444-4444-4444-4444-444444444444")!
         let videoID = UUID(uuidString: "55555555-5555-5555-5555-555555555555")!
         let photoDraft = CaptureArtifactDraft(draftID: photoID, origin: .manual, content: .photo(PhotoArtifactContent(title: "Photo", summary: "photo", filename: "photo.jpg")))
@@ -45,18 +45,18 @@ final class MemoryCardArrangementDraftTests: XCTestCase {
         let node = arrangement.nodes.first
         XCTAssertEqual(arrangement.nodes.count, 1)
         XCTAssertEqual(node?.contentRef, .artifactDraft(videoID))
-        XCTAssertEqual(node?.visualRecipe, .filmFrame)
+        XCTAssertEqual(node?.contentDensity, .standard)
         XCTAssertEqual(node?.layout.order, 0)
     }
 
-    func testSyncRestoresSingleRemainingGroupRecipeFromCurrentDrafts() {
+    func testSyncRestoresSingleRemainingGroupDensityFromCurrentDrafts() {
         let musicID = UUID(uuidString: "66666666-6666-6666-6666-666666666666")!
         let linkID = UUID(uuidString: "77777777-7777-7777-7777-777777777777")!
         let linkDraft = CaptureArtifactDraft(draftID: linkID, origin: .manual, content: .link(LinkArtifactContent(title: "Link", url: "https://example.com")))
         var arrangement = MemoryCardArrangementDraft(nodes: [
             MemoryCardDraftNode(
                 contentRef: .artifactDraftGroup([musicID, linkID], kind: .mediaStack),
-                visualRecipe: .bundlePacket,
+                contentDensity: .standard,
                 layout: MemoryCardLayoutToken(order: 0)
             )
         ])
@@ -66,11 +66,11 @@ final class MemoryCardArrangementDraftTests: XCTestCase {
         let node = arrangement.nodes.first
         XCTAssertEqual(arrangement.nodes.count, 1)
         XCTAssertEqual(node?.contentRef, .artifactDraft(linkID))
-        XCTAssertEqual(node?.visualRecipe, .linkNote)
+        XCTAssertEqual(node?.contentDensity, .standard)
         XCTAssertEqual(node?.layout.order, 0)
     }
 
-    func testPersistedArrangementSyncRestoresRemainingGroupArtifactRecipe() {
+    func testPersistedArrangementSyncRestoresRemainingGroupArtifactDensity() {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let recordID = UUID(uuidString: "88888888-8888-8888-8888-888888888888")!
         let photoID = UUID(uuidString: "99999999-9999-9999-9999-999999999999")!
@@ -82,7 +82,7 @@ final class MemoryCardArrangementDraftTests: XCTestCase {
             nodes: [
                 MemoryCardNode(
                     contentRef: .artifactGroup([photoID, videoID], kind: .mediaStack),
-                    visualRecipe: .bundlePacket,
+                    contentDensity: .standard,
                     layout: MemoryCardLayoutToken(order: 0)
                 )
             ],
@@ -93,12 +93,12 @@ final class MemoryCardArrangementDraftTests: XCTestCase {
         let synchronized = arrangement.synchronized(record: record, artifacts: [video], artifactOrder: [videoID], updatedAt: now)
 
         XCTAssertEqual(synchronized.nodes.count, 2)
-        XCTAssertTrue(synchronized.nodes.contains { $0.contentRef == .recordBody })
+        XCTAssertTrue(synchronized.nodes.contains { $0.contentRef == .recordBody && $0.contentDensity == .detailed })
         let videoNode = synchronized.nodes.first { node in
             if case let .artifact(id) = node.contentRef { return id == videoID }
             return false
         }
-        XCTAssertEqual(videoNode?.visualRecipe, .filmFrame)
+        XCTAssertEqual(videoNode?.contentDensity, .standard)
     }
 
     func testReorderNormalizesDraftOrderWithoutLayoutPlacement() {
@@ -120,33 +120,22 @@ final class MemoryCardArrangementDraftTests: XCTestCase {
         XCTAssertEqual(arrangement.nodes[2].contentRef, .artifactDraft(audioID))
     }
 
-    func testWeatherDraftDefaultsToCompactWeatherVariant() {
+    func testWeatherDraftDefaultsToSimpleDensity() {
         let weatherDraft = CaptureArtifactDraft.weather(condition: "Cloudy", temperatureCelsius: 22, humidity: 0.6, windSpeedKmh: 8, uvIndex: 3)
         var arrangement = MemoryCardArrangementDraft()
         arrangement.appendArtifactDraft(weatherDraft)
 
         let weatherNode = arrangement.nodes.first
-        XCTAssertEqual(weatherNode?.visualRecipe, .weatherStamp)
-        XCTAssertEqual(weatherNode?.visualVariant, .weatherIcon)
+        XCTAssertEqual(weatherNode?.contentDensity, .simple)
     }
 
-    func testWeatherVariantNormalizesForDefaultDensity() {
-        let weatherDraft = CaptureArtifactDraft.weather(condition: "Rain", temperatureCelsius: 17, humidity: 0.78, windSpeedKmh: 19, uvIndex: 1)
-        var arrangement = MemoryCardArrangementDraft()
-        arrangement.appendArtifactDraft(weatherDraft)
-
-        arrangement.setVisualVariant(.weatherFullMetrics, forDraftID: weatherDraft.draftID)
-
-        XCTAssertEqual(arrangement.nodes.first?.visualVariant, .weatherIcon)
-    }
-
-    func testWeatherVariantSurvivesResolveToPersistedArrangement() {
+    func testDensitySurvivesResolveToPersistedArrangement() {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let recordID = UUID(uuidString: "EFEFEFEF-EFEF-EFEF-EFEF-EFEFEFEFEFEF")!
         let weatherDraft = CaptureArtifactDraft.weather(condition: "Cloudy", temperatureCelsius: 22, humidity: 0.65, windSpeedKmh: 12, uvIndex: 2)
         var draftArrangement = MemoryCardArrangementDraft()
         draftArrangement.appendArtifactDraft(weatherDraft)
-        draftArrangement.setVisualVariant(.weatherHumidity, forDraftID: weatherDraft.draftID)
+        draftArrangement.setContentDensity(.standard, forDraftID: weatherDraft.draftID)
 
         let weatherArtifact = Artifact(
             id: UUID(uuidString: "FAFAFAFA-FAFA-FAFA-FAFA-FAFAFAFAFAFA")!,
@@ -163,6 +152,6 @@ final class MemoryCardArrangementDraftTests: XCTestCase {
 
         let node = resolved.nodes.first
         XCTAssertEqual(node?.contentRef, .artifact(weatherArtifact.id))
-        XCTAssertEqual(node?.visualVariant, .weatherHumidity)
+        XCTAssertEqual(node?.contentDensity, .standard)
     }
 }

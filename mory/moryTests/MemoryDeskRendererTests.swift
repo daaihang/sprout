@@ -41,12 +41,12 @@ final class MemoryDeskRendererTests: XCTestCase {
             nodes: [
                 MemoryCardNode(
                     contentRef: .recordBody,
-                    visualRecipe: .notebook,
+                    contentDensity: .detailed,
                     layout: MemoryCardLayoutToken(order: 0)
                 ),
                 MemoryCardNode(
                     contentRef: .artifact(audioID),
-                    visualRecipe: .cassette,
+                    contentDensity: .simple,
                     layout: MemoryCardLayoutToken(order: 1)
                 )
             ],
@@ -66,15 +66,14 @@ final class MemoryDeskRendererTests: XCTestCase {
             reflections: []
         )
 
-        let contentRefs = MemoryDeskRenderPlan.nodes(for: snapshot).map(\.contentRef)
-        let visualRecipes = MemoryDeskRenderPlan.nodes(for: snapshot).map(\.visualRecipe)
+        let nodes = MemoryDeskRenderPlan.nodes(for: snapshot)
 
-        XCTAssertEqual(contentRefs, [.recordBody, .artifact(audioID)])
-        XCTAssertEqual(visualRecipes, [.notebook, .cassette])
-        XCTAssertFalse(contentRefs.contains(.artifact(photoID)))
+        XCTAssertEqual(nodes.map(\.contentRef), [.recordBody, .artifact(audioID)])
+        XCTAssertEqual(nodes.map(\.contentDensity), [.detailed, .simple])
+        XCTAssertFalse(nodes.map(\.contentRef).contains(.artifact(photoID)))
     }
 
-    func testDetailPresentationCarriesArrangementVisualRecipe() {
+    func testDetailPresentationCarriesArrangementDensity() {
         let item = CaptureCardItem(
             id: "audio",
             payload: .audio(CaptureAudioCardPayload()),
@@ -87,15 +86,13 @@ final class MemoryDeskRendererTests: XCTestCase {
             item: item,
             role: .detailViewing,
             provenanceDisplayMode: .production,
-            surfaceMode: .skeuomorphic,
-            visualRecipe: .cassette
+            contentDensity: .detailed
         )
 
-        XCTAssertEqual(presentation.surfaceMode, .skeuomorphic)
-        XCTAssertEqual(presentation.visualRecipe, .cassette)
+        XCTAssertEqual(presentation.contentDensity, .detailed)
     }
 
-    func testDetailPresentationCarriesArrangementVariant() {
+    func testPresentationNormalizesUnsupportedDensityByContentKind() {
         let item = CaptureCardItem(
             id: "weather",
             payload: .weather(CaptureWeatherCardPayload()),
@@ -108,80 +105,23 @@ final class MemoryDeskRendererTests: XCTestCase {
             item: item,
             role: .detailViewing,
             provenanceDisplayMode: .production,
-            surfaceMode: .skeuomorphic,
-            visualRecipe: .weatherStamp,
-            visualVariant: .weatherHumidity,
-            contentDensity: .compact
+            contentDensity: .detailed
         )
 
-        XCTAssertEqual(presentation.visualRecipe, .weatherStamp)
-        XCTAssertEqual(presentation.visualVariant, .weatherHumidity)
-        XCTAssertEqual(presentation.contentDensity, .compact)
+        XCTAssertEqual(presentation.contentDensity, .simple)
     }
 
-    func testArrangementPlaygroundPreservesRecipeOrderAndStack() {
+    func testArrangementPlaygroundPreservesDensityOrderAndStack() {
         let snapshot = CardDebugCatalog.arrangementPlaygroundSnapshot()
         let nodes = MemoryDeskRenderPlan.nodes(for: snapshot)
 
         XCTAssertEqual(nodes.map(\.layout.order), Array(0..<nodes.count))
-        XCTAssertTrue(nodes.contains { $0.visualRecipe == .weatherStamp })
-        XCTAssertTrue(nodes.contains { $0.visualRecipe == .mapTicket })
+        XCTAssertTrue(nodes.contains { $0.contentDensity == .simple })
+        XCTAssertTrue(nodes.contains { $0.contentDensity == .standard })
         XCTAssertTrue(nodes.contains { node in
             guard case .artifactGroup = node.contentRef else { return false }
-            return node.visualRecipe == .bundlePacket
+            return node.contentDensity == .standard
         })
-    }
-
-    func testRenderPlanPreservesVisualVariantFromArrangement() {
-        let now = Date(timeIntervalSince1970: 1_800_000_000)
-        let recordID = UUID(uuidString: "ABABABAB-ABAB-ABAB-ABAB-ABABABABABAB")!
-        let weatherID = UUID(uuidString: "CDCDCDCD-CDCD-CDCD-CDCD-CDCDCDCDCDCD")!
-        let record = RecordShell(
-            id: recordID,
-            createdAt: now,
-            updatedAt: now,
-            captureSource: .composer,
-            rawText: "Weather variant check.",
-            artifactIDs: [weatherID]
-        )
-        let weather = Artifact(
-            id: weatherID,
-            recordID: recordID,
-            kind: .weather,
-            title: "22°C",
-            summary: "Cloudy",
-            metadata: ["condition": "Cloudy", "temperatureCelsius": "22"],
-            createdAt: now,
-            updatedAt: now
-        )
-        let arrangement = MemoryCardArrangement(
-            recordID: recordID,
-            nodes: [
-                MemoryCardNode(
-                    contentRef: .artifact(weatherID),
-                    visualRecipe: .weatherStamp,
-                    visualVariant: .weatherHumidity,
-                    layout: MemoryCardLayoutToken(order: 0)
-                ),
-            ],
-            createdAt: now,
-            updatedAt: now
-        )
-        let snapshot = MemoryDetailSnapshot(
-            record: record,
-            artifacts: [weather],
-            artifactSemanticDigests: [],
-            cardArrangement: arrangement,
-            analysis: nil,
-            pipelineStatus: nil,
-            entities: [],
-            edges: [],
-            arcs: [],
-            reflections: []
-        )
-
-        let nodes = MemoryDeskRenderPlan.nodes(for: snapshot)
-        XCTAssertEqual(nodes.first?.visualVariant, .weatherHumidity)
     }
 
     func testBoardLayoutPlanUsesMasonryColumnsAndEstimatedHeights() throws {
@@ -215,15 +155,15 @@ final class MemoryDeskRendererTests: XCTestCase {
 
     func testBoardLayoutPlanPlacesItemsWithoutOverlap() {
         let nodes = [
-            MemoryDeskBoardInputNode(id: "card-a", layout: MemoryCardLayoutToken(order: 0), estimatedHeight: 220),
-            MemoryDeskBoardInputNode(id: "strip", layout: MemoryCardLayoutToken(order: 1), estimatedHeight: 90),
-            MemoryDeskBoardInputNode(id: "stamp", layout: MemoryCardLayoutToken(order: 2), estimatedHeight: 120),
-            MemoryDeskBoardInputNode(id: "card-b", layout: MemoryCardLayoutToken(order: 3), estimatedHeight: 160)
+            MemoryDeskBoardInputNode(id: "first", layout: MemoryCardLayoutToken(order: 0), estimatedHeight: 220),
+            MemoryDeskBoardInputNode(id: "second", layout: MemoryCardLayoutToken(order: 1), estimatedHeight: 90),
+            MemoryDeskBoardInputNode(id: "third", layout: MemoryCardLayoutToken(order: 2), estimatedHeight: 120),
+            MemoryDeskBoardInputNode(id: "fourth", layout: MemoryCardLayoutToken(order: 3), estimatedHeight: 160)
         ]
 
         let plan = MemoryDeskBoardLayoutPlan.make(nodes: nodes, containerWidth: 390, metrics: .default)
 
-        XCTAssertEqual(plan.slots.map(\.id), ["card-a", "strip", "stamp", "card-b"])
+        XCTAssertEqual(plan.slots.map(\.id), ["first", "second", "third", "fourth"])
         XCTAssertNoFrameOverlap(plan.slots.map(\.frame))
     }
 }

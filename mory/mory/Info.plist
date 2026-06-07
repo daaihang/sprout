@@ -2,31 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>MORY_BUILD_CHANNEL</key>
-	<string>$(MORY_BUILD_CHANNEL)</string>
-	<key>SentryDSN</key>
-	<string>$(SENTRY_DSN)</string>
-	<key>MORY_API_BASE_URL</key>
-	<string>$(MORY_API_BASE_URL)</string>
-	<key>MORY_DEV_AUTH_IDENTITY_TOKEN</key>
-	<string>dev-user</string>
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<key>NSAllowsLocalNetworking</key>
-		<true/>
-	</dict>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Mory needs microphone access to record audio memories.</string>
-	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Mory uses speech recognition to transcribe audio recordings into text.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Mory needs photo library access to attach photos to memories.</string>
-	<key>NSCameraUsageDescription</key>
-	<string>Mory uses the camera to quickly capture photo memories.</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Mory uses your location to enrich memories with place context and current weather.</string>
-	<key>NSAppleMusicUsageDescription</key>
-	<string>Mory reads the currently playing track so memories can capture the music that surrounds them.</string>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>dev.mory.intelligence.process</string>
+		<string>dev.mory.intelligence.refresh</string>
+	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -45,16 +25,24 @@
 		<key>ITSEncryptionUses</key>
 		<string>None</string>
 	</dict>
+	<key>MORY_API_BASE_URL</key>
+	<string>$(MORY_API_BASE_URL)</string>
+	<key>MORY_BUILD_CHANNEL</key>
+	<string>$(MORY_BUILD_CHANNEL)</string>
+	<key>MORY_DEV_AUTH_IDENTITY_TOKEN</key>
+	<string>dev-user</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<key>SentryDSN</key>
+	<string>$(SENTRY_DSN)</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
 		<string>fetch</string>
 		<string>processing</string>
-	</array>
-	<key>BGTaskSchedulerPermittedIdentifiers</key>
-	<array>
-		<string>dev.mory.intelligence.process</string>
-		<string>dev.mory.intelligence.refresh</string>
 	</array>
 </dict>
 </plist>

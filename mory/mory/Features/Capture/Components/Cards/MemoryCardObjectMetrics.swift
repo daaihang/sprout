@@ -32,7 +32,7 @@ struct MemoryCardObjectPadding: Hashable, Sendable {
 }
 
 struct MemoryCardObjectMetrics: Hashable, Sendable {
-    var recipe: MemoryCardVisualRecipe
+    var contentKind: MemoryCardContentKind
     var density: MemoryCardContentDensity
     var preferredSize: CGSize
     var padding: MemoryCardObjectPadding
@@ -42,13 +42,13 @@ struct MemoryCardObjectMetrics: Hashable, Sendable {
     var thumbnailScale: MemoryCardObjectThumbnailScale
 
     static func resolve(
-        recipe: MemoryCardVisualRecipe,
+        contentKind: MemoryCardContentKind,
         density explicitDensity: MemoryCardContentDensity? = nil,
         availableSize: CGSize? = nil
     ) -> MemoryCardObjectMetrics {
-        let density = MemoryCardRecipeLayoutPolicy.normalizedDensity(explicitDensity, for: recipe)
+        let density = MemoryCardPresentationPolicy.normalizedDensity(explicitDensity, for: contentKind)
         let availableWidth = availableSize?.width
-        var metrics = baseMetrics(recipe: recipe, density: density, availableWidth: availableWidth)
+        var metrics = baseMetrics(contentKind: contentKind, density: density, availableWidth: availableWidth)
         if let availableSize,
            availableSize.width.isFinite,
            availableSize.width > 1 {
@@ -61,45 +61,45 @@ struct MemoryCardObjectMetrics: Hashable, Sendable {
     }
 
     static func estimatedHeight(
-        for recipe: MemoryCardVisualRecipe,
+        for contentKind: MemoryCardContentKind,
         density: MemoryCardContentDensity? = nil,
         columnWidth: CGFloat
     ) -> CGFloat {
         resolve(
-            recipe: recipe,
+            contentKind: contentKind,
             density: density,
             availableSize: CGSize(width: columnWidth, height: .greatestFiniteMagnitude)
         ).preferredSize.height
     }
 
     private static func baseMetrics(
-        recipe: MemoryCardVisualRecipe,
+        contentKind: MemoryCardContentKind,
         density: MemoryCardContentDensity,
         availableWidth: CGFloat?
     ) -> MemoryCardObjectMetrics {
         let width = max(120, min(availableWidth ?? 188, 260))
         var metrics = MemoryCardObjectMetrics(
-            recipe: recipe,
+            contentKind: contentKind,
             density: density,
-            preferredSize: CGSize(width: width, height: defaultHeight(for: recipe, density: density, width: width)),
+            preferredSize: CGSize(width: width, height: defaultHeight(for: contentKind, density: density, width: width)),
             padding: padding(for: density),
-            titleLineLimit: density == .compact ? 1 : 2,
-            detailLineLimit: detailLineLimit(for: recipe, density: density),
+            titleLineLimit: density == .simple ? 1 : 2,
+            detailLineLimit: detailLineLimit(for: contentKind, density: density),
             metadataLineLimit: 1,
-            thumbnailScale: thumbnailScale(for: recipe)
+            thumbnailScale: thumbnailScale(for: contentKind)
         )
 
-        switch recipe {
-        case .weatherStamp, .affectCard, .statusNote:
-            metrics.padding = density == .compact
+        switch contentKind {
+        case .weather, .affect, .status:
+            metrics.padding = density == .simple
                 ? MemoryCardObjectPadding(top: 10, leading: 12, bottom: 10, trailing: 12)
                 : MemoryCardObjectPadding(14)
-        case .notebook:
-            metrics.detailLineLimit = density == .expanded ? 12 : 8
-        case .polaroid, .livePhotoPrint:
+        case .recordBody, .prompt:
+            metrics.detailLineLimit = density == .detailed ? 12 : 8
+        case .photo, .livePhoto:
             metrics.titleLineLimit = 2
             metrics.detailLineLimit = 2
-        case .filmFrame, .cassette, .vinyl, .mapTicket, .linkNote, .taskNote, .personCard, .bundlePacket:
+        case .video, .audio, .music, .place, .link, .todo, .person, .journalingSuggestion, .bundle:
             break
         }
 
@@ -108,76 +108,76 @@ struct MemoryCardObjectMetrics: Hashable, Sendable {
 
     private static func padding(for density: MemoryCardContentDensity) -> MemoryCardObjectPadding {
         switch density {
-        case .compact:
+        case .simple:
             return MemoryCardObjectPadding(top: 10, leading: 12, bottom: 10, trailing: 12)
-        case .regular:
+        case .standard:
             return MemoryCardObjectPadding(14)
-        case .expanded:
+        case .detailed:
             return MemoryCardObjectPadding(16)
         }
     }
 
     private static func detailLineLimit(
-        for recipe: MemoryCardVisualRecipe,
+        for contentKind: MemoryCardContentKind,
         density: MemoryCardContentDensity
     ) -> Int {
-        switch (recipe, density) {
-        case (.notebook, .expanded):
+        switch (contentKind, density) {
+        case (.recordBody, .detailed), (.prompt, .detailed):
             return 12
-        case (.notebook, _):
+        case (.recordBody, _), (.prompt, _):
             return 8
-        case (.taskNote, .expanded), (.linkNote, .expanded):
+        case (.todo, .detailed), (.link, .detailed):
             return 5
-        case (.weatherStamp, .compact), (.affectCard, .compact), (.statusNote, .compact):
+        case (.weather, .simple), (.affect, .simple), (.status, .simple):
             return 1
-        case (_, .compact):
+        case (_, .simple):
             return 2
-        case (_, .regular):
+        case (_, .standard):
             return 3
-        case (_, .expanded):
+        case (_, .detailed):
             return 4
         }
     }
 
-    private static func thumbnailScale(for recipe: MemoryCardVisualRecipe) -> MemoryCardObjectThumbnailScale {
-        switch recipe {
-        case .weatherStamp, .affectCard, .statusNote:
+    private static func thumbnailScale(for contentKind: MemoryCardContentKind) -> MemoryCardObjectThumbnailScale {
+        switch contentKind {
+        case .weather, .affect, .status:
             return .none
-        case .polaroid, .filmFrame, .livePhotoPrint, .bundlePacket:
+        case .photo, .video, .livePhoto, .bundle, .journalingSuggestion:
             return .fill
-        case .notebook, .cassette, .vinyl, .mapTicket, .linkNote, .taskNote, .personCard:
+        case .recordBody, .audio, .music, .place, .link, .todo, .prompt, .person:
             return .fit
         }
     }
 
     private static func defaultHeight(
-        for recipe: MemoryCardVisualRecipe,
+        for contentKind: MemoryCardContentKind,
         density: MemoryCardContentDensity,
         width: CGFloat
     ) -> CGFloat {
         let base: CGFloat
-        switch recipe {
-        case .notebook:
-            base = density == .expanded ? 226 : 190
-        case .polaroid, .livePhotoPrint:
+        switch contentKind {
+        case .recordBody, .prompt:
+            base = density == .detailed ? 226 : 190
+        case .photo, .livePhoto:
             base = width * 1.18 + 42
-        case .filmFrame:
+        case .video:
             base = width * 0.72
-        case .cassette:
-            base = density == .compact ? 88 : 126
-        case .vinyl:
-            base = density == .compact ? 112 : 156
-        case .mapTicket:
-            base = density == .compact ? 118 : 148
-        case .weatherStamp:
-            base = density == .compact ? 92 : 148
-        case .linkNote, .taskNote:
-            base = density == .compact ? 116 : 156
-        case .personCard:
-            base = density == .compact ? 144 : 190
-        case .affectCard, .statusNote:
-            base = density == .compact ? 112 : 148
-        case .bundlePacket:
+        case .audio:
+            base = density == .simple ? 88 : 126
+        case .music:
+            base = density == .simple ? 112 : 156
+        case .place:
+            base = density == .simple ? 118 : 148
+        case .weather:
+            base = density == .simple ? 92 : 148
+        case .link, .todo:
+            base = density == .simple ? 116 : 156
+        case .person:
+            base = density == .simple ? 144 : 190
+        case .affect, .status:
+            base = density == .simple ? 112 : 148
+        case .journalingSuggestion, .bundle:
             base = 158
         }
         return max(72, min(base, 320))

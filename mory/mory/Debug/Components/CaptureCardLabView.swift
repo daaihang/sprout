@@ -14,7 +14,6 @@ struct CaptureCardLabView: View {
     @State private var weatherTemperature = 23.0
     @State private var selectedMusicFixtureID = CaptureCardLabFixtures.musicFixtures.first?.id ?? ""
     @State private var selectedMusicState: CaptureMusicPlaybackState = .playing
-    @State private var selectedMusicCardStyle: CaptureMusicCardStyle = .compactRow
     @State private var liveMusicPreview: CaptureCardItem?
     @State private var musicSearchQuery = ""
     @State private var musicSearchResults: [MusicCatalogSongCandidate] = []
@@ -23,7 +22,6 @@ struct CaptureCardLabView: View {
     @State private var isSearchingMusic = false
     @State private var musicMessage: String?
     @State private var selectedPlaceScenarioID = CaptureCardLabFixtures.placeScenarios.first?.id ?? ""
-    @State private var selectedPlaceCardStyle: CapturePlaceCardStyle = .standard
     @State private var placeSnapshotData: Data?
     @State private var isGeneratingPlaceSnapshot = false
     @State private var isPlacePrivacyEnabled = false
@@ -204,12 +202,6 @@ struct CaptureCardLabView: View {
                 }
             }
 
-            Picker("Style", selection: $selectedMusicCardStyle) {
-                ForEach(CaptureMusicCardStyle.allCases) { style in
-                    Text(style.label).tag(style)
-                }
-            }
-
             CaptureCardView(
                 presentation: debugPresentation(musicFixturePreviewCard)
             )
@@ -291,12 +283,6 @@ struct CaptureCardLabView: View {
             }
 
             Toggle("Privacy blur", isOn: $isPlacePrivacyEnabled)
-
-            Picker("Style", selection: $selectedPlaceCardStyle) {
-                ForEach(CapturePlaceCardStyle.allCases) { style in
-                    Text(style.label).tag(style)
-                }
-            }
 
             Picker("Snapshot appearance", selection: $selectedPlaceSnapshotAppearance) {
                 ForEach(CaptureCardLabAppearanceMode.allCases) { mode in
@@ -465,8 +451,6 @@ struct CaptureCardLabView: View {
             provenanceDisplayMode: provenanceDisplayMode ?? selectedProvenanceDisplayMode,
             weatherSymbolMotionLevel: weatherSymbolMotionLevel ?? selectedWeatherSymbolMotionLevel,
             weatherAtmosphereIntensityScale: weatherAtmosphereIntensityScale ?? selectedWeatherIntensity.scale,
-            musicCardStyle: selectedMusicCardStyle,
-            placeCardStyle: selectedPlaceCardStyle,
             showsLayoutGuides: showsLayoutGuides,
             showsFieldAudit: showsFieldAudit
         )
@@ -565,16 +549,6 @@ struct CaptureCardLabView: View {
         var item = selectedMusicFixture
         if case .music(var payload) = item.payload {
             payload.playbackState = selectedMusicState
-            if selectedMusicCardStyle == .cover,
-               payload.artworkURL?.trimmedOrNil == nil,
-               payload.artworkData == nil {
-                payload.artworkData = sampleMusicArtworkData
-                payload.artworkPalette = MusicArtworkPalette(
-                    backgroundColorHex: "#291539",
-                    primaryTextColorHex: "#FFFFFF",
-                    secondaryTextColorHex: "#E6D5F2"
-                )
-            }
             item.payload = .music(payload)
         }
         item.metadata = selectedMusicState.label

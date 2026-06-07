@@ -26,8 +26,8 @@ struct MemoryDeskRenderer: View {
                     id: $0.id,
                     layout: $0.layout,
                     estimatedHeight: MemoryCardObjectMetrics.estimatedHeight(
-                        for: $0.visualRecipe,
-                        density: nil,
+                        for: $0.contentKind,
+                        density: $0.contentDensity,
                         columnWidth: columnWidth
                     )
                 )
@@ -79,11 +79,7 @@ struct MemoryDeskRenderer: View {
                 item: node.item,
                 role: .detailViewing,
                 provenanceDisplayMode: .production,
-                musicCardStyle: .auto,
-                placeCardStyle: .auto,
-                surfaceMode: .skeuomorphic,
-                visualRecipe: node.visualRecipe,
-                visualVariant: node.visualVariant
+                contentDensity: node.contentDensity
             ),
             objectAvailableSize: availableSize
         )
@@ -109,8 +105,8 @@ struct MemoryDeskRenderer: View {
                     detail: rawText,
                     metadata: snapshot.record.createdAt.formatted(date: .abbreviated, time: .shortened)
                 ),
-                visualRecipe: node.visualRecipe,
-                visualVariant: node.visualVariant,
+                contentKind: .recordBody,
+                contentDensity: node.contentDensity,
                 layout: node.layout
             )
         case let .artifact(id):
@@ -118,8 +114,8 @@ struct MemoryDeskRenderer: View {
             return ResolvedMemoryDeskNode(
                 id: node.id,
                 item: CaptureCardItem(artifact: artifact),
-                visualRecipe: node.visualRecipe,
-                visualVariant: node.visualVariant,
+                contentKind: CaptureCardItem(artifact: artifact).memoryContentKind,
+                contentDensity: node.contentDensity,
                 layout: node.layout
             )
         case let .artifactGroup(ids, kind):
@@ -128,8 +124,8 @@ struct MemoryDeskRenderer: View {
             return ResolvedMemoryDeskNode(
                 id: node.id,
                 item: groupedItem(artifacts: artifacts, kind: kind, nodeID: node.id),
-                visualRecipe: node.visualRecipe,
-                visualVariant: node.visualVariant,
+                contentKind: .bundle,
+                contentDensity: node.contentDensity,
                 layout: node.layout
             )
         case .affect:
@@ -140,8 +136,8 @@ struct MemoryDeskRenderer: View {
             return ResolvedMemoryDeskNode(
                 id: node.id,
                 item: journalingSuggestionItem(importSessionID: importSessionID, artifacts: artifacts),
-                visualRecipe: node.visualRecipe,
-                visualVariant: node.visualVariant,
+                contentKind: .journalingSuggestion,
+                contentDensity: node.contentDensity,
                 layout: node.layout
             )
         }
@@ -162,7 +158,7 @@ struct MemoryDeskRenderer: View {
         }
         return CaptureCardItem(
             id: "group-\(nodeID.uuidString)",
-            payload: .photo(CapturePhotoCardPayload(thumbnailData: thumbnail, photoCount: artifacts.count, groupStyle: .stack)),
+            payload: .photo(CapturePhotoCardPayload(thumbnailData: thumbnail, photoCount: artifacts.count)),
             origin: artifacts.first?.deskCaptureOrigin,
             provenance: artifacts.first?.captureProvenance,
             title: title,
@@ -245,8 +241,8 @@ struct MemoryDeskRenderPlan {
 private struct ResolvedMemoryDeskNode: Identifiable {
     let id: UUID
     var item: CaptureCardItem
-    var visualRecipe: MemoryCardVisualRecipe
-    var visualVariant: MemoryCardVisualVariant?
+    var contentKind: MemoryCardContentKind
+    var contentDensity: MemoryCardContentDensity
     var layout: MemoryCardLayoutToken
 }
 

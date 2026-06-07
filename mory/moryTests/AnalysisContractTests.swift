@@ -42,7 +42,7 @@ final class AnalysisContractTests: XCTestCase {
             nodes: [
                 MemoryCardNode(
                     contentRef: .artifact(artifactID),
-                    visualRecipe: .polaroid,
+                    contentDensity: .standard,
                     layout: MemoryCardLayoutToken(order: 0, rotationDegrees: -2)
                 )
             ],

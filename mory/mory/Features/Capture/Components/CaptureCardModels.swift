@@ -61,10 +61,3 @@ enum CaptureCardState: String, CaseIterable, Hashable, Sendable {
     case error
     case disabled
 }
-
-enum CaptureCardSurfaceMode: String, CaseIterable, Hashable, Sendable, Identifiable {
-    case standard
-    case skeuomorphic
-
-    var id: String { rawValue }
-}

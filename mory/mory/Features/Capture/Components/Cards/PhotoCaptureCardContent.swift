@@ -2,8 +2,6 @@ import SwiftUI
 import UIKit
 
 struct PhotoCaptureCardContent: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
     let common: CaptureCardCommonDisplay
     let payload: CapturePhotoCardPayload
     let accent: Color
@@ -29,14 +27,7 @@ struct PhotoCaptureCardContent: View {
 
     private var photoGroupContent: some View {
         ZStack(alignment: .bottomLeading) {
-            switch payload.groupStyle ?? .mosaic {
-            case .mosaic:
-                mosaicBackground
-            case .stack:
-                stackBackground
-            case .carousel:
-                carouselBackground
-            }
+            mosaicBackground
 
             photoScrim
             VStack(alignment: .leading, spacing: 5) {
@@ -83,45 +74,6 @@ struct PhotoCaptureCardContent: View {
                 }
                 .frame(width: width * 0.42, height: height)
                 .position(x: width * 0.79, y: height * 0.5)
-            }
-        }
-    }
-
-    private var stackBackground: some View {
-        ZStack {
-            ForEach(0..<3, id: \.self) { index in
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(sampleGradient(index: index))
-                    .overlay(alignment: .center) {
-                        Image(systemName: "photo")
-                            .font(.title2.weight(.semibold))
-                            .foregroundStyle(.white.opacity(index == 0 ? 0.84 : 0.36))
-                    }
-                    .frame(width: 132, height: 92)
-                    .rotationEffect(.degrees(Double(index - 1) * 5))
-                    .offset(x: CGFloat(index - 1) * 13, y: CGFloat(index - 1) * 5)
-                    .shadow(color: .black.opacity(index == 0 ? 0.18 : 0.08), radius: 8, y: 4)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(sampleGradient(index: 3).opacity(0.5))
-    }
-
-    private var carouselBackground: some View {
-        TimelineView(.animation(minimumInterval: reduceMotion ? 60 : 1 / 30)) { timeline in
-            let phase = reduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 8) / 8
-            GeometryReader { proxy in
-                let tileWidth = proxy.size.width * 0.44
-                let spacing: CGFloat = 8
-                let travel = (tileWidth + spacing) * 3
-                HStack(spacing: spacing) {
-                    ForEach(0..<6, id: \.self) { index in
-                        sampleTile(index: index)
-                            .frame(width: tileWidth, height: proxy.size.height)
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    }
-                }
-                .offset(x: -CGFloat(phase) * travel)
             }
         }
     }

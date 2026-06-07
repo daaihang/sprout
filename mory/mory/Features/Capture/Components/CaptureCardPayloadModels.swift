@@ -54,7 +54,6 @@ enum CaptureCardPayload: Hashable, Sendable {
 struct CapturePhotoCardPayload: Hashable, Sendable {
     var thumbnailData: Data? = nil
     var photoCount: Int = 1
-    var groupStyle: CapturePhotoGroupStyle? = nil
 }
 
 struct CaptureVideoCardPayload: Hashable, Sendable {
