@@ -9,74 +9,38 @@ struct CardDebugView: View {
         List {
             overviewSection
 
-            Section("Debug Surfaces") {
+            Section("Type Catalog") {
                 NavigationLink {
-                    CardDebugTypeCatalogView()
+                    CardDebugTypeCatalogGroupView()
                 } label: {
                     DebugMenuRow(
                         icon: "list.bullet.rectangle",
                         title: "Type Catalog",
-                        subtitle: "Inspect each content type, density, arrangement layer, and rendered object"
+                        subtitle: "Inspect content types, four-layer paths, rendered densities, and state behavior"
                     )
                 }
+            }
 
+            Section("Masonry/Density Policy") {
                 NavigationLink {
-                    CardDebugMasonryBoardLabView()
+                    CardDebugMasonryDensityPolicyGroupView()
                 } label: {
                     DebugMenuRow(
                         icon: "rectangle.split.3x1",
-                        title: "Masonry Board Lab",
-                        subtitle: "Inspect fixed column width, adaptive card height, column placement, and sticker overflow"
+                        title: "Masonry/Density Policy",
+                        subtitle: "Inspect fixed-column masonry, density defaults, estimated heights, and arrangement reports"
                     )
                 }
+            }
 
-                NavigationLink {
-                    CardDebugArrangementPlaygroundView()
-                } label: {
-                    DebugMenuRow(
-                        icon: "rectangle.stack.badge.play",
-                        title: "Arrangement Playground",
-                        subtitle: "Preview order, stack, rotation, z-index, stickers, density, and masonry rendering"
-                    )
-                }
-
-                NavigationLink {
-                    CardDebugMasonryPolicyView()
-                } label: {
-                    DebugMenuRow(
-                        icon: "rectangle.split.3x1.fill",
-                        title: "Masonry Policy",
-                        subtitle: "Inspect column metrics, density defaults, and object metrics"
-                    )
-                }
-
-                NavigationLink {
-                    CardDebugDensityMatrixView()
-                } label: {
-                    DebugMenuRow(
-                        icon: "rectangle.on.rectangle",
-                        title: "Density Matrix",
-                        subtitle: "Preview every content kind across simple, standard, and detailed where supported"
-                    )
-                }
-
-                NavigationLink {
-                    CardDebugStatesActionsView()
-                } label: {
-                    DebugMenuRow(
-                        icon: "slider.horizontal.3",
-                        title: "Card States & Actions",
-                        subtitle: "Switch content kind, density, role, runtime state, capabilities, and derived behavior"
-                    )
-                }
-
+            Section("Fixture Stress") {
                 NavigationLink {
                     CaptureCardLabView()
                 } label: {
                     DebugMenuRow(
                         icon: "rectangle.stack",
                         title: "Fixture Stress Lab",
-                        subtitle: "Existing fixture lab for weather, music, place, states, origins, and edge cases"
+                        subtitle: "Stress content fixtures, weather states, context previews, origins, and edge cases"
                     )
                 }
             }
@@ -130,6 +94,90 @@ struct CardDebugView: View {
             latestDetail = nil
             overviewMessage = error.localizedDescription
         }
+    }
+}
+
+private struct CardDebugTypeCatalogGroupView: View {
+    var body: some View {
+        List {
+            Section {
+                NavigationLink {
+                    CardDebugTypeCatalogView()
+                } label: {
+                    DebugMenuRow(
+                        icon: "list.bullet.rectangle",
+                        title: "Content Type Catalog",
+                        subtitle: "Inspect each content type, four-layer path, supported densities, and rendered object"
+                    )
+                }
+
+                NavigationLink {
+                    CardDebugStatesActionsView()
+                } label: {
+                    DebugMenuRow(
+                        icon: "slider.horizontal.3",
+                        title: "Card States & Actions",
+                        subtitle: "Switch content kind, density, role, runtime state, capabilities, and derived behavior"
+                    )
+                }
+            } footer: {
+                Text("These pages use fixtures except for the parent overview, which reads the latest saved memory.")
+            }
+        }
+        .navigationTitle("Type Catalog")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct CardDebugMasonryDensityPolicyGroupView: View {
+    var body: some View {
+        List {
+            Section {
+                NavigationLink {
+                    CardDebugMasonryBoardLabView()
+                } label: {
+                    DebugMenuRow(
+                        icon: "rectangle.split.3x1",
+                        title: "Masonry Board Lab",
+                        subtitle: "Inspect fixed column width, adaptive card height, column placement, and sticker overflow"
+                    )
+                }
+
+                NavigationLink {
+                    CardDebugArrangementPlaygroundView()
+                } label: {
+                    DebugMenuRow(
+                        icon: "rectangle.stack.badge.play",
+                        title: "Arrangement Playground",
+                        subtitle: "Preview order, stack, rotation, z-index, stickers, density, and masonry rendering"
+                    )
+                }
+
+                NavigationLink {
+                    CardDebugMasonryPolicyView()
+                } label: {
+                    DebugMenuRow(
+                        icon: "rectangle.split.3x1.fill",
+                        title: "Masonry Policy",
+                        subtitle: "Inspect column metrics, density defaults, and object metrics"
+                    )
+                }
+
+                NavigationLink {
+                    CardDebugDensityMatrixView()
+                } label: {
+                    DebugMenuRow(
+                        icon: "rectangle.on.rectangle",
+                        title: "Density Matrix",
+                        subtitle: "Preview every content kind across simple, standard, and detailed where supported"
+                    )
+                }
+            } footer: {
+                Text("Masonry frames are derived at render time from order, density, estimated height, and available width.")
+            }
+        }
+        .navigationTitle("Masonry/Density Policy")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

@@ -73,16 +73,6 @@ struct DebugCapabilityTestsView: View {
                         subtitle: String(localized: "debug.capability.permissions.subtitle")
                     )
                 }
-
-                NavigationLink {
-                    DebugStorageIntegrityView()
-                } label: {
-                    DebugMenuRow(
-                        icon: "externaldrive.badge.checkmark",
-                        title: String(localized: "debug.capability.storage"),
-                        subtitle: String(localized: "debug.capability.storage.subtitle")
-                    )
-                }
             } footer: {
                 Text("debug.capability.footer")
             }
@@ -144,6 +134,11 @@ struct DebugPhotoTestView: View {
                     DebugValueRow(title: String(localized: "debug.photo.ocr"), value: result.ocrText.nonEmptyDisplay)
                     DebugValueRow(title: String(localized: "debug.photo.thumbnailBytes"), value: "\(result.thumbnailData.count)")
                     DebugValueRow(title: String(localized: "debug.photo.metadata"), value: result.metadata.isEmpty ? String(localized: "debug.value.none") : result.metadata.map { "\($0.key)=\($0.value)" }.sorted().joined(separator: "\n"))
+
+                    DebugActionNotice(
+                        .mutating,
+                        message: "Running the cloud pipeline creates a real debug photo memory through the repository."
+                    )
 
                     Button {
                         Task { await runCloudPipeline(result) }
@@ -452,6 +447,11 @@ struct DebugLinkTestView: View {
                     DebugValueRow(title: String(localized: "debug.result.summary"), value: metadata.summary.nonEmptyDisplay)
                     DebugValueRow(title: String(localized: "debug.link.site"), value: metadata.siteName.nonEmptyDisplay)
                     DebugValueRow(title: String(localized: "debug.link.imageBytes"), value: "\(metadata.imageData?.count ?? 0)")
+
+                    DebugActionNotice(
+                        .mutating,
+                        message: "Running the cloud pipeline creates a real debug link memory through the repository."
+                    )
 
                     Button {
                         Task { await runCloudPipeline(metadata) }

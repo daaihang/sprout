@@ -56,6 +56,10 @@ struct DebugRuntimeOperationsView: View {
 
     private var actionsSection: some View {
         Section("Actions") {
+            DebugActionNotice(
+                .mutating,
+                message: "Runtime actions can enqueue jobs, send debug notifications, sync APNs state, or write runtime logs."
+            )
             Button("Run app launch recovery") {
                 Task { await runBackground(.appLaunch, source: "DebugRuntimeOperationsView.appLaunch") }
             }

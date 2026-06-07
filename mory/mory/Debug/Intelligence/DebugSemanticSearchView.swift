@@ -9,6 +9,7 @@ struct DebugSemanticSearchView: View {
     @State private var flags: V6FeatureFlags?
     @State private var isWorking = false
     @State private var message: String?
+    @State private var isConfirmingDeleteIndex = false
 
     var body: some View {
         List {
@@ -30,6 +31,11 @@ struct DebugSemanticSearchView: View {
                 }
                 .disabled(isWorking || preferences == nil || flags == nil)
 
+                DebugActionNotice(
+                    .mutating,
+                    message: "Enable, rebuild, and delete actions write preferences or mutate the Core Spotlight index."
+                )
+
                 Button("Enable semantic search + rebuild index") {
                     Task { await enableSemanticSearchAndRebuildIndex() }
                 }
@@ -41,7 +47,7 @@ struct DebugSemanticSearchView: View {
                 .disabled(isWorking)
 
                 Button(role: .destructive) {
-                    Task { await deleteIndex() }
+                    isConfirmingDeleteIndex = true
                 } label: {
                     Text("Delete Core Spotlight index")
                 }
@@ -125,6 +131,18 @@ struct DebugSemanticSearchView: View {
         .navigationTitle("Semantic Search")
         .task {
             refreshControls()
+        }
+        .confirmationDialog(
+            "Delete Core Spotlight index?",
+            isPresented: $isConfirmingDeleteIndex,
+            titleVisibility: .visible
+        ) {
+            Button("Delete Core Spotlight index", role: .destructive) {
+                Task { await deleteIndex() }
+            }
+            Button("common.cancel", role: .cancel) {}
+        } message: {
+            Text("This removes the local system search index for Mory. Memories remain in local storage and can be reindexed later.")
         }
     }
 

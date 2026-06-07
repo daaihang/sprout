@@ -31,6 +31,11 @@ struct DebugHomeBoardDiagnosticsView: View {
                 }
                 .disabled(isWorking)
 
+                DebugActionNotice(
+                    .mutating,
+                    message: "Preference actions update persistent Home Board item preferences."
+                )
+
                 Button("Add first suggestion to board") {
                     applyFirstSuggestion(.addToBoard)
                 }

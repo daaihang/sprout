@@ -7,12 +7,12 @@
     "#%lld" : {
 
     },
-    "%@ · variant %@ · object %lldx%lld · lines %lld/%lld/%lld" : {
+    "%@ · object %lldx%lld · lines %lld/%lld/%lld" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "%1$@ · variant %2$@ · object %3$lldx%4$lld · lines %5$lld/%6$lld/%7$lld"
+            "value" : "%1$@ · object %2$lldx%3$lld · lines %4$lld/%5$lld/%6$lld"
           }
         }
       }
@@ -2171,6 +2171,7 @@
       }
     },
     "capture.card.music.style.auto" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2204,6 +2205,7 @@
       }
     },
     "capture.card.music.style.compactRow" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2220,6 +2222,7 @@
       }
     },
     "capture.card.music.style.compactTile" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2236,6 +2239,7 @@
       }
     },
     "capture.card.music.style.cover" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2317,6 +2321,7 @@
       }
     },
     "capture.card.photoGroup.carousel" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2333,6 +2338,7 @@
       }
     },
     "capture.card.photoGroup.mosaic" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2349,6 +2355,7 @@
       }
     },
     "capture.card.photoGroup.stack" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2381,6 +2388,7 @@
       }
     },
     "capture.card.place.style.auto" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2397,6 +2405,7 @@
       }
     },
     "capture.card.place.style.immersive" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2413,6 +2422,7 @@
       }
     },
     "capture.card.place.style.standard" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4552,17 +4562,6 @@
         }
       }
     },
-    "Cassette Fixtures" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "磁带卡样例"
-          }
-        }
-      }
-    },
     "Checks" : {
       "localizations" : {
         "zh-Hans" : {
@@ -5124,16 +5123,6 @@
         }
       }
     },
-    "Comparison" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "对比"
-          }
-        }
-      }
-    },
     "Completed" : {
       "localizations" : {
         "zh-Hans" : {
@@ -5174,6 +5163,9 @@
           }
         }
       }
+    },
+    "Content kind" : {
+
     },
     "Context" : {
       "localizations" : {
@@ -12352,6 +12344,19 @@
     "Density controls internal information density only. Masonry column width controls layout frame." : {
 
     },
+    "Density Defaults" : {
+
+    },
+    "Density Matrix" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "详略矩阵"
+          }
+        }
+      }
+    },
     "Derived Behavior" : {
       "localizations" : {
         "zh-Hans" : {
@@ -14908,16 +14913,6 @@
         }
       }
     },
-    "Legacy Labs" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "旧版实验室"
-          }
-        }
-      }
-    },
     "Legacy owner" : {
       "localizations" : {
         "zh-Hans" : {
@@ -15205,16 +15200,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "地图快照是静态图片。没有快照时，卡片会回退到轻量地图纹理。"
-          }
-        }
-      }
-    },
-    "MAP TICKET" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "地图票根"
           }
         }
       }
@@ -15761,23 +15746,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "重试中…"
-          }
-        }
-      }
-    },
-    "memory.arrangement.size" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Size"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "尺寸"
           }
         }
       }
@@ -18529,16 +18497,6 @@
         }
       }
     },
-    "Preview skeuomorphic card styles using fixture data. Toggle surface mode to compare with standard cards." : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "使用样例数据预览拟物卡片样式。切换界面模式可与标准卡片对比。"
-          }
-        }
-      }
-    },
     "Preview the same card system across light, dark, high contrast, and reduced motion environments." : {
       "localizations" : {
         "zh-Hans" : {
@@ -20085,30 +20043,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "最近通知意图"
-          }
-        }
-      }
-    },
-    "Recipe" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "视觉配方"
-          }
-        }
-      }
-    },
-    "Recipe Density Defaults" : {
-
-    },
-    "Recipe Support" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "配方支持"
           }
         }
       }
@@ -24049,16 +23983,6 @@
         }
       }
     },
-    "Side-by-side comparison of standard vs. skeuomorphic rendering for each supported type." : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "并排比较每种支持类型的标准渲染和拟物渲染。"
-          }
-        }
-      }
-    },
     "signin.guest" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -24089,27 +24013,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "你的私人记忆伙伴"
-          }
-        }
-      }
-    },
-    "Size" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "尺寸"
-          }
-        }
-      }
-    },
-    "Skeuomorphic Card Lab" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "拟物卡片实验室"
           }
         }
       }
@@ -24423,16 +24326,6 @@
         }
       }
     },
-    "Style" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "样式"
-          }
-        }
-      }
-    },
     "Suggestion cards" : {
       "localizations" : {
         "zh-Hans" : {
@@ -24449,16 +24342,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "摘要"
-          }
-        }
-      }
-    },
-    "Surface Mode" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "界面模式"
           }
         }
       }
@@ -24945,16 +24828,6 @@
         }
       }
     },
-    "TRANSCRIPT" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "转写"
-          }
-        }
-      }
-    },
     "true" : {
       "localizations" : {
         "zh-Hans" : {
@@ -25150,32 +25023,12 @@
         }
       }
     },
-    "Variant" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "变体"
-          }
-        }
-      }
-    },
     "Visible cards" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "可见卡片"
-          }
-        }
-      }
-    },
-    "Density Matrix" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "详略矩阵"
           }
         }
       }

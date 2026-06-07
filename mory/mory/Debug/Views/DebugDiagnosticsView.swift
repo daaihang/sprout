@@ -23,7 +23,7 @@ struct DebugDiagnosticsView: View {
 
     var body: some View {
         List {
-            Section {
+            Section("Runtime") {
                 NavigationLink {
                     DebugEnvironmentView(runtimeEnvironment: runtimeEnvironment)
                 } label: {
@@ -65,16 +65,6 @@ struct DebugDiagnosticsView: View {
                 }
 
                 NavigationLink {
-                    DebugCloudIntelligenceView()
-                } label: {
-                    DebugMenuRow(
-                        icon: "icloud",
-                        title: "Cloud Intelligence",
-                        subtitle: "Trigger V6 cloud requests and inspect request IDs, model metadata, results, and errors"
-                    )
-                }
-
-                NavigationLink {
                     DebugRuntimeOperationsView()
                 } label: {
                     DebugMenuRow(
@@ -91,6 +81,18 @@ struct DebugDiagnosticsView: View {
                         icon: "magnifyingglass",
                         title: "Semantic Search",
                         subtitle: "Run exact and semantic search, rebuild Core Spotlight, and inspect retrieval source state"
+                    )
+                }
+            }
+
+            Section("AI") {
+                NavigationLink {
+                    DebugCloudIntelligenceView()
+                } label: {
+                    DebugMenuRow(
+                        icon: "icloud",
+                        title: "Cloud Intelligence",
+                        subtitle: "Trigger V6 cloud requests and inspect request IDs, model metadata, results, and errors"
                     )
                 }
 
@@ -135,6 +137,28 @@ struct DebugDiagnosticsView: View {
                 }
 
                 NavigationLink {
+                    DebugHomeBoardDiagnosticsView()
+                } label: {
+                    DebugMenuRow(
+                        icon: "rectangle.split.3x1",
+                        title: "Home Board Debug",
+                        subtitle: "Inspect memory desktop inputs, card layers, reasons, and preference actions"
+                    )
+                }
+
+                NavigationLink {
+                    DebugQualityTuningLabView()
+                } label: {
+                    DebugMenuRow(
+                        icon: "slider.horizontal.3",
+                        title: "Quality Tuning Lab",
+                        subtitle: "Run real end-to-end tuning scenarios"
+                    )
+                }
+            }
+
+            Section("Capture") {
+                NavigationLink {
                     ExternalCaptureDraftReviewView()
                 } label: {
                     DebugMenuRow(
@@ -155,22 +179,27 @@ struct DebugDiagnosticsView: View {
                 }
 
                 NavigationLink {
-                    DebugHomeBoardDiagnosticsView()
+                    DebugCapabilityTestsView(
+                        authManager: authManager,
+                        runtimeEnvironment: runtimeEnvironment
+                    )
                 } label: {
                     DebugMenuRow(
-                        icon: "rectangle.grid.2x2",
-                        title: "Home Board Debug",
-                        subtitle: "Inspect memory desktop inputs, card layers, reasons, and preference actions"
+                        icon: "testtube.2",
+                        title: String(localized: "debug.menu.capabilities"),
+                        subtitle: String(localized: "debug.menu.capabilities.subtitle")
                     )
                 }
+            }
 
+            Section("Cards") {
                 NavigationLink {
                     CardDebugView()
                 } label: {
                     DebugMenuRow(
                         icon: "rectangle.on.rectangle.angled",
                         title: "Card Debug",
-                        subtitle: "Inspect four-layer card data, visual recipes, arrangement, and fixture stress labs"
+                        subtitle: "Inspect content types, masonry density policy, and fixture stress labs"
                     )
                 }
 
@@ -187,7 +216,9 @@ struct DebugDiagnosticsView: View {
                         subtitle: "Inspect, rename, merge, and split persistent place profiles"
                     )
                 }
+            }
 
+            Section("Data & Repair") {
                 NavigationLink {
                     DebugDataRepairView()
                 } label: {
@@ -207,33 +238,22 @@ struct DebugDiagnosticsView: View {
                         subtitle: String(localized: "debug.menu.pipeline.subtitle")
                     )
                 }
+            }
 
+            Section {
                 NavigationLink {
-                    DebugQualityTuningLabView()
+                    DebugStorageIntegrityView()
                 } label: {
                     DebugMenuRow(
-                        icon: "slider.horizontal.3",
-                        title: "Quality Tuning Lab",
-                        subtitle: "Run real end-to-end tuning scenarios"
-                    )
-                }
-
-                NavigationLink {
-                    DebugCapabilityTestsView(
-                        authManager: authManager,
-                        runtimeEnvironment: runtimeEnvironment
-                    )
-                } label: {
-                    DebugMenuRow(
-                        icon: "testtube.2",
-                        title: String(localized: "debug.menu.capabilities"),
-                        subtitle: String(localized: "debug.menu.capabilities.subtitle")
+                        icon: "externaldrive.badge.exclamationmark",
+                        title: String(localized: "debug.capability.storage"),
+                        subtitle: "Inspect storage integrity and access local data erase controls"
                     )
                 }
             } header: {
-                Text("debug.title")
+                Text("Dangerous")
             } footer: {
-                Text("debug.menu.footer")
+                Text("Dangerous tools can erase local data or change active account state. Use only when validating repair or reset behavior.")
             }
         }
         .navigationTitle("debug.title")
@@ -354,6 +374,11 @@ private struct DebugDataRepairView: View {
                         Text(origin.captureBadgeLabel).tag(origin)
                     }
                 }
+
+                DebugActionNotice(
+                    .mutating,
+                    message: "Backfill writes captureOrigin metadata only for artifacts where that field is missing."
+                )
 
                 Button(role: .destructive) {
                     isConfirmingRepair = true
@@ -479,6 +504,7 @@ private struct DebugAuthSessionView: View {
     @State private var errorMessage: String?
     @State private var copiedToast: String?
     @State private var isSigningOut = false
+    @State private var isConfirmingSignOut = false
 
     var body: some View {
         List {
@@ -519,8 +545,13 @@ private struct DebugAuthSessionView: View {
                         Label("debug.auth.copyReport", systemImage: "doc.on.doc")
                     }
 
+                    DebugActionNotice(
+                        .destructive,
+                        message: "Signing out changes the active session and can switch the local data owner."
+                    )
+
                     Button(role: .destructive) {
-                        Task { await signOut() }
+                        isConfirmingSignOut = true
                     } label: {
                         Label(isSigningOut ? String(localized: "debug.auth.signingOut") : String(localized: "debug.auth.signOut"), systemImage: "rectangle.portrait.and.arrow.right")
                     }
@@ -566,6 +597,18 @@ private struct DebugAuthSessionView: View {
         .animation(.easeInOut(duration: 0.25), value: copiedToast)
         .task {
             await refresh()
+        }
+        .confirmationDialog(
+            "Sign out of this debug session?",
+            isPresented: $isConfirmingSignOut,
+            titleVisibility: .visible
+        ) {
+            Button(String(localized: "debug.auth.signOut"), role: .destructive) {
+                Task { await signOut() }
+            }
+            Button("common.cancel", role: .cancel) {}
+        } message: {
+            Text("This changes the active authentication session and can change which local data vault is active.")
         }
     }
 
@@ -782,6 +825,11 @@ struct DebugStorageIntegrityView: View {
             }
 
             Section {
+                DebugActionNotice(
+                    .destructive,
+                    message: "Clearing all local data deletes memories, artifacts, analysis output, profiles, jobs, and local debug state."
+                )
+
                 Button(role: .destructive) {
                     isShowingClearAllConfirmation = true
                 } label: {

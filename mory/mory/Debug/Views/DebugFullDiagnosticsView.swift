@@ -18,6 +18,7 @@ struct DebugFullDiagnosticsView: View {
     @State private var isReloading = false
     @State private var copiedToast: String?
     @State private var actionLog: [DebugActionLogEntry] = []
+    @State private var isConfirmingClearFixtures = false
     @State private var customTitle = ""
     @State private var customBody = ""
     @State private var customMood = ""
@@ -60,6 +61,18 @@ struct DebugFullDiagnosticsView: View {
         }
         .onChange(of: selectedTargetID) { _, _ in
             Task { await refreshDiagnostics() }
+        }
+        .confirmationDialog(
+            "Clear debug fixtures?",
+            isPresented: $isConfirmingClearFixtures,
+            titleVisibility: .visible
+        ) {
+            Button(String(localized: "debug.action.clear"), role: .destructive) {
+                Task { await clearFixtures() }
+            }
+            Button("common.cancel", role: .cancel) {}
+        } message: {
+            Text("This removes debug fixture memories created by the diagnostics tool.")
         }
     }
 
@@ -141,6 +154,11 @@ struct DebugFullDiagnosticsView: View {
                 }
             }
 
+            DebugActionNotice(
+                .mutating,
+                message: "Creating a diagnostic memory writes a real local memory through the repository."
+            )
+
             Button {
                 Task { await createCustomDiagnosticMemory() }
             } label: {
@@ -220,6 +238,11 @@ struct DebugFullDiagnosticsView: View {
             }
             .buttonStyle(.bordered)
 
+            DebugActionNotice(
+                .mutating,
+                message: "Seed actions create debug fixture memories; replay actions update pipeline/debug state."
+            )
+
             HStack(spacing: 12) {
                 Button {
                     Task { await seedFixtures(count: 1) }
@@ -238,7 +261,7 @@ struct DebugFullDiagnosticsView: View {
                 Spacer()
 
                 Button(role: .destructive) {
-                    Task { await clearFixtures() }
+                    isConfirmingClearFixtures = true
                 } label: {
                     Label("debug.action.clear", systemImage: "trash")
                 }

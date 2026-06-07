@@ -39,7 +39,7 @@ Mory 的记忆可以来自这些入口：
 | `RecordShell` | 这条记忆本身，包含时间、正文、来源、上下文和 artifact IDs。 |
 | `Artifact[]` | 图片、视频、音频、链接、音乐、地点、天气、todo、文档等内容事实。 |
 | `ArtifactSemanticDigest[]` | OCR、caption、label、transcript、duration、dimensions、local identifier 等结构化媒体语义。 |
-| `MemoryCardArrangement` | 用户视觉排布，包括 visual recipe、size、order、stack/group、grid placement、rotation/nudge/zIndex。 |
+| `MemoryCardArrangement` | 用户视觉排布，包括 contentDensity、order、stack/group、贴纸挂点、rotation/nudge/zIndex；瀑布流 frame 在渲染时派生。 |
 | `AffectSnapshot[]` | 用户或系统提供的心情和语气证据。 |
 | 人物/地点/主题实体 | Mory 从内容里识别出的长期对象。 |
 | 用户自己的档案 | 关于“我”的长期信息、偏好、目标、边界。 |

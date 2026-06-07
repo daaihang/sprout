@@ -21,6 +21,10 @@ struct ExternalCaptureDraftReviewView: View {
     var body: some View {
         Form {
             Section("Handoff Recovery") {
+                DebugActionNotice(
+                    .mutating,
+                    message: "Import and dismiss actions update the external capture inbox or create a real memory."
+                )
                 if inboxItems.isEmpty {
                     Text("No external captures.")
                         .foregroundStyle(.secondary)
@@ -78,6 +82,10 @@ struct ExternalCaptureDraftReviewView: View {
             }
 
             Section {
+                DebugActionNotice(
+                    .mutating,
+                    message: "Queue and create actions write a handoff item or real memory through the repository."
+                )
                 Button("Build Draft Preview") {
                     previewDraft = buildDraft()
                     message = "Draft preview updated."

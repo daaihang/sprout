@@ -19,6 +19,10 @@ struct GraphDeltaReviewView: View {
             }
 
             Section("Pending Proposals") {
+                DebugActionNotice(
+                    .mutating,
+                    message: "Apply and reject update local graph proposal and correction state."
+                )
                 if pending.isEmpty {
                     Text("No pending graph deltas.")
                         .foregroundStyle(.secondary)
@@ -60,6 +64,10 @@ struct GraphDeltaReviewView: View {
             }
 
             Section("Rejected") {
+                DebugActionNotice(
+                    .mutating,
+                    message: "Undo reject writes a reversal correction event."
+                )
                 if rejected.isEmpty {
                     Text("No rejected graph deltas.")
                         .foregroundStyle(.secondary)

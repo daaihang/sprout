@@ -102,6 +102,12 @@ private struct PlaceProfileDetailManagementView: View {
                 }
 
                 Section("Rename") {
+                    if showsDebugDetails {
+                        DebugActionNotice(
+                            .mutating,
+                            message: "Saving changes updates the persistent place profile name and aliases."
+                        )
+                    }
                     TextField("Name", text: $displayName)
                     TextField("Aliases, separated by commas", text: $aliasesText, axis: .vertical)
                         .lineLimit(2...4)
@@ -112,6 +118,12 @@ private struct PlaceProfileDetailManagementView: View {
                 }
 
                 Section("Merge into this place") {
+                    if showsDebugDetails {
+                        DebugActionNotice(
+                            .mutating,
+                            message: "Merging rewrites persistent place profile links and tombstone state."
+                        )
+                    }
                     let candidates = allProfiles.filter { $0.id != profile.id }
                     if candidates.isEmpty {
                         Text("No other places to merge.")
@@ -144,6 +156,12 @@ private struct PlaceProfileDetailManagementView: View {
                 }
 
                 Section("Split selected artifacts") {
+                    if showsDebugDetails {
+                        DebugActionNotice(
+                            .mutating,
+                            message: "Splitting moves selected artifacts into a new persistent place profile."
+                        )
+                    }
                     if artifacts.count <= 1 {
                         Text("This place does not have enough linked location artifacts to split.")
                             .foregroundStyle(.secondary)

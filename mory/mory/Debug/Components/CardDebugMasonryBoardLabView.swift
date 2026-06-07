@@ -172,10 +172,10 @@ private struct CardDebugMasonryBoardItem: Identifiable {
     static func defaultItems() -> [CardDebugMasonryBoardItem] {
         [
             CardDebugMasonryBoardItem(title: "Notebook", subtitle: "expanded body", height: 226, order: 0, zIndex: 0, tint: .brown),
-            CardDebugMasonryBoardItem(title: "Photo", subtitle: "polaroid", height: 246, order: 1, zIndex: 1, tint: .pink),
-            CardDebugMasonryBoardItem(title: "Music", subtitle: "compact vinyl", height: 112, order: 2, zIndex: 2, tint: .indigo),
+            CardDebugMasonryBoardItem(title: "Photo", subtitle: "media evidence", height: 246, order: 1, zIndex: 1, tint: .pink),
+            CardDebugMasonryBoardItem(title: "Music", subtitle: "compact context", height: 112, order: 2, zIndex: 2, tint: .indigo),
             CardDebugMasonryBoardItem(title: "Weather", subtitle: "context", height: 92, order: 3, zIndex: 3, tint: .cyan),
-            CardDebugMasonryBoardItem(title: "Link", subtitle: "paper note", height: 156, order: 4, zIndex: 4, tint: .teal),
+            CardDebugMasonryBoardItem(title: "Link", subtitle: "reference card", height: 156, order: 4, zIndex: 4, tint: .teal),
             CardDebugMasonryBoardItem(title: "Bundle", subtitle: "packet", height: 158, order: 5, zIndex: 5, tint: .orange),
         ]
     }

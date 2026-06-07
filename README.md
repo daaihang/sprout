@@ -22,7 +22,7 @@ Capture Draft
 | `RecordShell` | The main memory fact: raw text, timestamps, capture source, provenance, mood/context, and artifact IDs. |
 | `Artifact` | User or context material: text, photo, video, live photo, audio, link, music, place, weather, todo, document-like evidence. |
 | `ArtifactSemanticDigest` | Structured media/text meaning such as OCR, captions, labels, transcript, duration, dimensions, and local identifiers. |
-| `MemoryCardArrangement` | User visual expression: card refs, visual recipe, order, stack/group, sticker attachments, nudge, rotation, z-index. |
+| `MemoryCardArrangement` | User visual expression: card refs, content density, order, stack/group, sticker attachments, nudge, rotation, z-index. |
 | `AffectSnapshot` | Structured mood/affect evidence with explicit source tracking. |
 | `Analysis` | Optional post-save intelligence. Arrangement is excluded from analysis input because it is visual expression, not semantic fact. |
 
@@ -87,7 +87,7 @@ The current record layer is intentionally independent from AI:
 
 - The composer owns the draft and `MemoryCardArrangementDraft`.
 - Adding or removing content updates both staged artifacts and arrangement nodes.
-- Stack/unstack, reorder, delete, sticker attachment, density, and visual treatment are arrangement edits.
+- Stack/unstack, reorder, delete, sticker attachment, density, nudge, rotation, and z-index are arrangement edits.
 - `MemoryCaptureArtifactBuilder` returns artifacts, semantic digests, and draft-to-persisted artifact ID mapping.
 - `MemoryCreationUseCase` persists facts first, then persists `.notScheduled` pipeline status.
 - `MemoryMutationUseCase` updates artifacts, digests, arrangement, and affect data without defaulting over user layout.
@@ -99,12 +99,9 @@ Card layout now uses fixed-column-width masonry across devices. Column count is 
 The main card verification surface is `Card Debug`:
 
 - `Overview`: recent memory four-layer health.
-- `Type Catalog`: each content type and supported density.
-- `Masonry Policy`: column metrics, density, estimated height, and object metrics.
-- `Density Matrix`: all legal content-kind/density combinations.
-- `Masonry Board Lab`: fixed-column masonry prototype, column metrics, adaptive heights, and sticker overflow inspection.
-- `Card States & Actions`: composer/detail/debug roles, runtime states, and capability truth table.
-- `Fixture Stress Lab`: legacy fixture pressure tests.
+- `Type Catalog`: content types, four-layer paths, rendered densities, and state/action behavior.
+- `Masonry/Density Policy`: fixed-column masonry, column metrics, adaptive heights, density defaults, arrangement reports, and sticker overflow inspection.
+- `Fixture Stress Lab`: fixture pressure tests for weather, music, place, states, origins, and edge cases.
 
 Debug surfaces are for engineering acceptance. They should not be treated as the final user-facing status design.
 

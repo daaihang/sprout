@@ -19,6 +19,10 @@ struct DebugAffectSnapshotView: View {
                 Button("Reload affect snapshots") {
                     Task { await load() }
                 }
+                DebugActionNotice(
+                    .mutating,
+                    message: "Seeding creates a real debug memory with StateOfMind evidence."
+                )
                 Button("Seed journaling StateOfMind draft") {
                     Task { await seedJournalingSuggestionDraft() }
                 }

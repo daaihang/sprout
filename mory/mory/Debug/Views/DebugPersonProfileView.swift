@@ -16,6 +16,11 @@ struct DebugPersonProfileView: View {
                 }
                 .disabled(isWorking)
 
+                DebugActionNotice(
+                    .mutating,
+                    message: "Refreshing portraits rewrites deterministic local person profile data."
+                )
+
                 Button("Refresh portraits for all person entities") {
                     Task { await refreshAllPortraits() }
                 }

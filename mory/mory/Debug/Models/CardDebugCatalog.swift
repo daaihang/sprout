@@ -47,6 +47,19 @@ enum CardDebugCatalog {
             layerNotes: ["contentRef=.recordBody", "ArtifactKind.text is folded into RecordShell.rawText", "density=.detailed"]
         ),
         CardDebugContentFixture(
+            contentKind: .prompt,
+            item: CaptureCardItem(
+                id: "debug-kind-prompt",
+                payload: .prompt(CapturePromptCardPayload(prompt: "What question shaped this memory?", answer: "The answer card keeps prompt context separate from the record body.")),
+                origin: .manual,
+                title: "Prompt answer",
+                detail: "The answer card keeps prompt context separate from the record body.",
+                metadata: "promptAnswer"
+            ),
+            preferredDensity: .detailed,
+            layerNotes: ["CaptureArtifactContent.promptAnswer", "ArtifactKind.text/document", "density=.detailed"]
+        ),
+        CardDebugContentFixture(
             contentKind: .photo,
             item: CaptureCardItem(
                 id: "debug-kind-photo",
@@ -206,7 +219,16 @@ enum CardDebugCatalog {
             contentKind: .bundle,
             item: CaptureCardItem(
                 id: "debug-kind-bundle",
-                payload: .photo(CapturePhotoCardPayload(photoCount: 3)),
+                payload: .journalingSuggestion(
+                    CaptureJournalingSuggestionCardPayload(
+                        artifactCount: 3,
+                        affectCount: 0,
+                        photoCount: 2,
+                        videoCount: 0,
+                        livePhotoCount: 0,
+                        locationCount: 1
+                    )
+                ),
                 origin: .manual,
                 title: "Stack",
                 detail: "Grouped artifacts use one adaptive bundle card.",

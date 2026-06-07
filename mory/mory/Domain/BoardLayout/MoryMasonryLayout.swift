@@ -158,7 +158,7 @@ struct MoryMasonryLayoutPlan<ID: Hashable & Sendable>: Hashable, Sendable {
 
     private static func adaptiveColumnLimit(for width: CGFloat) -> Int {
         switch width {
-        case ..<360:
+        case ..<340:
             return 1
         case ..<600:
             return 2

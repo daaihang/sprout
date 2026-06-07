@@ -17,7 +17,7 @@ This matrix maps features from user input to local persistence, API, AI output, 
 | Pipeline status | `MemoryPipelineStatusStore` | Save-only path writes `notScheduled`; explicit analysis moves to pending/running/completed/failed. |
 | Search | Spotlight index | Indexed after save and after analysis completion. |
 
-Render-time card object metrics are derived from recipe + size + density and are not persisted. This keeps the visual object ratio separate from the stored grid occupancy and prevents UI sizing from becoming semantic fact.
+Render-time card object metrics are derived from content kind, content density, and masonry column width, and are not persisted. This keeps responsive card frames separate from stored user expression and prevents UI sizing from becoming semantic fact.
 
 ## Analysis Path
 

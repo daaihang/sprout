@@ -17,6 +17,7 @@ struct DebugQualityTuningLabView: View {
     @State private var errorMessage: String?
     @State private var copiedToast: String?
     @State private var preference: QualityTuningPreference = .defaults
+    @State private var isConfirmingClearLabData = false
 
     var body: some View {
         List {
@@ -60,6 +61,10 @@ struct DebugQualityTuningLabView: View {
             }
 
             Section {
+                DebugActionNotice(
+                    .mutating,
+                    message: "Scenario runs create real local memories and call the configured Go API through the normal pipeline."
+                )
                 Button {
                     Task { await runSelectedScenario() }
                 } label: {
@@ -92,12 +97,6 @@ struct DebugQualityTuningLabView: View {
                         Label("Copy All Reports", systemImage: "doc.on.doc.fill")
                     }
                 }
-                Button(role: .destructive) {
-                    Task { await clearLabData() }
-                } label: {
-                    Label("Clear Lab Data", systemImage: "trash")
-                }
-                .disabled(isRunning)
             } header: {
                 Text("Execution")
             } footer: {
@@ -141,26 +140,20 @@ struct DebugQualityTuningLabView: View {
             }
 
             Section {
-                Button {
-                    Task { await runSelectedScenario() }
+                DebugActionNotice(
+                    .destructive,
+                    message: "Clear Lab Data calls clearAllLocalData() and removes the full local memory repository."
+                )
+                Button(role: .destructive) {
+                    isConfirmingClearLabData = true
                 } label: {
-                    Label(isRunning ? "Running..." : "Run Selected Scenario", systemImage: "play.circle")
+                    Label("Clear Lab Data", systemImage: "trash")
                 }
                 .disabled(isRunning)
-                Button {
-                    Task { await runAllScenarios() }
-                } label: {
-                    Label(isRunning ? "Running..." : "Run All Presets", systemImage: "play.circle.fill")
-                }
-                .disabled(isRunning)
-                Button {
-                    Task { await runStrictBalancedMatrix() }
-                } label: {
-                    Label(isRunning ? "Running..." : "Run Strict + Balanced Matrix", systemImage: "square.grid.2x2")
-                }
-                .disabled(isRunning)
+            } header: {
+                Text("Danger Zone")
             } footer: {
-                Text("Each run creates real local memories and calls the configured Go API through the normal pipeline.")
+                Text("Use only in a throwaway local debug store.")
             }
 
             if let errorMessage {
@@ -225,6 +218,18 @@ struct DebugQualityTuningLabView: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .padding(.bottom, 24)
             }
+        }
+        .confirmationDialog(
+            "Clear all local data?",
+            isPresented: $isConfirmingClearLabData,
+            titleVisibility: .visible
+        ) {
+            Button("Clear all local data", role: .destructive) {
+                Task { await clearLabData() }
+            }
+            Button("common.cancel", role: .cancel) {}
+        } message: {
+            Text("This deletes the full local repository, not just quality tuning reports.")
         }
     }
 

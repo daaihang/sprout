@@ -42,6 +42,11 @@ struct DebugV6ControlsView: View {
             }
 
             Section("Bulk controls") {
+                DebugActionNotice(
+                    .mutating,
+                    message: "Bulk controls save persistent V6 feature flags or intelligence preferences."
+                )
+
                 Button("Enable all V6 flags") {
                     enableAllFlags()
                 }
@@ -65,6 +70,11 @@ struct DebugV6ControlsView: View {
 
             Section {
                 if preferences != nil {
+                    DebugActionNotice(
+                        .mutating,
+                        message: "Changing a preference saves it immediately."
+                    )
+
                     Toggle("Local intelligence", isOn: preferenceBoolBinding(\.localIntelligenceEnabled))
                     Toggle("Cloud intelligence", isOn: preferenceBoolBinding(\.cloudIntelligenceEnabled))
                     Toggle("Voice refinement", isOn: preferenceBoolBinding(\.voiceRefinementEnabled))
@@ -96,6 +106,11 @@ struct DebugV6ControlsView: View {
 
             Section {
                 if flags != nil {
+                    DebugActionNotice(
+                        .mutating,
+                        message: "Changing a flag saves it immediately."
+                    )
+
                     Toggle("intelligenceJobs", isOn: flagBoolBinding(\.intelligenceJobs))
                     Toggle("entityProfiles", isOn: flagBoolBinding(\.entityProfiles))
                     Toggle("clarificationQuestions", isOn: flagBoolBinding(\.clarificationQuestions))

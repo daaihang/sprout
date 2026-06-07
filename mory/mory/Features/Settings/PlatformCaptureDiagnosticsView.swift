@@ -32,6 +32,11 @@ struct PlatformCaptureDiagnosticsView: View {
                     LabeledContent("Dismissed", value: "\(snapshot.inboxCounts.dismissed)")
                     LabeledContent("With errors", value: "\(snapshot.inboxCounts.failed)")
 
+                    DebugActionNotice(
+                        .mutating,
+                        message: "Seeding writes a real external capture inbox item for validation."
+                    )
+
                     Button {
                         seedShareStyleTestItem()
                     } label: {
