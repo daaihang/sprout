@@ -4,10 +4,25 @@ import UIKit
 struct JournalingSuggestionCaptureCardContent: View {
     let common: CaptureCardCommonDisplay
     let payload: CaptureJournalingSuggestionCardPayload
+    let context: CaptureCardRenderContext
     let accent: Color
     let highContrast: Bool
 
     var body: some View {
+        if context.isSimple {
+            CaptureCardCapsuleRow(
+                iconName: "sparkles.rectangle.stack.fill",
+                imageData: payload.thumbnailData,
+                title: common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.journalingSuggestion"),
+                subtitle: "\(payload.artifactCount) items",
+                accent: accent
+            )
+        } else {
+            cardBody
+        }
+    }
+
+    private var cardBody: some View {
         ZStack(alignment: .bottomLeading) {
             background
             LinearGradient(
@@ -25,7 +40,12 @@ struct JournalingSuggestionCaptureCardContent: View {
                 }
                 Text(common.title?.trimmedOrNil ?? "Journaling Suggestion")
                     .font(.subheadline.weight(.semibold))
-                    .lineLimit(1)
+                    .lineLimit(context.metrics.titleLineLimit)
+                if context.isDetailed {
+                    Text(common.detail)
+                        .font(.caption.weight(.medium))
+                        .lineLimit(context.metrics.detailLineLimit)
+                }
                 chips
             }
             .foregroundStyle(legibility.primaryText)

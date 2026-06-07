@@ -6,38 +6,54 @@ struct WeatherCaptureCardContent: View {
     let common: CaptureCardCommonDisplay
     let payload: CaptureWeatherCardPayload
     let accent: Color
+    let context: CaptureCardRenderContext
     let reduceMotionOverride: Bool?
     let symbolMotionLevel: CaptureWeatherSymbolMotionLevel
     let atmosphereIntensityScale: Double
     let highContrast: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .top) {
-                Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.weather"))
-                    .font(.system(size: 35, weight: .bold, design: .rounded))
-                    .foregroundStyle(legibility.primaryText)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.72)
-
-                Spacer(minLength: 8)
-                weatherIcon
-            }
-
-            Text(common.detail)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(legibility.secondaryText)
-                .lineLimit(2)
-                .multilineTextAlignment(.leading)
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .shadow(color: legibility.shadow, radius: 3, y: 1)
-        .background {
-            WeatherAtmosphereView(
-                spec: weatherAtmosphereSpec,
-                isReduceMotionEnabled: resolvedReduceMotion
+        if context.isSimple {
+            CaptureCardCapsuleRow(
+                iconName: payload.symbolName?.trimmedOrNil ?? weatherStyle.symbolName,
+                title: common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.weather"),
+                subtitle: common.detail.trimmedOrNil,
+                accent: accent
             )
+            .background {
+                WeatherAtmosphereView(
+                    spec: weatherAtmosphereSpec,
+                    isReduceMotionEnabled: resolvedReduceMotion
+                )
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .top) {
+                    Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.weather"))
+                        .font(.system(size: 35, weight: .bold, design: .rounded))
+                        .foregroundStyle(legibility.primaryText)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
+
+                    Spacer(minLength: 8)
+                    weatherIcon
+                }
+
+                Text(common.detail)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(legibility.secondaryText)
+                    .lineLimit(context.metrics.detailLineLimit)
+                    .multilineTextAlignment(.leading)
+            }
+            .padding(context.metrics.padding.edgeInsets)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .shadow(color: legibility.shadow, radius: 3, y: 1)
+            .background {
+                WeatherAtmosphereView(
+                    spec: weatherAtmosphereSpec,
+                    isReduceMotionEnabled: resolvedReduceMotion
+                )
+            }
         }
     }
 

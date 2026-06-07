@@ -17,6 +17,9 @@ struct CardDebugArrangementReport: Hashable {
         let contentKindByNodeID = Dictionary(uniqueKeysWithValues: nodes.map { node in
             (node.id, contentKind(for: node.contentRef, artifacts: artifacts))
         })
+        let mediaAspectRatioByNodeID = Dictionary(uniqueKeysWithValues: nodes.map { node in
+            (node.id, mediaAspectRatio(for: node.contentRef, artifacts: artifacts))
+        })
         let inputNodes = nodes.map {
             MemoryDeskBoardInputNode(
                 id: $0.id,
@@ -24,7 +27,8 @@ struct CardDebugArrangementReport: Hashable {
                 estimatedHeight: MemoryCardObjectMetrics.estimatedHeight(
                     for: contentKindByNodeID[$0.id] ?? .status,
                     density: $0.contentDensity,
-                    columnWidth: columnWidth
+                    columnWidth: columnWidth,
+                    mediaAspectRatio: mediaAspectRatioByNodeID[$0.id] ?? nil
                 )
             )
         }
@@ -39,6 +43,7 @@ struct CardDebugArrangementReport: Hashable {
             return CardDebugArrangementSlotReport(
                 node: node,
                 contentKind: contentKindByNodeID[node.id] ?? .status,
+                mediaAspectRatio: mediaAspectRatioByNodeID[node.id] ?? nil,
                 slot: slot
             )
         }
@@ -66,6 +71,13 @@ struct CardDebugArrangementReport: Hashable {
             return .journalingSuggestion
         }
     }
+
+    private static func mediaAspectRatio(for contentRef: MemoryCardContentRef, artifacts: [Artifact]) -> CGFloat? {
+        guard case let .artifact(id) = contentRef,
+              let artifact = artifacts.first(where: { $0.id == id })
+        else { return nil }
+        return CaptureCardItem(artifact: artifact).payload.mediaAspectRatio
+    }
 }
 
 struct CardDebugArrangementSlotReport: Identifiable, Hashable {
@@ -80,7 +92,12 @@ struct CardDebugArrangementSlotReport: Identifiable, Hashable {
     let renderFrame: CGRect
     let objectMetrics: MemoryCardObjectMetrics
 
-    init(node: MemoryCardNode, contentKind: MemoryCardContentKind, slot: MemoryDeskBoardLayoutSlot<UUID>) {
+    init(
+        node: MemoryCardNode,
+        contentKind: MemoryCardContentKind,
+        mediaAspectRatio: CGFloat?,
+        slot: MemoryDeskBoardLayoutSlot<UUID>
+    ) {
         self.id = node.id
         self.contentRef = node.contentRef
         self.contentKind = contentKind
@@ -93,7 +110,8 @@ struct CardDebugArrangementSlotReport: Identifiable, Hashable {
         self.objectMetrics = MemoryCardObjectMetrics.resolve(
             contentKind: contentKind,
             density: node.contentDensity,
-            availableSize: slot.frame.size
+            availableSize: slot.frame.size,
+            mediaAspectRatio: mediaAspectRatio
         )
     }
 

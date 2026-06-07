@@ -4,6 +4,7 @@ import UIKit
 struct PhotoCaptureCardContent: View {
     let common: CaptureCardCommonDisplay
     let payload: CapturePhotoCardPayload
+    let context: CaptureCardRenderContext
     let accent: Color
     let highContrast: Bool
 
@@ -16,31 +17,14 @@ struct PhotoCaptureCardContent: View {
     }
 
     private var singlePhotoContent: some View {
-        ZStack(alignment: .bottomLeading) {
+        ZStack {
             photoBackground
-            photoScrim
-            titleBlock(legibility: legibility)
-                .padding(.horizontal, 12)
-                .padding(.bottom, 12)
         }
     }
 
     private var photoGroupContent: some View {
-        ZStack(alignment: .bottomLeading) {
+        ZStack {
             mosaicBackground
-
-            photoScrim
-            VStack(alignment: .leading, spacing: 5) {
-                Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.photos"))
-                    .font(.subheadline.weight(.semibold))
-                    .lineLimit(1)
-                Text(String(format: String(localized: "capture.card.photo.count.format"), payload.photoCount))
-                    .font(.caption.weight(.medium))
-            }
-            .foregroundStyle(legibility.primaryText)
-            .shadow(color: legibility.shadow, radius: 3, y: 1)
-            .padding(.horizontal, 12)
-            .padding(.bottom, 12)
         }
     }
 
@@ -105,29 +89,8 @@ struct PhotoCaptureCardContent: View {
         return LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing)
     }
 
-    private var photoScrim: some View {
-        LinearGradient(
-            colors: legibility.scrimColors,
-            startPoint: .top,
-            endPoint: .bottom
-        )
-    }
-
     private var legibility: CaptureCardLegibility {
         CaptureCardLegibility.imageData(payload.thumbnailData, highContrast: highContrast)
-    }
-
-    private func titleBlock(legibility: CaptureCardLegibility) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.photo"))
-                .font(.subheadline.weight(.semibold))
-                .lineLimit(1)
-            Text(common.detail)
-                .font(.caption)
-                .lineLimit(2)
-        }
-        .foregroundStyle(legibility.primaryText)
-        .shadow(color: legibility.shadow, radius: 3, y: 1)
     }
 }
 

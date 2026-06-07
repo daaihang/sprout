@@ -104,6 +104,7 @@ struct CaptureCardPresentation: Hashable, Sendable {
     var weatherAtmosphereIntensityScale: Double
     var showsLayoutGuides: Bool
     var showsFieldAudit: Bool
+    var contentKind: MemoryCardContentKind
     var contentDensity: MemoryCardContentDensity
 
     init(
@@ -117,11 +118,13 @@ struct CaptureCardPresentation: Hashable, Sendable {
         weatherAtmosphereIntensityScale: Double = 1,
         showsLayoutGuides: Bool = false,
         showsFieldAudit: Bool = false,
+        contentKind explicitContentKind: MemoryCardContentKind? = nil,
         contentDensity: MemoryCardContentDensity? = nil
     ) {
+        let contentKind = explicitContentKind ?? item.memoryContentKind
         let normalizedDensity = MemoryCardPresentationPolicy.normalizedDensity(
             contentDensity,
-            for: item.memoryContentKind
+            for: contentKind
         )
         self.item = item
         self.role = role
@@ -133,6 +136,7 @@ struct CaptureCardPresentation: Hashable, Sendable {
         self.weatherAtmosphereIntensityScale = weatherAtmosphereIntensityScale
         self.showsLayoutGuides = showsLayoutGuides
         self.showsFieldAudit = showsFieldAudit
+        self.contentKind = contentKind
         self.contentDensity = normalizedDensity
     }
 
@@ -177,6 +181,7 @@ struct CaptureCardPresentation: Hashable, Sendable {
         weatherAtmosphereIntensityScale: Double = 1,
         showsLayoutGuides: Bool = false,
         showsFieldAudit: Bool = false,
+        contentKind: MemoryCardContentKind? = nil,
         contentDensity: MemoryCardContentDensity? = nil
     ) -> CaptureCardPresentation {
         CaptureCardPresentation(
@@ -189,6 +194,7 @@ struct CaptureCardPresentation: Hashable, Sendable {
             weatherAtmosphereIntensityScale: weatherAtmosphereIntensityScale,
             showsLayoutGuides: showsLayoutGuides,
             showsFieldAudit: showsFieldAudit,
+            contentKind: contentKind,
             contentDensity: contentDensity
         )
     }

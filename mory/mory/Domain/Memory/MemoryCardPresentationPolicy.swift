@@ -64,14 +64,16 @@ enum MemoryCardPresentationPolicy {
 
     static func supportedDensities(for contentKind: MemoryCardContentKind) -> [MemoryCardContentDensity] {
         switch contentKind {
-        case .recordBody, .audio, .bundle:
+        case .recordBody, .audio, .music, .place, .todo, .journalingSuggestion, .bundle:
             return MemoryCardContentDensity.allCases
-        case .weather, .affect, .status:
+        case .weather, .status, .person, .link:
             return [.simple, .standard]
-        case .photo, .video, .livePhoto:
+        case .prompt:
             return [.standard, .detailed]
-        case .place, .music, .link, .todo, .prompt, .person, .journalingSuggestion:
-            return MemoryCardContentDensity.allCases
+        case .photo, .video, .livePhoto:
+            return [.standard]
+        case .affect:
+            return [.simple]
         }
     }
 

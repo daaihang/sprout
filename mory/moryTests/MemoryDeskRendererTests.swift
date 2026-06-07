@@ -111,6 +111,38 @@ final class MemoryDeskRendererTests: XCTestCase {
         XCTAssertEqual(presentation.contentDensity, .simple)
     }
 
+    func testPresentationCanOverridePayloadKindForRecordBodyAndBundle() {
+        let recordPresentation = CaptureCardPresentation(
+            item: CaptureCardItem(
+                id: "record",
+                payload: .prompt(CapturePromptCardPayload(prompt: "Title", answer: "Body")),
+                title: "Title",
+                detail: "Body"
+            ),
+            role: .detailViewing,
+            provenanceDisplayMode: .production,
+            contentKind: .recordBody,
+            contentDensity: .simple
+        )
+        let bundlePresentation = CaptureCardPresentation(
+            item: CaptureCardItem(
+                id: "bundle",
+                payload: .journalingSuggestion(CaptureJournalingSuggestionCardPayload(artifactCount: 3, affectCount: 0)),
+                title: "Stack",
+                detail: "3 items"
+            ),
+            role: .detailViewing,
+            provenanceDisplayMode: .production,
+            contentKind: .bundle,
+            contentDensity: .detailed
+        )
+
+        XCTAssertEqual(recordPresentation.contentKind, .recordBody)
+        XCTAssertEqual(recordPresentation.contentDensity, .simple)
+        XCTAssertEqual(bundlePresentation.contentKind, .bundle)
+        XCTAssertEqual(bundlePresentation.contentDensity, .detailed)
+    }
+
     func testArrangementPlaygroundPreservesDensityOrderAndStack() {
         let snapshot = CardDebugCatalog.arrangementPlaygroundSnapshot()
         let nodes = MemoryDeskRenderPlan.nodes(for: snapshot)

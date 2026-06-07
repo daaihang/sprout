@@ -75,6 +75,10 @@ struct CaptureCardView: View {
         item.commonDisplay
     }
 
+    private var renderContext: CaptureCardRenderContext {
+        CaptureCardRenderContext(presentation: presentation, availableSize: objectAvailableSize)
+    }
+
     private var cardBody: some View {
         standardCardBody
     }
@@ -87,7 +91,9 @@ struct CaptureCardView: View {
             footer: cardFooter,
             trailingControl: trailingControl,
             showsLayoutGuides: showsLayoutGuides,
-            fieldAuditText: showsFieldAudit ? fieldAuditText : nil
+            fieldAuditText: showsFieldAudit ? fieldAuditText : nil,
+            showsFooter: renderContext.showsFooter,
+            cornerRadius: renderContext.chromeCornerRadius
         ) {
             content
         }
@@ -97,17 +103,18 @@ struct CaptureCardView: View {
     private var content: some View {
         switch item.payload {
         case let .photo(payload):
-            PhotoCaptureCardContent(common: common, payload: payload, accent: accent, highContrast: highContrast)
+            PhotoCaptureCardContent(common: common, payload: payload, context: renderContext, accent: accent, highContrast: highContrast)
         case let .video(payload):
-            VideoCaptureCardContent(common: common, payload: payload, accent: accent, highContrast: highContrast)
+            VideoCaptureCardContent(common: common, payload: payload, context: renderContext, accent: accent, highContrast: highContrast)
         case let .livePhoto(payload):
-            LivePhotoCaptureCardContent(common: common, payload: payload, accent: accent, highContrast: highContrast)
+            LivePhotoCaptureCardContent(common: common, payload: payload, context: renderContext, accent: accent, highContrast: highContrast)
         case let .audio(payload):
-            AudioCaptureCardContent(common: common, payload: payload, accent: accent)
+            AudioCaptureCardContent(common: common, payload: payload, context: renderContext, accent: accent)
         case let .place(payload):
             PlaceCaptureCardContent(
                 common: common,
                 payload: payload,
+                context: renderContext,
                 accent: accent,
                 highContrastOverride: highContrastOverride
             )
@@ -116,6 +123,7 @@ struct CaptureCardView: View {
                 common: common,
                 payload: payload,
                 accent: accent,
+                context: renderContext,
                 reduceMotionOverride: reduceMotionOverride,
                 symbolMotionLevel: presentation.weatherSymbolMotionLevel,
                 atmosphereIntensityScale: presentation.weatherAtmosphereIntensityScale,
@@ -125,28 +133,33 @@ struct CaptureCardView: View {
             MusicCaptureCardContent(
                 common: common,
                 payload: payload,
+                context: renderContext,
                 accent: accent,
                 palette: palette,
                 highContrast: highContrast
             )
         case let .link(payload):
-            LinkCaptureCardContent(common: common, payload: payload, accent: accent)
+            LinkCaptureCardContent(common: common, payload: payload, context: renderContext, accent: accent)
         case let .todo(payload):
-            TodoCaptureCardContent(common: common, payload: payload, accent: accent, isSelected: presentation.displaysSelection)
+            TodoCaptureCardContent(common: common, payload: payload, context: renderContext, accent: accent, isSelected: presentation.displaysSelection)
         case let .prompt(payload):
-            StatusCaptureCardContent(
-                common: common.replacingDetail(payload.answer?.trimmedOrNil ?? payload.prompt),
-                payload: CaptureStatusCardPayload(),
-                accent: accent
-            )
-        case .person:
-            StatusCaptureCardContent(common: common, payload: CaptureStatusCardPayload(), accent: accent)
-        case .affect:
-            StatusCaptureCardContent(common: common, payload: CaptureStatusCardPayload(), accent: accent)
+            if renderContext.contentKind == .recordBody {
+                RecordBodyCaptureCardContent(common: common, payload: payload, context: renderContext, accent: accent)
+            } else {
+                PromptCaptureCardContent(common: common, payload: payload, context: renderContext, accent: accent)
+            }
+        case let .person(payload):
+            PersonCaptureCardContent(common: common, payload: payload, context: renderContext, accent: accent)
+        case let .affect(payload):
+            AffectCaptureCardContent(common: common, payload: payload, context: renderContext, accent: accent)
         case let .journalingSuggestion(payload):
-            JournalingSuggestionCaptureCardContent(common: common, payload: payload, accent: accent, highContrast: highContrast)
+            if renderContext.contentKind == .bundle {
+                BundleCaptureCardContent(common: common, payload: payload, context: renderContext, accent: accent, highContrast: highContrast)
+            } else {
+                JournalingSuggestionCaptureCardContent(common: common, payload: payload, context: renderContext, accent: accent, highContrast: highContrast)
+            }
         case let .status(payload):
-            StatusCaptureCardContent(common: common, payload: payload, accent: accent)
+            StatusCaptureCardContent(common: common, payload: payload, context: renderContext, accent: accent)
         }
     }
 
@@ -231,7 +244,7 @@ struct CaptureCardView: View {
     }
 
     private var containerStroke: some View {
-        RoundedRectangle(cornerRadius: 20, style: .continuous)
+        RoundedRectangle(cornerRadius: renderContext.chromeCornerRadius, style: .continuous)
             .stroke(
                 presentation.displaysSelection ? palette.selectionStroke : Color.primary.opacity(highContrast ? 0.18 : 0.08),
                 lineWidth: presentation.displaysSelection ? (highContrast ? 1.8 : 1.35) : (highContrast ? 1.2 : 1)
@@ -359,6 +372,10 @@ struct CaptureCardView: View {
     private var fieldAuditText: String {
         [
             "role=\(presentation.role.rawValue)",
+            "contentKind=\(presentation.contentKind.rawValue)",
+            "density=\(renderContext.density.rawValue)",
+            "footer=\(renderContext.footerMode)",
+            "aspect=\(renderContext.mediaAspectRatio.map { String(format: "%.3f", $0) } ?? "nil")",
             "kind=\(item.kind.rawValue)",
             "payload=\(item.payload.kind.rawValue)",
             "state=\(item.state.rawValue)",

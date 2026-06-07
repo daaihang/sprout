@@ -86,6 +86,10 @@ nonisolated final class MediaArtifactProcessor: Sendable {
         if let durationSeconds = result.durationSeconds {
             videoMetadata["durationSeconds"] = "\(durationSeconds)"
         }
+        if let dimensions = result.dimensions {
+            if let width = dimensions.width { videoMetadata["width"] = "\(width)" }
+            if let height = dimensions.height { videoMetadata["height"] = "\(height)" }
+        }
         videoMetadata["mimeType"] = Self.mimeType(forVideoFilename: filename)
         videoMetadata["byteCount"] = "\(data.count)"
         return .video(
@@ -184,7 +188,10 @@ nonisolated final class MediaArtifactProcessor: Sendable {
         return try Data(contentsOf: url)
     }
 
-    nonisolated private static func videoPreview(data: Data, filename: String) throws -> (thumbnailData: Data?, durationSeconds: Int?) {
+    nonisolated private static func videoPreview(
+        data: Data,
+        filename: String
+    ) throws -> (thumbnailData: Data?, durationSeconds: Int?, dimensions: ArtifactMediaDimensions?) {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
             .appendingPathExtension(filename.pathExtensionOrDefault)
@@ -193,19 +200,32 @@ nonisolated final class MediaArtifactProcessor: Sendable {
         let asset = AVURLAsset(url: url)
         let seconds = CMTimeGetSeconds(asset.duration)
         let duration = seconds.isFinite && seconds > 0 ? Int(seconds.rounded()) : nil
+        let dimensions = videoDimensions(from: asset)
         let generator = AVAssetImageGenerator(asset: asset)
         generator.appliesPreferredTrackTransform = true
         generator.maximumSize = CGSize(width: 900, height: 900)
         guard let cgImage = try? generator.copyCGImage(at: .zero, actualTime: nil) else {
-            return (nil, duration)
+            return (nil, duration, dimensions)
         }
         let image = UIImage(cgImage: cgImage)
         let thumbnail = image.jpegData(compressionQuality: 0.72)
-        return (thumbnail, duration)
+        return (thumbnail, duration, dimensions)
     }
 
     nonisolated private static func mimeType(forVideoFilename filename: String) -> String {
         filename.lowercased().hasSuffix(".mov") ? "video/quicktime" : "video/mp4"
+    }
+
+    nonisolated private static func videoDimensions(from asset: AVAsset) -> ArtifactMediaDimensions? {
+        guard let track = asset.tracks(withMediaType: .video).first else { return nil }
+        let transformed = track.naturalSize.applying(track.preferredTransform)
+        let width = Int(abs(transformed.width).rounded())
+        let height = Int(abs(transformed.height).rounded())
+        let dimensions = ArtifactMediaDimensions(
+            width: width > 0 ? width : nil,
+            height: height > 0 ? height : nil
+        )
+        return dimensions.isEmpty ? nil : dimensions
     }
 }
 

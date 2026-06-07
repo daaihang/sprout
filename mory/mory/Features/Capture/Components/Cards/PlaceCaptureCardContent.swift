@@ -6,56 +6,82 @@ struct PlaceCaptureCardContent: View {
 
     let common: CaptureCardCommonDisplay
     let payload: CapturePlaceCardPayload
+    let context: CaptureCardRenderContext
     let accent: Color
     let highContrastOverride: Bool?
 
+    @State private var generatedSnapshotData: Data?
+
     var body: some View {
-        ZStack(alignment: .bottomLeading) {
-            placeBackground
-            standardContent
+        if context.isSimple {
+            CaptureCardCapsuleRow(
+                iconName: "mappin.and.ellipse",
+                title: placeTitle,
+                subtitle: placeAddress,
+                accent: accent
+            )
+        } else {
+            ZStack(alignment: .bottomLeading) {
+                mapImage
+                LinearGradient(
+                    colors: legibility.scrimColors,
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(placeTitle)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                    if context.isDetailed, let placeAddress {
+                        Text(placeAddress)
+                            .font(.caption.weight(.medium))
+                            .lineLimit(1)
+                    }
+                }
+                .foregroundStyle(legibility.primaryText)
+                .shadow(color: legibility.shadow, radius: 3, y: 1)
+                .padding(.horizontal, 12)
+                .padding(.bottom, 12)
+            }
+            .task(id: snapshotTaskID) {
+                await loadSnapshotIfNeeded()
+            }
         }
     }
 
-    private var standardContent: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Image(systemName: "mappin.circle.fill")
-                .font(.title2)
-                .symbolRenderingMode(.palette)
-                .foregroundStyle(placePrimaryText, accent)
+    private var placeTitle: String {
+        common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.place")
+    }
 
-            Spacer()
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.place"))
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(placePrimaryText)
-                    .lineLimit(1)
-                Text(common.detail)
-                    .font(.caption)
-                    .foregroundStyle(placeSecondaryText)
-                    .lineLimit(2)
-            }
-        }
-        .shadow(color: placeTextShadow, radius: 3, y: 1)
-        .padding(12)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+    private var placeAddress: String? {
+        common.detail.trimmedOrNil
     }
 
     @ViewBuilder
-    private var placeBackground: some View {
-        if let image = payload.mapSnapshotImage, !payload.isPrivacyEnabled {
+    private var mapImage: some View {
+        if let image = snapshotImage, !payload.isPrivacyEnabled {
             Image(uiImage: image)
                 .resizable()
                 .scaledToFill()
-                .overlay(placeSnapshotScrim)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
         } else {
-            mapBackground
+            fallbackMapBackground
                 .overlay {
                     if payload.isPrivacyEnabled {
                         privacyLocationMask
                     }
                 }
         }
+    }
+
+    private var snapshotImage: UIImage? {
+        guard let data = payload.mapSnapshotData ?? generatedSnapshotData else { return nil }
+        return UIImage(data: data)
+    }
+
+    private var activeSnapshotData: Data? {
+        payload.mapSnapshotData ?? generatedSnapshotData
     }
 
     private var privacyLocationMask: some View {
@@ -70,7 +96,7 @@ struct PlaceCaptureCardContent: View {
         )
     }
 
-    private var mapBackground: some View {
+    private var fallbackMapBackground: some View {
         ZStack {
             accent.opacity(0.1)
             Path { path in
@@ -88,51 +114,54 @@ struct PlaceCaptureCardContent: View {
                 .fill(accent.opacity(0.14))
                 .frame(width: 42, height: 42)
                 .offset(x: 54, y: -18)
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(accent.opacity(0.18), lineWidth: 1.2)
-                .frame(width: 92, height: 54)
-                .rotationEffect(.degrees(-9))
-                .offset(x: -32, y: 28)
+            Image(systemName: "mappin.circle.fill")
+                .font(.title)
+                .symbolRenderingMode(.palette)
+                .foregroundStyle(.white, accent)
+                .shadow(color: .black.opacity(0.18), radius: 4, y: 2)
         }
-    }
-
-    private var legibilityStyle: CaptureMapLegibilityStyle {
-        guard payload.mapSnapshotData != nil, !payload.isPrivacyEnabled else {
-            return .fallback
-        }
-        return CaptureMapLegibilityStyle.resolve(snapshotData: payload.mapSnapshotData)
     }
 
     private var legibility: CaptureCardLegibility {
         CaptureCardLegibility.map(
-            snapshotData: payload.mapSnapshotData,
+            snapshotData: activeSnapshotData,
             isPrivacyEnabled: payload.isPrivacyEnabled,
             highContrast: highContrast
         )
     }
 
-    private var placePrimaryText: Color {
-        legibility.primaryText
+    private var snapshotTaskID: String {
+        [
+            payload.latitude.map { String(format: "%.5f", $0) } ?? "nil",
+            payload.longitude.map { String(format: "%.5f", $0) } ?? "nil",
+            payload.isPrivacyEnabled ? "private" : "public",
+            context.density.rawValue,
+        ].joined(separator: "-")
     }
 
-    private var placeSecondaryText: Color {
-        legibility.secondaryText
-    }
+    @MainActor
+    private func loadSnapshotIfNeeded() async {
+        guard payload.mapSnapshotData == nil,
+              generatedSnapshotData == nil,
+              !payload.isPrivacyEnabled
+        else { return }
 
-    private var placeTextShadow: Color {
-        legibility.shadow
-    }
-
-    private var placeSnapshotScrim: some View {
-        LinearGradient(
-            colors: placeScrimColors,
-            startPoint: .top,
-            endPoint: .bottom
+        generatedSnapshotData = await CapturePlaceMapSnapshotCache.shared.snapshotData(
+            latitude: payload.latitude,
+            longitude: payload.longitude,
+            size: snapshotSize
         )
     }
 
-    private var placeScrimColors: [Color] {
-        legibility.scrimColors
+    private var snapshotSize: CGSize {
+        switch context.density {
+        case .simple:
+            return CGSize(width: 240, height: 120)
+        case .standard:
+            return CGSize(width: 480, height: 360)
+        case .detailed:
+            return CGSize(width: 420, height: 560)
+        }
     }
 
     private var highContrast: Bool {
@@ -140,9 +169,43 @@ struct PlaceCaptureCardContent: View {
     }
 }
 
-private extension CapturePlaceCardPayload {
-    var mapSnapshotImage: UIImage? {
-        guard let mapSnapshotData else { return nil }
-        return UIImage(data: mapSnapshotData)
+@MainActor
+final class CapturePlaceMapSnapshotCache {
+    static let shared = CapturePlaceMapSnapshotCache()
+
+    private var storage: [Key: Data] = [:]
+
+    func snapshotData(
+        latitude: Double?,
+        longitude: Double?,
+        size: CGSize
+    ) async -> Data? {
+        let key = Key(latitude: latitude, longitude: longitude, size: size)
+        if let cached = storage[key] {
+            return cached
+        }
+        let data = await CapturePlaceMapSnapshotter.snapshotData(
+            latitude: latitude,
+            longitude: longitude,
+            size: size
+        )
+        if let data {
+            storage[key] = data
+        }
+        return data
+    }
+
+    private struct Key: Hashable {
+        let latitude: Int
+        let longitude: Int
+        let width: Int
+        let height: Int
+
+        init(latitude: Double?, longitude: Double?, size: CGSize) {
+            self.latitude = Int(((latitude ?? 0) * 100_000).rounded())
+            self.longitude = Int(((longitude ?? 0) * 100_000).rounded())
+            self.width = Int(size.width.rounded())
+            self.height = Int(size.height.rounded())
+        }
     }
 }

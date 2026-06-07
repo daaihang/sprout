@@ -4,34 +4,57 @@ import UIKit
 struct MusicCaptureCardContent: View {
     let common: CaptureCardCommonDisplay
     let payload: CaptureMusicCardPayload
+    let context: CaptureCardRenderContext
     let accent: Color
     let palette: CaptureCardPalette
     let highContrast: Bool
 
     var body: some View {
+        if context.isSimple {
+            CaptureCardCapsuleRow(
+                iconName: "music.note",
+                imageData: payload.artworkData,
+                title: common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.music"),
+                subtitle: common.detail.trimmedOrNil,
+                accent: accent
+            )
+        } else {
+            fullMusicCard
+        }
+    }
+
+    private var fullMusicCard: some View {
         ZStack {
             musicBackground
 
-            HStack(alignment: .center, spacing: 10) {
-                compactArtwork(size: 48)
+            VStack(alignment: .leading, spacing: context.isDetailed ? 12 : 10) {
+                HStack(alignment: .center, spacing: 10) {
+                    compactArtwork(size: context.isDetailed ? 62 : 48)
 
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.music"))
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(coverLegibility.primaryText)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.86)
-                    Text(common.detail)
-                        .font(.caption)
-                        .foregroundStyle(coverLegibility.secondaryText)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.86)
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.music"))
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(coverLegibility.primaryText)
+                            .lineLimit(context.metrics.titleLineLimit)
+                            .minimumScaleFactor(0.86)
+                        Text(common.detail)
+                            .font(.caption)
+                            .foregroundStyle(coverLegibility.secondaryText)
+                            .lineLimit(context.metrics.detailLineLimit)
+                            .minimumScaleFactor(0.86)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+
+                if context.isDetailed, let duration = payload.durationSeconds {
+                    Text(duration.formattedMusicDuration)
+                        .font(.caption2.monospacedDigit().weight(.semibold))
+                        .foregroundStyle(coverLegibility.secondaryText)
+                }
             }
-            .padding(12)
+            .padding(context.metrics.padding.edgeInsets)
             .shadow(color: coverLegibility.shadow, radius: 3, y: 1)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
     }
 
@@ -151,6 +174,14 @@ private extension CaptureMusicCardPayload {
 
     var hasArtwork: Bool {
         artworkURL?.trimmedOrNil != nil || artworkData != nil
+    }
+}
+
+private extension Int {
+    var formattedMusicDuration: String {
+        let minutes = self / 60
+        let seconds = self % 60
+        return String(format: "%d:%02d", minutes, seconds)
     }
 }
 

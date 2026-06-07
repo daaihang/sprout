@@ -53,17 +53,20 @@ enum CaptureCardPayload: Hashable, Sendable {
 
 struct CapturePhotoCardPayload: Hashable, Sendable {
     var thumbnailData: Data? = nil
+    var mediaDimensions: ArtifactMediaDimensions? = nil
     var photoCount: Int = 1
 }
 
 struct CaptureVideoCardPayload: Hashable, Sendable {
     var thumbnailData: Data? = nil
     var durationSeconds: Int? = nil
+    var mediaDimensions: ArtifactMediaDimensions? = nil
 }
 
 struct CaptureLivePhotoCardPayload: Hashable, Sendable {
     var thumbnailData: Data? = nil
     var pairedVideoByteCount: Int? = nil
+    var mediaDimensions: ArtifactMediaDimensions? = nil
 }
 
 struct CaptureAudioCardPayload: Hashable, Sendable {

@@ -238,7 +238,8 @@ private struct CardDebugTypeDetailView: View {
             Section("Checks") {
                 let metrics = MemoryCardObjectMetrics.resolve(
                     contentKind: entry.fixture.contentKind,
-                    density: entry.fixture.preferredDensity
+                    density: entry.fixture.preferredDensity,
+                    mediaAspectRatio: entry.fixture.item.payload.mediaAspectRatio
                 )
                 DebugValueRow(
                     title: "Object metrics",
@@ -260,6 +261,7 @@ private struct CardDebugTypeDetailView: View {
             item: entry.fixture.item,
             role: .debugLab,
             provenanceDisplayMode: .debug,
+            contentKind: entry.fixture.contentKind,
             contentDensity: density
         )
     }
@@ -328,6 +330,7 @@ private struct CardDebugDensityMatrixView: View {
                                         item: fixture.item,
                                         role: .debugLab,
                                         provenanceDisplayMode: .debug,
+                                        contentKind: fixture.contentKind,
                                         contentDensity: densityFixture.density
                                     )
                                 )
@@ -381,7 +384,11 @@ private struct CardDebugMasonryPolicyView: View {
 
             Section("Object Metrics") {
                 ForEach(CardDebugCatalog.contentFixtures) { fixture in
-                    let metrics = MemoryCardObjectMetrics.resolve(contentKind: fixture.contentKind, density: fixture.preferredDensity)
+                    let metrics = MemoryCardObjectMetrics.resolve(
+                        contentKind: fixture.contentKind,
+                        density: fixture.preferredDensity,
+                        mediaAspectRatio: fixture.item.payload.mediaAspectRatio
+                    )
                     DebugValueRow(
                         title: "\(fixture.contentKind.rawValue).\(fixture.preferredDensity.rawValue)",
                         value: "\(Int(metrics.preferredSize.width))x\(Int(metrics.preferredSize.height)) · padding \(Int(metrics.padding.top)) · lines \(metrics.titleLineLimit)/\(metrics.detailLineLimit)/\(metrics.metadataLineLimit)"

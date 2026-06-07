@@ -4,7 +4,10 @@ enum CaptureCardLabFixtures {
     static let allTypes: [CaptureCardItem] = [
         CaptureCardItem(
             id: "fixture-photo",
-            payload: .photo(CapturePhotoCardPayload(photoCount: 3)),
+            payload: .photo(CapturePhotoCardPayload(
+                mediaDimensions: ArtifactMediaDimensions(width: 1440, height: 1800),
+                photoCount: 3
+            )),
             title: String(localized: "debug.captureCardLab.fixture.photo.title"),
             detail: String(localized: "debug.captureCardLab.fixture.photo.detail"),
             metadata: String(format: String(localized: "capture.card.photo.count.format"), 3),
@@ -12,17 +15,22 @@ enum CaptureCardLabFixtures {
         ),
         CaptureCardItem(
             id: "fixture-video",
-            payload: .video(CaptureVideoCardPayload(durationSeconds: 18)),
+            payload: .video(CaptureVideoCardPayload(
+                durationSeconds: 18,
+                mediaDimensions: ArtifactMediaDimensions(width: 1920, height: 1080)
+            )),
             title: "Video",
-            detail: "Gallery clip with generated first-frame preview",
+            detail: "Media-only video fixture with centered play control",
             metadata: "0:18",
             isRemovable: true
         ),
         CaptureCardItem(
             id: "fixture-live-photo",
-            payload: .livePhoto(CaptureLivePhotoCardPayload()),
+            payload: .livePhoto(CaptureLivePhotoCardPayload(
+                mediaDimensions: ArtifactMediaDimensions(width: 3024, height: 4032)
+            )),
             title: "Live Photo",
-            detail: "Still image with paired motion clip",
+            detail: "Media-only Live Photo fixture with non-text glyph",
             metadata: "Live Photo",
             isRemovable: true
         ),
@@ -278,28 +286,40 @@ enum CaptureCardLabFixtures {
     static let photoGroups: [CaptureCardItem] = [
         CaptureCardItem(
             id: "photo-single",
-            payload: .photo(CapturePhotoCardPayload(photoCount: 1)),
+            payload: .photo(CapturePhotoCardPayload(
+                mediaDimensions: ArtifactMediaDimensions(width: 1440, height: 1800),
+                photoCount: 1
+            )),
             title: String(localized: "debug.captureCardLab.photo.single.title"),
             detail: String(localized: "debug.captureCardLab.photo.single.detail"),
             metadata: String(format: String(localized: "capture.card.photo.count.format"), 1)
         ),
         CaptureCardItem(
             id: "photo-group-mosaic",
-            payload: .photo(CapturePhotoCardPayload(photoCount: 4)),
+            payload: .photo(CapturePhotoCardPayload(
+                mediaDimensions: ArtifactMediaDimensions(width: 1600, height: 1200),
+                photoCount: 4
+            )),
             title: String(localized: "debug.captureCardLab.photo.mosaic.title"),
             detail: String(localized: "debug.captureCardLab.photo.mosaic.detail"),
             metadata: String(format: String(localized: "capture.card.photo.count.format"), 4)
         ),
         CaptureCardItem(
             id: "photo-group-stack",
-            payload: .photo(CapturePhotoCardPayload(photoCount: 5)),
+            payload: .photo(CapturePhotoCardPayload(
+                mediaDimensions: ArtifactMediaDimensions(width: 1200, height: 1600),
+                photoCount: 5
+            )),
             title: String(localized: "debug.captureCardLab.photo.stack.title"),
             detail: String(localized: "debug.captureCardLab.photo.stack.detail"),
             metadata: String(format: String(localized: "capture.card.photo.count.format"), 5)
         ),
         CaptureCardItem(
             id: "photo-group-carousel",
-            payload: .photo(CapturePhotoCardPayload(photoCount: 8)),
+            payload: .photo(CapturePhotoCardPayload(
+                mediaDimensions: ArtifactMediaDimensions(width: 1920, height: 1080),
+                photoCount: 8
+            )),
             title: String(localized: "debug.captureCardLab.photo.carousel.title"),
             detail: String(localized: "debug.captureCardLab.photo.carousel.detail"),
             metadata: String(format: String(localized: "capture.card.photo.count.format"), 8)

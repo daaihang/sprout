@@ -22,7 +22,10 @@ extension CaptureCardItem {
         case .photo:
             self.init(
                 id: "artifact-\(artifact.id.uuidString)",
-                payload: .photo(CapturePhotoCardPayload(thumbnailData: artifact.previewPayload ?? artifact.binaryPayload)),
+                payload: .photo(CapturePhotoCardPayload(
+                    thumbnailData: artifact.previewPayload ?? artifact.binaryPayload,
+                    mediaDimensions: artifact.mediaDimensions
+                )),
                 origin: artifact.captureCardOrigin,
                 provenance: artifact.captureProvenance,
                 state: state,
@@ -38,7 +41,8 @@ extension CaptureCardItem {
                 id: "artifact-\(artifact.id.uuidString)",
                 payload: .video(CaptureVideoCardPayload(
                     thumbnailData: artifact.previewPayload,
-                    durationSeconds: artifact.metadata["durationSeconds"].flatMap(Int.init)
+                    durationSeconds: artifact.metadata["durationSeconds"].flatMap(Int.init),
+                    mediaDimensions: artifact.mediaDimensions
                 )),
                 origin: artifact.captureCardOrigin,
                 provenance: artifact.captureProvenance,
@@ -56,7 +60,8 @@ extension CaptureCardItem {
                 id: "artifact-\(artifact.id.uuidString)",
                 payload: .livePhoto(CaptureLivePhotoCardPayload(
                     thumbnailData: artifact.previewPayload,
-                    pairedVideoByteCount: artifact.metadata["pairedVideoByteCount"].flatMap(Int.init)
+                    pairedVideoByteCount: artifact.metadata["pairedVideoByteCount"].flatMap(Int.init),
+                    mediaDimensions: artifact.mediaDimensions
                 )),
                 origin: artifact.captureCardOrigin,
                 provenance: artifact.captureProvenance,
@@ -266,7 +271,10 @@ extension CaptureCardItem {
         case let .photo(c):
             self.init(
                 id: resolvedID,
-                payload: .photo(CapturePhotoCardPayload(thumbnailData: c.thumbnailData)),
+                payload: .photo(CapturePhotoCardPayload(
+                    thumbnailData: c.thumbnailData,
+                    mediaDimensions: parseMediaDimensions(from: c.photoMetadata)
+                )),
                 origin: origin,
                 provenance: provenance,
                 state: state,
@@ -292,7 +300,8 @@ extension CaptureCardItem {
                 id: resolvedID,
                 payload: .video(CaptureVideoCardPayload(
                     thumbnailData: c.thumbnailData,
-                    durationSeconds: c.videoMetadata["durationSeconds"].flatMap(Int.init)
+                    durationSeconds: c.videoMetadata["durationSeconds"].flatMap(Int.init),
+                    mediaDimensions: parseMediaDimensions(from: c.videoMetadata)
                 )),
                 origin: origin,
                 provenance: provenance,
@@ -307,7 +316,8 @@ extension CaptureCardItem {
                 id: resolvedID,
                 payload: .livePhoto(CaptureLivePhotoCardPayload(
                     thumbnailData: c.thumbnailData ?? c.stillImageData,
-                    pairedVideoByteCount: c.pairedVideoData?.count
+                    pairedVideoByteCount: c.pairedVideoData?.count,
+                    mediaDimensions: parseMediaDimensions(from: c.metadata)
                 )),
                 origin: origin,
                 provenance: provenance,
@@ -437,6 +447,10 @@ private extension Artifact {
         captureProvenance?.artifactOrigin ?? metadata["captureOrigin"].flatMap(CaptureArtifactOrigin.init(rawValue:))
     }
 
+    var mediaDimensions: ArtifactMediaDimensions? {
+        parseMediaDimensions(from: metadata)
+    }
+
     var captureCardArtworkPalette: MusicArtworkPalette? {
         let palette = MusicArtworkPalette(
             backgroundColorHex: metadata["artworkBackgroundColor"]?.trimmedOrNil,
@@ -445,6 +459,14 @@ private extension Artifact {
         )
         return palette.isEmpty ? nil : palette
     }
+}
+
+private func parseMediaDimensions(from metadata: [String: String]) -> ArtifactMediaDimensions? {
+    let dimensions = ArtifactMediaDimensions(
+        width: metadata["width"].flatMap(Int.init),
+        height: metadata["height"].flatMap(Int.init)
+    )
+    return dimensions.isEmpty ? nil : dimensions
 }
 
 nonisolated func captureCardModelSnippet(_ value: String?) -> String? {

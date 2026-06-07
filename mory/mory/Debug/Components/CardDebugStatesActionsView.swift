@@ -92,6 +92,7 @@ enum CardDebugStatesActionsModel {
             item: item(contentKind: contentKind, runtimeState: runtimeState),
             role: role.role,
             provenanceDisplayMode: .debug,
+            contentKind: contentKind,
             contentDensity: density
         )
     }
@@ -200,7 +201,8 @@ struct CardDebugStatesActionsView: View {
 
                 let metrics = MemoryCardObjectMetrics.resolve(
                     contentKind: selectedContentKind,
-                    density: presentation.contentDensity
+                    density: presentation.contentDensity,
+                    mediaAspectRatio: presentation.item.payload.mediaAspectRatio
                 )
                 DebugValueRow(title: "Presentation role", value: presentation.role.rawValue)
                 DebugValueRow(title: "Runtime state", value: presentation.item.state.rawValue)

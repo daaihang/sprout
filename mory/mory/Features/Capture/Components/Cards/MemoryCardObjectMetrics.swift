@@ -44,11 +44,17 @@ struct MemoryCardObjectMetrics: Hashable, Sendable {
     static func resolve(
         contentKind: MemoryCardContentKind,
         density explicitDensity: MemoryCardContentDensity? = nil,
-        availableSize: CGSize? = nil
+        availableSize: CGSize? = nil,
+        mediaAspectRatio: CGFloat? = nil
     ) -> MemoryCardObjectMetrics {
         let density = MemoryCardPresentationPolicy.normalizedDensity(explicitDensity, for: contentKind)
         let availableWidth = availableSize?.width
-        var metrics = baseMetrics(contentKind: contentKind, density: density, availableWidth: availableWidth)
+        var metrics = baseMetrics(
+            contentKind: contentKind,
+            density: density,
+            availableWidth: availableWidth,
+            mediaAspectRatio: mediaAspectRatio
+        )
         if let availableSize,
            availableSize.width.isFinite,
            availableSize.width > 1 {
@@ -63,43 +69,56 @@ struct MemoryCardObjectMetrics: Hashable, Sendable {
     static func estimatedHeight(
         for contentKind: MemoryCardContentKind,
         density: MemoryCardContentDensity? = nil,
-        columnWidth: CGFloat
+        columnWidth: CGFloat,
+        mediaAspectRatio: CGFloat? = nil
     ) -> CGFloat {
         resolve(
             contentKind: contentKind,
             density: density,
-            availableSize: CGSize(width: columnWidth, height: .greatestFiniteMagnitude)
+            availableSize: CGSize(width: columnWidth, height: .greatestFiniteMagnitude),
+            mediaAspectRatio: mediaAspectRatio
         ).preferredSize.height
     }
 
     private static func baseMetrics(
         contentKind: MemoryCardContentKind,
         density: MemoryCardContentDensity,
-        availableWidth: CGFloat?
+        availableWidth: CGFloat?,
+        mediaAspectRatio: CGFloat?
     ) -> MemoryCardObjectMetrics {
         let width = max(120, min(availableWidth ?? 188, 260))
         var metrics = MemoryCardObjectMetrics(
             contentKind: contentKind,
             density: density,
-            preferredSize: CGSize(width: width, height: defaultHeight(for: contentKind, density: density, width: width)),
+            preferredSize: CGSize(
+                width: width,
+                height: defaultHeight(
+                    for: contentKind,
+                    density: density,
+                    width: width,
+                    mediaAspectRatio: mediaAspectRatio
+                )
+            ),
             padding: padding(for: density),
-            titleLineLimit: density == .simple ? 1 : 2,
+            titleLineLimit: titleLineLimit(for: contentKind, density: density),
             detailLineLimit: detailLineLimit(for: contentKind, density: density),
             metadataLineLimit: 1,
             thumbnailScale: thumbnailScale(for: contentKind)
         )
 
         switch contentKind {
+        case .photo, .video, .livePhoto:
+            metrics.padding = MemoryCardObjectPadding(0)
+            metrics.titleLineLimit = 0
+            metrics.detailLineLimit = 0
+            metrics.metadataLineLimit = 0
         case .weather, .affect, .status:
             metrics.padding = density == .simple
                 ? MemoryCardObjectPadding(top: 10, leading: 12, bottom: 10, trailing: 12)
                 : MemoryCardObjectPadding(14)
         case .recordBody, .prompt:
-            metrics.detailLineLimit = density == .detailed ? 12 : 8
-        case .photo, .livePhoto:
-            metrics.titleLineLimit = 2
-            metrics.detailLineLimit = 2
-        case .video, .audio, .music, .place, .link, .todo, .person, .journalingSuggestion, .bundle:
+            metrics.detailLineLimit = density == .detailed ? 6 : 4
+        case .audio, .music, .place, .link, .todo, .person, .journalingSuggestion, .bundle:
             break
         }
 
@@ -117,25 +136,47 @@ struct MemoryCardObjectMetrics: Hashable, Sendable {
         }
     }
 
+    private static func titleLineLimit(
+        for contentKind: MemoryCardContentKind,
+        density: MemoryCardContentDensity
+    ) -> Int {
+        switch contentKind {
+        case .photo, .video, .livePhoto:
+            return 0
+        case .place where density != .simple:
+            return 1
+        case .affect:
+            return 1
+        case _ where density == .simple:
+            return 1
+        default:
+            return 2
+        }
+    }
+
     private static func detailLineLimit(
         for contentKind: MemoryCardContentKind,
         density: MemoryCardContentDensity
     ) -> Int {
+        if contentKind == .photo || contentKind == .video || contentKind == .livePhoto {
+            return 0
+        }
         switch (contentKind, density) {
-        case (.recordBody, .detailed), (.prompt, .detailed):
-            return 12
-        case (.recordBody, _), (.prompt, _):
-            return 8
-        case (.todo, .detailed), (.link, .detailed):
-            return 5
+        case (.recordBody, .detailed), (.prompt, .detailed), (.audio, .detailed), (.music, .detailed),
+            (.todo, .detailed), (.journalingSuggestion, .detailed), (.bundle, .detailed):
+            return 6
+        case (.place, .detailed):
+            return 1
+        case (.place, .standard):
+            return 0
         case (.weather, .simple), (.affect, .simple), (.status, .simple):
             return 1
         case (_, .simple):
-            return 2
+            return 1
         case (_, .standard):
-            return 3
-        case (_, .detailed):
             return 4
+        case (_, .detailed):
+            return 6
         }
     }
 
@@ -153,33 +194,75 @@ struct MemoryCardObjectMetrics: Hashable, Sendable {
     private static func defaultHeight(
         for contentKind: MemoryCardContentKind,
         density: MemoryCardContentDensity,
-        width: CGFloat
+        width: CGFloat,
+        mediaAspectRatio: CGFloat?
     ) -> CGFloat {
         let base: CGFloat
         switch contentKind {
-        case .recordBody, .prompt:
-            base = density == .detailed ? 226 : 190
+        case .recordBody:
+            switch density {
+            case .simple:
+                base = 76
+            case .standard:
+                base = 168
+            case .detailed:
+                base = 232
+            }
+        case .prompt:
+            base = density == .detailed ? 222 : 168
         case .photo, .livePhoto:
-            base = width * 1.18 + 42
+            base = mediaHeight(width: width, mediaAspectRatio: mediaAspectRatio)
         case .video:
-            base = width * 0.72
+            base = mediaHeight(width: width, mediaAspectRatio: mediaAspectRatio)
         case .audio:
-            base = density == .simple ? 88 : 126
+            base = densityHeight(density, simple: 76, standard: 148, detailed: 220)
         case .music:
-            base = density == .simple ? 112 : 156
+            base = densityHeight(density, simple: 76, standard: 156, detailed: 228)
         case .place:
-            base = density == .simple ? 118 : 148
+            switch density {
+            case .simple:
+                base = 76
+            case .standard:
+                base = width * 3 / 4
+            case .detailed:
+                base = width * 4 / 3
+            }
         case .weather:
-            base = density == .simple ? 92 : 148
+            base = density == .simple ? 82 : 148
         case .link, .todo:
-            base = density == .simple ? 116 : 156
+            base = densityHeight(density, simple: 76, standard: 148, detailed: 220)
         case .person:
-            base = density == .simple ? 144 : 190
+            base = density == .simple ? 76 : 156
         case .affect, .status:
-            base = density == .simple ? 112 : 148
+            base = density == .simple ? 76 : 148
         case .journalingSuggestion, .bundle:
-            base = 158
+            base = densityHeight(density, simple: 76, standard: 156, detailed: 220)
         }
-        return max(72, min(base, 320))
+        return max(64, min(base, 420))
+    }
+
+    static func clampedMediaAspectRatio(_ ratio: CGFloat?) -> CGFloat {
+        guard let ratio, ratio.isFinite, ratio > 0 else { return 1 }
+        return min(max(ratio, 9 / 16), 16 / 9)
+    }
+
+    private static func mediaHeight(width: CGFloat, mediaAspectRatio: CGFloat?) -> CGFloat {
+        width / clampedMediaAspectRatio(mediaAspectRatio)
+    }
+
+    private static func densityHeight(
+        _ density: MemoryCardContentDensity,
+        simple: CGFloat,
+        standard: CGFloat,
+        detailed: CGFloat
+    ) -> CGFloat {
+        switch density {
+        case .simple:
+            return simple
+        case .standard:
+            return standard
+        case .detailed:
+            return detailed
+        }
     }
 }

@@ -3,26 +3,27 @@ import SwiftUI
 struct StatusCaptureCardContent: View {
     let common: CaptureCardCommonDisplay
     let payload: CaptureStatusCardPayload
+    let context: CaptureCardRenderContext
     let accent: Color
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Image(systemName: statusIcon)
-                .font(.title2)
-                .foregroundStyle(statusColor)
-
-            Text(common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.status"))
-                .font(.subheadline.weight(.semibold))
-                .lineLimit(1)
-
-            Text(common.detail)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(3)
+        if context.isSimple {
+            CaptureCardCapsuleRow(
+                iconName: statusIcon,
+                title: common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.status"),
+                subtitle: common.detail.trimmedOrNil,
+                accent: statusColor
+            )
+        } else {
+            CaptureCardTextPanel(
+                iconName: statusIcon,
+                title: common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.status"),
+                detail: common.detail,
+                metadata: common.metadata,
+                context: context,
+                accent: statusColor
+            )
         }
-        .padding(12)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(statusColor.opacity(0.08))
     }
 
     private var statusIcon: String {

@@ -17,7 +17,7 @@ The handbook treats current code as source of truth and old v3-v7 docs as histor
 | Area | Current Status | User Visibility | Main Gap |
 | --- | --- | --- | --- |
 | Unified capture composer | `usable` | Visible in product | Source/provenance and post-save analysis status are not fully visible to users. |
-| Capture cards and arrangement | `usable` | Visible in composer/detail and Card Debug | Fixed-column masonry arrangement, adaptive card heights, object metrics, and recipe rendering are wired; final product drag/polish still needs more UX work. |
+| Capture cards and arrangement | `usable` | Visible in composer/detail and Card Debug | Fixed-column masonry arrangement, adaptive card heights, object metrics, media-ratio cards, and density rendering are wired; final product drag/reorder polish still needs more UX work. |
 | Journaling Suggestions | `wired` | Product toolbar plus fallback/debug | Real-device stability and per-suggestion provenance need stronger status. |
 | External Capture / Share | `wired` | Share extension and recovery inbox | Handoff is intended primary path; recovery/status still needs clearer product feedback. |
 | Voice refinement | `wired` | Composer loading card | Cloud refinement can overwrite edited transcript if it returns after user edits. |

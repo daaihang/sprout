@@ -27,7 +27,11 @@ struct CardDebugContentDensityFixture: Identifiable, Hashable {
     let density: MemoryCardContentDensity
 
     var metrics: MemoryCardObjectMetrics {
-        MemoryCardObjectMetrics.resolve(contentKind: fixture.contentKind, density: density)
+        MemoryCardObjectMetrics.resolve(
+            contentKind: fixture.contentKind,
+            density: density,
+            mediaAspectRatio: fixture.item.payload.mediaAspectRatio
+        )
     }
 }
 
@@ -63,23 +67,29 @@ enum CardDebugCatalog {
             contentKind: .photo,
             item: CaptureCardItem(
                 id: "debug-kind-photo",
-                payload: .photo(CapturePhotoCardPayload(photoCount: 1)),
+                payload: .photo(CapturePhotoCardPayload(
+                    mediaDimensions: ArtifactMediaDimensions(width: 1440, height: 1800),
+                    photoCount: 1
+                )),
                 origin: .manual,
                 title: "Kitchen light",
-                detail: "Photo evidence with thumbnail and digest text.",
+                detail: "Media-only photo card; text stays in artifact facts, not on the card.",
                 metadata: "photo.jpg"
             ),
             preferredDensity: .standard,
-            layerNotes: ["CaptureArtifactContent.photo", "ArtifactKind.photo", "photo digest can carry OCR/caption/labels"]
+            layerNotes: ["CaptureArtifactContent.photo", "ArtifactKind.photo", "photo digest can carry OCR/caption/labels but card rendering stays media-only"]
         ),
         CardDebugContentFixture(
             contentKind: .video,
             item: CaptureCardItem(
                 id: "debug-kind-video",
-                payload: .video(CaptureVideoCardPayload(durationSeconds: 18)),
+                payload: .video(CaptureVideoCardPayload(
+                    durationSeconds: 18,
+                    mediaDimensions: ArtifactMediaDimensions(width: 1920, height: 1080)
+                )),
                 origin: .manual,
                 title: "Street clip",
-                detail: "Video evidence with first-frame summary.",
+                detail: "Video card shows only media, centered play control, and duration.",
                 metadata: "0:18"
             ),
             preferredDensity: .standard,
@@ -89,10 +99,13 @@ enum CardDebugCatalog {
             contentKind: .livePhoto,
             item: CaptureCardItem(
                 id: "debug-kind-live-photo",
-                payload: .livePhoto(CaptureLivePhotoCardPayload(pairedVideoByteCount: 128_000)),
+                payload: .livePhoto(CaptureLivePhotoCardPayload(
+                    pairedVideoByteCount: 128_000,
+                    mediaDimensions: ArtifactMediaDimensions(width: 3024, height: 4032)
+                )),
                 origin: .manual,
                 title: "Live moment",
-                detail: "Still image plus paired motion clip.",
+                detail: "Live Photo card shows the still frame with a non-text Live glyph.",
                 metadata: "Live Photo"
             ),
             preferredDensity: .standard,
@@ -296,7 +309,7 @@ enum CardDebugCatalog {
                 recordID: recordID,
                 kind: .photo,
                 title: "Kitchen light",
-                summary: "Photo evidence",
+                summary: "Photo media artifact",
                 mediaRef: ArtifactMediaRef(filename: "photo.jpg", mimeType: "image/jpeg"),
                 createdAt: now,
                 updatedAt: now

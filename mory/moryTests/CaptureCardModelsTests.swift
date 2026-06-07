@@ -100,7 +100,11 @@ final class CaptureCardModelsTests: XCTestCase {
             title: "Morning photo",
             summary: "Kitchen light",
             mediaRef: ArtifactMediaRef(filename: "photo.jpg", mimeType: "image/jpeg"),
-            metadata: ["captureOrigin": CaptureArtifactOrigin.manual.rawValue],
+            metadata: [
+                "captureOrigin": CaptureArtifactOrigin.manual.rawValue,
+                "width": "1440",
+                "height": "1800",
+            ],
             previewPayload: thumbnail,
             createdAt: .now,
             updatedAt: .now
@@ -116,6 +120,8 @@ final class CaptureCardModelsTests: XCTestCase {
             return XCTFail("Expected photo payload.")
         }
         XCTAssertEqual(payload.thumbnailData, thumbnail)
+        XCTAssertEqual(payload.mediaDimensions?.width, 1440)
+        XCTAssertEqual(payload.mediaDimensions?.height, 1800)
         XCTAssertFalse(card.isRemovable)
     }
 
@@ -129,7 +135,9 @@ final class CaptureCardModelsTests: XCTestCase {
             mediaRef: ArtifactMediaRef(filename: "clip.mov", mimeType: "video/quicktime"),
             metadata: [
                 "captureOrigin": CaptureArtifactOrigin.manual.rawValue,
-                "durationSeconds": "18"
+                "durationSeconds": "18",
+                "width": "1920",
+                "height": "1080",
             ],
             previewPayload: thumbnail,
             createdAt: .now,
@@ -146,6 +154,8 @@ final class CaptureCardModelsTests: XCTestCase {
         }
         XCTAssertEqual(payload.thumbnailData, thumbnail)
         XCTAssertEqual(payload.durationSeconds, 18)
+        XCTAssertEqual(payload.mediaDimensions?.width, 1920)
+        XCTAssertEqual(payload.mediaDimensions?.height, 1080)
     }
 
     func testSavedLivePhotoArtifactMapsToLivePhotoCard() {
@@ -159,7 +169,9 @@ final class CaptureCardModelsTests: XCTestCase {
             metadata: [
                 "captureOrigin": CaptureArtifactOrigin.imported.rawValue,
                 "pairedVideoByteCount": "4096",
-                "videoFilename": "live.mov"
+                "videoFilename": "live.mov",
+                "width": "3024",
+                "height": "4032",
             ],
             previewPayload: thumbnail,
             createdAt: .now,
@@ -175,6 +187,8 @@ final class CaptureCardModelsTests: XCTestCase {
         }
         XCTAssertEqual(payload.thumbnailData, thumbnail)
         XCTAssertEqual(payload.pairedVideoByteCount, 4096)
+        XCTAssertEqual(payload.mediaDimensions?.width, 3024)
+        XCTAssertEqual(payload.mediaDimensions?.height, 4032)
     }
 
     func testSavedWeatherArtifactMapsStableConditionFields() {
@@ -572,15 +586,59 @@ final class CaptureCardModelsTests: XCTestCase {
                 item: fixture.fixture.item,
                 role: .debugLab,
                 provenanceDisplayMode: .debug,
+                contentKind: fixture.fixture.contentKind,
                 contentDensity: fixture.density
             )
 
             XCTAssertEqual(presentation.contentDensity, fixture.density)
+            XCTAssertEqual(presentation.contentKind, fixture.fixture.contentKind)
             XCTAssertEqual(metrics.contentKind, fixture.fixture.contentKind)
             XCTAssertEqual(metrics.density, fixture.density)
             XCTAssertGreaterThan(metrics.preferredSize.width, 0)
             XCTAssertGreaterThan(metrics.preferredSize.height, 0)
         }
+    }
+
+    func testRenderContextHidesFooterForMediaAndMapBackgroundCards() {
+        let photo = CaptureCardPresentation(
+            item: CaptureCardItem(
+                payload: .photo(CapturePhotoCardPayload(mediaDimensions: ArtifactMediaDimensions(width: 1440, height: 1800))),
+                detail: "Hidden visual text"
+            ),
+            role: .detailViewing,
+            provenanceDisplayMode: .production,
+            contentDensity: .detailed
+        )
+        let video = CaptureCardPresentation(
+            item: CaptureCardItem(
+                payload: .video(CaptureVideoCardPayload(durationSeconds: 18, mediaDimensions: ArtifactMediaDimensions(width: 1920, height: 1080))),
+                detail: "Hidden visual text"
+            ),
+            role: .detailViewing,
+            provenanceDisplayMode: .production,
+            contentDensity: .detailed
+        )
+        let simplePlace = CaptureCardPresentation(
+            item: CaptureCardItem(payload: .place(CapturePlaceCardPayload()), title: "Library", detail: "Address"),
+            role: .detailViewing,
+            provenanceDisplayMode: .production,
+            contentDensity: .simple
+        )
+        let standardPlace = CaptureCardPresentation(
+            item: CaptureCardItem(payload: .place(CapturePlaceCardPayload()), title: "Library", detail: "Address"),
+            role: .detailViewing,
+            provenanceDisplayMode: .production,
+            contentDensity: .standard
+        )
+
+        XCTAssertEqual(photo.contentDensity, .standard)
+        XCTAssertFalse(CaptureCardRenderContext(presentation: photo, availableSize: nil).showsFooter)
+        XCTAssertEqual(video.contentDensity, .standard)
+        XCTAssertFalse(CaptureCardRenderContext(presentation: video, availableSize: nil).showsFooter)
+        XCTAssertTrue(CaptureCardRenderContext(presentation: simplePlace, availableSize: nil).showsFooter)
+        XCTAssertFalse(CaptureCardRenderContext(presentation: standardPlace, availableSize: nil).showsFooter)
+        XCTAssertGreaterThan(CaptureCardRenderContext(presentation: simplePlace, availableSize: nil).chromeCornerRadius, 100)
+        XCTAssertEqual(CaptureCardRenderContext(presentation: standardPlace, availableSize: nil).chromeCornerRadius, 20)
     }
 
     func testCardDebugArrangementReportCoversMasonryFramesAndRenderOverflow() {

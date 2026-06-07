@@ -8,15 +8,21 @@ struct CaptureCardChrome<Content: View, Footer: View, TrailingControl: View, Con
     let trailingControl: TrailingControl
     let showsLayoutGuides: Bool
     let fieldAuditText: String?
+    let showsFooter: Bool
+    let cornerRadius: CGFloat
     @ViewBuilder var content: Content
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(containerBackground, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .background(containerBackground, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
                 .redacted(reason: item.state == .loading ? .placeholder : [])
-                .overlay(alignment: .bottomLeading) { footer }
+                .overlay(alignment: .bottomLeading) {
+                    if showsFooter {
+                        footer
+                    }
+                }
                 .overlay {
                     if showsLayoutGuides {
                         layoutGuides
@@ -32,7 +38,7 @@ struct CaptureCardChrome<Content: View, Footer: View, TrailingControl: View, Con
                             .padding(6)
                     }
                 }
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
                 .overlay(containerStroke)
 
             trailingControl
@@ -41,7 +47,7 @@ struct CaptureCardChrome<Content: View, Footer: View, TrailingControl: View, Con
     }
 
     private var layoutGuides: some View {
-        RoundedRectangle(cornerRadius: 20, style: .continuous)
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
             .stroke(.yellow.opacity(0.7), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
         .allowsHitTesting(false)
     }

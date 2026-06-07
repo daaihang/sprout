@@ -605,7 +605,8 @@ private struct MemoryDetailEditingBoardView: View {
                     estimatedHeight: MemoryCardObjectMetrics.estimatedHeight(
                         for: $0.contentKind,
                         density: $0.contentDensity,
-                        columnWidth: columnWidth
+                        columnWidth: columnWidth,
+                        mediaAspectRatio: $0.item.payload.mediaAspectRatio
                     )
                 )
             },
@@ -720,6 +721,7 @@ private struct MemoryDetailEditingBoardCard: View {
                     item: node.item,
                     role: .detailEditing,
                     provenanceDisplayMode: .production,
+                    contentKind: node.contentKind,
                     contentDensity: node.contentDensity
                 ),
                 objectAvailableSize: availableSize
@@ -814,7 +816,19 @@ private struct MemoryDetailEditingBoardNode: Identifiable {
         let thumbnail = artifacts.compactMap { $0.previewPayload ?? $0.binaryPayload }.first
         return CaptureCardItem(
             id: "edit-group-\(nodeID.uuidString)",
-            payload: .photo(CapturePhotoCardPayload(thumbnailData: thumbnail, photoCount: artifacts.count)),
+            payload: .journalingSuggestion(
+                CaptureJournalingSuggestionCardPayload(
+                    artifactCount: artifacts.count,
+                    affectCount: 0,
+                    photoCount: artifacts.filter { $0.kind == .photo }.count,
+                    videoCount: artifacts.filter { $0.kind == .video }.count,
+                    livePhotoCount: artifacts.filter { $0.kind == .livePhoto }.count,
+                    locationCount: artifacts.filter { $0.kind == .location }.count,
+                    musicCount: artifacts.filter { $0.kind == .music }.count,
+                    promptCount: artifacts.filter { $0.metadata["documentType"] == "promptAnswer" }.count,
+                    thumbnailData: thumbnail
+                )
+            ),
             origin: artifacts.first?.captureProvenance?.artifactOrigin,
             provenance: artifacts.first?.captureProvenance,
             title: "Stack",

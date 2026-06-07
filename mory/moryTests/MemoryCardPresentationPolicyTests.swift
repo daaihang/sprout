@@ -15,13 +15,23 @@ final class MemoryCardPresentationPolicyTests: XCTestCase {
         XCTAssertEqual(MemoryCardPresentationPolicy.supportedDensities(for: .audio), MemoryCardContentDensity.allCases)
         XCTAssertEqual(MemoryCardPresentationPolicy.supportedDensities(for: .bundle), MemoryCardContentDensity.allCases)
         XCTAssertEqual(MemoryCardPresentationPolicy.supportedDensities(for: .weather), [.simple, .standard])
-        XCTAssertEqual(MemoryCardPresentationPolicy.supportedDensities(for: .affect), [.simple, .standard])
+        XCTAssertEqual(MemoryCardPresentationPolicy.supportedDensities(for: .affect), [.simple])
         XCTAssertEqual(MemoryCardPresentationPolicy.supportedDensities(for: .status), [.simple, .standard])
-        XCTAssertEqual(MemoryCardPresentationPolicy.supportedDensities(for: .photo), [.standard, .detailed])
+        XCTAssertEqual(MemoryCardPresentationPolicy.supportedDensities(for: .photo), [.standard])
+        XCTAssertEqual(MemoryCardPresentationPolicy.supportedDensities(for: .video), [.standard])
+        XCTAssertEqual(MemoryCardPresentationPolicy.supportedDensities(for: .livePhoto), [.standard])
+        XCTAssertEqual(MemoryCardPresentationPolicy.supportedDensities(for: .prompt), [.standard, .detailed])
+        XCTAssertEqual(MemoryCardPresentationPolicy.supportedDensities(for: .person), [.simple, .standard])
+        XCTAssertEqual(MemoryCardPresentationPolicy.supportedDensities(for: .link), [.simple, .standard])
     }
 
     func testDensityNormalizationFallsBackToContentDefault() {
         XCTAssertEqual(MemoryCardPresentationPolicy.normalizedDensity(.simple, for: .photo), .standard)
+        XCTAssertEqual(MemoryCardPresentationPolicy.normalizedDensity(.detailed, for: .video), .standard)
+        XCTAssertEqual(MemoryCardPresentationPolicy.normalizedDensity(.simple, for: .prompt), .detailed)
+        XCTAssertEqual(MemoryCardPresentationPolicy.normalizedDensity(.detailed, for: .person), .standard)
+        XCTAssertEqual(MemoryCardPresentationPolicy.normalizedDensity(.detailed, for: .link), .standard)
+        XCTAssertEqual(MemoryCardPresentationPolicy.normalizedDensity(.standard, for: .affect), .simple)
         XCTAssertEqual(MemoryCardPresentationPolicy.normalizedDensity(.detailed, for: .weather), .simple)
         XCTAssertEqual(MemoryCardPresentationPolicy.normalizedDensity(.standard, for: .audio), .standard)
     }

@@ -3,34 +3,28 @@ import SwiftUI
 struct LinkCaptureCardContent: View {
     let common: CaptureCardCommonDisplay
     let payload: CaptureLinkCardPayload
+    let context: CaptureCardRenderContext
     let accent: Color
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            HStack(spacing: 8) {
-                Image(systemName: "safari.fill")
-                    .font(.title3)
-                    .foregroundStyle(accent)
-                Text(linkHeader)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-
-            Text(linkTitle)
-                .font(.subheadline.weight(.semibold))
-                .lineLimit(2)
-
-            if let linkDetail {
-                Text(linkDetail)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
+        if context.isSimple {
+            CaptureCardCapsuleRow(
+                iconName: "safari.fill",
+                imageData: payload.thumbnailData,
+                title: linkTitle,
+                subtitle: linkHeader,
+                accent: accent
+            )
+        } else {
+            CaptureCardTextPanel(
+                iconName: "safari.fill",
+                title: linkTitle,
+                detail: [linkHeader, linkDetail].compactMap { $0 }.joined(separator: "\n"),
+                metadata: nil,
+                context: context,
+                accent: accent
+            )
         }
-        .padding(12)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(accent.opacity(0.08))
     }
 
     private var linkHeader: String {

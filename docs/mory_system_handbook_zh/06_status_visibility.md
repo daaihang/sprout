@@ -20,7 +20,7 @@ Mory 当前最大的问题之一，是很多能力存在，但用户和产品负
 开发者需要能追踪更细的链路：
 
 - Capture draft 里到底有什么。
-- 每种卡片 recipe 和 size 是否能正确展示。
+- 每种卡片类型、density、媒体比例和渲染上下文是否能正确展示。
 - 响应式 masonry 列数、object metrics、placement、overflow、occupancy 是否合理。
 - composer/detail/debug 下卡片 role、runtime state 和 actions 是否一致。
 - Journaling bundle 收到了哪些 evidence。
