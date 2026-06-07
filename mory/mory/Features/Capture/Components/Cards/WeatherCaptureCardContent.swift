@@ -18,7 +18,8 @@ struct WeatherCaptureCardContent: View {
                 iconName: payload.symbolName?.trimmedOrNil ?? weatherStyle.symbolName,
                 title: common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.weather"),
                 subtitle: common.detail.trimmedOrNil,
-                accent: accent
+                accent: accent,
+                context: context
             )
             .background {
                 WeatherAtmosphereView(

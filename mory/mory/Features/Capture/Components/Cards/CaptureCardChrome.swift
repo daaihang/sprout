@@ -35,8 +35,12 @@ struct CaptureCardChrome<Content: View, TrailingControl: View, ContainerStroke: 
                 .overlay(containerStroke)
 
             trailingControl
-                .padding(9)
+                .padding(trailingControlInset)
         }
+    }
+
+    private var trailingControlInset: CGFloat {
+        cornerRadius >= 100 ? 4 : 9
     }
 
     private var layoutGuides: some View {

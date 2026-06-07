@@ -1,4 +1,5 @@
 import PhotosUI
+import QuickLook
 import SwiftUI
 import UIKit
 
@@ -56,6 +57,9 @@ struct UnifiedCaptureComposerView: View {
     @State private var didAttemptVoiceRefinement = false
     @State private var isSaving = false
     @State private var errorMessage: String?
+    @State private var previewCoordinator = MemoryCardPreviewCoordinator()
+    @State private var previewURL: URL?
+    @State private var previewURLs: [URL] = []
     @FocusState private var isBodyFocused: Bool
 
     private var selectedContextDrafts: [CaptureArtifactDraft] {
@@ -151,6 +155,7 @@ struct UnifiedCaptureComposerView: View {
                             onReorderItems: reorderAttachmentItem(from:to:),
                             onStackWithPrevious: stackArrangementNodeWithPrevious(item:),
                             onUnstack: unstackArrangementNode(item:),
+                            onPreview: previewAttachmentItem(_:),
                             presentationForItem: presentationForAttachmentItem(_:),
                             layoutForItem: layoutForAttachmentItem(_:)
                         )
@@ -239,6 +244,10 @@ struct UnifiedCaptureComposerView: View {
             }
             .onChange(of: selectedPhotoItems) { _, items in
                 Task { await addPhotoItems(items) }
+            }
+            .quickLookPreview($previewURL, in: previewURLs)
+            .onDisappear {
+                previewCoordinator.clearTemporaryFiles()
             }
         }
     }
@@ -550,6 +559,40 @@ struct UnifiedCaptureComposerView: View {
     private func unstackArrangementNode(item: CaptureComposerAttachmentItem) {
         guard let draftID = arrangementDraftID(for: item) else { return }
         cardArrangementDraft.unstackContainingDraft(draftID, artifactDrafts: arrangementArtifactDrafts)
+    }
+
+    @MainActor
+    private func previewAttachmentItem(_ item: CaptureComposerAttachmentItem) {
+        do {
+            switch item.source {
+            case let .stagedArtifact(index):
+                guard stagedArtifactDrafts.indices.contains(index) else { return }
+                presentPreviewURLs(try previewCoordinator.previewURLs(for: [stagedArtifactDrafts[index]]))
+            case let .contextCandidate(id):
+                guard let draft = contextCandidates.first(where: { $0.id == id })?.draft else { return }
+                presentPreviewURLs(try previewCoordinator.previewURLs(for: [draft]))
+            case let .affect(index):
+                guard affectDrafts.indices.contains(index) else { return }
+                presentPreviewURLs(try previewCoordinator.previewURLs(forAffectDrafts: [affectDrafts[index]]))
+            case let .journalingSuggestion(importSessionID):
+                let drafts = stagedArtifactDrafts.filter { $0.isJournalingSuggestion(in: importSessionID) }
+                let affects = affectDrafts.filter { $0.isJournalingSuggestion(in: importSessionID) }
+                let urls = try previewCoordinator.previewURLs(for: drafts)
+                    + previewCoordinator.previewURLs(forAffectDrafts: affects)
+                presentPreviewURLs(urls)
+            case .processing:
+                return
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func presentPreviewURLs(_ urls: [URL]) {
+        guard let first = urls.first else { return }
+        previewURLs = urls
+        previewURL = first
     }
 
     @MainActor

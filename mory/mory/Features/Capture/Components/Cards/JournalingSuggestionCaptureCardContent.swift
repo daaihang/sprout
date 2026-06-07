@@ -15,7 +15,8 @@ struct JournalingSuggestionCaptureCardContent: View {
                 imageData: payload.thumbnailData,
                 title: common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.journalingSuggestion"),
                 subtitle: "\(payload.artifactCount) items",
-                accent: accent
+                accent: accent,
+                context: context
             )
         } else {
             cardBody

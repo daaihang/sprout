@@ -9,6 +9,7 @@ struct CaptureAttachmentCompactBoardView: View {
     var onReorderItems: (CaptureComposerAttachmentItem, CaptureComposerAttachmentItem) -> Void = { _, _ in }
     var onStackWithPrevious: (CaptureComposerAttachmentItem) -> Void = { _ in }
     var onUnstack: (CaptureComposerAttachmentItem) -> Void = { _ in }
+    var onPreview: (CaptureComposerAttachmentItem) -> Void = { _ in }
     var presentationForItem: (CaptureComposerAttachmentItem) -> CaptureCardPresentation = {
         .composerAttachment($0)
     }
@@ -65,6 +66,7 @@ struct CaptureAttachmentCompactBoardView: View {
                     CaptureCardView(
                         presentation: slot.boardItem.presentation,
                         objectAvailableSize: slot.frame.size,
+                        onTap: { onPreview(slot.boardItem.item) },
                         onRemove: { remove(slot.boardItem.item) }
                     )
                     .frame(width: slot.frame.width, height: slot.frame.height, alignment: .center)

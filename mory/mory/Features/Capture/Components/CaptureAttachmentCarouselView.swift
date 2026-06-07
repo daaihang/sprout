@@ -9,6 +9,7 @@ struct CaptureAttachmentCarouselView: View {
     var onReorderStagedArtifact: (Int, Int) -> Void = { _, _ in }
     var onStackWithPrevious: (CaptureComposerAttachmentItem) -> Void = { _ in }
     var onUnstack: (CaptureComposerAttachmentItem) -> Void = { _ in }
+    var onPreview: (CaptureComposerAttachmentItem) -> Void = { _ in }
     var presentationForItem: (CaptureComposerAttachmentItem) -> CaptureCardPresentation = {
         .composerAttachment($0)
     }
@@ -20,6 +21,7 @@ struct CaptureAttachmentCarouselView: View {
                     ForEach(items) { item in
                         CaptureCardView(
                             presentation: presentationForItem(item),
+                            onTap: { onPreview(item) },
                             onRemove: { remove(item) }
                         )
                         .scrollTransition(.animated, axis: .horizontal) { content, phase in

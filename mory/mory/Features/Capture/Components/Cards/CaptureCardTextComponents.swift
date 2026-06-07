@@ -7,6 +7,7 @@ struct CaptureCardCapsuleRow: View {
     let title: String
     let subtitle: String?
     let accent: Color
+    var context: CaptureCardRenderContext?
 
     var body: some View {
         HStack(spacing: 10) {
@@ -26,8 +27,8 @@ struct CaptureCardCapsuleRow: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(.leading, leadingInset)
+        .padding(.trailing, trailingInset)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         .background(accent.opacity(0.1))
     }
@@ -38,15 +39,41 @@ struct CaptureCardCapsuleRow: View {
             Image(uiImage: image)
                 .resizable()
                 .scaledToFill()
-                .frame(width: 42, height: 42)
+                .frame(width: iconDiameter, height: iconDiameter)
                 .clipShape(Circle())
         } else {
             Image(systemName: iconName)
-                .font(.system(size: 18, weight: .semibold))
+                .font(.system(size: symbolSize, weight: .semibold))
                 .foregroundStyle(.white)
-                .frame(width: 42, height: 42)
+                .frame(width: iconDiameter, height: iconDiameter)
                 .background(accent, in: Circle())
         }
+    }
+
+    private var resolvedHeight: CGFloat? {
+        guard let context else { return nil }
+        let height = context.availableSize?.height ?? context.metrics.preferredSize.height
+        guard height.isFinite, height > 0 else { return nil }
+        return height
+    }
+
+    private var iconDiameter: CGFloat {
+        guard let height = resolvedHeight else { return 42 }
+        return max(34, min(42, height - 2 * leadingInset))
+    }
+
+    private var leadingInset: CGFloat {
+        guard let height = resolvedHeight else { return 12 }
+        let targetIconDiameter = max(34, min(42, height - 18))
+        return max(8, (height - targetIconDiameter) / 2)
+    }
+
+    private var trailingInset: CGFloat {
+        max(12, leadingInset)
+    }
+
+    private var symbolSize: CGFloat {
+        iconDiameter >= 40 ? 18 : 16
     }
 }
 

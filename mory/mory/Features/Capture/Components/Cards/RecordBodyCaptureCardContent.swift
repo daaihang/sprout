@@ -12,7 +12,8 @@ struct RecordBodyCaptureCardContent: View {
                 iconName: "note.text",
                 title: common.title?.trimmedOrNil ?? payload.prompt,
                 subtitle: common.metadata?.trimmedOrNil,
-                accent: accent
+                accent: accent,
+                context: context
             )
         } else {
             CaptureCardTextPanel(
@@ -58,7 +59,8 @@ struct PersonCaptureCardContent: View {
                 imageData: payload.photoData,
                 title: payload.name.trimmedOrNil ?? common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.person"),
                 subtitle: common.detail.trimmedOrNil,
-                accent: accent
+                accent: accent,
+                context: context
             )
         } else {
             HStack(alignment: .top, spacing: 12) {
@@ -101,7 +103,8 @@ struct AffectCaptureCardContent: View {
             iconName: affectIconName,
             title: common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.affect"),
             subtitle: affectSubtitle,
-            accent: affectColor
+            accent: affectColor,
+            context: context
         )
     }
 
@@ -140,7 +143,8 @@ struct BundleCaptureCardContent: View {
                 imageData: payload.thumbnailData,
                 title: common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.bundle"),
                 subtitle: "\(payload.artifactCount) items",
-                accent: accent
+                accent: accent,
+                context: context
             )
         } else {
             CaptureCardTextPanel(

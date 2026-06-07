@@ -12,7 +12,8 @@ struct AudioCaptureCardContent: View {
                 iconName: "play.fill",
                 title: common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.audio"),
                 subtitle: payload.durationSeconds.map(formatDuration) ?? String(localized: "capture.card.audio.original"),
-                accent: accent
+                accent: accent,
+                context: context
             )
         } else {
             CaptureCardTextPanel(

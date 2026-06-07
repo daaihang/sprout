@@ -18,7 +18,8 @@ struct PlaceCaptureCardContent: View {
                 iconName: "mappin.and.ellipse",
                 title: placeTitle,
                 subtitle: placeAddress,
-                accent: accent
+                accent: accent,
+                context: context
             )
         } else {
             ZStack(alignment: .bottomLeading) {

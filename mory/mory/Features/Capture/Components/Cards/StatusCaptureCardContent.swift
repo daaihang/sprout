@@ -12,7 +12,8 @@ struct StatusCaptureCardContent: View {
                 iconName: statusIcon,
                 title: common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.status"),
                 subtitle: common.detail.trimmedOrNil,
-                accent: statusColor
+                accent: statusColor,
+                context: context
             )
         } else {
             CaptureCardTextPanel(

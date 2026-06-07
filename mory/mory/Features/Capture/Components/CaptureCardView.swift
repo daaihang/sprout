@@ -58,6 +58,7 @@ struct CaptureCardView: View {
             cardBody
         }
         .buttonStyle(.plain)
+        .contentShape(RoundedRectangle(cornerRadius: renderContext.chromeCornerRadius, style: .continuous))
         .disabled(item.state == .disabled)
         .opacity(item.state == .disabled ? 0.48 : 1)
         .scaleEffect(presentation.displaysSelection ? 1.018 : 1)

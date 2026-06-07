@@ -13,7 +13,8 @@ struct TodoCaptureCardContent: View {
                 iconName: isSelected ? "checkmark.circle.fill" : "circle",
                 title: common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.todo"),
                 subtitle: common.detail.trimmedOrNil,
-                accent: accent
+                accent: accent,
+                context: context
             )
         } else {
             CaptureCardTextPanel(

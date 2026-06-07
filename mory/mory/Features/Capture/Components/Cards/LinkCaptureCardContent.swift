@@ -13,7 +13,8 @@ struct LinkCaptureCardContent: View {
                 imageData: payload.thumbnailData,
                 title: linkTitle,
                 subtitle: linkHeader,
-                accent: accent
+                accent: accent,
+                context: context
             )
         } else {
             CaptureCardTextPanel(

@@ -16,7 +16,8 @@ struct MusicCaptureCardContent: View {
                 imageData: payload.artworkData,
                 title: common.title?.trimmedOrNil ?? String(localized: "capture.card.kind.music"),
                 subtitle: common.detail.trimmedOrNil,
-                accent: accent
+                accent: accent,
+                context: context
             )
         } else {
             fullMusicCard
