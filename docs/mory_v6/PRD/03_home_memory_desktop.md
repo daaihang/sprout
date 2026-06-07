@@ -47,13 +47,14 @@ Contains:
 
 The user can add, dismiss, or reduce suggestions.
 
-## 3. Board Grid
+## 3. Board Masonry
 
-Home should use a responsive fixed-column grid:
+Home should use fixed-column masonry with adaptive column caps:
 
 ```text
-Compact iPhone: 4 columns
-Wide iPhone / iPad: 8 columns
+Compact iPhone: 1-2 columns
+Wide iPhone / iPad: more columns as width allows
+Mac / very wide: broader masonry without phone-density columns
 ```
 
 Card sizes:
@@ -189,8 +190,8 @@ Avoid:
 - Home is not implemented as a generic `List`.
 - User layout persists.
 - AI suggestions do not disturb user layout.
-- Cards support fixed span sizes.
-- The board works on 4-column and 8-column modes.
+- Cards support fixed column width with adaptive height.
+- The board adapts columns by available width instead of fixed legacy column modes.
 - Every AI-derived card has reason and source access.
 - User can dismiss/reduce suggestion categories.
 - Empty and low-data states still lead to capture.

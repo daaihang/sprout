@@ -15,7 +15,7 @@ The user should be able to collect one memory from multiple inputs, review cards
 `UnifiedCaptureComposerView` shows:
 
 - editable body text,
-- compact 4-column board preview for staged cards,
+- compact responsive masonry board preview for staged cards,
 - affect cards,
 - context cards,
 - arrangement size/stack/reorder/delete controls,

@@ -81,7 +81,7 @@ struct HomeBoardMasonry: View {
     }
 
     private var metrics: MoryMasonryMetrics {
-        MoryMasonryMetrics.default
+        MoryMasonryMetrics.homeBoard
     }
 
     private func orderControls(for item: HomeBoardItemSnapshot) -> HomeBoardOrderControls? {

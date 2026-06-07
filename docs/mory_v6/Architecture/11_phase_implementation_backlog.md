@@ -156,8 +156,8 @@ Domain/Composition/HomeBoardRuleEngine.swift
 
 Tests:
 
-- 4-column compact layout.
-- 8-column regular layout.
+- Compact phone masonry layout.
+- Regular iPad/Mac masonry layout.
 - Pinned cards keep order.
 - Suggestions cannot replace pinned cards.
 - Dismissed suggestion stays dismissed.

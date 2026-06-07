@@ -30,6 +30,16 @@ struct MoryMasonryMetrics: Hashable, Sendable {
 
     static let `default` = MoryMasonryMetrics()
 
+    static let homeBoard = MoryMasonryMetrics(
+        minColumnWidth: 164,
+        maxColumnWidth: 228,
+        columnSpacing: 12,
+        rowSpacing: 12,
+        horizontalPadding: 0,
+        verticalPadding: 0,
+        stickerOverflow: 16
+    )
+
     static let compactComposer = MoryMasonryMetrics(
         minColumnWidth: 132,
         maxColumnWidth: 188,
@@ -132,10 +142,10 @@ struct MoryMasonryLayoutPlan<ID: Hashable & Sendable>: Hashable, Sendable {
         let safeWidth = max(1, containerWidth)
         let available = max(1, safeWidth - metrics.horizontalPadding * 2)
         let rawCount = Int(floor((available + metrics.columnSpacing) / (metrics.minColumnWidth + metrics.columnSpacing)))
-        let columnCount = max(1, rawCount)
+        let columnCount = min(max(1, rawCount), adaptiveColumnLimit(for: safeWidth))
         let totalSpacing = metrics.columnSpacing * CGFloat(max(0, columnCount - 1))
         let unclampedWidth = floor((available - totalSpacing) / CGFloat(columnCount))
-        let columnWidth = min(metrics.maxColumnWidth, max(metrics.minColumnWidth, unclampedWidth))
+        let columnWidth = min(metrics.maxColumnWidth, max(1, unclampedWidth))
         let contentWidth = columnWidth * CGFloat(columnCount) + totalSpacing
         let leadingInset = max(metrics.horizontalPadding, (safeWidth - contentWidth) / 2)
         return MoryMasonryColumnSpec(
@@ -144,6 +154,23 @@ struct MoryMasonryLayoutPlan<ID: Hashable & Sendable>: Hashable, Sendable {
             leadingInset: leadingInset,
             contentWidth: contentWidth
         )
+    }
+
+    private static func adaptiveColumnLimit(for width: CGFloat) -> Int {
+        switch width {
+        case ..<360:
+            return 1
+        case ..<600:
+            return 2
+        case ..<900:
+            return 3
+        case ..<1_200:
+            return 4
+        case ..<1_500:
+            return 5
+        default:
+            return 6
+        }
     }
 
     private static func resolvedColumn(

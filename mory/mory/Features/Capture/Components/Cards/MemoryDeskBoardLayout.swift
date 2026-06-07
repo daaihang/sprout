@@ -13,13 +13,12 @@ struct MemoryDeskBoardMetrics: Hashable, Sendable {
     }
 
     static func debugBoard(availableWidth: CGFloat) -> MemoryDeskBoardMetrics {
-        let boardWidth = debugBoardWidth(for: availableWidth)
         var metrics = MoryMasonryMetrics.default
         metrics.minColumnWidth = 132
         metrics.maxColumnWidth = 188
         metrics.columnSpacing = 10
         metrics.rowSpacing = 10
-        metrics.horizontalPadding = boardWidth < 340 ? 12 : 16
+        metrics.horizontalPadding = 0
         metrics.verticalPadding = 16
         metrics.stickerOverflow = 16
         return MemoryDeskBoardMetrics(masonry: metrics)

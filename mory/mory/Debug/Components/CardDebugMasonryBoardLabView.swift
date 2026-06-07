@@ -4,10 +4,11 @@ struct CardDebugMasonryBoardLabView: View {
     @State private var items = CardDebugMasonryBoardItem.defaultItems()
     @State private var measuredWidth: CGFloat = 0
 
-    private let metrics = MemoryDeskBoardMetrics.debugBoard(availableWidth: 390)
+    private let horizontalChromePadding: CGFloat = 20
 
     private var containerWidth: CGFloat {
-        measuredWidth > 0 ? MemoryDeskBoardMetrics.debugBoardWidth(for: measuredWidth) : 390
+        let measured = measuredWidth > 0 ? measuredWidth : 390
+        return MemoryDeskBoardMetrics.debugBoardWidth(for: max(1, measured - horizontalChromePadding * 2))
     }
 
     private var effectiveMetrics: MemoryDeskBoardMetrics {
@@ -90,7 +91,7 @@ struct CardDebugMasonryBoardLabView: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .strokeBorder(.secondary.opacity(0.18))
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, horizontalChromePadding)
     }
 
     private var report: some View {

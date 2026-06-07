@@ -182,7 +182,7 @@ Remote push delivery:
 1. Real-device verification for Apple login, Photos, microphone, Speech, Location, WeatherKit, MusicKit, background tasks, and APNs.
 2. Product-level intelligence/status surface: analysis ready, failed, retry, proposal review, imports, and source provenance.
 3. Composer/detail card interaction polish after Debug acceptance: drag/reorder, state/action consistency, accessibility, and localization QA.
-4. Today/Home board design on top of the same 4-column card layout vocabulary.
+4. Today/Home board design on top of the same responsive masonry card layout vocabulary.
 5. Link metadata completion, video playback/detail polish, prompt/person/affect presentation refinement.
 6. Release hardening: privacy copy, export/delete QA, entitlement gating, backend monitoring, and focused regression coverage.
 

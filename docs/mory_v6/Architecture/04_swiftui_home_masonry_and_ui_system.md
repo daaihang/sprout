@@ -165,8 +165,8 @@ Do not persist:
 ## 11. Acceptance Criteria
 
 - Home no longer looks like a generic list.
-- Board supports 4-column and 8-column layouts.
-- Fixed span sizes are respected.
+- Board supports responsive masonry column counts.
+- Fixed column width and adaptive card heights are respected.
 - User preferences persist.
 - AI suggestions do not alter user-owned layout.
 - VoiceOver and Dynamic Type remain usable.

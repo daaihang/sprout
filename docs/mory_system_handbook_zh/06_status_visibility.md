@@ -21,7 +21,7 @@ Mory 当前最大的问题之一，是很多能力存在，但用户和产品负
 
 - Capture draft 里到底有什么。
 - 每种卡片 recipe 和 size 是否能正确展示。
-- 4 列 grid box、object metrics、placement、overflow、occupancy 是否合理。
+- 响应式 masonry 列数、object metrics、placement、overflow、occupancy 是否合理。
 - composer/detail/debug 下卡片 role、runtime state 和 actions 是否一致。
 - Journaling bundle 收到了哪些 evidence。
 - Share Extension 是否成功写入共享容器。

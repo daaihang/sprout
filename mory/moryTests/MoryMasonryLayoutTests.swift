@@ -6,15 +6,38 @@ final class MoryMasonryLayoutTests: XCTestCase {
     func testColumnSpecClampsColumnWidth() {
         let metrics = MoryMasonryMetrics.default
         XCTAssertEqual(MoryMasonryLayoutPlan<String>.columnSpec(containerWidth: 180, metrics: metrics).columnCount, 1)
+        let narrow = MoryMasonryLayoutPlan<String>.columnSpec(containerWidth: 320, metrics: metrics)
+        XCTAssertEqual(narrow.columnCount, 1)
+        XCTAssertLessThanOrEqual(narrow.leadingInset + narrow.contentWidth, 320)
 
         let medium = MoryMasonryLayoutPlan<String>.columnSpec(containerWidth: 390, metrics: metrics)
         XCTAssertEqual(medium.columnCount, 2)
         XCTAssertGreaterThanOrEqual(medium.columnWidth, metrics.minColumnWidth)
         XCTAssertLessThanOrEqual(medium.columnWidth, metrics.maxColumnWidth)
 
+        let phoneLandscape = MoryMasonryLayoutPlan<String>.columnSpec(containerWidth: 844, metrics: metrics)
+        XCTAssertEqual(phoneLandscape.columnCount, 3)
+
         let wide = MoryMasonryLayoutPlan<String>.columnSpec(containerWidth: 900, metrics: metrics)
-        XCTAssertGreaterThanOrEqual(wide.columnCount, 4)
+        XCTAssertEqual(wide.columnCount, 4)
         XCTAssertLessThanOrEqual(wide.columnWidth, metrics.maxColumnWidth)
+
+        let mac = MoryMasonryLayoutPlan<String>.columnSpec(containerWidth: 1_512, metrics: metrics)
+        XCTAssertEqual(mac.columnCount, 6)
+        XCTAssertLessThanOrEqual(mac.columnWidth, metrics.maxColumnWidth)
+    }
+
+    func testCompactMetricsDoNotCreateFourPhoneColumns() {
+        let compact = MoryMasonryMetrics.compactComposer
+        XCTAssertEqual(MoryMasonryLayoutPlan<String>.columnSpec(containerWidth: 390, metrics: compact).columnCount, 2)
+        XCTAssertEqual(MoryMasonryLayoutPlan<String>.columnSpec(containerWidth: 620, metrics: compact).columnCount, 3)
+    }
+
+    func testHomeBoardMetricsDoNotAddInnerHorizontalPadding() {
+        let spec = MoryMasonryLayoutPlan<String>.columnSpec(containerWidth: 358, metrics: .homeBoard)
+        XCTAssertEqual(spec.columnCount, 2)
+        XCTAssertEqual(spec.leadingInset, 0)
+        XCTAssertLessThanOrEqual(spec.contentWidth, 358)
     }
 
     func testShortestColumnPlacementIsStable() {

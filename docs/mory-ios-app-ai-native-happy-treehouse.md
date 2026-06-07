@@ -558,7 +558,7 @@ v6 `02:153-165` 要求 9 个 correction actions，PersonDetail / EntityDetail / 
 
 | 要素 | 成熟态 | 当前状态 | 关键缺口 | 下一步 | 优先级 |
 |------|--------|---------|---------|--------|--------|
-| Spatial grid | 用户摆放固定尺寸卡片 4 列 | List + 微旋转装饰 | UI 层完全重写 | v6 feature flag 新 Home 模块 | 🟢 |
+| Spatial masonry | 用户按顺序整理固定列宽、自适应高度卡片 | List + 微旋转装饰 | UI 层完全重写 | v6 feature flag 新 Home 模块 | 🟢 |
 | Yesterday Panel | 早上一条"昨天 3 条已整理"窄横条 | 完全不存在 | 概念缺失 | 加 domain model + UI | 🟢 |
 | 用户层 vs 建议层 | 用户主权层不被 AI 移动 | pin/hide/dismiss 实现但同层 | 双层抽象未建 | 加 suggestion layer | 🟢 |
 | Reflection 凸显 | High-confidence reflection 进 top 3 | priority 70-80 < memory 38-97 | 公式让 memory 永远压 reflection | 重排 priority 公式 / 分层 surface | 🟠 |
