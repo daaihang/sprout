@@ -12,7 +12,7 @@ This section lists user-facing and near-user-facing Mory features. Each feature 
 | Video capture | `wired` | Imported/Journaling | Artifact diagnostics | Improve card/player presentation. |
 | Audio and voice capture | `wired` | Voice/audio sheet | Cloud intelligence debug | Prevent AI refinement from overwriting user edits. |
 | Link capture | `usable` | Link sheet/Share | Link metadata debug | Expose metadata failures. |
-| Place/weather/music context | `usable` | Auto context/action strip | Permission matrix | Clarify selected vs auto-collected context. |
+| Place/weather/music context | `usable` | Shared add-card menu / auto context | Permission matrix | Clarify selected vs auto-collected context. |
 | Structured mood | `wired` | Mood sheet/Journaling | Affect snapshot debug | Productize affect history and correction. |
 | Journaling Suggestions | `wired` | Composer toolbar | Platform diagnostics/fallback | Add stronger provenance and real-device checklist results. |
 | External Capture / Share | `wired` | Share extension/AppIntent | External draft review/inbox | Make handoff outcome visible. |

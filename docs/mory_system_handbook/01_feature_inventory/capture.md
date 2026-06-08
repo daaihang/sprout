@@ -3,7 +3,7 @@
 ## User Entry
 
 - Global capture composer through the app shell.
-- Composer action strip for mood, Journaling, camera, photo picker, audio, link, music, place, todo, and auto context refresh.
+- Shared add-card menu and board bottom add-card entry for mood, Journaling, camera, photo picker, audio, link, music, place, todo, and auto context refresh.
 - External capture and Journaling can seed the same composer.
 
 ## Expected User Experience

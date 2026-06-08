@@ -414,9 +414,15 @@ struct CaptureCardLabView: View {
                         ForEach(renderedItems(items)) { item in
                             CaptureCardView(
                                 presentation: debugPresentation(item),
-                                onTap: { toggleSelection(for: item.id) },
-                                onRemove: { remove(item.id) }
+                                onTap: { toggleSelection(for: item.id) }
                             )
+                            .contextMenu {
+                                Button(role: .destructive) {
+                                    remove(item.id)
+                                } label: {
+                                    Label("common.delete", systemImage: "trash")
+                                }
+                            }
                             .scrollTransition(.animated, axis: .horizontal) { content, phase in
                                 content
                                     .scaleEffect(phase.isIdentity ? 1 : 0.965)

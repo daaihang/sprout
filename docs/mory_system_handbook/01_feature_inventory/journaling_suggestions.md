@@ -2,7 +2,7 @@
 
 ## User Entry
 
-- Composer action strip "Journaling" button.
+- Shared add-card menu "Journaling" action.
 - Direct Apple Journaling picker on capable iOS devices.
 - Fallback/debug import form when capability is unavailable.
 - Platform Capture Diagnostics for capability and App Group checks.

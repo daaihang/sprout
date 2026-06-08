@@ -123,7 +123,6 @@ struct CardDebugStatesActionsView: View {
     @State private var selectedRole: CardDebugRoleOption = .composer
     @State private var selectedRuntimeState: CardDebugRuntimeStateOption = .normal
     @State private var tapCount = 0
-    @State private var removeCount = 0
 
     private var supportedDensities: [MemoryCardContentDensity] {
         CardDebugStatesActionsModel.supportedDensities(for: selectedContentKind)
@@ -192,8 +191,7 @@ struct CardDebugStatesActionsView: View {
                     Spacer()
                     CaptureCardView(
                         presentation: presentation,
-                        onTap: { tapCount += 1 },
-                        onRemove: { removeCount += 1 }
+                        onTap: { tapCount += 1 }
                     )
                     Spacer()
                 }
@@ -209,7 +207,8 @@ struct CardDebugStatesActionsView: View {
                 DebugValueRow(title: "Selected", value: presentation.item.isSelected ? "true" : "false")
                 DebugValueRow(title: "Object metrics", value: "\(Int(metrics.preferredSize.width))x\(Int(metrics.preferredSize.height)) · \(metrics.density.rawValue)")
                 DebugValueRow(title: "Tap callback count", value: "\(tapCount)")
-                DebugValueRow(title: "Remove callback count", value: "\(removeCount)")
+                DebugValueRow(title: "canDeleteViaMenu", value: presentation.capabilities.canRemove ? "true" : "false")
+                DebugValueRow(title: "surfaceRemoveControl", value: presentation.displaysRemoveControl ? "true" : "false")
             }
         }
     }

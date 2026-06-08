@@ -6,18 +6,15 @@ struct CaptureCardView: View {
     let presentation: CaptureCardPresentation
     var objectAvailableSize: CGSize?
     var onTap: (() -> Void)?
-    var onRemove: (() -> Void)?
 
     init(
         presentation: CaptureCardPresentation,
         objectAvailableSize: CGSize? = nil,
-        onTap: (() -> Void)? = nil,
-        onRemove: (() -> Void)? = nil
+        onTap: (() -> Void)? = nil
     ) {
         self.presentation = presentation
         self.objectAvailableSize = objectAvailableSize
         self.onTap = onTap
-        self.onRemove = onRemove
     }
 
     init(
@@ -30,8 +27,7 @@ struct CaptureCardView: View {
         objectAvailableSize: CGSize? = nil,
         showsLayoutGuides: Bool = false,
         showsFieldAudit: Bool = false,
-        onTap: (() -> Void)? = nil,
-        onRemove: (() -> Void)? = nil
+        onTap: (() -> Void)? = nil
     ) {
         self.init(
             presentation: .debug(
@@ -45,8 +41,7 @@ struct CaptureCardView: View {
                 showsFieldAudit: showsFieldAudit
             ),
             objectAvailableSize: objectAvailableSize,
-            onTap: onTap,
-            onRemove: onRemove
+            onTap: onTap
         )
     }
 

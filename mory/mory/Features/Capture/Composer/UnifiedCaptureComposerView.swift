@@ -498,44 +498,31 @@ struct UnifiedCaptureComposerView: View {
             selectedPhotoItems = []
         }
 
-        let processor = MediaArtifactProcessor()
-        for item in items {
-            do {
-                let draft = try await processor.process(
-                    item: item,
-                    origin: .manual,
-                    provenance: manualProvenance(.photoLibrary)
-                )
-                appendStagedArtifact(draft)
-            } catch {
-                errorMessage = error.localizedDescription
-            }
+        let result = await MemoryCardDraftMediaAdder.drafts(fromPhotoItems: items)
+        appendStagedArtifacts(result.drafts)
+        if let message = result.firstErrorMessage {
+            errorMessage = message
         }
     }
 
     @MainActor
     private func addCameraImage(_ image: UIImage) async {
-        guard let data = image.jpegData(compressionQuality: 0.86) else { return }
         isProcessingPhoto = true
         defer { isProcessingPhoto = false }
-        await addPhotoData(data, filename: "camera_\(Int(Date().timeIntervalSince1970)).jpg")
+        if let draft = await MemoryCardDraftMediaAdder.draft(fromCameraImage: image) {
+            appendStagedArtifact(draft)
+        }
     }
 
     @MainActor
     private func addPhotoData(_ data: Data, filename: String) async {
-        let result = await PhotoArtifactProcessor().process(imageData: data, filename: filename)
-        let summary = result.summary.trimmedOrNil ?? String(localized: "quickCapture.photo.defaultSummary")
-        appendStagedArtifact(.photo(
-            title: nil,
-            summary: summary,
+        let sourceKind: CaptureProvenanceSourceKind = filename.hasPrefix("camera_") ? .camera : .photoLibrary
+        let draft = await MemoryCardDraftMediaAdder.draft(
+            fromPhotoData: data,
             filename: filename,
-            imageData: data,
-            thumbnailData: result.thumbnailData,
-            ocrText: result.ocrText,
-            photoMetadata: result.metadata,
-            origin: .manual,
-            provenance: manualProvenance(filename.hasPrefix("camera_") ? .camera : .photoLibrary)
-        ))
+            provenance: MemoryCardDraftMediaAdder.manualProvenance(sourceKind)
+        )
+        appendStagedArtifact(draft)
     }
 
     @MainActor
@@ -613,35 +600,20 @@ struct UnifiedCaptureComposerView: View {
 
     @MainActor
     private func stackArrangementNodeWithPrevious(item: CaptureComposerAttachmentItem) {
-        guard let draftID = arrangementDraftID(for: item),
-              arrangementArtifactDrafts.first(where: { $0.draftID == draftID })?.isMemoryCardMergeableMedia == true else {
-            return
-        }
-        let nodes = cardArrangementDraft.nodes.sorted { lhs, rhs in
-            if lhs.layout.order == rhs.layout.order {
-                return lhs.id.uuidString < rhs.id.uuidString
-            }
-            return lhs.layout.order < rhs.layout.order
-        }
-        guard let index = nodes.firstIndex(where: { node in
-            node.contentRef.artifactDraftIDs.contains(draftID)
-        }), index > 0 else {
-            return
-        }
-        let previousDraftIDs = nodes[index - 1].contentRef.artifactDraftIDs
-        guard !previousDraftIDs.isEmpty,
-              previousDraftIDs.allSatisfy({ previousID in
-                  arrangementArtifactDrafts.first(where: { $0.draftID == previousID })?.isMemoryCardMergeableMedia == true
-              }) else {
-            return
-        }
-        cardArrangementDraft.toggleStackWithPrevious(draftID: draftID)
+        MemoryCardArrangementDraftEditing.stackWithPrevious(
+            item: item,
+            drafts: arrangementArtifactDrafts,
+            arrangement: &cardArrangementDraft
+        )
     }
 
     @MainActor
     private func unstackArrangementNode(item: CaptureComposerAttachmentItem) {
-        guard let draftID = arrangementDraftID(for: item) else { return }
-        cardArrangementDraft.unstackContainingDraft(draftID, artifactDrafts: arrangementArtifactDrafts)
+        MemoryCardArrangementDraftEditing.unstack(
+            item: item,
+            drafts: arrangementArtifactDrafts,
+            arrangement: &cardArrangementDraft
+        )
     }
 
     @MainActor
@@ -725,9 +697,18 @@ struct UnifiedCaptureComposerView: View {
 
     @MainActor
     private func setAttachmentItemDensity(item: CaptureComposerAttachmentItem, density: MemoryCardContentDensity) {
-        guard let draftID = arrangementDraftID(for: item) else { return }
         withAnimation(.snappy(duration: 0.18)) {
-            cardArrangementDraft.setContentDensity(density, forDraftID: draftID)
+            if case .contextCandidate = item.source {
+                guard let draftID = arrangementDraftID(for: item) else { return }
+                cardArrangementDraft.setContentDensity(density, forDraftID: draftID)
+            } else {
+                MemoryCardArrangementDraftEditing.setDensity(
+                    density,
+                    for: item,
+                    drafts: arrangementArtifactDrafts,
+                    arrangement: &cardArrangementDraft
+                )
+            }
         }
     }
 
@@ -935,7 +916,7 @@ struct UnifiedCaptureComposerView: View {
     }
 
     private func manualProvenance(_ sourceKind: CaptureProvenanceSourceKind) -> CaptureProvenance {
-        CaptureProvenance(originCategory: .userInput, sourceKind: sourceKind)
+        MemoryCardDraftMediaAdder.manualProvenance(sourceKind)
     }
 }
 
